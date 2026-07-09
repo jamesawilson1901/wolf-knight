@@ -1,0 +1,5 @@
+# Extracted asset packs — inspect locally, copy chosen files into ./assets.
+asset-raw/
+
+.DS_Store
+node_modules/

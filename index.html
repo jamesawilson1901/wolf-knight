@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Wolf Knight</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#17101f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Wolf Knight">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-180.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #17101f;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .overlay {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #17101f; color: #e8ddd0; text-align: center; gap: 12px;
+    }
+    #loading .moon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffbe6e, #ff5a2b 70%);
+      box-shadow: 0 0 40px 8px rgba(255, 90, 43, .45);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    #loading p { font-size: 18px; letter-spacing: .06em; opacity: .85; }
+    #error { display: none; z-index: 30; }
+    #error pre {
+      max-width: 90vw; white-space: pre-wrap; word-break: break-word;
+      color: #ffb0a0; font-size: 13px; text-align: left;
+    }
+    #rotate { display: none; z-index: 20; }
+    #rotate .phone {
+      width: 34px; height: 58px; border: 3px solid #e8ddd0; border-radius: 6px;
+      animation: turn 1.8s ease-in-out infinite;
+    }
+    @keyframes turn { 0%,20% { transform: rotate(0); } 60%,100% { transform: rotate(90deg); } }
+    @media (orientation: portrait) { #rotate { display: flex; } }
+    #badge {
+      position: fixed; right: 10px; bottom: 8px; z-index: 5;
+      color: rgba(232, 221, 208, .5); font-size: 11px; letter-spacing: .04em;
+      pointer-events: none;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.min.js",
+      "three/addons/": "./vendor/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="loading" class="overlay">
+    <div class="moon"></div>
+    <p>Wolf Knight</p>
+  </div>
+
+  <div id="error" class="overlay">
+    <p>Something went wrong:</p>
+    <pre id="error-text"></pre>
+  </div>
+
+  <div id="rotate" class="overlay">
+    <div class="phone"></div>
+    <p>Please turn your device sideways</p>
+  </div>
+
+  <div id="badge">Wolf Knight &middot; Phase 0 scaffold</div>
+
+  <script>
+    window.addEventListener('error', (e) => {
+      const el = document.getElementById('error');
+      document.getElementById('error-text').textContent =
+        (e.message || 'Unknown error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '');
+      el.style.display = 'flex';
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('Service worker registration failed:', err);
+        });
+      });
+    }
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
