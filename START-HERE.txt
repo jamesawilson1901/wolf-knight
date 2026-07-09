@@ -1,0 +1,18 @@
+WOLF KNIGHT 3D — START HERE
+
+1. Move this whole wolf-knight-3d folder into your home folder.
+2. Open Terminal and run:
+     cd ~/wolf-knight-3d
+     claude
+3. Open design/BUILD-PROMPT.md, copy EVERYTHING inside the code fence,
+   paste it into Claude Code. It builds Phase 0 and stops for your OK
+   before each next phase. Always check each phase in your browser.
+4. One-time, after Phase 0 pushes: GitHub repo -> Settings -> Pages ->
+   deploy from branch: main, folder /(root).
+
+Notes:
+- Everything needed is already in design/ and asset-downloads/.
+- Optional: monsters pack (https://quaternius.itch.io/lowpoly-animated-monsters)
+  -> drop the zip into asset-downloads/ if you want modeled enemies.
+- Optional: HydroGene music library (regions 2-7) was skipped (500MB) —
+  download later straight onto the Mac if wanted.
