@@ -54,6 +54,29 @@
       color: rgba(232, 221, 208, .5); font-size: 11px; letter-spacing: .04em;
       pointer-events: none;
     }
+    #hearts {
+      position: fixed; left: 12px; top: 10px; z-index: 5;
+      font-size: 26px; letter-spacing: 2px; pointer-events: none;
+      text-shadow: 0 2px 6px rgba(0,0,0,.6);
+    }
+    #joy-base, #joy-knob {
+      position: fixed; display: none; z-index: 6; pointer-events: none;
+      border-radius: 50%; transform: translate(-50%, -50%);
+    }
+    #joy-base {
+      width: 120px; height: 120px;
+      border: 2px solid rgba(232, 221, 208, .35);
+      background: rgba(232, 221, 208, .07);
+    }
+    #joy-knob {
+      width: 54px; height: 54px;
+      background: rgba(232, 221, 208, .45);
+      box-shadow: 0 2px 10px rgba(0,0,0,.35);
+    }
+    #fade {
+      position: fixed; inset: 0; z-index: 8; background: #17101f;
+      opacity: 0; pointer-events: none; transition: opacity .6s ease;
+    }
   </style>
   <script type="importmap">
   {
@@ -82,7 +105,11 @@
     <p>Please turn your device sideways</p>
   </div>
 
-  <div id="badge">Wolf Knight &middot; Phase 0 scaffold</div>
+  <div id="hearts"></div>
+  <div id="joy-base"></div>
+  <div id="joy-knob"></div>
+  <div id="fade"></div>
+  <div id="badge">Wolf Knight &middot; Phase 1</div>
 
   <script>
     window.addEventListener('error', (e) => {

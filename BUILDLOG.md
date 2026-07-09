@@ -59,7 +59,49 @@ camera. Deployable to GitHub Pages from the repo root.
 - **Error surfacing:** a visible error overlay catches window errors and asset-load
   failures — makes phone verification much easier than a blank screen.
 
+## Phase 1 — Kael + movement (2026-07-09)
+
+**Goal:** playable Kael — KayKit Knight with idle/walk/run animation states, virtual
+joystick + WASD, smooth-follow 3/4 camera, flat-plane collisions, lava that hurts.
+
+### Decisions
+
+- **Knight + animation libraries:** KayKit Adventurers `Knight.glb` (texture embedded,
+  no clips of its own) + KayKit Character Animations 1.1 `Rig_Medium_*` GLTF libraries.
+  Clip names inspected from the real files: `Idle_A`, `Walking_A`, `Running_A` (plus
+  `Melee_1H_*`, `Hit_A`, `Death_A`, `Spawn_Ground` for later phases). The library clips
+  bind directly to the knight's skeleton — verified zero `PropertyBinding` warnings at
+  runtime. Knight scaled ×0.5 (raw height 2.54 → ~1.27 in-world vs 1-unit floor tiles).
+- **Code split into modules** (still no bundler, plain ES modules): `assets.js`
+  (loader + shared volcanic material pass), `input.js` (hand-rolled floating joystick on
+  the left half via pointer events + WASD/arrows; right-half taps and J/K already queue
+  attack/special for Phase 4), `world.js` (room build + collision world), `player.js`
+  (Kael), `main.js` (bootstrap/camera/loop).
+- **Flat-plane collision:** player = circle (r 0.32); world = box colliders (wall rows)
+  + circle colliders (rocks, pillars). Resolution = project-out with slide (boxes:
+  closest-point push-out, or least-penetration axis if fully inside); no impulses, no
+  knockback anywhere. Lava = rectangular damage zones, never blocks movement: 1 heart
+  on contact, ~1s i-frames (red flicker on Kael), re-tick while standing. At 0 hearts:
+  soft fade, respawn at spawn point with full hearts (the Phase 5 checkpoint system
+  will take this over).
+- **Camera:** smooth-follow with exponential damping (framerate-independent), same 50°
+  pitch; key light + its shadow frustum track the player so shadows stay tight in
+  bigger rooms later.
+- **dt clamped to 50 ms** — on very slow devices the game slows down instead of
+  characters tunneling through walls.
+- **Temporary hearts readout** (emoji, top-left) so lava damage is visible before the
+  real HUD lands in Phase 5. A `window.__game` hook exposes player/world for automated
+  browser tests.
+
 ### Verification
+
+- Headless-Chromium gameplay test with position-feedback keyboard steering: wall stops
+  the body at exactly x = 7.68 (8 − body radius); lava entry 5→4 hearts, standing tick
+  4→3; walked out cleanly; defeat → fade → respawn at spawn with 5 hearts; zero console
+  errors, zero animation-binding warnings. Screenshots confirm idle/walk poses, red
+  cape reading nicely, camera following.
+
+## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape
   viewport): room renders lit, no console errors, service worker registers and
