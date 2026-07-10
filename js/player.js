@@ -70,8 +70,8 @@ function tintWolf(model, tint) {
 export class Player {
   constructor() {
     this.root = new THREE.Group();
-    this.hearts = MAX_HEARTS;
-    this.maxHearts = MAX_HEARTS;
+    this.maxHearts = state.maxHearts || MAX_HEARTS;
+    this.hearts = this.maxHearts;
     this.iframes = 0;
     this.lockTime = 0;           // movement lock (howl, attacks)
     this.specialCooldown = 0;

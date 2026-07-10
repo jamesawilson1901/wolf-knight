@@ -278,6 +278,25 @@ freezing enemies, resume. sw v0.5.0.
   live shortcut walked the player R3→R1; fire slam burned the R1 cubby (flag set,
   collider gone — the cubby interior resolves with zero push-out); zero console errors.
 
+## Phase 7 — Pip + pups + payoff (2026-07-10)
+
+**Goal:** Pip (Quaternius Fox) follows and sparkles near pups; 3 pups per LEVEL-MAP
+gates; all 3 = permanent +1 heart.
+
+- Pip: fox at ×0.22, follow-behind at 1.5 units (trot 3.4 / sprint 6.2 u/s), Idle /
+  Walk / Gallop clips; a pool of 7 golden octahedron sparkles orbits him and fades in
+  whenever an uncollected pup is within 4.5 units. Pip has no collider (never blocks)
+  and teleports to Kael's side on room changes.
+- Pups: the ONE wolf model at ×0.16 playing `Idle_2_HeadLow` (a sad little pup),
+  gentle head-turn sway; touch within 0.85 → golden star burst, flag in
+  `state.flags.pups`, HUD counter updates. Pup #1 dark nook / #2 hound branch / #3
+  cubby behind the burnable (its collider guards it until burned).
+- All 3 → `state.maxHearts` 5→6, heal to full, warm flood celebration. HUD shows 6
+  hearts (Pip's "all_pups" line lands in Phase 8).
+- Verified headless: follow, sparkle trigger, all three collections across their
+  gates (hound branch entered with i-frames, cubby after simulated burn), counter
+  3/3, 6-heart HUD. sw v0.7.0.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

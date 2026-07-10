@@ -14,4 +14,5 @@ export const state = {
   },
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',
+  maxHearts: 5,
 };

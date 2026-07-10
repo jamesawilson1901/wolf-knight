@@ -11,6 +11,7 @@ import { Player } from './player.js';
 import { state } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
+import { Pip, spawnPups } from './pip.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
 
@@ -138,7 +139,27 @@ const timer = new THREE.Timer();
 
 let world = null;
 let player = null;
+let pip = null;
 let transitioning = false;
+
+function onPupCollected() {
+  renderPups();
+  const found = Object.keys(state.flags.pups).length;
+  if (found >= 3 && state.maxHearts === 5) {
+    // all pups safe → a permanent extra heart, granted full
+    state.maxHearts = 6;
+    player.maxHearts = 6;
+    player.healFull();
+    effects.warmFlood();
+  }
+}
+
+async function setupRoomExtras() {
+  await spawnPups(world, onPupCollected);
+  if (pip) {
+    pip.place(player.root.position.x - 0.9, player.root.position.z + 0.9, player.root.rotation.y);
+  }
+}
 
 async function loadRoom(id, entry) {
   transitioning = true;
@@ -153,8 +174,9 @@ async function loadRoom(id, entry) {
   for (const cp of world.checkpoints) {
     if (state.checkpoint.id === cp.id) cp.reached = true;
   }
+  await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -179,8 +201,9 @@ async function respawnAtCheckpoint() {
   for (const c of world.checkpoints) {
     if (state.checkpoint.id === c.id) c.reached = true;
   }
+  await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects };
+  window.__game = { player, world, state, effects, pip };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -196,6 +219,9 @@ async function start() {
   player = new Player();
   await player.load();
   scene.add(player.root);
+  pip = new Pip();
+  await pip.load();
+  scene.add(pip.root);
   player.onDamaged = () => renderHearts(player);
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
   renderHearts(player);
@@ -242,7 +268,9 @@ async function start() {
       if (input.consumeAttack()) player.tryAttack(world);
 
       player.update(dt, input, world);
+      pip.update(dt, t, player, world);
       if (world.updateEnemies) world.updateEnemies(dt, t, player);
+      if (world.updatePups) world.updatePups(dt, t, player);
       if (world.boss) {
         if (!world.boss.onDefeated) {
           world.boss.onDefeated = () => {
@@ -308,8 +336,9 @@ async function start() {
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
+  await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects };
+  window.__game = { player, world, state, effects, pip };
 }
 
 function flashLockedForm() {
