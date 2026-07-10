@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
+import { audio } from './audio.js';
 
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
@@ -66,6 +67,7 @@ class Enemy {
   die() {
     this.dead = true;
     smokePuff(this.world, this.x, 0.5, this.z, this.puffTint || 0x5a4d66);
+    audio.play('puff', { volume: 0.8 });
     this.world.root.remove(this.root);
   }
 

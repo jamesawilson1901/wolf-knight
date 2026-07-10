@@ -10,6 +10,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip } from './boss.js';
+import { audio } from './audio.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -231,8 +232,12 @@ function geyser(world, x, z, offset = 0) {
   world.geysers.push(g);
 
   const CYCLE = 3.5, TELEGRAPH = 2.0, ERUPT = 2.5;
+  let wasErupting = false;
   world.onAnimate((t) => {
     const ph = (t + offset) % CYCLE;
+    const erupting = ph >= ERUPT;
+    if (erupting && !wasErupting) audio.play('geyser', { volume: 0.35, rate: 0.8 });
+    wasErupting = erupting;
     if (ph < TELEGRAPH) {
       g.active = false;
       column.visible = false;
@@ -522,6 +527,24 @@ async function buildR3(scene) {
       glow.intensity = 9 + Math.sin(t * 2.6) * 1.5;
     });
     world.markers.cinder = { ember, glow };
+
+    // The glowing way onward (toward the Luna dream / next region) appears
+    // once Ember Hollow is free.
+    const portal = new THREE.Mesh(
+      new THREE.RingGeometry(0.7, 1.0, 36),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
+    );
+    portal.rotation.x = -Math.PI / 2;
+    portal.position.set(0, 0.05, -5.6);
+    world.add(portal);
+    const portalLight = new THREE.PointLight(0xffe9a8, 6, 8, 1.9);
+    portalLight.position.set(0, 1.2, -5.6);
+    world.add(portalLight);
+    world.onAnimate((t) => {
+      portal.scale.setScalar(1 + Math.sin(t * 2.2) * 0.08);
+      portalLight.intensity = 5 + Math.sin(t * 3.1) * 1.4;
+    });
+    world.markers.exitSpot = { x: 0, z: -5.6 };
   }
 
   return world;

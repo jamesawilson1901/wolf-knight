@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { Shade } from './enemies.js';
 import { state } from './state.js';
+import { audio } from './audio.js';
 
 const CORE_HP = 8;
 const TENDRIL_HP = 2;
@@ -236,6 +237,7 @@ export class Shadowgrip {
         this.telegraph.visible = false;
         this.slamTendril.position.set(tx, 1.35, tz);
         this.slamTendril.visible = true;
+        audio.play('tendril-slam', { volume: 0.9 });
         const dx = player.root.position.x - tx, dz = player.root.position.z - tz;
         if (dx * dx + dz * dz < 1.0) player.hurt(1);
         // stuck tendril is vulnerable — only severable in phase 1

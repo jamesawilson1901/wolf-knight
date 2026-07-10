@@ -12,6 +12,8 @@ import { state } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
+import { audio } from './audio.js';
+import { Narration } from './narration.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
 
@@ -120,10 +122,12 @@ function setPaused(v) {
 }
 document.getElementById('pause-btn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
+  audio.play('ui-click', { volume: 0.7 });
   setPaused(true);
 });
 document.getElementById('resume-btn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
+  audio.play('ui-click', { volume: 0.7 });
   setPaused(false);
 });
 window.addEventListener('keydown', (e) => {
@@ -141,6 +145,97 @@ let world = null;
 let player = null;
 let pip = null;
 let transitioning = false;
+let narration = null;
+
+// ---------------------------------------------------------------------------
+// Narration triggers (design/NARRATION-SCRIPT.md). Story lines fire once per
+// save (Narration tracks that); this section decides WHEN.
+// ---------------------------------------------------------------------------
+
+const throttles = {}; // repeatable-line id -> next allowed time
+function sayThrottled(id, t, wait) {
+  if ((throttles[id] || 0) > t) return;
+  if (narration.say(id)) throttles[id] = t + wait;
+}
+
+const stuckHints = [
+  { line: 'dark_nook', timer: 0, cond: () =>
+      state.room === 'r1' && !state.flags.pups.pup1 && state.form !== 'dark_wolf' &&
+      world.markers.darkNookMouth && nearSpot(world.markers.darkNookMouth, 4) },
+  { line: 'geyser_intro', timer: 0, cond: () =>
+      state.room === 'r2' && !state.spoken.boss_door && nearXZ(4.5, -4.4, 4) },
+  { line: 'burn_prompt', timer: 0, cond: () =>
+      state.room === 'r1' && state.formsUnlocked.includes('fire_wolf') &&
+      !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 4) },
+];
+
+function nearXZ(x, z, r) {
+  const dx = player.root.position.x - x;
+  const dz = player.root.position.z - z;
+  return dx * dx + dz * dz < r * r;
+}
+function nearSpot(spot, r) { return nearXZ(spot.x, spot.z, r); }
+
+function narrationTriggers(dt, t) {
+  const m = world.markers;
+
+  if (state.room === 'r1') {
+    const shade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
+    if (shade && nearXZ(shade.x, shade.z, 5.5)) narration.say('first_enemy');
+    if (m.darkNookMouth && nearSpot(m.darkNookMouth, 2.4)) narration.say('dark_nook');
+    if (!state.formsUnlocked.includes('fire_wolf') && nearXZ(-3.95, 4.4, 2.2)) narration.say('obstacle_first');
+    if (state.formsUnlocked.includes('fire_wolf') && !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 3.2)) {
+      narration.say('burn_prompt');
+    }
+  }
+
+  if (state.room === 'r2') {
+    const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
+    if (moth) narration.say('moth_intro');
+    if (nearXZ(4.5, -4.4, 3.2)) narration.say('geyser_intro');
+    if (m.branchMouth && nearSpot(m.branchMouth, 2.6)) narration.say('hound_branch');
+    if (nearXZ(8.6, -3.6, 2.4)) narration.say('boss_door');
+  }
+
+  const boss = world.boss;
+  if (boss && !boss.defeated) {
+    if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
+    if (boss.slamState === 'telegraph') narration.say('boss_p1_telegraph');
+    if (boss.phase === 2) narration.say('boss_p2');
+    if (boss.phase >= 2 && player.specialCooldown <= 0 && state.form === 'dark_wolf') {
+      narration.say('boss_bloodmoon');
+    }
+    if (boss.phase === 3) narration.say('boss_p3');
+  }
+
+  if (m.exitSpot && nearSpot(m.exitSpot, 1.6)) {
+    if (narration.say('region_complete')) {
+      narration.say('grimm_taunt_1');
+      narration.say('luna_dream_1');
+    }
+  }
+
+  // contextual (repeatable, throttled)
+  const shadesNear = (world.enemies || []).filter((e) =>
+    e.constructor.name === 'Shade' && !e.dead && nearXZ(e.x, e.z, 6.5)).length;
+  if (shadesNear >= 2) sayThrottled('enemy_group', t, 35);
+
+  // stuck re-hints: linger ~22s at a gate → replay the teach line
+  for (const h of stuckHints) {
+    if (h.cond()) {
+      h.timer += dt;
+      if (h.timer > 22) {
+        h.timer = 0;
+        narration.say(h.line, { force: true });
+      }
+    } else h.timer = 0;
+  }
+}
+
+function updateMusic() {
+  if (state.room === 'r3' && world.boss && !world.boss.defeated) audio.playMusic('boss');
+  else audio.playMusic('region-ember');
+}
 
 function onPupCollected() {
   renderPups();
@@ -151,6 +246,9 @@ function onPupCollected() {
     player.maxHearts = 6;
     player.healFull();
     effects.warmFlood();
+    narration.say('all_pups');
+  } else {
+    narration.say('pup_found');
   }
 }
 
@@ -176,7 +274,10 @@ async function loadRoom(id, entry) {
   }
   await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects, pip }; // debug/testing hook
+  updateMusic();
+  if (id === 'r2') narration.say('r2_enter');
+  if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
+  window.__game = { player, world, state, effects, pip, narration, audio }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -203,7 +304,9 @@ async function respawnAtCheckpoint() {
   }
   await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects, pip };
+  updateMusic();
+  narration.say('respawn');
+  window.__game = { player, world, state, effects, pip, narration, audio };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -227,13 +330,21 @@ async function start() {
   renderHearts(player);
 
   effects = new Effects(scene);
+  narration = new Narration();
   ui = new UI({
     onFormPick: (id) => {
-      if (player.setForm(id)) ui.refreshBadge();
-      else flashLockedForm();
+      if (player.setForm(id)) { ui.refreshBadge(); audio.play('ui-click', { volume: 0.6 }); }
+      else { flashLockedForm(); narration.say('form_locked'); }
     },
     onSpecial: () => player.trySpecial(effects, world),
   });
+  player.onDamaged = () => {
+    renderHearts(player);
+    if (player.hearts > 0 && player.hearts <= 2) {
+      sayThrottled('low_hearts', timer.getElapsed(), 30);
+    }
+  };
+  wireSettings();
   player.onFormChanged = () => ui.refreshBadge();
   input.onHold = (x, y, pointerId) => {
     if (transitioning) return false;
@@ -278,6 +389,10 @@ async function start() {
             effects.shake(0.35, 0.8);
             ui.refreshBadge();
             if (world.openShortcut) world.openShortcut(); // the way home opens
+            audio.playMusic('victory', { loop: false, then: 'region-ember' });
+            narration.say('boss_defeat');
+            narration.say('firewolf_grant');
+            narration.say('firewolf_howto');
           };
         }
         world.boss.update(dt, t, player);
@@ -286,6 +401,8 @@ async function start() {
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
       if (door) loadRoom(door.to, door.entry);
+
+      narrationTriggers(dt, t);
 
       // Checkpoints: touch to set respawn
       for (const cp of world.checkpoints) {
@@ -296,6 +413,8 @@ async function start() {
           cp.reached = true;
           state.checkpoint = { room: state.room, x: cp.x, z: cp.z, id: cp.id };
           showSavedToast();
+          audio.play('checkpoint', { volume: 0.7 });
+          narration.say('checkpoint');
         }
       }
     }
@@ -338,7 +457,32 @@ async function buildRoomInitial() {
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   await setupRoomExtras();
   snapCamera();
-  window.__game = { player, world, state, effects, pip };
+  updateMusic();
+  narration.say('intro_arrival');
+  window.__game = { player, world, state, effects, pip, narration, audio };
+}
+
+// Settings (pause menu) — wired to state.settings; persisted in Phase 9.
+function wireSettings() {
+  const music = document.getElementById('music-vol');
+  const sfx = document.getElementById('sfx-vol');
+  const captions = document.getElementById('captions-toggle');
+  const voice = document.getElementById('voice-toggle');
+  music.value = state.settings.musicVol;
+  sfx.value = state.settings.sfxVol;
+  captions.checked = state.settings.captions;
+  voice.checked = state.settings.voice;
+  music.addEventListener('input', () => { state.settings.musicVol = +music.value; audio.applyVolumes(); });
+  sfx.addEventListener('input', () => {
+    state.settings.sfxVol = +sfx.value;
+    audio.applyVolumes();
+    audio.play('ui-click', { volume: 0.7 });
+  });
+  captions.addEventListener('change', () => { state.settings.captions = captions.checked; });
+  voice.addEventListener('change', () => {
+    state.settings.voice = voice.checked;
+    if (!voice.checked && 'speechSynthesis' in window) speechSynthesis.cancel();
+  });
 }
 
 function flashLockedForm() {

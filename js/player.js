@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
+import { audio } from './audio.js';
 
 const BODY_RADIUS = 0.32;
 const TURN_SPEED = 12;
@@ -147,6 +148,7 @@ export class Player {
     if (!silent) {
       this._popTime = 0.22; // transform pop (scale-in)
       this.lockTime = Math.max(this.lockTime, 0.12);
+      audio.play('form-switch', { volume: 0.9 });
     }
     if (this.onFormChanged) this.onFormChanged(name);
     return true;
@@ -191,6 +193,7 @@ export class Player {
     this._playOnce('attack');
     this.lockTime = cfg.lock;
     this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
+    audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
     return true;
   }
 
@@ -211,6 +214,7 @@ export class Player {
       if (d > range + e.radius) continue;
       if (d > 0.2 && (dx * fx + dz * fz) / d < ATTACK_ARC_COS) continue;
       e.takeDamage(dmg);
+      audio.play('hit', { volume: 0.9 });
     }
   }
 
@@ -237,8 +241,9 @@ export class Player {
     this.lockTime = 0.5;
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone());
+    audio.play('slam');
     if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2);
-    world.burnAt(x, z, SLAM_BURN_RADIUS);
+    if (world.burnAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('burn');
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -260,7 +265,7 @@ export class Player {
 
     effects.bloodMoon(target, {
       onImpact: () => {
-        // Phase 4 wires enemy damage through this hook.
+        audio.play('moon-impact');
         if (world && world.damageEnemiesAt) world.damageEnemiesAt(target.x, target.z, 3.0, 99);
       },
     });
@@ -345,6 +350,7 @@ export class Player {
 
   damage(n) {
     this.hearts = Math.max(0, this.hearts - n);
+    audio.play('hurt', { volume: 0.9 });
     if (this.onDamaged) this.onDamaged(this.hearts);
     if (this.hearts === 0 && this.onDefeated) this.onDefeated();
   }

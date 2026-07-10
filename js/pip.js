@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
+import { audio } from './audio.js';
 
 const PIP_SCALE = 0.22;
 const PUP_SCALE = 0.16;      // "wolf scaled to ~45%" of Kael's wolf (0.35)
@@ -135,6 +136,7 @@ class Pup {
     if (dx * dx + dz * dz < 0.85 * 0.85) {
       this.collected = true;
       state.flags.pups[this.id] = true;
+      audio.play('pup-chime');
       // rescue burst: golden stars fly up
       const bits = [];
       for (let i = 0; i < 10; i++) {

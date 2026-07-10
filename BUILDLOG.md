@@ -297,6 +297,43 @@ gates; all 3 = permanent +1 heart.
   gates (hound branch entered with i-frames, cubby after simulated burn), counter
   3/3, 6-heart HUD. sw v0.7.0.
 
+## Phase 8 — Narration + audio (2026-07-10)
+
+**Goal:** NARRATION-SCRIPT.md verbatim over Web Speech, captions on by default, music
+ducking; local CC0 music + SFX with volume sliders.
+
+### Decisions
+
+- **narration.js:** the whole script as a data table (id → voice/text, verbatim).
+  Character voices differ by rate/pitch (Pip 1.0/1.3, Cinder 0.85/0.8, Grimm 0.85/0.6,
+  Luna 0.9/1.1) on the best available local `en` system voice. Story lines fire ONCE
+  per save (`state.spoken`); if a line is already speaking, story beats queue while
+  contextual chatter is dropped (story > chatter). Captions bar bottom-center shows
+  "Pip: …" and auto-hides; with voice off, captions pace by text length. A safety
+  timer covers TTS engines that never fire `onend`. Music ducks to 30% while speaking.
+- **Triggers:** proximity/state checks in the main loop (nook mouth, burnable, geyser
+  crossing, branch mouth, boss door…), room-entry lines, boss-phase lines (including
+  `boss_bloodmoon` when the ultimate is ready mid-fight), defeat chain (Cinder's two
+  lines + Pip's how-to queued in order), pup/all-pups, checkpoint/low-hearts/respawn/
+  form-locked/enemy-group with per-line throttles, and 22-second **stuck re-hints**
+  for the three teach gates. `region_complete` → Grimm taunt → Luna dream plays at a
+  glowing exit portal that appears in R3 after the boss falls.
+- **audio.js:** WebAudio, unlocked on first gesture; SFX bus + music bus with a duck
+  gain; looped music with 0.7s crossfades (region-ember in R1/R2, boss in R3 while it
+  lives, victory sting → back to region loop on defeat). 14 Kenney SFX wired: swings,
+  hits, puffs, hurt, form-switch, geyser, pup chime, checkpoint tick, UI clicks,
+  slam/burn, tendril slams, moon impact. `boss.wav` (21 MB) downsampled to mono
+  22 kHz (5.4 MB) with Python stdlib — the bundled ffmpeg build can't read WAV.
+- **Settings** (pause menu): music + SFX sliders, captions + voice toggles — live on
+  `state.settings` (per-profile persistence lands in Phase 9).
+
+### Verification
+
+- Headless: intro caption verbatim; music `region-ember` after unlock → `boss` in R3;
+  dark_nook/checkpoint/r2_enter/geyser_intro/boss_intro all fired by movement; story
+  lines refuse to refire; contextual line correctly dropped while a story line spoke
+  (test then cleared the race); settings UI seeded from state; zero errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

@@ -15,4 +15,6 @@ export const state = {
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',
   maxHearts: 5,
+  settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95 },
+  spoken: {}, // narration line id -> true (story lines fire once per save)
 };
