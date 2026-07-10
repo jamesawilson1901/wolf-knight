@@ -9,6 +9,7 @@ import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { World } from './world.js';
 import { state } from './state.js';
 import { spawnEnemies } from './enemies.js';
+import { Shadowgrip } from './boss.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -287,6 +288,7 @@ function burnable(world, id, x, z, ry = 0) {
   world.circleColliders.push(collider);
   const b = { id, x, z, group, collider, burned: false };
   world.markers['burnable_' + id] = b;
+  world.burnables.push(b);
   return b;
 }
 
@@ -444,20 +446,37 @@ async function buildR3(scene) {
   const world = new World(scene);
   buildShell(world, 16, 16, [
     { side: 's', from: -1.3, to: 1.3 },  // entry from R2
-    ...(state.flags.shortcutOpen ? [{ side: 'w', from: -0.6, to: 1.8 }] : []),
+    { side: 'w', from: -0.6, to: 1.8 },  // shortcut to R1 (plugged until boss)
   ]);
   world.spawn = { x: 0, z: 6.2, angle: Math.PI };
 
   world.addDoor(-1.3, 1.3, 7.85, 8.9, 'r2', { x: 8.5, z: -4.9, angle: Math.PI });
-  if (state.flags.shortcutOpen) {
-    world.addDoor(-8.9, -7.85, -0.6, 1.8, 'r1', { x: -7.2, z: -2, angle: Math.PI / 2 });
-  } else {
-    // Sealed shortcut: a rock plug in front of the west wall — hints that
-    // something opens here after the boss.
-    placeRocks(world, [
-      { kind: 'la', x: -7.2, z: 0.6, s: 2.0, ry: 1.1, cr: 0.95 },
-      { kind: 'sb', x: -6.9, z: 1.7, s: 1.5, ry: 2.8, cr: 0.3 },
-    ]);
+  world.addDoor(-8.9, -7.85, -0.6, 1.8, 'r1', { x: -7.2, z: -2, angle: Math.PI / 2 });
+  if (!state.flags.shortcutOpen) {
+    // The shortcut is plugged with rocks until the boss falls; beating it
+    // removes the plug in the LIVE room (world.openShortcut), so the
+    // backtrack loop starts immediately.
+    const plug = new THREE.Group();
+    for (const p of [
+      { kind: kit.rockLA, x: -7.6, z: 0.2, s: 2.1, ry: 1.1 },
+      { kind: kit.rockLC, x: -7.5, z: 1.2, s: 1.8, ry: 2.8 },
+      { kind: kit.rockSB, x: -6.9, z: 0.7, s: 1.6, ry: 0.4 },
+    ]) {
+      const rock = prepareModel(p.kind.scene.clone());
+      rock.position.set(p.x, 0, p.z);
+      rock.rotation.y = p.ry;
+      rock.scale.setScalar(p.s);
+      plug.add(rock);
+    }
+    world.add(plug);
+    const plugCollider = { minX: -8.9, maxX: -6.4, minZ: -0.8, maxZ: 2.0 };
+    world.boxColliders.push(plugCollider);
+    world.openShortcut = () => {
+      world.root.remove(plug);
+      const i = world.boxColliders.indexOf(plugCollider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      world.openShortcut = null;
+    };
   }
 
   // Lava rim inside the walls (the arena boundary "edge") — the entry
@@ -484,25 +503,26 @@ async function buildR3(scene) {
   // Checkpoint CP3 at the arena entrance
   checkpoint(world, 'cp3', -2.2, 5.6);
 
-  // Caged Cinder: a weak warm ember at the center (the Shadowgrip itself
-  // arrives in Phase 6). After the boss, Cinder is freed — no cage here.
+  // The Shadowgrip (built in code) grips Cinder at the center until beaten;
+  // afterwards Cinder floats free, warm and bright.
   if (!state.flags.bossDefeated) {
+    world.markers.bossSpot = { x: 0, z: -0.5 };
+  } else {
     const ember = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 2.4, roughness: 1 })
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 3.2, roughness: 1 })
     );
-    ember.position.set(0, 1.3, -0.5);
+    ember.position.set(0, 1.8, -0.5);
     world.add(ember);
-    const glow = new THREE.PointLight(0xffb25a, 6, 9, 1.9);
-    glow.position.set(0, 1.6, -0.5);
+    const glow = new THREE.PointLight(0xffc27a, 10, 13, 1.8);
+    glow.position.set(0, 2.0, -0.5);
     world.add(glow);
     world.onAnimate((t) => {
-      ember.position.y = 1.3 + Math.sin(t * 1.7) * 0.12;
-      glow.intensity = 5 + Math.sin(t * 2.6) * 1.2;
+      ember.position.y = 1.8 + Math.sin(t * 1.7) * 0.15;
+      glow.intensity = 9 + Math.sin(t * 2.6) * 1.5;
     });
     world.markers.cinder = { ember, glow };
   }
-  world.markers.bossSpot = { x: 0, z: -0.5 };
 
   return world;
 }
@@ -513,5 +533,8 @@ export async function buildRoom(id, scene) {
   await loadKit();
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
+  if (world.markers.bossSpot && !state.flags.bossDefeated) {
+    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z);
+  }
   return world;
 }

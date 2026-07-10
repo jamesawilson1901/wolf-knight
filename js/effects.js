@@ -36,6 +36,57 @@ export class Effects {
     }
   }
 
+  // Fire Wolf ground-slam: radial shockwave ring + emissive flash.
+  groundSlam(pos) {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.5, 0.95, 36),
+      new THREE.MeshBasicMaterial({
+        color: 0xff7a2a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(pos.x, 0.07, pos.z);
+    const flash = new THREE.PointLight(0xff8a3a, 18, 12, 1.7);
+    flash.position.set(pos.x, 1.0, pos.z);
+    this.scene.add(ring, flash);
+    this.shake(0.3, 0.35);
+
+    let elapsed = 0;
+    const DURATION = 0.55;
+    this._active.push((dt) => {
+      elapsed += dt;
+      const f = Math.min(1, elapsed / DURATION);
+      const s = 1 + f * 3.2;
+      ring.scale.set(s, s, 1);
+      ring.material.opacity = 0.95 * (1 - f);
+      flash.intensity = 18 * (1 - f);
+      if (f >= 1) {
+        this.scene.remove(ring, flash);
+        ring.geometry.dispose();
+        ring.material.dispose();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Victory: warm light floods the room as the shadow's hold breaks.
+  warmFlood() {
+    const flood = new THREE.HemisphereLight(0xffd9a0, 0x7a4a2a, 0);
+    this.scene.add(flood);
+    let elapsed = 0;
+    this._active.push((dt) => {
+      elapsed += dt;
+      if (elapsed < 0.9) flood.intensity = (elapsed / 0.9) * 2.6;
+      else flood.intensity = Math.max(0, 2.6 * (1 - (elapsed - 0.9) / 3.6));
+      if (elapsed > 4.5) {
+        this.scene.remove(flood);
+        return false;
+      }
+      return true;
+    });
+  }
+
   // The Blood Moon: Kael howls, the sky bleeds red, and a blood-red moon
   // crashes down at the target point. onImpact fires for gameplay damage.
   // Returns the total sequence duration in seconds.

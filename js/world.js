@@ -3,6 +3,7 @@
 // AABBs and circles, plus damage zones (lava rects, geyser circles).
 
 import * as THREE from 'three';
+import { state } from './state.js';
 
 export class World {
   constructor(scene) {
@@ -18,6 +19,9 @@ export class World {
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
+    this.burnables = [];       // {id, x, z, group, collider, burned}
+    this.boss = null;
+    this.bossDarkness = false; // boss phase 3 blacks out the whole room
     this.spawn = { x: 0, z: 0, angle: Math.PI };
     this._animateHooks = [];
   }
@@ -63,6 +67,46 @@ export class World {
       if (dx * dx + dz * dz < g.r * g.r) return true;
     }
     return false;
+  }
+
+  // Fire Wolf ground-slam: burn every unburned obstacle in range. The clump
+  // breaks apart — chunks scatter, shrink and fade — and its collider goes.
+  burnAt(x, z, r) {
+    let burned = 0;
+    for (const b of this.burnables) {
+      if (b.burned) continue;
+      const dx = b.x - x, dz = b.z - z;
+      if (dx * dx + dz * dz > r * r) continue;
+      b.burned = true;
+      state.flags.burned[b.id] = true;
+      burned++;
+      const i = this.circleColliders.indexOf(b.collider);
+      if (i >= 0) this.circleColliders.splice(i, 1);
+      const chunks = [...b.group.children];
+      for (const c of chunks) {
+        const a = Math.atan2(c.position.x + 0.01, c.position.z + 0.01);
+        c.userData.v = { x: Math.sin(a) * 1.6, y: 2.2, z: Math.cos(a) * 1.6 };
+        c.traverse((n) => {
+          if (n.isMesh) { n.material.transparent = true; }
+        });
+      }
+      let life = 0.8;
+      this.onAnimate((t, dt) => {
+        if (life <= 0) return;
+        life -= dt;
+        const f = Math.max(0, life / 0.8);
+        for (const c of chunks) {
+          c.position.x += c.userData.v.x * dt;
+          c.position.y += c.userData.v.y * dt;
+          c.position.z += c.userData.v.z * dt;
+          c.userData.v.y -= dt * 7;
+          c.scale.multiplyScalar(Math.max(0.0001, 1 - dt * 1.6));
+          c.traverse((n) => { if (n.isMesh) n.material.opacity = f; });
+        }
+        if (life <= 0) this.root.remove(b.group);
+      });
+    }
+    return burned;
   }
 
   doorAt(x, z) {

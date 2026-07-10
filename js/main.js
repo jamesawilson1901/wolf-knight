@@ -206,7 +206,7 @@ async function start() {
       if (player.setForm(id)) ui.refreshBadge();
       else flashLockedForm();
     },
-    onSpecial: () => player.tryBloodMoon(effects, world),
+    onSpecial: () => player.trySpecial(effects, world),
   });
   player.onFormChanged = () => ui.refreshBadge();
   input.onHold = (x, y, pointerId) => {
@@ -238,11 +238,22 @@ async function start() {
         const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
         if (player.setForm(next)) ui.refreshBadge();
       }
-      if (input.consumeSpecial()) player.tryBloodMoon(effects, world);
+      if (input.consumeSpecial()) player.trySpecial(effects, world);
       if (input.consumeAttack()) player.tryAttack(world);
 
       player.update(dt, input, world);
       if (world.updateEnemies) world.updateEnemies(dt, t, player);
+      if (world.boss) {
+        if (!world.boss.onDefeated) {
+          world.boss.onDefeated = () => {
+            effects.warmFlood();
+            effects.shake(0.35, 0.8);
+            ui.refreshBadge();
+            if (world.openShortcut) world.openShortcut(); // the way home opens
+          };
+        }
+        world.boss.update(dt, t, player);
+      }
 
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
@@ -265,7 +276,9 @@ async function start() {
 
     // Real-lighting darkness: dark zones black out the base rig for the
     // Knight; the Dark Wolf (Phase 3) will see through it.
-    const inDark = world.darknessAt(player.root.position.x, player.root.position.z);
+    const inDark = world.bossDarkness
+      ? 1
+      : world.darknessAt(player.root.position.x, player.root.position.z);
     const target = state.form === 'dark_wolf' ? 0 : inDark;
     darkness += (target - darkness) * Math.min(1, dt * 5);
     hemi.intensity = HEMI_BASE * (1 - 0.94 * darkness);

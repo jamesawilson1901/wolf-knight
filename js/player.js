@@ -14,6 +14,9 @@ const IFRAME_TIME = 1.0;
 const LAVA_TICK = 1.0;
 const BLOOD_MOON_COOLDOWN = 24; // seconds
 const BLOOD_MOON_RANGE = 2.4;   // impact point this far ahead of Kael
+const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
+const SLAM_RADIUS = 3.0;
+const SLAM_BURN_RADIUS = 2.6;
 
 export const MAX_HEARTS = 5;
 
@@ -133,10 +136,12 @@ export class Player {
     if (!state.formsUnlocked.includes(name)) return false;
     if (state.form === name && !silent) return true;
 
-    for (const f of Object.values(this.forms)) f.model.visible = false;
+    for (const ff of Object.values(this.forms)) ff.model.visible = false;
     state.form = name;
     const f = this.forms[name];
     f.model.visible = true;
+    this.specialMax = name === 'fire_wolf' ? SLAM_COOLDOWN : BLOOD_MOON_COOLDOWN;
+    this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
     this._play('idle', 0);
     if (!silent) {
@@ -216,6 +221,28 @@ export class Player {
     this.iframes = IFRAME_TIME;
   }
 
+  // Route the special button/key by form.
+  trySpecial(effects, world) {
+    if (state.form === 'dark_wolf') return this.tryBloodMoon(effects, world);
+    if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
+    return false;
+  }
+
+  // Fire Wolf ground-slam: radial shockwave, damages enemies + burns
+  // scorched obstacles.
+  tryGroundSlam(effects, world) {
+    if (state.form !== 'fire_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('attack');
+    this.lockTime = 0.5;
+    const { x, z } = { x: this.root.position.x, z: this.root.position.z };
+    effects.groundSlam(this.root.position.clone());
+    if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2);
+    world.burnAt(x, z, SLAM_BURN_RADIUS);
+    this.specialCooldown = this.specialMax;
+    return true;
+  }
+
   // The Blood Moon ultimate (Dark Wolf). Returns true if it fired.
   tryBloodMoon(effects, world) {
     if (state.form !== 'dark_wolf') return false;
@@ -289,8 +316,9 @@ export class Player {
 
     this._hazards(dt, world);
 
-    // See in the dark: the wolf lamp breathes on in dark zones.
-    const dark = world.darknessAt(this.root.position.x, this.root.position.z);
+    // See in the dark: the wolf lamp breathes on in dark zones (and in the
+    // boss's phase-3 darkness).
+    const dark = world.bossDarkness ? 1 : world.darknessAt(this.root.position.x, this.root.position.z);
     const want = state.form === 'dark_wolf' ? (dark ? 9 : 2.2) : 0;
     this.formLight.intensity += (want - this.formLight.intensity) * Math.min(1, dt * 6);
 

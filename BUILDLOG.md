@@ -236,6 +236,48 @@ row at ≤2 hearts (the low-hearts moment Pip will voice in Phase 8). Settings a
 land with profiles in Phase 9. Verified headless: toast, low-pulse class, pause
 freezing enemies, resume. sw v0.5.0.
 
+## Phase 6 — The Shadowgrip + Fire Wolf (2026-07-10)
+
+**Goal:** the 3-phase boss per COMBAT-SPEC.md → free Cinder → unlock Fire Wolf
+(ground-slam + burn) → shortcut opens.
+
+### Decisions
+
+- **Boss (all code-built per the casting sheet):** dark blob core (icosahedron) with a
+  player-tracking eye, hovering over the caged Cinder ember (warm point light), three
+  grip tendrils arcing over it — one visibly releases per sever.
+  - *Phase 1:* tendril slams aimed at the player's feet — pulsing dark-circle telegraph
+    (1.05 s) → slam (1 heart in r 1) → tendril stuck 2 s as a sword-hittable (hp 2, only
+    severable in this phase). 3 severed → phase 2.
+  - *Phase 2:* core sinks into reach (hittable r 1.35, HP 8 total), summons exactly 2
+    Shades, and a slow rotating shadow wave (0.55 rad/s bar, damage in a ±0.16 rad
+    slice between radius 1.2-6.2 — always a huge safe arc). Blood Moon is capped at 3
+    damage vs boss parts, so spec math holds (~8 sword hits or ~2 moons + hits).
+    Core to HP 4 → phase 3.
+  - *Phase 3:* `world.bossDarkness` blacks out the room through the existing real-light
+    darkness system (Dark Wolf sees; lava/campfire/Cinder still glow); slams come
+    faster (0.8 s telegraph); the core opens in 2.2 s bursts between 2.0 s guarded.
+  - *Defeat:* dissolve (shrink + rise), Cinder brightens and floats free, warm
+    hemisphere flood + shake; sets `bossDefeated` + `shortcutOpen`, pushes `fire_wolf`
+    into `formsUnlocked`. Death mid-fight = CP3 respawn; room rebuild resets the boss.
+- **Live shortcut:** R3's west gap is always built but plugged with rocks + a collider;
+  beating the boss removes the plug in the live room (`world.openShortcut`) — the
+  backtrack starts immediately, no re-entry needed. (Caught by the automated run: the
+  original build-time-only door never opened in the live room.)
+- **Fire Wolf ground-slam:** special routes by form (`trySpecial`); slam = wolf Attack
+  clip + expanding orange shockwave ring + flash + small shake, 2 dmg to enemies in
+  r 3, `world.burnAt` r 2.6 breaks burnables apart (chunks scatter/shrink/fade,
+  collider removed, `state.flags.burned[id]` set permanently), cooldown 7 s (vs Blood
+  Moon 24 s — per-form `specialMax` drives the ring UI).
+
+### Verification
+
+- Deterministic headless full fight: 3 tendril rounds severed; phase 2 spawned exactly
+  2 Shades; core 8→4 flipped phase 3 with room darkness on; burst-window hits finished
+  the core; defeat granted fire_wolf + shortcut + boss flags and lifted darkness; the
+  live shortcut walked the player R3→R1; fire slam burned the R1 cubby (flag set,
+  collider gone — the cubby interior resolves with zero push-out); zero console errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape
