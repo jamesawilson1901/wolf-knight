@@ -93,10 +93,10 @@ export class Player {
       this._play('idle');
     }
 
-    // Lava hurts: 1 heart per touch, ~1s of i-frames, no knockback — the kid
-    // just walks out. i-frames also cover ordinary enemy hits later.
+    // Hazards hurt (lava, erupting geysers): 1 heart per touch, ~1s of
+    // i-frames, no knockback — the kid just walks out.
     if (this.iframes > 0) this.iframes -= dt;
-    if (world.inLava(this.root.position.x, this.root.position.z) && this.iframes <= 0) {
+    if (world.hazardAt(this.root.position.x, this.root.position.z) && this.iframes <= 0) {
       this.damage(1);
       this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
     }

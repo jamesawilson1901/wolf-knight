@@ -101,6 +101,51 @@ joystick + WASD, smooth-follow 3/4 camera, flat-plane collisions, lava that hurt
   errors, zero animation-binding warnings. Screenshots confirm idle/walk poses, red
   cape reading nicely, camera following.
 
+## Phase 2 — Ember Hollow rooms (2026-07-10)
+
+**Goal:** all 3 rooms per LEVEL-MAP.md with connections, checkpoints, the dark nook,
+burnable props, geysers, and room-reset-on-re-entry.
+
+### Decisions
+
+- **Room manager:** one room live at a time; walking into a door zone fades out,
+  disposes the room's scene graph (shared cached geometry is NOT disposed), rebuilds
+  the target room, fades in. Rebuilding fresh on every entry IS the anti-soft-lock
+  reset. Permanent facts (boss defeated, burned obstacles, collected pups) live in
+  `state.flags` and are applied at build time.
+- **`rooms.js` layouts** (16×12 R1, 20×12 R2, 16×16 R3): shells built by a helper that
+  cuts door gaps into both the wall instancing AND the wall colliders (split into
+  segments around gaps). R1: two lava patches + pillars, SE dark nook (Pup #1 spot),
+  SW burnable cubby (Pup #3 spot), CP1 at exit; R2: full-width lava channel crossed by
+  a real Kenney stone bridge (with rails so kids can't corner-cut into lava), 3-geyser
+  crossing, SE branch pocket (Shadow Hound + Pup #2 markers), CP2 before the boss door;
+  R3: lava rim arena, 4 pillars, CP3, floating caged-Cinder ember at center, sealed
+  shortcut (rock plug) in the west wall that Phase 6 replaces with a door to R1.
+- **Dark zones = real lighting:** standing in a dark-zone rect as the Knight lerps the
+  global hemisphere/key rig down ~95%; lava pools and campfires are point lights so
+  they keep glowing — exactly the ASSETS.md trick. A translucent dark veil hovers over
+  the nook so the darkness is visible from outside. Dark Wolf (Phase 3) will zero the
+  darkness + see through the veil.
+- **Geysers:** 3.5 s cycle — 2.0 s dormant → 0.5 s glow telegraph → 1.0 s erupting
+  column (emissive cylinder) that turns its damage circle on. Same damage path as lava
+  (1 heart, i-frames).
+- **Burnables:** scorched clumps kit-bashed from real pieces (bushLarge ×2 + logStack +
+  stump, materials lerped toward char-black), circle collider, keyed by id in
+  `state.flags.burned` so Phase 6's fire slam can remove them permanently.
+- **Checkpoints:** Kenney campfire + cone flame + warm light; touching one sets the
+  respawn point (room + position) and brightens the fire. Defeat → fade → rebuild the
+  checkpoint's room → respawn there with full hearts.
+- **markers** on each world carry Phase 4-7 spots (shades, moths, hound, pups, boss) so
+  later phases only consume them.
+
+### Verification
+
+- Headless Chromium: R1→R2→R3 door round-trip with correct entry points; CP1/CP3 both
+  registered by touch; geyser eruption damaged 5→4; death in R3's lava rim respawned at
+  CP3 (full hearts, same room); burnable collider blocks the cubby (stops at exactly
+  collider+body radius) and is present again after re-entry; dark nook blacks out the
+  room while lava/campfire stay lit (screenshot-confirmed); zero console errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

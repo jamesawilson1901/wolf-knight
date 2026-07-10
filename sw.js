@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v0.1.0';
+const CACHE_NAME = 'wolfknight-v0.2.0';
 
 const PRECACHE = [
   './',
@@ -11,6 +11,8 @@ const PRECACHE = [
   './js/input.js',
   './js/world.js',
   './js/player.js',
+  './js/rooms.js',
+  './js/state.js',
   './assets/chars/knight.glb',
   './assets/anims/rig-medium-movement-basic.glb',
   './assets/anims/rig-medium-general.glb',
@@ -28,6 +30,11 @@ const PRECACHE = [
   './assets/env/rock-small-b.glb',
   './assets/env/cliff-block.glb',
   './assets/env/pillar.glb',
+  './assets/env/campfire.glb',
+  './assets/env/bridge-stone.glb',
+  './assets/env/bush-large.glb',
+  './assets/env/log-stack.glb',
+  './assets/env/stump.glb',
   './assets/env/Textures/colormap.png',
   './assets/icons/icon-180.png',
   './assets/icons/icon-192.png',

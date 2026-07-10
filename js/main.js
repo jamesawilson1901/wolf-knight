@@ -1,12 +1,14 @@
 // Wolf Knight — bootstrap + main loop.
-// Phase 1: Kael (KayKit knight) with idle/walk/run, virtual joystick +
-// keyboard, smooth-follow 3/4 camera, flat-plane collisions, hurting lava.
+// Phase 2: the three Ember Hollow rooms with door transitions, checkpoints,
+// the dark nook (real-lighting darkness), geysers, and burnable props.
+// Rooms rebuild on every entry (anti-soft-lock reset).
 
 import * as THREE from 'three';
 import { manager } from './assets.js';
 import { Input } from './input.js';
-import { buildTestRoom } from './world.js';
+import { buildRoom } from './rooms.js';
 import { Player } from './player.js';
+import { state } from './state.js';
 
 // ---------------------------------------------------------------------------
 // Renderer / scene / camera
@@ -24,7 +26,6 @@ scene.background = new THREE.Color(0x17101f);
 scene.fog = new THREE.Fog(0x17101f, 26, 52);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-// Classic 3/4 view: behind and above, pitched ~50° down, smooth-following Kael.
 const CAM_PITCH = THREE.MathUtils.degToRad(50);
 const CAM_DIST = 11;
 const CAM_OFFSET = new THREE.Vector3(
@@ -42,15 +43,16 @@ window.addEventListener('resize', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Base light rig: hemisphere fill + one warm key directional (casts shadows).
-// The key light follows Kael so its tight shadow frustum stays useful in
-// larger rooms later.
+// Base light rig. Darkness (dark zones, boss phase 3) scales the rig down —
+// lava pools and campfires are real lights, so they keep glowing in the dark.
 // ---------------------------------------------------------------------------
 
-const hemi = new THREE.HemisphereLight(0xa393b8, 0x5c4030, 1.9);
+const HEMI_BASE = 1.9;
+const KEY_BASE = 3.0;
+const hemi = new THREE.HemisphereLight(0xa393b8, 0x5c4030, HEMI_BASE);
 scene.add(hemi);
 
-const key = new THREE.DirectionalLight(0xffd2a0, 3.0);
+const key = new THREE.DirectionalLight(0xffd2a0, KEY_BASE);
 key.position.set(6, 13, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
@@ -64,8 +66,10 @@ key.shadow.normalBias = 0.03;
 scene.add(key);
 scene.add(key.target);
 
+let darkness = 0; // 0 = normal rig, 1 = near-black (dark zone as the Knight)
+
 // ---------------------------------------------------------------------------
-// Loading overlay wiring
+// Overlays
 // ---------------------------------------------------------------------------
 
 function showError(text) {
@@ -74,9 +78,12 @@ function showError(text) {
 }
 manager.onError = (url) => showError('Failed to load: ' + url);
 
-// ---------------------------------------------------------------------------
-// Temporary hearts readout (top-left) — replaced by the real HUD in Phase 5.
-// ---------------------------------------------------------------------------
+const fadeEl = document.getElementById('fade');
+function fadeTo(opacity, ms = 300) {
+  fadeEl.style.transition = `opacity ${ms}ms ease`;
+  fadeEl.style.opacity = String(opacity);
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 const heartsEl = document.getElementById('hearts');
 function renderHearts(player) {
@@ -84,65 +91,134 @@ function renderHearts(player) {
 }
 
 // ---------------------------------------------------------------------------
-// Game setup
+// Room management
 // ---------------------------------------------------------------------------
 
 const input = new Input();
 const timer = new THREE.Timer();
 
-async function start() {
-  const [world, player] = await Promise.all([
-    buildTestRoom(scene),
-    (async () => { const p = new Player(); await p.load(); return p; })(),
-  ]);
+let world = null;
+let player = null;
+let transitioning = false;
 
-  player.place(world.spawn.x, world.spawn.z, Math.PI);
-  scene.add(player.root);
-  renderHearts(player);
+async function loadRoom(id, entry) {
+  transitioning = true;
+  await fadeTo(1, 260);
+  if (world) world.dispose();
+  world = await buildRoom(id, scene);
+  state.room = id;
+  const at = entry || world.spawn;
+  player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
+  player.iframes = Math.max(player.iframes, 0.6);
+  // mark already-reached checkpoints in this room as lit
+  for (const cp of world.checkpoints) {
+    if (state.checkpoint.id === cp.id) cp.reached = true;
+  }
+  snapCamera();
+  window.__game = { player, world, state }; // debug/testing hook
+  await fadeTo(0, 260);
+  transitioning = false;
+}
 
-  player.onDamaged = () => renderHearts(player);
-  player.onDefeated = () => {
-    // Gentle respawn: brief fade, back to the spawn point at full hearts.
-    const fade = document.getElementById('fade');
-    fade.style.opacity = '1';
-    setTimeout(() => {
-      player.place(world.spawn.x, world.spawn.z, Math.PI);
-      player.healFull();
-      player.iframes = 1.2;
-      fade.style.opacity = '0';
-    }, 650);
-  };
-
-  // Snap the camera to Kael before the first frame.
+function snapCamera() {
   camGoal.copy(player.root.position).add(CAM_OFFSET);
   camera.position.copy(camGoal);
   camLook.copy(player.root.position);
   camera.lookAt(camLook.x, 0.6, camLook.z);
+}
+
+async function respawnAtCheckpoint() {
+  transitioning = true;
+  await fadeTo(1, 500);
+  const cp = state.checkpoint;
+  if (world) world.dispose();
+  world = await buildRoom(cp.room, scene);
+  state.room = cp.room;
+  player.place(cp.x, cp.z + 0.9, Math.PI);
+  player.healFull();
+  player.iframes = 1.2;
+  for (const c of world.checkpoints) {
+    if (state.checkpoint.id === c.id) c.reached = true;
+  }
+  snapCamera();
+  window.__game = { player, world, state };
+  await fadeTo(0, 400);
+  transitioning = false;
+}
+
+// ---------------------------------------------------------------------------
+// Game loop
+// ---------------------------------------------------------------------------
+
+async function start() {
+  player = new Player();
+  await player.load();
+  scene.add(player.root);
+  player.onDamaged = () => renderHearts(player);
+  player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
+  renderHearts(player);
+
+  await buildRoomInitial();
 
   document.getElementById('loading').style.display = 'none';
-  window.__game = { player, world }; // debug/testing hook
 
   renderer.setAnimationLoop(() => {
     timer.update();
-    const dt = Math.min(timer.getDelta(), 0.05); // clamp tab-switch spikes
+    const dt = Math.min(timer.getDelta(), 0.05);
     const t = timer.getElapsed();
+    if (!world) return;
 
-    player.update(dt, input, world);
-    world.animate(t);
+    if (!transitioning) {
+      player.update(dt, input, world);
 
-    // Smooth follow (exponential damping — framerate independent).
+      // Door transitions
+      const door = world.doorAt(player.root.position.x, player.root.position.z);
+      if (door) loadRoom(door.to, door.entry);
+
+      // Checkpoints: touch to set respawn
+      for (const cp of world.checkpoints) {
+        if (cp.reached) continue;
+        const dx = player.root.position.x - cp.x;
+        const dz = player.root.position.z - cp.z;
+        if (dx * dx + dz * dz < cp.r * cp.r) {
+          cp.reached = true;
+          state.checkpoint = { room: state.room, x: cp.x, z: cp.z, id: cp.id };
+        }
+      }
+    }
+
+    world.animate(t, dt);
+
+    // Real-lighting darkness: dark zones black out the base rig for the
+    // Knight; the Dark Wolf (Phase 3) will see through it.
+    const inDark = world.darknessAt(player.root.position.x, player.root.position.z);
+    const target = state.form === 'dark_wolf' ? 0 : inDark;
+    darkness += (target - darkness) * Math.min(1, dt * 5);
+    hemi.intensity = HEMI_BASE * (1 - 0.94 * darkness);
+    key.intensity = KEY_BASE * (1 - 0.97 * darkness);
+    for (const zone of world.darkZones) {
+      zone.veilMat.opacity = state.form === 'dark_wolf' ? 0.12 : 0.62 * (1 - darkness * 0.85);
+    }
+
+    // Smooth camera follow
     const k = 1 - Math.exp(-6 * dt);
     camGoal.copy(player.root.position).add(CAM_OFFSET);
     camera.position.lerp(camGoal, k);
     camLook.lerp(player.root.position, k);
     camera.lookAt(camLook.x, 0.6, camLook.z);
 
-    // Key light + shadow frustum track the player.
     key.position.set(player.root.position.x + 6, 13, player.root.position.z + 8);
     key.target.position.copy(player.root.position);
 
     renderer.render(scene, camera);
   });
+}
+
+async function buildRoomInitial() {
+  world = await buildRoom(state.room, scene);
+  player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
+  snapCamera();
+  window.__game = { player, world, state };
 }
 
 start().catch((err) => {
