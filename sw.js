@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v0.4.0';
+const CACHE_NAME = 'wolfknight-v0.5.0';
 
 const PRECACHE = [
   './',

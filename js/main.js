@@ -92,7 +92,42 @@ function fadeTo(opacity, ms = 300) {
 const heartsEl = document.getElementById('hearts');
 function renderHearts(player) {
   heartsEl.textContent = '❤️'.repeat(player.hearts) + '\u{1f5a4}'.repeat(player.maxHearts - player.hearts);
+  heartsEl.classList.toggle('low', player.hearts > 0 && player.hearts <= 2);
 }
+
+function renderPups() {
+  const found = Object.keys(state.flags.pups).length;
+  document.getElementById('pups').textContent = `🐺 ${found}/3`;
+}
+
+let savedToastTimer = null;
+function showSavedToast() {
+  const el = document.getElementById('saved-toast');
+  el.style.opacity = '1';
+  clearTimeout(savedToastTimer);
+  savedToastTimer = setTimeout(() => { el.style.opacity = '0'; }, 1600);
+}
+
+// ---------------------------------------------------------------------------
+// Pause
+// ---------------------------------------------------------------------------
+
+let paused = false;
+function setPaused(v) {
+  paused = v;
+  document.getElementById('pause-menu').style.display = v ? 'flex' : 'none';
+}
+document.getElementById('pause-btn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  setPaused(true);
+});
+document.getElementById('resume-btn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  setPaused(false);
+});
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') setPaused(!paused);
+});
 
 // ---------------------------------------------------------------------------
 // Room management
@@ -181,6 +216,7 @@ async function start() {
   };
 
   await buildRoomInitial();
+  renderPups();
 
   document.getElementById('loading').style.display = 'none';
 
@@ -189,6 +225,11 @@ async function start() {
     const dt = Math.min(timer.getDelta(), 0.05);
     const t = timer.getElapsed();
     if (!world) return;
+
+    if (paused) {
+      renderer.render(scene, camera);
+      return;
+    }
 
     if (!transitioning) {
       // Keyboard shortcuts: Tab cycles forms, K fires the special
@@ -215,6 +256,7 @@ async function start() {
         if (dx * dx + dz * dz < cp.r * cp.r) {
           cp.reached = true;
           state.checkpoint = { room: state.room, x: cp.x, z: cp.z, id: cp.id };
+          showSavedToast();
         }
       }
     }

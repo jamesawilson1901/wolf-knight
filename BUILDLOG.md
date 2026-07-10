@@ -226,6 +226,16 @@ COMBAT-SPEC.md; ~1 s telegraphs; puff-of-smoke deaths.
   in one cast; Hound cycles stalk → crouch (streak telegraph, screenshot) → charge and
   dies in 3 hits; zero console errors.
 
+## Phase 5 — Hearts / HUD / death (2026-07-10)
+
+Most of the loop already existed (5 hearts, checkpoint respawn with full hearts,
+gentle fade). This phase formalized the HUD per HUD-MENU-SAVE.md: pup counter
+(top-right `🐺 x/3`), pause button + pause overlay (Esc toggles; game loop freezes but
+keeps rendering), "Saved ✓" toast on checkpoint touch, heartbeat pulse on the hearts
+row at ≤2 hearts (the low-hearts moment Pip will voice in Phase 8). Settings and Title
+land with profiles in Phase 9. Verified headless: toast, low-pulse class, pause
+freezing enemies, resume. sw v0.5.0.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape
