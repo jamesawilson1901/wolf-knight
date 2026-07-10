@@ -146,6 +146,48 @@ burnable props, geysers, and room-reset-on-re-entry.
   collider+body radius) and is present again after re-entry; dark nook blacks out the
   room while lava/campfire stay lit (screenshot-confirmed); zero console errors.
 
+## Phase 3 — Forms (2026-07-10)
+
+**Goal:** radial form picker; Dark Wolf (tinted wolf GLTF, see-in-the-dark, Blood Moon
+ultimate on cooldown); Fire Wolf slot visible but locked.
+
+### Decisions
+
+- **One Quaternius Wolf** (`assets/chars/wolf.gltf`, self-contained, 12 clips) serves
+  every wolf form, cloned via `SkeletonUtils.clone` and tinted per the ASSETS.md
+  casting sheet (dark 0x4a3b6b, fire 0xff5a2b built now but locked). `Main_Light`
+  belly gets the tint lightened 30%; eyes get a soft emissive glow per form (moonlit
+  blue / ember gold). Wolf scaled ×0.35 (raw height 2.67). Clip map: Idle / Walk /
+  Gallop (run) / `Idle_2` as the howl (no dedicated howl clip in the pack — the
+  head-raise pose sells it; spec explicitly allows "howl/idle clip").
+- **Form picker:** press-and-hold (420 ms, ≤14 px drift) ANYWHERE opens a radial
+  HTML/CSS picker centered on the finger — works mid-joystick (the held pointer is
+  taken over). Drag highlights, release selects; releasing on the locked Fire Wolf
+  shakes the form badge (Pip's "form_locked" line arrives in Phase 8). Keyboard: Tab
+  cycles unlocked forms, K = special. Right-half attack taps moved to pointer-UP
+  (quick-tap only) so holds never fire attacks.
+- **Blood Moon** (~3 s, cooldown 24 s): howl (movement locked 1.15 s) while a red
+  hemisphere wash rises → a glowing red moon (emissive icosahedron + red point light)
+  falls with x² acceleration onto a point 2.4 units ahead of Kael → impact: screen
+  shake, expanding ring decal, `world.damageEnemiesAt(x, z, r=3, 99)` hook that Phase
+  4's enemies will register (one-shots grunts per COMBAT-SPEC).
+- **See in the dark:** Dark Wolf carries a moonlit point light (intensity eases 2.2
+  normal → 9 inside dark zones); dark-zone dimming (Phase 2) is skipped entirely for
+  the wolf, veils go near-transparent.
+- **UI:** special button (bottom-right, conic-gradient cooldown ring, glows when
+  ready) + active-form badge. Emoji iconography (⚔️🌙🔥) — zero image assets, reads
+  instantly for pre-readers.
+
+### Verification
+
+- Headless Chromium: Tab switches to Dark Wolf; lamp intensity ≈9 in the dark nook
+  (screenshot shows the wolf lighting the nook while the room stays dark); Blood Moon
+  fires via K — screenshots at moon-fall (y≈12) and impact (red wash + ring + landed
+  moon); cooldown gates a second cast; radial picker opens on hold, drag-selects
+  Knight, Fire Wolf shows locked and selecting it keeps the current form; zero
+  console errors. (Headless runs ~5 fps so the sequence was captured by polling the
+  moon's height, not wall-clock waits.)
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

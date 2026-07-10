@@ -9,6 +9,10 @@ import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { Player } from './player.js';
 import { state } from './state.js';
+import { Effects } from './effects.js';
+import { UI } from './ui.js';
+
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
 
 // ---------------------------------------------------------------------------
 // Renderer / scene / camera
@@ -150,6 +154,9 @@ async function respawnAtCheckpoint() {
 // Game loop
 // ---------------------------------------------------------------------------
 
+let effects = null;
+let ui = null;
+
 async function start() {
   player = new Player();
   await player.load();
@@ -157,6 +164,21 @@ async function start() {
   player.onDamaged = () => renderHearts(player);
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
   renderHearts(player);
+
+  effects = new Effects(scene);
+  ui = new UI({
+    onFormPick: (id) => {
+      if (player.setForm(id)) ui.refreshBadge();
+      else flashLockedForm();
+    },
+    onSpecial: () => player.tryBloodMoon(effects, world),
+  });
+  player.onFormChanged = () => ui.refreshBadge();
+  input.onHold = (x, y, pointerId) => {
+    if (transitioning) return false;
+    ui.openPicker(x, y, pointerId);
+    return true;
+  };
 
   await buildRoomInitial();
 
@@ -169,6 +191,14 @@ async function start() {
     if (!world) return;
 
     if (!transitioning) {
+      // Keyboard shortcuts: Tab cycles forms, K fires the special
+      if (input.consumeFormCycle()) {
+        const unlocked = FORM_CYCLE.filter((f) => state.formsUnlocked.includes(f));
+        const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
+        if (player.setForm(next)) ui.refreshBadge();
+      }
+      if (input.consumeSpecial()) player.tryBloodMoon(effects, world);
+
       player.update(dt, input, world);
 
       // Door transitions
@@ -200,12 +230,16 @@ async function start() {
       zone.veilMat.opacity = state.form === 'dark_wolf' ? 0.12 : 0.62 * (1 - darkness * 0.85);
     }
 
-    // Smooth camera follow
+    effects.update(dt, t);
+    ui.update(player);
+
+    // Smooth camera follow (+ effect shake)
     const k = 1 - Math.exp(-6 * dt);
     camGoal.copy(player.root.position).add(CAM_OFFSET);
     camera.position.lerp(camGoal, k);
     camLook.lerp(player.root.position, k);
-    camera.lookAt(camLook.x, 0.6, camLook.z);
+    camera.position.add(effects.shakeOffset);
+    camera.lookAt(camLook.x + effects.shakeOffset.x, 0.6, camLook.z + effects.shakeOffset.z);
 
     key.position.set(player.root.position.x + 6, 13, player.root.position.z + 8);
     key.target.position.copy(player.root.position);
@@ -219,6 +253,13 @@ async function buildRoomInitial() {
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   snapCamera();
   window.__game = { player, world, state };
+}
+
+function flashLockedForm() {
+  const badge = document.getElementById('form-badge');
+  badge.classList.remove('denied');
+  void badge.offsetWidth; // restart the animation
+  badge.classList.add('denied');
 }
 
 start().catch((err) => {

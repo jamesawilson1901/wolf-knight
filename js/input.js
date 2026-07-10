@@ -5,16 +5,22 @@
 // Attack taps and the form picker arrive in later phases; the right-half tap
 // zone is already reserved here so Phase 4 only adds consumers.
 
-const JOY_RADIUS = 52; // px, knob travel
+const JOY_RADIUS = 52;    // px, knob travel
+const HOLD_TIME = 420;    // ms press-and-hold to open the form picker
+const HOLD_SLOP = 14;     // px of movement that still counts as a hold
+const TAP_TIME = 300;     // ms max for a right-half attack tap
 
 export class Input {
   constructor() {
     this.move = { x: 0, z: 0 };
+    this.onHold = null;    // (x, y, pointerId) => bool — return true to consume
     this._keys = new Set();
     this._joyPointer = null;
     this._joyOrigin = { x: 0, y: 0 };
     this._attackQueued = false;
     this._specialQueued = false;
+    this._formCycleQueued = false;
+    this._pointers = new Map(); // id -> {x0, y0, t0, moved, held, timer}
 
     this._base = document.getElementById('joy-base');
     this._knob = document.getElementById('joy-knob');
@@ -26,10 +32,12 @@ export class Input {
     window.addEventListener('pointercancel', (e) => this._onUp(e), opts);
 
     window.addEventListener('keydown', (e) => {
+      if (e.code === 'Tab') e.preventDefault(); // keep focus in the game
       if (e.repeat) return;
       this._keys.add(e.code);
       if (e.code === 'KeyJ') this._attackQueued = true;
       if (e.code === 'KeyK') this._specialQueued = true;
+      if (e.code === 'Tab') this._formCycleQueued = true;
     });
     window.addEventListener('keyup', (e) => this._keys.delete(e.code));
     window.addEventListener('blur', () => this._keys.clear());
@@ -37,18 +45,33 @@ export class Input {
 
   _onDown(e) {
     if (e.target.closest && e.target.closest('.ui')) return; // HTML UI wins
+
+    const rec = { x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, held: false };
+    // Press-and-hold anywhere = radial form picker
+    rec.timer = setTimeout(() => {
+      if (rec.moved) return;
+      if (this.onHold && this.onHold(rec.x0, rec.y0, e.pointerId)) {
+        rec.held = true;
+        if (this._joyPointer === e.pointerId) this._releaseJoy();
+      }
+    }, HOLD_TIME);
+    this._pointers.set(e.pointerId, rec);
+
     if (e.clientX < window.innerWidth * 0.5) {
       if (this._joyPointer !== null) return;
       this._joyPointer = e.pointerId;
       this._joyOrigin = { x: e.clientX, y: e.clientY };
       this._showJoy(e.clientX, e.clientY, 0, 0);
       e.preventDefault();
-    } else {
-      this._attackQueued = true; // right-half tap = attack (used from Phase 4)
     }
   }
 
   _onMove(e) {
+    const rec = this._pointers.get(e.pointerId);
+    if (rec && !rec.moved && Math.hypot(e.clientX - rec.x0, e.clientY - rec.y0) > HOLD_SLOP) {
+      rec.moved = true;
+      clearTimeout(rec.timer);
+    }
     if (e.pointerId !== this._joyPointer) return;
     let dx = e.clientX - this._joyOrigin.x;
     let dy = e.clientY - this._joyOrigin.y;
@@ -61,7 +84,22 @@ export class Input {
   }
 
   _onUp(e) {
+    const rec = this._pointers.get(e.pointerId);
+    if (rec) {
+      clearTimeout(rec.timer);
+      this._pointers.delete(e.pointerId);
+      // Right-half quick tap = attack (only if it wasn't a hold or a drag)
+      if (!rec.held && !rec.moved &&
+          rec.x0 >= window.innerWidth * 0.5 &&
+          performance.now() - rec.t0 < TAP_TIME) {
+        this._attackQueued = true;
+      }
+    }
     if (e.pointerId !== this._joyPointer) return;
+    this._releaseJoy();
+  }
+
+  _releaseJoy() {
     this._joyPointer = null;
     this.move.x = 0;
     this.move.z = 0;
@@ -100,6 +138,12 @@ export class Input {
   consumeSpecial() {
     const v = this._specialQueued;
     this._specialQueued = false;
+    return v;
+  }
+
+  consumeFormCycle() {
+    const v = this._formCycleQueued;
+    this._formCycleQueued = false;
     return v;
   }
 }
