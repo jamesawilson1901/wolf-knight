@@ -188,6 +188,44 @@ ultimate on cooldown); Fire Wolf slot visible but locked.
   console errors. (Headless runs ~5 fps so the sequence was captured by polling the
   moon's height, not wall-clock waits.)
 
+## Phase 4 — Combat (2026-07-10)
+
+**Goal:** tap-attack with a melee arc; Shades + Ember Moths + Shadow Hound per
+COMBAT-SPEC.md; ~1 s telegraphs; puff-of-smoke deaths.
+
+### Decisions
+
+- **Attack:** right-half quick-tap or J. Knight uses the KayKit
+  `Melee_1H_Attack_Slice_Diagonal` clip (movement locked 0.55 s, hit lands 0.3 s in,
+  range 1.5, ±70° arc); wolf forms bite with the Quaternius `Attack` clip (0.45 s /
+  0.24 s / 1.3). Giving the wolves a bite is a small extension of the spec (COMBAT-SPEC
+  names the sword as the main tool) — kids will expect the wolf to bite, and the boss
+  stays sword-tuned. One-shot clips restart cleanly on repeated taps.
+- **Enemies (code-built per ASSETS.md casting sheet):**
+  - *Shade* — near-black translucent wisp (icosahedron, opacity .88) with 3 orbiting
+    ember flecks; drifts at 1.15 u/s toward Kael inside aggro 7; hp 2; contact = 1
+    heart (through the shared i-frame path).
+  - *Ember Moth* — small dark body + two emissive triangle wings that flap; hovers
+    around home; inside 5.2 units it pauses ~0.8 s while the wings glow ~3× brighter
+    (the telegraph), then dives in a straight line at 6.5 u/s and returns home; hp 1.
+  - *Shadow Hound* — the ONE wolf model, near-black tint + red emissive eyes; stalks at
+    1.5 u/s, crouches ~1 s while a dark streak fades in along the charge lane, charges
+    at 8.5 u/s (stops on walls), recovers 1.6 s (vulnerable); hp 3; guards the Pup #2
+    branch in R2 (respawns with the room — the branch stays replayable).
+  - Deaths puff into 8 expanding, fading smoke bits (not gory). Hit feedback = brief
+    white emissive flash. No knockback anywhere.
+- **Spawns from Phase 2's room markers:** R1 one teaching Shade; R2 two moths near the
+  lava channel + a 2-Shade cluster (never swarms) + the Hound. `world.damageEnemiesAt`
+  now real, so the Blood Moon one-shots grunts in its radius as specced.
+
+### Verification
+
+- Deterministic headless run (drives `tryAttack` directly; predicate waits instead of
+  wall-clock — headless renders ~5 fps): Shade dies in exactly 2 sword hits; Moth
+  telegraphs → dives → contact costs a heart; Blood Moon kills both clustered Shades
+  in one cast; Hound cycles stalk → crouch (streak telegraph, screenshot) → charge and
+  dies in 3 hits; zero console errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

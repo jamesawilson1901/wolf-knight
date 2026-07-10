@@ -119,7 +119,7 @@ async function loadRoom(id, entry) {
     if (state.checkpoint.id === cp.id) cp.reached = true;
   }
   snapCamera();
-  window.__game = { player, world, state }; // debug/testing hook
+  window.__game = { player, world, state, effects }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -145,7 +145,7 @@ async function respawnAtCheckpoint() {
     if (state.checkpoint.id === c.id) c.reached = true;
   }
   snapCamera();
-  window.__game = { player, world, state };
+  window.__game = { player, world, state, effects };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -198,8 +198,10 @@ async function start() {
         if (player.setForm(next)) ui.refreshBadge();
       }
       if (input.consumeSpecial()) player.tryBloodMoon(effects, world);
+      if (input.consumeAttack()) player.tryAttack(world);
 
       player.update(dt, input, world);
+      if (world.updateEnemies) world.updateEnemies(dt, t, player);
 
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
@@ -252,7 +254,7 @@ async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   snapCamera();
-  window.__game = { player, world, state };
+  window.__game = { player, world, state, effects };
 }
 
 function flashLockedForm() {

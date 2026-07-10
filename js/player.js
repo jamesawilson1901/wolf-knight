@@ -26,17 +26,21 @@ const WOLF_TINTS = {
 const FORM_DEFS = {
   knight: {
     speed: 4.6,
-    clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A' },
+    clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', attack: 'Melee_1H_Attack_Slice_Diagonal' },
+    attack: { lock: 0.55, hitAt: 0.3, range: 1.5, dmg: 1 },
   },
   dark_wolf: {
     speed: 5.2,
-    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2' },
+    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack' },
+    attack: { lock: 0.45, hitAt: 0.24, range: 1.3, dmg: 1 },
   },
   fire_wolf: {
     speed: 5.2,
-    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2' },
+    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack' },
+    attack: { lock: 0.45, hitAt: 0.24, range: 1.3, dmg: 1 },
   },
 };
+const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
 
 function tintWolf(model, tint) {
   model.traverse((n) => {
@@ -83,17 +87,18 @@ export class Player {
   }
 
   async load() {
-    const [knight, movement, general, wolf] = await Promise.all([
+    const [knight, movement, general, combat, wolf] = await Promise.all([
       loadGLB('./assets/chars/knight.glb'),
       loadGLB('./assets/anims/rig-medium-movement-basic.glb'),
       loadGLB('./assets/anims/rig-medium-general.glb'),
+      loadGLB('./assets/anims/rig-medium-combat-melee.glb'),
       loadGLB('./assets/chars/wolf.gltf'),
     ]);
 
     // Knight: KayKit model + rig-library clips (bind by matching bone names)
     const knightModel = prepareCharacter(knight.scene);
     knightModel.scale.setScalar(0.5);
-    this._addForm('knight', knightModel, [...movement.animations, ...general.animations]);
+    this._addForm('knight', knightModel, [...movement.animations, ...general.animations, ...combat.animations]);
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
     for (const formName of ['dark_wolf', 'fire_wolf']) {
@@ -159,6 +164,58 @@ export class Player {
     this._current = name;
   }
 
+  // Play a one-shot clip even if it is already the current action (restart).
+  _playOnce(name, fade = 0.08) {
+    const f = this.form;
+    const act = f.actions[name];
+    if (!act) return;
+    act.reset();
+    act.setLoop(THREE.LoopOnce);
+    act.clampWhenFinished = true;
+    act.play();
+    if (this._current && this._current !== name && f.actions[this._current]) {
+      f.actions[this._current].crossFadeTo(act, fade, false);
+    }
+    this._current = name;
+  }
+
+  // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
+  tryAttack(world) {
+    if (this.lockTime > 0) return false;
+    const cfg = this.form.def.attack;
+    this._playOnce('attack');
+    this.lockTime = cfg.lock;
+    this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
+    return true;
+  }
+
+  _applyPendingHit(dt, world) {
+    if (!this._pendingHit) return;
+    this._pendingHit.timer -= dt;
+    if (this._pendingHit.timer > 0) return;
+    const { range, dmg } = this._pendingHit;
+    this._pendingHit = null;
+    if (!world.enemies) return;
+    const fx = Math.sin(this.root.rotation.y);
+    const fz = Math.cos(this.root.rotation.y);
+    for (const e of world.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - this.root.position.x;
+      const dz = e.z - this.root.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d > range + e.radius) continue;
+      if (d > 0.2 && (dx * fx + dz * fz) / d < ATTACK_ARC_COS) continue;
+      e.takeDamage(dmg);
+    }
+  }
+
+  // Enemy contact damage (respects i-frames; no knockback).
+  hurt(n) {
+    if (this.iframes > 0) return;
+    this.damage(n);
+    this.iframes = IFRAME_TIME;
+  }
+
   // The Blood Moon ultimate (Dark Wolf). Returns true if it fired.
   tryBloodMoon(effects, world) {
     if (state.form !== 'dark_wolf') return false;
@@ -171,8 +228,7 @@ export class Player {
     );
     const target = this.root.position.clone().addScaledVector(dir, BLOOD_MOON_RANGE);
 
-    this._play('howl', 0.12, { once: true });
-    this._current = 'howl';
+    this._playOnce('howl', 0.12);
     this.lockTime = 1.15; // hold the howl while the sky turns red
 
     effects.bloodMoon(target, {
@@ -199,6 +255,8 @@ export class Player {
       const s = 0.6 + 0.4 * (1 - (1 - p) * (1 - p));
       f.model.scale.setScalar((state.form === 'knight' ? 0.5 : 0.35) * s);
     }
+
+    this._applyPendingHit(dt, world);
 
     if (this.lockTime > 0) {
       this.lockTime -= dt;

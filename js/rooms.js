@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { World } from './world.js';
 import { state } from './state.js';
+import { spawnEnemies } from './enemies.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -363,7 +364,7 @@ async function buildR1(scene) {
     { kind: 'sb', x: -1.2, z: 0.2, s: 1.2, ry: 4.8, cr: 0.26 },
   ]);
 
-  // Where the first Shade will stand from Phase 4 on
+  // The first Shade — teaches tap-to-attack
   world.markers.shadeSpots = [{ x: 0.5, z: -3.6 }];
 
   return world;
@@ -427,8 +428,10 @@ async function buildR2(scene) {
   world.add(stump);
   world.addCircle(-4.8, 5.0, 0.4);
 
-  // Moth spawn markers for Phase 4 (near the lava channel)
+  // Ember Moths near the lava channel; a small Shade cluster mid-room
+  // (2-3 max per COMBAT-SPEC — never swarms)
   world.markers.mothSpots = [{ x: -4.5, z: -3.4 }, { x: -1.8, z: -0.6 }];
+  world.markers.shadeSpots = [{ x: -5.5, z: 2.2 }, { x: -6.5, z: 3.4 }];
 
   return world;
 }
@@ -508,5 +511,7 @@ export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
-  return ROOMS[id](scene);
+  const world = await ROOMS[id](scene);
+  await spawnEnemies(world);
+  return world;
 }
