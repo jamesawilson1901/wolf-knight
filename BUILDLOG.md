@@ -334,6 +334,43 @@ ducking; local CC0 music + SFX with volume sliders.
   lines refuse to refire; contextual line correctly dropped while a story line spoke
   (test then cleared the race); settings UI seeded from state; zero errors.
 
+## Phase 9 — Title / profiles / save / offline (2026-07-10)
+
+**Goal:** title screen, named per-kid profiles, auto-save, full-offline PWA. Final phase.
+
+### Decisions
+
+- **Title screen:** warm volcano-gradient CSS + the app icon as logo. Profiles are
+  icon-first big buttons; New Player picks a name (typed, 12 chars) + an emoji icon;
+  selecting a profile offers Continue (if a save exists) / New Game. New Game over an
+  existing save needs a second tap ("Start over? Tap again") — kid-proof, no modal.
+  Assets stream in behind the title, so it appears instantly.
+- **Save system (localStorage schema v1 as written):** `wolfknight:profiles` +
+  `wolfknight:save:<id>`; parsed in try/catch, corrupt/missing → fresh. Additive
+  extensions to the documented shape: `flags` (boss/shortcut/burned), `spoken`
+  (narration once-per-save memory) and `form`, and `checkpoint` stores the full
+  `{room,x,z,id}` object — so Continue restores the exact run. Auto-saves on:
+  checkpoint, form unlock, pup collected, region complete, every settings change and
+  when the app is backgrounded (`visibilitychange`).
+- **Pause menu** gained a Title button — persists, then `location.reload()` (the
+  simplest airtight world/state reset). Settings live in the pause menu (one place;
+  reachable in-game any time). Region-complete celebration overlay: "Ember Hollow is
+  free!", Fire Wolf earned, pups x/3, Onward!
+- **Landscape/fullscreen:** manifest `orientation: landscape` + best-effort
+  `requestFullscreen()` and `screen.orientation.lock('landscape')` on the title tap,
+  plus the CSS rotate overlay from Phase 0.
+- Badge now reads v1.0; service worker cache `wolfknight-v1.0.0` precaches all 60+
+  files (vendor, models, audio, icons, code).
+
+### Verification
+
+- Headless: created profile "Milo" 🦊 → played → CP1 persisted (schema checked in
+  localStorage) → enriched the save (fire wolf, pup, boss flags, volume 0.5) → reload
+  → profile listed on title → Continue restored room/checkpoint/forms/pups/flags/
+  settings/spoken and placed Kael at the checkpoint → region-complete overlay at the
+  exit portal → **network cut → full reload offline: title, Continue, gameplay all
+  served by the service worker** (64 cached entries). Zero console errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

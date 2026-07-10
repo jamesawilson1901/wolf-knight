@@ -14,6 +14,8 @@ import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
 import { audio } from './audio.js';
 import { Narration } from './narration.js';
+import { applySave, persist } from './save.js';
+import { showTitle } from './title.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
 
@@ -212,6 +214,8 @@ function narrationTriggers(dt, t) {
     if (narration.say('region_complete')) {
       narration.say('grimm_taunt_1');
       narration.say('luna_dream_1');
+      persist(); // region complete is a save point
+      showCompleteScreen();
     }
   }
 
@@ -237,6 +241,30 @@ function updateMusic() {
   else audio.playMusic('region-ember');
 }
 
+function showCompleteScreen() {
+  const found = Object.keys(state.flags.pups).length;
+  document.getElementById('complete-stats').innerHTML =
+    `🔥 Fire Wolf earned!<br>🐺 Pups rescued: ${found}/3${found === 3 ? ' — extra heart!' : ''}`;
+  document.getElementById('complete').style.display = 'flex';
+}
+document.getElementById('complete-btn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  audio.play('ui-click', { volume: 0.7 });
+  document.getElementById('complete').style.display = 'none';
+});
+
+// Back to the title = save + clean reload (simplest reliable full reset).
+document.getElementById('title-btn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  persist();
+  location.reload();
+});
+
+// Auto-save when the app is backgrounded or closed.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') persist();
+});
+
 function onPupCollected() {
   renderPups();
   const found = Object.keys(state.flags.pups).length;
@@ -250,6 +278,7 @@ function onPupCollected() {
   } else {
     narration.say('pup_found');
   }
+  persist(); // pup collected is a save point
 }
 
 async function setupRoomExtras() {
@@ -319,13 +348,25 @@ let effects = null;
 let ui = null;
 
 async function start() {
+  // Assets stream in while the title screen is up.
   player = new Player();
-  await player.load();
-  scene.add(player.root);
   pip = new Pip();
-  await pip.load();
+  const loading = Promise.all([player.load(), pip.load()]);
+  document.getElementById('loading').style.display = 'none';
+
+  const { profile, save } = await showTitle();
+  applySave(profile.id, profile.name, save);
+
+  document.getElementById('loading').style.display = 'flex';
+  await loading;
+  scene.add(player.root);
   scene.add(pip.root);
-  player.onDamaged = () => renderHearts(player);
+
+  // Restore the loaded run onto the already-built player.
+  player.maxHearts = state.maxHearts;
+  player.healFull();
+  player.setForm(state.form, { silent: true });
+
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
   renderHearts(player);
 
@@ -393,6 +434,7 @@ async function start() {
             narration.say('boss_defeat');
             narration.say('firewolf_grant');
             narration.say('firewolf_howto');
+            persist(); // form unlock is a save point
           };
         }
         world.boss.update(dt, t, player);
@@ -415,6 +457,7 @@ async function start() {
           showSavedToast();
           audio.play('checkpoint', { volume: 0.7 });
           narration.say('checkpoint');
+          persist();
         }
       }
     }
@@ -454,7 +497,16 @@ async function start() {
 
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
-  player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
+  // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
+  const cp = state.checkpoint;
+  if (cp && cp.room === state.room && cp.id !== 'spawn') {
+    player.place(cp.x, cp.z + 0.9, Math.PI);
+  } else {
+    player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
+  }
+  for (const c of world.checkpoints) {
+    if (state.checkpoint.id === c.id) c.reached = true;
+  }
   await setupRoomExtras();
   snapCamera();
   updateMusic();
@@ -472,16 +524,18 @@ function wireSettings() {
   sfx.value = state.settings.sfxVol;
   captions.checked = state.settings.captions;
   voice.checked = state.settings.voice;
-  music.addEventListener('input', () => { state.settings.musicVol = +music.value; audio.applyVolumes(); });
+  music.addEventListener('input', () => { state.settings.musicVol = +music.value; audio.applyVolumes(); persist(); });
   sfx.addEventListener('input', () => {
     state.settings.sfxVol = +sfx.value;
     audio.applyVolumes();
     audio.play('ui-click', { volume: 0.7 });
+    persist();
   });
-  captions.addEventListener('change', () => { state.settings.captions = captions.checked; });
+  captions.addEventListener('change', () => { state.settings.captions = captions.checked; persist(); });
   voice.addEventListener('change', () => {
     state.settings.voice = voice.checked;
     if (!voice.checked && 'speechSynthesis' in window) speechSynthesis.cancel();
+    persist();
   });
 }
 
