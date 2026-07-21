@@ -297,6 +297,36 @@ function burnable(world, id, x, z, ry = 0) {
   return b;
 }
 
+// Healing potion pickup: a little glowing ember flask (code-built). Touch to
+// take one (carry limit enforced by the player); respawns with the room.
+function potionPickup(world, x, z) {
+  const group = new THREE.Group();
+  const glass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.16, 0.3, 10),
+    new THREE.MeshStandardMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0.45, roughness: 0.3 })
+  );
+  glass.position.y = 0.22;
+  const liquid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.13, 0.18, 10),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff4a5a, emissiveIntensity: 1.8, roughness: 1 })
+  );
+  liquid.position.y = 0.17;
+  const cork = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8),
+    new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 1 })
+  );
+  cork.position.y = 0.41;
+  group.add(glass, liquid, cork);
+  group.position.set(x, 0, z);
+  world.add(group);
+  world.onAnimate((t) => {
+    group.position.y = 0.05 + Math.sin(t * 2.4 + x) * 0.06;
+    group.rotation.y = t * 1.2;
+    liquid.material.emissiveIntensity = 1.5 + Math.sin(t * 3.1 + z) * 0.5;
+  });
+  world.potionSpots.push({ x, z, group, taken: false });
+}
+
 // Dark zone: real-lighting darkness. The zone rect dims the global rig when
 // the player stands inside it (Knight form → near-black; the Dark Wolf will
 // counter it in Phase 3). A translucent veil shows the darkness from outside.
@@ -359,8 +389,9 @@ async function buildR1(scene) {
   burnable(world, 'r1_cubby', -3.95, 4.4);
   world.markers.pup3Spot = { x: -6.4, z: 4.6 };
 
-  // Checkpoint CP1 at the exit
+  // Checkpoint CP1 at the exit, with a potion beside the fire
   checkpoint(world, 'cp1', 5.9, -4.4);
+  potionPickup(world, 4.6, -3.6);
 
   // Scattered rocks (center kept walkable)
   placeRocks(world, [
@@ -410,8 +441,9 @@ async function buildR2(scene) {
   geyser(world, 4.6, -3.9, 1.15);
   geyser(world, 6.5, -4.7, 2.3);
 
-  // Checkpoint CP2 just before the boss door
+  // Checkpoint CP2 just before the boss door, potion by the stump
   checkpoint(world, 'cp2', 8.6, -3.6);
+  potionPickup(world, -4.2, 4.6);
 
   // The optional branch (SE): rock-flanked pocket, Shadow Hound + Pup #2 later
   placeRocks(world, [
@@ -505,8 +537,9 @@ async function buildR3(scene) {
     world.addCircle(px, pz, 0.68);
   }
 
-  // Checkpoint CP3 at the arena entrance
+  // Checkpoint CP3 at the arena entrance, with a potion for the fight
   checkpoint(world, 'cp3', -2.2, 5.6);
+  potionPickup(world, 2.2, 5.6);
 
   // The Shadowgrip (built in code) grips Cinder at the center until beaten;
   // afterwards Cinder floats free, warm and bright.

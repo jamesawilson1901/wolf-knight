@@ -20,6 +20,7 @@ export class World {
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
     this.burnables = [];       // {id, x, z, group, collider, burned}
+    this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
     this.bossDarkness = false; // boss phase 3 blacks out the whole room
     this.spawn = { x: 0, z: 0, angle: Math.PI };

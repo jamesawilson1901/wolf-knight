@@ -50,12 +50,30 @@ class Enemy {
     this.hp = hp;
     this.radius = radius;
     this.dead = false;
+    this.stunned = 0;
     this._flash = 0;
     this._flashMats = [];
   }
 
   get x() { return this.root.position.x; }
   get z() { return this.root.position.z; }
+
+  // A perfect parry dazes this enemy: no moving, no hurting, slow wobble.
+  takeStun(sec) {
+    if (this.dead) return;
+    this.stunned = Math.max(this.stunned, sec);
+  }
+
+  // Returns true while stunned (callers skip their AI for the frame).
+  stunUpdate(dt) {
+    if (this.stunned <= 0) return false;
+    this.stunned -= dt;
+    this.root.rotation.y += dt * 5;              // dizzy spin
+    this.root.position.y = Math.abs(Math.sin(this.stunned * 9)) * 0.06;
+    if (this.stunned <= 0) this.root.position.y = 0;
+    this.flashUpdate(dt);
+    return true;
+  }
 
   takeDamage(n) {
     if (this.dead) return;
@@ -71,11 +89,13 @@ class Enemy {
     this.world.root.remove(this.root);
   }
 
-  contact(player, dmg = 1) {
+  contact(player, dmg = 1, { ground = true } = {}) {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const rr = this.radius + 0.32;
-    if (dx * dx + dz * dz < rr * rr) player.hurt(dmg);
+    if (dx * dx + dz * dz < rr * rr) {
+      player.hurt(dmg, { attacker: this, groundAttack: ground });
+    }
   }
 
   flashUpdate(dt) {
@@ -138,6 +158,7 @@ export class Shade extends Enemy {
 
   update(dt, t, player) {
     if (this.dead) return;
+    if (this.stunUpdate(dt)) return;
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
@@ -205,6 +226,7 @@ export class Moth extends Enemy {
 
   update(dt, t, player) {
     if (this.dead) return;
+    if (this.stunUpdate(dt)) return;
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
@@ -232,7 +254,7 @@ export class Moth extends Enemy {
       this.root.position.x += this.diveDir.x * speed * dt;
       this.root.position.z += this.diveDir.z * speed * dt;
       this.root.position.y = Math.max(0.5, this.root.position.y - dt * 1.6);
-      this.contact(player);
+      this.contact(player, 1, { ground: false });
       if (this.stateT > 0.75) { this.state = 'return'; this.stateT = 0; }
     } else { // return
       for (const m of this.wingMats) m.emissiveIntensity = 1.1;
@@ -250,7 +272,7 @@ export class Moth extends Enemy {
     const flap = Math.sin(t * (this.state === 'telegraph' ? 26 : 14)) * 0.75;
     this.wings[0].rotation.z = flap;
     this.wings[1].rotation.z = -flap;
-    if (this.state === 'hover' || this.state === 'telegraph') this.contact(player);
+    if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
     this.flashUpdate(dt);
   }
 }
@@ -325,6 +347,7 @@ export class Hound extends Enemy {
 
   update(dt, t, player) {
     if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;

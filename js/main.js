@@ -96,8 +96,30 @@ function fadeTo(opacity, ms = 300) {
 
 const heartsEl = document.getElementById('hearts');
 function renderHearts(player) {
-  heartsEl.textContent = '❤️'.repeat(player.hearts) + '\u{1f5a4}'.repeat(player.maxHearts - player.hearts);
+  // blocked hits cost half a heart → 💔 shows the half
+  const full = Math.floor(player.hearts);
+  const half = player.hearts - full >= 0.5 ? 1 : 0;
+  heartsEl.textContent =
+    '❤️'.repeat(full) + '💔'.repeat(half) +
+    '\u{1f5a4}'.repeat(Math.max(0, player.maxHearts - full - half));
   heartsEl.classList.toggle('low', player.hearts > 0 && player.hearts <= 2);
+}
+
+const potionsEl = document.getElementById('potions');
+function renderPotions(player) {
+  potionsEl.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'potion-slot ui' + (i < player.potions ? '' : ' empty');
+    slot.textContent = '🧪';
+    if (i < player.potions) {
+      slot.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        player.tryPotion();
+      });
+    }
+    potionsEl.appendChild(slot);
+  }
 }
 
 function renderPups() {
@@ -291,6 +313,7 @@ async function setupRoomExtras() {
 async function loadRoom(id, entry) {
   transitioning = true;
   await fadeTo(1, 260);
+  player.clearProjectiles();
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
@@ -321,6 +344,7 @@ function snapCamera() {
 async function respawnAtCheckpoint() {
   transitioning = true;
   await fadeTo(1, 500);
+  player.clearProjectiles();
   const cp = state.checkpoint;
   if (world) world.dispose();
   world = await buildRoom(cp.room, scene);
@@ -368,7 +392,10 @@ async function start() {
   player.setForm(state.form, { silent: true });
 
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
+  player.onPotionsChanged = () => renderPotions(player);
+  player.onParry = () => effects.shake(0.15, 0.2); // satisfying little jolt
   renderHearts(player);
+  renderPotions(player);
 
   effects = new Effects(scene);
   narration = new Narration();
@@ -418,6 +445,9 @@ async function start() {
       }
       if (input.consumeSpecial()) player.trySpecial(effects, world);
       if (input.consumeAttack()) player.tryAttack(world);
+      if (input.consumeRanged()) player.tryRanged(world);
+      if (input.consumeJump()) player.tryJump();
+      if (input.consumePotion()) player.tryPotion();
 
       player.update(dt, input, world);
       pip.update(dt, t, player, world);
@@ -445,6 +475,17 @@ async function start() {
       if (door) loadRoom(door.to, door.entry);
 
       narrationTriggers(dt, t);
+
+      // Potion pickups
+      for (const p of world.potionSpots) {
+        if (p.taken) continue;
+        const dx = player.root.position.x - p.x;
+        const dz = player.root.position.z - p.z;
+        if (dx * dx + dz * dz < 0.75 * 0.75 && player.addPotion()) {
+          p.taken = true;
+          world.root.remove(p.group);
+        }
+      }
 
       // Checkpoints: touch to set respawn
       for (const cp of world.checkpoints) {
@@ -479,6 +520,9 @@ async function start() {
 
     effects.update(dt, t);
     ui.update(player);
+    // ranged button dims while on cooldown
+    document.getElementById('btn-ranged').style.opacity =
+      player.rangedCooldown > 0 ? '0.35' : '1';
 
     // Smooth camera follow (+ effect shake)
     const k = 1 - Math.exp(-6 * dt);

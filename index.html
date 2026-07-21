@@ -200,12 +200,35 @@
     #special-ring { position: absolute; inset: -3px; border-radius: 50%; z-index: -1; }
     #special-icon { font-size: 34px; }
     #form-badge {
-      position: fixed; right: 30px; bottom: 112px; z-index: 7;
+      position: fixed; right: 196px; bottom: 26px; z-index: 7;
       width: 44px; height: 44px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 22px; border: 2px solid rgba(255,255,255,.5);
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
     }
+    .action-btn {
+      position: fixed; z-index: 7; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(60, 48, 82, .72);
+      border: 3px solid rgba(255,255,255,.4);
+      touch-action: none; font-size: 28px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.4);
+    }
+    #btn-ranged { right: 112px; bottom: 20px; width: 64px; height: 64px; }
+    #btn-defend { right: 112px; bottom: 98px; width: 64px; height: 64px; background: rgba(52, 74, 96, .75); }
+    #btn-defend:active { background: rgba(96, 140, 180, .9); border-color: #fff; }
+    #btn-jump { right: 28px; bottom: 112px; width: 60px; height: 60px; background: rgba(72, 84, 52, .75); }
+    #potions {
+      position: fixed; left: 14px; top: 52px; z-index: 7;
+      display: flex; gap: 8px;
+    }
+    .potion-slot {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; background: rgba(80, 30, 40, .55);
+      border: 2px solid rgba(255,160,140,.5); touch-action: none;
+    }
+    .potion-slot.empty { filter: grayscale(1) brightness(.5); border-style: dashed; }
     #form-badge.denied { animation: deny .4s ease; }
     @keyframes deny {
       0%, 100% { transform: translateX(0); }
@@ -270,9 +293,13 @@
   <div id="joy-knob"></div>
   <div id="picker"></div>
   <div id="special-btn" class="ui"><div id="special-ring"></div><span id="special-icon">🌙</span></div>
+  <div id="btn-ranged" class="action-btn ui">✨</div>
+  <div id="btn-defend" class="action-btn ui">🛡️</div>
+  <div id="btn-jump" class="action-btn ui">⬆️</div>
+  <div id="potions"></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v1.0</div>
+  <div id="badge">Wolf Knight &middot; v1.1</div>
 
   <script>
     window.addEventListener('error', (e) => {

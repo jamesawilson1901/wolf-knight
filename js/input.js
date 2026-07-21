@@ -14,13 +14,32 @@ export class Input {
   constructor() {
     this.move = { x: 0, z: 0 };
     this.onHold = null;    // (x, y, pointerId) => bool — return true to consume
+    this.defending = false; // true while the shield button/key is held
     this._keys = new Set();
     this._joyPointer = null;
     this._joyOrigin = { x: 0, y: 0 };
     this._attackQueued = false;
     this._specialQueued = false;
     this._formCycleQueued = false;
+    this._jumpQueued = false;
+    this._rangedQueued = false;
+    this._potionQueued = false;
     this._pointers = new Map(); // id -> {x0, y0, t0, moved, held, timer}
+
+    // action buttons (HTML, class .ui so the joystick/hold logic ignores them)
+    const btn = (id, down, up) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('pointerdown', (e) => { e.stopPropagation(); down(); });
+      if (up) {
+        el.addEventListener('pointerup', (e) => { e.stopPropagation(); up(); });
+        el.addEventListener('pointercancel', () => up());
+        el.addEventListener('pointerleave', () => up());
+      }
+    };
+    btn('btn-jump', () => { this._jumpQueued = true; });
+    btn('btn-ranged', () => { this._rangedQueued = true; });
+    btn('btn-defend', () => { this.defending = true; }, () => { this.defending = false; });
 
     this._base = document.getElementById('joy-base');
     this._knob = document.getElementById('joy-knob');
@@ -32,15 +51,22 @@ export class Input {
     window.addEventListener('pointercancel', (e) => this._onUp(e), opts);
 
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Tab') e.preventDefault(); // keep focus in the game
+      if (e.code === 'Tab' || e.code === 'Space') e.preventDefault(); // keep focus/scroll in the game
       if (e.repeat) return;
       this._keys.add(e.code);
       if (e.code === 'KeyJ') this._attackQueued = true;
       if (e.code === 'KeyK') this._specialQueued = true;
       if (e.code === 'Tab') this._formCycleQueued = true;
+      if (e.code === 'Space') this._jumpQueued = true;
+      if (e.code === 'KeyL') this._rangedQueued = true;
+      if (e.code === 'KeyH') this._potionQueued = true;
+      if (e.code === 'ShiftLeft' || e.code === 'KeyI') this.defending = true;
     });
-    window.addEventListener('keyup', (e) => this._keys.delete(e.code));
-    window.addEventListener('blur', () => this._keys.clear());
+    window.addEventListener('keyup', (e) => {
+      this._keys.delete(e.code);
+      if (e.code === 'ShiftLeft' || e.code === 'KeyI') this.defending = false;
+    });
+    window.addEventListener('blur', () => { this._keys.clear(); this.defending = false; });
   }
 
   _onDown(e) {
@@ -144,6 +170,24 @@ export class Input {
   consumeFormCycle() {
     const v = this._formCycleQueued;
     this._formCycleQueued = false;
+    return v;
+  }
+
+  consumeJump() {
+    const v = this._jumpQueued;
+    this._jumpQueued = false;
+    return v;
+  }
+
+  consumeRanged() {
+    const v = this._rangedQueued;
+    this._rangedQueued = false;
+    return v;
+  }
+
+  consumePotion() {
+    const v = this._potionQueued;
+    this._potionQueued = false;
     return v;
   }
 }

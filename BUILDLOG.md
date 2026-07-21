@@ -371,6 +371,42 @@ ducking; local CC0 music + SFX with volume sliders.
   exit portal → **network cut → full reload offline: title, Continue, gameplay all
   served by the service worker** (64 cached entries). Zero console errors.
 
+## v1.1 — Combat update (2026-07-10, post-slice request)
+
+Requested additions: longer reach, a ranged attack from the start, defend/parry,
+healing potions with a carry limit on the HUD, and jump/double-jump that dodges
+attacks when timed well.
+
+- **Reach:** melee range knight 1.5 → 2.0, wolves 1.3 → 1.7 (arc unchanged).
+- **Ranged bolt** (✨ button / L): KayKit `Throw` clip (wolves flick their bite), a
+  glowing octahedron dart tinted per form, 11 u/s, range 7.5, 1 dmg, 1.1 s cooldown
+  (button dims). Bolts stop on walls; cleared on room changes.
+- **Defend / parry** (🛡️ hold / Shift or I): shield up = KayKit `Melee_Blocking`
+  (wolves brace low), movement ×0.35, no attacking. A blocked hit costs **half a
+  heart** — the HUD now renders halves with 💔 (hearts are floats in 0.5 steps). If
+  the hit lands within **0.3 s of raising the shield → parry**: zero damage, metal
+  ring, small screen jolt, and stunnable attackers (Shade/Moth/Hound) are dazed 2.2 s
+  (dizzy spin, no AI). Fire (lava/geysers) ignores shields. Boss slams/wave can be
+  blocked/parried but the boss itself can't be stunned.
+- **Potions** (🧪 HUD row / H): start 2, carry max 3, +3 hearts per drink, tap the
+  flask to use. Code-built glowing flask pickups sit near each checkpoint (respawn
+  with the room; pickup refuses when full).
+- **Jump / double jump** (⬆️ / Space): visual Y arc over the flat-plane sim (v 6.8,
+  g 21 → ~1.1 peak); pressing again mid-air = higher double jump (~2.1). While above
+  0.35 height, **ground attacks miss**: shade touch, hound charges, boss tendril
+  slams and the shadow wave — and small lava gaps can be hopped (the R2 bridge is
+  still the safe route; hop distance ≈3 u). Moth dives are flying attacks and still
+  hit.
+- Damage now funnels through `player.hurt(n, {attacker, groundAttack})` so every
+  source declares how it can be avoided. New Kenney SFX: `throw` (drawKnife2),
+  `parry` (metalClick), `potion` (bookPlace2). sw v1.1.0.
+
+**Verified headless:** melee hit from 2.1 u; bolt killed a shade at 5 u; blocked hit
+5 → 4.5 with 💔 in the HUD; fresh-shield parry lost zero hearts and stunned the
+shade; jump peak 1.26 vs double-jump 2.15; standing on a shade mid-jump took no
+damage; potion drink 1→4 hearts with HUD slots updating; flask pickup respected the
+carry limit; zero console errors.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

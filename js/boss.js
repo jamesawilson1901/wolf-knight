@@ -239,7 +239,8 @@ export class Shadowgrip {
         this.slamTendril.visible = true;
         audio.play('tendril-slam', { volume: 0.9 });
         const dx = player.root.position.x - tx, dz = player.root.position.z - tz;
-        if (dx * dx + dz * dz < 1.0) player.hurt(1);
+        // a well-timed jump clears the slam; a shield blunts or parries it
+        if (dx * dx + dz * dz < 1.0) player.hurt(1, { groundAttack: true });
         // stuck tendril is vulnerable — only severable in phase 1
         if (this.phase === 1) {
           this.slamHittable = new Hittable(tx, tz, 0.6, (n) => {
@@ -323,7 +324,7 @@ export class Shadowgrip {
         let da = Math.atan2(pz, px) - this.waveAngle;
         while (da > Math.PI) da -= Math.PI * 2;
         while (da < -Math.PI) da += Math.PI * 2;
-        if (Math.abs(da) < 0.16) player.hurt(1);
+        if (Math.abs(da) < 0.16) player.hurt(1, { groundAttack: true });
       }
     } else if (this.phase === 3) {
       this._updateSlams(dt, player, true);

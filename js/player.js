@@ -30,21 +30,48 @@ const WOLF_TINTS = {
 const FORM_DEFS = {
   knight: {
     speed: 4.6,
-    clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', attack: 'Melee_1H_Attack_Slice_Diagonal' },
-    attack: { lock: 0.55, hitAt: 0.3, range: 1.5, dmg: 1 },
+    clips: {
+      idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A',
+      attack: 'Melee_1H_Attack_Slice_Diagonal', ranged: 'Throw',
+      block: 'Melee_Blocking', jump: 'Jump_Idle',
+    },
+    attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
+    boltColor: 0xbfe3ff,
   },
   dark_wolf: {
     speed: 5.2,
-    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack' },
-    attack: { lock: 0.45, hitAt: 0.24, range: 1.3, dmg: 1 },
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
+    boltColor: 0xb08aff,
   },
   fire_wolf: {
     speed: 5.2,
-    clips: { idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack' },
-    attack: { lock: 0.45, hitAt: 0.24, range: 1.3, dmg: 1 },
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
+    boltColor: 0xffab4a,
   },
 };
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
+
+// Ranged bolt / defend / parry / jump / potion tuning
+const RANGED_COOLDOWN = 1.1;
+const RANGED_SPEED = 11;
+const RANGED_RANGE = 7.5;
+const PARRY_WINDOW = 0.3;   // shield raised this recently = perfect parry
+const PARRY_STUN = 2.2;     // seconds stunnable enemies stay dazed
+const DEFEND_SPEED_MULT = 0.35;
+const JUMP_V = 6.8;
+const DOUBLE_JUMP_V = 8.2;  // second press mid-air jumps higher
+const GRAVITY = 21;
+const AIRBORNE_DODGE_Y = 0.35; // above this, ground attacks miss
+export const MAX_POTIONS = 3;
+const POTION_HEAL = 3;
 
 function tintWolf(model, tint) {
   model.traverse((n) => {
@@ -77,6 +104,17 @@ export class Player {
     this.lockTime = 0;           // movement lock (howl, attacks)
     this.specialCooldown = 0;
     this.specialMax = BLOOD_MOON_COOLDOWN;
+    this.rangedCooldown = 0;
+    this.defending = false;
+    this.defendStart = -99;      // timestamp (game time) shield was raised
+    this.airY = 0;               // visual jump height (gameplay stays on XZ)
+    this.airV = 0;
+    this.jumpsUsed = 0;
+    this.potions = 2;
+    this.onPotionsChanged = null;
+    this.onParry = null;
+    this._projectiles = [];
+    this._time = 0;
     this.onDamaged = null;
     this.onDefeated = null;
     this.onFormChanged = null;
@@ -188,7 +226,7 @@ export class Player {
 
   // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
   tryAttack(world) {
-    if (this.lockTime > 0) return false;
+    if (this.lockTime > 0 || this.defending) return false;
     const cfg = this.form.def.attack;
     this._playOnce('attack');
     this.lockTime = cfg.lock;
@@ -218,9 +256,129 @@ export class Player {
     }
   }
 
-  // Enemy contact damage (respects i-frames; no knockback).
-  hurt(n) {
+  // Ranged bolt: a glowing dart thrown ahead (Knight `Throw` clip; wolves
+  // flick their attack). Available from minute one in every form.
+  tryRanged(world) {
+    if (this.lockTime > 0 || this.rangedCooldown > 0 || this.defending) return false;
+    const f = this.form;
+    this._playOnce('ranged');
+    this.lockTime = 0.35;
+    this.rangedCooldown = RANGED_COOLDOWN;
+    audio.play('throw', { volume: 0.8 });
+
+    const bolt = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.13, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, emissive: f.def.boltColor, emissiveIntensity: 2.6, roughness: 1,
+      })
+    );
+    bolt.scale.z = 2.4;
+    const dir = { x: Math.sin(this.root.rotation.y), z: Math.cos(this.root.rotation.y) };
+    bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
+    bolt.rotation.y = this.root.rotation.y;
+    world.root.add(bolt);
+    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world });
+    return true;
+  }
+
+  _updateProjectiles(dt, world) {
+    for (let i = this._projectiles.length - 1; i >= 0; i--) {
+      const p = this._projectiles[i];
+      const step = RANGED_SPEED * dt;
+      p.mesh.position.x += p.dir.x * step;
+      p.mesh.position.z += p.dir.z * step;
+      p.mesh.rotation.x += dt * 14;
+      p.traveled += step;
+      const px = p.mesh.position.x, pz = p.mesh.position.z;
+      let gone = p.traveled > RANGED_RANGE;
+      // walls stop bolts
+      const solved = world.resolveCircle(px, pz, 0.12);
+      if (Math.hypot(solved.x - px, solved.z - pz) > 0.01) gone = true;
+      // enemies
+      if (!gone && world.enemies) {
+        for (const e of world.enemies) {
+          if (e.dead) continue;
+          const dx = e.x - px, dz = e.z - pz;
+          if (dx * dx + dz * dz < (e.radius + 0.25) * (e.radius + 0.25)) {
+            e.takeDamage(1);
+            audio.play('hit', { volume: 0.8 });
+            gone = true;
+            break;
+          }
+        }
+      }
+      if (gone) {
+        p.world.root.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        this._projectiles.splice(i, 1);
+      }
+    }
+  }
+
+  // Jump (visual Y arc; gameplay stays flat). Second press mid-air = a
+  // higher double jump. While airborne, ground attacks miss.
+  tryJump() {
+    if (this.lockTime > 0 || this.defending) return false;
+    if (this.airY <= 0 && this.jumpsUsed === 0) {
+      this.airV = JUMP_V;
+      this.jumpsUsed = 1;
+      this._play('jump', 0.08);
+      return true;
+    }
+    if (this.airY > 0 && this.jumpsUsed === 1) {
+      this.airV = DOUBLE_JUMP_V;
+      this.jumpsUsed = 2;
+      audio.play('form-switch', { volume: 0.5, rate: 1.6 }); // whoosh
+      return true;
+    }
+    return false;
+  }
+
+  get airborne() { return this.airY > AIRBORNE_DODGE_Y; }
+
+  // Drink a potion (tap the HUD flask or press H).
+  tryPotion() {
+    if (this.potions <= 0 || this.hearts >= this.maxHearts) return false;
+    this.potions--;
+    this.hearts = Math.min(this.maxHearts, this.hearts + POTION_HEAL);
+    audio.play('potion', { volume: 0.9 });
+    audio.play('pup-chime', { volume: 0.5, rate: 1.4 });
+    if (this.onDamaged) this.onDamaged(this.hearts); // refresh hearts HUD
+    if (this.onPotionsChanged) this.onPotionsChanged(this.potions);
+    return true;
+  }
+
+  addPotion() {
+    if (this.potions >= MAX_POTIONS) return false;
+    this.potions++;
+    audio.play('pup-chime', { volume: 0.6 });
+    if (this.onPotionsChanged) this.onPotionsChanged(this.potions);
+    return true;
+  }
+
+  // Damage funnel. source: {groundAttack, attacker, pierceDefend}
+  // - airborne dodges ground attacks entirely
+  // - defend blunts a hit to half a heart; a fresh raise (parry window)
+  //   negates it and stuns stunnable attackers
+  hurt(n, source = {}) {
     if (this.iframes > 0) return;
+    if (source.groundAttack && this.airborne) return; // jumped clean over it
+    if (this.defending && !source.pierceDefend) {
+      const sinceRaise = this._time - this.defendStart;
+      if (sinceRaise <= PARRY_WINDOW) {
+        // PARRY: no damage, attacker dazed
+        audio.play('parry', { volume: 1 });
+        this.iframes = 0.6;
+        if (source.attacker && source.attacker.takeStun) source.attacker.takeStun(PARRY_STUN);
+        if (this.onParry) this.onParry(source.attacker);
+        return;
+      }
+      audio.play('parry', { volume: 0.45, rate: 0.7 }); // dull block clank
+      this.damage(0.5);
+      this.iframes = IFRAME_TIME;
+      return;
+    }
     this.damage(n);
     this.iframes = IFRAME_TIME;
   }
@@ -280,7 +438,9 @@ export class Player {
 
   update(dt, input, world) {
     const f = this.form;
+    this._time += dt;
     if (this.specialCooldown > 0) this.specialCooldown -= dt;
+    if (this.rangedCooldown > 0) this.rangedCooldown -= dt;
     if (this._popTime > 0) {
       this._popTime -= dt;
       const p = 1 - Math.max(0, this._popTime) / 0.22;
@@ -289,6 +449,24 @@ export class Player {
     }
 
     this._applyPendingHit(dt, world);
+    this._updateProjectiles(dt, world);
+
+    // jump physics (Y is visual-only; collisions stay on the XZ plane)
+    if (this.airY > 0 || this.airV > 0) {
+      this.airY += this.airV * dt;
+      this.airV -= GRAVITY * dt;
+      if (this.airY <= 0) {
+        this.airY = 0;
+        this.airV = 0;
+        this.jumpsUsed = 0;
+      }
+      this.root.position.y = this.airY;
+    }
+
+    // shield state: track raise time for the parry window
+    const wantDefend = input.defending && this.lockTime <= 0 && this.airY <= 0;
+    if (wantDefend && !this.defending) this.defendStart = this._time;
+    this.defending = wantDefend;
 
     if (this.lockTime > 0) {
       this.lockTime -= dt;
@@ -299,7 +477,7 @@ export class Player {
 
     const move = input.getMove();
     const mag = Math.hypot(move.x, move.z);
-    const speed = mag * f.def.speed;
+    const speed = mag * f.def.speed * (this.defending ? DEFEND_SPEED_MULT : 1);
 
     if (mag > 0.01) {
       const nx = this.root.position.x + move.x * speed * dt;
@@ -313,11 +491,12 @@ export class Player {
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
       this.root.rotation.y += THREE.MathUtils.clamp(delta, -TURN_SPEED * dt, TURN_SPEED * dt);
-
-      this._play(mag > RUN_THRESHOLD ? 'run' : 'walk');
-    } else {
-      this._play('idle');
     }
+
+    if (this.airY > 0) this._play('jump', 0.1);
+    else if (this.defending) this._play('block', 0.12);
+    else if (mag > 0.01) this._play(mag > RUN_THRESHOLD ? 'run' : 'walk');
+    else this._play('idle');
 
     this._hazards(dt, world);
 
@@ -332,7 +511,9 @@ export class Player {
 
   _hazards(dt, world) {
     if (this.iframes > 0) this.iframes -= dt;
-    if (world.hazardAt(this.root.position.x, this.root.position.z) && this.iframes <= 0) {
+    // Fire ignores shields — but a well-timed jump clears small lava gaps.
+    if (!this.airborne &&
+        world.hazardAt(this.root.position.x, this.root.position.z) && this.iframes <= 0) {
       this.damage(1);
       this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
     }
@@ -358,5 +539,14 @@ export class Player {
   healFull() {
     this.hearts = this.maxHearts;
     if (this.onDamaged) this.onDamaged(this.hearts);
+  }
+
+  clearProjectiles() {
+    for (const p of this._projectiles) {
+      p.world.root.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+    }
+    this._projectiles = [];
   }
 }

@@ -19,6 +19,9 @@ const SFX_FILES = {
   burn: './assets/audio/sfx/burn.ogg',
   'tendril-slam': './assets/audio/sfx/tendril-slam.ogg',
   'moon-impact': './assets/audio/sfx/moon-impact.ogg',
+  throw: './assets/audio/sfx/throw.ogg',
+  parry: './assets/audio/sfx/parry.ogg',
+  potion: './assets/audio/sfx/potion.ogg',
 };
 
 const MUSIC_FILES = {
