@@ -407,6 +407,15 @@ shade; jump peak 1.26 vs double-jump 2.15; standing on a shade mid-jump took no
 damage; potion drink 1→4 hearts with HUD slots updating; flask pickup respected the
 carry limit; zero console errors.
 
+## v1.1.1 — Arm the knight (2026-07-10)
+
+The KayKit Knight ships empty-handed; weapons are separate pack props meant for the
+rig's `handslot` bones. Attached `sword_1handed` (right) + `shield_badge` (left) from
+the Adventurers pack — they ride the hand bones through every clip (slice, block,
+jump). Gotcha for the record: three.js's GLTFLoader strips dots from node names
+(`handslot.r` → `handslotr`), so the first name-match silently attached nothing —
+verified fixed by runtime bone inspection + screenshots. sw v1.1.1.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

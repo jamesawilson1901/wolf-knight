@@ -142,6 +142,18 @@ export class Player {
     knightModel.scale.setScalar(0.5);
     this._addForm('knight', knightModel, [...movement.animations, ...general.animations, ...combat.animations]);
 
+    // Arm the knight: KayKit props snap onto the rig's handslot bones, so the
+    // sword and shield ride along with every animation (swings, blocks).
+    const [sword, shield] = await Promise.all([
+      loadGLB('./assets/chars/sword_1handed.gltf'),
+      loadGLB('./assets/chars/shield_badge.gltf'),
+    ]);
+    // (GLTFLoader strips dots from node names: handslot.r → handslotr)
+    knightModel.traverse((node) => {
+      if (node.name === 'handslotr') node.add(prepareCharacter(sword.scene));
+      if (node.name === 'handslotl') node.add(prepareCharacter(shield.scene));
+    });
+
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
     for (const formName of ['dark_wolf', 'fire_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
