@@ -77,8 +77,10 @@ class Enemy {
 
   takeDamage(n) {
     if (this.dead) return;
+    if (this.stunned > 0) n *= 2; // parry payoff: dizzy enemies take double
     this.hp -= n;
     this._flash = 0.14;
+    this._pop = 0.14;             // little scale-pop on every hit
     if (this.hp <= 0) this.die();
   }
 
@@ -86,6 +88,9 @@ class Enemy {
     this.dead = true;
     smokePuff(this.world, this.x, 0.5, this.z, this.puffTint || 0x5a4d66);
     audio.play('puff', { volume: 0.8 });
+    // sometimes shadows leave a warm ember behind — a little half-heart heal
+    const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
+    if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
     this.world.root.remove(this.root);
   }
 
@@ -99,6 +104,12 @@ class Enemy {
   }
 
   flashUpdate(dt) {
+    if (this._pop > 0) {
+      this._pop -= dt;
+      const f = Math.max(0, this._pop) / 0.14;
+      this.root.scale.setScalar(1 + 0.28 * Math.sin(f * Math.PI));
+      if (this._pop <= 0) this.root.scale.setScalar(1);
+    }
     if (this._flash <= 0) return;
     this._flash -= dt;
     const on = this._flash > 0 && Math.sin(this._flash * 60) > -0.4;
@@ -189,6 +200,7 @@ export class Moth extends Enemy {
   constructor(world, x, z) {
     super(world, x, z, { hp: 1, radius: 0.26 });
     this.puffTint = 0x6b4a3a;
+    this.flying = true; // bolts hit flyers for full damage
     this.home = { x, z };
 
     const body = new THREE.Mesh(
@@ -285,6 +297,7 @@ export class Hound extends Enemy {
   constructor(world, x, z, wolfGltf) {
     super(world, x, z, { hp: 3, radius: 0.4 });
     this.puffTint = 0x241a30;
+    this.dropChance = 1; // the elite always leaves an ember
 
     const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
     model.traverse((n) => {
@@ -406,6 +419,54 @@ export class Hound extends Enemy {
 }
 
 // ---------------------------------------------------------------------------
+// Ember drops: warm sparks fallen shadows sometimes leave behind.
+// Touch one to heal half a heart (fizzles after ~12s).
+// ---------------------------------------------------------------------------
+
+function spawnEmberDrop(world, x, z) {
+  if (!world.drops) world.drops = [];
+  const spark = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.14, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa04a, emissiveIntensity: 2.4, roughness: 1 })
+  );
+  spark.position.set(x, 0.35, z);
+  world.add(spark);
+  const glow = new THREE.PointLight(0xffa04a, 2.2, 4, 1.9);
+  glow.position.set(x, 0.6, z);
+  world.add(glow);
+  world.drops.push({ x, z, spark, glow, life: 12, taken: false });
+}
+
+function updateDrops(world, dt, t, player) {
+  if (!world.drops) return;
+  for (const d of world.drops) {
+    if (d.taken) continue;
+    d.life -= dt;
+    d.spark.position.y = 0.35 + Math.sin(t * 3.1 + d.x) * 0.09;
+    d.spark.rotation.y = t * 2.4;
+    if (d.life < 2.5) { // fizzle warning
+      d.spark.visible = Math.sin(t * 14) > -0.3;
+      d.glow.intensity = 1.1 + Math.sin(t * 14);
+    }
+    const dx = player.root.position.x - d.x;
+    const dz = player.root.position.z - d.z;
+    const gone = d.life <= 0;
+    if (gone || dx * dx + dz * dz < 0.6 * 0.6) {
+      d.taken = true;
+      world.root.remove(d.spark);
+      world.root.remove(d.glow);
+      if (!gone) {
+        audio.play('pup-chime', { volume: 0.45, rate: 1.7 });
+        if (player.hearts < player.maxHearts) {
+          player.hearts = Math.min(player.maxHearts, player.hearts + 0.5);
+          if (player.onDamaged) player.onDamaged(player.hearts); // refresh HUD
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Spawning + the shared combat query used by sword arcs and the Blood Moon
 // ---------------------------------------------------------------------------
 
@@ -434,5 +495,6 @@ export async function spawnEnemies(world) {
 
   world.updateEnemies = (dt, t, player) => {
     for (const e of world.enemies) if (!e.dead) e.update(dt, t, player);
+    updateDrops(world, dt, t, player);
   };
 }

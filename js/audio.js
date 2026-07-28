@@ -62,7 +62,51 @@ class AudioSystem {
     this.duckGain.connect(this.ctx.destination);
     this.sfxGain.connect(this.ctx.destination);
     this.applyVolumes();
+    this._startAmbient();
     if (this._wantMusic) this.playMusic(this._wantMusic.name, this._wantMusic.opts);
+  }
+
+  // A quiet volcanic rumble under everything: generated brown noise through
+  // a deep low-pass (no asset needed, costs nothing offline).
+  _startAmbient() {
+    const seconds = 3;
+    const rate = this.ctx.sampleRate;
+    const buf = this.ctx.createBuffer(1, rate * seconds, rate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02; // brown noise walk
+      data[i] = last * 3.5;
+    }
+    // seamless loop: crossfade the tail into the head
+    const fade = Math.floor(rate * 0.25);
+    for (let i = 0; i < fade; i++) {
+      const f = i / fade;
+      data[i] = data[i] * f + data[data.length - fade + i] * (1 - f);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 110;
+    this.ambientGain = this.ctx.createGain();
+    this.ambientGain.gain.value = 0;
+    src.connect(filter);
+    filter.connect(this.ambientGain);
+    this.ambientGain.connect(this.musicGain); // follows the music slider
+    src.start();
+    this.setAmbient(this._wantAmbient !== undefined ? this._wantAmbient : 0.5);
+  }
+
+  // 0..1 rumble level (rooms with more lava rumble louder)
+  setAmbient(level) {
+    this._wantAmbient = level;
+    if (!this.ambientGain) return;
+    const t = this.ctx.currentTime;
+    this.ambientGain.gain.cancelScheduledValues(t);
+    this.ambientGain.gain.linearRampToValueAtTime(level * 0.4, t + 1.2);
   }
 
   applyVolumes() {

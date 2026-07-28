@@ -76,11 +76,23 @@ export function collectMeshes(root) {
 }
 
 // One InstancedMesh per primitive, sharing the same placement matrices.
-export function instancePlacements(gltfScene, placements, { castShadow = true } = {}) {
+// materialTints: {materialName: hex} overrides the shared volcanic tints with
+// dedicated material clones (used e.g. to make path tiles pop).
+export function instancePlacements(gltfScene, placements, { castShadow = true, materialTints = null } = {}) {
   const group = new THREE.Group();
   const dummy = new THREE.Object3D();
+  const overrideCache = new Map();
   for (const part of collectMeshes(prepareModel(gltfScene, { castShadow }))) {
-    const inst = new THREE.InstancedMesh(part.geometry, part.material, placements.length);
+    let material = part.material;
+    if (materialTints && materialTints[material.name] !== undefined) {
+      if (!overrideCache.has(material.name)) {
+        const m = material.clone();
+        m.color.setHex(materialTints[material.name]);
+        overrideCache.set(material.name, m);
+      }
+      material = overrideCache.get(material.name);
+    }
+    const inst = new THREE.InstancedMesh(part.geometry, material, placements.length);
     inst.castShadow = castShadow;
     inst.receiveShadow = true;
     placements.forEach((p, i) => {

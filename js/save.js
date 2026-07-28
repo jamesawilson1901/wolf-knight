@@ -57,6 +57,7 @@ export function persist() {
     region: state.region,
     checkpoint: state.checkpoint,
     maxHearts: state.maxHearts,
+    potions: state.potions,
     formsUnlocked: [...state.formsUnlocked],
     pups: { [state.region]: pupList },
     settings: { ...state.settings },
@@ -87,6 +88,7 @@ export function applySave(profileId, profileName, data) {
     state.room = data.checkpoint.room;
   }
   state.maxHearts = data.maxHearts || 5;
+  state.potions = data.potions !== undefined ? data.potions : 2;
   state.formsUnlocked = Array.isArray(data.formsUnlocked) && data.formsUnlocked.length
     ? data.formsUnlocked : ['knight', 'dark_wolf'];
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';

@@ -37,6 +37,12 @@ export const LINES = {
   all_pups: { voice: 'pip', text: 'You found them all! The pups are safe now. Your heart grows stronger.' },
   region_complete: { voice: 'pip', text: 'Ember Hollow is free, Kael. The light is coming back. Let’s go on.' },
 
+  // Teaching lines — each one reveals its button when it first fires
+  learn_shield: { voice: 'pip', text: 'Take your shield! Hold it to block. Raise it JUST as they strike to knock them silly!' },
+  learn_bolt: { voice: 'pip', text: 'Try your throwing spark! Tap the sparkle to zap flying shadows.' },
+  learn_jump: { voice: 'pip', text: 'You can jump! Tap the arrow — and tap again in the air to jump higher. Jump over danger!' },
+  parry_praise: { voice: 'pip', text: 'Perfect block! Hit them now while they’re dizzy!' },
+
   // Part B — contextual (repeatable)
   checkpoint: { voice: 'pip', text: 'We can rest here. You’re safe.', repeat: true },
   pup_found: { voice: 'pip', text: 'A lost wolf pup! You found one. Good eyes, Kael.', repeat: true },

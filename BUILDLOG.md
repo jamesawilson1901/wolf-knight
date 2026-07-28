@@ -416,6 +416,44 @@ jump). Gotcha for the record: three.js's GLTFLoader strips dots from node names
 (`handslot.r` → `handslotr`), so the first name-match silently attached nothing —
 verified fixed by runtime bone inspection + screenshots. sw v1.1.1.
 
+## v1.2 — Game-design update (2026-07-10)
+
+All 12 items from the design review, implemented and verified:
+
+1. **Progressive controls:** shield/bolt/jump buttons and the form badge start
+   hidden; each pops in (scale animation) when Pip teaches it — shield when a Shade
+   closes to 3.5 u, bolt when a moth is near, jump at the geyser crossing, badge at
+   the dark-nook lesson. Reveals persist via the narration once-per-save memory.
+   Three new Pip teach lines (additive to the script; existing lines untouched).
+2. **Parry taught + rewarded:** the shield line teaches the timing; first successful
+   parry gets Pip's praise line; stunned enemies take **double damage**.
+3. **R1 funnel:** the teaching Shade moved onto the critical path (2.5, −0.5) —
+   its aggro drift guarantees every kid meets it before the exit.
+4. **Way-finding:** every door gap now has a torch-lit doorway (flanking pillars,
+   flickering flames, glowing floor strip) and real Kenney `ground_pathTile`s lay a
+   trampled dirt path along each room's critical route (auto-skips lava cells; the
+   bridges carry it). Path tiles use dedicated brighter tints so they pop.
+5. **Branch dressing:** the hound pocket sits in a dark ground shadow with a
+   pulsing red glow + drifting embers — tempting-but-scary, pup visible beyond.
+6. **Pillar cover works:** the boss's shadow wave is blocked when a pillar lies on
+   the core→player line (segment/circle test vs `markers.pillars`).
+7. **Ember drops:** slain enemies drop a glowing spark 35% of the time (elite hound:
+   always) that heals half a heart; fizzles after 12 s with a blink warning.
+8. **Juice:** 70 ms hit-stop on melee connect (90 ms on parry), scale-pop on every
+   enemy hit, and the camera punches in ~14% during the Blood Moon.
+9. **Bolt balance:** full damage vs flyers (moths — their counter), half vs grounded
+   enemies, so sword and spark each have a job.
+10. **Potions persist** — moved into run state and the save schema.
+11. **Geyser reward:** a potion tucked past the crossing pays off the timing skill.
+12. **Ambient rumble:** generated brown-noise low-pass loop under the music (no
+    asset, works offline), per-room intensity. Also fixed en route: R3's west lava
+    rim used to cross the shortcut walkway — now split around it.
+
+Verified end-to-end headless: reveal flow + persistence across reload, funnel drift,
+parry→stun→one-hit kill, chip-damage numbers, drop heal 3→3.5, cover true/false at
+the right spots, potion save/restore, ambient live, zero console errors; screenshots
+confirm paths/doorways/branch dressing.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

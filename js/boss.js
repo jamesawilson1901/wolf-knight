@@ -213,6 +213,25 @@ export class Shadowgrip {
 
   // ------------------------------------------------------------------
 
+  // True when a pillar sits on the line between the core and the player —
+  // hiding behind cover blocks the shadow wave.
+  _behindPillar(player) {
+    const pillars = this.world.markers.pillars || [];
+    const ax = this.x, az = this.z;
+    const bx = player.root.position.x, bz = player.root.position.z;
+    const abx = bx - ax, abz = bz - az;
+    const len2 = abx * abx + abz * abz;
+    if (len2 < 1e-6) return false;
+    for (const p of pillars) {
+      const t = ((p.x - ax) * abx + (p.z - az) * abz) / len2;
+      if (t < 0.1 || t > 0.95) continue; // pillar must be between, not behind
+      const cx = ax + abx * t, cz = az + abz * t;
+      const d = Math.hypot(p.x - cx, p.z - cz);
+      if (d < p.r + 0.35) return true;
+    }
+    return false;
+  }
+
   _updateSlams(dt, player, faster) {
     const TELEGRAPH = faster ? 0.8 : 1.05;
     const STUCK = 2.0;
@@ -317,14 +336,17 @@ export class Shadowgrip {
       const wz = this.z + Math.sin(this.waveAngle) * 3.4;
       this.wave.position.set(wx, 0.06, wz);
       this.wave.rotation.z = -this.waveAngle;
-      // damage if the player stands in the sweeping bar
+      // damage if the player stands in the sweeping bar — unless a pillar
+      // stands between them and the core (cover is real)
       const px = player.root.position.x - this.x, pz = player.root.position.z - this.z;
       const pd = Math.hypot(px, pz);
       if (pd > 1.2 && pd < 6.2) {
         let da = Math.atan2(pz, px) - this.waveAngle;
         while (da > Math.PI) da -= Math.PI * 2;
         while (da < -Math.PI) da += Math.PI * 2;
-        if (Math.abs(da) < 0.16) player.hurt(1, { groundAttack: true });
+        if (Math.abs(da) < 0.16 && !this._behindPillar(player)) {
+          player.hurt(1, { groundAttack: true });
+        }
       }
     } else if (this.phase === 3) {
       this._updateSlams(dt, player, true);

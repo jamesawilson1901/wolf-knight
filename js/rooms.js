@@ -28,6 +28,7 @@ export async function loadKit() {
     rockSA: './assets/env/rock-small-a.glb',
     rockSB: './assets/env/rock-small-b.glb',
     pillar: './assets/env/pillar.glb',
+    pathTile: './assets/env/path-tile.glb',
     campfire: './assets/env/campfire.glb',
     bridge: './assets/env/bridge-stone.glb',
     bush: './assets/env/bush-large.glb',
@@ -297,6 +298,71 @@ function burnable(world, id, x, z, ry = 0) {
   return b;
 }
 
+// Doorway: every exit gets the same read — two flanking pillars with torch
+// flames and a soft glowing strip on the floor. Kids learn "glow between
+// pillars = way through" once and never get lost.
+function doorway(world, x, z, axis /* 'x': gap runs along x */) {
+  const off = 1.35;
+  const p1 = axis === 'x' ? [x - off, z] : [x, z - off];
+  const p2 = axis === 'x' ? [x + off, z] : [x, z + off];
+  for (const [px, pz] of [p1, p2]) {
+    const pillar = prepareModel(kit.pillar.scene.clone());
+    pillar.position.set(px, 0, pz);
+    pillar.scale.setScalar(0.45);
+    world.add(pillar);
+    world.addCircle(px, pz, 0.32);
+    const flame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12, 0.34, 6),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffc25a, emissiveIntensity: 2.4, roughness: 1 })
+    );
+    flame.position.set(px, 1.22, pz);
+    world.add(flame);
+    world.onAnimate((t) => {
+      flame.scale.setScalar(0.85 + 0.2 * Math.sin(t * 9 + px * 3 + pz));
+    });
+  }
+  const torchLight = new THREE.PointLight(0xffc25a, 4.5, 6.5, 1.9);
+  torchLight.position.set(x, 1.6, z);
+  world.add(torchLight);
+
+  const strip = new THREE.Mesh(
+    new THREE.PlaneGeometry(axis === 'x' ? 2.1 : 0.9, axis === 'x' ? 0.9 : 2.1),
+    new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.7,
+      transparent: true, opacity: 0.5, roughness: 1, depthWrite: false,
+    })
+  );
+  strip.rotation.x = -Math.PI / 2;
+  strip.position.set(x, 0.03, z);
+  world.add(strip);
+  world.onAnimate((t) => {
+    strip.material.emissiveIntensity = 0.55 + 0.3 * Math.sin(t * 2.1 + x);
+  });
+}
+
+// A visible dirt path along the critical route (real Kenney path tiles laid
+// a hair above the floor). Skips lava cells — bridges carry the route there.
+function pathTiles(world, waypoints) {
+  const cells = new Map();
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const [ax, az] = waypoints[i];
+    const [bx, bz] = waypoints[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    const steps = Math.max(1, Math.ceil(len / 0.4));
+    for (let s = 0; s <= steps; s++) {
+      const f = s / steps;
+      const cx = Math.floor(ax + (bx - ax) * f) + 0.5;
+      const cz = Math.floor(az + (bz - az) * f) + 0.5;
+      if (world.lavaZones.some((l) => cx > l.minX && cx < l.maxX && cz > l.minZ && cz < l.maxZ)) continue;
+      cells.set(cx + '|' + cz, { x: cx, y: 0.02, z: cz, ry: ((cells.size * 7) % 4) * Math.PI / 2 });
+    }
+  }
+  world.add(instancePlacements(kit.pathTile.scene, [...cells.values()], {
+    castShadow: false,
+    materialTints: { dirt: 0x8f6f52, dirtDark: 0x7a5a42, grass: 0x6f585c },
+  }));
+}
+
 // Healing potion pickup: a little glowing ember flask (code-built). Touch to
 // take one (carry limit enforced by the player); respawns with the room.
 function potionPickup(world, x, z) {
@@ -402,8 +468,14 @@ async function buildR1(scene) {
     { kind: 'sb', x: -1.2, z: 0.2, s: 1.2, ry: 4.8, cr: 0.26 },
   ]);
 
-  // The first Shade — teaches tap-to-attack
-  world.markers.shadeSpots = [{ x: 0.5, z: -3.6 }];
+  // The first Shade stands on the critical path between spawn and the exit —
+  // every kid meets it (and Pip's sword lesson) before leaving the room.
+  world.markers.shadeSpots = [{ x: 2.5, z: -0.5 }];
+
+  // Way-finding: torch-lit doorway + a dirt path toward the exit
+  doorway(world, 6, -5.7, 'x');
+  if (state.flags.shortcutOpen) doorway(world, -7.6, -2, 'z');
+  pathTiles(world, [[-1, 4], [1.5, 0.5], [4.5, -2.5], [6, -5.2]]);
 
   return world;
 }
@@ -472,6 +544,43 @@ async function buildR2(scene) {
   world.markers.mothSpots = [{ x: -4.5, z: -3.4 }, { x: -1.8, z: -0.6 }];
   world.markers.shadeSpots = [{ x: -5.5, z: 2.2 }, { x: -6.5, z: 3.4 }];
 
+  // The optional branch should look tempting-but-scary: shadowed ground and
+  // a faint red glow around the hound's pocket (the pup is visible beyond).
+  const branchShadow = new THREE.Mesh(
+    new THREE.CircleGeometry(2.5, 26),
+    new THREE.MeshBasicMaterial({ color: 0x140b20, transparent: true, opacity: 0.34, depthWrite: false })
+  );
+  branchShadow.rotation.x = -Math.PI / 2;
+  branchShadow.position.set(6.1, 0.025, 3.7);
+  world.add(branchShadow);
+  const branchGlow = new THREE.PointLight(0xff3626, 2.6, 6.5, 1.9);
+  branchGlow.position.set(6.0, 0.9, 3.7);
+  world.add(branchGlow);
+  const embers = [];
+  for (let i = 0; i < 3; i++) {
+    const fleck = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff4a2a, emissiveIntensity: 2.2 })
+    );
+    world.add(fleck);
+    embers.push(fleck);
+  }
+  world.onAnimate((t) => {
+    branchGlow.intensity = 2.2 + Math.sin(t * 1.7) * 0.7;
+    embers.forEach((f, i) => {
+      const a = t * 0.8 + i * 2.1;
+      f.position.set(6.1 + Math.cos(a) * 1.6, 0.5 + Math.sin(t * 2 + i) * 0.25, 3.7 + Math.sin(a) * 1.6);
+    });
+  });
+
+  // A reward tucked past the geyser crossing pays off the timing skill
+  potionPickup(world, 9.2, -5.1);
+
+  // Way-finding: doorways + the dirt path (bridges carry it over lava)
+  doorway(world, -9.4, 4.4, 'z');
+  doorway(world, 8.5, -5.7, 'x');
+  pathTiles(world, [[-8, 4.4], [-4.5, 2], [-0.5, 0.2], [-0.5, -3.6], [2.4, -4.4], [6.5, -4.4], [8.4, -5.2]]);
+
   return world;
 }
 
@@ -512,6 +621,7 @@ async function buildR3(scene) {
       world.root.remove(plug);
       const i = world.boxColliders.indexOf(plugCollider);
       if (i >= 0) world.boxColliders.splice(i, 1);
+      doorway(world, -6.4, 0.6, 'z'); // torches light the way home
       world.openShortcut = null;
     };
   }
@@ -521,25 +631,34 @@ async function buildR3(scene) {
   lavaPool(world, 0, -7.35, 15.6, 1.1, { light: true });
   lavaPool(world, -4.45, 7.35, 6.7, 1.1, { light: false });
   lavaPool(world, 4.45, 7.35, 6.7, 1.1, { light: false });
-  lavaPool(world, -7.35, 0, 1.1, 13.6, { light: false });
+  // west rim leaves a clear walkway where the shortcut opens (z -0.8..2.0)
+  lavaPool(world, -7.35, -3.8, 1.1, 6.0, { light: false });
+  lavaPool(world, -7.35, 4.4, 1.1, 4.8, { light: false });
   lavaPool(world, 7.35, 0, 1.1, 13.6, { light: true });
   const walkway = prepareModel(kit.bridge.scene.clone());
   walkway.position.set(0, 0.02, 7.35);
   walkway.scale.set(2.4, 1.1, 1.5);
   world.add(walkway);
 
-  // Four pillars give cover from dives
+  // Four pillars give cover — the boss's shadow wave breaks against them
+  world.markers.pillars = [];
   for (const [px, pz] of [[-4.2, -2.8], [4.2, -2.8], [-4.2, 2.4], [4.2, 2.4]]) {
     const pillar = prepareModel(kit.pillar.scene.clone());
     pillar.position.set(px, 0, pz);
     pillar.scale.setScalar(0.75);
     world.add(pillar);
     world.addCircle(px, pz, 0.68);
+    world.markers.pillars.push({ x: px, z: pz, r: 0.68 });
   }
 
   // Checkpoint CP3 at the arena entrance, with a potion for the fight
   checkpoint(world, 'cp3', -2.2, 5.6);
   potionPickup(world, 2.2, 5.6);
+
+  // Way-finding: torch-lit entry + shortcut doorway (once open) + path
+  doorway(world, 0, 6.35, 'x');
+  if (state.flags.shortcutOpen) doorway(world, -6.4, 0.6, 'z');
+  pathTiles(world, [[0, 6.4], [0, 3], [0, 1.4]]);
 
   // The Shadowgrip (built in code) grips Cinder at the center until beaten;
   // afterwards Cinder floats free, warm and bright.

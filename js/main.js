@@ -203,6 +203,15 @@ function nearSpot(spot, r) { return nearXZ(spot.x, spot.z, r); }
 function narrationTriggers(dt, t) {
   const m = world.markers;
 
+  // teaching reveals: shield when a shade closes in, bolt when moths appear,
+  // jump at the geyser crossing
+  const anyShade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
+  if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
+  const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
+  if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
+  if (state.room === 'r2' && nearXZ(4.5, -4.4, 5)) narration.say('learn_jump');
+  refreshControlReveal();
+
   if (state.room === 'r1') {
     const shade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
     if (shade && nearXZ(shade.x, shade.z, 5.5)) narration.say('first_enemy');
@@ -261,6 +270,19 @@ function narrationTriggers(dt, t) {
 function updateMusic() {
   if (state.room === 'r3' && world.boss && !world.boss.defeated) audio.playMusic('boss');
   else audio.playMusic('region-ember');
+  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65 }[state.room] || 0.5);
+}
+
+// Progressive controls: buttons appear when Pip teaches them (persisted via
+// the narration once-per-save memory, so Continue restores the layout).
+function refreshControlReveal() {
+  document.getElementById('btn-defend').classList.toggle('revealed', !!state.spoken.learn_shield);
+  document.getElementById('btn-ranged').classList.toggle('revealed', !!state.spoken.learn_bolt);
+  document.getElementById('btn-jump').classList.toggle('revealed', !!state.spoken.learn_jump);
+  document.getElementById('form-badge').classList.toggle(
+    'revealed',
+    !!state.spoken.dark_nook || state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf')
+  );
 }
 
 function showCompleteScreen() {
@@ -393,9 +415,15 @@ async function start() {
 
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
   player.onPotionsChanged = () => renderPotions(player);
-  player.onParry = () => effects.shake(0.15, 0.2); // satisfying little jolt
+  player.onParry = () => {
+    effects.shake(0.15, 0.2);
+    effects.hitStop(0.09);            // freeze the perfect moment
+    narration.say('parry_praise');    // once per save
+  };
+  player.onHitConnected = () => effects.hitStop(0.07);
   renderHearts(player);
   renderPotions(player);
+  refreshControlReveal();
 
   effects = new Effects(scene);
   narration = new Narration();
@@ -427,11 +455,19 @@ async function start() {
 
   renderer.setAnimationLoop(() => {
     timer.update();
-    const dt = Math.min(timer.getDelta(), 0.05);
+    const realDt = timer.getDelta();
+    const dt = Math.min(realDt, 0.05);
     const t = timer.getElapsed();
     if (!world) return;
 
     if (paused) {
+      renderer.render(scene, camera);
+      return;
+    }
+
+    // hit-stop: a solid hit freezes the world for a few frames
+    if (effects.hitStopTime > 0) {
+      effects.hitStopTime -= realDt;
       renderer.render(scene, camera);
       return;
     }
@@ -524,9 +560,9 @@ async function start() {
     document.getElementById('btn-ranged').style.opacity =
       player.rangedCooldown > 0 ? '0.35' : '1';
 
-    // Smooth camera follow (+ effect shake)
+    // Smooth camera follow (+ effect shake + Blood Moon punch-in)
     const k = 1 - Math.exp(-6 * dt);
-    camGoal.copy(player.root.position).add(CAM_OFFSET);
+    camGoal.copy(player.root.position).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
     camera.position.lerp(camGoal, k);
     camLook.lerp(player.root.position, k);
     camera.position.add(effects.shakeOffset);

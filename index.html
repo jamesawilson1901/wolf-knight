@@ -214,10 +214,18 @@
       touch-action: none; font-size: 28px;
       box-shadow: 0 3px 10px rgba(0,0,0,.4);
     }
-    #btn-ranged { right: 112px; bottom: 20px; width: 64px; height: 64px; }
-    #btn-defend { right: 112px; bottom: 98px; width: 64px; height: 64px; background: rgba(52, 74, 96, .75); }
+    #btn-ranged { right: 112px; bottom: 20px; width: 64px; height: 64px; display: none; }
+    #btn-defend { right: 112px; bottom: 98px; width: 64px; height: 64px; background: rgba(52, 74, 96, .75); display: none; }
     #btn-defend:active { background: rgba(96, 140, 180, .9); border-color: #fff; }
-    #btn-jump { right: 28px; bottom: 112px; width: 60px; height: 60px; background: rgba(72, 84, 52, .75); }
+    #btn-jump { right: 28px; bottom: 112px; width: 60px; height: 60px; background: rgba(72, 84, 52, .75); display: none; }
+    #form-badge { display: none; }
+    #btn-ranged.revealed, #btn-defend.revealed, #btn-jump.revealed,
+    #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
+    @keyframes reveal-pop {
+      0% { transform: scale(0); }
+      70% { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
     #potions {
       position: fixed; left: 14px; top: 52px; z-index: 7;
       display: flex; gap: 8px;
@@ -299,7 +307,7 @@
   <div id="potions"></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v1.1</div>
+  <div id="badge">Wolf Knight &middot; v1.2</div>
 
   <script>
     window.addEventListener('error', (e) => {

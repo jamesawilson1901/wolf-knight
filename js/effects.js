@@ -8,6 +8,8 @@ export class Effects {
   constructor(scene) {
     this.scene = scene;
     this.shakeOffset = new THREE.Vector3();
+    this.hitStopTime = 0; // freeze-frame on solid hits (real-time seconds)
+    this.zoom = 0;        // 0..1 camera punch-in (Blood Moon drama)
     this._shakeTime = 0;
     this._shakeStrength = 0;
     this._active = [];
@@ -16,6 +18,10 @@ export class Effects {
   shake(strength = 0.4, time = 0.5) {
     this._shakeStrength = Math.max(this._shakeStrength, strength);
     this._shakeTime = Math.max(this._shakeTime, time);
+  }
+
+  hitStop(t = 0.07) {
+    this.hitStopTime = Math.max(this.hitStopTime, t);
   }
 
   update(dt, t) {
@@ -133,6 +139,7 @@ export class Effects {
         wash.intensity = f * 2.4;
         moon.position.y = 16;
         moonLight.intensity = f * 6;
+        this.zoom = Math.max(this.zoom, f); // camera leans in as the sky turns
       } else if (elapsed < HOWL + FALL) {
         const f = (elapsed - HOWL) / FALL;
         const e = f * f; // accelerate downward
@@ -147,6 +154,7 @@ export class Effects {
           if (onImpact) onImpact();
         }
         const f = (elapsed - HOWL - FALL) / AFTER;
+        this.zoom = Math.max(0, 1 - f); // release the punch-in
         // moon sinks + dims, ring expands + fades, wash releases
         moon.position.y = 0.9 - f * 1.6;
         moon.material.emissiveIntensity = 2.6 * (1 - f);

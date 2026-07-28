@@ -110,8 +110,8 @@ export class Player {
     this.airY = 0;               // visual jump height (gameplay stays on XZ)
     this.airV = 0;
     this.jumpsUsed = 0;
-    this.potions = 2;
     this.onPotionsChanged = null;
+    this.onHitConnected = null;  // melee landed → main triggers hit-stop
     this.onParry = null;
     this._projectiles = [];
     this._time = 0;
@@ -181,6 +181,10 @@ export class Player {
   }
 
   get form() { return this.forms[state.form]; }
+
+  // Potions live in run state so they persist with the save.
+  get potions() { return state.potions; }
+  set potions(v) { state.potions = v; }
 
   setForm(name, { silent = false } = {}) {
     if (!this.forms[name]) return false;
@@ -256,6 +260,7 @@ export class Player {
     if (!world.enemies) return;
     const fx = Math.sin(this.root.rotation.y);
     const fz = Math.cos(this.root.rotation.y);
+    let connected = false;
     for (const e of world.enemies) {
       if (e.dead) continue;
       const dx = e.x - this.root.position.x;
@@ -265,7 +270,9 @@ export class Player {
       if (d > 0.2 && (dx * fx + dz * fz) / d < ATTACK_ARC_COS) continue;
       e.takeDamage(dmg);
       audio.play('hit', { volume: 0.9 });
+      connected = true;
     }
+    if (connected && this.onHitConnected) this.onHitConnected(); // hit-stop
   }
 
   // Ranged bolt: a glowing dart thrown ahead (Knight `Throw` clip; wolves
@@ -306,13 +313,14 @@ export class Player {
       // walls stop bolts
       const solved = world.resolveCircle(px, pz, 0.12);
       if (Math.hypot(solved.x - px, solved.z - pz) > 0.01) gone = true;
-      // enemies
+      // enemies — bolts are the moths' natural counter: full damage vs
+      // flyers, chip damage vs grounded enemies (the sword's job)
       if (!gone && world.enemies) {
         for (const e of world.enemies) {
           if (e.dead) continue;
           const dx = e.x - px, dz = e.z - pz;
           if (dx * dx + dz * dz < (e.radius + 0.25) * (e.radius + 0.25)) {
-            e.takeDamage(1);
+            e.takeDamage(e.flying ? 1 : 0.5);
             audio.play('hit', { volume: 0.8 });
             gone = true;
             break;
