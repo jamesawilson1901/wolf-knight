@@ -37,6 +37,9 @@ export const LINES = {
   all_pups: { voice: 'pip', text: 'You found them all! The pups are safe now. Your heart grows stronger.' },
   region_complete: { voice: 'pip', text: 'Ember Hollow is free, Kael. The light is coming back. Let’s go on.' },
 
+  den_intro: { voice: 'pip', text: 'The Moonlit Den! Luna keeps it safe. The pups we rescue will live here.' },
+  shop_intro: { voice: 'pip', text: 'That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!' },
+
   // Teaching lines — each one reveals its button when it first fires
   learn_shield: { voice: 'pip', text: 'Take your shield! Hold it to block. Raise it JUST as they strike to knock them silly!' },
   learn_bolt: { voice: 'pip', text: 'Try your throwing spark! Tap the sparkle to zap flying shadows.' },

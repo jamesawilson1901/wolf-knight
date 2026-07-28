@@ -7,6 +7,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { weaponDef, shieldDef } from './items.js';
 
 const BODY_RADIUS = 0.32;
 const TURN_SPEED = 12;
@@ -112,6 +113,7 @@ export class Player {
     this.jumpsUsed = 0;
     this.onPotionsChanged = null;
     this.onHitConnected = null;  // melee landed → main triggers hit-stop
+    this.buffs = { star: 0, fury: 0, feather: 0, magnet: 0 }; // timed power-ups
     this.onParry = null;
     this._projectiles = [];
     this._time = 0;
@@ -142,17 +144,15 @@ export class Player {
     knightModel.scale.setScalar(0.5);
     this._addForm('knight', knightModel, [...movement.animations, ...general.animations, ...combat.animations]);
 
-    // Arm the knight: KayKit props snap onto the rig's handslot bones, so the
-    // sword and shield ride along with every animation (swings, blocks).
-    const [sword, shield] = await Promise.all([
-      loadGLB('./assets/chars/sword_1handed.gltf'),
-      loadGLB('./assets/chars/shield_badge.gltf'),
-    ]);
-    // (GLTFLoader strips dots from node names: handslot.r → handslotr)
+    // Hand bones for equippable gear (GLTFLoader strips dots: handslot.r →
+    // handslotr). The equipped weapon/shield models mount here.
+    this._handR = null;
+    this._handL = null;
     knightModel.traverse((node) => {
-      if (node.name === 'handslotr') node.add(prepareCharacter(sword.scene));
-      if (node.name === 'handslotl') node.add(prepareCharacter(shield.scene));
+      if (node.name === 'handslotr') this._handR = node;
+      if (node.name === 'handslotl') this._handL = node;
     });
+    await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
     for (const formName of ['dark_wolf', 'fire_wolf']) {
@@ -182,6 +182,18 @@ export class Player {
 
   get form() { return this.forms[state.form]; }
 
+  // Mount the equipped weapon + shield on the knight's hands (call after any
+  // equipment change). Models are shared from the loader cache, so each mount
+  // uses a clone.
+  async equipGear() {
+    if (!this._handR) return;
+    const [w, s] = await Promise.all([loadGLB(weaponDef().file), loadGLB(shieldDef().file)]);
+    this._handR.clear();
+    this._handL.clear();
+    this._handR.add(prepareCharacter(w.scene.clone()));
+    this._handL.add(prepareCharacter(s.scene.clone()));
+  }
+
   // Potions live in run state so they persist with the save.
   get potions() { return state.potions; }
   set potions(v) { state.potions = v; }
@@ -195,7 +207,8 @@ export class Player {
     state.form = name;
     const f = this.forms[name];
     f.model.visible = true;
-    this.specialMax = name === 'fire_wolf' ? SLAM_COOLDOWN : BLOOD_MOON_COOLDOWN;
+    const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
+    this.specialMax = (name === 'fire_wolf' ? SLAM_COOLDOWN : BLOOD_MOON_COOLDOWN) * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
     this._play('idle', 0);
@@ -240,10 +253,26 @@ export class Player {
     this._current = name;
   }
 
+  // The knight's melee numbers come from the equipped weapon + sword perks;
+  // wolves use their natural bite. Fury triples everything briefly.
+  attackConfig() {
+    const base = this.form.def.attack;
+    let cfg;
+    if (state.form === 'knight') {
+      const w = weaponDef();
+      cfg = { lock: w.lock, hitAt: Math.min(0.3, w.lock * 0.55), range: w.range, dmg: w.dmg };
+    } else {
+      cfg = { ...base };
+    }
+    cfg.dmg += (state.perks.sword || 0) * 0.25;
+    if (this.buffs.fury > 0) cfg.dmg *= 3;
+    return cfg;
+  }
+
   // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
   tryAttack(world) {
     if (this.lockTime > 0 || this.defending) return false;
-    const cfg = this.form.def.attack;
+    const cfg = this.attackConfig();
     this._playOnce('attack');
     this.lockTime = cfg.lock;
     this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
@@ -273,6 +302,13 @@ export class Player {
       connected = true;
     }
     if (connected && this.onHitConnected) this.onHitConnected(); // hit-stop
+  }
+
+  boltDamage(target) {
+    const perk = (state.perks.bolt || 0) * 0.25;
+    let dmg = (target && target.flying ? 1 : 0.5) + perk;
+    if (this.buffs.fury > 0) dmg *= 3;
+    return dmg;
   }
 
   // Ranged bolt: a glowing dart thrown ahead (Knight `Throw` clip; wolves
@@ -320,7 +356,7 @@ export class Player {
           if (e.dead) continue;
           const dx = e.x - px, dz = e.z - pz;
           if (dx * dx + dz * dz < (e.radius + 0.25) * (e.radius + 0.25)) {
-            e.takeDamage(e.flying ? 1 : 0.5);
+            e.takeDamage(this.boltDamage(e));
             audio.play('hit', { volume: 0.8 });
             gone = true;
             break;
@@ -340,15 +376,16 @@ export class Player {
   // higher double jump. While airborne, ground attacks miss.
   tryJump() {
     if (this.lockTime > 0 || this.defending) return false;
+    const maxJumps = this.buffs.feather > 0 ? 3 : 2; // feather = triple jump
     if (this.airY <= 0 && this.jumpsUsed === 0) {
       this.airV = JUMP_V;
       this.jumpsUsed = 1;
       this._play('jump', 0.08);
       return true;
     }
-    if (this.airY > 0 && this.jumpsUsed === 1) {
+    if (this.airY > 0 && this.jumpsUsed >= 1 && this.jumpsUsed < maxJumps) {
       this.airV = DOUBLE_JUMP_V;
-      this.jumpsUsed = 2;
+      this.jumpsUsed++;
       audio.play('form-switch', { volume: 0.5, rate: 1.6 }); // whoosh
       return true;
     }
@@ -384,9 +421,10 @@ export class Player {
   hurt(n, source = {}) {
     if (this.iframes > 0) return;
     if (source.groundAttack && this.airborne) return; // jumped clean over it
+    if (this.buffs.star > 0) return; // starlight makes Kael untouchable
     if (this.defending && !source.pierceDefend) {
       const sinceRaise = this._time - this.defendStart;
-      if (sinceRaise <= PARRY_WINDOW) {
+      if (sinceRaise <= PARRY_WINDOW + shieldDef().parryBonus) {
         // PARRY: no damage, attacker dazed
         audio.play('parry', { volume: 1 });
         this.iframes = 0.6;
@@ -395,7 +433,7 @@ export class Player {
         return;
       }
       audio.play('parry', { volume: 0.45, rate: 0.7 }); // dull block clank
-      this.damage(0.5);
+      this.damage(shieldDef().blunt);
       this.iframes = IFRAME_TIME;
       return;
     }
@@ -471,10 +509,15 @@ export class Player {
     this._applyPendingHit(dt, world);
     this._updateProjectiles(dt, world);
 
+    // timed power-up buffs tick down
+    for (const k of Object.keys(this.buffs)) {
+      if (this.buffs[k] > 0) this.buffs[k] -= dt;
+    }
+
     // jump physics (Y is visual-only; collisions stay on the XZ plane)
     if (this.airY > 0 || this.airV > 0) {
       this.airY += this.airV * dt;
-      this.airV -= GRAVITY * dt;
+      this.airV -= GRAVITY * (this.buffs.feather > 0 ? 0.7 : 1) * dt;
       if (this.airY <= 0) {
         this.airY = 0;
         this.airV = 0;
@@ -497,7 +540,9 @@ export class Player {
 
     const move = input.getMove();
     const mag = Math.hypot(move.x, move.z);
-    const speed = mag * f.def.speed * (this.defending ? DEFEND_SPEED_MULT : 1);
+    let speedMult = (this.defending ? DEFEND_SPEED_MULT : 1) * (1 + (state.perks.speed || 0) * 0.05);
+    if (this.buffs.star > 0) speedMult *= 1.4;
+    const speed = mag * f.def.speed * speedMult;
 
     if (mag > 0.01) {
       const nx = this.root.position.x + move.x * speed * dt;

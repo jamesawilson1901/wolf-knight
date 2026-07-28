@@ -58,6 +58,13 @@ export function persist() {
     checkpoint: state.checkpoint,
     maxHearts: state.maxHearts,
     potions: state.potions,
+    shards: state.shards,
+    inventory: JSON.parse(JSON.stringify(state.inventory)),
+    xp: state.xp,
+    level: state.level,
+    perks: { ...state.perks },
+    counters: { ...state.counters },
+    stickers: { ...state.stickers },
     formsUnlocked: [...state.formsUnlocked],
     pups: { [state.region]: pupList },
     settings: { ...state.settings },
@@ -65,6 +72,7 @@ export function persist() {
       bossDefeated: state.flags.bossDefeated,
       shortcutOpen: state.flags.shortcutOpen,
       burned: { ...state.flags.burned },
+      chests: { ...state.flags.chests },
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -89,6 +97,13 @@ export function applySave(profileId, profileName, data) {
   }
   state.maxHearts = data.maxHearts || 5;
   state.potions = data.potions !== undefined ? data.potions : 2;
+  state.shards = data.shards || 0;
+  if (data.inventory && data.inventory.gear) state.inventory = data.inventory;
+  state.xp = data.xp || 0;
+  state.level = data.level || 1;
+  if (data.perks) Object.assign(state.perks, data.perks);
+  state.counters = data.counters || {};
+  state.stickers = data.stickers || {};
   state.formsUnlocked = Array.isArray(data.formsUnlocked) && data.formsUnlocked.length
     ? data.formsUnlocked : ['knight', 'dark_wolf'];
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';
@@ -98,6 +113,7 @@ export function applySave(profileId, profileName, data) {
     state.flags.bossDefeated = !!data.flags.bossDefeated;
     state.flags.shortcutOpen = !!data.flags.shortcutOpen;
     state.flags.burned = data.flags.burned || {};
+    state.flags.chests = data.flags.chests || {};
   }
   state.spoken = data.spoken || {};
   if (data.settings) Object.assign(state.settings, data.settings);

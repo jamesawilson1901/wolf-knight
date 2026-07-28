@@ -5,7 +5,8 @@
 // is applied at build time.
 
 import * as THREE from 'three';
-import { loadGLB, prepareModel, instancePlacements } from './assets.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
 import { state } from './state.js';
 import { spawnEnemies } from './enemies.js';
@@ -418,12 +419,15 @@ async function buildR1(scene) {
   const world = new World(scene);
   buildShell(world, 16, 12, [
     { side: 'n', from: 4.8, to: 7.2 }, // exit to R2 (top-right)
+    { side: 's', from: 0.8, to: 3.2 }, // down to the Moonlit Den
     ...(state.flags.shortcutOpen ? [{ side: 'w', from: -3.2, to: -0.8 }] : []),
   ]);
   world.spawn = { x: -1, z: 4, angle: Math.PI };
 
   // Exit door → R2 south-west entrance
   world.addDoor(4.8, 7.2, -6.9, -5.85, 'r2', { x: -8, z: 4.4, angle: 0 });
+  // Cozy stairs down to the Den
+  world.addDoor(0.8, 3.2, 5.85, 6.9, 'den', { x: 0, z: -3.2, angle: 0 });
   // Shortcut door (opens after the boss) → back from R1 to nothing; the
   // matching door lives in R3. From R1 it is only an opening in the wall.
   if (state.flags.shortcutOpen) {
@@ -472,11 +476,151 @@ async function buildR1(scene) {
   // every kid meets it (and Pip's sword lesson) before leaving the room.
   world.markers.shadeSpots = [{ x: 2.5, z: -0.5 }];
 
-  // Way-finding: torch-lit doorway + a dirt path toward the exit
+  // Way-finding: torch-lit doorways + a dirt path toward the exit
   doorway(world, 6, -5.7, 'x');
+  doorway(world, 2, 5.6, 'x');
   if (state.flags.shortcutOpen) doorway(world, -7.6, -2, 'z');
   pathTiles(world, [[-1, 4], [1.5, 0.5], [4.5, -2.5], [6, -5.2]]);
+  pathTiles(world, [[0.5, 2.5], [2, 5.4]]);
 
+  // Loot: crates near the start, a hidden chest, a burn-cubby reward chest
+  world.markers.breakables = [
+    { x: -1.6, z: 2.4, kind: 'crate', shards: 2 },
+    { x: 0.6, z: 3.3, kind: 'barrel', shards: 2 },
+    { x: 3.4, z: -4.9, kind: 'crate', shards: 3 },
+  ];
+  world.markers.chestDefs = [
+    { id: 'c_r1_rocks', tier: 'wood', x: -6.9, z: -2.6, ry: 1.2, loot: { shards: 8 } },
+    { id: 'c_r1_cubby', tier: 'wood', x: -7.0, z: 3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
+  ];
+
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// The Moonlit Den — Luna's warm glade: shop, training barrels, rescued pups.
+// The one place with living green grass; corruption never reached it.
+// ---------------------------------------------------------------------------
+
+async function buildDen(scene) {
+  const world = new World(scene);
+  const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, mageGltf, generalAnims] =
+    await Promise.all([
+      loadGLB('./assets/env/den-survival/tent.glb'),
+      loadGLB('./assets/env/den-town/cart.glb'),
+      loadGLB('./assets/env/tree-a.glb'),
+      loadGLB('./assets/env/tree-b.glb'),
+      loadGLB('./assets/env/flower-a.glb'),
+      loadGLB('./assets/env/flower-b.glb'),
+      loadGLB('./assets/chars/mage.glb'),
+      loadGLB('./assets/anims/rig-medium-general.glb'),
+    ]);
+
+  // green shell: fresh grass + mossy walls
+  const halfW = 7, halfD = 5;
+  const floorPlacements = [];
+  for (let tx = 0; tx < 14; tx++) {
+    for (let tz = 0; tz < 10; tz++) {
+      floorPlacements.push({ x: tx - halfW + 0.5, z: tz - halfD + 0.5, ry: ((tx * 7 + tz * 13) % 4) * Math.PI / 2 });
+    }
+  }
+  world.add(instancePlacements(kit.floor.scene, floorPlacements, {
+    castShadow: false, materialTints: { grass: 0x5da05a },
+  }));
+  const wallPlacements = [];
+  const addWall = (tx, tz, side, coord) => {
+    if (side === 'n' && coord > -1.3 && coord < 1.3) return; // stairs up to R1
+    wallPlacements.push({
+      x: tx - halfW + 0.5, z: tz - halfD + 0.5,
+      ry: (Math.abs(tx * 11 + tz * 5) % 4) * Math.PI / 2,
+      sy: 1.7 + (Math.abs(tx * 31 + tz * 17) % 3) * 0.15,
+    });
+  };
+  for (let tx = -1; tx <= 14; tx++) { addWall(tx, -1, 'n', tx - halfW + 0.5); addWall(tx, 10, 's', tx - halfW + 0.5); }
+  for (let tz = 0; tz < 10; tz++) { addWall(-1, tz, 'w', 0); addWall(14, tz, 'e', 0); }
+  world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
+    materialTints: { grass: 0x5da05a, dirt: 0x6a5a48 },
+  }));
+  world.addBox(-8, -1.4, -6, -5); world.addBox(1.4, 8, -6, -5); // north wall w/ gap
+  world.addBox(-8, 8, 5, 6);
+  world.addBox(-8, -7, -6, 6); world.addBox(7, 8, -6, 6);
+  world.spawn = { x: 0, z: -3.2, angle: 0 };
+  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'r1', { x: 2, z: 4.6, angle: Math.PI });
+  doorway(world, 0, -4.4, 'x');
+
+  // warm heart campfire + tents + trees + flowers
+  checkpoint(world, 'cp_den', 0, 0.4);
+  for (const [gltf, x, z, s, ry] of [
+    [tentGltf, -4.8, -2.6, 1.5, 0.6], [tentGltf, -5.2, 1.8, 1.4, 2.2],
+    [treeA, 5.6, -3.6, 1.6, 0.4], [treeB, -2.8, 3.9, 1.5, 2.0], [treeA, 5.9, 3.4, 1.4, 3.4],
+  ]) {
+    const m = prepareModel(gltf.scene.clone());
+    m.position.set(x, 0, z);
+    m.rotation.y = ry;
+    m.scale.setScalar(s);
+    // the Den keeps NATURAL colors — clone materials out of the volcanic cache
+    m.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.name === 'grass') n.material.color.setHex(0x4e9a4a);
+      if (n.material.name === 'dirt') n.material.color.setHex(0x8a6a48);
+      if (n.material.name === 'foliage') n.material.color.setHex(0x4e9a4a);
+    });
+    world.add(m);
+    world.addCircle(x, z, 0.6);
+  }
+  for (const [x, z] of [[-2.2, -1.6], [1.8, 1.8], [3.4, -1.2], [-3.6, 1.2], [4.6, 1.6]]) {
+    const f = prepareModel(((x + z) % 2 === 0 ? flowerA : flowerB).scene.clone(), { castShadow: false });
+    f.position.set(x, 0, z);
+    f.scale.setScalar(1.3);
+    f.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); } });
+    world.add(f);
+  }
+
+  // The shopkeeper: a friendly mage by her cart
+  const cart = prepareModel(cartGltf.scene.clone());
+  cart.position.set(4.2, 0, -3.0);
+  cart.rotation.y = -0.5;
+  cart.scale.setScalar(1.1);
+  world.add(cart);
+  world.addCircle(4.2, -3.0, 0.7);
+  const mage = prepareCharacter(SkeletonUtils.clone(mageGltf.scene));
+  mage.scale.setScalar(0.5);
+  mage.position.set(3.2, 0, -2.2);
+  mage.rotation.y = 2.6;
+  world.add(mage);
+  const mixer = new THREE.AnimationMixer(mage);
+  const idle = generalAnims.animations.find((c) => c.name === 'Idle_A');
+  if (idle) mixer.clipAction(idle).play();
+  world.onAnimate((t, dt) => mixer.update(dt));
+  world.markers.shopSpot = { x: 3.2, z: -2.2 };
+
+  // training barrels (no loot — just for practicing swings)
+  world.markers.breakables = [
+    { x: -1.8, z: 2.8, kind: 'barrel', shards: 0 },
+    { x: -0.6, z: 3.4, kind: 'barrel', shards: 0 },
+  ];
+
+  // rescued pups live here, playing in the grass
+  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+  const rescued = Object.keys(state.flags.pups);
+  rescued.forEach((id, i) => {
+    const pup = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+    pup.scale.setScalar(0.16);
+    world.add(pup);
+    const pupMixer = new THREE.AnimationMixer(pup);
+    const clip = wolfGltf.animations.find((c) => c.name === (i % 2 ? 'Gallop' : 'Idle'));
+    if (clip) pupMixer.clipAction(clip).play();
+    const cx = -3 + i * 2.2, cz = 2.2, r = 1.1 + i * 0.3;
+    world.onAnimate((t, dt) => {
+      pupMixer.update(dt);
+      const a = t * (0.5 + i * 0.2) + i * 2;
+      pup.position.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r);
+      pup.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI / 2;
+    });
+  });
+
+  // soft daylight mood handled by main (den has no lava rumble)
   return world;
 }
 
@@ -655,6 +799,15 @@ async function buildR3(scene) {
   checkpoint(world, 'cp3', -2.2, 5.6);
   potionPickup(world, 2.2, 5.6);
 
+  // Loot: entry barrels; once the boss falls, a golden chest appears
+  world.markers.breakables = [
+    { x: -5.8, z: 5.6, kind: 'barrel', shards: 2 },
+    { x: 5.8, z: 5.9, kind: 'crate', shards: 2 },
+  ];
+  world.markers.chestDefs = state.flags.bossDefeated
+    ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20, powerup: 'fury' } }]
+    : [];
+
   // Way-finding: torch-lit entry + shortcut doorway (once open) + path
   doorway(world, 0, 6.35, 'x');
   if (state.flags.shortcutOpen) doorway(world, -6.4, 0.6, 'z');
@@ -702,7 +855,7 @@ async function buildR3(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3 };
+export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3, den: buildDen };
 
 export async function buildRoom(id, scene) {
   await loadKit();

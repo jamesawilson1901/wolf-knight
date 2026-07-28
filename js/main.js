@@ -16,6 +16,11 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist } from './save.js';
 import { showTitle } from './title.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents } from './loot.js';
+import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
+import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
+import { addGear } from './items.js';
+import { Menus, bigToast } from './menus.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
 
@@ -222,6 +227,11 @@ function narrationTriggers(dt, t) {
     }
   }
 
+  if (state.room === 'den') {
+    narration.say('den_intro');
+    if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
+  }
+
   if (state.room === 'r2') {
     const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
     if (moth) narration.say('moth_intro');
@@ -268,9 +278,73 @@ function narrationTriggers(dt, t) {
 }
 
 function updateMusic() {
-  if (state.room === 'r3' && world.boss && !world.boss.defeated) audio.playMusic('boss');
+  if (state.room === 'den') audio.playMusic('den');
+  else if (state.room === 'r3' && world.boss && !world.boss.defeated) {
+    audio.playMusic('boss-loop', { intro: 'boss-intro' });
+  } else if (state.room === 'r2') audio.playMusic('causeway');
   else audio.playMusic('region-ember');
-  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65 }[state.room] || 0.5);
+  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0 }[state.room] ?? 0.5);
+}
+
+// ---------------------------------------------------------------------------
+// HUD: shards, level + XP bar, active buffs
+// ---------------------------------------------------------------------------
+
+function renderShards() {
+  document.getElementById('shards').textContent = `🔸 ${state.shards}`;
+}
+
+function renderLevel() {
+  const el = document.getElementById('level-badge');
+  el.firstChild.textContent = `Lv ${state.level}`;
+  document.getElementById('xp-fill').style.width =
+    Math.round((state.xp / xpForLevel(state.level)) * 100) + '%';
+}
+
+function renderBuffs() {
+  const el = document.getElementById('buffs');
+  el.innerHTML = '';
+  if (!player) return;
+  for (const [k, def] of Object.entries(POWERUPS)) {
+    if (player.buffs[k] > 0) {
+      const chip = document.createElement('div');
+      chip.className = 'buff-chip';
+      chip.textContent = def.icon;
+      chip.style.opacity = Math.min(1, 0.35 + player.buffs[k] / def.time);
+      el.appendChild(chip);
+    }
+  }
+}
+
+// Chest contents flow through here (shards are scattered by the chest itself).
+function giveLoot(chest) {
+  const L = chest.loot || {};
+  const lines = [];
+  if (L.shards) lines.push(`🔸 ${L.shards}`);
+  if (L.potion) {
+    state.potions = Math.min(3, state.potions + L.potion);
+    renderPotions(player);
+    lines.push('🧪 potion');
+  }
+  if (L.heartPiece) {
+    state.inventory.heartPieces += L.heartPiece;
+    lines.push('💗 heart piece');
+    if (state.inventory.heartPieces >= 4) {
+      state.inventory.heartPieces -= 4;
+      state.maxHearts++;
+      player.maxHearts = state.maxHearts;
+      player.healFull();
+      effects.warmFlood();
+      bigToast('💖 A whole new heart!');
+    }
+  }
+  if (L.gear) {
+    addGear(L.gear);
+    lines.push('🗡️ new gear');
+  }
+  if (L.powerup) spawnPowerup(world, chest.x, chest.z + 0.8, L.powerup);
+  if (lines.length) bigToast(`🎁 ${lines.join(' · ')}`);
+  persist();
 }
 
 // Progressive controls: buttons appear when Pip teaches them (persisted via
@@ -311,6 +385,7 @@ document.addEventListener('visibilitychange', () => {
 
 function onPupCollected() {
   renderPups();
+  bumpCounter('pupsFound');
   const found = Object.keys(state.flags.pups).length;
   if (found >= 3 && state.maxHearts === 5) {
     // all pups safe → a permanent extra heart, granted full
@@ -326,7 +401,17 @@ function onPupCollected() {
 }
 
 async function setupRoomExtras() {
+  await preloadLoot();
+  await spawnBreakables(world, world.markers.breakables || []);
+  await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  shopWasNear = true; // don't pop the shop just from spawning next to it
+  // every so often a smashed pot hides a power-up
+  const potDrops = ['fury', 'feather', 'magnet', 'star'];
+  world.onBreakableSmashed = (x, z) => {
+    const n = state.counters.pots || 0;
+    if (n % 9 === 4) spawnPowerup(world, x, z, potDrops[n % potDrops.length]);
+  };
   if (pip) {
     pip.place(player.root.position.x - 0.9, player.root.position.z + 0.9, player.root.rotation.y);
   }
@@ -392,6 +477,9 @@ async function respawnAtCheckpoint() {
 
 let effects = null;
 let ui = null;
+let menus = null;
+let menuPaused = false;
+let shopWasNear = false;
 
 async function start() {
   // Assets stream in while the title screen is up.
@@ -419,6 +507,7 @@ async function start() {
     effects.shake(0.15, 0.2);
     effects.hitStop(0.09);            // freeze the perfect moment
     narration.say('parry_praise');    // once per save
+    bumpCounter('parries');
   };
   player.onHitConnected = () => effects.hitStop(0.07);
   renderHearts(player);
@@ -441,6 +530,34 @@ async function start() {
     }
   };
   wireSettings();
+
+  menus = new Menus({
+    player,
+    onPauseGame: () => { menuPaused = true; },
+    onResumeGame: () => { menuPaused = false; },
+  });
+  menus.onHudChanged = () => { renderShards(); renderPotions(player); };
+  lootEvents.onShards = () => renderShards();
+  progressEvents.onXp = () => renderLevel();
+  progressEvents.onLevelUp = (level) => {
+    renderLevel();
+    player.hearts = Math.min(player.maxHearts, player.hearts + 1);
+    renderHearts(player);
+    bigToast(`⭐ Level ${level}!`);
+    effects.warmFlood();
+    if (level % 3 === 0) setTimeout(() => menus.showPerkPick(level), 900);
+    persist();
+  };
+  progressEvents.onSticker = (sticker) => {
+    bigToast(`📒 New sticker: ${sticker.icon} ${sticker.name}`);
+  };
+  powerupEvents.onGained = (kind, def) => {
+    bigToast(`${def.icon} ${def.name}!`);
+    renderBuffs();
+  };
+  renderShards();
+  renderLevel();
+  checkStickers();
   player.onFormChanged = () => ui.refreshBadge();
   input.onHold = (x, y, pointerId) => {
     if (transitioning) return false;
@@ -460,7 +577,7 @@ async function start() {
     const t = timer.getElapsed();
     if (!world) return;
 
-    if (paused) {
+    if (paused || menuPaused) {
       renderer.render(scene, camera);
       return;
     }
@@ -482,13 +599,28 @@ async function start() {
       if (input.consumeSpecial()) player.trySpecial(effects, world);
       if (input.consumeAttack()) player.tryAttack(world);
       if (input.consumeRanged()) player.tryRanged(world);
-      if (input.consumeJump()) player.tryJump();
+      if (input.consumeJump()) {
+        const wasAirborne = player.jumpsUsed >= 1;
+        if (player.tryJump() && wasAirborne) bumpCounter('doubleJumps');
+      }
       if (input.consumePotion()) player.tryPotion();
 
       player.update(dt, input, world);
       pip.update(dt, t, player, world);
       if (world.updateEnemies) world.updateEnemies(dt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
+      updateShards(world, dt, t, player);
+      updateChests(world, player, giveLoot);
+      updatePowerups(world, dt, t, player);
+      updateBuffVisuals(world, dt, t, player);
+      renderBuffs();
+
+      // the Den shop opens when Kael walks up to the mage
+      if (world.markers.shopSpot) {
+        const near = nearSpot(world.markers.shopSpot, 1.7);
+        if (near && !shopWasNear) menus.showShop();
+        shopWasNear = near;
+      }
       if (world.boss) {
         if (!world.boss.onDefeated) {
           world.boss.onDefeated = () => {
@@ -497,6 +629,10 @@ async function start() {
             ui.refreshBadge();
             if (world.openShortcut) world.openShortcut(); // the way home opens
             audio.playMusic('victory', { loop: false, then: 'region-ember' });
+            bumpCounter('bosses');
+            grantXp(60);
+            spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
+            spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
             narration.say('boss_defeat');
             narration.say('firewolf_grant');
             narration.say('firewolf_howto');

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { audio } from './audio.js';
+import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
@@ -47,7 +48,8 @@ class Enemy {
     this.root = new THREE.Group();
     this.root.position.set(x, 0, z);
     world.add(this.root);
-    this.hp = hp;
+    // gentle level scaling on hp (behaviors carry real difficulty)
+    this.hp = Math.round(hp * enemyScale() * 2) / 2;
     this.radius = radius;
     this.dead = false;
     this.stunned = 0;
@@ -86,6 +88,8 @@ class Enemy {
 
   die() {
     this.dead = true;
+    grantXp(XP_VALUES[this.constructor.name] || 0);
+    bumpCounter('kills');
     smokePuff(this.world, this.x, 0.5, this.z, this.puffTint || 0x5a4d66);
     audio.play('puff', { volume: 0.8 });
     // sometimes shadows leave a warm ember behind — a little half-heart heal

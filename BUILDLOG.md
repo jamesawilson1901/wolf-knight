@@ -454,6 +454,55 @@ parry→stun→one-hit kill, chip-damage numbers, drop heal 3→3.5, cover true/
 the right spots, potion save/restore, ambient live, zero console errors; screenshots
 confirm paths/doorways/branch dressing.
 
+## v2.0 / S1 — The systems expansion (overnight build)
+
+The template for the 10-hour game: every core system, built into Ember Hollow first.
+
+- **Ember shards** (currency): real Kenney coin models scatter with hop physics from
+  crates/barrels/chests/boss, fly to Kael when near (Magnet buff: from far), HUD
+  counter. **Breakables** (Survival Kit crates/barrels) are enemy-shaped so swords,
+  bolts, slams and the Blood Moon all smash them (wood debris + shards; every ~9th
+  pot hides a power-up). Den training barrels give nothing (no farming).
+- **Chests**: wooden (Survival Kit) and golden (Pirate Kit treasure chest, glowing).
+  Walk-close to open — hop + shard burst + loot toast; opened chests persist per save
+  and sit dark. Contents: shards, potions, gear, power-ups, **heart pieces** (4 = +1
+  permanent heart). Placed: R1 ×2 (incl. inside the burn cubby), R2 branch + golden
+  past the geysers (heart piece), R3 golden after the boss.
+- **Inventory + gear**: 6 weapons / 3 shields (KayKit Adventurers + Fantasy Weapons
+  Bits), each changing *feel* — dagger fast, spear long, hammer slow-but-WHAM;
+  shields trade block strength vs parry window. Equipped models mount on the
+  knight's hand bones. 🎒 button → tap-to-equip grid.
+- **The Moonlit Den**: a green glade off R1 south (the one uncorrupted place) —
+  campfire checkpoint, tents, trees/flowers (natural colors, not volcanic tints),
+  **Maren the trader** (KayKit Mage, idling by her Fantasy-Town cart; walk up → shop),
+  training barrels, and **every rescued pup lives here**, romping in circles.
+  Peaceful Village theme plays; no lava rumble.
+- **Shop**: potions (15) + the gear ladder (70–300 shards); affordability graying,
+  auto-equip on purchase, gear leaves stock once owned.
+- **XP + levels**: enemies grant XP (shade 5 → hound 20, boss 60); level-up = toast,
+  warm flood, +1 heart heal; every 3rd level a **pick-one-of-two perk card**
+  (deterministic pair per level): sharper sword / brighter spark / faster special /
+  swift paws. Enemy hp scales +8%/level (cap ×2.2) so numbers keep pace while
+  behaviors carry difficulty.
+- **Power-ups** (timed, big, visible): ⭐ Star of Luna (8s invincible+fast, sparkle
+  trail), 🔥 Ember Fury (10s triple damage), 🪶 Feather (floaty triple-jump), 🧲
+  Magnet, 🌙 Moon Shard (instant special). Sources: golden chests, pot luck, boss
+  victory gift. HUD chips show active buffs.
+- **Map screen** (pause → 🗺️): Den—R1—R2—R3 chain with you-are-here; **sticker book**
+  (pause → 📒): 14 kid-achievements earned from play counters (kills, parries, pots,
+  chests, shards, jumps, levels…), pop as toasts.
+- **Music**: HydroGene arrives in-game — Den = Peaceful Village, R2 = Volcanic
+  Crater, boss = **Battle Theme II with a true intro→loop** (sample-accurate
+  scheduling), boss.wav retired. Save schema extended additively (shards, inventory,
+  xp/level/perks, counters, stickers, chests).
+
+Verified end-to-end headless (fresh profile): smash→scatter→collect; chest open +
+persist; level 1→3 with perk card picked; Den entry (music swap) → shop opened by
+walking to Maren → bought potion + Swift Fang (auto-equip, attack config reflects
+dagger stats) → re-equipped via inventory; feather triple-jump gate; map + sticker
+book render (2 earned); full reload restore. Zero console errors. Kit-texture
+collisions solved by per-kit Textures folders (survival/pirate/platformer/town).
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

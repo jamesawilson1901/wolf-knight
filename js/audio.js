@@ -26,7 +26,10 @@ const SFX_FILES = {
 
 const MUSIC_FILES = {
   'region-ember': './assets/audio/music/region-ember.ogg',
-  boss: './assets/audio/music/boss.wav',
+  causeway: './assets/audio/music/causeway.mp3',
+  den: './assets/audio/music/den.ogg',
+  'boss-intro': './assets/audio/music/boss-intro.ogg',
+  'boss-loop': './assets/audio/music/boss-loop.ogg',
   victory: './assets/audio/music/victory.ogg',
 };
 
@@ -150,37 +153,57 @@ class AudioSystem {
     } catch (e) { /* decode/fetch failure is non-fatal */ }
   }
 
-  // Loops `name`; pass {loop:false, then:'other'} for a one-shot sting.
+  // Loops `name`; pass {loop:false, then:'other'} for a one-shot sting, or
+  // {intro:'track'} to play an intro once and glide seamlessly into the loop.
   async playMusic(name, opts = {}) {
     this._wantMusic = { name, opts };
     if (!this.ctx) return;
     if (this._musicName === name && opts.loop !== false) return;
     const url = MUSIC_FILES[name];
     if (!url) return;
-    let buf;
-    try { buf = await this._buffer(url); } catch (e) { return; }
+    let buf, introBuf = null;
+    try {
+      buf = await this._buffer(url);
+      if (opts.intro) introBuf = await this._buffer(MUSIC_FILES[opts.intro]);
+    } catch (e) { return; }
     if (this._wantMusic.name !== name) return; // superseded while decoding
 
     // fade the old track out
+    const t = this.ctx.currentTime;
     if (this._musicSource) {
       const old = this._musicSource;
+      const oldIntro = this._musicIntroSource;
       const og = this._musicFade;
-      const t = this.ctx.currentTime;
       og.gain.cancelScheduledValues(t);
       og.gain.linearRampToValueAtTime(0, t + 0.7);
-      setTimeout(() => { try { old.stop(); } catch (e) {} }, 800);
+      setTimeout(() => {
+        try { old.stop(); } catch (e) {}
+        try { oldIntro && oldIntro.stop(); } catch (e) {}
+      }, 800);
     }
+
+    const fade = this.ctx.createGain();
+    fade.gain.value = 0;
+    fade.connect(this.musicGain);
+    fade.gain.linearRampToValueAtTime(1, t + 0.8);
 
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.loop = opts.loop !== false;
-    const fade = this.ctx.createGain();
-    fade.gain.value = 0;
     src.connect(fade);
-    fade.connect(this.musicGain);
-    src.start();
-    const t = this.ctx.currentTime;
-    fade.gain.linearRampToValueAtTime(1, t + 0.8);
+
+    if (introBuf) {
+      // intro plays once; the loop starts sample-accurately as it ends
+      const intro = this.ctx.createBufferSource();
+      intro.buffer = introBuf;
+      intro.connect(fade);
+      intro.start(t);
+      src.start(t + introBuf.duration);
+      this._musicIntroSource = intro;
+    } else {
+      src.start();
+      this._musicIntroSource = null;
+    }
     this._musicSource = src;
     this._musicFade = fade;
     this._musicName = name;

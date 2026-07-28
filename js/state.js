@@ -11,11 +11,24 @@ export const state = {
     shortcutOpen: false,
     burned: {},   // burnable id -> true
     pups: {},     // pup id -> true
+    chests: {},   // chest id -> opened
   },
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',
   maxHearts: 5,
   potions: 2,
+  shards: 0,                    // ember shards (currency)
+  inventory: {
+    gear: ['sword_knight', 'shield_badge'],
+    equipped: { weapon: 'sword_knight', shield: 'shield_badge' },
+    treasures: [],
+    heartPieces: 0,
+  },
+  xp: 0,
+  level: 1,
+  perks: { sword: 0, bolt: 0, cooldown: 0, speed: 0 },
+  counters: {},                 // sticker-book tallies (kills, parries, ...)
+  stickers: {},                 // sticker id -> true
   settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95 },
   spoken: {}, // narration line id -> true (story lines fire once per save)
 };
