@@ -11,10 +11,11 @@ import { persist } from './save.js';
 const $ = (id) => document.getElementById(id);
 
 export class Menus {
-  constructor({ player, onPauseGame, onResumeGame }) {
+  constructor({ player, onPauseGame, onResumeGame, onTravel }) {
     this.player = player;
     this.onPauseGame = onPauseGame;
     this.onResumeGame = onResumeGame;
+    this.onTravel = onTravel;
     this._perkResolve = null;
 
     $('inv-btn').addEventListener('pointerdown', (e) => {
@@ -173,6 +174,40 @@ export class Menus {
     el.appendChild(row);
     el.style.display = 'flex';
     this.onPauseGame();
+  }
+
+  // ---- Fast travel (Luna's moonstone in the Den) -------------------------
+  showTravel() {
+    const el = $('map-menu');
+    el.innerHTML = '';
+    const h = document.createElement('h2');
+    h.textContent = '🌙 Luna’s Moonstone';
+    el.appendChild(h);
+    const blurb = document.createElement('div');
+    blurb.style.cssText = 'font-size:15px;opacity:.85';
+    blurb.textContent = 'Where shall we go, Kael?';
+    el.appendChild(blurb);
+    const row = document.createElement('div');
+    row.className = 'map-rooms';
+    const spots = [
+      { room: 'r1', name: 'Ember Hollow', icon: '🔥' },
+      ...(state.spoken.region_complete ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
+    ];
+    for (const s of spots) {
+      const d = document.createElement('div');
+      d.className = 'map-room';
+      d.style.cursor = 'pointer';
+      d.innerHTML = `<div style="font-size:26px">${s.icon}</div><div>${s.name}</div>`;
+      d.addEventListener('pointerdown', () => {
+        audio.play('ui-click', { volume: 0.8 });
+        this._close('map-menu');
+        if (this.onTravel) this.onTravel(s.room);
+      });
+      row.appendChild(d);
+    }
+    el.appendChild(row);
+    el.appendChild(this._closeBtn('map-menu'));
+    this._open('map-menu');
   }
 
   // ---- Map ---------------------------------------------------------------

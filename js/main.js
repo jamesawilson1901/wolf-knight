@@ -232,6 +232,7 @@ function narrationTriggers(dt, t) {
   if (state.room === 'den') {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
+    if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
   }
 
   if (state.room === 'r2') {
@@ -460,6 +461,7 @@ async function setupRoomExtras() {
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
   shopWasNear = true; // don't pop the shop just from spawning next to it
+  travelWasNear = true;
   // every so often a smashed pot hides a power-up
   const potDrops = ['fury', 'feather', 'magnet', 'star'];
   world.onBreakableSmashed = (x, z) => {
@@ -552,6 +554,7 @@ let ui = null;
 let menus = null;
 let menuPaused = false;
 let shopWasNear = false;
+let travelWasNear = false;
 
 async function start() {
   // Assets stream in while the title screen is up.
@@ -607,6 +610,10 @@ async function start() {
     player,
     onPauseGame: () => { menuPaused = true; },
     onResumeGame: () => { menuPaused = false; },
+    onTravel: (room) => {
+      audio.play('form-switch', { volume: 0.7, rate: 0.8 }); // moonstone chime
+      loadRoom(room);
+    },
   });
   menus.onHudChanged = () => { renderShards(); renderPotions(player); };
   lootEvents.onShards = () => renderShards();
@@ -693,6 +700,12 @@ async function start() {
         const near = nearSpot(world.markers.shopSpot, 1.7);
         if (near && !shopWasNear) menus.showShop();
         shopWasNear = near;
+      }
+      // ...and the moonstone opens fast travel
+      if (world.markers.travelSpot) {
+        const near = nearSpot(world.markers.travelSpot, 1.5);
+        if (near && !travelWasNear) menus.showTravel();
+        travelWasNear = near;
       }
       if (world.boss) {
         if (!world.boss.onDefeated) {

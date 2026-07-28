@@ -595,6 +595,38 @@ async function buildDen(scene) {
   world.onAnimate((t, dt) => mixer.update(dt));
   world.markers.shopSpot = { x: 3.2, z: -2.2 };
 
+  // Luna's moonstone — the fast-travel waystone. Glows once there is
+  // somewhere to travel (a second region freed).
+  {
+    const base = prepareModel(kit.rockSA.scene.clone());
+    base.position.set(-4.6, 0, -3.4);
+    base.scale.setScalar(1.6);
+    base.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      n.material.color.setHex(0x8d93a8);
+    });
+    world.add(base);
+    world.addCircle(-4.6, -3.4, 0.45);
+    const orb = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.22, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, emissive: 0xa8bcff, emissiveIntensity: 2.2, roughness: 1,
+      })
+    );
+    orb.position.set(-4.6, 1.0, -3.4);
+    world.add(orb);
+    const moonGlow = new THREE.PointLight(0xa8bcff, 4, 7, 1.9);
+    moonGlow.position.set(-4.6, 1.3, -3.4);
+    world.add(moonGlow);
+    world.onAnimate((t) => {
+      orb.position.y = 1.0 + Math.sin(t * 1.8) * 0.08;
+      orb.rotation.y = t * 0.9;
+      moonGlow.intensity = 3.4 + Math.sin(t * 2.7) * 0.9;
+    });
+    world.markers.travelSpot = { x: -4.6, z: -3.4 };
+  }
+
   // training barrels (no loot — just for practicing swings)
   world.markers.breakables = [
     { x: -1.8, z: 2.8, kind: 'barrel', shards: 0 },

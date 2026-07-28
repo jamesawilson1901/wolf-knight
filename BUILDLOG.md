@@ -564,8 +564,18 @@ template. All headless-verified (verify-s2 + S1 regression + offline), zero erro
   halves it) — worth a real playthrough feel pass.
 - E2 gate bars rise over ~1.6s; on very slow devices the collider removal
   lags the visual slightly (cosmetic only).
-- Not built yet: Den fast-travel, FBXLoader for the Quaternius animated
-  monsters (Bat/Slime/Dragon for region 3+), S3 Wild Woods.
+- Not built yet: FBXLoader for the Quaternius animated monsters
+  (Bat/Slime/Dragon for region 3+), S3 Wild Woods.
+
+## v2.1.1 — Den fast travel (overnight, third block)
+
+Luna's moonstone now stands in the Den (gray waystone + floating moonlit orb,
+near the tents). Walk up to it and a travel menu opens: Ember Hollow always,
+Stoneroot Caverns once the celebration has played. Picking a destination plays
+the moonstone chime and loads that region's entrance — no more walking the full
+R1→R2→R3 chain to reach the caverns. New Pip line (`moonstone_intro`) teaches
+it on first approach. Headless-verified (menu opens, both options, travel to
+e1, zero errors). SW v2.1.1.
 
 ## Phase 0 verification (recorded)
 
