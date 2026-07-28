@@ -31,6 +31,9 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 | Forest Nature Pack | KayKit (Kay Lousberg) | Forest region flora | https://kaylousberg.itch.io/ |
 | Halloween Bits | KayKit (Kay Lousberg) | Spooky props: graves, crypts, lanterns, dead trees | https://kaylousberg.itch.io/ |
 | Skeletons 1.1 | KayKit (Kay Lousberg) | Skeleton enemy family (Warrior/Mage/Rogue/Minion) | https://kaylousberg.itch.io/kaykit-skeletons |
+| Medieval Hexagon Pack | KayKit (Kay Lousberg) | World-map hex tiles, towns, castles (FBX/OBJ + atlas) | https://kaylousberg.itch.io/ |
+| Animated Monster Pack | Quaternius | Bat, Dragon, Skeleton, Slime enemies (FBX, animated) | https://quaternius.com |
+| Stylish Plants | Nobiax / yughues | Decorative flora (OBJ/FBX) | https://opengameart.org/users/yughues |
 | Modular Dungeon Pack | Quaternius | Cave interiors — later phases | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
 | Particle Pack | Kenney | FX sprites — later phases | https://kenney.nl/assets/particle-pack |
 | UI Pack | Kenney | HUD graphics — later phases | https://kenney.nl/assets/ui-pack |
@@ -42,7 +45,7 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 | Cave Theme (`region-ember`) | Brandon Morris | Ember Hollow region music | https://opengameart.org/content/cave-theme |
 | Boss Battle Music (`boss`) | Juhani Junkala | Shadowgrip fight | https://opengameart.org/content/boss-battle-music |
 | Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
-| HydroGene — 16-bit RPG Music (tracks 1-11 so far, OGG) | HydroGene | Region/hub/battle themes for the expansion (`asset-downloads/music/hydrogene/`) | https://hydrogene.itch.io/high-quality-16-bit-music |
+| HydroGene — 16-bit RPG Music (complete library, 28 tracks) | HydroGene | Region/hub/battle themes for the expansion (`asset-downloads/music/hydrogene/`) | https://hydrogene.itch.io/high-quality-16-bit-music |
 | RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits (`chop`), puffs/whooshes (`cloth*`) | https://kenney.nl/assets/rpg-audio |
 | UI Audio | Kenney | UI clicks, checkpoint tick (`click*`) | https://kenney.nl/assets/ui-audio |
 | Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`) | https://kenney.nl/assets/impact-sounds |
