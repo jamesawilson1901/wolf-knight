@@ -10,6 +10,9 @@ export const state = {
     bossDefeated: false,
     shortcutOpen: false,
     burned: {},   // burnable id -> true
+    cracked: {},  // cracked-rock id -> true (Earth Wolf stomp)
+    plates: {},   // pressure-plate id -> true (boulder puzzles)
+    wardenDefeated: false, // Stoneroot mini-boss
     pups: {},     // pup id -> true
     chests: {},   // chest id -> opened
   },

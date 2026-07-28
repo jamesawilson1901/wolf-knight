@@ -34,7 +34,7 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 | Medieval Hexagon Pack | KayKit (Kay Lousberg) | World-map hex tiles, towns, castles (FBX/OBJ + atlas) | https://kaylousberg.itch.io/ |
 | Animated Monster Pack | Quaternius | Bat, Dragon, Skeleton, Slime enemies (FBX, animated) | https://quaternius.com |
 | Stylish Plants | Nobiax / yughues | Decorative flora (OBJ/FBX) | https://opengameart.org/users/yughues |
-| Modular Dungeon Pack | Quaternius | Cave interiors — later phases | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
+| Modular Dungeon Pack | Quaternius | Stoneroot Caverns interiors — walls, floors, torches, traps, statues (converted OBJ→GLB) | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
 | Particle Pack | Kenney | FX sprites — later phases | https://kenney.nl/assets/particle-pack |
 | UI Pack | Kenney | HUD graphics — later phases | https://kenney.nl/assets/ui-pack |
 

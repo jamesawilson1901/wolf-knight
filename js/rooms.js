@@ -850,15 +850,568 @@ async function buildR3(scene) {
       portalLight.intensity = 5 + Math.sin(t * 3.1) * 1.4;
     });
     world.markers.exitSpot = { x: 0, z: -5.6 };
+    // Once the Part C celebration has played, the ring becomes a real door
+    // down into the Stoneroot Caverns.
+    world.addDoor(-0.9, 0.9, -6.3, -5.2, 'e1', { x: 0, z: 4.6, angle: Math.PI },
+      () => !!state.spoken.region_complete);
   }
 
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3, den: buildDen };
+// ---------------------------------------------------------------------------
+// Stoneroot Caverns — region 2. Quaternius Modular Dungeon pieces (converted
+// to GLB) on the same shell/collider system. Darker rig (world.lightScale),
+// torch pools of light, skeletons that wake from bone piles.
+// ---------------------------------------------------------------------------
+
+let dkit = null;
+async function loadDungeonKit() {
+  if (dkit) return dkit;
+  const names = {
+    floor: './assets/env/dungeon/Floor_Modular.glb',
+    wall: './assets/env/dungeon/Wall_Modular.glb',
+    wallCover: './assets/env/dungeon/WallCover_Modular.glb',
+    arch: './assets/env/dungeon/Arch.glb',
+    bars: './assets/env/dungeon/Arch_bars.glb',
+    column: './assets/env/dungeon/Column.glb',
+    column2: './assets/env/dungeon/Column2.glb',
+    torch: './assets/env/dungeon/Torch.glb',
+    skull: './assets/env/dungeon/Skull.glb',
+    cobweb: './assets/env/dungeon/Cobweb.glb',
+    barrel: './assets/env/dungeon/Barrel.glb',
+    crate: './assets/env/dungeon/Crate.glb',
+    vase: './assets/env/dungeon/Vase.glb',
+    pedestal: './assets/env/dungeon/Pedestal.glb',
+    statue: './assets/env/dungeon/Statue_Horse.glb',
+    trapBase: './assets/env/dungeon/Trap_empty.glb',
+    spikes: './assets/env/dungeon/Spikes.glb',
+    banner: './assets/env/dungeon/Banner_wall.glb',
+    brick: './assets/env/dungeon/Brick.glb',
+  };
+  const entries = await Promise.all(
+    Object.entries(names).map(async ([k, url]) => [k, await loadGLB(url)])
+  );
+  dkit = Object.fromEntries(entries);
+  return dkit;
+}
+
+// Stone shell: dungeon floor tiles (2×2) + modular walls with door gaps.
+// Collider layout matches buildShell so doors/entries behave identically.
+function buildStoneShell(world, w, d, gaps = []) {
+  const halfW = w / 2, halfD = d / 2;
+
+  const floorPlacements = [];
+  for (let tx = 0; tx < w / 2; tx++) {
+    for (let tz = 0; tz < d / 2; tz++) {
+      floorPlacements.push({
+        x: tx * 2 - halfW + 1,
+        z: tz * 2 - halfD + 1,
+        y: 0.06,
+        ry: ((tx * 7 + tz * 13) % 4) * Math.PI / 2,
+      });
+    }
+  }
+  world.add(instancePlacements(dkit.floor.scene, floorPlacements, { castShadow: false }));
+
+  const inGap = (side, coord) =>
+    gaps.some((g) => g.side === side && coord > g.from && coord < g.to);
+
+  // walls are 2 wide × 2 tall; stack a second row for cavern height
+  const wallPlacements = [];
+  const addWall = (x, z, ry, side, coord) => {
+    if (inGap(side, coord)) return;
+    wallPlacements.push({ x, z, y: 1.06, ry });
+    wallPlacements.push({ x, z, y: 2.66, ry, sy: 0.6 });
+  };
+  for (let tx = 0; tx < w / 2; tx++) {
+    const x = tx * 2 - halfW + 1;
+    addWall(x, -halfD - 0.22, 0, 'n', x);
+    addWall(x, halfD + 0.22, 0, 's', x);
+  }
+  for (let tz = 0; tz < d / 2; tz++) {
+    const z = tz * 2 - halfD + 1;
+    addWall(-halfW - 0.22, z, Math.PI / 2, 'w', z);
+    addWall(halfW + 0.22, z, Math.PI / 2, 'e', z);
+  }
+  world.add(instancePlacements(dkit.wall.scene, wallPlacements));
+
+  const segments = (side, lo, hi) => {
+    const cuts = gaps.filter((g) => g.side === side).sort((a, b) => a.from - b.from);
+    let start = lo;
+    const out = [];
+    for (const c of cuts) {
+      if (c.from > start) out.push([start, c.from]);
+      start = c.to;
+    }
+    if (start < hi) out.push([start, hi]);
+    return out;
+  };
+  for (const [a, b] of segments('n', -halfW - 1, halfW + 1)) world.addBox(a, b, -halfD - 1, -halfD + 0.1);
+  for (const [a, b] of segments('s', -halfW - 1, halfW + 1)) world.addBox(a, b, halfD - 0.1, halfD + 1);
+  for (const [a, b] of segments('w', -halfD - 1, halfD + 1)) world.addBox(-halfW - 1, -halfW + 0.1, a, b);
+  for (const [a, b] of segments('e', -halfD - 1, halfD + 1)) world.addBox(halfW - 0.1, halfW + 1, a, b);
+
+  return { halfW, halfD };
+}
+
+// A torch column: warm flame + a pool of real light (the caverns run dark).
+// `bare` skips the column base (for sconces mounted on existing pillars).
+function wallTorch(world, x, z, ry = 0, { bare = false } = {}) {
+  if (!bare) {
+    const col = prepareModel(dkit.column.scene.clone());
+    col.position.set(x, 0, z);
+    col.scale.setScalar(0.35);
+    world.add(col);
+    world.addCircle(x, z, 0.28);
+  }
+  const torch = prepareModel(dkit.torch.scene.clone());
+  torch.position.set(x, bare ? 1.3 : 1.55, z);
+  torch.rotation.y = ry;
+  torch.scale.setScalar(1.4);
+  torch.traverse((n) => {
+    if (n.isMesh && n.material.name === 'Fire') {
+      n.material = n.material.clone();
+      n.material.emissive = new THREE.Color(0xffa03a);
+      n.material.emissiveIntensity = 2.4;
+    }
+  });
+  world.add(torch);
+  const light = new THREE.PointLight(0xffb25a, 5, 8, 1.9);
+  light.position.set(x, 1.9, z);
+  world.add(light);
+  world.onAnimate((t) => {
+    light.intensity = 4.4 + Math.sin(t * 9 + x * 3 + z) * 0.8;
+  });
+}
+
+// Cavern doorway: flanking dungeon columns + torch glow (same "glow = way
+// through" read the Ember doorways teach).
+function stoneDoorway(world, x, z, axis) {
+  const off = 1.45;
+  const p1 = axis === 'x' ? [x - off, z] : [x, z - off];
+  const p2 = axis === 'x' ? [x + off, z] : [x, z + off];
+  for (const [px, pz] of [p1, p2]) {
+    const col = prepareModel(dkit.column.scene.clone());
+    col.position.set(px, 0, pz);
+    col.scale.setScalar(0.55);
+    world.add(col);
+    world.addCircle(px, pz, 0.4);
+    wallTorch(world, px, pz, 0, { bare: true });
+  }
+  const strip = new THREE.Mesh(
+    new THREE.PlaneGeometry(axis === 'x' ? 2.2 : 0.9, axis === 'x' ? 0.9 : 2.2),
+    new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.7,
+      transparent: true, opacity: 0.5, roughness: 1, depthWrite: false,
+    })
+  );
+  strip.rotation.x = -Math.PI / 2;
+  strip.position.set(x, 0.1, z);
+  world.add(strip);
+  world.onAnimate((t) => {
+    strip.material.emissiveIntensity = 0.55 + 0.3 * Math.sin(t * 2.1 + x);
+  });
+}
+
+// Floor spikes on a fixed cycle (rest → warning peek + click → up). They ride
+// the geyser hazard list, so a well-timed jump clears them.
+function spikeTrap(world, x, z, offset = 0) {
+  const base = prepareModel(dkit.trapBase.scene.clone(), { castShadow: false });
+  base.position.set(x, 0.09, z);
+  base.scale.setScalar(0.85);
+  world.add(base);
+
+  const spikes = prepareModel(dkit.spikes.scene.clone());
+  spikes.position.set(x, -1.1, z);
+  spikes.scale.setScalar(0.85);
+  world.add(spikes);
+
+  const g = { x, z, r: 0.78, active: false };
+  world.geysers.push(g);
+
+  const CYCLE = 3.6, WARN = 2.0, UP = 2.6;
+  let clicked = false;
+  world.onAnimate((t) => {
+    const ph = (t + offset) % CYCLE;
+    if (ph < WARN) {
+      g.active = false;
+      spikes.position.y = -1.1;
+      clicked = false;
+    } else if (ph < UP) {
+      g.active = false;
+      const f = (ph - WARN) / (UP - WARN);
+      spikes.position.y = -1.1 + f * 0.24; // tips peek out
+      if (!clicked) { clicked = true; audio.play('ui-click', { volume: 0.5, rate: 0.55 }); }
+    } else {
+      const f = Math.min(1, (ph - UP) * 6);
+      spikes.position.y = -1.1 + 0.24 + f * 0.92;
+      g.active = f > 0.4;
+    }
+  });
+}
+
+// Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
+function boulder(world, x, z) {
+  const rock = prepareModel(kit.rockLB.scene.clone());
+  rock.traverse((n) => {
+    if (!n.isMesh) return;
+    n.material = n.material.clone();
+    n.material.color.setHex(0x8a8d95);
+  });
+  rock.scale.setScalar(2.0);
+  const group = new THREE.Group();
+  group.add(rock);
+  group.position.set(x, 0, z);
+  world.add(group);
+  const collider = { x, z, r: 0.62 };
+  world.circleColliders.push(collider);
+  const b = { x, z, r: 0.62, group, mesh: rock, collider };
+  world.boulders.push(b);
+  return b;
+}
+
+// Pressure plate: a glowing floor switch a boulder can hold down.
+function pressurePlate(world, id, x, z, onPressed) {
+  const base = prepareModel(dkit.trapBase.scene.clone(), { castShadow: false });
+  base.position.set(x, 0.09, z);
+  base.scale.setScalar(0.8);
+  world.add(base);
+  const glow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.55, 22),
+    new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.9,
+      transparent: true, opacity: 0.75, roughness: 1, depthWrite: false,
+    })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(x, 0.12, z);
+  world.add(glow);
+  if (!world.plates) world.plates = [];
+  const pressed = !!state.flags.plates[id];
+  const p = {
+    id, x, z, pressed,
+    onPressed: () => {
+      glow.material.emissive.setHex(0x7aff8a);
+      audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
+      if (onPressed) onPressed();
+    },
+  };
+  if (pressed) glow.material.emissive.setHex(0x7aff8a);
+  world.plates.push(p);
+  world.onAnimate((t) => {
+    glow.material.emissiveIntensity = p.pressed ? 1.4 : 0.7 + 0.35 * Math.sin(t * 2.6 + x);
+  });
+  return p;
+}
+
+// Cracked rock pile — the Earth Wolf's stomp shatters these (region verb,
+// mirrors Ember's burnables).
+function crackedRocks(world, id, x, z) {
+  if (state.flags.cracked[id]) return null;
+  const group = new THREE.Group();
+  for (const p of [
+    { src: kit.rockLA, dx: 0, dz: 0, s: 1.7, ry: 0.6 },
+    { src: kit.rockSB, dx: 0.55, dz: 0.4, s: 1.5, ry: 2.1 },
+    { src: kit.rockSA, dx: -0.5, dz: 0.3, s: 1.4, ry: 3.8 },
+    { src: kit.rockSB, dx: 0.1, dz: -0.5, s: 1.3, ry: 1.2 },
+  ]) {
+    const m = prepareModel(p.src.scene.clone());
+    m.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      n.material.color.setHex(0x74787f);
+      n.material.emissive = new THREE.Color(0xd8b06a);
+      n.material.emissiveIntensity = 0.12; // faint golden cracks — "special"
+    });
+    m.position.set(p.dx, 0, p.dz);
+    m.rotation.y = p.ry;
+    m.scale.setScalar(p.s);
+    group.add(m);
+  }
+  group.position.set(x, 0, z);
+  world.add(group);
+  const collider = { x, z, r: 0.95 };
+  world.circleColliders.push(collider);
+  const c = { id, x, z, group, collider, cracked: false };
+  world.crackables.push(c);
+  return c;
+}
+
+// Shared cavern dressing: mood, cobwebs, skulls, scattered columns.
+function cavernMood(world) {
+  world.lightScale = 0.42;          // the caverns run dark; torches carry it
+  world.bgColor = 0x0b0d14;
+}
+
+// ---------------------------------------------------------------------------
+// E1 — Cavern Gate (teaches: skeletons wake; the way down from Ember Hollow)
+// ---------------------------------------------------------------------------
+
+async function buildE1(scene) {
+  const world = new World(scene);
+  cavernMood(world);
+  buildStoneShell(world, 16, 12, [
+    { side: 's', from: -1.2, to: 1.2 }, // back up to Ember Hollow (R3)
+    { side: 'n', from: -1.2, to: 1.2 }, // deeper: the Deep Hall
+  ]);
+  world.spawn = { x: 0, z: 4.6, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 5.85, 6.9, 'r3', { x: 0, z: -4.4, angle: 0 });
+  world.addDoor(-1.2, 1.2, -6.9, -5.85, 'e2', { x: -6, z: 4.4, angle: Math.PI });
+
+  // torch pools mark the safe path; the rest stays cave-dark
+  wallTorch(world, -2.4, 5.2); wallTorch(world, 2.4, 5.2);
+  wallTorch(world, -3.2, -0.4); wallTorch(world, 3.2, -0.4);
+  stoneDoorway(world, 0, -5.5, 'x');
+
+  // grand entry arch framing the way in
+  const arch = prepareModel(dkit.arch.scene.clone());
+  arch.position.set(0, 0, 3.4);
+  arch.scale.setScalar(0.75);
+  world.add(arch);
+  world.addCircle(-1.5, 3.4, 0.4);
+  world.addCircle(1.5, 3.4, 0.4);
+
+  // columns + cobwebs + skulls: ruins of the old stone hall
+  for (const [x, z, s] of [[-5.6, -3.8, 0.5], [5.6, -3.8, 0.5], [-5.8, 2.8, 0.45]]) {
+    const col = prepareModel(dkit.column2.scene.clone());
+    col.position.set(x, 0, z);
+    col.scale.setScalar(s);
+    world.add(col);
+    world.addCircle(x, z, 0.4);
+  }
+  for (const [x, z, ry] of [[-7.2, -5.0, 0.4], [7.3, -5.2, -0.5], [7.2, 5.4, 2.6]]) {
+    const web = prepareModel(dkit.cobweb.scene.clone(), { castShadow: false });
+    web.position.set(x, 0.4, z);
+    web.rotation.y = ry;
+    web.scale.setScalar(1.4);
+    world.add(web);
+  }
+  for (const [x, z, ry] of [[-4.4, 0.9, 1.2], [4.9, -1.8, 3.6], [-6.3, -4.2, 5.1]]) {
+    const skull = prepareModel(dkit.skull.scene.clone());
+    skull.position.set(x, 0.1, z);
+    skull.rotation.y = ry;
+    world.add(skull);
+  }
+
+  // skeletons sleep on the critical path — every kid sees the wake-up beat
+  world.markers.minionSpots = [{ x: 0.6, z: 0.6 }, { x: -2.0, z: -2.6 }];
+
+  // checkpoint by the deep door
+  checkpoint(world, 'cp_e1', 3.4, -4.4);
+  potionPickup(world, 4.6, -3.4);
+
+  // cracked rocks hide a treasure alcove (Earth Wolf backtrack reward)
+  crackedRocks(world, 'e1_alcove', 6.0, 1.8);
+  world.markers.crackSpot = { x: 6.0, z: 1.8 };
+  world.markers.chestDefs = [
+    { id: 'c_e1_hall', tier: 'wood', x: -6.8, z: 4.6, ry: 0.9, loot: { shards: 10 } },
+    ...(state.flags.cracked.e1_alcove
+      ? [{ id: 'c_e1_crack', tier: 'gold', x: 7.0, z: 1.6, ry: -1.2, loot: { shards: 20, heartPiece: 1 } }]
+      : []),
+  ];
+  world.markers.breakables = [
+    { x: -1.8, z: 3.0, kind: 'vase', shards: 2 },
+    { x: -2.6, z: 3.5, kind: 'vase', shards: 2 },
+    { x: 6.6, z: -4.9, kind: 'crate', shards: 3 },
+  ];
+
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// E2 — The Deep Hall (teaches: spike timing, boulder pushing; rogue ambush)
+// ---------------------------------------------------------------------------
+
+async function buildE2(scene) {
+  const world = new World(scene);
+  cavernMood(world);
+  buildStoneShell(world, 20, 12, [
+    { side: 's', from: -7.2, to: -4.8 }, // back to E1
+    { side: 'e', from: -1.2, to: 1.2 },  // gated crypt door
+  ]);
+  world.spawn = { x: -6, z: 4.4, angle: Math.PI };
+  world.addDoor(-7.2, -4.8, 5.85, 6.9, 'e1', { x: 0, z: -4.4, angle: 0 });
+  world.addDoor(9.15, 10.15, -1.2, 1.2, 'e3', { x: 0, z: 5.4, angle: Math.PI });
+
+  wallTorch(world, -6, 2.2); wallTorch(world, -2.8, -1.4);
+  wallTorch(world, 3.4, 2.6); wallTorch(world, 7.8, -2.2);
+  stoneDoorway(world, -6, 5.4, 'x');
+
+  // spike gauntlet across the north band — guards a chest + the high road
+  spikeTrap(world, -0.6, -4.2, 0.0);
+  spikeTrap(world, 1.4, -3.6, 1.2);
+  spikeTrap(world, 3.4, -4.3, 2.4);
+  world.markers.spikeSpot = { x: 1.4, z: -4.0 };
+
+  // the boulder puzzle: roll the old millstone onto the plate to raise the
+  // crypt gate (SW chamber, walled so the puzzle reads as its own pocket)
+  blockRow(world, 0.5, 1.0, 0.5, 5.4, 1.4);
+  boulder(world, -2.6, 1.4);
+  world.markers.boulderSpot = { x: -2.6, z: 1.4 };
+  const gateBars = prepareModel(dkit.bars.scene.clone());
+  gateBars.position.set(9.35, 0, 0);
+  gateBars.rotation.y = Math.PI / 2;
+  gateBars.scale.set(1.05, 0.75, 1);
+  const gateCollider = { minX: 9.0, maxX: 9.8, minZ: -1.3, maxZ: 1.3 };
+  const opened = !!state.flags.plates.e2_gate;
+  if (!opened) {
+    world.add(gateBars);
+    world.boxColliders.push(gateCollider);
+  }
+  pressurePlate(world, 'e2_gate', -1.6, 4.6, () => {
+    // raise the bars in the live room
+    let rise = 0;
+    world.onAnimate((t, dt) => {
+      if (rise >= 2.6) return;
+      rise += dt * 1.6;
+      gateBars.position.y = Math.min(2.6, rise);
+      if (rise >= 2.6) {
+        world.root.remove(gateBars);
+        const i = world.boxColliders.indexOf(gateCollider);
+        if (i >= 0) world.boxColliders.splice(i, 1);
+      }
+    });
+    audio.play('slam', { volume: 0.5, rate: 0.6 });
+  });
+  // frame the gate with the big arch
+  const arch2 = prepareModel(dkit.arch.scene.clone());
+  arch2.position.set(9.35, 0, 0);
+  arch2.rotation.y = Math.PI / 2;
+  arch2.scale.setScalar(0.7);
+  world.add(arch2);
+
+  // the rogue ambush waits mid-hall; a minion shuffles near the entry
+  world.markers.minionSpots = [{ x: -3.4, z: 3.2 }];
+  world.markers.rogueSpots = [{ x: 1.6, z: 0.2 }, { x: 4.8, z: 1.8 }];
+
+  checkpoint(world, 'cp_e2', 7.6, 3.8);
+  potionPickup(world, -8.6, -4.2);
+  world.markers.chestDefs = [
+    { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
+  ];
+  world.markers.breakables = [
+    { x: -8.6, z: 1.8, kind: 'barrel', shards: 2 },
+    { x: -4.4, z: -3.9, kind: 'crate', shards: 3 },
+    { x: 8.3, z: 4.9, kind: 'vase', shards: 2 },
+  ];
+  for (const [x, z, ry] of [[-9.2, -5.2, 0.7], [9.2, -5.3, -2.2]]) {
+    const web = prepareModel(dkit.cobweb.scene.clone(), { castShadow: false });
+    web.position.set(x, 0.4, z);
+    web.rotation.y = ry;
+    web.scale.setScalar(1.3);
+    world.add(web);
+  }
+
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// E3 — The Warden's Crypt (mini-boss arena; Petra + the Earth Wolf)
+// ---------------------------------------------------------------------------
+
+async function buildE3(scene) {
+  const world = new World(scene);
+  cavernMood(world);
+  buildStoneShell(world, 14, 14, [
+    { side: 's', from: -1.3, to: 1.3 }, // entry from E2
+  ]);
+  world.spawn = { x: 0, z: 5.4, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 6.85, 7.9, 'e2', { x: 8.4, z: 0, angle: 0 });
+
+  wallTorch(world, -4.6, 4.6); wallTorch(world, 4.6, 4.6);
+  wallTorch(world, -5.4, -3.2); wallTorch(world, 5.4, -3.2);
+  stoneDoorway(world, 0, 6.3, 'x');
+
+  // marble horse statues guard Petra's shrine
+  for (const [x, ry] of [[-2.6, 0.6], [2.6, -0.6]]) {
+    const s = prepareModel(dkit.statue.scene.clone());
+    s.position.set(x, 0, -4.2);
+    s.rotation.y = ry;
+    s.scale.setScalar(0.34);
+    world.add(s);
+    world.addCircle(x, -4.2, 0.55);
+  }
+  for (const [x, z, ry] of [[-4.2, -0.4, 0.8], [4.4, 0.6, 2.4]]) {
+    const b = prepareModel(dkit.banner.scene.clone(), { castShadow: false });
+    b.position.set(x, 2.8, z);
+    b.rotation.y = ry;
+    world.add(b);
+  }
+
+  // Petra: an amber stone-heart on the pedestal, gripped in a dark shell
+  // until the Warden falls.
+  const ped = prepareModel(dkit.pedestal.scene.clone());
+  ped.position.set(0, 0, -4.6);
+  ped.scale.setScalar(0.7);
+  world.add(ped);
+  world.addCircle(0, -4.6, 0.75);
+  const crystal = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.28, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xd8b06a,
+      emissiveIntensity: state.flags.wardenDefeated ? 3.0 : 0.5, roughness: 1,
+    })
+  );
+  crystal.position.set(0, 1.9, -4.6);
+  world.add(crystal);
+  const shell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.42, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x0d0916, transparent: true,
+      opacity: state.flags.wardenDefeated ? 0 : 0.8, roughness: 1,
+    })
+  );
+  shell.position.copy(crystal.position);
+  shell.visible = !state.flags.wardenDefeated;
+  world.add(shell);
+  const glow = new THREE.PointLight(0xd8b06a, state.flags.wardenDefeated ? 9 : 1.4, 12, 1.8);
+  glow.position.set(0, 2.1, -4.6);
+  world.add(glow);
+  world.onAnimate((t) => {
+    crystal.position.y = 1.9 + Math.sin(t * 1.6) * 0.12;
+    shell.position.y = crystal.position.y;
+    crystal.rotation.y = t * 0.7;
+  });
+  world.markers.petraSpot = { x: 0, z: -4.6 };
+  world.freePetra = () => {
+    shell.visible = false;
+    crystal.material.emissiveIntensity = 3.0;
+    glow.intensity = 9;
+  };
+
+  // the Warden sleeps mid-arena until Kael steps close
+  if (!state.flags.wardenDefeated) {
+    world.markers.wardenSpot = { x: 0, z: -1.6 };
+  }
+
+  // treasure alcove sealed by cracked rocks (stomp practice, right where the
+  // form is earned)
+  crackedRocks(world, 'e3_treasure', -5.2, 2.2);
+  world.markers.chestDefs = [
+    ...(state.flags.cracked.e3_treasure
+      ? [{ id: 'c_e3_crack', tier: 'gold', x: -6.2, z: 1.4, ry: 1.4, loot: { shards: 16, gear: 'spear_a' } }]
+      : []),
+    ...(state.flags.wardenDefeated
+      ? [{ id: 'c_e3_gold', tier: 'gold', x: 3.4, z: -2.6, ry: -0.8, loot: { shards: 25, powerup: 'star' } }]
+      : []),
+  ];
+  world.markers.breakables = [
+    { x: -5.9, z: 5.6, kind: 'vase', shards: 2 },
+    { x: 5.9, z: 5.6, kind: 'barrel', shards: 2 },
+  ];
+
+  checkpoint(world, 'cp_e3', -3.2, 5.2);
+  potionPickup(world, 3.2, 5.2);
+
+  return world;
+}
+
+export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
+  if (id[0] === 'e') await loadDungeonKit();
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot && !state.flags.bossDefeated) {

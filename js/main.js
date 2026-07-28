@@ -22,7 +22,7 @@ import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from 
 import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 
 // ---------------------------------------------------------------------------
 // Renderer / scene / camera
@@ -196,6 +196,8 @@ const stuckHints = [
   { line: 'burn_prompt', timer: 0, cond: () =>
       state.room === 'r1' && state.formsUnlocked.includes('fire_wolf') &&
       !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 4) },
+  { line: 'boulder_hint', timer: 0, cond: () =>
+      state.room === 'e2' && !state.flags.plates.e2_gate && nearXZ(-1.6, 3, 5) },
 ];
 
 function nearXZ(x, z, r) {
@@ -240,6 +242,35 @@ function narrationTriggers(dt, t) {
     if (nearXZ(8.6, -3.6, 2.4)) narration.say('boss_door');
   }
 
+  // Stoneroot Caverns
+  if (state.room === 'e1') {
+    narration.say('stone_enter');
+    const skel = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonMinion' && !e.dead);
+    if (skel && nearXZ(skel.x, skel.z, 4.6)) narration.say('skeleton_intro');
+  }
+  if (state.room === 'e2') {
+    const rogue = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonRogue' && !e.dead);
+    if (rogue && nearXZ(rogue.x, rogue.z, 5)) narration.say('rogue_intro');
+    if (m.spikeSpot && nearSpot(m.spikeSpot, 4)) narration.say('spike_hint');
+    if (m.boulderSpot && nearSpot(m.boulderSpot, 3)) narration.say('boulder_hint');
+    if (state.flags.plates.e2_gate) narration.say('plate_open');
+    if (state.flags.plates.e2_gate && nearXZ(8.6, 0, 3)) narration.say('warden_door');
+  }
+  if (state.room === 'e3') {
+    if (world.warden && world.warden.state !== 'sleep' && !world.warden.dead) narration.say('warden_intro');
+    if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
+      if (narration.say('stone_complete')) {
+        narration.say('luna_dream_2');
+        persist();
+      }
+    }
+  }
+  // Earth Wolf verb prompts (both regions carry cracked rocks)
+  if (state.formsUnlocked.includes('earth_wolf') && m.crackSpot &&
+      !state.flags.cracked.e1_alcove && nearSpot(m.crackSpot, 3.4)) {
+    narration.say('crack_prompt');
+  }
+
   const boss = world.boss;
   if (boss && !boss.defeated) {
     if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
@@ -282,8 +313,10 @@ function updateMusic() {
   else if (state.room === 'r3' && world.boss && !world.boss.defeated) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
   } else if (state.room === 'r2') audio.playMusic('causeway');
+  else if (state.room === 'e3') audio.playMusic('stone-deep');
+  else if (state.room[0] === 'e') audio.playMusic('region-stone');
   else audio.playMusic('region-ember');
-  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0 }[state.room] ?? 0.5);
+  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0, e1: 0.3, e2: 0.35, e3: 0.3 }[state.room] ?? 0.5);
 }
 
 // ---------------------------------------------------------------------------
@@ -401,6 +434,27 @@ function onPupCollected() {
 }
 
 async function setupRoomExtras() {
+  // The Bone Warden falls → Petra is freed, the Earth Wolf is earned.
+  // Fired from the warden's death (not polled) so a simultaneous level-up
+  // perk card can't swallow the celebration.
+  world.onWardenDefeated = (w) => {
+    if (state.flags.wardenDefeated) return;
+    state.flags.wardenDefeated = true;
+    effects.warmFlood();
+    effects.shake(0.35, 0.8);
+    if (world.freePetra) world.freePetra();
+    audio.playMusic('victory', { loop: false, then: 'stone-deep' });
+    bumpCounter('bosses');
+    grantXp(80);
+    spawnShards(world, w.x, w.z + 1.5, 18);
+    spawnPowerup(world, w.x, w.z + 2, 'star');
+    if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
+    ui.refreshBadge();
+    narration.say('warden_defeat');
+    narration.say('earthwolf_grant');
+    narration.say('earthwolf_howto');
+    persist(); // form unlock is a save point
+  };
   await preloadLoot();
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
@@ -424,6 +478,8 @@ async function loadRoom(id, entry) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
+  state.region = id[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
   player.iframes = Math.max(player.iframes, 0.6);
@@ -439,6 +495,14 @@ async function loadRoom(id, entry) {
   window.__game = { player, world, state, effects, pip, narration, audio }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
+}
+
+// Per-room mood: the caverns run darker (torches carry the light) with a
+// deeper background/fog color.
+function applyRoomMood() {
+  const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
+  scene.background.setHex(bg);
+  scene.fog.color.setHex(bg);
 }
 
 function snapCamera() {
@@ -462,6 +526,8 @@ async function respawnAtCheckpoint() {
   if (world) world.dispose();
   world = await buildRoom(cp.room, scene);
   state.room = cp.room;
+  state.region = cp.room[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  applyRoomMood();
   player.place(cp.x, cp.z + 0.9, Math.PI);
   player.healFull();
   player.iframes = 1.2;
@@ -612,6 +678,7 @@ async function start() {
       if (input.consumePotion()) player.tryPotion();
 
       player.update(dt, input, world);
+      world.updateBoulders(dt, player);
       pip.update(dt, t, player, world);
       if (world.updateEnemies) world.updateEnemies(dt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
@@ -692,8 +759,9 @@ async function start() {
       : world.darknessAt(player.root.position.x, player.root.position.z);
     const target = state.form === 'dark_wolf' ? 0 : inDark;
     darkness += (target - darkness) * Math.min(1, dt * 5);
-    hemi.intensity = HEMI_BASE * (1 - 0.94 * darkness);
-    key.intensity = KEY_BASE * (1 - 0.97 * darkness);
+    const rig = world.lightScale !== undefined ? world.lightScale : 1;
+    hemi.intensity = HEMI_BASE * rig * (1 - 0.94 * darkness);
+    key.intensity = KEY_BASE * rig * (1 - 0.97 * darkness);
     for (const zone of world.darkZones) {
       zone.veilMat.opacity = state.form === 'dark_wolf' ? 0.12 : 0.62 * (1 - darkness * 0.85);
     }
@@ -721,6 +789,7 @@ async function start() {
 
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
+  applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;
   if (cp && cp.room === state.room && cp.id !== 'spawn') {

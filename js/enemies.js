@@ -423,6 +423,361 @@ export class Hound extends Enemy {
 }
 
 // ---------------------------------------------------------------------------
+// Stoneroot skeletons — KayKit models on the same Rig_Medium as the knight,
+// so the shared animation library retargets directly. They sleep as bone
+// piles and rattle awake when Kael comes close (kids get a readable "it is
+// waking up" beat before any fight starts).
+// ---------------------------------------------------------------------------
+
+class SkeletonBase extends Enemy {
+  constructor(world, x, z, cfg) {
+    super(world, x, z, { hp: cfg.hp, radius: cfg.radius });
+    this.puffTint = 0xb8b0a0; // bone dust
+    const model = prepareCharacter(SkeletonUtils.clone(cfg.gltf.scene));
+    model.scale.setScalar(cfg.scale);
+    this.root.add(model);
+    this.model = model;
+
+    this.mixer = new THREE.AnimationMixer(model);
+    this.actions = {};
+    for (const [key, name] of Object.entries(cfg.clips)) {
+      const clip = cfg.anims.find((c) => c.name === name);
+      if (clip) this.actions[key] = this.mixer.clipAction(clip);
+    }
+    this._current = null;
+
+    // gear mounts on the sanitized handslot bones (dots stripped by GLTFLoader)
+    this._handR = null;
+    this._handL = null;
+    model.traverse((n) => {
+      if (n.name === 'handslotr') this._handR = n;
+      if (n.name === 'handslotl') this._handL = n;
+    });
+
+    // asleep: a still bone pile until Kael comes close
+    this.state = 'sleep';
+    this.stateT = 0;
+    const inactive = this.actions.inactive;
+    if (inactive) { inactive.play(); inactive.paused = true; }
+  }
+
+  _play(name, fade = 0.16, { once = false } = {}) {
+    if (this._current === name) return;
+    const next = this.actions[name];
+    if (!next) return;
+    next.reset();
+    next.paused = false;
+    if (once) { next.setLoop(THREE.LoopOnce); next.clampWhenFinished = true; }
+    next.play();
+    if (this._current && this.actions[this._current]) {
+      this.actions[this._current].crossFadeTo(next, fade, false);
+    }
+    this._current = name;
+  }
+
+  mount(hand, gltf, scale = 1) {
+    const bone = hand === 'r' ? this._handR : this._handL;
+    if (!bone) return;
+    const m = prepareCharacter(gltf.scene.clone());
+    m.scale.setScalar(scale);
+    bone.add(m);
+  }
+
+  die() {
+    audio.play('bones', { volume: 0.8, rate: 1.2 }); // bones clatter
+    super.die();
+  }
+
+  // shared awaken logic; returns true while still waking (callers wait)
+  awakenUpdate(dt, d, wakeRange) {
+    if (this.state === 'sleep') {
+      if (d < wakeRange) {
+        this.state = 'awaken';
+        this.stateT = 0;
+        this._play('awaken', 0.08, { once: true });
+        audio.play('bones', { volume: 0.5, rate: 0.7 }); // rattle
+      }
+      this.mixer.update(dt);
+      return true;
+    }
+    if (this.state === 'awaken') {
+      this.stateT += dt;
+      if (this.stateT >= this.awakenTime) { this.state = 'chase'; this.stateT = 0; }
+      this.mixer.update(dt);
+      return true;
+    }
+    return false;
+  }
+
+  chaseToward(dt, dx, dz, d, speed) {
+    if (d < 0.01) return;
+    const nx = this.x + (dx / d) * speed * dt;
+    const nz = this.z + (dz / d) * speed * dt;
+    const solved = this.world.resolveCircle(nx, nz, this.radius);
+    this.root.position.x = solved.x;
+    this.root.position.z = solved.z;
+    this.root.rotation.y = Math.atan2(dx, dz);
+  }
+}
+
+// Skeleton Minion — the basic shuffler. Wakes from the floor, shambles in,
+// contact damage; every few seconds it lunges with a little punch.
+export class SkeletonMinion extends SkeletonBase {
+  constructor(world, x, z, gltf, anims) {
+    super(world, x, z, {
+      hp: 2, radius: 0.36, scale: 0.5, gltf, anims,
+      clips: {
+        inactive: 'Skeletons_Inactive_Floor_Pose', awaken: 'Skeletons_Awaken_Floor',
+        walk: 'Skeletons_Walking', idle: 'Skeletons_Idle', lunge: 'Melee_Unarmed_Attack_Punch_A',
+      },
+    });
+    this.awakenTime = 1.9;
+    this.lungeTimer = 2.0;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    if (this.awakenUpdate(dt, d, 3.4)) return;
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      this.chaseToward(dt, dx, dz, d, 1.5);
+      this.lungeTimer -= dt;
+      if (d < 1.6 && this.lungeTimer <= 0) {
+        this.state = 'lunge';
+        this.stateT = 0;
+        this._play('lunge', 0.08, { once: true });
+        const dd = Math.max(d, 0.01);
+        this.lungeDir = { x: dx / dd, z: dz / dd };
+      }
+    } else if (this.state === 'lunge') {
+      this.stateT += dt;
+      if (this.stateT > 0.25 && this.stateT < 0.6) {
+        this.chaseToward(dt, this.lungeDir.x, this.lungeDir.z, 1, 3.4);
+      }
+      if (this.stateT > 0.9) { this.state = 'chase'; this.lungeTimer = 2.4; this._current = null; }
+    }
+    this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Skeleton Rogue — quick blade-dancer. Wakes standing, circles just out of
+// sword reach, crouch-telegraphs (~0.7s), then dashes through. Parry or jump.
+export class SkeletonRogue extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, bladeGltf) {
+    super(world, x, z, {
+      hp: 1.5, radius: 0.34, scale: 0.48, gltf, anims,
+      clips: {
+        inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
+        walk: 'Skeletons_Walking', run: 'Running_A', idle: 'Skeletons_Idle',
+        stab: 'Melee_1H_Attack_Stab', taunt: 'Skeletons_Taunt',
+      },
+    });
+    this.awakenTime = 1.1;
+    if (bladeGltf) this.mount('r', bladeGltf);
+    this.orbitDir = (x + z) % 2 < 1 ? 1 : -1;
+    this.dashTimer = 1.6;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const px = player.root.position.x, pz = player.root.position.z;
+    const dx = px - this.x, dz = pz - this.z;
+    const d = Math.hypot(dx, dz);
+    if (this.awakenUpdate(dt, d, 4.2)) return;
+
+    if (this.state === 'chase') {
+      // orbit at ~2.6, closing slowly
+      const tangent = { x: -dz / Math.max(d, 0.01) * this.orbitDir, z: dx / Math.max(d, 0.01) * this.orbitDir };
+      const inward = d > 2.6 ? 0.8 : -0.3;
+      const mx = tangent.x * 1.6 + (dx / Math.max(d, 0.01)) * inward;
+      const mz = tangent.z * 1.6 + (dz / Math.max(d, 0.01)) * inward;
+      const mm = Math.hypot(mx, mz);
+      this._play('run');
+      this.chaseToward(dt, mx / mm, mz / mm, 1, 2.3);
+      this.root.rotation.y = Math.atan2(dx, dz);
+      this.dashTimer -= dt;
+      if (this.dashTimer <= 0 && d < 4.6) {
+        this.state = 'telegraph';
+        this.stateT = 0;
+        this._play('idle', 0.08);
+        const dd = Math.max(d, 0.01);
+        this.dashDir = { x: dx / dd, z: dz / dd };
+        this.root.rotation.y = Math.atan2(this.dashDir.x, this.dashDir.z);
+      }
+    } else if (this.state === 'telegraph') {
+      // crouch low + rising hiss — the "block or jump NOW" beat
+      this.stateT += dt;
+      this.model.scale.y = 0.48 * (1 - 0.22 * Math.min(1, this.stateT * 2.4));
+      if (this.stateT >= 0.7) {
+        this.state = 'dash';
+        this.stateT = 0;
+        this.model.scale.y = 0.48;
+        this._play('stab', 0.06, { once: true });
+        audio.play('sword-swing2', { volume: 0.6, rate: 1.3 });
+      }
+    } else if (this.state === 'dash') {
+      this.stateT += dt;
+      const nx = this.x + this.dashDir.x * 7.5 * dt;
+      const nz = this.z + this.dashDir.z * 7.5 * dt;
+      const solved = this.world.resolveCircle(nx, nz, this.radius);
+      const blocked = Math.hypot(solved.x - nx, solved.z - nz) > 0.01;
+      this.root.position.x = solved.x;
+      this.root.position.z = solved.z;
+      this.contact(player);
+      if (this.stateT > 0.5 || blocked) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
+    } else { // recover — open to punishment
+      this.stateT += dt;
+      if (this.stateT > 1.3) { this.state = 'chase'; this.dashTimer = 2.2 + Math.random(); }
+    }
+
+    if (this.state === 'chase' || this.state === 'telegraph') this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// The Bone Warden — Stoneroot's crypt guardian. A big armored skeleton with
+// axe + tower shield. Two attacks, both loudly telegraphed: an overhead chop
+// (parry it!) and a slow spin when Kael hugs too close. After three swings it
+// wheezes — a big open punish window.
+export class BoneWarden extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
+    super(world, x, z, {
+      hp: 14, radius: 0.52, scale: 0.68, gltf, anims,
+      clips: {
+        inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
+        walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
+        chop: 'Melee_1H_Attack_Chop', spin: 'Melee_2H_Attack_Spin',
+        taunt: 'Skeletons_Taunt', tired: 'Skeletons_Inactive_Standing_Pose',
+      },
+    });
+    this.awakenTime = 1.3;
+    this.dropChance = 1;
+    if (axeGltf) this.mount('r', axeGltf);
+    if (shieldGltf) this.mount('l', shieldGltf);
+    this.swings = 0;
+    this.attackTimer = 1.4;
+
+    // telegraph ring shows the chop's danger zone
+    this.dangerRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.5, 1.35, 28, 1, 0, Math.PI * 0.9),
+      new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+    );
+    this.dangerRing.rotation.x = -Math.PI / 2;
+    this.dangerRing.position.y = 0.05;
+    world.add(this.dangerRing);
+  }
+
+  die() {
+    this.world.root.remove(this.dangerRing);
+    if (this.world.onWardenDefeated) this.world.onWardenDefeated(this);
+    super.die();
+  }
+
+  _swingDamage(player, arcDeg, range, dmg) {
+    const px = player.root.position.x - this.x;
+    const pz = player.root.position.z - this.z;
+    const d = Math.hypot(px, pz);
+    if (d > range) return;
+    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+    if (arcDeg < 360 && d > 0.1 && (px * fx + pz * fz) / d < Math.cos(arcDeg * Math.PI / 360)) return;
+    player.hurt(dmg, { attacker: this, groundAttack: true });
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); this.dangerRing.material.opacity = 0; return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    if (this.awakenUpdate(dt, d, 5.2)) return;
+    this.stateT += dt;
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      this.chaseToward(dt, dx, dz, d, 1.35);
+      this.attackTimer -= dt;
+      if (this.attackTimer <= 0 && d < 2.2) {
+        if (this.swings >= 3) {
+          this.state = 'tired';
+          this.stateT = 0;
+          this.swings = 0;
+          this._play('tired', 0.3);
+        } else if (d < 1.2) {
+          this.state = 'spin_tele';
+          this.stateT = 0;
+          this._play('idle', 0.1);
+        } else {
+          this.state = 'chop_tele';
+          this.stateT = 0;
+          this._play('idle', 0.1);
+          this.root.rotation.y = Math.atan2(dx, dz);
+        }
+      }
+    } else if (this.state === 'chop_tele') {
+      // 0.9s: the danger arc fades in where the axe will land
+      const f = Math.min(1, this.stateT / 0.9);
+      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.rotation.z = -this.root.rotation.y + Math.PI / 2 + Math.PI * 0.45;
+      this.dangerRing.material.opacity = f * 0.55;
+      if (this.stateT >= 0.9) {
+        this.state = 'chop';
+        this.stateT = 0;
+        this._play('chop', 0.06, { once: true });
+        audio.play('sword-swing', { volume: 0.9, rate: 0.7 });
+      }
+    } else if (this.state === 'chop') {
+      this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 2);
+      if (this.stateT > 0.32 && !this._chopHit) {
+        this._chopHit = true;
+        this._swingDamage(player, 130, 1.9, 1.5);
+        audio.play('slam', { volume: 0.5, rate: 1.4 });
+      }
+      if (this.stateT > 0.8) { this.state = 'chase'; this._chopHit = false; this.swings++; this.attackTimer = 1.1; }
+    } else if (this.state === 'spin_tele') {
+      // 1.0s: full-circle warning ring
+      const f = Math.min(1, this.stateT / 1.0);
+      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.material.opacity = f * 0.55;
+      this.dangerRing.scale.setScalar(1.15);
+      if (this.stateT >= 1.0) {
+        this.state = 'spin';
+        this.stateT = 0;
+        this._play('spin', 0.06, { once: true });
+        audio.play('sword-swing2', { volume: 0.9, rate: 0.6 });
+      }
+    } else if (this.state === 'spin') {
+      this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 1.6);
+      if (this.stateT > 0.45 && !this._spinHit) {
+        this._spinHit = true;
+        this._swingDamage(player, 360, 1.7, 1.5);
+      }
+      if (this.stateT > 1.1) {
+        this.state = 'chase'; this._spinHit = false; this.dangerRing.scale.setScalar(1);
+        this.swings++; this.attackTimer = 1.3;
+      }
+    } else if (this.state === 'tired') {
+      // ~2.6s wheeze — the punish window (double damage would need a stun;
+      // being wide open is reward enough for kids)
+      this.root.position.y = Math.sin(this.stateT * 18) * 0.01;
+      if (this.stateT > 2.6) { this.state = 'chase'; this.attackTimer = 0.8; this.root.position.y = 0; }
+    }
+
+    if (this.state === 'chase') this.contact(player, 1);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Ember drops: warm sparks fallen shadows sometimes leave behind.
 // Touch one to heal half a heart (fizzles after ~12s).
 // ---------------------------------------------------------------------------
@@ -482,6 +837,38 @@ export async function spawnEnemies(world) {
   for (const m of world.markers.mothSpots || []) world.enemies.push(new Moth(world, m.x, m.z));
   if (world.markers.houndSpot) {
     world.enemies.push(new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf));
+  }
+
+  // Stoneroot skeletons — models load only when a room actually asks for them
+  const mk = world.markers;
+  if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) || mk.wardenSpot) {
+    const [special, movement, general, combat] = await Promise.all([
+      loadGLB('./assets/anims/rig-medium-special.glb'),
+      loadGLB('./assets/anims/rig-medium-movement-basic.glb'),
+      loadGLB('./assets/anims/rig-medium-general.glb'),
+      loadGLB('./assets/anims/rig-medium-combat-melee.glb'),
+    ]);
+    const anims = [...special.animations, ...movement.animations, ...general.animations, ...combat.animations];
+    if (mk.minionSpots && mk.minionSpots.length) {
+      const minionGltf = await loadGLB('./assets/chars/skeletons/Skeleton_Minion.glb');
+      for (const s of mk.minionSpots) world.enemies.push(new SkeletonMinion(world, s.x, s.z, minionGltf, anims));
+    }
+    if (mk.rogueSpots && mk.rogueSpots.length) {
+      const [rogueGltf, bladeGltf] = await Promise.all([
+        loadGLB('./assets/chars/skeletons/Skeleton_Rogue.glb'),
+        loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
+      ]);
+      for (const s of mk.rogueSpots) world.enemies.push(new SkeletonRogue(world, s.x, s.z, rogueGltf, anims, bladeGltf));
+    }
+    if (mk.wardenSpot) {
+      const [warriorGltf, axeGltf, shieldGltf] = await Promise.all([
+        loadGLB('./assets/chars/skeletons/Skeleton_Warrior.glb'),
+        loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf'),
+        loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf'),
+      ]);
+      world.warden = new BoneWarden(world, mk.wardenSpot.x, mk.wardenSpot.z, warriorGltf, anims, axeGltf, shieldGltf);
+      world.enemies.push(world.warden);
+    }
   }
 
   world.damageEnemiesAt = (x, z, r, dmg) => {

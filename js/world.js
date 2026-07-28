@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { state } from './state.js';
 
+const _rollAxis = new THREE.Vector3();
+
 export class World {
   constructor(scene) {
     this.scene = scene;
@@ -20,6 +22,8 @@ export class World {
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
     this.burnables = [];       // {id, x, z, group, collider, burned}
+    this.crackables = [];      // {id, x, z, group, collider, cracked} — Earth Wolf
+    this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
     this.bossDarkness = false; // boss phase 3 blacks out the whole room
@@ -41,8 +45,8 @@ export class World {
     this.lavaZones.push({ minX, maxX, minZ, maxZ });
   }
 
-  addDoor(minX, maxX, minZ, maxZ, to, entry) {
-    this.doors.push({ minX, maxX, minZ, maxZ, to, entry });
+  addDoor(minX, maxX, minZ, maxZ, to, entry, when = null) {
+    this.doors.push({ minX, maxX, minZ, maxZ, to, entry, when });
   }
 
   onAnimate(fn) { this._animateHooks.push(fn); }
@@ -73,13 +77,22 @@ export class World {
   // Fire Wolf ground-slam: burn every unburned obstacle in range. The clump
   // breaks apart — chunks scatter, shrink and fade — and its collider goes.
   burnAt(x, z, r) {
+    return this._shatter(this.burnables, 'burned', state.flags.burned, x, z, r);
+  }
+
+  // Earth Wolf stone-stomp: the same break-apart for cracked rock piles.
+  crackAt(x, z, r) {
+    return this._shatter(this.crackables, 'cracked', state.flags.cracked, x, z, r);
+  }
+
+  _shatter(list, doneKey, flagMap, x, z, r) {
     let burned = 0;
-    for (const b of this.burnables) {
-      if (b.burned) continue;
+    for (const b of list) {
+      if (b[doneKey]) continue;
       const dx = b.x - x, dz = b.z - z;
       if (dx * dx + dz * dz > r * r) continue;
-      b.burned = true;
-      state.flags.burned[b.id] = true;
+      b[doneKey] = true;
+      flagMap[b.id] = true;
       burned++;
       const i = this.circleColliders.indexOf(b.collider);
       if (i >= 0) this.circleColliders.splice(i, 1);
@@ -110,8 +123,46 @@ export class World {
     return burned;
   }
 
+  // Pushable boulders: lean on one and it rolls, resolved against the room
+  // (minus its own collider). Landing on a pressure plate opens things.
+  updateBoulders(dt, player) {
+    for (const b of this.boulders) {
+      const dx = b.x - player.root.position.x;
+      const dz = b.z - player.root.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d > b.r + 0.32 + 0.06 || d < 1e-4) continue;
+      const push = 1.5 * dt;
+      const i = this.circleColliders.indexOf(b.collider);
+      if (i >= 0) this.circleColliders.splice(i, 1);
+      const solved = this.resolveCircle(b.x + (dx / d) * push, b.z + (dz / d) * push, b.r);
+      if (i >= 0) this.circleColliders.splice(i, 0, b.collider);
+      const mx = solved.x - b.x, mz = solved.z - b.z;
+      const moved = Math.hypot(mx, mz);
+      b.x = b.collider.x = solved.x;
+      b.z = b.collider.z = solved.z;
+      b.group.position.set(solved.x, 0, solved.z);
+      if (moved > 1e-5 && b.mesh) {
+        // roll the rock about the axis perpendicular to its motion
+        _rollAxis.set(mz / moved, 0, -mx / moved);
+        b.mesh.rotateOnWorldAxis(_rollAxis, moved / b.r);
+      }
+      if (this.plates) {
+        for (const p of this.plates) {
+          if (p.pressed) continue;
+          const px = p.x - b.x, pz = p.z - b.z;
+          if (px * px + pz * pz < 0.55 * 0.55) {
+            p.pressed = true;
+            state.flags.plates[p.id] = true;
+            if (p.onPressed) p.onPressed();
+          }
+        }
+      }
+    }
+  }
+
   doorAt(x, z) {
     for (const d of this.doors) {
+      if (d.when && !d.when()) continue;
       if (x >= d.minX && x <= d.maxX && z >= d.minZ && z <= d.maxZ) return d;
     }
     return null;

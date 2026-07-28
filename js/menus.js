@@ -180,28 +180,43 @@ export class Menus {
     const el = $('map-menu');
     el.innerHTML = '';
     const h = document.createElement('h2');
-    h.textContent = '🗺️ Ember Hollow';
+    h.textContent = '🗺️ The Kingdom';
     el.appendChild(h);
-    const row = document.createElement('div');
-    row.id = 'map-rooms';
-    const rooms = [
+
+    const addRegion = (title, rooms) => {
+      const t = document.createElement('div');
+      t.style.cssText = 'font-size:15px;opacity:.85;margin:4px 0 2px';
+      t.textContent = title;
+      el.appendChild(t);
+      const row = document.createElement('div');
+      row.className = 'map-rooms';
+      rooms.forEach((r, i) => {
+        if (i > 0) {
+          const link = document.createElement('div');
+          link.className = 'map-link';
+          row.appendChild(link);
+        }
+        const d = document.createElement('div');
+        d.className = 'map-room' + (state.room === r.id ? ' here' : '');
+        d.innerHTML = `<div>${r.name}</div><div class="icons">${r.icons}</div>${state.room === r.id ? '<div>⭐ You are here</div>' : ''}`;
+        row.appendChild(d);
+      });
+      el.appendChild(row);
+    };
+
+    addRegion('🔥 Ember Hollow', [
       { id: 'den', name: 'Moonlit Den', icons: '🛒🐺' },
       { id: 'r1', name: 'Hollow Entrance', icons: '🐺▨' },
       { id: 'r2', name: 'Ember Causeway', icons: '⛲🐺' },
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
-    ];
-    rooms.forEach((r, i) => {
-      if (i > 0) {
-        const link = document.createElement('div');
-        link.className = 'map-link';
-        row.appendChild(link);
-      }
-      const d = document.createElement('div');
-      d.className = 'map-room' + (state.room === r.id ? ' here' : '');
-      d.innerHTML = `<div>${r.name}</div><div class="icons">${r.icons}</div>${state.room === r.id ? '<div>⭐ You are here</div>' : ''}`;
-      row.appendChild(d);
-    });
-    el.appendChild(row);
+    ]);
+    if (state.spoken.region_complete || state.region === 'stoneroot') {
+      addRegion('⛰️ Stoneroot Caverns', [
+        { id: 'e1', name: 'Cavern Gate', icons: '💀🕯️' },
+        { id: 'e2', name: 'The Deep Hall', icons: '🪨⚙️' },
+        { id: 'e3', name: 'Warden’s Crypt', icons: state.flags.wardenDefeated ? '🪨✓' : '💀' },
+      ]);
+    }
     const hint = document.createElement('div');
     hint.style.cssText = 'font-size:14px;opacity:.8';
     hint.textContent = 'More regions will appear as Kael frees them…';

@@ -5,7 +5,7 @@
 import { state } from './state.js';
 import { audio } from './audio.js';
 
-export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonWarrior: 12, SkeletonMage: 14 };
+export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonMinion: 8, SkeletonRogue: 12, SkeletonWarrior: 12, SkeletonMage: 14, BoneWarden: 60 };
 
 export const progressEvents = { onLevelUp: null, onXp: null, onSticker: null };
 

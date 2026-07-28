@@ -22,6 +22,7 @@ const SFX_FILES = {
   throw: './assets/audio/sfx/throw.ogg',
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
+  bones: './assets/audio/sfx/bones.ogg',
 };
 
 const MUSIC_FILES = {
@@ -31,6 +32,8 @@ const MUSIC_FILES = {
   'boss-intro': './assets/audio/music/boss-intro.ogg',
   'boss-loop': './assets/audio/music/boss-loop.ogg',
   victory: './assets/audio/music/victory.ogg',
+  'region-stone': './assets/audio/music/region-stone.ogg',
+  'stone-deep': './assets/audio/music/stone-deep.ogg',
 };
 
 class AudioSystem {

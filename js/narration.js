@@ -11,6 +11,7 @@ const VOICES = {
   cinder: { rate: 0.85, pitch: 0.8, label: 'Cinder' },
   grimm: { rate: 0.85, pitch: 0.6, label: 'Grimm' },
   luna: { rate: 0.9, pitch: 1.1, label: 'Luna' },
+  petra: { rate: 0.82, pitch: 0.95, label: 'Petra' },
 };
 
 export const LINES = {
@@ -57,6 +58,22 @@ export const LINES = {
   // Part C — bridge to the next region
   grimm_taunt_1: { voice: 'grimm', text: 'So… the little knight saved one spark. You cannot save them all. The shadow always returns.' },
   luna_dream_1: { voice: 'luna', text: 'You did well, Kael. One light returned… six to go. Follow the path to the stone caves. I am with you, always.' },
+
+  // Stoneroot Caverns (region 2)
+  stone_enter: { voice: 'pip', text: 'The Stoneroot Caverns… the stone here used to sing. Careful, Kael — something rattles in the dark.' },
+  skeleton_intro: { voice: 'pip', text: 'Bones! They wake when you come close. Let them rise, then strike!' },
+  rogue_intro: { voice: 'pip', text: 'That one’s quick! Watch for the crouch — then block, or jump away!' },
+  spike_hint: { voice: 'pip', text: 'Floor spikes! They peek up before they bite. Cross while they rest — or jump right over.' },
+  boulder_hint: { voice: 'pip', text: 'A round boulder! Lean on it to roll it. I bet it could hold that floor switch down.' },
+  plate_open: { voice: 'pip', text: 'You did it! The gate remembers the weight. Onward!' },
+  warden_door: { voice: 'pip', text: 'Something big rattles beyond this door… ready your shield, Kael.' },
+  warden_intro: { voice: 'grimm', text: 'My warden of bone guards the stone spirit, little knight. It will grind you to dust.' },
+  warden_defeat: { voice: 'petra', text: 'The bones fall still… Thank you, kind knight. I am Petra, keeper of the stone.' },
+  earthwolf_grant: { voice: 'petra', text: 'Take my gift — the heart of the Earth Wolf. The mountain walks with you now.' },
+  earthwolf_howto: { voice: 'pip', text: 'You can be the Earth Wolf now! Hold the screen to change. Your stomp can smash cracked rock!' },
+  crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
+  stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
+  luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
 };
 
 export class Narration {

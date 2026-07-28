@@ -151,12 +151,14 @@ export class Breakable {
 }
 
 export async function spawnBreakables(world, spots) {
-  const [crate, barrel] = await Promise.all([
+  const [crate, barrel, vase] = await Promise.all([
     loadGLB('./assets/loot/survival/crate.glb'),
     loadGLB('./assets/loot/survival/barrel.glb'),
+    loadGLB('./assets/env/dungeon/Vase.glb'),
   ]);
   for (const s of spots) {
-    const gltf = s.kind === 'barrel' ? barrel : crate;
+    const gltf = { barrel, vase }[s.kind] || crate;
+    if (s.kind === 'vase' && s.scale === undefined) s.scale = 2.0; // dungeon vase is tiny
     world.enemies.push(new Breakable(world, gltf, s.x, s.z, s));
   }
 }

@@ -8,8 +8,9 @@ const FORM_META = {
   knight: { icon: '⚔️', label: 'Knight', color: '#8f9bb0' },
   dark_wolf: { icon: '🌙', label: 'Dark Wolf', color: '#6b56a8' },
   fire_wolf: { icon: '🔥', label: 'Fire Wolf', color: '#ff5a2b' },
+  earth_wolf: { icon: '🪨', label: 'Earth Wolf', color: '#d8b06a' },
 };
-const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf'];
+const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
@@ -53,7 +54,7 @@ export class UI {
     FORM_ORDER.forEach((id, i) => {
       const meta = FORM_META[id];
       const locked = !state.formsUnlocked.includes(id);
-      const angle = -Math.PI / 2 + (i - 1) * (Math.PI / 2.6);
+      const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * 0.92;
       const ox = cx + Math.cos(angle) * PICK_RADIUS;
       const oy = cy + Math.sin(angle) * PICK_RADIUS;
       const el = document.createElement('div');

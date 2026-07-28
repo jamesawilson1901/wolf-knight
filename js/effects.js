@@ -43,11 +43,11 @@ export class Effects {
   }
 
   // Fire Wolf ground-slam: radial shockwave ring + emissive flash.
-  groundSlam(pos) {
+  groundSlam(pos, color = 0xff7a2a) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.5, 0.95, 36),
       new THREE.MeshBasicMaterial({
-        color: 0xff7a2a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false,
+        color, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false,
       })
     );
     ring.rotation.x = -Math.PI / 2;

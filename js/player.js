@@ -19,6 +19,9 @@ const BLOOD_MOON_RANGE = 2.4;   // impact point this far ahead of Kael
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
 const SLAM_BURN_RADIUS = 2.6;
+const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
+const STOMP_RADIUS = 3.2;
+const STOMP_STUN = 2.5;
 
 export const MAX_HEARTS = 5;
 
@@ -26,6 +29,7 @@ export const MAX_HEARTS = 5;
 const WOLF_TINTS = {
   dark_wolf: { main: 0x4a3b6b, eyes: 0x9fb8ff },
   fire_wolf: { main: 0xff5a2b, eyes: 0xffd27a },
+  earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
 };
 
 const FORM_DEFS = {
@@ -56,6 +60,15 @@ const FORM_DEFS = {
     },
     attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
     boltColor: 0xffab4a,
+  },
+  earth_wolf: {
+    speed: 4.9, // steady like the mountain — hits harder, runs a touch slower
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.5, hitAt: 0.26, range: 1.7, dmg: 1.5 },
+    boltColor: 0xd8b06a,
   },
 };
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -155,7 +168,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(0.35);
       this._addForm(formName, model, wolf.animations);
@@ -208,7 +221,8 @@ export class Player {
     const f = this.forms[name];
     f.model.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    this.specialMax = (name === 'fire_wolf' ? SLAM_COOLDOWN : BLOOD_MOON_COOLDOWN) * cdMult;
+    const baseCd = { fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || BLOOD_MOON_COOLDOWN;
+    this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
     this._play('idle', 0);
@@ -451,7 +465,33 @@ export class Player {
   trySpecial(effects, world) {
     if (state.form === 'dark_wolf') return this.tryBloodMoon(effects, world);
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
+    if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
     return false;
+  }
+
+  // Earth Wolf stone-stomp: a quake that dazes grounded enemies and smashes
+  // cracked rock piles (the Stoneroot region verb).
+  tryStoneStomp(effects, world) {
+    if (state.form !== 'earth_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('attack');
+    this.lockTime = 0.5;
+    const { x, z } = { x: this.root.position.x, z: this.root.position.z };
+    effects.groundSlam(this.root.position.clone(), 0xd8b06a);
+    effects.shake(0.3, 0.35);
+    audio.play('slam', { rate: 0.75 });
+    if (world.enemies) {
+      for (const e of world.enemies) {
+        if (e.dead || e.flying) continue;
+        const dx = e.x - x, dz = e.z - z;
+        if (dx * dx + dz * dz > STOMP_RADIUS * STOMP_RADIUS) continue;
+        e.takeDamage(2);
+        if (e.takeStun) e.takeStun(STOMP_STUN);
+      }
+    }
+    if (world.crackAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });
+    this.specialCooldown = this.specialMax;
+    return true;
   }
 
   // Fire Wolf ground-slam: radial shockwave, damages enemies + burns

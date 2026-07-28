@@ -512,10 +512,60 @@ collisions solved by per-kit Textures folders (survival/pirate/platformer/town).
   thumbs, den tent readability (it reads a bit skeletal from the top-down angle —
   easy to swap for a second campfire/log circle if it looks off), TTS voice quality,
   and whether shard pickup sounds get too chattery when 15 fly in after the boss.
-- Not built yet (next session): S2 Stoneroot Caverns (needs FBXLoader vendored for
-  the Quaternius monsters; skeleton enemies are GLB and drop straight in), boulder
-  push verb, region gate past the R3 portal (currently plays the Part C lines +
-  celebration and stays in Ember Hollow), Den fast-travel from other rooms.
+- ~~Not built yet (next session): S2 Stoneroot Caverns~~ — built later the same
+  night, see the v2.1 section below.
+
+## v2.1 — S2: Stoneroot Caverns (overnight, second block)
+
+Region 2 is in: a three-room cavern arc behind the R3 portal, on the S1 systems
+template. All headless-verified (verify-s2 + S1 regression + offline), zero errors.
+
+- **Region gate**: once the Part C celebration has played, the R3 portal ring
+  becomes a real door (doors now take an optional `when()` predicate). Entering
+  an `e*` room flips `state.region` to `stoneroot`; pups in saves are now
+  flattened across regions so travel never loses them.
+- **The rooms** — Quaternius Modular Dungeon pieces, converted OBJ→GLB offline
+  with obj2gltf (runtime stays pure GLTF, no new loaders):
+  - **E1 Cavern Gate**: entry arch, torch columns, cobwebs/skulls, two Skeleton
+    Minions sleeping ON the critical path (the wake-up beat is the lesson),
+    cracked-rock alcove for the Earth Wolf backtrack (gold chest, heart piece).
+  - **E2 Deep Hall**: spike-trap gauntlet (rest → click + peek → up; rides the
+    geyser hazard list so jumps clear it), the boulder puzzle (pushable rock →
+    pressure plate → portcullis bars rise), two Skeleton Rogues + a minion.
+  - **E3 Warden's Crypt**: Bone Warden mini-boss (axe + tower shield, chop with
+    danger-arc telegraph, 360° spin when hugged, wheeze window after 3 swings) →
+    Petra freed → **Earth Wolf** (tint 0x8b6b3d per casting sheet; Stone Stomp
+    stuns grounded enemies + smashes cracked rocks). Marble horse statues,
+    banners, Petra's crystal caged in a dark shell until the fight ends.
+- **Skeletons**: KayKit Skeletons share Rig_Medium with the knight, so the whole
+  existing animation library retargets directly; Rig_Medium_Special.glb adds the
+  Skeletons_* clips (awaken/walk/idle). Gear (blade/axe/shield) mounts on the
+  sanitized handslot bones like the knight's. Bone-clatter SFX from Kenney
+  impact pack (`bones.ogg`).
+- **Cavern mood**: per-room `lightScale` (0.42) + darker bg/fog color — torches
+  carry the light. Dungeon-kit floors/walls replace the Kenney shell in `e*`
+  rooms (same collider layout).
+- **Music**: hidden-cavern → `region-stone` (E1/E2), dwarven-mine → `stone-deep`
+  (E3). Victory sting reused on the warden.
+- **Map**: two-region layout (Ember Hollow / Stoneroot Caverns); Stoneroot
+  appears once the celebration has played. Perk-picker fan re-centered for 4
+  forms.
+- **Bug found by test**: the warden's death XP can level you up mid-celebration;
+  the perk card pauses the loop, so a polled defeat check never ran. The
+  celebration now fires from the warden's death hook (synchronous), not a poll.
+- New narration lines (Pip/Grimm/Luna + new voice Petra 0.82/0.95) — additive,
+  same style as the script; save schema adds `flags.cracked/plates/wardenDefeated`.
+- SW cache v2.1.0, 165 precached files; badge v2.1. Offline verified into E2.
+
+### Morning-check additions (S2)
+- Map screen: the "You are here" card text can clip on narrow room names
+  (Warden's Crypt) — worth a small font/width pass.
+- Warden difficulty is untuned beyond paper numbers (hp 14, chop 1.5, Cozy
+  halves it) — worth a real playthrough feel pass.
+- E2 gate bars rise over ~1.6s; on very slow devices the collider removal
+  lags the visual slightly (cosmetic only).
+- Not built yet: Den fast-travel, FBXLoader for the Quaternius animated
+  monsters (Bat/Slime/Dragon for region 3+), S3 Wild Woods.
 
 ## Phase 0 verification (recorded)
 

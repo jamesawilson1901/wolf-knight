@@ -71,7 +71,10 @@ export function persist() {
     flags: {
       bossDefeated: state.flags.bossDefeated,
       shortcutOpen: state.flags.shortcutOpen,
+      wardenDefeated: state.flags.wardenDefeated,
       burned: { ...state.flags.burned },
+      cracked: { ...state.flags.cracked },
+      plates: { ...state.flags.plates },
       chests: { ...state.flags.chests },
     },
     spoken: { ...state.spoken },
@@ -107,12 +110,17 @@ export function applySave(profileId, profileName, data) {
   state.formsUnlocked = Array.isArray(data.formsUnlocked) && data.formsUnlocked.length
     ? data.formsUnlocked : ['knight', 'dark_wolf'];
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';
-  const pupList = (data.pups && data.pups[state.region]) || [];
+  // pups may be keyed under whichever region was current at save time —
+  // flatten every list so travelling between regions never loses them
+  const pupList = data.pups ? Object.values(data.pups).flat() : [];
   state.flags.pups = Object.fromEntries(pupList.map((id) => [id, true]));
   if (data.flags) {
     state.flags.bossDefeated = !!data.flags.bossDefeated;
     state.flags.shortcutOpen = !!data.flags.shortcutOpen;
+    state.flags.wardenDefeated = !!data.flags.wardenDefeated;
     state.flags.burned = data.flags.burned || {};
+    state.flags.cracked = data.flags.cracked || {};
+    state.flags.plates = data.flags.plates || {};
     state.flags.chests = data.flags.chests || {};
   }
   state.spoken = data.spoken || {};
