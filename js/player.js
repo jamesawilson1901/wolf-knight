@@ -422,6 +422,12 @@ export class Player {
     if (this.iframes > 0) return;
     if (source.groundAttack && this.airborne) return; // jumped clean over it
     if (this.buffs.star > 0) return; // starlight makes Kael untouchable
+    // Cozy mode (default) halves incoming hits; the rubber-band does the
+    // same after repeated defeats at one checkpoint. Both round to halves.
+    let soften = 1;
+    if (!state.settings.brave) soften *= 0.5;
+    if (this.softenDamage) soften *= 0.5;
+    n = Math.max(0.5, Math.round(n * soften * 2) / 2);
     if (this.defending && !source.pierceDefend) {
       const sinceRaise = this._time - this.defendStart;
       if (sinceRaise <= PARRY_WINDOW + shieldDef().parryBonus) {

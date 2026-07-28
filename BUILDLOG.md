@@ -503,6 +503,20 @@ dagger stats) → re-equipped via inventory; feather triple-jump gate; map + sti
 book render (2 earned); full reload restore. Zero console errors. Kit-texture
 collisions solved by per-kit Textures folders (survival/pirate/platformer/town).
 
+## Overnight notes (for the morning debug session)
+
+- **Cozy/Brave**: new settings toggle (default Cozy = enemy hits halved, min half a
+  heart; lava stays 1 — it's the teaching hazard). Quiet rubber-band: 3 defeats at
+  the same checkpoint halves damage again until the next checkpoint is reached.
+- Worth checking on a real phone tomorrow: shop/inventory card sizes with fat
+  thumbs, den tent readability (it reads a bit skeletal from the top-down angle —
+  easy to swap for a second campfire/log circle if it looks off), TTS voice quality,
+  and whether shard pickup sounds get too chattery when 15 fly in after the boss.
+- Not built yet (next session): S2 Stoneroot Caverns (needs FBXLoader vendored for
+  the Quaternius monsters; skeleton enemies are GLB and drop straight in), boulder
+  push verb, region gate past the R3 portal (currently plays the Part C lines +
+  celebration and stays in Ember Hollow), Den fast-travel from other rooms.
+
 ## Phase 0 verification (recorded)
 
 - Served locally and screenshot-tested in headless Chromium (desktop + phone-landscape

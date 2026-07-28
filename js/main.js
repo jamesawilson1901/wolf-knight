@@ -448,8 +448,14 @@ function snapCamera() {
   camera.lookAt(camLook.x, 0.6, camLook.z);
 }
 
+let deathStreak = 0;
+let deathStreakCp = '';
+
 async function respawnAtCheckpoint() {
   transitioning = true;
+  if (state.checkpoint.id === deathStreakCp) deathStreak++;
+  else { deathStreak = 1; deathStreakCp = state.checkpoint.id; }
+  player.softenDamage = deathStreak >= 3; // quietly go easier after 3 falls
   await fadeTo(1, 500);
   player.clearProjectiles();
   const cp = state.checkpoint;
@@ -667,6 +673,8 @@ async function start() {
         if (dx * dx + dz * dz < cp.r * cp.r) {
           cp.reached = true;
           state.checkpoint = { room: state.room, x: cp.x, z: cp.z, id: cp.id };
+          deathStreak = 0;
+          player.softenDamage = false;
           showSavedToast();
           audio.play('checkpoint', { volume: 0.7 });
           narration.say('checkpoint');
@@ -736,6 +744,9 @@ function wireSettings() {
   const sfx = document.getElementById('sfx-vol');
   const captions = document.getElementById('captions-toggle');
   const voice = document.getElementById('voice-toggle');
+  const brave = document.getElementById('brave-toggle');
+  brave.checked = !!state.settings.brave;
+  brave.addEventListener('change', () => { state.settings.brave = brave.checked; persist(); });
   music.value = state.settings.musicVol;
   sfx.value = state.settings.sfxVol;
   captions.checked = state.settings.captions;

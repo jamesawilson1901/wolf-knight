@@ -29,6 +29,6 @@ export const state = {
   perks: { sword: 0, bolt: 0, cooldown: 0, speed: 0 },
   counters: {},                 // sticker-book tallies (kills, parries, ...)
   stickers: {},                 // sticker id -> true
-  settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95 },
+  settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95, brave: false },
   spoken: {}, // narration line id -> true (story lines fire once per save)
 };
