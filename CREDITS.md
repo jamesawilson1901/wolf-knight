@@ -42,7 +42,7 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 | Cave Theme (`region-ember`) | Brandon Morris | Ember Hollow region music | https://opengameart.org/content/cave-theme |
 | Boss Battle Music (`boss`) | Juhani Junkala | Shadowgrip fight | https://opengameart.org/content/boss-battle-music |
 | Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
-| HydroGene — 16-bit RPG Music (tracks 1-10 so far) | HydroGene | Region/hub/battle themes for the expansion (`asset-downloads/music/hydrogene/`) | https://hydrogene.itch.io/high-quality-16-bit-music |
+| HydroGene — 16-bit RPG Music (tracks 1-11 so far, OGG) | HydroGene | Region/hub/battle themes for the expansion (`asset-downloads/music/hydrogene/`) | https://hydrogene.itch.io/high-quality-16-bit-music |
 | RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits (`chop`), puffs/whooshes (`cloth*`) | https://kenney.nl/assets/rpg-audio |
 | UI Audio | Kenney | UI clicks, checkpoint tick (`click*`) | https://kenney.nl/assets/ui-audio |
 | Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`) | https://kenney.nl/assets/impact-sounds |
