@@ -268,6 +268,7 @@ function narrationTriggers(dt, t) {
   refreshControlReveal();
 
   if (state.room === 'r1') {
+    if (state.flags.keys.ember) narration.say('lava_cooled');
     const shade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
     if (shade && nearXZ(shade.x, shade.z, 5.5)) narration.say('first_enemy');
     if (m.darkNookMouth && nearSpot(m.darkNookMouth, 2.4)) narration.say('dark_nook');

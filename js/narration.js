@@ -26,6 +26,7 @@ export const LINES = {
   hound_branch: { voice: 'pip', text: 'A shadow hound guards that way. Beat it for a pup — or skip it if you like.' },
   key_door: { voice: 'pip', text: 'Sealed by shadow! We need a key… I feel it east of here, past the broken bridges.' },
   key_found: { voice: 'pip', text: 'The Ember Key! The sealed door will open for us now!' },
+  lava_cooled: { voice: 'pip', text: 'Feel that? The key drank the fire — the lava sleeps as black stone! New paths, Kael!' },
   boss_door: { voice: 'pip', text: 'The spirit is near… but something’s wrong. Be ready, Kael.' },
   boss_intro: { voice: 'pip', text: 'There! The fire spirit — a shadow has it in its grip! Free it!' },
   boss_p1: { voice: 'pip', text: 'It’s holding the spirit! When a tendril gets stuck, hit it — quick!' },

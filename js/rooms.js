@@ -142,7 +142,29 @@ function blockRow(world, x0, z0, x1, z1, height = 1.6) {
 }
 
 // Lava pool: emissive plane + warm pulsing point light + damage zone.
-function lavaPool(world, x, z, w, d, { light = true } = {}) {
+// coolable pools turn to walkable dark basalt once the Ember Key is claimed
+// (the region's mid-dungeon twist — cleared rooms read differently).
+function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
+  if (coolable && state.flags.keys.ember) {
+    const basalt = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshStandardMaterial({ color: 0x2b2331, roughness: 1 })
+    );
+    basalt.rotation.x = -Math.PI / 2;
+    basalt.position.set(x, 0.02, z);
+    world.add(basalt);
+    const veins = new THREE.Mesh(
+      new THREE.PlaneGeometry(w * 0.9, d * 0.9),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, emissive: 0xff5a2b, emissiveIntensity: 0.18,
+        transparent: true, opacity: 0.35, roughness: 1, depthWrite: false,
+      })
+    );
+    veins.rotation.x = -Math.PI / 2;
+    veins.position.set(x, 0.03, z);
+    world.add(veins); // faint dying embers in the crust
+    return basalt;
+  }
   const lava = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
     new THREE.MeshStandardMaterial({
@@ -435,8 +457,8 @@ async function buildR1(scene) {
   }
 
   // Lava patches (upper-left) with the two castle pillars framing the big one
-  lavaPool(world, -5.2, -4.6, 2.6, 1.6);
-  lavaPool(world, 0.6, -1.6, 1.4, 1.1, { light: false });
+  lavaPool(world, -5.2, -4.6, 2.6, 1.6, { coolable: true });
+  lavaPool(world, 0.6, -1.6, 1.4, 1.1, { light: false, coolable: true });
   for (const px of [-6.8, -3.6]) {
     const pillar = prepareModel(kit.pillar.scene.clone());
     pillar.position.set(px, 0, -5.0);
@@ -492,6 +514,10 @@ async function buildR1(scene) {
   world.markers.chestDefs = [
     { id: 'c_r1_rocks', tier: 'wood', x: -6.9, z: -2.6, ry: 1.2, loot: { shards: 8 } },
     { id: 'c_r1_cubby', tier: 'wood', x: -7.0, z: 3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
+    // this one stands ON the big pool — only reachable once the lava cools
+    ...(state.flags.keys.ember
+      ? [{ id: 'c_r1_basalt', tier: 'gold', x: -5.2, z: -4.6, ry: 0.4, loot: { shards: 15, heartPiece: 1 } }]
+      : []),
   ];
 
   return world;
@@ -734,8 +760,8 @@ async function buildR2(scene) {
   }
 
   // Lava channel across the room, crossed by a stone bridge at x = 0
-  lavaPool(world, -5.6, -2, 8.8, 2);
-  lavaPool(world, 5.6, -2, 8.8, 2);
+  lavaPool(world, -5.6, -2, 8.8, 2, { coolable: true });
+  lavaPool(world, 5.6, -2, 8.8, 2, { coolable: true });
   const bridge = prepareModel(kit.bridge.scene.clone());
   bridge.position.set(0, 0.02, -2);
   bridge.rotation.y = Math.PI / 2;
