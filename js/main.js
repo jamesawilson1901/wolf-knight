@@ -212,6 +212,7 @@ function narrationTriggers(dt, t) {
 
   // teaching reveals: shield when a shade closes in, bolt when moths appear,
   // jump at the geyser crossing
+  if ((state.counters.kills || 0) >= 1) narration.say('learn_thrust');
   const anyShade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
@@ -657,6 +658,12 @@ async function start() {
     if (!world) return;
 
     if (paused || menuPaused) {
+      renderer.render(scene, camera);
+      return;
+    }
+
+    // Story hints freeze the world while they play (tap the caption to skip)
+    if (narration.blocking) {
       renderer.render(scene, camera);
       return;
     }

@@ -37,8 +37,8 @@ const FORM_DEFS = {
     speed: 4.6,
     clips: {
       idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A',
-      attack: 'Melee_1H_Attack_Slice_Diagonal', ranged: 'Throw',
-      block: 'Melee_Blocking', jump: 'Jump_Idle',
+      attack: 'Melee_1H_Attack_Slice_Diagonal', attack2: 'Melee_1H_Attack_Stab',
+      ranged: 'Throw', block: 'Melee_Blocking', jump: 'Jump_Idle',
     },
     attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
     boltColor: 0xbfe3ff,
@@ -72,6 +72,11 @@ const FORM_DEFS = {
   },
 };
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
+// Thrust (2nd tap of the combo): narrow and long — a poke, not a sweep
+const THRUST_ARC_COS = Math.cos(THREE.MathUtils.degToRad(32));
+const THRUST_RANGE_BONUS = 0.55;
+const THRUST_DMG_MULT = 1.3;
+const COMBO_WINDOW = 0.7;   // s after a slash ends in which a tap thrusts
 
 // Ranged bolt / defend / parry / jump / potion tuning
 const RANGED_COOLDOWN = 1.1;
@@ -284,13 +289,31 @@ export class Player {
   }
 
   // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
+  // A second tap right after a slash becomes a THRUST — a straight stab with
+  // longer reach and a narrower hit arc (slash the crowd, poke the one).
   tryAttack(world) {
     if (this.lockTime > 0 || this.defending) return false;
     const cfg = this.attackConfig();
-    this._playOnce('attack');
-    this.lockTime = cfg.lock;
-    this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
-    audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
+    const thrust = !!this.form.actions.attack2 &&
+      this._comboUntil !== undefined && this._time < this._comboUntil;
+    if (thrust) {
+      this._playOnce('attack2');
+      this.lockTime = cfg.lock * 0.95;
+      this._pendingHit = {
+        timer: cfg.hitAt * 0.85,
+        range: cfg.range + THRUST_RANGE_BONUS,
+        dmg: cfg.dmg * THRUST_DMG_MULT,
+        arcCos: THRUST_ARC_COS,
+      };
+      this._comboUntil = 0; // slash again to re-open the combo
+      audio.play('sword-swing2', { volume: 0.85, rate: 1.25 });
+    } else {
+      this._playOnce('attack');
+      this.lockTime = cfg.lock;
+      this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
+      this._comboUntil = this._time + cfg.lock + COMBO_WINDOW;
+      audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
+    }
     return true;
   }
 
@@ -298,7 +321,7 @@ export class Player {
     if (!this._pendingHit) return;
     this._pendingHit.timer -= dt;
     if (this._pendingHit.timer > 0) return;
-    const { range, dmg } = this._pendingHit;
+    const { range, dmg, arcCos } = this._pendingHit;
     this._pendingHit = null;
     if (!world.enemies) return;
     const fx = Math.sin(this.root.rotation.y);
@@ -310,7 +333,7 @@ export class Player {
       const dz = e.z - this.root.position.z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.radius) continue;
-      if (d > 0.2 && (dx * fx + dz * fz) / d < ATTACK_ARC_COS) continue;
+      if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
       e.takeDamage(dmg);
       audio.play('hit', { volume: 0.9 });
       connected = true;

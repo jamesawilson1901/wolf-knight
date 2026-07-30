@@ -43,6 +43,7 @@ export const LINES = {
   moonstone_intro: { voice: 'pip', text: 'Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.' },
 
   // Teaching lines — each one reveals its button when it first fires
+  learn_thrust: { voice: 'pip', text: 'Nice hit! Tap again right after a swing to POKE — the thrust reaches farther!' },
   learn_shield: { voice: 'pip', text: 'Take your shield! Hold it to block. Raise it JUST as they strike to knock them silly!' },
   learn_bolt: { voice: 'pip', text: 'Try your throwing spark! Tap the sparkle to zap flying shadows.' },
   learn_jump: { voice: 'pip', text: 'You can jump! Tap the arrow — and tap again in the air to jump higher. Jump over danger!' },
@@ -82,6 +83,13 @@ export class Narration {
     this.captionEl = document.getElementById('caption');
     this.queue = [];
     this.speaking = false;
+    this._pauseLine = false;
+    this._done = null;
+    // tap the caption bubble to skip the line
+    this.captionEl.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      this.skip();
+    });
     if (!state.spoken) state.spoken = {};
     this._voice = null;
     if ('speechSynthesis' in window) {
@@ -112,8 +120,25 @@ export class Narration {
     return true;
   }
 
+  // Story lines (non-repeat) freeze the game while they play so a hint never
+  // hides an incoming attack; contextual chatter never blocks. main.js reads
+  // this each frame.
+  get blocking() {
+    return this.speaking && this._pauseLine &&
+      (state.settings.captions || state.settings.voice);
+  }
+
+  // Skip the current line (tap the caption). Queued lines follow, each
+  // skippable in turn.
+  skip() {
+    if (!this.speaking) return;
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (this._done) this._done();
+  }
+
   _speak(id, line) {
     this.speaking = true;
+    this._pauseLine = !line.repeat;
     const meta = VOICES[line.voice];
     audio.duck(true);
 
@@ -121,6 +146,7 @@ export class Narration {
     if (state.settings.captions) {
       this.captionEl.textContent = `${meta.label}: ${line.text}`;
       this.captionEl.style.opacity = '1';
+      this.captionEl.classList.add('show');
     }
 
     let finished = false;
@@ -128,6 +154,7 @@ export class Narration {
       if (finished) return; // onend + safety timer may both fire
       finished = true;
       this.speaking = false;
+      this.captionEl.classList.remove('show');
       setTimeout(() => {
         if (!this.speaking) this.captionEl.style.opacity = '0';
       }, 900);
@@ -135,6 +162,7 @@ export class Narration {
       const next = this.queue.shift();
       if (next) this._speak(next, LINES[next]);
     };
+    this._done = done;
 
     if (state.settings.voice && 'speechSynthesis' in window) {
       const u = new SpeechSynthesisUtterance(line.text);

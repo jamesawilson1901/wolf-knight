@@ -604,3 +604,19 @@ base center; touches elsewhere no longer steer. Resting a thumb on the stick
 does NOT open the form picker any more (hold-to-transform still works
 anywhere else on screen). Verified headless: parked position, drag steering,
 knob reset on release, no drift from far touches, picker behavior. SW v2.1.2.
+
+## v2.1.3 — Pausing hints, compact overlays, thrust combo (morning session)
+
+- **Story hints now freeze the game** while they play (Narration.blocking read
+  by the main loop). Contextual repeatable chatter never blocks. Tapping the
+  caption bubble skips the line (queued lines follow, each skippable). No
+  pause if both captions and voice are off. Note: on engines where TTS errors
+  out instantly the pause is effectively skipped — captions-only mode gives
+  the sustained pause.
+- **Smaller overlays**: caption bar shrunk (15px, 62vw max, skip arrow);
+  big-toast moved to the top of the screen and halved in size.
+- **Thrust combo**: knight only — a second tap within 0.7s of a slash ending
+  plays Melee_1H_Attack_Stab with +0.55 reach, ±32° arc (vs ±70°), 1.3×
+  damage. Slash sweeps crowds, thrust pokes the one. Works with every owned
+  weapon. New Pip line (learn_thrust) after the first kill.
+- Enemy vetting contact sheet generated for the art review (scratchpad).
