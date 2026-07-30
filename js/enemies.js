@@ -277,6 +277,8 @@ export class Slime extends Enemy {
     this.puffTint = 0x7fc46a;
     this.aggroRange = 6.5;
     this.speed = 1.0;
+    this.splits = true;   // cave slimes burst into two minis when smashed
+    this._gltf = gltf;
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
     model.scale.setScalar(0.26);
     this.model = model;
@@ -304,6 +306,19 @@ export class Slime extends Enemy {
       this.actions[this._current].crossFadeTo(next, fade, false);
     }
     this._current = name;
+  }
+
+  die() {
+    if (this.splits && !this.mini && this.world.enemies) {
+      for (const off of [-0.35, 0.35]) {
+        const m = new Slime(this.world, this.x + off, this.z - off, this._gltf);
+        m.mini = true; m.splits = false;
+        m.hp = 1; m.speed = 1.7; m.radius = 0.22;
+        m.model.scale.setScalar(0.14);
+        this.world.enemies.push(m);
+      }
+    }
+    super.die();
   }
 
   update(dt, t, player) {
@@ -345,7 +360,8 @@ export class Shade extends Slime {
     this.puffTint = 0x4a3f5c;
     this.radius = 0.34;
     this.aggroRange = 7;
-    this.speed = 1.15;
+    this.speed = 2.8;      // burst speed — shades move in sudden skips
+    this.splits = false;   // shadow, not jelly
     this.model.scale.setScalar(0.23);
     this.model.traverse((n) => {
       if (!n.isMesh) return;
@@ -367,6 +383,31 @@ export class Shade extends Slime {
     });
     this._flashMats = [];
     this.registerFlashMats(this.root);
+    this._lurchT = 0;
+  }
+
+  // Lurch rhythm: rest ~0.8s, then a quick 0.4s skip toward Kael. A totally
+  // different read from the cave slime's steady squelch.
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this._lurchT -= dt;
+    if (this._lurchT <= -0.8) this._lurchT = 0.4;
+    if (d < this.aggroRange && d > 0.01 && this._lurchT > 0) {
+      this._play('walk');
+      const sv = this.world.resolveCircle(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt, this.radius);
+      this.root.position.x = sv.x;
+      this.root.position.z = sv.z;
+      this.root.rotation.y = Math.atan2(dx, dz);
+    } else {
+      this._play('idle');
+    }
+    this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
   }
 }
 
@@ -394,6 +435,8 @@ export class Bat extends Enemy {
     this.state = 'roost';
     this.stateT = 0;
     this.diveDir = { x: 0, z: 0 };
+    this.landsAfterDive = true; // cave bats crash-land, winded — sword window
+    this.doubleDive = false;    // moths override with a second swoop
     this._seed = x * 2.3 + z;
     this.root.position.y = 1.5;
   }
@@ -439,7 +482,31 @@ export class Bat extends Enemy {
       this.root.position.z += this.diveDir.z * speed * dt;
       this.root.position.y = Math.max(0.45, this.root.position.y - dt * 2.2);
       this.contact(player, 1, { ground: false });
-      if (this.stateT > 0.7) { this.state = 'return'; this.stateT = 0; }
+      if (this.stateT > 0.7) {
+        if (this.doubleDive && !this._didSecond) {
+          this._didSecond = true;          // wheel around for a second swoop
+          this.state = 'telegraph';
+          this.stateT = 0.55;              // shortened re-aim
+        } else if (this.landsAfterDive) {
+          this._didSecond = false;
+          this.state = 'grounded';         // crash-landed and winded
+          this.stateT = 0;
+          this.flying = false;             // sword food while grounded
+        } else {
+          this._didSecond = false;
+          this.state = 'return';
+          this.stateT = 0;
+        }
+      }
+    } else if (this.state === 'grounded') {
+      this.root.position.y = Math.max(0.14, this.root.position.y - dt * 3);
+      if (this.flyAction) this.flyAction.timeScale = 0.3;
+      if (this.stateT > 1.3) {
+        this.state = 'return';
+        this.stateT = 0;
+        this.flying = true;
+        if (this.flyAction) this.flyAction.timeScale = 1;
+      }
     } else { // return to the roost
       if (this.flyAction) this.flyAction.timeScale = 1;
       if (this.glowMats) for (const m of this.glowMats) m.emissiveIntensity = 1.1;
@@ -470,6 +537,8 @@ export class Moth extends Bat {
     this.puffTint = 0x6b4a3a;
     this.radius = 0.26;
     this.state = 'hover'; // moths never roost — they drift near the lava
+    this.landsAfterDive = false;
+    this.doubleDive = true; // swoop, wheel, swoop again
     if (this.flyAction) this.flyAction.timeScale = 1;
     this.glowMats = [];
     this.root.traverse((n) => {
@@ -757,6 +826,25 @@ export class BoneWarden extends SkeletonBase {
     super.die();
   }
 
+  // The tower shield blocks everything from the front while he advances —
+  // flank him, or parry the chop and punish the stun. Punish windows
+  // (tired / stunned / mid-swing) take full damage.
+  takeDamage(n) {
+    if (!this.dead && this.stunned <= 0 && this._pp &&
+        (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele')) {
+      const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
+      const dd = Math.hypot(dx, dz);
+      const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+      if (dd > 0.05 && (dx * fx + dz * fz) / dd > 0.42) {
+        audio.play('parry', { volume: 0.45, rate: 0.55 }); // clank — blocked
+        this._pop = 0.1;
+        this._blockedOnce = true;
+        return;
+      }
+    }
+    super.takeDamage(n);
+  }
+
   _swingDamage(player, arcDeg, range, dmg) {
     const px = player.root.position.x - this.x;
     const pz = player.root.position.z - this.z;
@@ -773,6 +861,7 @@ export class BoneWarden extends SkeletonBase {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
+    this._pp = { x: player.root.position.x, z: player.root.position.z };
     if (this.awakenUpdate(dt, d, 5.2)) return;
     this.stateT += dt;
 

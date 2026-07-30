@@ -70,6 +70,7 @@ export const LINES = {
   plate_open: { voice: 'pip', text: 'You did it! The gate remembers the weight. Onward!' },
   warden_door: { voice: 'pip', text: 'Something big rattles beyond this door… ready your shield, Kael.' },
   warden_intro: { voice: 'grimm', text: 'My warden of bone guards the stone spirit, little knight. It will grind you to dust.' },
+  warden_block: { voice: 'pip', text: 'His big shield blocks the front! Circle behind him — or parry that chop!' },
   warden_defeat: { voice: 'petra', text: 'The bones fall still… Thank you, kind knight. I am Petra, keeper of the stone.' },
   earthwolf_grant: { voice: 'petra', text: 'Take my gift — the heart of the Earth Wolf. The mountain walks with you now.' },
   earthwolf_howto: { voice: 'pip', text: 'You can be the Earth Wolf now! Hold the screen to change. Your stomp can smash cracked rock!' },

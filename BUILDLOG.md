@@ -682,3 +682,15 @@ idle animation updated; full-fight verify unchanged.
   ladder, perk tiers past level 12), Maren tier-2 stock after Stoneroot,
   hard landscape lock, then S3 Wild Woods once the user downloads a
   Quaternius forest/monster pack in glTF format.
+
+## v2.3 — Enemy variety pass (Terranigma rule: every foe has a signature)
+
+- Shade: lurching stop-start skips (rest 0.8s, 2.8-speed burst 0.4s).
+- Cave Slime: steady squelch, and SPLITS into two fast minis when smashed.
+- Cave Bat: crash-lands winded after its dive (flying=false, sword window).
+- Ember Moth: double-dive — swoops, wheels, swoops again; never lands.
+- Bone Warden: tower-shield FRONT-BLOCK while advancing (clank, no damage);
+  flank or parry-stun for full hits. New Pip hint (warden_block) on first
+  blocked swing. Punish windows (tired/stunned/mid-swing) unchanged.
+- Bosses now play completely differently: Shadowgrip = arena mechanics
+  (slam dodges, wave cover, darkness); Warden = positional melee duel.

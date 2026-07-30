@@ -261,6 +261,7 @@ function narrationTriggers(dt, t) {
   }
   if (state.room === 'e3') {
     if (world.warden && world.warden.state !== 'sleep' && !world.warden.dead) narration.say('warden_intro');
+    if (world.warden && world.warden._blockedOnce) narration.say('warden_block');
     if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
       if (narration.say('stone_complete')) {
         narration.say('luna_dream_2');
