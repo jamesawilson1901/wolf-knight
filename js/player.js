@@ -93,6 +93,10 @@ const AIRBORNE_DODGE_Y = 0.35; // above this, ground attacks miss
 export const MAX_POTIONS = 3;
 const POTION_HEAL = 3;
 
+// Elemental aura geometry (shared across the few meshes that use it)
+const FLAME_GEO = new THREE.ConeGeometry(0.13, 0.4, 6);
+const CHIP_GEO = new THREE.DodecahedronGeometry(0.11, 0);
+
 function tintWolf(model, tint) {
   model.traverse((n) => {
     if (!n.isMesh) return;
@@ -180,7 +184,127 @@ export class Player {
       this._addForm(formName, model, wolf.animations);
     }
 
+    this._buildAuras();
     this.setForm(state.form, { silent: true });
+  }
+
+  // Each wolf form wears its element: flames lick off the Fire Wolf, violet
+  // lightning crackles around the Dark Wolf, stone chips orbit the Earth
+  // Wolf. Auras live on the player root (not the scaled model) and only the
+  // active form's aura is visible. Cheap on purpose — a handful of meshes.
+  _buildAuras() {
+    // FIRE — licks of flame rising along the spine + a flickering warm light
+    {
+      const aura = new THREE.Group();
+      const flames = [];
+      for (let i = 0; i < 7; i++) {
+        const mat = new THREE.MeshBasicMaterial({
+          color: i % 2 ? 0xffd75a : 0xffa03a, transparent: true, opacity: 0.9, depthWrite: false,
+        });
+        const m = new THREE.Mesh(FLAME_GEO, mat);
+        aura.add(m);
+        flames.push({ m, phase: i / 7, x: ((i % 3) - 1) * 0.17, z: 0.4 - i * 0.13 });
+      }
+      const light = new THREE.PointLight(0xff7a3a, 1.3, 4.5, 1.8);
+      light.position.set(0, 0.8, 0);
+      aura.add(light);
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.fire_wolf.aura = aura;
+      this.forms.fire_wolf.auraData = { kind: 'fire', flames, light };
+    }
+    // DARK — short-lived jagged arcs of violet lightning
+    {
+      const aura = new THREE.Group();
+      const bolts = [];
+      for (let i = 0; i < 6; i++) {
+        const geo = new THREE.BufferGeometry().setFromPoints(
+          [new THREE.Vector3(), new THREE.Vector3(0.1, 0.1, 0.1)]
+        );
+        const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+          color: 0xc7a8ff, transparent: true, opacity: 1,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        }));
+        line.visible = false;
+        aura.add(line);
+        bolts.push({ line, timer: 0.1 + i * 0.22 });
+      }
+      const zap = new THREE.PointLight(0x9a6bff, 0, 4, 1.8);
+      zap.position.set(0, 0.8, 0);
+      aura.add(zap);
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.dark_wolf.aura = aura;
+      this.forms.dark_wolf.auraData = { kind: 'dark', bolts, zap };
+    }
+    // EARTH — slow-orbiting stone chips
+    {
+      const aura = new THREE.Group();
+      const chipMat = new THREE.MeshStandardMaterial({ color: 0x94886f, roughness: 1 });
+      const chips = [];
+      for (let i = 0; i < 5; i++) {
+        const c = new THREE.Mesh(CHIP_GEO, chipMat);
+        aura.add(c);
+        chips.push(c);
+      }
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.earth_wolf.aura = aura;
+      this.forms.earth_wolf.auraData = { kind: 'earth', chips };
+    }
+  }
+
+  _updateAura(dt) {
+    const f = this.form;
+    if (!f.aura || !f.aura.visible) return;
+    const d = f.auraData;
+    const t = this._time;
+    if (d.kind === 'fire') {
+      for (const fl of d.flames) {
+        const cyc = (t * 0.85 + fl.phase) % 1;
+        fl.m.position.set(
+          fl.x + Math.sin(t * 3 + fl.phase * 9) * 0.06,
+          0.65 + cyc * 0.95,
+          fl.z
+        );
+        const s = (1 - cyc) * 1.1 + 0.2;
+        fl.m.scale.set(s, s * 1.35, s);
+        fl.m.material.opacity = 0.85 * (1 - cyc);
+      }
+      d.light.intensity = 1.15 + Math.sin(t * 11) * 0.35;
+    } else if (d.kind === 'dark') {
+      for (const b of d.bolts) {
+        b.timer -= dt;
+        if (b.timer > 0) continue;
+        if (b.line.visible) {
+          b.line.visible = false;
+          b.timer = 0.15 + Math.random() * 0.45;
+        } else {
+          // strike: a fresh jagged arc hugging the body
+          b.line.visible = true;
+          b.timer = 0.1 + Math.random() * 0.1;
+          const a = Math.random() * Math.PI * 2;
+          const pts = [];
+          let px = Math.cos(a) * 0.25, py = 0.45 + Math.random() * 0.6, pz = Math.sin(a) * 0.25;
+          pts.push(new THREE.Vector3(px, py, pz));
+          for (let k = 0; k < 4; k++) {
+            px += Math.cos(a) * 0.16 + (Math.random() - 0.5) * 0.16;
+            py += (Math.random() - 0.5) * 0.3;
+            pz += Math.sin(a) * 0.16 + (Math.random() - 0.5) * 0.16;
+            pts.push(new THREE.Vector3(px, py, pz));
+          }
+          b.line.geometry.setFromPoints(pts);
+        }
+      }
+      d.zap.intensity = d.bolts.some((b) => b.line.visible) ? 1.6 : 0;
+    } else if (d.kind === 'earth') {
+      d.chips.forEach((c, i) => {
+        const a = t * 0.8 + i * (Math.PI * 2 / d.chips.length);
+        c.position.set(Math.cos(a) * 0.68, 0.5 + Math.sin(t * 2.1 + i * 1.7) * 0.16, Math.sin(a) * 0.68);
+        c.rotation.x = t * (1.1 + i * 0.2);
+        c.rotation.y = t * 0.9 + i;
+      });
+    }
   }
 
   _addForm(name, model, clips) {
@@ -222,10 +346,14 @@ export class Player {
     if (!state.formsUnlocked.includes(name)) return false;
     if (state.form === name && !silent) return true;
 
-    for (const ff of Object.values(this.forms)) ff.model.visible = false;
+    for (const ff of Object.values(this.forms)) {
+      ff.model.visible = false;
+      if (ff.aura) ff.aura.visible = false;
+    }
     state.form = name;
     const f = this.forms[name];
     f.model.visible = true;
+    if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
     const baseCd = { fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || BLOOD_MOON_COOLDOWN;
     this.specialMax = baseCd * cdMult;
@@ -578,6 +706,7 @@ export class Player {
 
     this._applyPendingHit(dt, world);
     this._updateProjectiles(dt, world);
+    this._updateAura(dt); // before the lock-time early return — auras never freeze
 
     // timed power-up buffs tick down
     for (const k of Object.keys(this.buffs)) {
