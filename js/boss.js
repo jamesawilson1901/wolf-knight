@@ -181,6 +181,32 @@ export class Shadowgrip {
     });
     this._hurtFlash = 0;
 
+    // THE tell: a pulsing golden ring under the dragon whenever it can be
+    // hurt (same "gold glow = go" language as chests and doorways), with a
+    // chime as each window opens. Guarded = no ring, ever.
+    this.strikeRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.15, 1.5, 36),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd76a, transparent: true, opacity: 0.7,
+        side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    this.strikeRing.rotation.x = -Math.PI / 2;
+    this.strikeRing.position.set(x, 0.04, z);
+    this.strikeRing.visible = false;
+    world.add(this.strikeRing);
+    // and the stuck tendril gets its own small go-ring in phase 1
+    this.tendrilRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.5, 0.72, 28),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd76a, transparent: true, opacity: 0.75,
+        side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    this.tendrilRing.rotation.x = -Math.PI / 2;
+    this.tendrilRing.visible = false;
+    world.add(this.tendrilRing);
+
     world.boss = this;
   }
 
@@ -206,7 +232,9 @@ export class Shadowgrip {
 
   _setCoreExposed(v) {
     if (this.defeated) v = false;
+    if (v && !this.coreExposed) audio.play('pup-chime', { volume: 0.55, rate: 0.9 }); // window opens!
     this.coreExposed = v; // body stays hittable — exposure gates real damage
+    this.strikeRing.visible = v;
   }
 
   _severTendril() {
@@ -254,6 +282,8 @@ export class Shadowgrip {
     this.defeated = true;
     this._setCoreExposed(false);
     this.coreHittable.dead = true;
+    this.strikeRing.visible = false;
+    this.tendrilRing.visible = false;
     this.world.bossDarkness = false;
     this.telegraph.visible = false;
     this.slamTendril.visible = false;
@@ -379,6 +409,21 @@ export class Shadowgrip {
       if (this._attackT <= 0 && this.attackAction) this.attackAction.fadeOut(0.25);
     }
     this.dragon.position.y = -1.0 + Math.sin(t * 1.9) * 0.12;
+    // strike-window rings pulse so they read as "hit me NOW"
+    if (this.strikeRing.visible) {
+      this.strikeRing.scale.setScalar(1 + Math.sin(t * 6) * 0.08);
+      this.strikeRing.material.opacity = 0.55 + 0.3 * Math.sin(t * 6);
+    }
+    const stuck = this.slamState === 'stuck' && this.phase === 1 && this.slamHittable && !this.slamHittable.dead;
+    this.tendrilRing.visible = stuck;
+    if (stuck) {
+      this.tendrilRing.position.set(this.slamTendril.position.x, 0.05, this.slamTendril.position.z);
+      this.tendrilRing.scale.setScalar(1 + Math.sin(t * 7) * 0.1);
+      this.tendrilRing.material.opacity = 0.6 + 0.3 * Math.sin(t * 7);
+      this.slamTendril.material.emissiveIntensity = 1.2 + Math.sin(t * 7) * 0.6;
+    } else {
+      this.slamTendril.material.emissiveIntensity = 0.6;
+    }
     if (this._hurtFlash > 0) {
       this._hurtFlash -= dt;
       const on = this._hurtFlash > 0;
