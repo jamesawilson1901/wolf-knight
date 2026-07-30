@@ -24,6 +24,7 @@ const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
 
 export const MAX_HEARTS = 5;
+const WOLF_SCALE = 0.46; // wolf forms stand taller than the old 0.35 — heroic, not pup-sized
 
 // Wolf tints from the casting sheet (ASSETS.md)
 const WOLF_TINTS = {
@@ -175,7 +176,7 @@ export class Player {
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
     for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
-      model.scale.setScalar(0.35);
+      model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
     }
 
@@ -572,7 +573,7 @@ export class Player {
       this._popTime -= dt;
       const p = 1 - Math.max(0, this._popTime) / 0.22;
       const s = 0.6 + 0.4 * (1 - (1 - p) * (1 - p));
-      f.model.scale.setScalar((state.form === 'knight' ? 0.5 : 0.35) * s);
+      f.model.scale.setScalar((state.form === 'knight' ? 0.5 : WOLF_SCALE) * s);
     }
 
     this._applyPendingHit(dt, world);
