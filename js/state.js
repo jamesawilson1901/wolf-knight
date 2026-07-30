@@ -15,6 +15,7 @@ export const state = {
     wardenDefeated: false, // Stoneroot mini-boss
     pups: {},     // pup id -> true
     chests: {},   // chest id -> opened
+    keys: {},     // key id -> owned (dungeon locks)
   },
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',

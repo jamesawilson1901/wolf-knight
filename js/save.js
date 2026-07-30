@@ -76,6 +76,7 @@ export function persist() {
       cracked: { ...state.flags.cracked },
       plates: { ...state.flags.plates },
       chests: { ...state.flags.chests },
+      keys: { ...(state.flags.keys || {}) },
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -122,6 +123,7 @@ export function applySave(profileId, profileName, data) {
     state.flags.cracked = data.flags.cracked || {};
     state.flags.plates = data.flags.plates || {};
     state.flags.chests = data.flags.chests || {};
+    state.flags.keys = data.flags.keys || {};
   }
   state.spoken = data.spoken || {};
   if (data.settings) Object.assign(state.settings, data.settings);

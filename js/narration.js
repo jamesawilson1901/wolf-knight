@@ -24,6 +24,8 @@ export const LINES = {
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },
   geyser_intro: { voice: 'pip', text: 'Fire geysers! Cross when they rest. Watch the timing.' },
   hound_branch: { voice: 'pip', text: 'A shadow hound guards that way. Beat it for a pup — or skip it if you like.' },
+  key_door: { voice: 'pip', text: 'Sealed by shadow! We need a key… I feel it east of here, past the broken bridges.' },
+  key_found: { voice: 'pip', text: 'The Ember Key! The sealed door will open for us now!' },
   boss_door: { voice: 'pip', text: 'The spirit is near… but something’s wrong. Be ready, Kael.' },
   boss_intro: { voice: 'pip', text: 'There! The fire spirit — a shadow has it in its grip! Free it!' },
   boss_p1: { voice: 'pip', text: 'It’s holding the spirit! When a tendril gets stuck, hit it — quick!' },

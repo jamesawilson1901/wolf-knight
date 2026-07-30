@@ -243,6 +243,7 @@ export class Menus {
       { id: 'den', name: 'Moonlit Den', icons: '🛒🐺' },
       { id: 'r1', name: 'Hollow Entrance', icons: '🐺▨' },
       { id: 'r2', name: 'Ember Causeway', icons: '⛲🐺' },
+      { id: 'r2b', name: 'Cinder Bridges', icons: '🌉🗝️' },
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
     ]);
     if (state.spoken.region_complete || state.region === 'stoneroot') {

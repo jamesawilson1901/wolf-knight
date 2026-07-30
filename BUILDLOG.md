@@ -708,3 +708,30 @@ Also this session: strike-window gold rings + chime (v2.3.2), dragon always
 sword-targetable with clank/red-flash feedback + spark auto-aim/homing
 (v2.3.1), per-enemy signature behaviors (v2.3), solid bodies + shield wall
 (v2.2.7).
+
+## v2.5 — Level-design expansion, part 1: the Ember Key loop
+
+User verdict: "two basic rooms then a boss plays more as a partial demo."
+Correct. Terranigma-grade dungeon structure begins here.
+
+- **Key/lock system**: state.flags.keys (persisted), chest loot can carry
+  { key, keyName }, giveLoot grants it with a toast + Pip line and unseals
+  live via world.openBossDoor.
+- **R2's boss door is now SEALED** by shadow-dark rocks with a pulsing gold
+  keyhole (gold = go language). Pip: "Sealed by shadow! …east of here, past
+  the broken bridges."
+- **New room R2b — Cinder Bridges** (east of the Causeway): zigzag bridge
+  crossings over twin lava channels under moth fire, geysers on the lanes,
+  and a Shadow Hound guarding the golden key chest between pillars. Map
+  updated. Region flow is now: R1 → R2 → (branch R2b, fight, key) → R3.
+
+### EXPANSION PLAN — remaining (next blocks, in order)
+1. R1b "Ash Warrens" — maze burrow east of R1: tight corridors, dark
+   pockets, shade ambushes, secret burnable chest. One-way ledge back to R1.
+2. E1b "Echo Chasm" — Dark-Wolf dark cavern branch off E1; bats, cracked
+   secrets. E2b "The Mill" — two-boulder double-plate puzzle + spike maze +
+   Stone Key for a crypt treasure vault.
+3. Loops & secrets pass: one-way drops, shortcut doors that open backwards,
+   2-3 hidden rooms behind burnables/crackables.
+4. S8 endgame: final region + final boss (multi-phase, all forms required)
+   once regions 3+ exist. Every region boss keeps a unique verb.

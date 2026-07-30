@@ -286,6 +286,7 @@ function narrationTriggers(dt, t) {
   if (state.room === 'r2') {
     const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
     if (moth) narration.say('moth_intro');
+    if (!state.flags.keys.ember && nearXZ(8.5, -5.2, 2.6)) narration.say('key_door');
     if (nearXZ(4.5, -4.4, 3.2)) narration.say('geyser_intro');
     if (m.branchMouth && nearSpot(m.branchMouth, 2.6)) narration.say('hound_branch');
     if (nearXZ(8.6, -3.6, 2.4)) narration.say('boss_door');
@@ -424,6 +425,12 @@ function giveLoot(chest) {
   if (L.gear) {
     addGear(L.gear);
     lines.push('🗡️ new gear');
+  }
+  if (L.key) {
+    state.flags.keys[L.key] = true;
+    lines.push('🗝️ ' + (L.keyName || 'a key'));
+    narration.say('key_found');
+    if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
   if (L.powerup) spawnPowerup(world, chest.x, chest.z + 0.8, L.powerup);
   if (lines.length) bigToast(`🎁 ${lines.join(' · ')}`);

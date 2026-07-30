@@ -683,12 +683,55 @@ async function buildR2(scene) {
   const world = new World(scene);
   buildShell(world, 20, 12, [
     { side: 'w', from: 3.2, to: 5.6 },   // back to R1
-    { side: 'n', from: 7.3, to: 9.7 },   // boss door to R3
+    { side: 'n', from: 7.3, to: 9.7 },   // boss door to R3 (sealed until the key)
+    { side: 'e', from: 2.2, to: 4.6 },   // east: the Cinder Bridges
   ]);
   world.spawn = { x: -8, z: 4.4, angle: 0 };
 
   world.addDoor(-10.15, -9.1, 3.2, 5.6, 'r1', { x: 5.6, z: -4.9, angle: Math.PI });
   world.addDoor(7.3, 9.7, -6.9, -5.85, 'r3', { x: 0, z: 6.2, angle: Math.PI });
+  world.addDoor(9.9, 10.9, 2.2, 4.6, 'r2b', { x: -5.9, z: 0, angle: Math.PI / 2 });
+
+  // The boss door is sealed by shadow until the Ember Key is found in the
+  // Cinder Bridges — the region now has a real dungeon loop, not a straight
+  // line. The plug lifts live the moment the key chest opens.
+  if (!state.flags.keys.ember && !state.flags.bossDefeated) {
+    const plug = new THREE.Group();
+    for (const p of [
+      { kind: kit.rockLB, x: 7.9, z: -6.2, s: 2.0, ry: 0.7 },
+      { kind: kit.rockLA, x: 9.0, z: -6.4, s: 1.9, ry: 2.3 },
+      { kind: kit.rockSB, x: 8.5, z: -5.8, s: 1.5, ry: 4.1 },
+    ]) {
+      const rock = prepareModel(p.kind.scene.clone());
+      rock.position.set(p.x, 0, p.z);
+      rock.rotation.y = p.ry;
+      rock.scale.setScalar(p.s);
+      rock.traverse((n) => {
+        if (!n.isMesh) return;
+        n.material = n.material.clone();
+        n.material.color.lerp(new THREE.Color(0x1a1226), 0.55); // shadow-dark
+      });
+      plug.add(rock);
+    }
+    // a gold keyhole glow marks it as a LOCK, not a wall
+    const hole = new THREE.Mesh(
+      new THREE.RingGeometry(0.16, 0.3, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
+    );
+    hole.position.set(8.5, 1.1, -5.6);
+    plug.add(hole);
+    world.add(plug);
+    world.onAnimate((t) => { hole.material.opacity = 0.6 + 0.3 * Math.sin(t * 3); });
+    const plugCollider = { minX: 7.1, maxX: 9.9, minZ: -7.0, maxZ: -5.6 };
+    world.boxColliders.push(plugCollider);
+    world.openBossDoor = () => {
+      world.root.remove(plug);
+      const i = world.boxColliders.indexOf(plugCollider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      audio.play('checkpoint', { volume: 0.9, rate: 1.2 });
+      world.openBossDoor = null;
+    };
+  }
 
   // Lava channel across the room, crossed by a stone bridge at x = 0
   lavaPool(world, -5.6, -2, 8.8, 2);
@@ -774,8 +817,70 @@ async function buildR2(scene) {
   // Way-finding: doorways + the dirt path (bridges carry it over lava)
   doorway(world, -9.4, 4.4, 'z');
   doorway(world, 8.5, -5.7, 'x');
+  doorway(world, 9.4, 3.4, 'z');
   pathTiles(world, [[-8, 4.4], [-4.5, 2], [-0.5, 0.2], [-0.5, -3.6], [2.4, -4.4], [6.5, -4.4], [8.4, -5.2]]);
 
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// Room 2b — Cinder Bridges (the key branch: broken crossings, moth nests,
+// and a hound guarding the Ember Key)
+// ---------------------------------------------------------------------------
+
+async function buildR2b(scene) {
+  const world = new World(scene);
+  buildShell(world, 14, 10, [
+    { side: 'w', from: -1.2, to: 1.2 }, // back to the Causeway
+  ]);
+  world.spawn = { x: -5.9, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-8.05, -7.0, -1.2, 1.2, 'r2', { x: 8.9, z: 3.4, angle: -Math.PI / 2 });
+
+  // two lava channels, crossed by narrow bridges offset from each other —
+  // the walk is a zigzag under moth fire
+  lavaPool(world, -2.2, 0, 1.6, 9.6);
+  lavaPool(world, 2.4, 0, 1.6, 9.6, { light: false });
+  const b1 = prepareModel(kit.bridge.scene.clone());
+  b1.position.set(-2.2, 0.02, -2.6);
+  b1.scale.set(1.3, 1.1, 1.6);
+  world.add(b1);
+  const b2 = prepareModel(kit.bridge.scene.clone());
+  b2.position.set(2.4, 0.02, 2.6);
+  b2.scale.set(1.3, 1.1, 1.6);
+  world.add(b2);
+  // rails so the zigzag can't be corner-cut into lava
+  world.addBox(-3.2, -1.2, -3.6, -3.2); world.addBox(-3.2, -1.2, -1.9, -1.5);
+  world.addBox(1.4, 3.4, 1.5, 1.9); world.addBox(1.4, 3.4, 3.3, 3.7);
+
+  geyser(world, 0.1, -3.6, 0.6);
+  geyser(world, 0.1, 3.4, 1.8);
+  world.markers.mothSpots = [{ x: -0.1, z: -1.2 }, { x: 0.2, z: 1.6 }];
+
+  // east side: the hound's watch — pillars ring the key chest
+  for (const [px, pz] of [[4.6, -2.2], [6.3, 1.9]]) {
+    const pillar = prepareModel(kit.pillar.scene.clone());
+    pillar.position.set(px, 0, pz);
+    pillar.scale.setScalar(0.55);
+    world.add(pillar);
+    world.addCircle(px, pz, 0.5);
+  }
+  world.markers.houndSpot = { x: 5.2, z: 0.2 };
+  world.markers.chestDefs = [
+    { id: 'c_r2b_key', tier: 'gold', x: 6.1, z: -0.4, ry: -1.3,
+      loot: { shards: 12, key: 'ember', keyName: 'Ember Key' } },
+  ];
+  world.markers.breakables = [
+    { x: -5.6, z: 3.6, kind: 'crate', shards: 2 },
+    { x: -5.9, z: -3.4, kind: 'barrel', shards: 2 },
+  ];
+  potionPickup(world, 6.2, 3.9);
+
+  placeRocks(world, [
+    { kind: 'sa', x: -4.6, z: -2.0, s: 1.5, ry: 1.1, cr: 0.32 },
+    { kind: 'sb', x: 4.4, z: 4.0, s: 1.4, ry: 2.7, cr: 0.3 },
+  ]);
+  doorway(world, -7.5, 0, 'z');
+  pathTiles(world, [[-5.9, 0], [-2.2, -2.6], [0.1, -0.2], [2.4, 2.6], [4.6, 0.6]]);
   return world;
 }
 
@@ -1513,7 +1618,7 @@ async function buildE3(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r2: buildR2, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
+export const ROOMS = { r1: buildR1, r2: buildR2, r2b: buildR2b, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
