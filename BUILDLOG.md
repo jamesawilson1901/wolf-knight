@@ -669,3 +669,16 @@ reading as nonsense from top-down. Replaced with the Petra visual language: a
 dark shadow-shell smothering Cinder's glow. Each severed tendril cracks it
 (thinner, smaller, brighter light + a pop); phase 2 shatters it. Dissolve and
 idle animation updated; full-fight verify unchanged.
+
+## v2.2.6 — Fix batch + the Den grows (build-while-testing session)
+
+- Map cards widened (106px, min-height) — "You are here" no longer clips.
+- E2 gate collider now clears the instant the plate clicks (visual bars still
+  rise after) — no more invisible-wall lag on slow devices.
+- Den growth, Terranigma-style: once the Warden falls, glowing cavern
+  mushrooms take root in the glade and a third tent stands. Pattern to extend
+  per region freed.
+- QUEUED NEXT (in order): economy/XP balance pass (shard income vs shop
+  ladder, perk tiers past level 12), Maren tier-2 stock after Stoneroot,
+  hard landscape lock, then S3 Wild Woods once the user downloads a
+  Quaternius forest/monster pack in glTF format.

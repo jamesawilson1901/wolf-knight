@@ -633,6 +633,25 @@ async function buildDen(scene) {
     { x: -0.6, z: 3.4, kind: 'barrel', shards: 0 },
   ];
 
+  // Terranigma rule, home edition: the Den grows as regions are freed.
+  // Stoneroot freed → the caverns' glowing mushrooms take root in the glade
+  // and a third tent stands for new friends.
+  await mushroomPatches(world, [[-6.2, 3.8], [5.2, -0.8, 1.3], [-1.4, -2.4]]);
+  if (state.flags.wardenDefeated) {
+    const t3 = prepareModel(tentGltf.scene.clone());
+    t3.position.set(4.9, 0, 2.9);
+    t3.rotation.y = -2.4;
+    t3.scale.setScalar(1.4);
+    t3.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.name === 'grass') n.material.color.setHex(0x4e9a4a);
+      if (n.material.name === 'dirt') n.material.color.setHex(0x8a6a48);
+    });
+    world.add(t3);
+    world.addCircle(4.9, 2.9, 0.6);
+  }
+
   // rescued pups live here, playing in the grass
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
   const rescued = Object.keys(state.flags.pups);
@@ -1331,17 +1350,15 @@ async function buildE2(scene) {
     world.boxColliders.push(gateCollider);
   }
   pressurePlate(world, 'e2_gate', -1.6, 4.6, () => {
-    // raise the bars in the live room
+    // the way is open the moment the plate clicks (collider first, visual after)
+    const ci = world.boxColliders.indexOf(gateCollider);
+    if (ci >= 0) world.boxColliders.splice(ci, 1);
     let rise = 0;
     world.onAnimate((t, dt) => {
       if (rise >= 2.6) return;
       rise += dt * 1.6;
       gateBars.position.y = Math.min(2.6, rise);
-      if (rise >= 2.6) {
-        world.root.remove(gateBars);
-        const i = world.boxColliders.indexOf(gateCollider);
-        if (i >= 0) world.boxColliders.splice(i, 1);
-      }
+      if (rise >= 2.6) world.root.remove(gateBars);
     });
     audio.play('slam', { volume: 0.5, rate: 0.6 });
   });
