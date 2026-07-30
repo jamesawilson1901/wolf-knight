@@ -134,6 +134,52 @@ function renderPups() {
 }
 
 let savedToastTimer = null;
+// Floating damage numbers — Terranigma's answer to "did that count?"
+const dmgNums = [];
+const _dmgV = new THREE.Vector3();
+function spawnDmgNum(x, y, z, v) {
+  const el = document.createElement('div');
+  const block = typeof v === 'string';
+  const big = !block && v >= 2;
+  el.className = 'dmg-num' + (big ? ' big' : '') + (block ? ' block' : '');
+  el.textContent = block ? v : (v % 1 ? v.toFixed(1) : String(v));
+  document.body.appendChild(el);
+  dmgNums.push({ el, x, y, z, life: 0.9 });
+}
+function updateDmgNums(realDt) {
+  for (let i = dmgNums.length - 1; i >= 0; i--) {
+    const d = dmgNums[i];
+    d.life -= realDt;
+    d.y += realDt * 1.1;
+    if (d.life <= 0) {
+      d.el.remove();
+      dmgNums.splice(i, 1);
+      continue;
+    }
+    _dmgV.set(d.x, d.y, d.z).project(camera);
+    d.el.style.left = ((_dmgV.x + 1) / 2 * window.innerWidth) + 'px';
+    d.el.style.top = ((1 - _dmgV.y) / 2 * window.innerHeight) + 'px';
+    d.el.style.opacity = String(Math.min(1, d.life / 0.45));
+  }
+}
+// Boss health bar — progress is never a mystery
+const bossBarEl = document.getElementById('boss-bar');
+const bossNameEl = document.getElementById('boss-name');
+const bossFillEl = document.getElementById('boss-fill');
+function updateBossBar() {
+  let bar = null;
+  if (world.boss && !world.boss.defeated) {
+    bar = { name: 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / 8 };
+  } else if (world.warden && !world.warden.dead && world.warden.state !== 'sleep') {
+    bar = { name: 'The Bone Warden', f: Math.max(0, world.warden.hp) / world.warden.maxHp };
+  }
+  bossBarEl.style.display = bar ? 'block' : 'none';
+  if (bar) {
+    bossNameEl.textContent = bar.name;
+    bossFillEl.style.width = (bar.f * 100) + '%';
+  }
+}
+
 function showSavedToast() {
   const el = document.getElementById('saved-toast');
   el.style.opacity = '1';
@@ -445,6 +491,7 @@ function onPupCollected() {
 }
 
 async function setupRoomExtras() {
+  world.onDmgNum = spawnDmgNum;
   // The Bone Warden falls → Petra is freed, the Earth Wolf is earned.
   // Fired from the warden's death (not polled) so a simultaneous level-up
   // perk card can't swallow the celebration.
@@ -796,6 +843,8 @@ async function start() {
     }
 
     effects.update(dt, t);
+    updateDmgNums(realDt);
+    updateBossBar();
     ui.update(player);
     // ranged button dims while on cooldown
     document.getElementById('btn-ranged').style.opacity =

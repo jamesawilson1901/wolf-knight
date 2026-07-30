@@ -50,6 +50,7 @@ class Enemy {
     world.add(this.root);
     // gentle level scaling on hp (behaviors carry real difficulty)
     this.hp = Math.round(hp * enemyScale() * 2) / 2;
+    this.maxHp = this.hp;
     this.radius = radius;
     this.dead = false;
     this.stunned = 0;
@@ -83,6 +84,7 @@ class Enemy {
     this.hp -= n;
     this._flash = 0.14;
     this._pop = 0.14;             // little scale-pop on every hit
+    if (this.world.onDmgNum) this.world.onDmgNum(this.x, 0.9, this.z, n);
     if (this.hp <= 0) this.die();
   }
 
@@ -839,6 +841,7 @@ export class BoneWarden extends SkeletonBase {
         audio.play('parry', { volume: 0.45, rate: 0.55 }); // clank — blocked
         this._pop = 0.1;
         this._blockedOnce = true;
+        if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.2, this.z, 'BLOCKED');
         return;
       }
     }

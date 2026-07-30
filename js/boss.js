@@ -220,9 +220,11 @@ export class Shadowgrip {
       audio.play('parry', { volume: 0.4, rate: 0.5 });
       this._eyeFlash = 0.15;
       this.eyeMat.emissiveIntensity = 1.6;
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 2.2, this.z, 'BLOCKED');
       return;
     }
     this.coreHp -= n;
+    if (this.world.onDmgNum) this.world.onDmgNum(this.x, 2.2, this.z, n);
     this._hurtFlash = 0.2;
     this.eyeMat.emissiveIntensity = 3;
     this._eyeFlash = 0.25;

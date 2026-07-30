@@ -49,6 +49,32 @@
     }
     @keyframes turn { 0%,20% { transform: rotate(0); } 60%,100% { transform: rotate(90deg); } }
     @media (orientation: portrait) { #rotate { display: flex; } }
+    .dmg-num {
+      position: fixed; z-index: 8; pointer-events: none;
+      font-size: 20px; font-weight: 900; color: #ffd76a;
+      text-shadow: 0 2px 4px rgba(0,0,0,.85); transform: translate(-50%, -50%);
+    }
+    .dmg-num.big { font-size: 26px; color: #ffe9a0; }
+    .dmg-num.block { font-size: 16px; color: #b9c4d4; }
+    #boss-bar {
+      position: fixed; left: 50%; top: 54px; transform: translateX(-50%);
+      z-index: 6; width: min(46vw, 420px); display: none; pointer-events: none;
+      text-align: center;
+    }
+    #boss-name {
+      color: #ffe9c8; font-size: 14px; font-weight: 800; letter-spacing: .06em;
+      text-shadow: 0 2px 4px rgba(0,0,0,.8);
+    }
+    #boss-fill-wrap {
+      height: 10px; border-radius: 6px; margin-top: 3px;
+      background: rgba(10, 7, 18, .7); border: 2px solid rgba(232,221,208,.4);
+      overflow: hidden;
+    }
+    #boss-fill {
+      height: 100%; width: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #a83a5a, #ff5a6b);
+      transition: width .25s ease;
+    }
     #badge {
       position: fixed; right: 10px; bottom: 8px; z-index: 5;
       color: rgba(232, 221, 208, .5); font-size: 11px; letter-spacing: .04em;
@@ -397,6 +423,7 @@
   <div id="map-menu" class="panel"></div>
   <div id="sticker-menu" class="panel"></div>
   <div id="big-toast"></div>
+  <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
   <div id="badge">Wolf Knight &middot; v2.2.1</div>

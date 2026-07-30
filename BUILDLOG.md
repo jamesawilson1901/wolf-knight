@@ -694,3 +694,17 @@ idle animation updated; full-fight verify unchanged.
   blocked swing. Punish windows (tired/stunned/mid-swing) unchanged.
 - Bosses now play completely differently: Shadowgrip = arena mechanics
   (slam dodges, wave cover, darkness); Warden = positional melee duel.
+
+## v2.4 — Damage clarity (the Terranigma bar)
+
+User's north star: "there was never any questioning whether you were doing
+damage." Two answers, straight from that game's playbook:
+- Floating damage numbers on every hit (gold; big at 2+; grey BLOCKED text on
+  warden front-blocks and the dragon's guarded armor). DOM pool projected
+  through the camera, ~1s life.
+- Boss health bar (top-center) for the Shadowgrip and the Bone Warden
+  (appears when the warden wakes). Progress is never a mystery.
+Also this session: strike-window gold rings + chime (v2.3.2), dragon always
+sword-targetable with clank/red-flash feedback + spark auto-aim/homing
+(v2.3.1), per-enemy signature behaviors (v2.3), solid bodies + shield wall
+(v2.2.7).
