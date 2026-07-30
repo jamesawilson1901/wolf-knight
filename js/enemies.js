@@ -138,162 +138,6 @@ class Enemy {
 }
 
 // ---------------------------------------------------------------------------
-// Shade — slow dark wisp, contact damage, teaches basic melee
-// ---------------------------------------------------------------------------
-
-export class Shade extends Enemy {
-  constructor(world, x, z) {
-    super(world, x, z, { hp: 2, radius: 0.34 });
-    this.puffTint = 0x4a3f5c;
-
-    const body = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.34, 1),
-      new THREE.MeshStandardMaterial({
-        color: 0x120d1c, transparent: true, opacity: 0.88, roughness: 1,
-        emissive: 0x2a1b3a, emissiveIntensity: 0.35,
-      })
-    );
-    body.position.y = 0.45;
-    this.root.add(body);
-    this.body = body;
-
-    // ember flecks drifting around the wisp
-    this.flecks = [];
-    for (let i = 0; i < 3; i++) {
-      const f = new THREE.Mesh(
-        new THREE.SphereGeometry(0.035, 6, 6),
-        new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff7a3a, emissiveIntensity: 2 })
-      );
-      this.root.add(f);
-      this.flecks.push(f);
-    }
-    this.registerFlashMats(this.root);
-    this._seed = x * 3.1 + z * 1.7;
-  }
-
-  update(dt, t, player) {
-    if (this.dead) return;
-    if (this.stunUpdate(dt)) return;
-    const dx = player.root.position.x - this.x;
-    const dz = player.root.position.z - this.z;
-    const d = Math.hypot(dx, dz);
-    if (d < 7 && d > 0.01) {
-      const speed = 1.15;
-      const nx = this.x + (dx / d) * speed * dt;
-      const nz = this.z + (dz / d) * speed * dt;
-      const solved = this.world.resolveCircle(nx, nz, this.radius);
-      this.root.position.x = solved.x;
-      this.root.position.z = solved.z;
-    }
-    this.body.position.y = 0.45 + Math.sin(t * 2.1 + this._seed) * 0.08;
-    this.body.scale.setScalar(1 + Math.sin(t * 3.3 + this._seed) * 0.07);
-    this.flecks.forEach((f, i) => {
-      const a = t * 1.3 + i * 2.1 + this._seed;
-      f.position.set(Math.cos(a) * 0.4, 0.5 + Math.sin(a * 1.7) * 0.2, Math.sin(a) * 0.4);
-    });
-    this.contact(player);
-    this.flashUpdate(dt);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Ember Moth — hovers, glows ~0.8s, then dives in a straight line
-// ---------------------------------------------------------------------------
-
-export class Moth extends Enemy {
-  constructor(world, x, z) {
-    super(world, x, z, { hp: 1, radius: 0.26 });
-    this.puffTint = 0x6b4a3a;
-    this.flying = true; // bolts hit flyers for full damage
-    this.home = { x, z };
-
-    const body = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0x140d18, roughness: 1 })
-    );
-    this.root.add(body);
-
-    const wingGeo = new THREE.BufferGeometry();
-    wingGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-      0, 0, 0, 0.42, 0.05, -0.18, 0.42, 0.05, 0.22,
-    ]), 3));
-    wingGeo.computeVertexNormals();
-    this.wingMats = [];
-    this.wings = [];
-    for (const side of [1, -1]) {
-      const mat = new THREE.MeshStandardMaterial({
-        color: 0x000000, emissive: 0xff6a2a, emissiveIntensity: 1.1,
-        side: THREE.DoubleSide, roughness: 1,
-      });
-      const wing = new THREE.Mesh(wingGeo, mat);
-      wing.scale.x = side;
-      this.root.add(wing);
-      this.wings.push(wing);
-      this.wingMats.push(mat);
-    }
-    this.registerFlashMats(this.root);
-
-    this.state = 'hover';
-    this.stateT = 0;
-    this.diveDir = { x: 0, z: 0 };
-    this._seed = x * 2.3 + z;
-    this.root.position.y = 1.1;
-  }
-
-  update(dt, t, player) {
-    if (this.dead) return;
-    if (this.stunUpdate(dt)) return;
-    this.stateT += dt;
-    const px = player.root.position.x, pz = player.root.position.z;
-    const dx = px - this.x, dz = pz - this.z;
-    const d = Math.hypot(dx, dz);
-
-    if (this.state === 'hover') {
-      // drift gently around home
-      this.root.position.x += (this.home.x + Math.sin(t * 0.9 + this._seed) * 0.8 - this.x) * dt;
-      this.root.position.z += (this.home.z + Math.cos(t * 0.7 + this._seed) * 0.8 - this.z) * dt;
-      this.root.position.y = 1.1 + Math.sin(t * 2.4 + this._seed) * 0.18;
-      if (d < 5.2) { this.state = 'telegraph'; this.stateT = 0; }
-    } else if (this.state === 'telegraph') {
-      // pause + wings glow bright (~0.8s) before the dive
-      const f = this.stateT / 0.8;
-      for (const m of this.wingMats) m.emissiveIntensity = 1.1 + f * 2.6;
-      if (this.stateT >= 0.8) {
-        this.state = 'dive';
-        this.stateT = 0;
-        const dd = Math.max(d, 0.01);
-        this.diveDir = { x: dx / dd, z: dz / dd };
-        this.root.rotation.y = Math.atan2(this.diveDir.x, this.diveDir.z);
-      }
-    } else if (this.state === 'dive') {
-      const speed = 6.5;
-      this.root.position.x += this.diveDir.x * speed * dt;
-      this.root.position.z += this.diveDir.z * speed * dt;
-      this.root.position.y = Math.max(0.5, this.root.position.y - dt * 1.6);
-      this.contact(player, 1, { ground: false });
-      if (this.stateT > 0.75) { this.state = 'return'; this.stateT = 0; }
-    } else { // return
-      for (const m of this.wingMats) m.emissiveIntensity = 1.1;
-      const hx = this.home.x - this.x, hz = this.home.z - this.z;
-      const hd = Math.hypot(hx, hz);
-      if (hd < 0.3) { this.state = 'hover'; this.stateT = 0; }
-      else {
-        this.root.position.x += (hx / hd) * 2.2 * dt;
-        this.root.position.z += (hz / hd) * 2.2 * dt;
-        this.root.position.y = Math.min(1.1, this.root.position.y + dt);
-      }
-    }
-
-    // wing flap
-    const flap = Math.sin(t * (this.state === 'telegraph' ? 26 : 14)) * 0.75;
-    this.wings[0].rotation.z = flap;
-    this.wings[1].rotation.z = -flap;
-    if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
-    this.flashUpdate(dt);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Shadow Hound — elite. Stalks, crouches (streak telegraph ~1s), charges.
 // ---------------------------------------------------------------------------
 
@@ -431,8 +275,11 @@ export class Slime extends Enemy {
   constructor(world, x, z, gltf) {
     super(world, x, z, { hp: 2, radius: 0.4 });
     this.puffTint = 0x7fc46a;
+    this.aggroRange = 6.5;
+    this.speed = 1.0;
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
     model.scale.setScalar(0.26);
+    this.model = model;
     this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.actions = {};
@@ -465,9 +312,9 @@ export class Slime extends Enemy {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
-    if (d < 6.5 && d > 0.01) {
+    if (d < this.aggroRange && d > 0.01) {
       this._play('walk');
-      const speed = 1.0;
+      const speed = this.speed;
       const solved = this.world.resolveCircle(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt, this.radius);
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
@@ -484,6 +331,42 @@ export class Slime extends Enemy {
     this.contact(player);
     this.flashUpdate(dt);
     this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shade — the corruption itself: a slime given shadow. Same gentle chase as
+// its cave cousin, dressed in deep violet with ember eyes.
+// ---------------------------------------------------------------------------
+
+export class Shade extends Slime {
+  constructor(world, x, z, gltf) {
+    super(world, x, z, gltf);
+    this.puffTint = 0x4a3f5c;
+    this.radius = 0.34;
+    this.aggroRange = 7;
+    this.speed = 1.15;
+    this.model.scale.setScalar(0.23);
+    this.model.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (m.name === 'Eyes') {
+          c.color.setHex(0x000000);
+          c.emissive = new THREE.Color(0xff7a3a);
+          c.emissiveIntensity = 1.6;
+        } else {
+          c.color.setHex(0x241a38);
+          c.emissive = new THREE.Color(0x2a1b3a);
+          c.emissiveIntensity = 0.35;
+        }
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    this._flashMats = [];
+    this.registerFlashMats(this.root);
   }
 }
 
@@ -539,6 +422,9 @@ export class Bat extends Enemy {
     } else if (this.state === 'telegraph') {
       // fast flap + rising pitch flutter (~0.8s) before the swoop
       if (this.flyAction) this.flyAction.timeScale = 2.6;
+      if (this.glowMats) {
+        for (const m of this.glowMats) m.emissiveIntensity = 1.1 + (this.stateT / 0.8) * 2.4;
+      }
       this.root.rotation.y = Math.atan2(dx, dz);
       if (this.stateT >= 0.8) {
         this.state = 'dive';
@@ -556,6 +442,7 @@ export class Bat extends Enemy {
       if (this.stateT > 0.7) { this.state = 'return'; this.stateT = 0; }
     } else { // return to the roost
       if (this.flyAction) this.flyAction.timeScale = 1;
+      if (this.glowMats) for (const m of this.glowMats) m.emissiveIntensity = 1.1;
       const hx = this.home.x - this.x, hz = this.home.z - this.z;
       const hd = Math.hypot(hx, hz);
       if (hd < 0.3) { this.state = 'hover'; this.stateT = 0; }
@@ -569,6 +456,44 @@ export class Bat extends Enemy {
     if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
     this.flashUpdate(dt);
     this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ember Moth — the bat given fire: dark body, ember-glow wings that burn
+// brighter through the dive telegraph. Same swoop rhythm as the cave bat.
+// ---------------------------------------------------------------------------
+
+export class Moth extends Bat {
+  constructor(world, x, z, gltf) {
+    super(world, x, z, gltf);
+    this.puffTint = 0x6b4a3a;
+    this.radius = 0.26;
+    this.state = 'hover'; // moths never roost — they drift near the lava
+    if (this.flyAction) this.flyAction.timeScale = 1;
+    this.glowMats = [];
+    this.root.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (m.name === 'Black') {         // the wings
+          c.color.setHex(0x1a0d08);
+          c.emissive = new THREE.Color(0xff6a2a);
+          c.emissiveIntensity = 1.1;
+          this.glowMats.push(c);
+        } else if (m.name === 'Eyes') {
+          c.emissive = new THREE.Color(0xffb25a);
+          c.emissiveIntensity = 1.4;
+        } else {
+          c.color.setHex(0x140d18);
+        }
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    this._flashMats = [];
+    this.registerFlashMats(this.root);
   }
 }
 
@@ -983,8 +908,14 @@ export async function spawnEnemies(world) {
   world.enemies = [];
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
 
-  for (const s of world.markers.shadeSpots || []) world.enemies.push(new Shade(world, s.x, s.z));
-  for (const m of world.markers.mothSpots || []) world.enemies.push(new Moth(world, m.x, m.z));
+  if ((world.markers.shadeSpots || []).length) {
+    const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
+    for (const s of world.markers.shadeSpots) world.enemies.push(new Shade(world, s.x, s.z, slimeGltf));
+  }
+  if ((world.markers.mothSpots || []).length) {
+    const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
+    for (const m of world.markers.mothSpots) world.enemies.push(new Moth(world, m.x, m.z, batGltf));
+  }
   if (world.markers.houndSpot) {
     world.enemies.push(new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf));
   }

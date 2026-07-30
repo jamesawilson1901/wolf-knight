@@ -1504,7 +1504,11 @@ export async function buildRoom(id, scene) {
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot && !state.flags.bossDefeated) {
-    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z);
+    const [dragonGltf, slimeGltf] = await Promise.all([
+      loadGLB('./assets/chars/monsters/Dragon.glb'),
+      loadGLB('./assets/chars/monsters/Slime.glb'),
+    ]);
+    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, dragonGltf, slimeGltf);
   }
   return world;
 }

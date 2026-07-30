@@ -8,6 +8,8 @@
 // arc, defeat resets cleanly via room rebuild.
 
 import * as THREE from 'three';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { prepareCharacter } from './assets.js';
 import { Shade } from './enemies.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
@@ -33,7 +35,8 @@ class Hittable {
 }
 
 export class Shadowgrip {
-  constructor(world, x, z) {
+  constructor(world, x, z, dragonGltf, slimeGltf) {
+    this._slimeGltf = slimeGltf; // phase-2 Shades need the model
     this.world = world;
     this.x = x; this.z = z;
     this.root = new THREE.Group();
@@ -49,23 +52,52 @@ export class Shadowgrip {
     this.defeated = false;
     this.onDefeated = null;
 
-    // --- core: dark blob + shadowy eye, hovering over the caged Cinder ---
+    // --- core: the shadow dragon itself, hovering over the caged Cinder.
+    // Quaternius dragon tinted deep violet; its eyes carry the "exposed"
+    // signal the old shadow-eye did.
     this.core = new THREE.Group();
-    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15, 1), darkMat());
-    this.core.add(blob);
-    this.blob = blob;
-    const eyeWhite = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0x141020, emissive: 0xb9a8ff, emissiveIntensity: 0.7, roughness: 1 })
-    );
-    eyeWhite.position.set(0, 0.15, 0.95);
-    const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.13, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0x05030a, roughness: 1 })
-    );
-    pupil.position.set(0, 0.15, 1.2);
-    this.core.add(eyeWhite, pupil);
-    this.eyeMat = eyeWhite.material;
+    const dragon = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
+    dragon.scale.setScalar(0.42);
+    dragon.position.y = -1.0; // pivot at the feet — center the body on the core
+    this.eyeMat = null;
+    dragon.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (m.name === 'Eyes') {
+          c.color.setHex(0x141020);
+          c.emissive = new THREE.Color(0xb9a8ff);
+          c.emissiveIntensity = 0.7;
+          this.eyeMat = c;
+        } else if (m.name === 'Wings') {
+          c.color.setHex(0x241238);
+          c.emissive = new THREE.Color(0x2a1040);
+          c.emissiveIntensity = 0.5;
+        } else if (m.name === 'Belly') {
+          c.color.setHex(0x151022);
+        } else if (m.name === 'Claws') {
+          c.color.setHex(0x0d0716);
+        } else {
+          c.color.setHex(0x1d1428);
+          c.emissive = new THREE.Color(0x2a1040);
+          c.emissiveIntensity = 0.3;
+        }
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    if (!this.eyeMat) this.eyeMat = darkMat(); // safety — never null
+    this.core.add(dragon);
+    this.dragon = dragon;
+    this.mixer = new THREE.AnimationMixer(dragon);
+    const flyClip = dragonGltf.animations.find((c) => c.name === 'DragonArmature|Dragon_Flying');
+    const atkClip = dragonGltf.animations.find((c) => c.name === 'DragonArmature|Dragon_Attack');
+    this.flyAction = flyClip ? this.mixer.clipAction(flyClip) : null;
+    if (this.flyAction) this.flyAction.play();
+    this.attackAction = atkClip ? this.mixer.clipAction(atkClip) : null;
+    if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    this._attackT = 0;
     this.core.position.y = 2.5;
     this.root.add(this.core);
 
@@ -84,10 +116,10 @@ export class Shadowgrip {
     this.cageTendrils = [];
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * Math.PI * 2 + 0.5;
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.24, 2.6, 8), darkMat(0x0d0716, 0x1a0e2a, 0.4));
-      tr.position.set(Math.cos(a) * 1.05, 1.25, Math.sin(a) * 1.05);
-      tr.rotation.z = Math.cos(a) * 0.55;
-      tr.rotation.x = -Math.sin(a) * 0.55;
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.16, 1.5, 8), darkMat(0x0d0716, 0x1a0e2a, 0.4));
+      tr.position.set(Math.cos(a) * 0.7, 0.95, Math.sin(a) * 0.7);
+      tr.rotation.z = Math.cos(a) * 0.6;
+      tr.rotation.x = -Math.sin(a) * 0.6;
       this.root.add(tr);
       this.cageTendrils.push(tr);
     }
@@ -178,8 +210,8 @@ export class Shadowgrip {
     this.wave.material.opacity = 0.5;
     // summon exactly 2 Shades
     this.world.enemies.push(
-      new Shade(this.world, this.x - 2.6, this.z + 1.4),
-      new Shade(this.world, this.x + 2.6, this.z + 1.4)
+      new Shade(this.world, this.x - 2.6, this.z + 1.4, this._slimeGltf),
+      new Shade(this.world, this.x + 2.6, this.z + 1.4, this._slimeGltf)
     );
   }
 
@@ -257,6 +289,11 @@ export class Shadowgrip {
         this.slamTendril.position.set(tx, 1.35, tz);
         this.slamTendril.visible = true;
         audio.play('tendril-slam', { volume: 0.9 });
+        // the dragon lashes as its shadow strikes
+        if (this.attackAction) {
+          this.attackAction.reset().fadeIn(0.08).play();
+          this._attackT = this.attackAction.getClip().duration;
+        }
         const dx = player.root.position.x - tx, dz = player.root.position.z - tz;
         // a well-timed jump clears the slam; a shield blunts or parries it
         if (dx * dx + dz * dz < 1.0) player.hurt(1, { groundAttack: true });
@@ -312,8 +349,13 @@ export class Shadowgrip {
 
     this.stateT += dt;
 
-    // idle motion + eye tracks the player
-    this.blob.scale.setScalar(1 + Math.sin(t * 1.9) * 0.06);
+    // idle motion + the dragon faces the player, wings beating
+    this.mixer.update(dt);
+    if (this._attackT > 0) {
+      this._attackT -= dt;
+      if (this._attackT <= 0 && this.attackAction) this.attackAction.fadeOut(0.25);
+    }
+    this.dragon.position.y = -1.0 + Math.sin(t * 1.9) * 0.12;
     this.core.rotation.y = Math.atan2(
       player.root.position.x - this.x,
       player.root.position.z - this.z

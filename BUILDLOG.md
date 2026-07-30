@@ -645,3 +645,18 @@ in-hand assets. Terranigma named as the design touchstone — its core loop
   Den pup orbit re-laid in two rows so six pups fit the glade.
 - Verified headless: slimes/bats spawn, bat wakes+dives, pups 4-6 collect,
   6/6 → 7 hearts, revival mood + mushrooms in E1/E3, zero errors. SW v2.2.0.
+
+## v2.2.1 — Ember pass: no more code-built creatures anywhere
+
+- **Shade** is now the Slime model tinted deep violet (ember eyes) — same
+  chase behavior, slightly quicker than its cave cousin. The boss's phase-2
+  summons use it too (gltf threaded through the Shadowgrip constructor).
+- **Ember Moth** is now the Bat model in fire dress: dark body, ember-glow
+  wings that burn brighter through the 0.8s dive telegraph (glowMats hook in
+  the shared Bat logic). Starts hovering (never roosts) near the lava.
+- **Shadowgrip** wears the Quaternius Dragon: shadow-violet tint, glowing
+  purple eyes (the same exposed/guarded signal), Flying loop + Attack lash on
+  every slam. All fight logic untouched — tendril severing, wave, phase-3
+  darkness, dissolve. Cage tendrils slimmed into talons clutching the ember.
+- Verified: full 3-phase fight to defeat with zero errors; Shade/Moth
+  behaviors + narration triggers intact (class names preserved). SW v2.2.1.
