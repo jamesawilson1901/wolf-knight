@@ -643,7 +643,7 @@ async function buildDen(scene) {
     const pupMixer = new THREE.AnimationMixer(pup);
     const clip = wolfGltf.animations.find((c) => c.name === (i % 2 ? 'Gallop' : 'Idle'));
     if (clip) pupMixer.clipAction(clip).play();
-    const cx = -3 + i * 2.2, cz = 2.2, r = 1.1 + i * 0.3;
+    const cx = -3.6 + (i % 3) * 2.4, cz = 1.6 + Math.floor(i / 3) * 1.9, r = 0.9 + (i % 3) * 0.25;
     world.onAnimate((t, dt) => {
       pupMixer.update(dt);
       const a = t * (0.5 + i * 0.2) + i * 2;
@@ -1170,10 +1170,42 @@ function crackedRocks(world, id, x, z) {
   return c;
 }
 
-// Shared cavern dressing: mood, cobwebs, skulls, scattered columns.
+// Shared cavern dressing. Terranigma rule: beating the region's guardian
+// visibly REVIVES the world — the caverns brighten and glowing mushrooms
+// sprout where there was bare stone.
 function cavernMood(world) {
-  world.lightScale = 0.42;          // the caverns run dark; torches carry it
-  world.bgColor = 0x0b0d14;
+  const revived = state.flags.wardenDefeated;
+  world.lightScale = revived ? 0.6 : 0.42;
+  world.bgColor = revived ? 0x101720 : 0x0b0d14;
+}
+
+// Post-warden life: glowing mushroom clusters (Kenney nature kit). Every
+// other patch carries a soft green light so the new life reads at a glance.
+async function mushroomPatches(world, spots) {
+  if (!state.flags.wardenDefeated) return;
+  const [group, tall] = await Promise.all([
+    loadGLB('./assets/env/mushroom-group.glb'),
+    loadGLB('./assets/env/mushroom-tall.glb'),
+  ]);
+  spots.forEach(([x, z, s], i) => {
+    const m = prepareModel((i % 3 === 2 ? tall : group).scene.clone(), { castShadow: false });
+    m.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      n.material.emissive = new THREE.Color(i % 3 === 2 ? 0xd8ffb0 : 0x8affc0);
+      n.material.emissiveIntensity = 0.55;
+    });
+    m.position.set(x, 0.08, z);
+    m.rotation.y = (x * 5 + z * 3) % 6.28;
+    m.scale.setScalar(s || 1.6);
+    world.add(m);
+    if (i % 2 === 0) {
+      const glow = new THREE.PointLight(0x9affc0, 2.2, 5, 1.9);
+      glow.position.set(x, 0.7, z);
+      world.add(glow);
+      world.onAnimate((t) => { glow.intensity = 1.8 + Math.sin(t * 1.9 + x) * 0.5; });
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1226,8 +1258,15 @@ async function buildE1(scene) {
     world.add(skull);
   }
 
-  // skeletons sleep on the critical path — every kid sees the wake-up beat
+  // skeletons sleep on the critical path — every kid sees the wake-up beat;
+  // bats roost by the cobwebbed corners
   world.markers.minionSpots = [{ x: 0.6, z: 0.6 }, { x: -2.0, z: -2.6 }];
+  world.markers.batSpots = [{ x: -6.6, z: -4.4 }, { x: 6.6, z: 4.6 }];
+
+  // the caverns bloom once the Warden falls (Terranigma-style revival)
+  await mushroomPatches(world, [
+    [-5.0, 4.6], [5.2, 2.8, 2.0], [-6.6, -2.6], [2.6, -2.0, 1.3], [6.8, -3.4],
+  ]);
 
   // checkpoint by the deep door
   checkpoint(world, 'cp_e1', 3.4, -4.4);
@@ -1313,12 +1352,24 @@ async function buildE2(scene) {
   arch2.scale.setScalar(0.7);
   world.add(arch2);
 
-  // the rogue ambush waits mid-hall; a minion shuffles near the entry
+  // the rogue ambush waits mid-hall; slimes squelch near the entry; a bat
+  // roosts over the spike gauntlet
   world.markers.minionSpots = [{ x: -3.4, z: 3.2 }];
   world.markers.rogueSpots = [{ x: 1.6, z: 0.2 }, { x: 4.8, z: 1.8 }];
+  world.markers.slimeSpots = [{ x: -5.6, z: 0.2 }, { x: 5.8, z: 3.6 }];
+  world.markers.batSpots = [{ x: 5.2, z: -4.6 }];
+
+  // NW dark nook — the Dark Wolf's eyes find a lost pup in here
+  darkZone(world, -10, -6.2, -6, -2.2);
+  world.markers.pup4Spot = { x: -9.0, z: -5.0 };
+  // ...and a second pup shivers in the far corner past the spikes
+  world.markers.pup5Spot = { x: 9.2, z: -5.2 };
 
   checkpoint(world, 'cp_e2', 7.6, 3.8);
   potionPickup(world, -8.6, -4.2);
+  await mushroomPatches(world, [
+    [-7.8, 3.2], [-1.2, -2.2, 1.3], [2.2, 4.6], [7.0, 0.8, 2.0], [-4.6, -4.8], [8.6, 4.6],
+  ]);
   world.markers.chestDefs = [
     { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
   ];
@@ -1435,6 +1486,12 @@ async function buildE3(scene) {
 
   checkpoint(world, 'cp_e3', -3.2, 5.2);
   potionPickup(world, 3.2, 5.2);
+
+  // the third cavern pup cowers in the crypt corner, freed with the Warden
+  world.markers.pup6Spot = { x: -5.6, z: -5.6 };
+  await mushroomPatches(world, [
+    [-4.6, 0.4], [4.8, -1.2, 2.0], [-2.0, -6.0], [2.2, 5.8, 1.3], [5.8, 3.2],
+  ]);
 
   return world;
 }

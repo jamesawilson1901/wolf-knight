@@ -620,3 +620,28 @@ knob reset on release, no drift from far touches, picker behavior. SW v2.1.2.
   damage. Slash sweeps crowds, thrust pokes the one. Works with every owned
   weapon. New Pip line (learn_thrust) after the first kill.
 - Enemy vetting contact sheet generated for the art review (scratchpad).
+
+## v2.2 — Stoneroot finished: real monsters, revival, cavern pups
+
+User rules now in force: no code-built creatures; finish the region with
+in-hand assets. Terranigma named as the design touchstone — its core loop
+(free a region → the world visibly heals) is now mechanical, not just narrated.
+
+- **FBX unlock**: the Quaternius Animated Monsters pack (FBX-only, why it sat
+  unused) converts cleanly with the FBX2glTF native binary (npm fbx2gltf ships
+  it under bin/Linux — the .bin/ shim is broken, call the binary directly).
+  All four monsters verified in-engine with animations. Slime + Bat shipped;
+  Dragon reserved to replace the Shadowgrip boss; Skeleton redundant (KayKit).
+- **New enemies**: Cave Slime (scale 0.26, hp 2, hops close + squelch attack,
+  natural green) in E2; Cave Bat (scale 0.13, flying, roost → hover →
+  fast-flap telegraph → dive, the bolt's prey) roosting at E1/E2 cobweb
+  corners. Both use their own animation clips (Armature|Slime_*, BatArmature|Bat_*).
+- **Terranigma revival**: `cavernMood` reads `wardenDefeated` — lightScale
+  0.42 → 0.6, warmer fog, and glowing mushroom patches (Kenney nature kit,
+  emissive clones + soft green lights) sprout across all three rooms.
+- **Cavern pups**: pup4 (E2 dark nook — new darkZone, Dark Wolf's job),
+  pup5 (past the spike gauntlet), pup6 (crypt corner). HUD shows /6 once
+  Stoneroot is open; all six = a 7th heart + new Pip line (all_pups_stone).
+  Den pup orbit re-laid in two rows so six pups fit the glade.
+- Verified headless: slimes/bats spawn, bat wakes+dives, pups 4-6 collect,
+  6/6 → 7 hearts, revival mood + mushrooms in E1/E3, zero errors. SW v2.2.0.

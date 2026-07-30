@@ -423,6 +423,156 @@ export class Hound extends Enemy {
 }
 
 // ---------------------------------------------------------------------------
+// Cave Slime — Quaternius animated monster. Slow, squishy, hops after Kael
+// and squelches into him. The caverns' gentle "first contact" enemy.
+// ---------------------------------------------------------------------------
+
+export class Slime extends Enemy {
+  constructor(world, x, z, gltf) {
+    super(world, x, z, { hp: 2, radius: 0.4 });
+    this.puffTint = 0x7fc46a;
+    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+    model.scale.setScalar(0.26);
+    this.root.add(model);
+    this.mixer = new THREE.AnimationMixer(model);
+    this.actions = {};
+    for (const [k, n] of Object.entries({
+      idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack',
+    })) {
+      const clip = gltf.animations.find((c) => c.name === n);
+      if (clip) this.actions[k] = this.mixer.clipAction(clip);
+    }
+    this._current = null;
+    this._play('idle');
+    this.registerFlashMats(this.root);
+    this.attackT = 0;
+  }
+
+  _play(name, fade = 0.2) {
+    if (this._current === name) return;
+    const next = this.actions[name];
+    if (!next) return;
+    next.reset().play();
+    if (this._current && this.actions[this._current]) {
+      this.actions[this._current].crossFadeTo(next, fade, false);
+    }
+    this._current = name;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 6.5 && d > 0.01) {
+      this._play('walk');
+      const speed = 1.0;
+      const solved = this.world.resolveCircle(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt, this.radius);
+      this.root.position.x = solved.x;
+      this.root.position.z = solved.z;
+      this.root.rotation.y = Math.atan2(dx, dz);
+    } else {
+      this._play('idle');
+    }
+    this.attackT -= dt;
+    if (d < 1.1 && this.attackT <= 0) {
+      this.attackT = 1.8;
+      const act = this.actions.attack;
+      if (act) { act.reset(); act.setLoop(THREE.LoopOnce); act.play(); this._current = 'attack'; }
+    }
+    this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cave Bat — Quaternius animated monster. Roosts half-asleep, flutters up
+// when Kael comes near, telegraphs with a fast flap, then dives. The bolt's
+// natural prey (flying=true), same rhythm the Ember Moths teach.
+// ---------------------------------------------------------------------------
+
+export class Bat extends Enemy {
+  constructor(world, x, z, gltf) {
+    super(world, x, z, { hp: 1, radius: 0.3 });
+    this.puffTint = 0x4a3f5c;
+    this.flying = true;
+    this.home = { x, z };
+    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+    model.scale.setScalar(0.13);
+    model.position.y = -0.25; // wings pivot high on the rig — recenter
+    this.root.add(model);
+    this.mixer = new THREE.AnimationMixer(model);
+    const fly = gltf.animations.find((c) => c.name === 'BatArmature|Bat_Flying');
+    this.flyAction = fly ? this.mixer.clipAction(fly) : null;
+    if (this.flyAction) { this.flyAction.play(); this.flyAction.timeScale = 0.25; } // sleepy flutter
+    this.registerFlashMats(this.root);
+    this.state = 'roost';
+    this.stateT = 0;
+    this.diveDir = { x: 0, z: 0 };
+    this._seed = x * 2.3 + z;
+    this.root.position.y = 1.5;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    this.stateT += dt;
+    const px = player.root.position.x, pz = player.root.position.z;
+    const dx = px - this.x, dz = pz - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'roost') {
+      this.root.position.y = 1.5 + Math.sin(t * 1.4 + this._seed) * 0.06;
+      if (d < 5) {
+        this.state = 'hover';
+        this.stateT = 0;
+        if (this.flyAction) this.flyAction.timeScale = 1;
+      }
+    } else if (this.state === 'hover') {
+      this.root.position.x += (this.home.x + Math.sin(t * 0.9 + this._seed) * 0.7 - this.x) * dt;
+      this.root.position.z += (this.home.z + Math.cos(t * 0.7 + this._seed) * 0.7 - this.z) * dt;
+      this.root.position.y = 1.4 + Math.sin(t * 2.6 + this._seed) * 0.15;
+      this.root.rotation.y = Math.atan2(dx, dz);
+      if (d < 4.6 && this.stateT > 1.0) { this.state = 'telegraph'; this.stateT = 0; }
+    } else if (this.state === 'telegraph') {
+      // fast flap + rising pitch flutter (~0.8s) before the swoop
+      if (this.flyAction) this.flyAction.timeScale = 2.6;
+      this.root.rotation.y = Math.atan2(dx, dz);
+      if (this.stateT >= 0.8) {
+        this.state = 'dive';
+        this.stateT = 0;
+        const dd = Math.max(d, 0.01);
+        this.diveDir = { x: dx / dd, z: dz / dd };
+        audio.play('form-switch', { volume: 0.4, rate: 2.0 }); // screech-whoosh
+      }
+    } else if (this.state === 'dive') {
+      const speed = 6.0;
+      this.root.position.x += this.diveDir.x * speed * dt;
+      this.root.position.z += this.diveDir.z * speed * dt;
+      this.root.position.y = Math.max(0.45, this.root.position.y - dt * 2.2);
+      this.contact(player, 1, { ground: false });
+      if (this.stateT > 0.7) { this.state = 'return'; this.stateT = 0; }
+    } else { // return to the roost
+      if (this.flyAction) this.flyAction.timeScale = 1;
+      const hx = this.home.x - this.x, hz = this.home.z - this.z;
+      const hd = Math.hypot(hx, hz);
+      if (hd < 0.3) { this.state = 'hover'; this.stateT = 0; }
+      else {
+        this.root.position.x += (hx / hd) * 2.4 * dt;
+        this.root.position.z += (hz / hd) * 2.4 * dt;
+        this.root.position.y = Math.min(1.5, this.root.position.y + dt);
+        this.root.rotation.y = Math.atan2(hx, hz);
+      }
+    }
+    if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Stoneroot skeletons — KayKit models on the same Rig_Medium as the knight,
 // so the shared animation library retargets directly. They sleep as bone
 // piles and rattle awake when Kael comes close (kids get a readable "it is
@@ -839,8 +989,16 @@ export async function spawnEnemies(world) {
     world.enemies.push(new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf));
   }
 
-  // Stoneroot skeletons — models load only when a room actually asks for them
+  // Cavern natives — Quaternius monsters, loaded only when a room asks
   const mk = world.markers;
+  if (mk.slimeSpots && mk.slimeSpots.length) {
+    const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
+    for (const s of mk.slimeSpots) world.enemies.push(new Slime(world, s.x, s.z, slimeGltf));
+  }
+  if (mk.batSpots && mk.batSpots.length) {
+    const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
+    for (const s of mk.batSpots) world.enemies.push(new Bat(world, s.x, s.z, batGltf));
+  }
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) || mk.wardenSpot) {
     const [special, movement, general, combat] = await Promise.all([
       loadGLB('./assets/anims/rig-medium-special.glb'),

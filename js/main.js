@@ -129,7 +129,8 @@ function renderPotions(player) {
 
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
-  document.getElementById('pups').textContent = `🐺 ${found}/3`;
+  const total = state.spoken.region_complete ? 6 : 3; // Stoneroot adds three
+  document.getElementById('pups').textContent = `🐺 ${found}/${total}`;
 }
 
 let savedToastTimer = null;
@@ -423,12 +424,19 @@ function onPupCollected() {
   bumpCounter('pupsFound');
   const found = Object.keys(state.flags.pups).length;
   if (found >= 3 && state.maxHearts === 5) {
-    // all pups safe → a permanent extra heart, granted full
+    // all Ember pups safe → a permanent extra heart, granted full
     state.maxHearts = 6;
     player.maxHearts = 6;
     player.healFull();
     effects.warmFlood();
     narration.say('all_pups');
+  } else if (found >= 6 && state.maxHearts === 6) {
+    // all Stoneroot pups too → another heart
+    state.maxHearts = 7;
+    player.maxHearts = 7;
+    player.healFull();
+    effects.warmFlood();
+    narration.say('all_pups_stone');
   } else {
     narration.say('pup_found');
   }

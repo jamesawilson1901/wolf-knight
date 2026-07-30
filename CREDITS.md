@@ -32,7 +32,7 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 | Halloween Bits | KayKit (Kay Lousberg) | Spooky props: graves, crypts, lanterns, dead trees | https://kaylousberg.itch.io/ |
 | Skeletons 1.1 | KayKit (Kay Lousberg) | Skeleton enemy family (Warrior/Mage/Rogue/Minion) | https://kaylousberg.itch.io/kaykit-skeletons |
 | Medieval Hexagon Pack | KayKit (Kay Lousberg) | World-map hex tiles, towns, castles (FBX/OBJ + atlas) | https://kaylousberg.itch.io/ |
-| Animated Monster Pack | Quaternius | Bat, Dragon, Skeleton, Slime enemies (FBX, animated) | https://quaternius.com |
+| Animated Monster Pack | Quaternius | Cave Slime + Cave Bat enemies (FBX converted to GLB offline; Dragon reserved for the boss rework) | https://quaternius.com |
 | Stylish Plants | Nobiax / yughues | Decorative flora (OBJ/FBX) | https://opengameart.org/users/yughues |
 | Modular Dungeon Pack | Quaternius | Stoneroot Caverns interiors — walls, floors, torches, traps, statues (converted OBJ→GLB) | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
 | Particle Pack | Kenney | FX sprites — later phases | https://kenney.nl/assets/particle-pack |

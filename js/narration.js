@@ -74,6 +74,7 @@ export const LINES = {
   earthwolf_grant: { voice: 'petra', text: 'Take my gift — the heart of the Earth Wolf. The mountain walks with you now.' },
   earthwolf_howto: { voice: 'pip', text: 'You can be the Earth Wolf now! Hold the screen to change. Your stomp can smash cracked rock!' },
   crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
+  all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
   luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
 };

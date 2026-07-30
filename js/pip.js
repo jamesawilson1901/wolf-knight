@@ -175,6 +175,9 @@ export async function spawnPups(world, onCollected) {
     ['pup1', world.markers.pup1Spot],
     ['pup2', world.markers.pup2Spot],
     ['pup3', world.markers.pup3Spot],
+    ['pup4', world.markers.pup4Spot],
+    ['pup5', world.markers.pup5Spot],
+    ['pup6', world.markers.pup6Spot],
   ];
   for (const [id, spot] of spots) {
     if (!spot || state.flags.pups[id]) continue;
