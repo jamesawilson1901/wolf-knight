@@ -24,7 +24,7 @@ const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
 
 export const MAX_HEARTS = 5;
-const WOLF_SCALE = 0.46; // wolf forms stand taller than the old 0.35 — heroic, not pup-sized
+const WOLF_SCALE = 0.56; // wolf forms loom larger than the knight — the beast is the power form
 
 // Wolf tints from the casting sheet (ASSETS.md)
 const WOLF_TINTS = {
