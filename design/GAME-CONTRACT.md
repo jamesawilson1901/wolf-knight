@@ -13,6 +13,7 @@
   near a kid (spawn spacing must respect this).
 
 ## Progression targets (tune toward, verify per region)
+<!-- Difficulty numbers are provisional defaults: no family playtest data yet. First real session's verdicts get recorded here and become the reference. -->
 - Expected level entering region N: ~1+3(N-1). XP curve stays 20+15(lvl-1).
 - Perk pick every 3rd level; perk pool must stay ≥3 unmaxed choices to
   level 21 (add tiers when a pool would run dry).

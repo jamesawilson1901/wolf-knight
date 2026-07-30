@@ -129,14 +129,14 @@ Seven lights guarded the kingdom; Grimm's shadow took them one by one.
 Pip's counted lines are canon: after Ember "six to go", after Stoneroot
 "five to go" … seven lights total (the 7th is Luna's own moonlight).
 
-## Proposed reveal (user to approve)
+## The reveal (APPROVED — canon)
 Grimm the Shadow King was once the FIRST guardian — the great wolf whose
 heart the shadow took first. Every wolf form Kael earns is a piece of
 Grimm's stolen strength finding a kinder bearer; the rescued pups are his
 scattered descendants filling the Den again. The final battle FREES Grimm
 rather than destroying him — a Terranigma-hearted ending.
 
-## The seven regions / spirits / gifts (LOCKED ORDER)
+## The seven regions / spirits / gifts (NAMES + ORDER LOCKED, user-approved)
 1. Ember Hollow — Cinder, flame — FIRE WOLF (ground-slam, burns)   [DONE]
 2. Stoneroot Caverns — Petra, stone — EARTH WOLF (stomp, cracks)   [DONE]
 3. Wild Woods — Sylva, growth — VERDANT WOLF (vine-lash: snares foes,
