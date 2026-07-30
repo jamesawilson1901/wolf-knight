@@ -904,6 +904,63 @@ function updateDrops(world, dt, t, player) {
 // Spawning + the shared combat query used by sword arcs and the Blood Moon
 // ---------------------------------------------------------------------------
 
+// Solid bodies: creatures can't walk through each other, and a raised shield
+// physically stops and bumps back grounded enemies. Flyers pass over walkers.
+// Boss parts (Hittable) and breakables (already static colliders) stay out.
+function resolveBodies(world, dt, player) {
+  const solid = world.enemies.filter((e) =>
+    !e.dead && e.radius &&
+    e.constructor.name !== 'Hittable' && e.constructor.name !== 'Breakable');
+
+  // enemy vs enemy: split the overlap evenly
+  for (let i = 0; i < solid.length; i++) {
+    for (let j = i + 1; j < solid.length; j++) {
+      const a = solid[i], b = solid[j];
+      if (!!a.flying !== !!b.flying) continue;
+      let dx = b.x - a.x, dz = b.z - a.z;
+      const d = Math.hypot(dx, dz);
+      const rr = a.radius + b.radius;
+      if (d >= rr || d < 1e-4) continue;
+      const push = (rr - d) / 2;
+      dx /= d; dz /= d;
+      a.root.position.x -= dx * push; a.root.position.z -= dz * push;
+      b.root.position.x += dx * push; b.root.position.z += dz * push;
+    }
+  }
+
+  const px = player.root.position.x, pz = player.root.position.z;
+  for (const e of solid) {
+    // shove-in-progress from a shield bump
+    if (e.bump > 0) {
+      const s = world.resolveCircle(e.x + e.bumpDir.x * e.bump * dt, e.z + e.bumpDir.z * e.bump * dt, e.radius);
+      e.root.position.x = s.x; e.root.position.z = s.z;
+      e.bump -= dt * 10;
+    }
+    if (e.flying) continue; // flyers dive over both body and shield
+    let dx = e.x - px, dz = e.z - pz;
+    const d = Math.hypot(dx, dz);
+    if (d < 1e-4) continue;
+    dx /= d; dz /= d;
+    if (player.defending) {
+      // the shield is a wall: stop at arm's length and take a firm shove back
+      const rr = e.radius + 0.52;
+      if (d < rr) {
+        const s = world.resolveCircle(e.x + dx * (rr - d + 0.06), e.z + dz * (rr - d + 0.06), e.radius);
+        e.root.position.x = s.x; e.root.position.z = s.z;
+        if (!(e.bump > 0)) { e.bump = 4.2; e.bumpDir = { x: dx, z: dz }; }
+      }
+    } else {
+      // bodies never fully merge — but stay inside contact range so touch
+      // damage still lands (contact triggers at radius + 0.32)
+      const rr = e.radius + 0.22;
+      if (d < rr) {
+        const s = world.resolveCircle(e.x + dx * (rr - d), e.z + dz * (rr - d), e.radius);
+        e.root.position.x = s.x; e.root.position.z = s.z;
+      }
+    }
+  }
+}
+
 export async function spawnEnemies(world) {
   world.enemies = [];
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
@@ -975,6 +1032,7 @@ export async function spawnEnemies(world) {
 
   world.updateEnemies = (dt, t, player) => {
     for (const e of world.enemies) if (!e.dead) e.update(dt, t, player);
+    resolveBodies(world, dt, player);
     updateDrops(world, dt, t, player);
   };
 }
