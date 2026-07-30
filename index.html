@@ -155,7 +155,9 @@
     #joy-base, #joy-knob {
       position: fixed; display: none; z-index: 6; pointer-events: none;
       border-radius: 50%; transform: translate(-50%, -50%);
+      opacity: .55; transition: opacity .15s ease;
     }
+    #joy-base.active, #joy-knob.active { opacity: 1; }
     #joy-base {
       width: 120px; height: 120px;
       border: 2px solid rgba(232, 221, 208, .35);

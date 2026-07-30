@@ -1,11 +1,13 @@
-// Touch-first input: hand-rolled virtual joystick (pointer events, left half
-// of the screen) + WASD/arrow keyboard fallback. Exposes a unified state:
+// Touch-first input: hand-rolled virtual joystick FIXED to the bottom-left
+// corner (always visible; touches near it grab the knob) + WASD/arrow
+// keyboard fallback. Exposes a unified state:
 //   move: {x, z} normalized to length <= 1 (screen-up = -z, world-aligned)
 //   attack / special: edge-triggered button presses (consumed per frame)
-// Attack taps and the form picker arrive in later phases; the right-half tap
-// zone is already reserved here so Phase 4 only adds consumers.
 
 const JOY_RADIUS = 52;    // px, knob travel
+const JOY_CAPTURE = 130;  // px, touches this close to the stick grab it
+const JOY_ANCHOR_X = 104; // px from the left edge
+const JOY_ANCHOR_Y = 108; // px up from the bottom edge
 const HOLD_TIME = 420;    // ms press-and-hold to open the form picker
 const HOLD_SLOP = 14;     // px of movement that still counts as a hold
 const TAP_TIME = 300;     // ms max for a right-half attack tap
@@ -17,7 +19,6 @@ export class Input {
     this.defending = false; // true while the shield button/key is held
     this._keys = new Set();
     this._joyPointer = null;
-    this._joyOrigin = { x: 0, y: 0 };
     this._attackQueued = false;
     this._specialQueued = false;
     this._formCycleQueued = false;
@@ -43,6 +44,23 @@ export class Input {
 
     this._base = document.getElementById('joy-base');
     this._knob = document.getElementById('joy-knob');
+
+    // The stick lives at a fixed bottom-left anchor and is always on screen.
+    this._anchor = { x: 0, y: 0 };
+    const placeJoy = () => {
+      this._anchor.x = JOY_ANCHOR_X;
+      this._anchor.y = window.innerHeight - JOY_ANCHOR_Y;
+      this._base.style.left = this._anchor.x + 'px';
+      this._base.style.top = this._anchor.y + 'px';
+      if (this._joyPointer === null) {
+        this._knob.style.left = this._anchor.x + 'px';
+        this._knob.style.top = this._anchor.y + 'px';
+      }
+    };
+    placeJoy();
+    window.addEventListener('resize', placeJoy);
+    this._base.style.display = 'block';
+    this._knob.style.display = 'block';
 
     const opts = { passive: false };
     window.addEventListener('pointerdown', (e) => this._onDown(e), opts);
@@ -72,24 +90,27 @@ export class Input {
   _onDown(e) {
     if (e.target.closest && e.target.closest('.ui')) return; // HTML UI wins
 
+    // Touches near the fixed stick grab it; resting a thumb there must NOT
+    // pop the form picker, so joystick touches skip the hold timer.
+    const nearStick =
+      Math.hypot(e.clientX - this._anchor.x, e.clientY - this._anchor.y) < JOY_CAPTURE;
+    if (nearStick && this._joyPointer === null) {
+      this._joyPointer = e.pointerId;
+      this._pointers.set(e.pointerId, {
+        x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: true, held: false,
+      });
+      this._applyJoy(e.clientX - this._anchor.x, e.clientY - this._anchor.y);
+      e.preventDefault();
+      return;
+    }
+
     const rec = { x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, held: false };
-    // Press-and-hold anywhere = radial form picker
+    // Press-and-hold anywhere else = radial form picker
     rec.timer = setTimeout(() => {
       if (rec.moved) return;
-      if (this.onHold && this.onHold(rec.x0, rec.y0, e.pointerId)) {
-        rec.held = true;
-        if (this._joyPointer === e.pointerId) this._releaseJoy();
-      }
+      if (this.onHold && this.onHold(rec.x0, rec.y0, e.pointerId)) rec.held = true;
     }, HOLD_TIME);
     this._pointers.set(e.pointerId, rec);
-
-    if (e.clientX < window.innerWidth * 0.5) {
-      if (this._joyPointer !== null) return;
-      this._joyPointer = e.pointerId;
-      this._joyOrigin = { x: e.clientX, y: e.clientY };
-      this._showJoy(e.clientX, e.clientY, 0, 0);
-      e.preventDefault();
-    }
   }
 
   _onMove(e) {
@@ -99,13 +120,7 @@ export class Input {
       clearTimeout(rec.timer);
     }
     if (e.pointerId !== this._joyPointer) return;
-    let dx = e.clientX - this._joyOrigin.x;
-    let dy = e.clientY - this._joyOrigin.y;
-    const len = Math.hypot(dx, dy);
-    if (len > JOY_RADIUS) { dx *= JOY_RADIUS / len; dy *= JOY_RADIUS / len; }
-    this.move.x = dx / JOY_RADIUS;
-    this.move.z = dy / JOY_RADIUS; // screen down = +z (toward camera)
-    this._showJoy(this._joyOrigin.x, this._joyOrigin.y, dx, dy);
+    this._applyJoy(e.clientX - this._anchor.x, e.clientY - this._anchor.y);
     e.preventDefault();
   }
 
@@ -129,17 +144,22 @@ export class Input {
     this._joyPointer = null;
     this.move.x = 0;
     this.move.z = 0;
-    this._base.style.display = 'none';
-    this._knob.style.display = 'none';
+    this._base.classList.remove('active');
+    this._knob.classList.remove('active');
+    this._knob.style.left = this._anchor.x + 'px';
+    this._knob.style.top = this._anchor.y + 'px';
   }
 
-  _showJoy(cx, cy, dx, dy) {
-    this._base.style.display = 'block';
-    this._knob.style.display = 'block';
-    this._base.style.left = cx + 'px';
-    this._base.style.top = cy + 'px';
-    this._knob.style.left = (cx + dx) + 'px';
-    this._knob.style.top = (cy + dy) + 'px';
+  // Offset from the FIXED base center → move vector + knob position.
+  _applyJoy(dx, dy) {
+    const len = Math.hypot(dx, dy);
+    if (len > JOY_RADIUS) { dx *= JOY_RADIUS / len; dy *= JOY_RADIUS / len; }
+    this.move.x = dx / JOY_RADIUS;
+    this.move.z = dy / JOY_RADIUS; // screen down = +z (toward camera)
+    this._base.classList.add('active');
+    this._knob.classList.add('active');
+    this._knob.style.left = (this._anchor.x + dx) + 'px';
+    this._knob.style.top = (this._anchor.y + dy) + 'px';
   }
 
   // Combined joystick + keyboard move vector, length clamped to 1.

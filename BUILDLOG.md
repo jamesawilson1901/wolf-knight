@@ -594,3 +594,13 @@ e1, zero errors). SW v2.1.1.
   bounds were read from the NORMAL accessor (±1) instead of POSITION (0..1.31) — the
   pillar base already sits at y=0. Lesson recorded: when inspecting GLB bounds, filter
   accessors to the POSITION attribute only.
+
+## v2.1.2 — Fixed joystick (user request, morning session)
+
+The movement stick no longer floats to wherever the touch lands — it is
+anchored bottom-left, always visible (dim at rest, bright while steering).
+Touches within ~130px grab it, with the knob offset measured from the fixed
+base center; touches elsewhere no longer steer. Resting a thumb on the stick
+does NOT open the form picker any more (hold-to-transform still works
+anywhere else on screen). Verified headless: parked position, drag steering,
+knob reset on release, no drift from far touches, picker behavior. SW v2.1.2.
