@@ -487,6 +487,24 @@ export class Player {
     this.rangedCooldown = RANGED_COOLDOWN;
     audio.play('throw', { volume: 0.8 });
 
+    // generous aim assist: snap to the nearest living enemy in a wide cone
+    let aim = { x: Math.sin(this.root.rotation.y), z: Math.cos(this.root.rotation.y) };
+    let target = null, bestD = RANGED_RANGE + 2.5;
+    if (world && world.enemies) {
+      for (const e of world.enemies) {
+        if (e.dead) continue;
+        const ex = e.x - this.root.position.x, ez = e.z - this.root.position.z;
+        const d = Math.hypot(ex, ez);
+        if (d < 0.4 || d > bestD) continue;
+        if ((ex * aim.x + ez * aim.z) / d < 0.3) continue; // ~±72° cone
+        target = e; bestD = d;
+      }
+    }
+    if (target) {
+      aim = { x: (target.x - this.root.position.x) / bestD, z: (target.z - this.root.position.z) / bestD };
+      this.root.rotation.y = Math.atan2(aim.x, aim.z); // Kael turns to the shot
+    }
+
     const bolt = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.13, 0),
       new THREE.MeshStandardMaterial({
@@ -494,17 +512,30 @@ export class Player {
       })
     );
     bolt.scale.z = 2.4;
-    const dir = { x: Math.sin(this.root.rotation.y), z: Math.cos(this.root.rotation.y) };
+    const dir = aim;
     bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
     bolt.rotation.y = this.root.rotation.y;
     world.root.add(bolt);
-    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world });
+    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target });
     return true;
   }
 
   _updateProjectiles(dt, world) {
     for (let i = this._projectiles.length - 1; i >= 0; i--) {
       const p = this._projectiles[i];
+      // mild homing: the spark bends toward its chosen target in flight
+      if (p.target && !p.target.dead) {
+        const tx = p.target.x - p.mesh.position.x, tz = p.target.z - p.mesh.position.z;
+        const td = Math.hypot(tx, tz);
+        if (td > 0.05) {
+          const blend = Math.min(1, dt * 7);
+          p.dir.x += (tx / td - p.dir.x) * blend;
+          p.dir.z += (tz / td - p.dir.z) * blend;
+          const nl = Math.hypot(p.dir.x, p.dir.z);
+          p.dir.x /= nl; p.dir.z /= nl;
+          p.mesh.rotation.y = Math.atan2(p.dir.x, p.dir.z);
+        }
+      }
       const step = RANGED_SPEED * dt;
       p.mesh.position.x += p.dir.x * step;
       p.mesh.position.z += p.dir.z * step;

@@ -162,9 +162,24 @@ export class Shadowgrip {
     this.waveAngle = 0;
     this.waveActive = false;
 
-    // core hittable (registered only while exposed)
-    this.coreHittable = new Hittable(x, z, 1.35, (n) => this._hitCore(n));
+    // the dragon's body is always a sword target; damage lands only while
+    // the core is exposed (clank feedback otherwise, so swings never feel dead)
+    this.coreHittable = new Hittable(x, z, 1.45, (n) => this._hitCore(n));
+    world.enemies.push(this.coreHittable);
     this.coreExposed = false;
+    // collect body materials for the red hurt-flash
+    this._dragonMats = [];
+    this.dragon.traverse((n) => {
+      if (!n.isMesh) return;
+      const ms = Array.isArray(n.material) ? n.material : [n.material];
+      for (const m of ms) {
+        if (m === this.eyeMat || !m.emissive) continue;
+        m.userData.be = m.emissive.getHex();
+        m.userData.bi = m.emissiveIntensity;
+        this._dragonMats.push(m);
+      }
+    });
+    this._hurtFlash = 0;
 
     world.boss = this;
   }
@@ -173,8 +188,16 @@ export class Shadowgrip {
 
 
   _hitCore(n) {
-    if (this.defeated || !this.coreExposed) return;
+    if (this.defeated) return;
+    if (!this.coreExposed) {
+      // shadow armor: the blow lands but glances off — loud, readable clank
+      audio.play('parry', { volume: 0.4, rate: 0.5 });
+      this._eyeFlash = 0.15;
+      this.eyeMat.emissiveIntensity = 1.6;
+      return;
+    }
     this.coreHp -= n;
+    this._hurtFlash = 0.2;
     this.eyeMat.emissiveIntensity = 3;
     this._eyeFlash = 0.25;
     if (this.coreHp <= CORE_HP - 4 && this.phase === 2) this._enterPhase3();
@@ -183,14 +206,7 @@ export class Shadowgrip {
 
   _setCoreExposed(v) {
     if (this.defeated) v = false;
-    if (v === this.coreExposed) return;
-    this.coreExposed = v;
-    const list = this.world.enemies;
-    if (v) list.push(this.coreHittable);
-    else {
-      const i = list.indexOf(this.coreHittable);
-      if (i >= 0) list.splice(i, 1);
-    }
+    this.coreExposed = v; // body stays hittable — exposure gates real damage
   }
 
   _severTendril() {
@@ -237,6 +253,7 @@ export class Shadowgrip {
   _defeat() {
     this.defeated = true;
     this._setCoreExposed(false);
+    this.coreHittable.dead = true;
     this.world.bossDarkness = false;
     this.telegraph.visible = false;
     this.slamTendril.visible = false;
@@ -362,6 +379,14 @@ export class Shadowgrip {
       if (this._attackT <= 0 && this.attackAction) this.attackAction.fadeOut(0.25);
     }
     this.dragon.position.y = -1.0 + Math.sin(t * 1.9) * 0.12;
+    if (this._hurtFlash > 0) {
+      this._hurtFlash -= dt;
+      const on = this._hurtFlash > 0;
+      for (const m of this._dragonMats) {
+        m.emissive.setHex(on ? 0xff2a1a : m.userData.be);
+        m.emissiveIntensity = on ? 0.8 : m.userData.bi;
+      }
+    }
     this.core.rotation.y = Math.atan2(
       player.root.position.x - this.x,
       player.root.position.z - this.z
