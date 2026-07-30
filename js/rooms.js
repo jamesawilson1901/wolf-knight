@@ -442,6 +442,7 @@ async function buildR1(scene) {
   buildShell(world, 16, 12, [
     { side: 'n', from: 4.8, to: 7.2 }, // exit to R2 (top-right)
     { side: 's', from: 0.8, to: 3.2 }, // down to the Moonlit Den
+    { side: 'e', from: -2.2, to: 0.2 }, // the Ash Warrens burrow
     ...(state.flags.shortcutOpen ? [{ side: 'w', from: -3.2, to: -0.8 }] : []),
   ]);
   world.spawn = { x: -1, z: 4, angle: Math.PI };
@@ -450,6 +451,8 @@ async function buildR1(scene) {
   world.addDoor(4.8, 7.2, -6.9, -5.85, 'r2', { x: -8, z: 4.4, angle: 0 });
   // Cozy stairs down to the Den
   world.addDoor(0.8, 3.2, 5.85, 6.9, 'den', { x: 0, z: -3.2, angle: 0 });
+  // east burrow into the Ash Warrens
+  world.addDoor(7.9, 8.9, -2.2, 0.2, 'r1b', { x: -4.8, z: 0, angle: Math.PI / 2 });
   // Shortcut door (opens after the boss) → back from R1 to nothing; the
   // matching door lives in R3. From R1 it is only an opening in the wall.
   if (state.flags.shortcutOpen) {
@@ -520,6 +523,64 @@ async function buildR1(scene) {
       : []),
   ];
 
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// Room 1b — Ash Warrens (maze burrow: tight switchbacks, shade ambushes in
+// dark pockets, a burnable secret, and a one-way ledge drop home)
+// ---------------------------------------------------------------------------
+
+async function buildR1b(scene) {
+  const world = new World(scene);
+  buildShell(world, 12, 12, [
+    { side: 'w', from: -1.2, to: 1.2 }, // mouth back to R1 (normal door)
+  ]);
+  world.spawn = { x: -4.8, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-7.05, -6.0, -1.2, 1.2, 'r1', { x: 7.2, z: -1, angle: -Math.PI / 2 });
+
+  // the maze: interior wall runs carve switchback corridors (rule 2 —
+  // shaped rooms). Corridors ~2 wide; the route snakes N → E → S → E.
+  blockRow(world, -3.2, -3.4, 3.4, -3.4, 1.5);   // upper run
+  blockRow(world, -1.2, -0.6, 5.0, -0.6, 1.5);   // middle run (offset mouth)
+  blockRow(world, -3.2, 2.2, 2.2, 2.2, 1.5);     // lower run
+  blockRow(world, -3.2, -0.6, -3.2, 2.2, 1.5);   // west spine between runs
+  world.markers.breakables = [
+    { x: -4.6, z: -4.6, kind: 'crate', shards: 2 },
+    { x: 4.6, z: 4.6, kind: 'vase', shards: 3 },
+  ];
+
+  // dark ambush pockets — shades wait where the light dies
+  darkZone(world, 1.0, 5.9, -5.9, -1.4);
+  darkZone(world, -5.9, -1.0, 3.0, 5.9);
+  world.markers.shadeSpots = [
+    { x: 3.4, z: -4.8 }, { x: 4.8, z: -2.2 }, { x: -3.8, z: 4.4 },
+  ];
+
+  // the secret: a burnable clump walls off the treasure nook (rule 6)
+  burnable(world, 'r1b_secret', 3.6, 3.6, 0.6);
+  world.markers.chestDefs = [
+    { id: 'c_r1b_maze', tier: 'wood', x: 5.0, z: 4.8, ry: 2.4, loot: { shards: 14, potion: 1 } },
+  ];
+  potionPickup(world, -5.0, -4.8);
+
+  // the LEDGE (rule 3): a raised lip in the NE corner — walk off it and
+  // drop straight back into R1 by the entrance. One-way: R1 has no door
+  // back up here.
+  const lip = [];
+  for (let i = 0; i < 3; i++) lip.push({ x: 4.9 + i * 0.7, z: -5.4, sy: 0.5 });
+  world.add(instancePlacements(kit.cliff.scene, lip, { materialTints: { dirt: 0x54463e } }));
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 1, depthWrite: false })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(5.4, 0.03, -4.6);
+  world.add(glow);
+  world.onAnimate((t) => { glow.material.emissiveIntensity = 0.5 + 0.3 * Math.sin(t * 2.4); });
+  world.addDoor(4.4, 5.9, -5.9, -4.4, 'r1', { x: 6.4, z: 1.2, angle: Math.PI });
+
+  doorway(world, -6.4, 0, 'z');
   return world;
 }
 
@@ -1644,7 +1705,7 @@ async function buildE3(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r2: buildR2, r2b: buildR2b, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
+export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();

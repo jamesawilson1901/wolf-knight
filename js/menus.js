@@ -242,6 +242,7 @@ export class Menus {
     addRegion('🔥 Ember Hollow', [
       { id: 'den', name: 'Moonlit Den', icons: '🛒🐺' },
       { id: 'r1', name: 'Hollow Entrance', icons: '🐺▨' },
+      { id: 'r1b', name: 'Ash Warrens', icons: '🕳️🌑' },
       { id: 'r2', name: 'Ember Causeway', icons: '⛲🐺' },
       { id: 'r2b', name: 'Cinder Bridges', icons: '🌉🗝️' },
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
