@@ -113,16 +113,19 @@ export class Shadowgrip {
     this.root.add(this.cinderLight);
 
     // --- grip tendrils arcing over the ember (phase-1 cage) ---
-    this.cageTendrils = [];
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * Math.PI * 2 + 0.5;
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.16, 1.5, 8), darkMat(0x0d0716, 0x1a0e2a, 0.4));
-      tr.position.set(Math.cos(a) * 0.7, 0.95, Math.sin(a) * 0.7);
-      tr.rotation.z = Math.cos(a) * 0.6;
-      tr.rotation.x = -Math.sin(a) * 0.6;
-      this.root.add(tr);
-      this.cageTendrils.push(tr);
-    }
+    // The grip reads as a dark shell smothering Cinder's light (the same
+    // "spirit in a shadow shell" language Petra uses in the crypt). Each
+    // severed tendril cracks it — thinner and smaller — until phase 2
+    // shatters it and the light breathes again.
+    this.cageShell = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.52, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0x0d0716, transparent: true, opacity: 0.8,
+        emissive: 0x2a1040, emissiveIntensity: 0.4, roughness: 1,
+      })
+    );
+    this.cageShell.position.y = 1.1;
+    this.root.add(this.cageShell);
 
     // --- slam machinery (shared meshes, world-positioned) ---
     this.telegraph = new THREE.Group();
@@ -192,8 +195,11 @@ export class Shadowgrip {
 
   _severTendril() {
     this.severed++;
-    const tr = this.cageTendrils[this.severed - 1];
-    if (tr) tr.visible = false; // one grip arm releases per sever
+    // the shell cracks: thinner, smaller, letting more of Cinder's light out
+    this.cageShell.material.opacity = 0.8 - this.severed * 0.22;
+    this.cageShell.scale.setScalar(1 - this.severed * 0.12);
+    this.cinderLight.intensity = 3.5 + this.severed * 1.5;
+    this._shellPop = 0.3;
     if (this.severed >= 3 && this.phase === 1) this._enterPhase2();
   }
 
@@ -205,6 +211,7 @@ export class Shadowgrip {
     this.slamTendril.visible = false;
     this.telegraph.visible = false;
     this._setCoreExposed(true);
+    this.cageShell.visible = false; // the grip shatters — the light is free-ish
     this.core.position.y = 1.7; // core sinks into reach
     this.waveActive = true;
     this.wave.material.opacity = 0.5;
@@ -333,13 +340,12 @@ export class Shadowgrip {
         const f = Math.max(0, this._dissolveT / 1.6);
         this.core.scale.setScalar(f);
         this.core.position.y = 1.7 + (1 - f) * 1.4;
-        for (const tr of this.cageTendrils) tr.scale.setScalar(f);
         this.cinder.material.emissiveIntensity = 1.6 + (1 - f) * 2.2;
         this.cinderLight.intensity = 3.5 + (1 - f) * 8;
         this.cinder.position.y = 1.1 + (1 - f) * 0.7;
         if (this._dissolveT <= 0) {
           this.root.remove(this.core);
-          for (const tr of this.cageTendrils) this.root.remove(tr);
+          this.root.remove(this.cageShell);
         }
       } else {
         this.cinder.position.y = 1.8 + Math.sin(t * 1.7) * 0.15;
@@ -365,8 +371,11 @@ export class Shadowgrip {
       if (this._eyeFlash <= 0) this.eyeMat.emissiveIntensity = this.coreExposed ? 1.6 : 0.7;
     }
     this.cinder.material.emissiveIntensity = 1.4 + Math.sin(t * 2.6) * 0.3;
-    for (const tr of this.cageTendrils) {
-      tr.scale.y = 1 + Math.sin(t * 2.2 + tr.position.x) * 0.05;
+    if (this.cageShell.visible) {
+      const base = 1 - this.severed * 0.12;
+      const pop = this._shellPop > 0 ? (this._shellPop -= dt, Math.sin(Math.max(0, this._shellPop) / 0.3 * Math.PI) * 0.15) : 0;
+      this.cageShell.scale.setScalar(base + Math.sin(t * 2.1) * 0.04 + pop);
+      this.cageShell.position.y = 1.1 + Math.sin(t * 1.7) * 0.05;
     }
 
     if (this.phase === 1) {

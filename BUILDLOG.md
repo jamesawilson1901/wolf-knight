@@ -660,3 +660,12 @@ in-hand assets. Terranigma named as the design touchstone — its core loop
   darkness, dissolve. Cage tendrils slimmed into talons clutching the ember.
 - Verified: full 3-phase fight to defeat with zero errors; Shade/Moth
   behaviors + narration triggers intact (class names preserved). SW v2.2.1.
+
+## v2.2.2 — Boss cage readability (user feedback)
+
+"Why does the dragon have a yellow ball and two black triangles?" — the ball
+is Cinder (story-critical), the triangles were the old cage-tendril cylinders
+reading as nonsense from top-down. Replaced with the Petra visual language: a
+dark shadow-shell smothering Cinder's glow. Each severed tendril cracks it
+(thinner, smaller, brighter light + a pop); phase 2 shatters it. Dissolve and
+idle animation updated; full-fight verify unchanged.
