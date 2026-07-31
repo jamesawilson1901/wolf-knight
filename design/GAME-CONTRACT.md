@@ -27,12 +27,21 @@
 - Shields blunt; perfect parry (0.3s+bonus) negates + stuns 2.2s; stunned
   takes double. Jumps dodge groundAttack sources. Fire/hazards pierce
   shields. Flyers die to bolts (full) / melee (fine), bolts chip walkers.
-- Cozy (default) halves damage, min ½ heart; Brave full. Rubber-band after
-  3 deaths at one checkpoint. Never more than 3 simultaneous aggro enemies
-  near a kid (spawn spacing must respect this).
+- Cozy (default) softens damage to 60%, min ½ heart; Brave full. Rubber-band
+  after 3 deaths in one room (respawn = that room's entrance). Never more
+  than 3 simultaneous aggro enemies near a kid (spawn spacing must respect
+  this).
 
 ## Progression targets (tune toward, verify per region)
-<!-- Difficulty numbers are provisional defaults: no family playtest data yet. First real session's verdicts get recorded here and become the reference. -->
+<!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-07-31 — son: "enemies are too easy, make them harder." Response
+  (v3.4.1): every enemy +1 hp (grunts no longer die in 2 hits); family
+  speeds +15-20% (shade skips 3.3, hound stalk 1.8 / charge 9.6, moth dive
+  7.2, slime 1.2 / minis 2.0); Cozy softening 0.5 → 0.6 (floor ½ heart
+  unchanged; Brave unchanged — the harder-hungry kid can also flip 🦁 Brave
+  on their own profile). Telegraph floors and max-3-aggro laws untouched.
+  Next session: ask both kids again and record here. -->
+- Cozy (default) softens damage to 60% (was half), min ½ heart; Brave full.
 - Expected level entering region N: ~1+3(N-1). XP curve stays 20+15(lvl-1).
 - Perk pick every 3rd level; perk pool must stay ≥3 unmaxed choices to
   level 21 (add tiers when a pool would run dry).

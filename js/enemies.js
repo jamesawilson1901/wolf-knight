@@ -8,6 +8,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { audio } from './audio.js';
 import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
+import { CONFIG } from './config.js';
 
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
@@ -49,7 +50,7 @@ class Enemy {
     this.root.position.set(x, 0, z);
     world.add(this.root);
     // gentle level scaling on hp (behaviors carry real difficulty)
-    this.hp = Math.round(hp * enemyScale() * 2) / 2;
+    this.hp = Math.round((hp + CONFIG.DIFFICULTY.ENEMY_HP_BONUS) * enemyScale() * 2) / 2;
     this.maxHp = this.hp;
     this.radius = radius;
     this.dead = false;
@@ -219,7 +220,7 @@ export class Hound extends Enemy {
     if (this.state === 'stalk') {
       this._play('walk');
       if (d > 0.01) {
-        const speed = 1.5;
+        const speed = 1.8; // playtest bump: stalks with intent
         const nx = this.x + (dx / d) * speed * dt;
         const nz = this.z + (dz / d) * speed * dt;
         const solved = this.world.resolveCircle(nx, nz, this.radius);
@@ -247,7 +248,7 @@ export class Hound extends Enemy {
       this._play('charge', 0.08);
       this.model.scale.y = 0.35;
       this.streak.material.opacity = Math.max(0, this.streak.material.opacity - dt * 2);
-      const speed = 8.5;
+      const speed = 9.6; // playtest bump: the charge should scare a little
       const nx = this.x + this.chargeDir.x * speed * dt;
       const nz = this.z + this.chargeDir.z * speed * dt;
       const solved = this.world.resolveCircle(nx, nz, this.radius);
@@ -278,7 +279,7 @@ export class Slime extends Enemy {
     super(world, x, z, { hp: 2, radius: 0.4 });
     this.puffTint = 0x7fc46a;
     this.aggroRange = 6.5;
-    this.speed = 1.0;
+    this.speed = 1.2; // playtest bump
     this.splits = true;   // cave slimes burst into two minis when smashed
     this._gltf = gltf;
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
@@ -315,7 +316,7 @@ export class Slime extends Enemy {
       for (const off of [-0.35, 0.35]) {
         const m = new Slime(this.world, this.x + off, this.z - off, this._gltf);
         m.mini = true; m.splits = false;
-        m.hp = 1; m.speed = 1.7; m.radius = 0.22;
+        m.hp = 1; m.speed = 2.0; m.radius = 0.22; // minis nip at the heels
         m.model.scale.setScalar(0.14);
         this.world.enemies.push(m);
       }
@@ -362,7 +363,7 @@ export class Shade extends Slime {
     this.puffTint = 0x4a3f5c;
     this.radius = 0.34;
     this.aggroRange = 7;
-    this.speed = 2.8;      // burst speed — shades move in sudden skips
+    this.speed = 3.3;      // burst speed — shades move in sudden skips (playtest bump)
     this.splits = false;   // shadow, not jelly
     this.model.scale.setScalar(0.23);
     this.model.traverse((n) => {
@@ -479,7 +480,7 @@ export class Bat extends Enemy {
         audio.play('form-switch', { volume: 0.4, rate: 2.0 }); // screech-whoosh
       }
     } else if (this.state === 'dive') {
-      const speed = 6.0;
+      const speed = 7.2; // playtest bump: dives demand a real dodge
       this.root.position.x += this.diveDir.x * speed * dt;
       this.root.position.z += this.diveDir.z * speed * dt;
       this.root.position.y = Math.max(0.45, this.root.position.y - dt * 2.2);

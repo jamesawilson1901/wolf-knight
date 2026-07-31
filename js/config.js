@@ -29,6 +29,15 @@ export const CONFIG = {
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle
 
+  // ---- DIFFICULTY (first family playtest verdict 2026-07-31: "too easy") ----
+  // Flat hp bonus on every enemy (grunts stop dying in 2 hits) and how much
+  // Cozy mode softens incoming damage (was 0.5 = half; floor ½ heart stays).
+  // Per-family speeds were also raised in enemies.js (+15-20%, signatures kept).
+  DIFFICULTY: {
+    ENEMY_HP_BONUS: 1,
+    COZY_SOFTEN: 0.6,
+  },
+
   // ---- JUICE (hit-feedback tiers; js/juice.js routes every hit here) ----
   // stop = hitstop s · shake = strength/duration · parts = burst particles ·
   // buzz = haptic ms (0 = none). The surge will promote tiers via weightBoost.

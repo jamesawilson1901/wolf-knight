@@ -968,3 +968,15 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified headless: die deep in R2 → respawn at R2 entrance, full
   hearts, same room; faded-class HUD counter renders at opacity 1;
   region validation still 0 errors. SW v3.4.0.
+
+## v3.4.1 — first family playtest verdict: harder enemies
+- Verdict recorded in GAME-CONTRACT (the playtest log is now live): son
+  says enemies are too easy. Changes:
+  - Every enemy +1 hp (CONFIG.DIFFICULTY.ENEMY_HP_BONUS) — shades now take
+    3 sword hits, not 2. Slime minis stay 1 (cleanup chip).
+  - Family speeds +15-20%, signatures kept: shade skip 3.3, hound stalk
+    1.8 / charge 9.6, moth dive 7.2, slime 1.2 / minis 2.0.
+  - Cozy softening 0.5 → 0.6 (CONFIG.DIFFICULTY.COZY_SOFTEN); ½-heart
+    floor and Brave unchanged. Telegraph floors + max-3-aggro untouched.
+- Verified headless: shade hp 3 / speed 3.3; a 2-damage hit costs 1 heart
+  in Cozy (was ½). SW v3.4.1.
