@@ -21,6 +21,7 @@ import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUP
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
+import { CONFIG } from './config.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 
@@ -49,6 +50,8 @@ const CAM_OFFSET = new THREE.Vector3(
 );
 const camGoal = new THREE.Vector3();
 const camLook = new THREE.Vector3();
+const camLead = new THREE.Vector3(); // smoothed look-ahead (CONFIG.LOOKAHEAD_*)
+const _lookTarget = new THREE.Vector3();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -125,15 +128,30 @@ function renderPotions(player) {
     }
     potionsEl.appendChild(slot);
   }
+  ctxShow(potionsEl);
 }
 
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
   const total = state.spoken.region_complete ? 6 : 3; // Stoneroot adds three
-  document.getElementById('pups').textContent = `🐺 ${found}/${total}`;
+  const el = document.getElementById('pups');
+  el.textContent = `🐺 ${found}/${total}`;
+  ctxShow(el);
 }
 
 let savedToastTimer = null;
+
+// Contextual HUD: non-critical readouts appear on change, then fade away.
+// Persistent HUD is only hearts, the form badge and the special cooldown.
+const ctxTimers = new Map();
+function ctxShow(el, holdMs = 3500) {
+  if (!el) return;
+  el.classList.add('ctx');
+  el.classList.remove('faded');
+  clearTimeout(ctxTimers.get(el));
+  ctxTimers.set(el, setTimeout(() => el.classList.add('faded'), holdMs));
+}
+
 // Floating damage numbers — Terranigma's answer to "did that count?"
 const dmgNums = [];
 const _dmgV = new THREE.Vector3();
@@ -378,7 +396,9 @@ function updateMusic() {
 // ---------------------------------------------------------------------------
 
 function renderShards() {
-  document.getElementById('shards').textContent = `🔸 ${state.shards}`;
+  const el = document.getElementById('shards');
+  el.textContent = `🔸 ${state.shards}`;
+  ctxShow(el);
 }
 
 function renderLevel() {
@@ -386,6 +406,7 @@ function renderLevel() {
   el.firstChild.textContent = `Lv ${state.level}`;
   document.getElementById('xp-fill').style.width =
     Math.round((state.xp / xpForLevel(state.level)) * 100) + '%';
+  ctxShow(el);
 }
 
 function renderBuffs() {
@@ -667,6 +688,7 @@ async function start() {
   });
   player.onDamaged = () => {
     renderHearts(player);
+    if (player.hearts <= player.maxHearts / 2) ctxShow(potionsEl, 5000); // remind: potions exist
     if (player.hearts > 0 && player.hearts <= 2) {
       sayThrottled('low_hearts', timer.getElapsed(), 30);
     }
@@ -709,6 +731,13 @@ async function start() {
     if (transitioning) return false;
     ui.openPicker(x, y, pointerId);
     return true;
+  };
+  // form button tap = cycle to the next unlocked form
+  input.onFormTap = () => {
+    if (transitioning) return;
+    const unlocked = FORM_CYCLE.filter((f) => state.formsUnlocked.includes(f));
+    const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
+    if (player.setForm(next)) ui.refreshBadge();
   };
 
   await buildRoomInitial();
@@ -860,11 +889,19 @@ async function start() {
     document.getElementById('btn-ranged').style.opacity =
       player.rangedCooldown > 0 ? '0.35' : '1';
 
-    // Smooth camera follow (+ effect shake + Blood Moon punch-in)
-    const k = 1 - Math.exp(-6 * dt);
-    camGoal.copy(player.root.position).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
+    // Smooth camera follow with look-ahead (+ shake + Blood Moon punch-in).
+    // The camera leads into the direction of travel; the lead itself is
+    // smoothed so stick wiggles don't jitter the frame.
+    const topSpeed = player.form ? player.form.def.speed : 5;
+    const vf = Math.min(1, Math.hypot(player._vel.x, player._vel.z) / topSpeed);
+    const leadK = 1 - Math.exp(-CONFIG.LOOKAHEAD_SMOOTH * dt);
+    camLead.x += ((player._vel.x / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.x) * leadK;
+    camLead.z += ((player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.z) * leadK;
+    const k = 1 - Math.exp(-CONFIG.CAM_DAMPING * dt);
+    camGoal.copy(player.root.position).add(camLead).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
     camera.position.lerp(camGoal, k);
-    camLook.lerp(player.root.position, k);
+    _lookTarget.copy(player.root.position).add(camLead);
+    camLook.lerp(_lookTarget, k);
     camera.position.add(effects.shakeOffset);
     camera.lookAt(camLook.x + effects.shakeOffset.x, 0.6, camLook.z + effects.shakeOffset.z);
 

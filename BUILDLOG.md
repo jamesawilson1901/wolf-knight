@@ -750,3 +750,27 @@ progress forever, phase 1 never ends, the dragon never opens. Fixes:
 Verified: one real tryAttack swing at the stuck tendril severs it.
 Lesson recorded: boss verification must drive the PLAYER's attack path,
 never the damage functions directly.
+
+## v2.6 — Game-feel + HUD overhaul (user's structured spec)
+
+All tuning in js/config.js (single CONFIG object). Changes:
+- Floating joystick (left 40%, spawns under the thumb, hides on release,
+  dashed idle hint ghost), 70px radius, 10% dead zone, magnitude clamped,
+  never detaches. Reverses the earlier fixed-stick decision at user request.
+- Movement: velocity ramp (100ms accel / 80ms decel), facing turn 14 rad/s.
+- Attacks: soft lock-on (nearest enemy ≤4u in a 120° cone, facing snaps),
+  150ms input buffer in the swing tail, +0.2u hitbox pad, and swings allow
+  40% movement drift (specials still root). Facing holds during a swing so
+  lock-on aim isn't steered away.
+- Camera: CONFIG damping + 1.5u smoothed look-ahead into travel direction.
+- Form button: #form-badge (58px) tap = cycle form, hold 300ms = radial
+  picker. Hold-anywhere picker REMOVED (no more tap-spam conflicts). New
+  dedicated ⚔️ attack button (80px) bottom-right; right-half taps still work.
+- HUD: safe-area insets on all corners; persistent = hearts + form badge +
+  special cooldown only; potions/shards/XP/pups fade in on change and fade
+  out after ~3.5s (potions resurface when hurt below half). All ≥48px.
+- Fixed two self-inflicted bugs pre-ship: camera double-lerp junk line and
+  ctxShow(el.parentElement) which faded the whole <body>.
+Verified headless: stick spawn/deadzone/ramp/release, lock-on snap+hit,
+buffer refire, form tap-cycle + hold-picker, attack button, HUD fade,
+zero console errors. SW v2.6.0.

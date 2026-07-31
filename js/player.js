@@ -8,9 +8,10 @@ import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { weaponDef, shieldDef } from './items.js';
+import { CONFIG } from './config.js';
 
 const BODY_RADIUS = 0.32;
-const TURN_SPEED = 12;
+const TURN_SPEED = CONFIG.TURN_SPEED;
 const RUN_THRESHOLD = 0.62;
 const IFRAME_TIME = 1.0;
 const LAVA_TICK = 1.0;
@@ -137,6 +138,9 @@ export class Player {
     this.onPotionsChanged = null;
     this.onHitConnected = null;  // melee landed → main triggers hit-stop
     this.buffs = { star: 0, fury: 0, feather: 0, magnet: 0 }; // timed power-ups
+    this._vel = { x: 0, z: 0 };     // ramped velocity (CONFIG accel/decel)
+    this._softLock = false;         // attack locks allow slow drift; specials don't
+    this._queuedAttack = false;     // buffered tap from the tail of a swing
     this.onParry = null;
     this._projectiles = [];
     this._time = 0;
@@ -421,7 +425,30 @@ export class Player {
   // A second tap right after a slash becomes a THRUST — a straight stab with
   // longer reach and a narrower hit arc (slash the crowd, poke the one).
   tryAttack(world) {
-    if (this.lockTime > 0 || this.defending) return false;
+    if (this.defending) return false;
+    if (this.lockTime > 0) {
+      // buffer taps in the tail of the current swing instead of eating them
+      if (this.lockTime <= CONFIG.BUFFER_WINDOW) this._queuedAttack = true;
+      return false;
+    }
+    // soft lock-on: face the nearest enemy in the forward cone so taps
+    // near an enemy reliably connect
+    if (world && world.enemies) {
+      const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+      let best = null, bestD = CONFIG.LOCKON_RANGE;
+      for (const e of world.enemies) {
+        if (e.dead) continue;
+        const dx = e.x - this.root.position.x, dz = e.z - this.root.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.05 || d > bestD) continue;
+        if ((dx * fx + dz * fz) / d < CONFIG.LOCKON_COS) continue;
+        best = e; bestD = d;
+      }
+      if (best) {
+        this.root.rotation.y = Math.atan2(best.x - this.root.position.x, best.z - this.root.position.z);
+      }
+    }
+    this._softLock = true;
     const cfg = this.attackConfig();
     const thrust = !!this.form.actions.attack2 &&
       this._comboUntil !== undefined && this._time < this._comboUntil;
@@ -461,7 +488,7 @@ export class Player {
       const dx = e.x - this.root.position.x;
       const dz = e.z - this.root.position.z;
       const d = Math.hypot(dx, dz);
-      if (d > range + e.radius) continue;
+      if (d > range + e.radius + CONFIG.HITBOX_PAD) continue; // generous hitbox
       if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
       e.takeDamage(dmg);
       audio.play('hit', { volume: 0.9 });
@@ -484,6 +511,7 @@ export class Player {
     const f = this.form;
     this._playOnce('ranged');
     this.lockTime = 0.35;
+    this._softLock = true;
     this.rangedCooldown = RANGED_COOLDOWN;
     audio.play('throw', { volume: 0.8 });
 
@@ -659,6 +687,7 @@ export class Player {
     if (this.specialCooldown > 0 || this.lockTime > 0) return false;
     this._playOnce('attack');
     this.lockTime = 0.5;
+    this._softLock = false;
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone(), 0xd8b06a);
     effects.shake(0.3, 0.35);
@@ -684,6 +713,7 @@ export class Player {
     if (this.specialCooldown > 0 || this.lockTime > 0) return false;
     this._playOnce('attack');
     this.lockTime = 0.5;
+    this._softLock = false;
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone());
     audio.play('slam');
@@ -707,6 +737,7 @@ export class Player {
 
     this._playOnce('howl', 0.12);
     this.lockTime = 1.15; // hold the howl while the sky turns red
+    this._softLock = false;
 
     effects.bloodMoon(target, {
       onImpact: () => {
@@ -761,26 +792,53 @@ export class Player {
     if (wantDefend && !this.defending) this.defendStart = this._time;
     this.defending = wantDefend;
 
+    // locks: attacks allow reduced-speed drift; specials root Kael fully
+    let locked = false;
+    let lockMove = 1;
     if (this.lockTime > 0) {
       this.lockTime -= dt;
-      f.mixer.update(dt);
-      this._hazards(dt, world);
-      return;
+      locked = true;
+      if (this.lockTime <= 0 && this._queuedAttack) {
+        this._queuedAttack = false;
+        locked = false;
+        this.tryAttack(world); // buffered tap fires the instant the swing ends
+        locked = this.lockTime > 0;
+      }
+      if (locked && !this._softLock) {
+        this._vel.x = 0; this._vel.z = 0;
+        f.mixer.update(dt);
+        this._hazards(dt, world);
+        return;
+      }
+      if (locked) lockMove = CONFIG.ATTACK_MOVE_MULT;
     }
 
     const move = input.getMove();
     const mag = Math.hypot(move.x, move.z);
     let speedMult = (this.defending ? DEFEND_SPEED_MULT : 1) * (1 + (state.perks.speed || 0) * 0.05);
     if (this.buffs.star > 0) speedMult *= 1.4;
-    const speed = mag * f.def.speed * speedMult;
+    const top = f.def.speed * speedMult * lockMove;
 
-    if (mag > 0.01) {
-      const nx = this.root.position.x + move.x * speed * dt;
-      const nz = this.root.position.z + move.z * speed * dt;
-      const solved = world.resolveCircle(nx, nz, BODY_RADIUS);
+    // accelerate ~CONFIG.ACCEL_TIME to full, brake ~CONFIG.DECEL_TIME to stop
+    const tx = move.x * top, tz = move.z * top;
+    const speeding = Math.hypot(tx, tz) > Math.hypot(this._vel.x, this._vel.z);
+    const rate = (f.def.speed * speedMult) / (speeding ? CONFIG.ACCEL_TIME : CONFIG.DECEL_TIME);
+    let dvx = tx - this._vel.x, dvz = tz - this._vel.z;
+    const dv = Math.hypot(dvx, dvz);
+    const maxStep = rate * dt;
+    if (dv > maxStep && dv > 1e-6) { dvx *= maxStep / dv; dvz *= maxStep / dv; }
+    this._vel.x += dvx; this._vel.z += dvz;
+    const vmag = Math.hypot(this._vel.x, this._vel.z);
+
+    if (vmag > 0.02) {
+      const solved = world.resolveCircle(
+        this.root.position.x + this._vel.x * dt,
+        this.root.position.z + this._vel.z * dt, BODY_RADIUS);
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
-
+    }
+    // facing follows stick intent (not while a swing holds the aim)
+    if (!locked && mag > 0.01) {
       const target = Math.atan2(move.x, move.z);
       let delta = target - this.root.rotation.y;
       while (delta > Math.PI) delta -= Math.PI * 2;
@@ -788,10 +846,18 @@ export class Player {
       this.root.rotation.y += THREE.MathUtils.clamp(delta, -TURN_SPEED * dt, TURN_SPEED * dt);
     }
 
-    if (this.airY > 0) this._play('jump', 0.1);
+    if (locked) {
+      // keep the attack animation; just drift
+    } else if (this.airY > 0) this._play('jump', 0.1);
     else if (this.defending) this._play('block', 0.12);
-    else if (mag > 0.01) this._play(mag > RUN_THRESHOLD ? 'run' : 'walk');
+    else if (vmag > 0.1) this._play(vmag / Math.max(0.01, f.def.speed * speedMult) > RUN_THRESHOLD ? 'run' : 'walk');
     else this._play('idle');
+
+    if (locked) {
+      f.mixer.update(dt);
+      this._hazards(dt, world);
+      return;
+    }
 
     this._hazards(dt, world);
 
