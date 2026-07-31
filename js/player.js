@@ -471,7 +471,13 @@ export class Player {
       this.lockTime = cfg.lock;
       this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
       this._comboUntil = this._time + cfg.lock + COMBO_WINDOW;
-      audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
+      // steel sings for the knight; wolves SNAP their jaws (per-form pitch)
+      if (state.form === 'knight') {
+        audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
+      } else {
+        const biteRate = { dark_wolf: 0.9, fire_wolf: 1.0, earth_wolf: 0.72 }[state.form] || 0.9;
+        audio.play('bite', { volume: 0.85, rate: biteRate, vary: 0.08 });
+      }
     }
     return true;
   }
@@ -520,7 +526,20 @@ export class Player {
     this.lockTime = 0.35;
     this._softLock = true;
     this.rangedCooldown = RANGED_COOLDOWN;
-    audio.play('throw', { volume: 0.8 });
+    // each form's throw SOUNDS different too, not just looks
+    const kind0 = f.def.rangedKind || 'spark';
+    if (kind0 === 'pierce') {
+      audio.play('throw', { volume: 0.85, rate: 0.7 });
+      audio.play('moon-impact', { volume: 0.18, rate: 2.4 }); // crescent shimmer
+    } else if (kind0 === 'ember') {
+      audio.play('throw', { volume: 0.8, rate: 1.15 });
+      audio.play('burn', { volume: 0.35, rate: 1.7 });
+    } else if (kind0 === 'rock') {
+      audio.play('throw', { volume: 0.85, rate: 0.5 });
+      audio.play('slam', { volume: 0.2, rate: 2.0 });
+    } else {
+      audio.play('throw', { volume: 0.8 });
+    }
 
     // generous aim assist: snap to the nearest living enemy in a wide cone
     let aim = { x: Math.sin(this.root.rotation.y), z: Math.cos(this.root.rotation.y) };
@@ -549,8 +568,9 @@ export class Player {
         color: 0x000000, emissive: f.def.boltColor, emissiveIntensity: 2.6, roughness: 1,
       })
     );
-    if (kind === 'pierce') bolt.scale.set(1.9, 0.7, 2.2); // flat moon crescent
-    else if (kind !== 'rock') bolt.scale.z = 2.4;
+    if (kind === 'pierce') bolt.scale.set(2.6, 0.55, 2.8); // WIDE flat moon crescent
+    else if (kind === 'rock') bolt.scale.setScalar(1.35);  // a real chunk of stone
+    else bolt.scale.z = 2.4;
     const dir = aim;
     bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
     bolt.rotation.y = this.root.rotation.y;
@@ -592,6 +612,15 @@ export class Player {
       // the rock lobs in a lazy arc; everything else flies flat
       if (p.kind === 'rock') p.mesh.position.y = 0.85 + Math.sin(Math.min(1, p.traveled / RANGED_RANGE) * Math.PI) * 0.55;
       const px = p.mesh.position.x, pz = p.mesh.position.z;
+      // wolf projectiles leave a coloured trail (pooled particles — free)
+      if (p.kind && p.kind !== 'spark') {
+        p._trailAcc = (p._trailAcc || 0) + step;
+        if (p._trailAcc > 0.4) {
+          p._trailAcc = 0;
+          const tc = p.kind === 'pierce' ? 0xb08aff : p.kind === 'ember' ? 0xff8a3a : 0xd8b06a;
+          juice.burst(px, p.mesh.position.y, pz, tc, 2);
+        }
+      }
       let gone = p.traveled > RANGED_RANGE;
       // walls stop bolts
       const solved = world.resolveCircle(px, pz, 0.12);

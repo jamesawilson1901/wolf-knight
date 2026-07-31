@@ -520,7 +520,9 @@ function giveLoot(chest) {
 // the narration once-per-save memory, so Continue restores the layout).
 function refreshControlReveal() {
   document.getElementById('btn-defend').classList.toggle('revealed', !!state.spoken.learn_shield);
-  document.getElementById('btn-ranged').classList.toggle('revealed', !!state.spoken.learn_bolt);
+  // any wolf form always shows its throw — each wolf has a signature one
+  document.getElementById('btn-ranged').classList.toggle(
+    'revealed', !!state.spoken.learn_bolt || state.form !== 'knight');
   document.getElementById('btn-jump').classList.toggle('revealed', !!state.spoken.learn_jump);
   document.getElementById('form-badge').classList.toggle(
     'revealed',

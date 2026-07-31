@@ -44,22 +44,32 @@ export class Input {
     btn('btn-defend', () => { this.defending = true; }, () => { this.defending = false; });
 
     // Form button: tap = cycle, hold CONFIG.FORM_HOLD_MS = radial picker.
+    // Wired by hand (not via btn()) because the release must NOT stop
+    // propagation: on touch screens the badge implicitly captures the
+    // pointer, so the radial picker's window-level pointerup — the event
+    // that selects an option and CLOSES the ring — arrives via this badge.
+    // Swallowing it left the picker stuck open on phones.
     this._formHoldTimer = null;
     this._formHeld = false;
-    btn('form-badge',
-      (e) => {
+    {
+      const badge = document.getElementById('form-badge');
+      badge.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
         this._formHeld = false;
         clearTimeout(this._formHoldTimer);
         this._formHoldTimer = setTimeout(() => {
           this._formHeld = true;
           if (this.onHold) this.onHold(e.clientX, e.clientY, e.pointerId);
         }, CONFIG.FORM_HOLD_MS);
-      },
-      () => {
+      });
+      const badgeUp = () => {
         clearTimeout(this._formHoldTimer);
         if (!this._formHeld && this.onFormTap) this.onFormTap();
         this._formHeld = false;
-      });
+      };
+      badge.addEventListener('pointerup', badgeUp);
+      badge.addEventListener('pointercancel', badgeUp);
+    }
 
     this._base = document.getElementById('joy-base');
     this._knob = document.getElementById('joy-knob');

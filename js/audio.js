@@ -23,6 +23,7 @@ const SFX_FILES = {
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
   bones: './assets/audio/sfx/bones.ogg',
+  bite: './assets/audio/sfx/bite.ogg',
 };
 
 const MUSIC_FILES = {

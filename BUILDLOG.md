@@ -921,3 +921,20 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   is ALWAYS visible regardless of scroll. Verified headless at 740×360:
   menu opens with Keep Playing + ✕ both on-screen, scrolls, ✕ closes even
   when scrolled to the bottom. SW v3.3.1.
+
+## v3.3.2 — picker stuck open on phones, wolf identity readability
+- FORM PICKER STUCK: on touch screens the pressed element implicitly
+  captures the pointer, so the release event fired on the form badge —
+  whose handler called stopPropagation, starving the picker's window
+  pointerup that selects an option and closes the ring. Badge release no
+  longer stops propagation (hand-wired, documented). Verified via a
+  captured-release simulation: option picked, ring closes, form switches.
+- WOLF RANGED WAS INVISIBLE-IN-PRACTICE: (a) the throw button only
+  appeared after the moth lesson — now ANY wolf form reveals it; (b) each
+  throw now SOUNDS distinct (crescent = deep whoosh + shimmer, ember =
+  crackle, rock = heavy lob) and LOOKS distinct (wide flat crescent,
+  1.35x stone chunk, pooled colour trails on all wolf projectiles).
+- BITE SFX: wolves no longer swing with sword audio — new bite.ogg
+  (Kenney RPG Audio chop, CC0, pack already credited) with per-form
+  pitch: dark 0.9 / fire 1.0 / earth 0.72, ±8% variance.
+- SW v3.3.2 (bite.ogg precached).
