@@ -83,7 +83,15 @@ export const REGIONS = {
   frostpeak: { name: 'Frostpeak', built: false, spirit: 'Boreal', grants: 'frost_wolf', gates: [] },
   stormreach: { name: 'Stormreach Cliffs', built: false, spirit: 'Aria', grants: 'storm_wolf', gates: [] },
   sunkenvale: { name: 'Sunken Vale', built: false, spirit: 'Meri', grants: 'tide_wolf', gates: [] },
-  shadowcourt: { name: 'The Shadow Court', built: false, spirit: 'Luna (and Grimm)', grants: 'moonlight', gates: [] },
+  shadowcourt: {
+    name: 'The Shadow Court', built: false, spirit: 'Luna (and Grimm)', grants: 'moonlight',
+    gates: [],
+    // Moonlight = the GHOST WOLF (user-approved): white → translucent;
+    // enemies stay unaware until Kael attacks, breaks something, or bumps
+    // one (contact works both ways). The wings are stealth levels built on
+    // an enemy-awareness system (new engine work for Session G).
+    mechanic: 'ghost-wolf stealth (awareness on contact/attack/breakage)',
+  },
 };
 
 // Machine-checked world rules. Returns { errors, warnings } — verify scripts

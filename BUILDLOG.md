@@ -950,3 +950,21 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - LESSON (progressive reveal): three complaints in a row ("no ranged",
   "no jump") came from teach-gated buttons reading as missing features.
   Core verbs stay visible; only advanced/contextual controls may reveal.
+
+## v3.4.0 — entrance respawn, always-on HUD, Ghost Wolf canonised
+- RESPAWN RULE (user): dying now respawns you at the ENTRANCE of the room
+  you fell in — never back through earlier rooms. Room rebuilds (enemies
+  reset), keys/burns/chests persist, full hearts, rubber-band now keyed
+  per-room. Checkpoints remain as save/travel points.
+- HUD: the contextual fade is retired — shards/potions/level/pup counters
+  stay visible the whole time (user rule; the fade read as options
+  disappearing).
+- GHOST WOLF (user-approved, canon): region 7's Moonlight gift is now THE
+  GHOST WOLF — a white wolf that fades translucent; unaware enemies carry
+  on normally until Kael attacks, breaks something, or bumps one (contact
+  both ways). The Shadow Court's wings become sneak-or-stir levels on a
+  new enemy-awareness system (Session G engine work). Written into
+  STORY-BIBLE addendum, WORLD-DESIGN §5, regions.js manifest.
+- Verified headless: die deep in R2 → respawn at R2 entrance, full
+  hearts, same room; faded-class HUD counter renders at opacity 1;
+  region validation still 0 errors. SW v3.4.0.

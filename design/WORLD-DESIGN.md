@@ -165,7 +165,7 @@ one region early.
 | 4 | **Frostpeak** | Boreal | **Frost Wolf** — ice-howl: freeze water and enemies | frozen crossings, stilled geysers | Wild Woods |
 | 5 | **Stormreach Cliffs** | Aria | **Storm Wolf** — thunder-dash: cross gaps, charge dead machinery | long gaps, the Mill's dead machinery callback | Frostpeak |
 | 6 | **Sunken Vale** | Meri | **Tide Wolf** — bubble-shield water-walk | every water crossing stared at all game | Ember Hollow (R2b water gate) ✓ shipped — and deliberately everywhere |
-| 7 | **The Shadow Court** | Luna's moonlight — and Grimm | **Moonlight** — reveal hidden, banish shadow | the finale and every late "???" | Region 1 onward (dark seams) |
+| 7 | **The Shadow Court** | Luna's moonlight — and Grimm | **Ghost Wolf (Moonlight)** — white wolf, fades translucent; unaware enemies ignore you until you attack, break something, or bump into one (both ways); also reveals hidden things | the finale's stealth wings and every late "???" | Region 1 onward (dark seams) |
 
 Notes on the chain:
 

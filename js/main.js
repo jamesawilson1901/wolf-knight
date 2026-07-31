@@ -667,18 +667,20 @@ let deathStreakCp = '';
 
 async function respawnAtCheckpoint() {
   transitioning = true;
-  if (state.checkpoint.id === deathStreakCp) deathStreak++;
-  else { deathStreak = 1; deathStreakCp = state.checkpoint.id; }
+  // Respawn at the ENTRANCE of the room you fell in (user rule, v3.4) —
+  // never sent back through earlier rooms. The room rebuilds (enemies
+  // reset) but keys/burns/chests persist as always.
+  const room = state.room;
+  if (room === deathStreakCp) deathStreak++;
+  else { deathStreak = 1; deathStreakCp = room; }
   player.softenDamage = deathStreak >= 3; // quietly go easier after 3 falls
   await fadeTo(1, 500);
   player.clearProjectiles();
-  const cp = state.checkpoint;
   if (world) world.dispose();
-  world = await buildRoom(cp.room, scene);
-  state.room = cp.room;
-  state.region = cp.room[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  world = await buildRoom(room, scene);
+  state.region = room[0] === 'e' ? 'stoneroot' : 'ember_hollow';
   applyRoomMood();
-  player.place(cp.x, cp.z + 0.9, Math.PI);
+  player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   player.healFull();
   player.iframes = 1.2;
   for (const c of world.checkpoints) {

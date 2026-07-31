@@ -165,6 +165,11 @@ rather than destroying him — a Terranigma-hearted ending.
 7. The Shadow Court — Luna's stolen moonlight + Grimm. Relic-locked wings
    themed per region verb; final boss Shadow-Grimm, phases demanding every
    form; ending per the reveal above.
+   Moonlight's gift is the GHOST WOLF (user-approved 2026-07-31): a white
+   wolf that fades translucent. While ghosted, shadows carry on as if Kael
+   isn't there — until he attacks, breaks something, or BUMPS into one
+   (touch works both ways), which snaps them aware. The Shadow Court's
+   wings are built around this sneak-or-stir choice.
 
 ## Rules for new lines
 Follow the original voice above: short, warm, concrete. Grimm taunts once

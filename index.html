@@ -213,7 +213,9 @@
     }
     /* contextual HUD elements fade away when nothing changed lately */
     .ctx { transition: opacity .5s ease; }
-    .ctx.faded { opacity: 0 !important; }
+    /* HUD counters stay visible the whole time (user rule, v3.4) — the
+       old contextual fade kept "disappearing the options". */
+    .ctx.faded { opacity: 1; }
     #fade {
       position: fixed; inset: 0; z-index: 8; background: #17101f;
       opacity: 0; pointer-events: none; transition: opacity .6s ease;
@@ -458,7 +460,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.3.3</div>
+  <div id="badge">Wolf Knight &middot; v3.4</div>
 
   <script>
     window.addEventListener('error', (e) => {
