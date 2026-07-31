@@ -1,5 +1,12 @@
 # HUD, Menus, Save & Audio — Wolf Knight
 
+> **CHANGELOG (2026-07-31 doc-truth pass):** Controls recap updated to the
+> v2.6+ scheme (floating joystick, form button, stable button cluster,
+> contextual HUD fading). Save schema updated from v1 to the shipped v2
+> shape — js/save.js is authoritative; the rule that matters is
+> **additive-forever: old saves must always load**. Menus now also include
+> map/mysteries, shop, perks, stickers, and fast travel (js/menus.js).
+
 Choices locked: **named profiles** (each kid their own save), **captions on by default** (toggle),
 **music + SFX** (CC0). Design for landscape touch, young kids: big targets, icon-first, minimal
 text, thumb-friendly zones.
@@ -15,10 +22,15 @@ text, thumb-friendly zones.
   **On by default**, toggle in Settings; auto-hides a moment after the line ends.
 - **Pause** — top-right corner button.
 
-## Controls overlay (recap)
-- Virtual joystick bottom-left; tap-to-attack bottom-right.
-- **Hold** for the radial form picker (icons of unlocked forms; release on one to switch).
-- Special button near attack (Blood Moon / form special), greyed during cooldown.
+## Controls overlay (recap — v2.6+)
+- **Floating joystick**: appears wherever the thumb lands in the left 40%
+  of the screen (dead zone 10%, idle ghost hint at the classic spot).
+- **Stable right-hand cluster** (never moves or vanishes, safe-area aware):
+  special (corner, dimmed when the form has none) · attack · form button.
+  Upper row: spark · shield · jump (revealed as they're taught).
+- **Form button**: tap = cycle unlocked forms; hold 300ms = radial picker.
+- Right-half taps also attack. Keyboard fallback: WASD + J/K/Shift/Space.
+- Only hearts/form/special stay persistent; counters fade in contextually.
 
 ## Menus
 **Title screen** — logo + warm volcano art. Shows **profiles**; pick one to play, or **New Player**.
@@ -43,19 +55,21 @@ checkpoint with saved forms / pups / max hearts.
 ```
 localStorage["wolfknight:profiles"] = [ {id, name, icon, updatedAt}, ... ]
 
-localStorage["wolfknight:save:<id>"] = {
-  profileId, name,
-  region: "ember_hollow",
-  checkpoint: "cp2",
-  maxHearts: 5,
-  formsUnlocked: ["knight","dark_wolf"],     // + "fire_wolf" after the boss
-  pups: { "ember_hollow": ["pup1","pup2"] },  // collected ids per region
-  settings: { captions:true, voice:true, musicVol:0.6, sfxVol:0.8, voiceRate:0.95 },
-  updatedAt: 1719000000000
+localStorage["wolfknight:save:<id>"] = {   // v2 (shipped) — js/save.js is authoritative
+  profileId, name, region, room, checkpoint: {room,x,z,id},
+  maxHearts, potions, formsUnlocked: [...], form,
+  pups: { region: [ids] }, shards, xp, level,
+  perks: { sword, cooldown, ... }, stickers: { id: count },
+  gear: { weapon, shield }, spoken: { lineId: true },
+  flags: { bossDefeated, shortcutOpen, wardenDefeated, burned, cracked,
+           plates, chests, keys, world, mysteries },
+  settings: { captions, voice, musicVol, sfxVol, voiceRate, brave },
+  updatedAt
 }
 ```
-Forward-compatible: the schema already covers all 7 regions and 8 forms — later regions just add
-ids, no rewrite. (This is real localStorage in a deployed site — not the in-artifact restriction.)
+**Engineering law:** additive-forever. New features add fields with safe
+defaults on load; existing kid profiles must NEVER fail to load. If a
+breaking change is truly unavoidable, ship a migration in save.js.
 
 ## Audio (all CC0) — sources + moments
 **SFX (Kenney, CC0):** RPG Audio (https://kenney.nl/assets/rpg-audio), Impact Sounds

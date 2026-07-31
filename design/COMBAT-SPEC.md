@@ -1,78 +1,83 @@
-# Combat Spec — Ember Hollow (Fire slice)
+# Combat Spec — Wolf Knight (all shipped regions)
 
-Design rules: young kids, so **forgiving and readable**. Every attack gets a clear ~1-second
-telegraph; Kael gets brief invincibility (i-frames) after taking a hit; death = respawn at the
-room checkpoint with full hearts (never sent far back). No timers, no permadeath. **Pip calls out
-telegraphs aloud** as built-in coaching (lines below feed the Web Speech system).
+> **CHANGELOG (2026-07-31 doc-truth pass):** Rewritten to match the shipped
+> game. The original file described the v1 slice (3 enemies, code-built
+> blob boss, Fire Wolf granted after the boss, "no knockback"). All of that
+> is superseded: real-model enemies only, the dragon-bodied Shadowgrip, the
+> Fire Wolf granted mid-dungeon at the Kiln shrine (user-approved), and
+> body knockback/separation. The binding NUMBERS live in GAME-CONTRACT.md;
+> this file is the behavior spec.
 
-Kael's tools in this slice: **Knight** (sword, tap-to-attack), **Dark Wolf** (Blood Moon — a
-cooldown ultimate that calls a blood-red moon crashing down; plus "see in the dark"). Fire Wolf is
-NOT available until the boss is beaten — the fight must be winnable with Knight + Dark Wolf.
+Design rules: young kids, so **forgiving and readable**. Combat grammar is
+law (GAME-CONTRACT.md): RED marks danger, GOLD marks "act here"; every
+attack telegraphs ≥0.8s (bosses ≥0.9s); every hit shows a damage number or
+BLOCKED; bosses show a health bar. Pip coaches telegraphs aloud.
 
-Tuning defaults (agent can adjust): contact/attacks cost **1 heart**; Kael starts with **5**;
-i-frames ~1s after a hit.
+## Kael's tools (current)
 
----
+- **Knight** — sword slash + thrust combo (2nd tap within 0.7s = longer,
+  narrower stab), throwing spark (auto-aim + homing), shield (hold =
+  blunted damage; fresh raise ≤0.3s = perfect parry: negates + stuns 2.2s),
+  jump/double-jump (dodges groundAttack sources).
+- **Dark Wolf** — from minute one. Faster bite, see-in-the-dark lamp,
+  **Blood Moon** special (currently a 24s-cooldown crashing-moon AoE).
+- **Fire Wolf** — earned at the Kiln shrine MID-dungeon (region 1).
+  Ground-slam: AoE damage + ignites braziers + burns scorched obstacles.
+- **Earth Wolf** — earned in Stoneroot (region 2). Stone-stomp: AoE + stun
+  + cracks rock piles. Hits harder, runs a touch slower.
+- All wolf forms wear elemental auras; soft lock-on + input buffering +
+  generous hitboxes apply to every melee (CONFIG).
 
-## Enemies
+**APPROVED, NOT YET BUILT (see fix plan):** form identity pass — Knight =
+safe/shielded tool, Dark Wolf = fast fragile hunter (+speed, +damage
+taken, lunge, wolf senses); Blood Moon converts from cooldown to an
+earned **Moon Gauge surge**. When built, this section gets rewritten.
 
-| Enemy | Look | Behavior | Health | Telegraph | Where |
-|---|---|---|---|---|---|
-| **Shade** (grunt) | Small dark wisp/blob with faint ember flecks | Drifts slowly toward Kael; contact damage | 1-2 sword hits | None needed — it's slow | Common, all rooms; teaches basic melee |
-| **Ember Moth** | Shadow moth with glowing wings | Bobs/hovers, then **dives** at Kael in a line | 1-2 hits | Pauses + glows brighter ~0.8s before diving | Near lava/ceilings; teaches dodging |
-| **Shadow Hound** (elite) | Corrupted shadow-wolf — a dark mirror of Kael | Stalks, then **crouches and charges** in a straight line; recovers slowly after | 3 hits | Crouches low + a shadow streak shows the charge lane ~1s | Guards the pup behind the boss door; mini-gatekeeper |
+## Enemy families (all REAL models — code-built creatures are banned)
 
-Defeated enemies puff into harmless smoke (not gory). Shades may appear in small groups (2-3),
-never swarms. **Blood Moon** one-shots grunts in its radius — a satisfying "clear the room" moment
-worth saving for when Shades cluster.
+| Enemy | Model | Signature behavior | Region |
+|---|---|---|---|
+| **Shade** | shadow-tinted slime | slow lurching skips toward Kael; contact damage | Ember |
+| **Ember Moth** | tinted bat | bobs, pauses+glows ~0.8s, then DOUBLE-dives | Ember |
+| **Shadow Hound** | black-tinted wolf | crouch ~1s + streak telegraph, straight charge, slow recover | Ember (elite) |
+| **Slime** | slime | splits into 2 minis on death | Stoneroot |
+| **Cave Bat** | bat | dive then crash-lands grounded (vulnerable) | Stoneroot |
+| **Skeleton Minion / Rogue** | skeletons | minion swarms slowly; rogue circles + lunges | Stoneroot |
+| **Bone Warden** | armored skeleton | mini-boss: tower shield front-blocks (clank + BLOCKED); flank or parry-stun to hurt | Stoneroot |
 
-**Hazards (not enemies):** lava tiles (1 heart on contact), and optional **ember geysers** that
-erupt on a 2s on/off telegraphed cycle — stand clear, cross when dormant.
+Deaths puff into smoke (not gory). Never more than 3 simultaneous aggro
+enemies near a kid. Enemies have solid bodies (no walking through each
+other or Kael); a raised shield physically bumps basic enemies back.
 
----
+## Boss 1 — The Shadowgrip (Heart of the Hollow)
 
-## Boss — The Shadowgrip
+Dragon model, shadow-tinted, hovering over the caged ember (Cinder) in a
+dark icosahedral shell. Core is ALWAYS targetable but only takes damage
+when EXPOSED (gold strike ring + chime); guarded hits clank + "BLOCKED".
 
-**Concept:** a mass of shadow in the chamber's center, its tendrils wrapped around a caged ember
-of warm light — that's **Cinder**, the trapped fire spirit. You can't hurt the core while the
-tendrils hold it; you have to sever the grip, then strike the exposed core. Free Cinder = win.
+- **Phase loop:** tendrils rise and slam telegraphed spots (red rings,
+  ≥0.9s) → a slammed tendril STICKS ~2.8s (gold ring = sever it, 1 hit)
+  → severing exposes the core (gold strike ring, cage cracks per sever).
+- Later phases: faster slams, shadow wave sweeps (always a safe arc),
+  2 Shades max as adds, brief darkness beat (Dark Wolf sight payoff).
+- Blood Moon counts as 3 sword hits on boss parts (cap), so the ultimate
+  is great but never trivializes. Pip re-teaches the loop if the player
+  flounders ~22s.
+- Defeat → Cinder freed (story climax; the FORM was already granted at the
+  shrine) → region heals (calm music + revival flags) → shortcut opens.
 
-**Arena:** a round volcanic chamber. Safe stone floor with a lava rim (don't get knocked... there's
-no knockback — lava is just the edge boundary). Two pillars give cover from dives. Cinder glows
-weakly at center, held aloft by tendrils.
+## Boss 2 — Bone Warden (Warden's Crypt)
 
-### Phase 1 — Sever the tendrils
-- Three **shadow tendrils** rise and **slam down** at telegraphed spots (a dark circle marks the
-  ground ~1s before impact). Walk out of the circles.
-- After a slam, the tendril **sticks in the floor for ~2s** — vulnerable. Sword it. Sever all 3.
-- Pip: *"It's holding the spirit! Hit the tendrils when they get stuck — quick!"*
-- Pip on a telegraph: *"Look out — move off the dark circle!"*
+Shield-wall mini-boss: unhittable from the front (clank/BLOCKED feedback),
+punish by flanking, jumping behind, or parry-stunning his swing. Teaches
+positioning as Stoneroot's combat lesson.
 
-### Phase 2 — Strike the core + adds
-- Tendrils severed → the core (a shadowy eye over Cinder) is exposed. Attack it.
-- The Shadowgrip recoils, summons **2 Shades**, and sends a **slow shadow wave** rotating across
-  the floor (telegraphed sweep — walk around it; there's always a safe arc).
-- **Blood Moon** deals big damage to the core here — encourage it. Pip: *"Your Blood Moon is ready —
-  use it on the core!"*
-- Core takes ~6-8 sword hits or ~2 Blood Moons (plus a few hits) across Phases 2-3. Agent tunes.
+## Forgiveness specifics
 
-### Phase 3 — The dark grip (Dark Wolf payoff)
-- The Shadowgrip tightens and the **room goes dark**. As the **Knight** you can barely see; switch
-  to **Dark Wolf** ("see in the dark") to light the chamber and read the boss's tells. This forces
-  a satisfying use of the ability the kids learned earlier.
-- Tendril slams come a bit faster (still telegraphed); the core opens in brief bursts — land the
-  final hits.
-- Pip: *"It's too dark! Become the Dark Wolf — you can see in the shadows!"*
-
-### Defeat → free Cinder
-- The Shadowgrip dissolves with a long howl; the tendrils release; warm light floods the room.
-- Cinder (freed): *"You broke the shadow's hold, kind knight. I am Cinder. Take the heart of the
-  Fire Wolf."*
-- Kael gains the **Fire Wolf** form (ground-slam + burn obstacles). Pip: *"You can be the Fire Wolf
-  now! Hold the screen to change. Try the ground-slam!"*
-
-### Forgiveness specifics
-- Death in the fight = respawn at the boss-room checkpoint, full hearts, boss reset cleanly
-  (anti-soft-lock). 
-- All telegraphs ~1s; Pip pre-warns the first time each attack appears.
-- No phase has more than 2 Shades on screen; the wave always leaves a safe path.
+- Death = respawn at checkpoint, full hearts. Cozy mode (default) halves
+  damage (min ½ heart); quiet rubber-band softens further after 3 deaths
+  at one checkpoint. i-frames ~1s. Lava: 1 heart + bounce-back to the
+  last safe footing (a deliberate jump still clears gaps).
+- Boss deaths currently reset the whole fight — **flagged as a flaw**; the
+  fix plan makes respawn preserve the reached phase.
+- Every puzzle self-resets (anti-soft-lock). Room rebuild on entry.

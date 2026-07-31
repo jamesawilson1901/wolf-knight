@@ -1,4 +1,11 @@
-# Asset Plan — Wolf Knight 3D (Ember Hollow slice)
+# Asset Plan — Wolf Knight 3D
+
+> **CHANGELOG (2026-07-31 doc-truth pass):** The casting sheet's code-built
+> workarounds (blob Shades, triangle-wing Moths, blob Shadowgrip) are DEAD —
+> the monsters pack landed and the standing rule is now **no code-built
+> creatures, ever**: every being uses a real pack model (Shade = tinted
+> slime, Ember Moth = tinted bat, Shadowgrip = tinted Dragon). Wolf tint
+> list updated to the canon addendum forms. Pack list unchanged.
 
 All packs below are **CC0** (public domain) and **verified to exist with the creatures we need**.
 Style family: chunky soft-shaded low-poly (Quaternius / KayKit / Kenney 3D — deliberately matching).
@@ -38,17 +45,20 @@ Web Speech API narration).
 ## Casting sheet (model → role, with workarounds)
 
 - **Kael (knight form):** KayKit Adventurers Knight.
-- **Wolf forms ×8:** ONE Quaternius Wolf model; per-form **material colour tint** in code
-  (dark 0x4a3b6b · fire 0xff5a2b · earth 0x8b6b3d · electric 0xf2d54a · water 0x3aa0ff ·
-  ice 0x9be3ff · wind 0xb6f0c4 · light 0xfff4c2). No extra models, ever.
+- **Wolf forms ×7 (canon addendum):** ONE Quaternius Wolf model; per-form **material colour
+  tint** in code (dark 0x4a3b6b · fire 0xff5a2b · earth 0x8b6b3d · verdant ~0x6fae4a ·
+  frost ~0x9be3ff · storm ~0xf2f2ff · tide ~0x3aa0ff — later four provisional until built).
+  No extra models, ever.
 - **Pip:** Quaternius Fox.
-- **Lost wolf pups:** the Wolf model **scaled to ~45%** (or Shiba Inu recoloured). No pup model needed.
-- **Shade (grunt):** NOTE — monsters pack not downloaded. Build Shades in code: a dark blob mesh (sphere/blob, near-black, opacity ~0.8) with particle-pack wisp/smoke sprites. This fits the "shadow wisp" design. If a quaternius monsters zip appears in asset-downloads later, use it instead.
-- **Ember Moth:** code-built: small dark body + two emissive ember-orange triangle wings, bobbing; particle embers. (Or a monster model if the pack is added later.)
-- **Shadow Hound (elite):** **the Wolf model tinted black** — the design literally calls it a dark
-  mirror of Kael, so this enemy costs nothing.
-- **The Shadowgrip (boss):** built in code — dark blob core (sphere/blob mesh) + tendril cylinders
-  + a caged warm point light as Cinder. No model needed.
+- **Lost wolf pups:** the Wolf model **scaled down** and recoloured. No pup model needed.
+- **Shade (grunt):** Quaternius monster **Slime, shadow-tinted** (real model — the blob
+  workaround is banned).
+- **Ember Moth:** Quaternius **Bat, ember-tinted** with glowing wings.
+- **Shadow Hound (elite):** **the Wolf model tinted black** — a dark mirror of Kael.
+- **The Shadowgrip (boss):** Quaternius **Dragon, shadow-tinted**, hovering over the caged
+  Cinder (code builds only the cage shell/rings — never the creature).
+- **Stoneroot roster:** Slime, Bat, Skeleton Minion/Rogue, armored skeleton = Bone Warden —
+  all real pack models, tinted per role.
 - **Cinder (freed spirit):** glowing ember-orange sphere/flame with a strong warm point light,
   gentle float animation. Code, not a model.
 - **Lava:** flat plane with emissive orange material (+ slow UV scroll if easy). It genuinely

@@ -1,5 +1,24 @@
 # GAME CONTRACT — binding numbers & rules. Change here first, then in code.
 
+> **CHANGELOG (2026-07-31 audit):** added the "Adopted law, code catching
+> up" section from the full-project audit — rules we now hold as binding
+> that the code does not yet satisfy. Each maps to a fix-plan item.
+
+## Adopted law, code catching up (audit 2026-07-31)
+- Boss respawn preserves the reached phase — dying never restarts a boss
+  from phase 1. [fix plan #4]
+- Every hit fires layered feedback through ONE juice pipeline (hitstop,
+  shake, contact particles, audio, haptics) with weight tiers; particles/
+  audio pooled + preloaded — no allocation or first-play decode stutter
+  mid-combat. [#1]
+- Forms are distinct TOOLS (safe Knight vs fast fragile Dark Wolf with
+  lunge + senses); Blood Moon is an EARNED Moon-Gauge surge, not a
+  cooldown button; the gauge fills faster under pressure (hidden assist,
+  alongside the existing 3-death rubber-band). [#2, #3]
+- The settlement has characterful NPCs; a freed region's healing is
+  WITNESSED (visible sequence, persistent, revisit rewards). [#5]
+- A reduce-motion setting tames shake/hitstop/flash. [polish list]
+
 ## Combat grammar (already true — now law)
 - RED marks danger (rings/arcs/streaks), GOLD marks "act here" (strike
   windows, keyholes, chests, plates). Never mix.

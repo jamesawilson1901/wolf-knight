@@ -1,5 +1,10 @@
 # Story Bible — Wolf Knight: Ember Hollow (vertical slice)
 
+> **CHANGELOG (2026-07-31 doc-truth pass):** Resolved the region-roster
+> contradiction — the EXPANSION ADDENDUM's seven regions/spirits are CANON
+> (user decision), superseding the original "Region table (play order)"
+> below, which is kept for history only. No other story content changed.
+
 Locked from the design Q&A. This is the story/content companion to the GDD. The build prompt
 references it; the narration lines below feed the Web Speech (TTS) system directly.
 
@@ -85,7 +90,10 @@ some choice**. **Grimm taunts** Kael at the transitions between regions. **Luna 
 dreams** at rest points between regions (story + gentle hints — this is the "home base" feeling
 without a hub). The journey ends by **restoring light to the world**.
 
-## Region table (play order)
+## Region table (play order) — ⚠ SUPERSEDED (historical)
+
+> This table is the ORIGINAL draft roster. The user-approved roster lives in
+> the EXPANSION ADDENDUM at the bottom of this file and WINS over this table.
 
 | # | Region (setting) | Spirit (personality) | Wolf form — combat special | Traversal / puzzle mechanic |
 |---|---|---|---|---|
@@ -121,8 +129,10 @@ between earned forms to counter Grimm's attacks. Victory **restores light to the
 
 # EXPANSION ADDENDUM — the full seven-light arc (added for the 10-hour game)
 
-Everything ABOVE is the original slice bible and stays verbatim-locked.
-This addendum extends it; where the two could disagree, the original wins.
+Everything ABOVE is the original slice bible and stays verbatim-locked as
+history. This addendum extends it. Precedence (user-decided 2026-07-31):
+on the seven-region roster, spirits, and the Grimm reveal, THIS ADDENDUM
+WINS; on everything else, the original wins.
 
 ## The shape of the full story
 Seven lights guarded the kingdom; Grimm's shadow took them one by one.

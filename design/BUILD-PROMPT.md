@@ -1,5 +1,13 @@
 # BUILD PROMPT — Wolf Knight 3D (paste into Claude Code)
 
+> **CHANGELOG (2026-07-31 doc-truth pass): HISTORICAL DOCUMENT.** This was
+> the original kickoff prompt; the build is now far past it. A fresh session
+> should read SYSTEMS.md + GAME-CONTRACT.md + LEVEL-DESIGN-2.md + BUILDLOG.md
+> for current truth. Two instructions below are DEAD: (1) code-built
+> Shades/Moths/Shadowgrip — banned, all creatures are real pack models now;
+> (2) "press-and-hold anywhere = form picker" — replaced in v2.6 by the form
+> button (tap = cycle, hold = picker) and a floating joystick.
+
 Pre-flight (human does this BEFORE pasting):
 1) Download every pack in design/ASSETS.md into ./asset-downloads (browser, manual — see checklist).
 2) Start from a FRESH repo folder (keep the old Phaser repo as an archive; don't build on top of it).

@@ -1,5 +1,11 @@
 # Level Map — Ember Hollow (Fire slice)
 
+> **CHANGELOG (2026-07-31 doc-truth pass):** The 3-room diagram below is
+> HISTORICAL — the shipped region is the ADDENDUM at the bottom (Ember
+> Hollow 2.0: Den, R1/R1b, R2/R2b, the Kiln hub K1/KA/KB, R3). Stoneroot's
+> map lives in LEVEL-DESIGN-2.md. ember-hollow-map.svg still shows the old
+> layout (someday-polish item).
+
 Three connected chambers, played left-to-right, with one backtrack loop after the Fire Wolf is
 earned. The slice is small but teaches one tool per pup. **Mostly linear with one optional branch.**
 

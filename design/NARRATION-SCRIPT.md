@@ -1,5 +1,17 @@
 # Narration Script — Ember Hollow (Fire slice)
 
+> **CHANGELOG (2026-07-31 doc-truth pass):** The line TABLE below remains
+> the slice script and the style guide (voices, reading level, once-per-save
+> rules) — but **js/narration.js is now the canonical line table**. It has
+> grown ~40 lines beyond this file: Stoneroot set, Kiln/dungeon set
+> (kiln_enter/kiln_shrine/firewolf grant-at-shrine/brazier + order puzzles),
+> gate promises + mystery toasts, Den/shop/travel, parry praise, boss
+> re-teach. New lines follow the addendum's rules in STORY-BIBLE.md (short,
+> warm, concrete; Grimm once per region; Luna dream per region end; each
+> spirit speaks exactly twice). NOTE: firewolf_grant now fires at the KA
+> shrine (mid-dungeon), not after the boss — the boss defeat replays the
+> celebration lines only.
+
 Consolidated, ordered, and TTS-ready. Lines are short (good for speech + captions) and at a young
 reading level. Store these as DATA (id, voice, text, trigger) so the engine fires them on events
 and so later regions reuse the structure. Captions show each line on screen (default on).
