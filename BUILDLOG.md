@@ -799,3 +799,26 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - QUEUED pass B: settlement NPCs, 5 vignettes, mid-region restorations ×2,
   witnessed healing sequence, S-bend route rework, ambient critters,
   atmosphere crossfades, LEVEL-MAP SVG.
+
+## v3.0.1 — playtest fix pass (buttons / lava / shrine re-check)
+- STABLE BUTTON LAYOUT: the special button never appears/disappears again —
+  it lives permanently in the bottom-right corner and is dimmed (30%
+  opacity, grayscale, ignores taps) as the Knight. Attack sits beside it,
+  form badge beside that; ranged/defend/jump hold a fixed upper row. Fixes
+  "all the buttons are now mixed up, especially when you turn into the
+  wolf" — the root cause was #special-btn toggling display:none/flex per
+  form, which shoved the whole cluster around.
+  Bug caught in review: hasSpecial omitted earth_wolf, which would have
+  dimmed the Earth Wolf's stomp button. Fixed before ship.
+- LAVA BOUNCE-BACK: touching lava now deals 1 heart AND hops Kael back to
+  the last safe footing (tracked every frame on solid ground), zeroing
+  momentum — the classic Zelda ouch-bounce. A deliberate JUMP over lava
+  still works (airborne skips the check).
+- SHRINE GRANT RE-VERIFIED: the KA fire shrine grants Fire Wolf on both a
+  fresh profile and an old-save-shaped profile (dark-wolf-only unlocks +
+  already-spoken story flags) — the grant keys off formsUnlocked, not
+  spoken lines, so old saves cannot get stuck.
+- Verified headless: button rects byte-identical across all four forms;
+  special visible-always with correct per-form icon; lava hit = 5→4 hearts
+  + hop + return to safe tile; old-save shrine grant. Zero page errors.
+  SW bumped to v3.0.1.

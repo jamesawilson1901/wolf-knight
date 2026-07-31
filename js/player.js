@@ -873,11 +873,25 @@ export class Player {
 
   _hazards(dt, world) {
     if (this.iframes > 0) this.iframes -= dt;
+    const hz = world.hazardAt(this.root.position.x, this.root.position.z);
+    // remember the last safe footing (used for the lava bounce-back)
+    if (!hz && this.airY <= 0) {
+      if (!this._lastSafe) this._lastSafe = { x: 0, z: 0 };
+      this._lastSafe.x = this.root.position.x;
+      this._lastSafe.z = this.root.position.z;
+    }
     // Fire ignores shields — but a well-timed jump clears small lava gaps.
-    if (!this.airborne &&
-        world.hazardAt(this.root.position.x, this.root.position.z) && this.iframes <= 0) {
+    if (!this.airborne && hz && this.iframes <= 0) {
       this.damage(1);
       this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
+      // OUCH — hop back to solid ground (kids expect the Zelda bounce)
+      if (this._lastSafe) {
+        const s = world.resolveCircle(this._lastSafe.x, this._lastSafe.z, BODY_RADIUS);
+        this.root.position.x = s.x;
+        this.root.position.z = s.z;
+        this._vel.x = 0; this._vel.z = 0;
+        this.airY = 0.01; this.airV = 3.6; this.jumpsUsed = 2; // little pained hop
+      }
     }
     const flicker = this.iframes > 0 && Math.sin(this.iframes * 30) > 0;
     for (const m of this.form.meshes) {

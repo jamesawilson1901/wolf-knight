@@ -108,13 +108,17 @@ export class UI {
     const meta = FORM_META[state.form];
     this.badge.textContent = meta.icon;
     this.badge.style.background = meta.color;
-    const hasSpecial = state.form === 'dark_wolf' || state.form === 'fire_wolf';
-    this.specialBtn.style.display = hasSpecial ? 'flex' : 'none';
-    this.specialIcon.textContent = state.form === 'fire_wolf' ? '🔥' : '🌙';
+    const hasSpecial = state.form === 'dark_wolf' || state.form === 'fire_wolf' || state.form === 'earth_wolf';
+    // the button NEVER moves or vanishes — stable layout for small thumbs.
+    // The knight has no special: same spot, dimmed.
+    this.specialBtn.style.display = 'flex';
+    this.specialBtn.classList.toggle('disabled', !hasSpecial);
+    this.specialIcon.textContent =
+      state.form === 'fire_wolf' ? '🔥' : state.form === 'earth_wolf' ? '🪨' : '🌙';
   }
 
   update(player) {
-    if (this.specialBtn.style.display === 'none') return;
+    if (this.specialBtn.classList.contains('disabled')) return;
     const frac = Math.max(0, player.specialCooldown) / player.specialMax;
     const deg = Math.round(frac * 360);
     this.specialRing.style.background =
