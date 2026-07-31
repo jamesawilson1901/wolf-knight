@@ -34,8 +34,12 @@ export const CONFIG = {
   // Cozy mode softens incoming damage (was 0.5 = half; floor ½ heart stays).
   // Per-family speeds were also raised in enemies.js (+15-20%, signatures kept).
   DIFFICULTY: {
-    ENEMY_HP_BONUS: 1,
+    ENEMY_HP_BONUS: 1,     // skipped entirely in Gentle mode
     COZY_SOFTEN: 0.6,
+    // 🌸 Gentle mode (per-profile; daughter verdict 2026-07-31 "too hard"):
+    GENTLE_SOFTEN: 0.4,      // hits cost even less
+    GENTLE_ENEMY_TIME: 0.8,  // enemies live at 80% speed — moves AND
+                             // telegraphs slow down (more time to read)
   },
 
   // ---- JUICE (hit-feedback tiers; js/juice.js routes every hit here) ----

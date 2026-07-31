@@ -34,6 +34,12 @@
 
 ## Progression targets (tune toward, verify per region)
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-07-31 — daughter: "too hard" (after the v3.4.1 bump). Response
+  (v3.4.3): 🌸 GENTLE MODE, per-profile, mutually exclusive with Brave:
+  damage softened to 40%, enemy hp bonus skipped, and the whole enemy
+  world (boss included) runs at 80% time — slower moves AND longer
+  telegraphs from one lever. Difficulty is now per-kid: her profile
+  Gentle, his profile Brave, default stays Cozy.
   2026-07-31 — son: "enemies are too easy, make them harder." Response
   (v3.4.1): every enemy +1 hp (grunts no longer die in 2 hits); family
   speeds +15-20% (shade skips 3.3, hound stalk 1.8 / charge 9.6, moth dive

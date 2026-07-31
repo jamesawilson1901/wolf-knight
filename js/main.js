@@ -859,7 +859,10 @@ async function start() {
       player.update(dt, input, world);
       world.updateBoulders(dt, player);
       pip.update(dt, t, player, world);
-      if (world.updateEnemies) world.updateEnemies(dt, t, player);
+      // 🌸 Gentle profiles: the whole enemy world runs at 80% time —
+      // slower moves AND longer telegraphs, one lever (CONFIG.DIFFICULTY)
+      const edt = state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt;
+      if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
@@ -903,7 +906,7 @@ async function start() {
             persist(); // form unlock + healed world is a save point
           };
         }
-        world.boss.update(dt, t, player);
+        world.boss.update(state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt, t, player);
       }
 
       // Door transitions
@@ -1015,9 +1018,21 @@ function wireSettings() {
   const sfx = document.getElementById('sfx-vol');
   const captions = document.getElementById('captions-toggle');
   const voice = document.getElementById('voice-toggle');
+  // 🌸 Gentle vs 🦁 Brave: per-profile, mutually exclusive (both off = Cozy)
   const brave = document.getElementById('brave-toggle');
+  const gentle = document.getElementById('gentle-toggle');
   brave.checked = !!state.settings.brave;
-  brave.addEventListener('change', () => { state.settings.brave = brave.checked; persist(); });
+  gentle.checked = !!state.settings.easy;
+  brave.addEventListener('change', () => {
+    state.settings.brave = brave.checked;
+    if (brave.checked) { state.settings.easy = false; gentle.checked = false; }
+    persist();
+  });
+  gentle.addEventListener('change', () => {
+    state.settings.easy = gentle.checked;
+    if (gentle.checked) { state.settings.brave = false; brave.checked = false; }
+    persist();
+  });
   music.value = state.settings.musicVol;
   sfx.value = state.settings.sfxVol;
   captions.checked = state.settings.captions;

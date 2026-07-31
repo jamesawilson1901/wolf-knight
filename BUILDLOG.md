@@ -992,3 +992,16 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified headless: both r2b decks hazard-free with the pools beside them
   still hot; standing on a deck for 4s = full hearts, no bounce; r2 deck
   safe/pool hot via the real door. SW v3.4.2.
+
+## v3.4.3 — 🌸 Gentle mode (per-profile easy)
+- Daughter's verdict ("too hard" after the v3.4.1 bump) recorded in the
+  GAME-CONTRACT playtest log. New 🌸 Gentle mode toggle in the pause menu,
+  per profile, mutually exclusive with 🦁 Brave (both off = Cozy):
+  - incoming damage softened to 40% (min ½ heart unchanged)
+  - the enemy hp bonus is skipped (shades back to 2 hp)
+  - enemies AND bosses run at 80% time — slower movement and longer
+    telegraphs from one lever (CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME)
+- Difficulty is now truly per-kid: her profile Gentle, his Brave, default
+  Cozy. Verified headless: toggles mutually exclude via the real
+  checkboxes, gentle shade hp 2, 1-dmg hit costs ½ heart, setting
+  persists in the profile save. SW v3.4.3.

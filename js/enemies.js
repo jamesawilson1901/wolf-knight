@@ -9,6 +9,7 @@ import { loadGLB, prepareCharacter } from './assets.js';
 import { audio } from './audio.js';
 import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
+import { state } from './state.js';
 
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
@@ -49,8 +50,10 @@ class Enemy {
     this.root = new THREE.Group();
     this.root.position.set(x, 0, z);
     world.add(this.root);
-    // gentle level scaling on hp (behaviors carry real difficulty)
-    this.hp = Math.round((hp + CONFIG.DIFFICULTY.ENEMY_HP_BONUS) * enemyScale() * 2) / 2;
+    // gentle level scaling on hp (behaviors carry real difficulty).
+    // 🌸 Gentle profiles skip the playtest hp bonus.
+    const bonus = state.settings.easy ? 0 : CONFIG.DIFFICULTY.ENEMY_HP_BONUS;
+    this.hp = Math.round((hp + bonus) * enemyScale() * 2) / 2;
     this.maxHp = this.hp;
     this.radius = radius;
     this.dead = false;

@@ -725,7 +725,8 @@ export class Player {
     // Cozy mode (default) halves incoming hits; the rubber-band does the
     // same after repeated defeats at one checkpoint. Both round to halves.
     let soften = 1;
-    if (!state.settings.brave) soften *= CONFIG.DIFFICULTY.COZY_SOFTEN;
+    if (state.settings.easy) soften *= CONFIG.DIFFICULTY.GENTLE_SOFTEN;
+    else if (!state.settings.brave) soften *= CONFIG.DIFFICULTY.COZY_SOFTEN;
     if (this.softenDamage) soften *= 0.5;
     n = Math.max(0.5, Math.round(n * soften * 2) / 2);
     if (this.defending && !source.pierceDefend) {
