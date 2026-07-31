@@ -37,8 +37,9 @@ Every region built or rebuilt from here follows these rules.
 Den ── R1 Hollow Entrance ── R1b Ash Warrens (maze, dark pockets, secret)
          │                        │ (one-way ledge drop back into R1)
          R2 Ember Causeway ── R2b Cinder Bridges (key branch)   [DONE v2.5]
-         │   TWIST: with the Ember Key, the R1/R2 lava pools cool to
-         │   walkable dark basalt — new shortcuts + one secret reachable
+         │   POST-BOSS: the R1/R2 lava pools cool to walkable dark basalt
+         │   (part of the healing — user rule v3.8.2: lava stays dangerous
+         │   until the victory; the Kiln's brazier order puzzle is the twist)
          R3 Heart of the Hollow (boss; shortcut back to R1)     [exists]
 ```
 

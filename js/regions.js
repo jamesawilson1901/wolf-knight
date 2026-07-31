@@ -34,7 +34,7 @@ export const REGIONS = {
       lockVisible: 'r1 burnable cubby (minute one) + em_boulder + r2b water gate',
       ki: 'ka teach brazier (safe pocket)',
       sho: 'ka gutter pair (timing) + combat brazier',
-      ten: 'kb numbered-brazier order puzzle; Ember Key cools the lava (twist)',
+      ten: 'kb numbered-brazier order puzzle (the dungeon\'s own twist)',
       boss: 'r3 Shadowgrip (severs → exposure windows)',
       grant30s: 'shrine grant opens the teach-brazier bars immediately',
       restoration: 'witnessed in r3 on boss defeat (see below)',
@@ -47,7 +47,8 @@ export const REGIONS = {
     restoration: {
       flag: 'restored', // WS.set('ember','restored')
       beats: ['warm light floods', 'green sprouts rise around the arena',
-        'Cinder\'s ember climbs to the ridge', 'calm music takes over (exists)'],
+        'Cinder\'s ember climbs to the ridge', 'calm music takes over (exists)',
+        'coolable lava sleeps to walkable basalt (r1/r2 rebuilds)'],
       durationS: 9, skippable: false, // plays once per save, non-blocking
     },
     ripple: { room: 'e1', what: 'green shoots by the Stoneroot gate' },

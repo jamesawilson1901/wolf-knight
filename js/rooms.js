@@ -147,7 +147,9 @@ function blockRow(world, x0, z0, x1, z1, height = 1.6) {
 // coolable pools turn to walkable dark basalt once the Ember Key is claimed
 // (the region's mid-dungeon twist — cleared rooms read differently).
 function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
-  if (coolable && state.flags.keys.ember) {
+  // coolable pools turn to basalt only when the REGION heals (boss down) —
+  // never mid-dungeon (user rule: lava stays dangerous until the victory)
+  if (coolable && state.flags.bossDefeated) {
     const basalt = new THREE.Mesh(
       new THREE.PlaneGeometry(w, d),
       new THREE.MeshStandardMaterial({ color: 0x2b2331, roughness: 1 })

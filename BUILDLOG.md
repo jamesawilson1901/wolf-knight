@@ -1130,3 +1130,14 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   unlock chime → LEVEL SELECT: all 14 rooms, one tap warps straight
   there (production loadRoom). Verified headless: wrong-input reset,
   full code, 14 levels, warp to the Echo Chasm. Zero errors. SW v3.8.1.
+
+## v3.8.2 — lava cools AFTER the boss, not before
+- The coolable r1/r2 pools were turning to basalt on collecting the Ember
+  Key — mid-dungeon, before the boss (the old "twist"). User rule: lava
+  stays dangerous until the victory. Cooling now keys off bossDefeated
+  and reads as part of the region's healing; Pip's lava_cooled line
+  updated ("with the shadow gone…") and retriggered accordingly. The
+  Kiln's brazier order puzzle remains Ember's mid-dungeon twist. Docs
+  (LEVEL-DESIGN-2, regions manifest) updated. Verified headless: key
+  held + boss alive → pools still burn; boss down → basalt + line.
+  SW v3.8.2.

@@ -27,7 +27,7 @@ export const LINES = {
   hound_branch: { voice: 'pip', text: 'A shadow hound guards that way. Beat it for a pup — or skip it if you like.' },
   key_door: { voice: 'pip', text: 'Sealed by shadow! We need a key… I feel it east of here, past the broken bridges.' },
   key_found: { voice: 'pip', text: 'The Ember Key! The sealed door will open for us now!' },
-  lava_cooled: { voice: 'pip', text: 'Feel that? The key drank the fire — the lava sleeps as black stone! New paths, Kael!' },
+  lava_cooled: { voice: 'pip', text: 'Feel that? With the shadow gone, the lava sleeps as black stone! New paths, Kael!' },
   kiln_enter: { voice: 'pip', text: 'The Kiln… the volcano’s own halls. Three doors, Kael — the mountain keeps its secrets locked.' },
   kiln_shrine: { voice: 'pip', text: 'A fire shrine! Cinder’s spark reaches out to you, Kael — take it!' },
   brazier_hint: { voice: 'pip', text: 'A cold brazier! Your fiery slam can light it. Try it!' },
