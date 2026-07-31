@@ -33,7 +33,31 @@
   this).
 
 ## Progression targets (tune toward, verify per region)
+## Elements & armor (law, v3.7)
+- Every strike carries an ELEMENT by source: knight sword = steel ·
+  spark bolt = spark · dark wolf = moon · fire wolf = fire · earth wolf =
+  earth. Steel is the only non-magical element.
+- Every enemy family has a WEAKNESS (1.5x + gold flare): Grimm's
+  shadow-things (Shade/Moth/Hound) fear MOON; slimes/bats and all BONE
+  fear FIRE.
+- ARMORED bone (skeletons, Warden) takes 0.5x from steel (clank teach)
+  and 1.35x from any magic. The sword is never useless, magic is the
+  answer — anti-button-mash by design.
+- Enemy defense patterns are PREDICTABLE: the rogue always sidesteps the
+  FIRST melee swing then is open 3.5s; the Warden front-blocks always.
+- Grounded enemies obey lava exactly like Kael; flyers cross freely.
+
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-07-31 — dad, session 3: "Blood Moon wildly overpowered" → 99 dmg
+  nuke becomes 2.5 moon dmg (one-shots weak-to-moon grunts, elites
+  survive). "Dragon windows more frequent + shorter" → tendril stick
+  2.8→1.7s, gaps 1.5→0.9s, all phases pulse ~1.4-1.7s open windows.
+  "Combat is button-mashing" → element/armor system above + rogue dodge.
+  "Darkness should force the Dark Wolf" → r1b + e2 are now fully dark
+  rooms (r1 keeps its teaching nook). Dodge roll + attack-while-moving
+  added. "Two rooms and a closed gate" → the millstone puzzle IS the
+  gate key; boulder now wears the gold act-here ring + the Gentle guide
+  runs to it.
   2026-07-31 — daughter: "too hard" (after the v3.4.1 bump). Response
   (v3.4.3): 🌸 GENTLE MODE, per-profile, mutually exclusive with Brave:
   damage softened to 40%, enemy hp bonus skipped, and the whole enemy

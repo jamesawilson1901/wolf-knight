@@ -74,6 +74,11 @@ const FORM_DEFS = {
     boltColor: 0xd8b06a, rangedKind: 'rock',    // lobbed stone: slow, heavy, dazes
   },
 };
+// What ELEMENT each form's strikes carry (enemy weaknesses key off this;
+// 'steel' is the only non-magical element — armored bone shrugs it off)
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth' };
+const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth' };
+
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
 // Thrust (2nd tap of the combo): narrow and long — a poke, not a sweep
 const THRUST_ARC_COS = Math.cos(THREE.MathUtils.degToRad(32));
@@ -501,7 +506,7 @@ export class Player {
       const d = Math.hypot(dx, dz);
       if (d > range + e.radius + CONFIG.HITBOX_PAD) continue; // generous hitbox
       if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
-      e.takeDamage(dmg);
+      e.takeDamage(dmg, FORM_ELEMENT[state.form] || 'steel', 'melee');
       audio.play('hit', { volume: 0.9, vary: 0.08 });
       connected = true;
       struck = e;
@@ -635,27 +640,28 @@ export class Player {
           if (p.pierced && p.pierced.has(e)) continue;
           const dx = e.x - px, dz = e.z - pz;
           if (dx * dx + dz * dz < (e.radius + 0.25) * (e.radius + 0.25)) {
+            const elem = BOLT_ELEMENT[p.kind] || 'spark';
             if (p.kind === 'pierce') {
-              e.takeDamage(this.boltDamage(e));
+              e.takeDamage(this.boltDamage(e), elem, 'bolt');
               (p.pierced || (p.pierced = new Set())).add(e);
               p.target = null; // stop homing at the pierced one — fly ON through
               audio.play('hit', { volume: 0.8, vary: 0.08 });
               juice.burst(px, 0.85, pz, 0xb08aff, 5);
               if (p.pierced.size >= 3) gone = true;
             } else if (p.kind === 'ember') {
-              e.takeDamage(this.boltDamage(e));
-              if (world.damageEnemiesAt) world.damageEnemiesAt(px, pz, 1.3, 0.5); // the burst
+              e.takeDamage(this.boltDamage(e), elem, 'bolt');
+              if (world.damageEnemiesAt) world.damageEnemiesAt(px, pz, 1.3, 0.5, 'fire'); // the burst
               juice.burst(px, 0.85, pz, 0xff8a3a, 12);
               audio.play('burn', { volume: 0.5, rate: 1.5 });
               gone = true;
             } else if (p.kind === 'rock') {
-              e.takeDamage(this.boltDamage(e) + 0.5);
+              e.takeDamage(this.boltDamage(e) + 0.5, elem, 'bolt');
               if (e.takeStun && !e.flying) e.takeStun(0.9);
               juice.burst(px, 0.85, pz, 0xd8b06a, 8);
               audio.play('hit', { volume: 0.9, rate: 0.75 });
               gone = true;
             } else {
-              e.takeDamage(this.boltDamage(e));
+              e.takeDamage(this.boltDamage(e), elem, 'bolt');
               audio.play('hit', { volume: 0.8, vary: 0.08 });
               gone = true;
             }
@@ -773,7 +779,7 @@ export class Player {
         if (e.dead || e.flying) continue;
         const dx = e.x - x, dz = e.z - z;
         if (dx * dx + dz * dz > STOMP_RADIUS * STOMP_RADIUS) continue;
-        e.takeDamage(2);
+        e.takeDamage(2, 'earth', 'aoe');
         if (e.takeStun) e.takeStun(STOMP_STUN);
       }
     }
@@ -793,7 +799,7 @@ export class Player {
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone());
     audio.play('slam');
-    if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2);
+    if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2, 'fire');
     if (world.burnAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('burn');
     if (world.igniteAt) world.igniteAt(x, z, SLAM_BURN_RADIUS);
     this.specialCooldown = this.specialMax;
@@ -819,7 +825,9 @@ export class Player {
     effects.bloodMoon(target, {
       onImpact: () => {
         audio.play('moon-impact');
-        if (world && world.damageEnemiesAt) world.damageEnemiesAt(target.x, target.z, 3.0, 99);
+        // 2.5 moon damage: one-shots grunts (shadow-things are WEAK to moon
+        // → 3.75), but elites survive — a crowd-clearer, not a delete button
+        if (world && world.damageEnemiesAt) world.damageEnemiesAt(target.x, target.z, 3.0, 2.5, 'moon');
       },
     });
     this.specialCooldown = this.specialMax;
@@ -878,6 +886,40 @@ export class Player {
         this._lavaBounce = null;
         this.airY = 0;
         this.airV = 0;
+        this.root.position.y = 0;
+      }
+    }
+
+    // DODGE ROLL: tapping the shield WHILE MOVING tumbles Kael in the stick
+    // direction with brief i-frames. Holding it while standing still raises
+    // the shield exactly as before.
+    const defendPressed = input.defending && !this._defendWasHeld;
+    this._defendWasHeld = input.defending;
+    const mvMag = Math.hypot(input.move.x, input.move.z);
+    if (defendPressed && mvMag > 0.35 && this.lockTime <= 0 && !this._roll &&
+        !this._lavaBounce && this.airY <= 0) {
+      const inv = 1 / mvMag;
+      this._roll = { t: 0, dx: input.move.x * inv, dz: input.move.z * inv };
+      this.iframes = Math.max(this.iframes, CONFIG.ROLL_IFRAMES);
+      this.lockTime = CONFIG.ROLL_DUR;
+      this._softLock = false;
+      this.root.rotation.y = Math.atan2(this._roll.dx, this._roll.dz);
+      this._playOnce('jump', 0.06);
+      audio.play('form-switch', { volume: 0.4, rate: 1.9 }); // tumble whoosh
+    }
+    if (this._roll) {
+      const r = this._roll;
+      r.t += dt;
+      const s = world.resolveCircle(
+        this.root.position.x + r.dx * CONFIG.ROLL_SPEED * dt,
+        this.root.position.z + r.dz * CONFIG.ROLL_SPEED * dt, BODY_RADIUS);
+      this.root.position.x = s.x;
+      this.root.position.z = s.z;
+      this.airY = Math.sin(Math.min(1, r.t / CONFIG.ROLL_DUR) * Math.PI) * 0.28;
+      this.root.position.y = this.airY;
+      if (r.t >= CONFIG.ROLL_DUR) {
+        this._roll = null;
+        this.airY = 0;
         this.root.position.y = 0;
       }
     }
@@ -997,6 +1039,7 @@ export class Player {
           toX: s.x, toZ: s.z,
         };
         this.root.rotation.y = Math.atan2(this._lavaBounce.fromX - s.x, this._lavaBounce.fromZ - s.z);
+        this._roll = null; // the ouch-leap overrides a roll in progress
         this._vel.x = 0; this._vel.z = 0;
         this.airV = 0;
         this.jumpsUsed = 2;

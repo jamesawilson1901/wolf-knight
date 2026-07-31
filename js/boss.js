@@ -257,6 +257,7 @@ export class Shadowgrip {
     this.slamTendril.visible = false;
     this.telegraph.visible = false;
     this._setCoreExposed(true);
+    this._burstT = 0; // phase 2 pulses too: short frequent windows
     this.cageShell.visible = false; // the grip shatters — the light is free-ish
     this.core.position.y = 1.7; // core sinks into reach
     this.waveActive = true;
@@ -321,9 +322,11 @@ export class Shadowgrip {
   }
 
   _updateSlams(dt, player, faster) {
+    // playtest tune: windows come MORE OFTEN but each is SHORTER —
+    // the fight has a faster question/answer rhythm
     const TELEGRAPH = faster ? 0.8 : 1.05;
-    const STUCK = 2.8;
-    const BETWEEN = faster ? 1.0 : 1.5;
+    const STUCK = 1.7;
+    const BETWEEN = faster ? 0.6 : 0.9;
 
     this.slamTimer -= dt;
     if (this.slamState === 'wait' && this.slamTimer <= 0) {
@@ -453,6 +456,10 @@ export class Shadowgrip {
     if (this.phase === 1) {
       this._updateSlams(dt, player, false);
     } else if (this.phase === 2) {
+      // the core guards in a rhythm here too: 1.7s open / 1.2s guarded
+      this._burstT += dt;
+      const c2 = this._burstT % 2.9;
+      this._setCoreExposed(c2 < 1.7);
       // rotating shadow wave — slow, always a safe arc
       this.waveAngle += dt * 0.55;
       const wx = this.x + Math.cos(this.waveAngle) * 3.4;
@@ -473,10 +480,10 @@ export class Shadowgrip {
       }
     } else if (this.phase === 3) {
       this._updateSlams(dt, player, true);
-      // the core opens in bursts: 2.2s open / 2.0s guarded
+      // the core opens in bursts: 1.4s open / 1.4s guarded (short + frequent)
       this._burstT += dt;
-      const cycle = this._burstT % 4.2;
-      const open = cycle < 2.2;
+      const cycle = this._burstT % 2.8;
+      const open = cycle < 1.4;
       this._setCoreExposed(open);
       this.eyeMat.emissiveIntensity = open ? 1.8 : 0.4;
       this.core.position.y = open ? 1.7 : 2.6;

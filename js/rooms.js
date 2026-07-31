@@ -596,8 +596,9 @@ async function buildR1b(scene) {
   ];
 
   // dark ambush pockets — shades wait where the light dies
-  darkZone(world, 1.0, 5.9, -5.9, -1.4);
-  darkZone(world, -5.9, -1.0, 3.0, 5.9);
+  // the WHOLE warrens are pitch dark — the Dark Wolf's eyes are the way
+  // through, not a nicety (user rule: darkness = the whole room)
+  darkZone(world, -5.9, 5.9, -5.9, 5.9);
   world.markers.shadeSpots = [
     { x: 3.4, z: -4.8 }, { x: 4.8, z: -2.2 }, { x: -3.8, z: 4.4 },
   ];
@@ -1725,6 +1726,15 @@ function boulder(world, x, z) {
   world.add(group);
   const collider = { x, z, r: 0.62 };
   world.circleColliders.push(collider);
+  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 0.88, 26),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.06;
+  group.add(ring);
+  world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
   const b = { x, z, r: 0.62, group, mesh: rock, collider };
   world.boulders.push(b);
   return b;
@@ -2131,8 +2141,9 @@ async function buildE2(scene) {
   world.markers.slimeSpots = [{ x: -5.6, z: 0.2 }, { x: 5.8, z: 3.6 }];
   world.markers.batSpots = [{ x: 5.2, z: -4.6 }];
 
-  // NW dark nook — the Dark Wolf's eyes find a lost pup in here
-  darkZone(world, -10, -6.2, -6, -2.2);
+  // the WHOLE Deep Hall is cave-dark — spikes, plates and bones read only
+  // through the Dark Wolf's eyes or the torch pools (user rule)
+  darkZone(world, -10, 10, -6, 6);
   world.markers.pup4Spot = { x: -9.0, z: -5.0 };
   // ...and a second pup shivers in the far corner past the spikes
   world.markers.pup5Spot = { x: 9.2, z: -5.2 };

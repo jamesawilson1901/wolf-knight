@@ -24,7 +24,12 @@ export const CONFIG = {
   LOCKON_COS: Math.cos((120 / 2) * Math.PI / 180), // 120° forward cone
   BUFFER_WINDOW: 0.15,   // s, attack taps in the tail of a swing are queued
   HITBOX_PAD: 0.2,       // u, hits are more generous than the visual arc
-  ATTACK_MOVE_MULT: 0.4, // movement speed retained while swinging
+  ATTACK_MOVE_MULT: 0.75, // attacks barely slow you — fight on the move
+
+  // ---- dodge roll (tap shield WHILE moving; hold while still = block) ----
+  ROLL_SPEED: 7.5,
+  ROLL_DUR: 0.32,
+  ROLL_IFRAMES: 0.4, // movement speed retained while swinging
 
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle

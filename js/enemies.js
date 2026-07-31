@@ -10,6 +10,7 @@ import { audio } from './audio.js';
 import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
+import { juice } from './juice.js';
 
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
@@ -44,6 +45,21 @@ function smokePuff(world, x, y, z, tint = 0x5a4d66) {
 // Base enemy
 // ---------------------------------------------------------------------------
 
+// Elemental traits (design/GAME-CONTRACT.md): every family has a WEAKNESS
+// that takes 1.5x; ARMORED bone takes half from steel (the knight's sword)
+// but 1.35x from anything magical (bolts, wolf bites, wolf specials).
+// Grimm's shadow-things fear Luna's MOON; old bones fear FIRE.
+const TRAITS = {
+  Shade: { weakness: 'moon' },
+  Moth: { weakness: 'moon' },
+  Hound: { weakness: 'moon' },
+  Slime: { weakness: 'fire' },
+  Bat: { weakness: 'fire' },
+  SkeletonMinion: { weakness: 'fire', armored: true },
+  SkeletonRogue: { weakness: 'fire', armored: true },
+  BoneWarden: { weakness: 'fire', armored: true },
+};
+
 class Enemy {
   constructor(world, x, z, { hp, radius }) {
     this.world = world;
@@ -60,6 +76,17 @@ class Enemy {
     this.stunned = 0;
     this._flash = 0;
     this._flashMats = [];
+    const tr = TRAITS[this.constructor.name] || {};
+    this.weakness = tr.weakness || null;
+    this.armored = !!tr.armored;
+  }
+
+  // Grounded enemies obey lava exactly like Kael — they cannot walk in.
+  // Flyers cross freely. Returns the resolved position (or "stay put").
+  _moveSolved(nx, nz) {
+    const s = this.world.resolveCircle(nx, nz, this.radius);
+    if (!this.flying && this.world.hazardAt(s.x, s.z)) return { x: this.x, z: this.z };
+    return s;
   }
 
   get x() { return this.root.position.x; }
@@ -82,12 +109,28 @@ class Enemy {
     return true;
   }
 
-  takeDamage(n) {
+  // element: 'steel' (knight sword) | 'spark' | 'moon' | 'fire' | 'earth'.
+  // kind: 'melee' | 'bolt' | 'aoe' — some enemies react per kind (dodges).
+  takeDamage(n, element = 'steel', kind = 'melee') {
     if (this.dead) return;
+    let mult = 1;
+    if (this.armored) {
+      if (element === 'steel') {
+        mult *= 0.5; // steel skitters off old bone...
+        audio.play('parry', { volume: 0.3, rate: 1.5 }); // armor clank teach
+      } else {
+        mult *= 1.35; // ...but magic bites deep
+      }
+    }
+    const weak = this.weakness && element === this.weakness;
+    if (weak) mult *= 1.5;
+    n = Math.round(n * mult * 2) / 2;
+    if (n <= 0) n = 0.5;
     if (this.stunned > 0) n *= 2; // parry payoff: dizzy enemies take double
     this.hp -= n;
     this._flash = 0.14;
-    this._pop = 0.14;             // little scale-pop on every hit
+    this._pop = weak ? 0.2 : 0.14;    // weakness hits pop harder
+    if (weak) juice.burst(this.x, 0.9, this.z, 0xffe14a, 8); // gold flare
     if (this.world.onDmgNum) this.world.onDmgNum(this.x, 0.9, this.z, n);
     if (this.hp <= 0) this.die();
   }
@@ -226,7 +269,7 @@ export class Hound extends Enemy {
         const speed = 1.8; // playtest bump: stalks with intent
         const nx = this.x + (dx / d) * speed * dt;
         const nz = this.z + (dz / d) * speed * dt;
-        const solved = this.world.resolveCircle(nx, nz, this.radius);
+        const solved = this._moveSolved(nx, nz);
         this.root.position.x = solved.x;
         this.root.position.z = solved.z;
         this.root.rotation.y = Math.atan2(dx, dz);
@@ -254,7 +297,7 @@ export class Hound extends Enemy {
       const speed = 9.6; // playtest bump: the charge should scare a little
       const nx = this.x + this.chargeDir.x * speed * dt;
       const nz = this.z + this.chargeDir.z * speed * dt;
-      const solved = this.world.resolveCircle(nx, nz, this.radius);
+      const solved = this._moveSolved(nx, nz);
       const blocked = Math.hypot(solved.x - nx, solved.z - nz) > 0.01;
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
@@ -336,7 +379,7 @@ export class Slime extends Enemy {
     if (d < this.aggroRange && d > 0.01) {
       this._play('walk');
       const speed = this.speed;
-      const solved = this.world.resolveCircle(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt, this.radius);
+      const solved = this._moveSolved(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt);
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
       this.root.rotation.y = Math.atan2(dx, dz);
@@ -404,7 +447,7 @@ export class Shade extends Slime {
     if (this._lurchT <= -0.8) this._lurchT = 0.4;
     if (d < this.aggroRange && d > 0.01 && this._lurchT > 0) {
       this._play('walk');
-      const sv = this.world.resolveCircle(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt, this.radius);
+      const sv = this._moveSolved(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt);
       this.root.position.x = sv.x;
       this.root.position.z = sv.z;
       this.root.rotation.y = Math.atan2(dx, dz);
@@ -733,10 +776,29 @@ export class SkeletonRogue extends SkeletonBase {
     if (bladeGltf) this.mount('r', bladeGltf);
     this.orbitDir = (x + z) % 2 < 1 ? 1 : -1;
     this.dashTimer = 1.6;
+    this._dodgeCd = 0; // the blade-dancer SIDESTEPS the first swing
+  }
+
+  // PREDICTABLE dodge pattern (anti-button-mash): the rogue hops aside from
+  // the FIRST melee swing, then is open for 3.5s. Bolts and AoE always land;
+  // a stunned rogue can't dodge. Kids learn: bait the hop, THEN strike.
+  takeDamage(n, element, kind) {
+    if (!this.dead && kind === 'melee' && this._dodgeCd <= 0 && this.stunned <= 0 && this.state !== 'dash') {
+      this._dodgeCd = 3.5;
+      const a = this.root.rotation.y + (this.orbitDir > 0 ? 1 : -1) * Math.PI / 2;
+      const s = this._moveSolved(this.x + Math.sin(a) * 1.5, this.z + Math.cos(a) * 1.5);
+      this.root.position.x = s.x;
+      this.root.position.z = s.z;
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.0, this.z, 'DODGE');
+      audio.play('puff', { volume: 0.5, rate: 1.7 });
+      return;
+    }
+    super.takeDamage(n, element, kind);
   }
 
   update(dt, t, player) {
     if (this.dead) return;
+    if (this._dodgeCd > 0) this._dodgeCd -= dt;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
@@ -777,7 +839,7 @@ export class SkeletonRogue extends SkeletonBase {
       this.stateT += dt;
       const nx = this.x + this.dashDir.x * 7.5 * dt;
       const nz = this.z + this.dashDir.z * 7.5 * dt;
-      const solved = this.world.resolveCircle(nx, nz, this.radius);
+      const solved = this._moveSolved(nx, nz);
       const blocked = Math.hypot(solved.x - nx, solved.z - nz) > 0.01;
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
@@ -835,7 +897,7 @@ export class BoneWarden extends SkeletonBase {
   // The tower shield blocks everything from the front while he advances —
   // flank him, or parry the chop and punish the stun. Punish windows
   // (tired / stunned / mid-swing) take full damage.
-  takeDamage(n) {
+  takeDamage(n, element, kind) {
     if (!this.dead && this.stunned <= 0 && this._pp &&
         (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele')) {
       const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
@@ -849,7 +911,7 @@ export class BoneWarden extends SkeletonBase {
         return;
       }
     }
-    super.takeDamage(n);
+    super.takeDamage(n, element, kind);
   }
 
   _swingDamage(player, arcDeg, range, dmg) {
@@ -1113,13 +1175,13 @@ export async function spawnEnemies(world) {
     }
   }
 
-  world.damageEnemiesAt = (x, z, r, dmg) => {
+  world.damageEnemiesAt = (x, z, r, dmg, element = 'steel') => {
     let hits = 0;
     for (const e of world.enemies) {
       if (e.dead) continue;
       const dx = e.x - x, dz = e.z - z;
       if (dx * dx + dz * dz <= (r + e.radius) * (r + e.radius)) {
-        e.takeDamage(dmg);
+        e.takeDamage(dmg, element, 'aoe');
         hits++;
       }
     }

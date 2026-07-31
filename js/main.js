@@ -320,7 +320,7 @@ function guideTarget() {
     case 'kb': return { x: -4.4, z: -2.2 }; // brazier ONE of the order puzzle
     case 'r3': return f.bossDefeated ? { x: -7.4, z: 0.6 } : { x: 0, z: -0.5 };
     case 'e1': return { x: 0, z: -6.2 };    // deeper: the Deep Hall
-    case 'e2': return { x: 0, z: -6.2 };
+    case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the millstone, then the crypt gate
     case 'e3': return { x: 0, z: -2 };
     default: return null;
   }

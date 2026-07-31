@@ -1055,3 +1055,36 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   warden death (production path) → live restoration + WS persist, vine +
   scar + healed dressing + Bram's healed line + Petra at the Den. Zero
   errors. SW v3.6.0. AWAITING user approval of Region 2.
+
+## v3.7.0 — combat depth overhaul (dad's session-3 verdicts)
+- BLOOD MOON NERF: 99-damage nuke → 2.5 MOON damage. Shadow-things are
+  weak to moon so grunts still one-shot (3.75), but elites survive — a
+  crowd-clearer, not a delete button.
+- DRAGON RHYTHM: windows more frequent, each shorter. Tendril stick
+  2.8→1.7s, gap between slams 1.5→0.9s (phase 3: 0.6s); phase 2 core now
+  PULSES 1.7s open/1.2s guarded (was always-open); phase 3 bursts
+  1.4/1.4 (was 2.2/2.0).
+- ELEMENTS + ARMOR (anti-button-mash, law in GAME-CONTRACT): every strike
+  carries its form's element (steel/spark/moon/fire/earth). Weaknesses:
+  shadow-things fear MOON, slimes/bats/bones fear FIRE (1.5x + gold
+  flare + bigger pop). ARMORED bone: steel 0.5x with a clank teach,
+  magic 1.35x. Rogue now SIDESTEPS the first melee swing (predictable:
+  'DODGE' text, then open 3.5s; bolts/AoE/stuns always land).
+- DODGE ROLL: tap shield WHILE moving = 0.32s tumble in the stick
+  direction with 0.4s i-frames (hold-while-still still blocks/parries).
+  ATTACK_MOVE_MULT 0.4→0.75 — attacking barely slows you now.
+- ENEMY LAVA RULE: grounded enemies can no longer walk across lava
+  (same restriction as Kael); flyers cross freely. All movement routed
+  through a hazard-aware step.
+- FULL-ROOM DARKNESS: the Ash Warrens (r1b) and the Deep Hall (e2) are
+  now dark wall-to-wall — the Dark Wolf is the way through. R1 keeps its
+  small teaching nook so minute-one isn't a black screen.
+- "TWO ROOMS AND A CLOSED GATE": that gate is the millstone puzzle
+  (Stoneroot has 3 rooms; the crypt is behind it). Made discoverable:
+  the boulder now wears the pulsing GOLD act-here ring (contract
+  grammar) and the Gentle guide runs straight to it before the plate is
+  solved. The mechanics verified sound.
+- Verified headless: moon-weakness math (1/1.5), armored math (0.5
+  steel / 2.0 fire-bolt), rogue first-swing dodge, roll travel+i-frames
+  via synthetic input, grounded enemy refusing lava, warrens full-dark
+  zone, blood moon fires. Zero errors. SW v3.7.0.
