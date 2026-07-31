@@ -13,7 +13,7 @@ import { spawnEnemies } from './enemies.js';
 import { Shadowgrip } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate } from './gates.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -726,6 +726,31 @@ async function buildDen(scene) {
   if (idle) mixer.clipAction(idle).play();
   world.onAnimate((t, dt) => mixer.update(dt));
   world.markers.shopSpot = { x: 3.2, z: -2.2 };
+
+  // DEN ARRIVAL: Petra's stone-heart hums beside the moonstone once
+  // Stoneroot is healed — the second spirit home.
+  if (WS.get('stone', 'restored')) {
+    const base = prepareModel(kit.rockSB.scene.clone());
+    base.position.set(-2.9, 0, -2.3);
+    base.scale.setScalar(1.2);
+    world.add(base);
+    world.addCircle(-2.9, -2.3, 0.4);
+    const heart = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.18, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd8b06a, emissiveIntensity: 2.8, roughness: 1 })
+    );
+    heart.position.set(-2.9, 0.85, -2.3);
+    world.add(heart);
+    const hGlow = new THREE.PointLight(0xd8b06a, 4, 7, 1.9);
+    hGlow.position.set(-2.9, 1.0, -2.3);
+    world.add(hGlow);
+    world.onAnimate((t) => {
+      heart.position.y = 0.85 + Math.sin(t * 1.4 + 2.1) * 0.06;
+      heart.rotation.y = t * 0.6;
+      hGlow.intensity = 3.6 + Math.sin(t * 2.0 + 1.0) * 0.5;
+    });
+    world.markers.petraHome = { x: -2.9, z: -2.3 };
+  }
 
   // DEN ARRIVAL (WORLD-DESIGN §3): Cinder's ember settles by the campfire
   // once Ember Hollow is healed — the first of seven spirits to come home.
@@ -1521,6 +1546,7 @@ async function loadDungeonKit() {
     spikes: './assets/env/dungeon/Spikes.glb',
     banner: './assets/env/dungeon/Banner_wall.glb',
     brick: './assets/env/dungeon/Brick.glb',
+    woodfire: './assets/env/dungeon/Woodfire.glb',
   };
   const entries = await Promise.all(
     Object.entries(names).map(async ([k, url]) => [k, await loadGLB(url)])
@@ -1844,6 +1870,90 @@ async function buildE1(scene) {
     world.markers.rippleShoots = { x: 0, z: 4.9 };
   }
 
+  // THRESHOLD CAMP (WORLD-DESIGN §2, beat 2): Old Bram the prospector rests
+  // by a small fire at the region mouth — a face, a rest point, a rumour
+  // about what rattles below. He cheers up once the caverns heal.
+  {
+    const [mageGltf, generalAnims] = await Promise.all([
+      loadGLB('./assets/chars/mage.glb'),
+      loadGLB('./assets/anims/rig-medium-general.glb'),
+    ]);
+    const fire = prepareModel(dkit.woodfire.scene.clone());
+    fire.position.set(-4.2, 0, 4.6);
+    fire.scale.setScalar(1.1);
+    world.add(fire);
+    world.addCircle(-4.2, 4.6, 0.4);
+    const fl = new THREE.PointLight(0xffa54a, 3.0, 7, 1.8);
+    fl.position.set(-4.2, 0.8, 4.6);
+    world.add(fl);
+    const crate = prepareModel(dkit.crate.scene.clone());
+    crate.position.set(-5.4, 0, 5.0);
+    crate.rotation.y = 0.5;
+    world.add(crate);
+    world.addCircle(-5.4, 5.0, 0.4);
+    // Bram = the mage model in earth-brown work clothes (tinted clone)
+    const bram = prepareCharacter(SkeletonUtils.clone(mageGltf.scene));
+    bram.scale.setScalar(0.5);
+    bram.position.set(-4.8, 0, 3.8);
+    bram.rotation.y = 0.9; // faces the fire + the entrance
+    bram.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (c.color) c.color.lerp(new THREE.Color(0x8a6a48), 0.45);
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    world.add(bram);
+    world.addCircle(-4.8, 3.8, 0.35);
+    const bramMixer = new THREE.AnimationMixer(bram);
+    const idleClip = generalAnims.animations.find((c) => c.name === 'Idle_A');
+    if (idleClip) bramMixer.clipAction(idleClip).play();
+    world.onAnimate((t, dt) => {
+      bramMixer.update(dt);
+      fl.intensity = 2.7 + Math.sin(t * 7.3) * 0.5;
+    });
+    world.markers.campSpot = { x: -4.6, z: 4.2 };
+  }
+
+  // THE DEAD MACHINERY GRATE (the Mill twist's promise): a barred alcove in
+  // the NE corner flanked by two half-sunk millstones. Solving the Mill in
+  // the Deep Hall (WS stone.mill) wakes the gears and grinds it open.
+  {
+    const millOpen = !!WS.get('stone', 'mill');
+    const wheels = [];
+    for (const wx of [5.0, 7.2]) {
+      const wg = new THREE.Group();
+      wg.position.set(wx, 0.75, -5.6);
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
+        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
+      );
+      wheel.rotation.x = Math.PI / 2; // upright disc facing the room
+      wg.add(wheel);
+      world.add(wg);
+      wheels.push(wg);
+    }
+    if (millOpen) world.onAnimate((t, dt) => { for (const w of wheels) w.rotation.z += dt * 1.1; });
+    const grateBars = prepareModel(dkit.bars.scene.clone());
+    grateBars.position.set(6.1, 0, -5.35);
+    grateBars.scale.set(0.85, 0.8, 1);
+    const grateCollider = { minX: 5.3, maxX: 6.9, minZ: -6, maxZ: -5.0 };
+    if (!millOpen) {
+      world.add(grateBars);
+      world.boxColliders.push(grateCollider);
+    }
+    world.markers.millGrate = { x: 6.1, z: -4.9, open: millOpen };
+  }
+
+  // Post-restore: glow-moss lights the old hall
+  if (WS.get('stone', 'restored')) {
+    healedGlowmoss(world, [[-6.6, 0.5], [2.4, -2.8], [6.4, 3.4], [-2.2, -5.2]]);
+    world.markers.healed = true;
+  }
+
   // columns + cobwebs + skulls: ruins of the old stone hall
   for (const [x, z, s] of [[-5.6, -3.8, 0.5], [5.6, -3.8, 0.5], [-5.8, 2.8, 0.45]]) {
     const col = prepareModel(dkit.column2.scene.clone());
@@ -1885,6 +1995,8 @@ async function buildE1(scene) {
   world.markers.crackSpot = { x: 6.0, z: 1.8 };
   world.markers.chestDefs = [
     { id: 'c_e1_hall', tier: 'wood', x: -6.8, z: 4.6, ry: 0.9, loot: { shards: 10 } },
+    // behind the machinery grate — the Mill twist's payoff back at the gate
+    { id: 'c_e1_mill', tier: 'gold', x: 6.1, z: -5.5, ry: 3.1, loot: { shards: 22, potion: 1 } },
     ...(state.flags.cracked.e1_alcove
       ? [{ id: 'c_e1_crack', tier: 'gold', x: 7.0, z: 1.6, ry: -1.2, loot: { shards: 20, heartPiece: 1 } }]
       : []),
@@ -1950,7 +2062,61 @@ async function buildE2(scene) {
       if (rise >= 2.6) world.root.remove(gateBars);
     });
     audio.play('slam', { volume: 0.5, rate: 0.6 });
+    // THE MID-DUNGEON TWIST (WORLD-DESIGN beat 6): the millstone on the
+    // plate wakes the OLD MACHINERY region-wide — wheels turn here and in
+    // the gate hall, where the rusted grate grinds open (rebuilt rooms
+    // read the WS flag). Earlier rooms now read differently.
+    if (!WS.get('stone', 'mill')) {
+      WS.set('stone', 'mill');
+      audio.play('slam', { volume: 0.6, rate: 0.35 }); // deep old grind
+      if (world.millWheels) world.millWheels.wake();
+    }
   });
+  // the Deep Hall's own mill wheels flank the crypt arch; they turn once
+  // the machinery wakes
+  {
+    const wheels = [];
+    for (const wz of [-2.1, 2.1]) {
+      const wg = new THREE.Group();
+      wg.position.set(8.8, 0.75, wz);
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
+        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
+      );
+      wheel.rotation.x = Math.PI / 2;
+      wg.add(wheel);
+      wg.rotation.y = Math.PI / 2; // discs face down the hall
+      world.add(wg);
+      wheels.push(wg);
+    }
+    let turning = !!WS.get('stone', 'mill');
+    world.millWheels = { wake: () => { turning = true; } };
+    world.onAnimate((t, dt) => {
+      if (turning) for (const w of wheels) w.rotation.z += dt * 1.1;
+    });
+  }
+
+  // Region 3's LOCK, shown a region early (machine-checked in regions.js):
+  // a thorny bramble tangle chokes the SE treasure corner. Only the
+  // Verdant Wolf's vine-lash will cut it — for now it is a promise.
+  await (async () => {
+    const bush = await loadGLB('./assets/env/bush-large.glb');
+    brambleGate(world, prepareModel, bush, 'e2_bramble', 8.2, 4.7);
+  })();
+
+  // Post-restore dressing: glow-moss — and ONE crack that never mends
+  if (WS.get('stone', 'restored')) {
+    healedGlowmoss(world, [[-8.2, 3.8], [-0.2, -1.2], [5.6, -2.8], [8.6, 1.0]]);
+    const scar = new THREE.Mesh(
+      new THREE.CircleGeometry(0.7, 18),
+      new THREE.MeshStandardMaterial({ color: 0x14101c, roughness: 1 })
+    );
+    scar.rotation.x = -Math.PI / 2;
+    scar.position.set(3.0, 0.045, 3.6);
+    world.add(scar);
+    world.markers.scarSpot = { x: 3.0, z: 3.6 };
+    world.markers.healed = true;
+  }
   // frame the gate with the big arch
   const arch2 = prepareModel(dkit.arch.scene.clone());
   arch2.position.set(9.35, 0, 0);
@@ -1973,11 +2139,14 @@ async function buildE2(scene) {
 
   checkpoint(world, 'cp_e2', 7.6, 3.8);
   potionPickup(world, -8.6, -4.2);
+  potionPickup(world, 8.4, 4.4); // campfire + potion directly before the boss door (contract law)
   await mushroomPatches(world, [
     [-7.8, 3.2], [-1.2, -2.2, 1.3], [2.2, 4.6], [7.0, 0.8, 2.0], [-4.6, -4.8], [8.6, 4.6],
   ]);
   world.markers.chestDefs = [
     { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
+    // visible through the brambles — region 3's promise reward
+    { id: 'c_e2_bramble', tier: 'gold', x: 9.2, z: 5.3, ry: -2.4, loot: { shards: 18, powerup: 'feather' } },
   ];
   world.markers.breakables = [
     { x: -8.6, z: 1.8, kind: 'barrel', shards: 2 },
@@ -2077,6 +2246,16 @@ async function buildE3(scene) {
   // treasure alcove sealed by cracked rocks (stomp practice, right where the
   // form is earned)
   crackedRocks(world, 'e3_treasure', -5.2, 2.2);
+
+  // Post-restore: the crypt blooms with glow-moss, and the RIPPLE into
+  // region 3 appears — a living vine curling through the north-east wall,
+  // pointing at the Wild Woods to come.
+  if (WS.get('stone', 'restored')) {
+    healedGlowmoss(world, [[-4.2, 3.8], [4.2, 3.8], [-5.4, -1.6], [5.2, -0.6]]);
+    healedSprouts(world, [[5.2, -5.8], [5.9, -5.2]], 1.15);
+    world.markers.wildwoodsWay = { x: 5.5, z: -5.5 };
+    world.markers.healed = true;
+  }
   world.markers.chestDefs = [
     ...(state.flags.cracked.e3_treasure
       ? [{ id: 'c_e3_crack', tier: 'gold', x: -6.2, z: 1.4, ry: 1.4, loot: { shards: 16, gear: 'spear_a' } }]
@@ -2133,6 +2312,69 @@ async function healedSprouts(world, spots, scale = 1.3) {
     m.scale.setScalar(src === bush ? scale * 0.8 : scale);
     world.add(m); // decoration only — no colliders, kids walk through flowers
   });
+}
+
+// Glow-moss: Stoneroot's regrowth — mushroom clusters that LIGHT UP,
+// because a cave heals into luminescence, not grass.
+async function healedGlowmoss(world, spots, scale = 1.4) {
+  const shroom = await loadGLB('./assets/env/mushroom-group.glb');
+  spots.forEach(([x, z], i) => {
+    const m = prepareModel(shroom.scene.clone(), { castShadow: false });
+    m.position.set(x, 0, z);
+    m.rotation.y = (i * 1.7) % (Math.PI * 2);
+    m.scale.setScalar(scale);
+    m.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.emissive) {
+        n.material.emissive.setHex(0x7ee787);
+        n.material.emissiveIntensity = 0.9;
+      }
+    });
+    world.add(m);
+    const l = new THREE.PointLight(0x9fe8a8, 1.6, 4.5, 2.0);
+    l.position.set(x, 0.6, z);
+    world.add(l);
+  });
+}
+
+// Stoneroot's LIVE restoration: the crypt blooms glow-moss around the
+// player the moment the Bone Warden falls. Mirrors emberRestorationLive.
+export async function stoneRestorationLive(world) {
+  const shroom = await loadGLB('./assets/env/mushroom-group.glb');
+  const spots = [[-4.2, 3.8], [4.2, 3.8], [-5.4, -1.6], [5.2, -0.6], [-2.6, 0.8], [2.6, 0.8], [0, 3.2], [4.6, -3.6]];
+  const blooms = spots.map(([x, z], i) => {
+    const m = prepareModel(shroom.scene.clone(), { castShadow: false });
+    m.position.set(x, 0, z);
+    m.rotation.y = (i * 1.7) % (Math.PI * 2);
+    m.scale.setScalar(0.001);
+    m.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.emissive) {
+        n.material.emissive.setHex(0x7ee787);
+        n.material.emissiveIntensity = 0.9;
+      }
+    });
+    world.add(m);
+    const l = new THREE.PointLight(0x9fe8a8, 0, 4.5, 2.0);
+    l.position.set(x, 0.6, z);
+    world.add(l);
+    return { m, l, delay: 0.6 + i * 0.5, target: 1.4 };
+  });
+  const DURATION = 9;
+  let t = 0;
+  world.onAnimate((tt, dt) => {
+    t += dt;
+    for (const b of blooms) {
+      const p = Math.min(1, Math.max(0, (t - b.delay) / 1.2));
+      const e = 1 - (1 - p) * (1 - p);
+      b.m.scale.setScalar(Math.max(0.001, b.target * (e * 1.08 - 0.08 * e * e)));
+      b.l.intensity = 1.6 * e;
+    }
+  });
+  world.markers.restorationPlayed = true;
+  return DURATION;
 }
 
 // The LIVE restoration: plays in the boss arena the moment the Shadowgrip

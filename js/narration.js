@@ -12,6 +12,7 @@ const VOICES = {
   grimm: { rate: 0.85, pitch: 0.6, label: 'Grimm' },
   luna: { rate: 0.9, pitch: 1.1, label: 'Luna' },
   petra: { rate: 0.82, pitch: 0.95, label: 'Petra' },
+  bram: { rate: 0.85, pitch: 0.7, label: 'Old Bram' },
 };
 
 export const LINES = {
@@ -92,6 +93,14 @@ export const LINES = {
   crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
+  camp_rumour: { voice: 'bram', text: 'Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.' },
+  camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },
+  mill_wakes: { voice: 'pip', text: 'The old mill turns again! I heard something grind open back near the gate hall!' },
+  stone_restore_1: { voice: 'pip', text: 'Kael, look! The caverns are lighting up — the stone remembers how to sing!' },
+  stone_restore_2: { voice: 'pip', text: 'Glow-moss everywhere! You woke the mountain up.' },
+  scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
+  ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
+  petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },
   luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
 };
 

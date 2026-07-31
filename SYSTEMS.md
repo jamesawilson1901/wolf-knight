@@ -48,7 +48,8 @@ attack path, never damage functions directly (BUILDLOG lesson).
 ## Ability gates (js/gates.js)
 Data-driven obstacles keyed to wolf verbs; unopenable ones read as
 PROMISES (distinct look + mystery entry). boulderGate (Earth stomp),
-waterGate (Tide, region 6), brazier (Fire slam ignites; optional
+waterGate (Tide, region 6), brambleGate (Verdant vine-lash, region 3 —
+thorny tangle + green glint), brazier (Fire slam ignites; optional
 gutterAfter for timed puzzles — the Kiln's whole puzzle language).
 One call + a hint marker adds a gate to any room.
 

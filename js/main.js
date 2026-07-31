@@ -25,7 +25,7 @@ import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
-import { emberRestorationLive } from './rooms.js';
+import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 
@@ -371,6 +371,7 @@ function narrationTriggers(dt, t) {
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
     if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
     if (m.cinderHome && nearSpot(m.cinderHome, 2.6)) narration.say('cinder_den');
+    if (m.petraHome && nearSpot(m.petraHome, 2.6)) narration.say('petra_den');
   }
 
   if (state.room === 'r2') {
@@ -386,10 +387,23 @@ function narrationTriggers(dt, t) {
   if (state.room === 'e1') {
     narration.say('stone_enter');
     if (m.rippleShoots && nearSpot(m.rippleShoots, 2.6)) narration.say('ripple_shoot');
+    if (m.campSpot && nearSpot(m.campSpot, 3)) {
+      narration.say(WS.get('stone', 'restored') ? 'camp_healed' : 'camp_rumour');
+    }
+    if (m.millGrate && !m.millGrate.open && nearSpot(m.millGrate, 3)) {
+      if (logMystery('stone_mill', '⚙️', 'Dead machinery — the Cavern Gate')) bigToast('🗺️ Added to the map: ???');
+    }
+    if (m.millGrate && m.millGrate.open) resolveMystery('stone_mill');
     const skel = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonMinion' && !e.dead);
     if (skel && nearXZ(skel.x, skel.z, 4.6)) narration.say('skeleton_intro');
   }
   if (state.room === 'e2') {
+    if (WS.get('stone', 'mill')) narration.say('mill_wakes');
+    if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_e2');
+    if (m.brambleSpot && nearSpot(m.brambleSpot, 3)) {
+      if (logMystery('stone_bramble', '🌿', 'A thorny tangle — the Deep Hall')) bigToast('🗺️ Added to the map: ???');
+      narration.say('gate_promise');
+    }
     const rogue = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonRogue' && !e.dead);
     if (rogue && nearXZ(rogue.x, rogue.z, 5)) narration.say('rogue_intro');
     if (m.spikeSpot && nearSpot(m.spikeSpot, 4)) narration.say('spike_hint');
@@ -398,6 +412,10 @@ function narrationTriggers(dt, t) {
     if (state.flags.plates.e2_gate && nearXZ(8.6, 0, 3)) narration.say('warden_door');
   }
   if (state.room === 'e3') {
+    if (m.wildwoodsWay && nearSpot(m.wildwoodsWay, 3)) {
+      narration.say('ripple_vine');
+      if (logMystery('wildwoods_way', '🌿', 'A vine through the stone — the way onward')) bigToast('🗺️ Added to the map: ???');
+    }
     if (world.warden && world.warden.state !== 'sleep' && !world.warden.dead) narration.say('warden_intro');
     if (world.warden && world.warden._blockedOnce) narration.say('warden_block');
     if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
@@ -647,7 +665,12 @@ async function setupRoomExtras() {
     narration.say('warden_defeat');
     narration.say('earthwolf_grant');
     narration.say('earthwolf_howto');
-    persist(); // form unlock is a save point
+    // WITNESSED RESTORATION: the crypt blooms glow-moss around the player
+    WS.set('stone', 'restored');
+    stoneRestorationLive(world);
+    narration.say('stone_restore_1');
+    setTimeout(() => narration.say('stone_restore_2'), 8000);
+    persist(); // form unlock + healed caverns is a save point
   };
   await preloadLoot();
   await spawnBreakables(world, world.markers.breakables || []);

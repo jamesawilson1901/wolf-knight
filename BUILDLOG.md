@@ -1023,3 +1023,35 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified headless: idle Gentle player → guide run fires, Pip ends at
   the R1 exit with the trail still fading behind him, run completes back
   to follow mode, and Cozy/Brave profiles never trigger it. SW v3.5.0.
+
+## v3.6.0 — SESSION B: Stoneroot to the full region template
+- THRESHOLD (beat 2): a camp at the Cavern Gate mouth — OLD BRAM the
+  prospector (mage model in earth-brown work clothes) by a woodfire with
+  his crate. Rumour line on arrival ("something rattles down in the Deep
+  Hall"); a NEW line once the region heals — the NPC who reappears
+  changed. dkit gained the Woodfire piece (was on disk, never loaded).
+- THE MILL WAKES (beat 6, the twist): rolling the millstone onto the
+  Deep Hall plate now wakes the OLD MACHINERY region-wide (WS
+  stone.mill): millstone wheels start turning in e1 AND e2, and the
+  rusted grate in the Cavern Gate grinds open (gold chest behind it).
+  The grate is a ??? mystery from the moment a kid walks past it.
+- REGION 3'S LOCK, SHOWN EARLY: a thorny BRAMBLE tangle (new brambleGate
+  type, dark-tinted bush cluster + green glint) chokes the Deep Hall's
+  SE treasure corner — visible gold chest behind it, gate_promise line +
+  ??? card. Only the Verdant Wolf will cut it. validateRegions: 0
+  errors, 0 warnings — lock-before-key fully machine-verified.
+- WITNESSED RESTORATION (beat 9): the Bone Warden falls → glow-moss
+  BLOOMS live around the crypt (emissive mushroom clusters + soft green
+  lights scaling in one by one) while Petra's heart flares. Persistent:
+  e1/e2/e3 rebuild with glow-moss forever after.
+- COMPOUND HOOKS: RIPPLE = a living vine through the crypt's NE wall
+  (the Wild Woods calling; ??? wildwoods_way) · SCAR = one floor crack
+  in the Deep Hall never closes · DEN ARRIVAL = Petra's stone-heart hums
+  beside the moonstone (second spirit home). Campfire+potion now
+  directly before the boss door (contract law). 9 new narration lines +
+  the Bram voice.
+- Verified headless end-to-end: camp + rumour, grate mystery + blocked,
+  bramble blocked + promise, mill twist opens the grate on rebuild,
+  warden death (production path) → live restoration + WS persist, vine +
+  scar + healed dressing + Bram's healed line + Petra at the Den. Zero
+  errors. SW v3.6.0. AWAITING user approval of Region 2.

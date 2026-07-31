@@ -14,7 +14,43 @@ import { audio } from './audio.js';
 export const GATE_TYPES = {
   boulder: { ability: 'earth_wolf', icon: '🪨', label: 'A huge boulder blocks the way' },
   water: { ability: 'tide_wolf', icon: '💧', label: 'A rushing fire-water channel' },
+  bramble: { ability: 'verdant_wolf', icon: '🌿', label: 'A thorny tangle chokes the way' },
 };
+
+// Bramble tangle — the Verdant Wolf's vine-lash cuts it (region 3). Until
+// then it is a thorny PROMISE: a dense dark tangle with a faint green
+// glint, blocking a visible reward. Cleared state lives in
+// state.flags.world (WS 'cut_<id>') so region 3 opens it with one flag.
+export function brambleGate(world, prepareModel, bushGltf, id, x, z) {
+  const cut = state.flags.world && state.flags.world.stone && state.flags.world.stone['cut_' + id];
+  if (cut) return null;
+  for (const [ox, oz, s, ry] of [[-0.55, 0, 1.2, 0.4], [0.5, -0.12, 1.35, 2.1], [0, 0.42, 1.05, 4.0]]) {
+    const b = prepareModel(bushGltf.scene.clone());
+    b.position.set(x + ox, 0, z + oz);
+    b.rotation.y = ry;
+    b.scale.setScalar(s);
+    b.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.color) n.material.color.setHex(0x2f4a26); // dark thorn green
+    });
+    world.add(b);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
+  );
+  glint.position.set(x, 0.95, z);
+  world.add(glint);
+  world.onAnimate((t) => {
+    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.rotation.y = t * 1.4;
+  });
+  const collider = { minX: x - 1.15, maxX: x + 1.15, minZ: z - 0.95, maxZ: z + 0.95 };
+  world.boxColliders.push(collider);
+  world.markers.brambleSpot = { x, z, id };
+  return { id, collider };
+}
 
 // Big single boulder — visually distinct from cracked-rock piles (one huge
 // smooth stone with faint golden veins = "a form can move this someday").
