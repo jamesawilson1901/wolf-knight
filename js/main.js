@@ -236,6 +236,13 @@ document.getElementById('resume-btn').addEventListener('pointerdown', (e) => {
   audio.play('ui-click', { volume: 0.7 });
   setPaused(false);
 });
+// The ✕ stays pinned in the corner even when the menu scrolls — there is
+// ALWAYS a visible way back to the game.
+document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  audio.play('ui-click', { volume: 0.7 });
+  setPaused(false);
+});
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') setPaused(!paused);
 });

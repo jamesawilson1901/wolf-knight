@@ -106,8 +106,17 @@
     }
     #pause-menu {
       position: fixed; inset: 0; z-index: 15; display: none;
-      align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+      align-items: center; justify-content: flex-start; flex-direction: column; gap: 10px;
       background: rgba(13, 9, 20, .82);
+      overflow-y: auto; /* short landscape phones: the menu SCROLLS, never clips */
+      padding: calc(14px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+    }
+    #pause-close {
+      position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
+      z-index: 16; width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(232,221,208,.16); border: 2px solid rgba(232,221,208,.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 800; color: #e8ddd0; touch-action: none;
     }
     .menu-btn {
       min-width: 220px; padding: 16px 30px; border-radius: 16px;
@@ -399,6 +408,7 @@
   <div id="pups">🐺 0/3</div>
   <div id="pause-btn" class="ui">⏸</div>
   <div id="pause-menu">
+    <div id="pause-close" class="ui">✕</div>
     <div id="pause-title">Paused</div>
     <div class="menu-btn ui" id="resume-btn">▶ Keep Playing</div>
     <div class="setting-row ui"><span>🎵 Music</span><input type="range" id="music-vol" min="0" max="1" step="0.05"></div>
@@ -448,7 +458,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.3</div>
+  <div id="badge">Wolf Knight &middot; v3.3.1</div>
 
   <script>
     window.addEventListener('error', (e) => {

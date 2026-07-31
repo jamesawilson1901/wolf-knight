@@ -911,3 +911,13 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   in a probed clear lane; rock landed + 0.85s daze; lava double-touch =
   one damage, two bounces, ends on land; talk toggle silences + clears.
   SW v3.3.0.
+
+## v3.3.1 — pause menu could trap you
+- On short landscape phones the pause menu (now ~10 rows) overflowed the
+  screen, and its CENTERED layout clipped "Keep Playing" off the TOP with
+  no way to scroll to it — settings became a one-way door. Fixes:
+  (1) menu is top-aligned + scrollable with safe-area padding, gap
+  tightened; (2) a big ✕ close button pinned to the top-right corner that
+  is ALWAYS visible regardless of scroll. Verified headless at 740×360:
+  menu opens with Keep Playing + ✕ both on-screen, scrolls, ✕ closes even
+  when scrolled to the bottom. SW v3.3.1.
