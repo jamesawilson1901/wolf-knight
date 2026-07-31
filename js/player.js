@@ -483,6 +483,8 @@ export class Player {
     const fx = Math.sin(this.root.rotation.y);
     const fz = Math.cos(this.root.rotation.y);
     let connected = false;
+    let struck = null;
+    let killed = false;
     for (const e of world.enemies) {
       if (e.dead) continue;
       const dx = e.x - this.root.position.x;
@@ -491,10 +493,12 @@ export class Player {
       if (d > range + e.radius + CONFIG.HITBOX_PAD) continue; // generous hitbox
       if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
       e.takeDamage(dmg);
-      audio.play('hit', { volume: 0.9 });
+      audio.play('hit', { volume: 0.9, vary: 0.08 });
       connected = true;
+      struck = e;
+      if (e.dead) killed = true;
     }
-    if (connected && this.onHitConnected) this.onHitConnected(); // hit-stop
+    if (connected && this.onHitConnected) this.onHitConnected(struck, killed); // juice pipeline
   }
 
   boltDamage(target) {

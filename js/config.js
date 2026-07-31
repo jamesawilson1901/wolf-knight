@@ -28,4 +28,14 @@ export const CONFIG = {
 
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle
+
+  // ---- JUICE (hit-feedback tiers; js/juice.js routes every hit here) ----
+  // stop = hitstop s · shake = strength/duration · parts = burst particles ·
+  // buzz = haptic ms (0 = none). The surge will promote tiers via weightBoost.
+  JUICE: {
+    light:  { stop: 0.00, shake: 0.06, shakeT: 0.10, parts: 5,  buzz: 0 },
+    medium: { stop: 0.07, shake: 0.14, shakeT: 0.20, parts: 10, buzz: 20 },
+    heavy:  { stop: 0.12, shake: 0.28, shakeT: 0.35, parts: 16, buzz: 45 },
+    hurtBuzz: 60,        // haptic ms when KAEL takes a hit
+  },
 };

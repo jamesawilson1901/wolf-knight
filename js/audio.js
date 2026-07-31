@@ -70,6 +70,7 @@ class AudioSystem {
     this.duckGain.connect(this.ctx.destination);
     this.sfxGain.connect(this.ctx.destination);
     this.applyVolumes();
+    this._preloadSfx();
     this._startAmbient();
     if (this._wantMusic) this.playMusic(this._wantMusic.name, this._wantMusic.opts);
   }
@@ -141,7 +142,15 @@ class AudioSystem {
     return this.buffers.get(url);
   }
 
-  async play(name, { volume = 1, rate = 1 } = {}) {
+  // Decode every SFX right after the audio context unlocks, so the FIRST
+  // sword hit of a session already has its buffer ready (no decode hiccup).
+  _preloadSfx() {
+    for (const url of Object.values(SFX_FILES)) this._buffer(url).catch(() => {});
+  }
+
+  // vary: ± fraction of random pitch drift (0.08 = ±8%) — stops repeated
+  // hits sounding like the same sample stamped over and over.
+  async play(name, { volume = 1, rate = 1, vary = 0 } = {}) {
     if (!this.ctx || state.settings.sfxVol <= 0) return;
     const url = SFX_FILES[name];
     if (!url) return;
@@ -149,7 +158,7 @@ class AudioSystem {
       const buf = await this._buffer(url);
       const src = this.ctx.createBufferSource();
       src.buffer = buf;
-      src.playbackRate.value = rate;
+      src.playbackRate.value = rate * (vary ? 1 + (Math.random() * 2 - 1) * vary : 1);
       const g = this.ctx.createGain();
       g.gain.value = volume;
       src.connect(g);

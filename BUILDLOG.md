@@ -822,3 +822,26 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   special visible-always with correct per-form icon; lava hit = 5→4 hearts
   + hop + return to safe tile; old-save shrine grant. Zero page errors.
   SW bumped to v3.0.1.
+
+## v3.1.0 — audit fix plan item 1: the juice pipeline (foundation)
+- Full-project audit ran first (docs vs code vs player experience); user
+  resolved the region-roster conflict: THE ADDENDUM IS CANON (Wild Woods/
+  Frostpeak/Stormreach/Sunken Vale/Shadow Court). Doc-truth pass committed
+  separately: COMBAT-SPEC rewritten, ASSETS casting corrected (real models
+  law), BUILD-PROMPT + old LEVEL-MAP marked historical, HUD-MENU-SAVE
+  schema v2, narration.js declared canonical, GAME-CONTRACT gained the
+  "adopted law, code catching up" list, SYSTEMS.md is now the full index.
+- NEW js/juice.js — the ONE hit-feedback pipeline (CONFIG.JUICE tiers):
+  onHit(weight) drives hitstop + shake + pooled contact particles +
+  haptics together; onHurt() for damage taken (gentle shake, red burst,
+  60ms buzz); weightBoost is the surge's future global-promotion hook.
+- Pooled particles: one preallocated 256-slot THREE.Points ring buffer,
+  additive, parked at y=-99 when dead — combat allocates NOTHING.
+- Haptics: navigator.vibrate (Android), silent when SFX muted, guarded.
+- Audio: every SFX decodes right after the context unlocks (no first-hit
+  decode hiccup); play() gained pitch `vary` (hits ±8%).
+- Wired: melee connect = medium (kill = heavy), parry = heavy cold-spark,
+  player hurt = onHurt. Old direct hitStop calls for these routed through.
+- Verified headless: real-attack-path burst (10 parts, medium), cloud
+  hides when spent, 720 spawns cap at 256 (pool proof), 19 buffers
+  preloaded, hurt path clean, zero errors. SW v3.1.0.

@@ -23,6 +23,7 @@ import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
+import { juice } from './juice.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 
@@ -613,7 +614,7 @@ async function loadRoom(id, entry) {
   updateMusic();
   if (id === 'r2') narration.say('r2_enter');
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -659,7 +660,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -697,18 +698,25 @@ async function start() {
 
   player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
   player.onPotionsChanged = () => renderPotions(player);
-  player.onParry = () => {
-    effects.shake(0.15, 0.2);
-    effects.hitStop(0.09);            // freeze the perfect moment
+  player.onParry = (attacker) => {
+    juice.onHit('heavy', {
+      x: attacker ? attacker.x : player.root.position.x,
+      z: attacker ? attacker.z : player.root.position.z,
+      color: 0xbfe3ff, // parry sparks ring bright and cold
+    });
     narration.say('parry_praise');    // once per save
     bumpCounter('parries');
   };
-  player.onHitConnected = () => effects.hitStop(0.07);
+  player.onHitConnected = (e, killed) => juice.onHit(killed ? 'heavy' : 'medium', {
+    x: e ? e.x : player.root.position.x,
+    z: e ? e.z : player.root.position.z,
+  });
   renderHearts(player);
   renderPotions(player);
   refreshControlReveal();
 
   effects = new Effects(scene);
+  juice.init(scene, effects);
   narration = new Narration();
   ui = new UI({
     onFormPick: (id) => {
@@ -718,6 +726,7 @@ async function start() {
     onSpecial: () => player.trySpecial(effects, world),
   });
   player.onDamaged = () => {
+    juice.onHurt(player.root.position.x, 0.8, player.root.position.z);
     renderHearts(player);
     if (player.hearts <= player.maxHearts / 2) ctxShow(potionsEl, 5000); // remind: potions exist
     if (player.hearts > 0 && player.hearts <= 2) {
@@ -913,6 +922,7 @@ async function start() {
     }
 
     effects.update(dt, t);
+    juice.update(dt);
     updateDmgNums(realDt);
     updateBossBar();
     ui.update(player);
@@ -960,7 +970,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
