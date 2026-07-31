@@ -243,6 +243,76 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   audio.play('ui-click', { volume: 0.7 });
   setPaused(false);
 });
+
+// ---------------------------------------------------------------------------
+// 🎮 The backdoor: a retro controller pops up; enter the old code
+// (↑ ↑ ↓ ↓ ○ □ □ ○) to open the level selector. Dad-only by obscurity.
+// ---------------------------------------------------------------------------
+{
+  const CODE = ['up', 'up', 'down', 'down', 'circle', 'square', 'square', 'circle'];
+  const LEVELS = [
+    ['den', '🏡 Moonlit Den'], ['r1', '🌋 Hollow Entrance'], ['r1b', '🕳️ Ash Warrens'],
+    ['r2', '🌉 Ember Causeway'], ['r2b', '🔥 Cinder Bridges'], ['k1', '🏛️ Kiln Hub'],
+    ['ka', '⛩️ Kiln Shrine'], ['kb', '🔢 Kiln Order'], ['r3', '🐺 Boss Arena'],
+    ['e1', '⛺ Cavern Gate'], ['e1b', '🕳️ Echo Chasm'], ['e2', '💀 Deep Hall'],
+    ['e2b', '⚙️ The Mill'], ['e3', '👑 Warden’s Crypt'],
+  ];
+  const pad = document.getElementById('cheat-pad');
+  const levels = document.getElementById('cheat-levels');
+  const lights = document.getElementById('cheat-lights');
+  let progress = 0;
+  for (let i = 0; i < CODE.length; i++) {
+    const l = document.createElement('div');
+    l.className = 'clight';
+    lights.appendChild(l);
+  }
+  const renderLights = () => {
+    [...lights.children].forEach((l, i) => l.classList.toggle('on', i < progress));
+  };
+  document.getElementById('cheat-btn').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    progress = 0;
+    renderLights();
+    pad.style.display = 'flex';
+  });
+  const closeAll = () => { pad.style.display = 'none'; levels.style.display = 'none'; };
+  document.getElementById('cheat-close').addEventListener('pointerdown', (e) => { e.stopPropagation(); closeAll(); });
+  document.getElementById('cheat-close2').addEventListener('pointerdown', (e) => { e.stopPropagation(); closeAll(); });
+  for (const btn of pad.querySelectorAll('.cbtn[data-k]')) {
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      btn.classList.add('hit');
+      setTimeout(() => btn.classList.remove('hit'), 160);
+      if (btn.dataset.k === CODE[progress]) {
+        progress++;
+        audio.play('ui-click', { volume: 0.6, rate: 1 + progress * 0.07 }); // rising chirps
+        renderLights();
+        if (progress >= CODE.length) {
+          audio.play('checkpoint', { volume: 0.9, rate: 1.4 }); // the old unlock chime
+          setTimeout(() => { pad.style.display = 'none'; levels.style.display = 'flex'; }, 350);
+        }
+      } else {
+        progress = 0;
+        renderLights();
+        audio.play('parry', { volume: 0.4, rate: 0.5 }); // dull buzz — wrong
+      }
+    });
+  }
+  const grid = document.getElementById('cheat-grid');
+  for (const [id, label] of LEVELS) {
+    const b = document.createElement('div');
+    b.className = 'cheat-lvl ui';
+    b.textContent = label;
+    b.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      audio.play('form-switch', { volume: 0.8 });
+      closeAll();
+      setPaused(false);
+      loadRoom(id);
+    });
+    grid.appendChild(b);
+  }
+}
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') setPaused(!paused);
 });

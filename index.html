@@ -111,6 +111,54 @@
       overflow-y: auto; /* short landscape phones: the menu SCROLLS, never clips */
       padding: calc(14px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
     }
+    #cheat-btn {
+      margin-top: 8px; width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; opacity: .35; touch-action: none;
+    }
+    #cheat-pad, #cheat-levels {
+      position: fixed; inset: 0; z-index: 17; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+      background: rgba(8, 5, 14, .92);
+    }
+    #cheat-shell {
+      display: flex; align-items: center; gap: 34px;
+      background: #2a2433; border-radius: 60px; padding: 26px 40px;
+      border: 3px solid #4a4152; box-shadow: 0 10px 40px rgba(0,0,0,.6);
+    }
+    #cheat-brand { color: #8b8298; font-size: 11px; letter-spacing: .2em; font-weight: 800; }
+    .cbtn {
+      width: 52px; height: 52px; border-radius: 10px;
+      background: #17121f; color: #cfc6dc; border: 2px solid #4a4152;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; touch-action: none;
+    }
+    .cbtn.dummy { visibility: hidden; }
+    .cbtn.face { border-radius: 50%; }
+    .cbtn.hit { background: #6b56a8; color: #fff; }
+    #cheat-dpad, #cheat-face { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    #cheat-dmid, #cheat-fmid { display: flex; gap: 6px; align-items: center; }
+    #cheat-fmid { gap: 58px; }
+    #cheat-lights { display: flex; gap: 8px; }
+    .clight { width: 12px; height: 12px; border-radius: 50%; background: #3a3344; }
+    .clight.on { background: #ffd76a; box-shadow: 0 0 8px #ffd76a; }
+    #cheat-close, #cheat-close2 {
+      position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
+      width: 52px; height: 52px; border-radius: 50%; z-index: 18;
+      background: rgba(232,221,208,.16); border: 2px solid rgba(232,221,208,.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 800; color: #e8ddd0; touch-action: none;
+    }
+    #cheat-title { color: #ffd76a; font-size: 24px; font-weight: 900; letter-spacing: .08em; }
+    #cheat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; max-width: 86vw; max-height: 62vh; overflow-y: auto; padding: 4px;
+    }
+    .cheat-lvl {
+      padding: 13px 10px; border-radius: 12px; background: #3a3050;
+      color: #e8ddd0; font-size: 15px; font-weight: 700; text-align: center;
+      border: 2px solid rgba(255,255,255,.2); touch-action: none;
+    }
     #pause-close {
       position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
       z-index: 16; width: 52px; height: 52px; border-radius: 50%;
@@ -423,6 +471,36 @@
     <div class="menu-btn secondary ui" id="map-btn">🗺️ Map</div>
     <div class="menu-btn secondary ui" id="sticker-btn">📒 Stickers</div>
     <div class="menu-btn secondary ui" id="title-btn">🏠 Title</div>
+    <div id="cheat-btn" class="ui">🎮</div>
+  </div>
+  <div id="cheat-pad">
+    <div id="cheat-close" class="ui">✕</div>
+    <div id="cheat-shell">
+      <div id="cheat-dpad">
+        <div class="cbtn ui" data-k="up">▲</div>
+        <div id="cheat-dmid">
+          <div class="cbtn ui" data-k="left">◀</div>
+          <div class="cbtn dummy"></div>
+          <div class="cbtn ui" data-k="right">▶</div>
+        </div>
+        <div class="cbtn ui" data-k="down">▼</div>
+      </div>
+      <div id="cheat-brand">WOLF·STATION</div>
+      <div id="cheat-face">
+        <div class="cbtn face ui" data-k="triangle">△</div>
+        <div id="cheat-fmid">
+          <div class="cbtn face ui" data-k="square">□</div>
+          <div class="cbtn face ui" data-k="circle">○</div>
+        </div>
+        <div class="cbtn face ui" data-k="cross">✕</div>
+      </div>
+    </div>
+    <div id="cheat-lights"></div>
+  </div>
+  <div id="cheat-levels">
+    <div id="cheat-close2" class="ui">✕</div>
+    <div id="cheat-title">🗝️ LEVEL SELECT</div>
+    <div id="cheat-grid"></div>
   </div>
   <div id="title">
     <img id="title-logo" src="./assets/icons/icon-192.png" alt="">
@@ -461,7 +539,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.8</div>
+  <div id="badge">Wolf Knight &middot; v3.8.1</div>
 
   <script>
     window.addEventListener('error', (e) => {

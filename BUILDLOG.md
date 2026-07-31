@@ -1121,3 +1121,12 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   at 1.96 scale; full pounce cycle crouch→charge→tired(core exposed)→
   rest; dramatic defeat clean; e1→chasm door, hole drop + climb return;
   e2→Mill door, twin plates open the vault. Zero errors. SW v3.8.0.
+
+## v3.8.1 — 🎮 the backdoor
+- A faint 🎮 button at the bottom of the pause menu pops up a retro
+  controller overlay (d-pad + △○□✕ face buttons, WOLF·STATION). Enter
+  ↑ ↑ ↓ ↓ ○ □ □ ✕... no — ↑ ↑ ↓ ↓ ○ □ □ ○ — each correct press lights a
+  gold lamp + rising chirp; a wrong press buzzes and resets. Full code =
+  unlock chime → LEVEL SELECT: all 14 rooms, one tap warps straight
+  there (production loadRoom). Verified headless: wrong-input reset,
+  full code, 14 levels, warp to the Echo Chasm. Zero errors. SW v3.8.1.
