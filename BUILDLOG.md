@@ -1005,3 +1005,21 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   Cozy. Verified headless: toggles mutually exclude via the real
   checkboxes, gentle shade hp 2, 1-dmg hit costs ½ heart, setting
   persists in the profile save. SW v3.4.3.
+
+## v3.5.0 — 🌸 Gentle guide: Pip runs ahead when a kid is lost
+- On a Gentle profile, if there's NO PROGRESS for 20s (same room, no
+  kills/chests/keys/pups/burns/cracks/unlocks — CONFIG GUIDE_IDLE_S),
+  Pip cheers "This way, Kael!", sprints ahead to the room's next
+  objective leaving a trail of glowing, slowly-fading paw dots, does a
+  little "over HERE" spin, then trots back to Kael. Re-arms after a
+  cooldown. In-world cue, zero UI markers (WORLD-DESIGN §4 rule).
+- Destinations follow the same flags as the stuck-hints: den→stairs,
+  r1→Causeway exit, r2→Bridges until the Ember Key then the Kiln,
+  k1→door A/B/C by progress, ka→shrine, kb→brazier one, r3→boss (or the
+  shortcut once freed), Stoneroot rooms→deeper. Trail dots parent into
+  the current world so room changes sweep them naturally; dots are
+  pooled (26, recycled).
+- CONFIG now exposed on the __game debug hook for tuning/tests.
+- Verified headless: idle Gentle player → guide run fires, Pip ends at
+  the R1 exit with the trail still fading behind him, run completes back
+  to follow mode, and Cozy/Brave profiles never trigger it. SW v3.5.0.

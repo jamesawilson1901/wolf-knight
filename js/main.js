@@ -293,6 +293,51 @@ function nearXZ(x, z, r) {
 }
 function nearSpot(spot, r) { return nearXZ(spot.x, spot.z, r); }
 
+// 🌸 Gentle guide: when a Gentle-mode kid makes no progress for a while,
+// Pip sprints ahead along the way forward, leaving a glowing paw trail
+// (WORLD-DESIGN §4: an in-world cue, never a UI marker).
+let guideIdle = 0;
+let guideSnapshot = '';
+function progressSnapshot() {
+  const f = state.flags;
+  return [state.room, state.counters.kills || 0, Object.keys(f.chests).length,
+    Object.keys(f.keys).length, Object.keys(f.pups).length,
+    Object.keys(f.burned).length, Object.keys(f.cracked).length,
+    state.formsUnlocked.length].join('|');
+}
+// The way forward per room, following the same flags the stuck-hints use.
+function guideTarget() {
+  const f = state.flags;
+  switch (state.room) {
+    case 'den': return { x: 0, z: -5.4 };   // stairs up to the Hollow
+    case 'r1': return { x: 6, z: -6.3 };    // exit to the Causeway
+    case 'r1b': return { x: 5.2, z: -5.0 }; // ledge drop home
+    case 'r2': return f.keys.ember ? { x: 8.5, z: -6.2 } : { x: 10.2, z: 3.4 };
+    case 'r2b': return f.keys.ember ? { x: -7.4, z: 0 } : { x: 5.5, z: -0.2 };
+    case 'k1': return !state.formsUnlocked.includes('fire_wolf') ? { x: -5, z: -6.2 }
+      : (f.keys.kiln ? { x: 5, z: -6.2 } : { x: 0, z: -6.2 }); // A, then C, else B
+    case 'ka': return { x: 0, z: -2.6 };    // the fire shrine / braziers
+    case 'kb': return { x: -4.4, z: -2.2 }; // brazier ONE of the order puzzle
+    case 'r3': return f.bossDefeated ? { x: -7.4, z: 0.6 } : { x: 0, z: -0.5 };
+    case 'e1': return { x: 0, z: -6.2 };    // deeper: the Deep Hall
+    case 'e2': return { x: 0, z: -6.2 };
+    case 'e3': return { x: 0, z: -2 };
+    default: return null;
+  }
+}
+function updateGentleGuide(dt) {
+  if (!state.settings.easy || pip.guiding || transitioning) return;
+  const snap = progressSnapshot();
+  if (snap !== guideSnapshot) { guideSnapshot = snap; guideIdle = 0; return; }
+  guideIdle += dt;
+  if (guideIdle < CONFIG.DIFFICULTY.GUIDE_IDLE_S) return;
+  guideIdle = -10; // cooldown before it may run again
+  const tgt = guideTarget();
+  if (!tgt) return;
+  pip.startGuide(tgt.x, tgt.z, world);
+  narration.say('guide_run');
+}
+
 function narrationTriggers(dt, t) {
   const m = world.markers;
 
@@ -642,7 +687,7 @@ async function loadRoom(id, entry) {
   updateMusic();
   if (id === 'r2') narration.say('r2_enter');
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -690,7 +735,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -914,6 +959,7 @@ async function start() {
       if (door) loadRoom(door.to, door.entry);
 
       narrationTriggers(dt, t);
+      updateGentleGuide(dt);
 
       // Potion pickups
       for (const p of world.potionSpots) {
@@ -1009,7 +1055,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

@@ -40,6 +40,8 @@ export const CONFIG = {
     GENTLE_SOFTEN: 0.4,      // hits cost even less
     GENTLE_ENEMY_TIME: 0.8,  // enemies live at 80% speed — moves AND
                              // telegraphs slow down (more time to read)
+    GUIDE_IDLE_S: 20,        // no progress this long → Pip runs ahead
+                             // leaving a glowing trail (Gentle only)
   },
 
   // ---- JUICE (hit-feedback tiers; js/juice.js routes every hit here) ----

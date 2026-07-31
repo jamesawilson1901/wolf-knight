@@ -20,7 +20,11 @@ export class Pip {
     this._sparkles = [];
     this._sparkleT = 0;
     this.sparkling = false;
+    this._guide = null;   // 🌸 Gentle: run-ahead-and-leave-a-trail state
+    this._paw = [];       // pooled glowing trail dots
   }
+
+  get guiding() { return !!this._guide; }
 
   async load() {
     const fox = await loadGLB('./assets/chars/fox.gltf');
@@ -44,6 +48,35 @@ export class Pip {
       this.root.add(s);
       this._sparkles.push(s);
     }
+
+    // pooled glowing paw-trail dots (dropped while guiding, slow fade)
+    for (let i = 0; i < 26; i++) {
+      const p = new THREE.Mesh(
+        new THREE.CircleGeometry(0.11, 10),
+        new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, depthWrite: false })
+      );
+      p.rotation.x = -Math.PI / 2;
+      p.position.y = -99;
+      p.userData.life = 0;
+      this._paw.push(p);
+    }
+    this._pawIdx = 0;
+  }
+
+  // 🌸 Gentle guide: sprint toward (tx,tz) leaving a glowing trail, wait a
+  // beat, then trot back to Kael. Dots parent into the CURRENT world so a
+  // room change sweeps them away naturally.
+  startGuide(tx, tz, world) {
+    if (this._guide) return;
+    this._guide = { tx, tz, world, t: 0, drop: 0, waitT: 0, arrived: false };
+    for (const p of this._paw) { p.userData.life = 0; p.material.opacity = 0; world.add(p); }
+  }
+
+  _dropPaw(x, z) {
+    const p = this._paw[this._pawIdx];
+    this._pawIdx = (this._pawIdx + 1) % this._paw.length;
+    p.position.set(x, 0.06, z);
+    p.userData.life = 9;
   }
 
   _play(name, fade = 0.18) {
@@ -60,6 +93,47 @@ export class Pip {
   }
 
   update(dt, t, player, world) {
+    // fade the trail dots regardless of state
+    for (const p of this._paw) {
+      if (p.userData.life > 0) {
+        p.userData.life -= dt;
+        p.material.opacity = Math.min(0.85, Math.max(0, p.userData.life / 3));
+        p.scale.setScalar(1 + Math.sin(t * 5 + p.position.x) * 0.12); // gentle pulse
+        if (p.userData.life <= 0) p.position.y = -99;
+      }
+    }
+
+    // 🌸 guiding overrides following: run the trail, wait, come home
+    if (this._guide) {
+      const g = this._guide;
+      g.t += dt;
+      const gx = g.tx - this.root.position.x, gz = g.tz - this.root.position.z;
+      const gd = Math.hypot(gx, gz);
+      if (!g.arrived) {
+        if (gd > 0.05) {
+          const step = 5.4 * dt;
+          const s = g.world.resolveCircle(
+            this.root.position.x + (gx / gd) * step,
+            this.root.position.z + (gz / gd) * step, 0.18);
+          this.root.position.x = s.x;
+          this.root.position.z = s.z;
+          this.root.rotation.y = Math.atan2(gx, gz);
+        }
+        this._play('run');
+        g.drop += 5.4 * dt;
+        if (g.drop > 0.55) { g.drop = 0; this._dropPaw(this.root.position.x, this.root.position.z); }
+        if (gd < 0.7 || g.t > 6) g.arrived = true;
+      } else {
+        // a little "over HERE!" spin at the spot, then release back to follow
+        g.waitT += dt;
+        this._play('idle');
+        this.root.rotation.y += dt * 3.2;
+        if (g.waitT > 1.4) this._guide = null; // follow logic sprints home
+      }
+      this.mixer.update(dt);
+      return;
+    }
+
     // Follow: stay ~FOLLOW_DIST behind Kael; trot or sprint to catch up.
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.root.position.x;
