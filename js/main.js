@@ -523,7 +523,9 @@ function refreshControlReveal() {
   // any wolf form always shows its throw — each wolf has a signature one
   document.getElementById('btn-ranged').classList.toggle(
     'revealed', !!state.spoken.learn_bolt || state.form !== 'knight');
-  document.getElementById('btn-jump').classList.toggle('revealed', !!state.spoken.learn_jump);
+  // jump is a CORE verb (lava gaps, dodges) — always available, never gated
+  // behind reaching the geyser lesson. Pip's line there still teaches timing.
+  document.getElementById('btn-jump').classList.add('revealed');
   document.getElementById('form-badge').classList.toggle(
     'revealed',
     !!state.spoken.darkwolf_intro || !!state.spoken.dark_nook ||

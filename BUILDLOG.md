@@ -938,3 +938,15 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   (Kenney RPG Audio chop, CC0, pack already credited) with per-form
   pitch: dark 0.9 / fire 1.0 / earth 0.72, ±8% variance.
 - SW v3.3.2 (bite.ogg precached).
+
+## v3.3.3 — jump button always visible
+- The jump button was gated behind Pip's geyser lesson at one spot in R2 —
+  never stood there, never got a jump button ("there is no jump"). Jump is
+  a core verb (lava gaps, dodging ground attacks) so the button now shows
+  from minute one; the geyser line still teaches the timing. Tap = jump,
+  tap again mid-air = higher double jump (feather powerup = triple).
+  Verified headless on a fresh save via the real button: visible, jump,
+  double jump, clean landing. SW v3.3.3.
+- LESSON (progressive reveal): three complaints in a row ("no ranged",
+  "no jump") came from teach-gated buttons reading as missing features.
+  Core verbs stay visible; only advanced/contextual controls may reveal.
