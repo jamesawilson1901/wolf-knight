@@ -872,3 +872,13 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   needs null arg before options.)
 - SW v3.2.0 (precache regions.js). AWAITING user approval of Region 1
   before Session B (Stoneroot to template).
+
+## v3.2.1 — lava ouch-leap (visible backwards jump)
+- Touching lava: 1 heart + sizzle SFX + an ANIMATED backwards leap (0.32s
+  arc, facing the lava the whole way) back to the last safe footing —
+  replaces the v3.0.1 instant teleport, which read as a blink, not a jump.
+  Input locked during the leap; i-frames unchanged; deliberate jumps still
+  clear lava gaps. NOTE: r1/r2 pools cooled by the Ember Key are basalt by
+  design (the mid-dungeon twist) — they never hurt; hot lava lives in
+  r2b/kiln/r3 and pre-key rooms. Verified headless: damage 5→4, bounce
+  state mid-flight, lands on safe ground facing the pool, zero errors.

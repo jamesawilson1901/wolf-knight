@@ -792,6 +792,24 @@ export class Player {
       this.root.position.y = this.airY;
     }
 
+    // Lava ouch-leap: an animated backwards arc OUT of the lava to the last
+    // safe footing (set in _hazards). Overrides movement while it plays.
+    if (this._lavaBounce) {
+      const b = this._lavaBounce;
+      b.t += dt;
+      const p = Math.min(1, b.t / b.dur);
+      this.root.position.x = b.fromX + (b.toX - b.fromX) * p;
+      this.root.position.z = b.fromZ + (b.toZ - b.fromZ) * p;
+      this.airY = Math.sin(p * Math.PI) * 0.6; // the startled hop arc
+      this.root.position.y = this.airY;
+      if (p >= 1) {
+        this._lavaBounce = null;
+        this.airY = 0;
+        this.airV = 0;
+        this.root.position.y = 0;
+      }
+    }
+
     // shield state: track raise time for the parry window
     const wantDefend = input.defending && this.lockTime <= 0 && this.airY <= 0;
     if (wantDefend && !this.defending) this.defendStart = this._time;
@@ -888,13 +906,23 @@ export class Player {
     if (!this.airborne && hz && this.iframes <= 0) {
       this.damage(1);
       this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
-      // OUCH — hop back to solid ground (kids expect the Zelda bounce)
+      audio.play('burn', { volume: 0.55, rate: 1.35 }); // sizzle!
+      // OUCH — leap BACKWARDS out of the lava to the last safe footing,
+      // facing the lava the whole way (the classic startled Zelda bounce).
+      // The arc itself plays in update() so kids SEE the jump, not a blink.
       if (this._lastSafe) {
         const s = world.resolveCircle(this._lastSafe.x, this._lastSafe.z, BODY_RADIUS);
-        this.root.position.x = s.x;
-        this.root.position.z = s.z;
+        this._lavaBounce = {
+          t: 0, dur: 0.32,
+          fromX: this.root.position.x, fromZ: this.root.position.z,
+          toX: s.x, toZ: s.z,
+        };
+        this.root.rotation.y = Math.atan2(this._lavaBounce.fromX - s.x, this._lavaBounce.fromZ - s.z);
         this._vel.x = 0; this._vel.z = 0;
-        this.airY = 0.01; this.airV = 3.6; this.jumpsUsed = 2; // little pained hop
+        this.airV = 0;
+        this.jumpsUsed = 2;
+        this.lockTime = Math.max(this.lockTime, 0.35); // input can't fight the leap
+        this._softLock = false;
       }
     }
     const flicker = this.iframes > 0 && Math.sin(this.iframes * 30) > 0;
