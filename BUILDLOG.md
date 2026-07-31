@@ -980,3 +980,15 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
     floor and Brave unchanged. Telegraph floors + max-3-aggro untouched.
 - Verified headless: shade hp 3 / speed 3.3; a 2-damage hit costs 1 heart
   in Cozy (was ½). SW v3.4.1.
+
+## v3.4.2 — bridge decks are solid ground, not lava
+- The impassable-lava change exposed a latent engine gap: bridges were
+  only VISUAL meshes sitting on top of lava rectangles, so hazardAt still
+  said "lava" on the deck — and since v3.3 that meant damage + bounce on
+  the Cinder Bridges' decks, making R2b (and the Ember Key) impossible.
+- Engine: world.safeZones + world.addSafe(rect) — safe platform footprints
+  that OVERRIDE hazards underneath; hazardAt checks them first. Registered
+  for the R2 stone bridge, both R2b zigzag decks, and the R3 entry walkway.
+- Verified headless: both r2b decks hazard-free with the pools beside them
+  still hot; standing on a deck for 4s = full hearts, no bounce; r2 deck
+  safe/pool hot via the real door. SW v3.4.2.

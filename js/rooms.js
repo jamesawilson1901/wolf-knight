@@ -898,6 +898,7 @@ async function buildR2(scene) {
   bridge.rotation.y = Math.PI / 2;
   bridge.scale.set(1.6, 1.1, 2.4);
   world.add(bridge);
+  world.addSafe(-1.3, 1.3, -3.2, -0.8); // the deck is solid ground, never lava
 
   // Bridge rails: keep kids from clipping the pool edges diagonally
   world.addBox(-1.7, -1.1, -3.1, -0.9);
@@ -1010,10 +1011,12 @@ async function buildR2b(scene) {
   b1.position.set(-2.2, 0.02, -2.6);
   b1.scale.set(1.3, 1.1, 1.6);
   world.add(b1);
+  world.addSafe(-3.4, -1.2, -3.4, -1.7); // b1 deck: crossing lane between rails
   const b2 = prepareModel(kit.bridge.scene.clone());
   b2.position.set(2.4, 0.02, 2.6);
   b2.scale.set(1.3, 1.1, 1.6);
   world.add(b2);
+  world.addSafe(1.2, 3.4, 1.7, 3.4);     // b2 deck: crossing lane between rails
   // rails so the zigzag can't be corner-cut into lava
   world.addBox(-3.2, -1.2, -3.6, -3.2); world.addBox(-3.2, -1.2, -1.9, -1.5);
   world.addBox(1.4, 3.4, 1.5, 1.9); world.addBox(1.4, 3.4, 3.3, 3.7);
@@ -1406,6 +1409,7 @@ async function buildR3(scene) {
   walkway.position.set(0, 0.02, 7.35);
   walkway.scale.set(2.4, 1.1, 1.5);
   world.add(walkway);
+  world.addSafe(-1.3, 1.3, 6.6, 8.1);    // entry walkway over the south rim
 
   // Four pillars give cover — the boss's shadow wave breaks against them
   world.markers.pillars = [];

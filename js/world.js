@@ -16,6 +16,8 @@ export class World {
     this.boxColliders = [];    // {minX, maxX, minZ, maxZ}
     this.circleColliders = []; // {x, z, r}
     this.lavaZones = [];       // {minX, maxX, minZ, maxZ}
+    this.safeZones = [];       // {minX, maxX, minZ, maxZ} — bridge decks etc.
+                               // that OVERRIDE hazards underneath them
     this.geysers = [];         // {x, z, r, active} — managed by room animate
     this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
@@ -45,6 +47,12 @@ export class World {
     this.lavaZones.push({ minX, maxX, minZ, maxZ });
   }
 
+  // A walkable platform footprint (bridge deck, walkway) — anywhere inside
+  // is SAFE even if a lava/geyser zone lies underneath it.
+  addSafe(minX, maxX, minZ, maxZ) {
+    this.safeZones.push({ minX, maxX, minZ, maxZ });
+  }
+
   addDoor(minX, maxX, minZ, maxZ, to, entry, when = null) {
     this.doors.push({ minX, maxX, minZ, maxZ, to, entry, when });
   }
@@ -63,6 +71,10 @@ export class World {
 
   // True while standing somewhere that hurts (lava, erupting geyser).
   hazardAt(x, z) {
+    // bridge decks first: standing ON the crossing is never "in the lava"
+    for (const s of this.safeZones) {
+      if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) return false;
+    }
     for (const l of this.lavaZones) {
       if (x >= l.minX && x <= l.maxX && z >= l.minZ && z <= l.maxZ) return true;
     }
