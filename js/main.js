@@ -245,6 +245,8 @@ const stuckHints = [
       !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 4) },
   { line: 'boulder_hint', timer: 0, cond: () =>
       state.room === 'e2' && !state.flags.plates.e2_gate && nearXZ(-1.6, 3, 5) },
+  { line: 'boss_p1', timer: 0, cond: () =>
+      !!world.boss && !world.boss.defeated && world.boss.phase === 1 },
 ];
 
 function nearXZ(x, z, r) {

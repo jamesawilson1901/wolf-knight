@@ -15,7 +15,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 
 const CORE_HP = 8;
-const TENDRIL_HP = 2;
+const TENDRIL_HP = 1; // ONE clean hit rips a tendril free — a kid landing a single swing per window must always progress
 const BLOOD_MOON_CAP = 3; // a Blood Moon counts as 3 sword hits on boss parts
 
 function darkMat(color = 0x0d0716, emissive = 0x2a1040, ei = 0.5) {
@@ -322,7 +322,7 @@ export class Shadowgrip {
 
   _updateSlams(dt, player, faster) {
     const TELEGRAPH = faster ? 0.8 : 1.05;
-    const STUCK = 2.0;
+    const STUCK = 2.8;
     const BETWEEN = faster ? 1.0 : 1.5;
 
     this.slamTimer -= dt;

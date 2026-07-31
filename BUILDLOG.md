@@ -735,3 +735,18 @@ Correct. Terranigma-grade dungeon structure begins here.
    2-3 hidden rooms behind burnables/crackables.
 4. S8 endgame: final region + final boss (multi-phase, all forms required)
    once regions 3+ exist. Every region boss keeps a unique verb.
+
+## v2.5.3 — THE boss-damage fix (real cause found)
+
+User report "still can't damage the first boss" — reproduced with real
+sword-swing simulation (earlier fight tests called takeDamage directly and
+hid this). Cause: stuck tendrils needed TWO hits inside a 2.0s window, and
+the hittable was recreated fresh each slam — one hit per window = zero
+progress forever, phase 1 never ends, the dragon never opens. Fixes:
+- TENDRIL_HP 2 → 1: one clean hit always rips a tendril free.
+- Stuck window 2.0s → 2.8s.
+- Pip re-teaches "when a tendril gets stuck, hit it!" every ~22s while
+  phase 1 lingers (stuck-hint machinery).
+Verified: one real tryAttack swing at the stuck tendril severs it.
+Lesson recorded: boss verification must drive the PLAYER's attack path,
+never the damage functions directly.
