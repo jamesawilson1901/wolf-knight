@@ -10,9 +10,10 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { prepareCharacter } from './assets.js';
-import { Shade } from './enemies.js';
+import { Shade, smokePuff } from './enemies.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { juice } from './juice.js';
 
 const CORE_HP = 8;
 const TENDRIL_HP = 1; // ONE clean hit rips a tendril free — a kid landing a single swing per window must always progress
@@ -52,54 +53,62 @@ export class Shadowgrip {
     this.defeated = false;
     this.onDefeated = null;
 
-    // --- core: the shadow dragon itself, hovering over the caged Cinder.
-    // Quaternius dragon tinted deep violet; its eyes carry the "exposed"
-    // signal the old shadow-eye did.
+    // --- the Shadowgrip itself: a GIANT shadow wolf — a dark echo of the
+    // first great wolf, looming over the caged Cinder. Same Quaternius
+    // wolf as Kael's forms, 3.5x their size, near-black with violet eyes.
     this.core = new THREE.Group();
-    const dragon = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
-    dragon.scale.setScalar(0.42);
-    dragon.position.y = -1.0; // pivot at the feet — center the body on the core
+    const wolf = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
+    wolf.scale.setScalar(1.96); // 3.5 × the player wolves' 0.56
     this.eyeMat = null;
-    dragon.traverse((n) => {
+    wolf.traverse((n) => {
       if (!n.isMesh) return;
       const mats = Array.isArray(n.material) ? n.material : [n.material];
       n.material = mats.map((m) => {
         const c = m.clone();
-        if (m.name === 'Eyes') {
-          c.color.setHex(0x141020);
+        if (m.name === 'Eyes_Black') {
           c.emissive = new THREE.Color(0xb9a8ff);
-          c.emissiveIntensity = 0.7;
+          c.emissiveIntensity = 1.2;
           this.eyeMat = c;
-        } else if (m.name === 'Wings') {
-          c.color.setHex(0x241238);
-          c.emissive = new THREE.Color(0x2a1040);
-          c.emissiveIntensity = 0.5;
-        } else if (m.name === 'Belly') {
-          c.color.setHex(0x151022);
-        } else if (m.name === 'Claws') {
-          c.color.setHex(0x0d0716);
+        } else if (m.name === 'Nose') {
+          c.color.setHex(0x0a0710);
         } else {
-          c.color.setHex(0x1d1428);
+          if (c.color) c.color.setHex(0x161020);
           c.emissive = new THREE.Color(0x2a1040);
-          c.emissiveIntensity = 0.3;
+          c.emissiveIntensity = 0.35;
         }
         return c;
       });
       if (n.material.length === 1) n.material = n.material[0];
     });
     if (!this.eyeMat) this.eyeMat = darkMat(); // safety — never null
-    this.core.add(dragon);
-    this.dragon = dragon;
-    this.mixer = new THREE.AnimationMixer(dragon);
-    const flyClip = dragonGltf.animations.find((c) => c.name === 'DragonArmature|Dragon_Flying');
-    const atkClip = dragonGltf.animations.find((c) => c.name === 'DragonArmature|Dragon_Attack');
-    this.flyAction = flyClip ? this.mixer.clipAction(flyClip) : null;
+    this.core.add(wolf);
+    this.dragon = wolf; // legacy name: the boss's body
+    this.mixer = new THREE.AnimationMixer(wolf);
+    const idleClip = dragonGltf.animations.find((c) => c.name === 'Idle');
+    const atkClip = dragonGltf.animations.find((c) => c.name === 'Attack');
+    const runClip = dragonGltf.animations.find((c) => c.name === 'Gallop');
+    this.flyAction = idleClip ? this.mixer.clipAction(idleClip) : null;
     if (this.flyAction) this.flyAction.play();
     this.attackAction = atkClip ? this.mixer.clipAction(atkClip) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    this.runAction = runClip ? this.mixer.clipAction(runClip) : null;
     this._attackT = 0;
-    this.core.position.y = 2.5;
+    this.core.position.set(0, 0, -1.4); // stands guard just behind the light
     this.root.add(this.core);
+
+    // --- THE POUNCE (phase 2 signature): crouch + red lane telegraph →
+    // leap across the arena → crashes down TIRED (a big, obvious window)
+    this.chargeState = 'rest';
+    this.chargeTimer = 4.5;
+    this.chargeDir = { x: 0, z: 1 };
+    this.wolfOff = { x: 0, z: 0 }; // body offset from center while pouncing
+    this.chargeStreak = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.0, 1.0),
+      new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0, depthWrite: false })
+    );
+    this.chargeStreak.rotation.x = -Math.PI / 2;
+    this.chargeStreak.position.y = 0.05;
+    world.add(this.chargeStreak);
 
     // --- caged Cinder: weak warm ember held under the core ---
     this.cinder = new THREE.Mesh(
@@ -259,7 +268,7 @@ export class Shadowgrip {
     this._setCoreExposed(true);
     this._burstT = 0; // phase 2 pulses too: short frequent windows
     this.cageShell.visible = false; // the grip shatters — the light is free-ish
-    this.core.position.y = 1.7; // core sinks into reach
+    this.chargeTimer = 3.0; // the wolf starts hunting: first pounce soon
     this.waveActive = true;
     this.wave.material.opacity = 0.5;
     // summon exactly 2 Shades
@@ -283,6 +292,22 @@ export class Shadowgrip {
 
   _defeat() {
     this.defeated = true;
+    // DRAMATIC END: triple shockwave + spark storm + heavy shake before
+    // the long dissolve (which sheds smoke and embers each frame above)
+    if (juice.effects) {
+      juice.effects.shake(0.65, 1.3);
+      juice.effects.hitStop(0.14);
+      juice.effects.groundSlam(this.root.position.clone(), 0xff5a3a);
+      setTimeout(() => juice.effects && juice.effects.groundSlam(this.root.position.clone(), 0x8f6bff), 350);
+      setTimeout(() => juice.effects && juice.effects.groundSlam(this.root.position.clone(), 0xffd76a), 750);
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      juice.burst(this.x + Math.cos(a) * 1.2, 0.5 + (i % 3) * 0.6, this.z + Math.sin(a) * 1.2,
+        i % 2 ? 0xff8a3a : 0x8f6bff, 12);
+    }
+    audio.play('slam', { volume: 1, rate: 0.5 });
+    this.chargeStreak.visible = false;
     this._setCoreExposed(false);
     this.coreHittable.dead = true;
     this.strikeRing.visible = false;
@@ -391,7 +416,17 @@ export class Shadowgrip {
         this._dissolveT -= dt;
         const f = Math.max(0, this._dissolveT / 1.6);
         this.core.scale.setScalar(f);
-        this.core.position.y = 1.7 + (1 - f) * 1.4;
+        this.core.position.y = (1 - f) * 1.2; // the shadow lifts away as it burns
+        // DRAMA: smoke and sparks tear off the dissolving shadow
+        this._burstAcc = (this._burstAcc || 0) + dt;
+        if (this._burstAcc > 0.18) {
+          this._burstAcc = 0;
+          const a = Math.random() * Math.PI * 2;
+          const r = 0.4 + Math.random() * 1.6;
+          juice.burst(this.x + Math.cos(a) * r, 0.5 + Math.random() * 1.6, this.z + Math.sin(a) * r,
+            Math.random() < 0.5 ? 0xff8a3a : 0x8f6bff, 10);
+          smokePuff(this.world, this.x + Math.cos(a) * r, 0.8, this.z + Math.sin(a) * r, 0x241238);
+        }
         this.cinder.material.emissiveIntensity = 1.6 + (1 - f) * 2.2;
         this.cinderLight.intensity = 3.5 + (1 - f) * 8;
         this.cinder.position.y = 1.1 + (1 - f) * 0.7;
@@ -456,10 +491,76 @@ export class Shadowgrip {
     if (this.phase === 1) {
       this._updateSlams(dt, player, false);
     } else if (this.phase === 2) {
-      // the core guards in a rhythm here too: 1.7s open / 1.2s guarded
+      // THE POUNCE — the wolf's signature, on a fixed readable loop:
+      // rest → crouch (red lane flashes 1.0s) → leap down the lane →
+      // crash, TIRED for 2.0s (the big open window) → pad back to the light.
+      this.chargeTimer -= dt;
+      const wolfWX = this.x + this.core.position.x;
+      const wolfWZ = this.z + this.core.position.z;
+      if (this.chargeState === 'rest' && this.chargeTimer <= 0) {
+        this.chargeState = 'crouch';
+        this.chargeTimer = 1.0;
+        const cx = player.root.position.x - wolfWX, cz = player.root.position.z - wolfWZ;
+        const cd = Math.hypot(cx, cz) || 1;
+        this.chargeDir = { x: cx / cd, z: cz / cd };
+        this.chargeStreak.position.set(wolfWX + this.chargeDir.x * 4, 0.05, wolfWZ + this.chargeDir.z * 4);
+        this.chargeStreak.rotation.z = -Math.atan2(this.chargeDir.x, this.chargeDir.z) + Math.PI / 2;
+        audio.play('bite', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
+      } else if (this.chargeState === 'crouch') {
+        this.core.scale.y = 0.8; // visibly coils down
+        this.chargeStreak.material.opacity = 0.25 + 0.3 * Math.abs(Math.sin(this.chargeTimer * 18));
+        if (this.chargeTimer <= 0) {
+          this.chargeState = 'charge';
+          this.chargeTimer = 1.0;
+          this.core.scale.y = 1;
+          if (this.runAction) this.runAction.reset().play();
+          if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
+          audio.play('tendril-slam', { volume: 0.8, rate: 1.3 });
+        }
+      } else if (this.chargeState === 'charge') {
+        this.chargeStreak.material.opacity = Math.max(0, this.chargeStreak.material.opacity - dt * 3);
+        this.wolfOff.x += this.chargeDir.x * 10.5 * dt;
+        this.wolfOff.z += this.chargeDir.z * 10.5 * dt;
+        this.core.position.x = this.wolfOff.x;
+        this.core.position.z = -1.4 + this.wolfOff.z;
+        const pdx = player.root.position.x - (this.x + this.core.position.x);
+        const pdz = player.root.position.z - (this.z + this.core.position.z);
+        if (pdx * pdx + pdz * pdz < 1.6 * 1.6) player.hurt(1, { attacker: this, groundAttack: true });
+        if (Math.hypot(this.wolfOff.x, this.wolfOff.z) > 6.2 || this.chargeTimer <= 0) {
+          this.chargeState = 'tired';
+          this.chargeTimer = 2.0;
+          if (this.runAction) this.runAction.fadeOut(0.2);
+          juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, 0x8f6bff, 12);
+          if (juice.effects) juice.effects.shake(0.3, 0.4);
+          audio.play('slam', { volume: 0.8, rate: 0.7 });
+        }
+      } else if (this.chargeState === 'tired') {
+        // panting, head low, eyes dim — HIT IT NOW (core force-exposed below)
+        this.eyeMat.emissiveIntensity = 0.3;
+        this.core.scale.y = 0.9 + Math.sin(t * 9) * 0.03; // heaving breaths
+        if (this.chargeTimer <= 0) {
+          this.chargeState = 'return';
+          this.chargeTimer = 1.2;
+        }
+      } else if (this.chargeState === 'return') {
+        const k = Math.min(1, dt * 3);
+        this.wolfOff.x += (0 - this.wolfOff.x) * k;
+        this.wolfOff.z += (0 - this.wolfOff.z) * k;
+        this.core.position.x = this.wolfOff.x;
+        this.core.position.z = -1.4 + this.wolfOff.z;
+        this.core.scale.y = 1;
+        if (this.chargeTimer <= 0) {
+          this.wolfOff.x = 0; this.wolfOff.z = 0;
+          this.core.position.set(0, 0, -1.4);
+          this.chargeState = 'rest';
+          this.chargeTimer = 5.0; // next pounce on a steady, learnable beat
+        }
+      }
+      // the core guards in a rhythm too: open while the wolf rests (1.7s
+      // pulses) and WIDE open while it lies tired after a pounce
       this._burstT += dt;
       const c2 = this._burstT % 2.9;
-      this._setCoreExposed(c2 < 1.7);
+      this._setCoreExposed(this.chargeState === 'tired' || (this.chargeState === 'rest' && c2 < 1.7));
       // rotating shadow wave — slow, always a safe arc
       this.waveAngle += dt * 0.55;
       const wx = this.x + Math.cos(this.waveAngle) * 3.4;
@@ -486,7 +587,8 @@ export class Shadowgrip {
       const open = cycle < 1.4;
       this._setCoreExposed(open);
       this.eyeMat.emissiveIntensity = open ? 1.8 : 0.4;
-      this.core.position.y = open ? 1.7 : 2.6;
+      // the wolf lunges its head in when open, rears back when guarded
+      this.core.position.z = open ? -0.7 : -1.8;
     }
 
     // keep the core hittable's position in sync

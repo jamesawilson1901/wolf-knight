@@ -320,7 +320,9 @@ function guideTarget() {
     case 'kb': return { x: -4.4, z: -2.2 }; // brazier ONE of the order puzzle
     case 'r3': return f.bossDefeated ? { x: -7.4, z: 0.6 } : { x: 0, z: -0.5 };
     case 'e1': return { x: 0, z: -6.2 };    // deeper: the Deep Hall
+    case 'e1b': return { x: 0.3, z: -3.6 }; // the treasure hole
     case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the millstone, then the crypt gate
+    case 'e2b': return (f.plates.e2b_p1 && f.plates.e2b_p2) ? { x: 6.9, z: -5.0 } : { x: -2.2, z: 1.2 };
     case 'e3': return { x: 0, z: -2 };
     default: return null;
   }
@@ -411,6 +413,8 @@ function narrationTriggers(dt, t) {
     if (state.flags.plates.e2_gate) narration.say('plate_open');
     if (state.flags.plates.e2_gate && nearXZ(8.6, 0, 3)) narration.say('warden_door');
   }
+  if (state.room === 'e1b') narration.say('echo_enter');
+  if (state.room === 'e2b') narration.say('mill2_enter');
   if (state.room === 'e3') {
     if (m.wildwoodsWay && nearSpot(m.wildwoodsWay, 3)) {
       narration.say('ripple_vine');
@@ -980,6 +984,21 @@ async function start() {
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
       if (door) loadRoom(door.to, door.entry);
+
+      // Drop-holes + climb rings (the Echo Chasm): walk on → whoosh across.
+      // Jumping OVER a hole is legit — airborne feet never fall in.
+      if (world.holes && player.airY <= 0 && !player._lavaBounce) {
+        for (const h of world.holes) {
+          const hdx = player.root.position.x - h.x, hdz = player.root.position.z - h.z;
+          if (hdx * hdx + hdz * hdz < h.r * h.r) {
+            audio.play('puff', { volume: 0.7, rate: 0.85 });
+            player.place(h.landing.x, h.landing.z, player.root.rotation.y);
+            player.iframes = Math.max(player.iframes, 0.5);
+            player._vel.x = 0; player._vel.z = 0;
+            break;
+          }
+        }
+      }
 
       narrationTriggers(dt, t);
       updateGentleGuide(dt);

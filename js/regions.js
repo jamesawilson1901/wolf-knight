@@ -59,7 +59,7 @@ export const REGIONS = {
     name: 'Stoneroot Caverns', built: true, spirit: 'Petra',
     grants: 'earth_wolf', grantAt: 'e3 (after the Bone Warden)',
     threshold: 'e1 camp — Old Bram the prospector (fire, rest, rumour; new line after healing)',
-    rooms: ['e1', 'e2', 'e3'],
+    rooms: ['e1', 'e1b', 'e2', 'e2b', 'e3'],
     beats: {
       approach: 'r3 → e1 (post-boss); fast travel home via the moonstone',
       lockVisible: 'em_boulder seen back in Ember; cracked piles glitter in e1; the DEAD MACHINERY grate (mystery) in e1',

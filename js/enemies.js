@@ -16,7 +16,7 @@ import { juice } from './juice.js';
 // Death puff: a harmless burst of smoke
 // ---------------------------------------------------------------------------
 
-function smokePuff(world, x, y, z, tint = 0x5a4d66) {
+export function smokePuff(world, x, y, z, tint = 0x5a4d66) {
   const bits = [];
   const mat = new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.85, depthWrite: false });
   for (let i = 0; i < 8; i++) {

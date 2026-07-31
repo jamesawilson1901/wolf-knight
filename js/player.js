@@ -62,7 +62,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
-    boltColor: 0xffab4a, rangedKind: 'ember',   // ember spit: bursts on impact
+    boltColor: 0xffab4a, rangedKind: 'breath',  // FIRE BREATH: a cone of flame
   },
   earth_wolf: {
     speed: 4.9, // steady like the mountain — hits harder, runs a touch slower
@@ -77,7 +77,7 @@ const FORM_DEFS = {
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
 const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth' };
-const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth' };
+const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
 // Thrust (2nd tap of the combo): narrow and long — a poke, not a sweep
@@ -533,6 +533,36 @@ export class Player {
     this.rangedCooldown = RANGED_COOLDOWN;
     // each form's throw SOUNDS different too, not just looks
     const kind0 = f.def.rangedKind || 'spark';
+    if (kind0 === 'breath') {
+      // FIRE BREATH: no projectile — a roaring cone of flame. Everything in
+      // the fan takes fire damage; flames roll out as pooled particles.
+      // (Braziers/burnables still need the SLAM — the verb stays sacred.)
+      audio.play('burn', { volume: 0.95, rate: 1.05 });
+      audio.play('bite', { volume: 0.5, rate: 0.6 });
+      const bfx = Math.sin(this.root.rotation.y), bfz = Math.cos(this.root.rotation.y);
+      const CONE_COS = Math.cos(THREE.MathUtils.degToRad(38));
+      const RANGE = 3.4;
+      if (world && world.enemies) {
+        for (const e of world.enemies) {
+          if (e.dead) continue;
+          const dx = e.x - this.root.position.x, dz = e.z - this.root.position.z;
+          const d = Math.hypot(dx, dz);
+          if (d > RANGE + e.radius) continue;
+          if (d > 0.2 && (dx * bfx + dz * bfz) / d < CONE_COS) continue;
+          e.takeDamage(this.boltDamage(e) + 0.5, 'fire', 'aoe');
+        }
+      }
+      // rolling flame: three widening puffs down the cone
+      for (let i = 0; i < 3; i++) {
+        const reach = 0.9 + i * 0.95;
+        const spread = 0.3 * (i + 1);
+        juice.burst(
+          this.root.position.x + bfx * reach + (Math.random() * 2 - 1) * spread, 0.7,
+          this.root.position.z + bfz * reach + (Math.random() * 2 - 1) * spread,
+          i === 2 ? 0xffd76a : 0xff8a3a, 9);
+      }
+      return true;
+    }
     if (kind0 === 'pierce') {
       audio.play('throw', { volume: 0.85, rate: 0.7 });
       audio.play('moon-impact', { volume: 0.18, rate: 2.4 }); // crescent shimmer

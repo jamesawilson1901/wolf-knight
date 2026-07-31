@@ -101,6 +101,8 @@ export const LINES = {
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },
+  echo_enter: { voice: 'pip', text: 'The Echo Chasm! Some of this floor is only shadow… step careful — or ride the holes down and see!' },
+  mill2_enter: { voice: 'pip', text: 'The old Mill itself! Two stones, two plates. Wake the machines, Kael!' },
   luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
 };
 

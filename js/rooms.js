@@ -1774,6 +1774,42 @@ function pressurePlate(world, id, x, z, onPressed) {
   return p;
 }
 
+// Pokémon-style DROP HOLE: walk onto the dark circle and fall to a lower
+// pocket (main.js handles the teleport). A JUMP clears it — walking doesn't.
+function dropHole(world, x, z, landing) {
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(0.6, 20),
+    new THREE.MeshBasicMaterial({ color: 0x05030a })
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.set(x, 0.04, z);
+  world.add(disc);
+  const rim = new THREE.Mesh(
+    new THREE.RingGeometry(0.58, 0.7, 20),
+    new THREE.MeshBasicMaterial({ color: 0x6b56a8, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
+  );
+  rim.rotation.x = -Math.PI / 2;
+  rim.position.set(x, 0.05, z);
+  world.add(rim);
+  world.onAnimate((t) => { rim.material.opacity = 0.45 + 0.3 * Math.sin(t * 2.2 + x); });
+  if (!world.holes) world.holes = [];
+  world.holes.push({ x, z, r: 0.55, landing });
+}
+
+// The way back up out of a pocket: a GOLD climb ring (act-here grammar).
+function climbSpot(world, x, z, top) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.5, 0.68, 22),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, 0.05, z);
+  world.add(ring);
+  world.onAnimate((t) => { ring.material.opacity = 0.4 + 0.3 * Math.sin(t * 2.6 + z); });
+  if (!world.holes) world.holes = [];
+  world.holes.push({ x, z, r: 0.55, landing: top });
+}
+
 // Cracked rock pile — the Earth Wolf's stomp shatters these (region verb,
 // mirrors Ember's burnables).
 function crackedRocks(world, id, x, z) {
@@ -1855,10 +1891,12 @@ async function buildE1(scene) {
   buildStoneShell(world, 16, 12, [
     { side: 's', from: -1.2, to: 1.2 }, // back up to Ember Hollow (R3)
     { side: 'n', from: -1.2, to: 1.2 }, // deeper: the Deep Hall
+    { side: 'e', from: -1.2, to: 1.2 }, // sideways: the Echo Chasm
   ]);
   world.spawn = { x: 0, z: 4.6, angle: Math.PI };
   world.addDoor(-1.2, 1.2, 5.85, 6.9, 'r3', { x: 0, z: -4.4, angle: 0 });
   world.addDoor(-1.2, 1.2, -6.9, -5.85, 'e2', { x: -6, z: 4.4, angle: Math.PI });
+  world.addDoor(7.9, 8.9, -1.2, 1.2, 'e1b', { x: -7, z: -2.8, angle: Math.PI / 2 });
 
   // torch pools mark the safe path; the rest stays cave-dark
   wallTorch(world, -2.4, 5.2); wallTorch(world, 2.4, 5.2);
@@ -2021,6 +2059,162 @@ async function buildE1(scene) {
 }
 
 // ---------------------------------------------------------------------------
+// E1b — The Echo Chasm (Pokémon fall-hole maze in full dark; Dark Wolf +
+// careful feet are the test. Ride the right hole down to the right pocket.)
+// ---------------------------------------------------------------------------
+
+async function buildE1b(scene) {
+  const world = new World(scene);
+  cavernMood(world);
+  buildStoneShell(world, 16, 12, [
+    { side: 'w', from: -4, to: -1.6 }, // back to the Cavern Gate (upper tier)
+  ]);
+  world.spawn = { x: -7, z: -2.8, angle: Math.PI / 2 };
+  world.addDoor(-8.9, -7.85, -4, -1.6, 'e1', { x: 7.4, z: 0, angle: -Math.PI / 2 });
+
+  // pitch dark, wall to wall — the Dark Wolf's eyes or nothing
+  darkZone(world, -7.9, 7.9, -5.9, 5.9);
+  wallTorch(world, -6.4, -5.2); wallTorch(world, 6.4, -5.2);
+  stoneDoorway(world, -7.4, -2.8, 'z');
+
+  // the divider: upper tier north, three sealed pockets south — the only
+  // way down is THROUGH the floor
+  blockRow(world, -8, 1.2, 8, 1.2, 1.5);
+  blockRow(world, -2.7, 1.2, -2.7, 6, 1.5);
+  blockRow(world, 2.7, 1.2, 2.7, 6, 1.5);
+
+  // three holes, three different landings — which do you trust?
+  dropHole(world, -4.5, -2.2, { x: -5.4, z: 3.2 }); // pocket 1: an ambush
+  dropHole(world, 0.3, -3.6, { x: 0, z: 3.2 });     // pocket 2: treasure
+  dropHole(world, 4.6, -1.8, { x: 5.0, z: 3.0 });   // pocket 3: the deep secret
+  climbSpot(world, -7.4, 5.2, { x: -6.6, z: -1.2 });
+  climbSpot(world, 0.2, 5.4, { x: 0.3, z: -2.2 });
+  climbSpot(world, 7.4, 5.2, { x: 6.6, z: -1.0 });
+
+  // pocket 1: a shade waits in the dark; pocket 2: the chest; pocket 3:
+  // cracked rocks hide a heart piece (Earth Wolf backtrack)
+  world.markers.shadeSpots = [{ x: -4.6, z: 4.4 }, { x: 3.2, z: -4.6 }];
+  world.markers.batSpots = [{ x: -1.5, z: -4.8 }, { x: 5.8, z: -4.2 }];
+  crackedRocks(world, 'e1b_deep', 6.2, 4.2);
+  world.markers.chestDefs = [
+    { id: 'c_e1b_maze', tier: 'wood', x: 0, z: 4.8, ry: 3.1, loot: { shards: 16, potion: 1 } },
+    ...(state.flags.cracked.e1b_deep
+      ? [{ id: 'c_e1b_deep', tier: 'gold', x: 7.2, z: 5.2, ry: -2.4, loot: { shards: 14, heartPiece: 1 } }]
+      : []),
+  ];
+  world.markers.breakables = [
+    { x: -6.9, z: 3.9, kind: 'vase', shards: 2 },
+    { x: 6.6, z: -5.4, kind: 'crate', shards: 3 },
+  ];
+  checkpoint(world, 'cp_e1b', -7.2, -4.6);
+  for (const [x, z, ry] of [[7.2, -5.6, 0.5], [-2.0, 5.6, 2.2]]) {
+    const web = prepareModel(dkit.cobweb.scene.clone(), { castShadow: false });
+    web.position.set(x, 0.4, z);
+    web.rotation.y = ry;
+    web.scale.setScalar(1.3);
+    world.add(web);
+  }
+  return world;
+}
+
+// ---------------------------------------------------------------------------
+// E2b — The Mill (Zelda push-puzzle: TWO millstones onto TWIN plates while
+// rogues ambush; both plates open the treasure vault. Lit, loud, mechanical.)
+// ---------------------------------------------------------------------------
+
+async function buildE2b(scene) {
+  const world = new World(scene);
+  cavernMood(world);
+  buildStoneShell(world, 16, 12, [
+    { side: 's', from: -1.2, to: 1.2 }, // back down to the Deep Hall
+  ]);
+  world.spawn = { x: 0, z: 4.6, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 5.85, 6.9, 'e2', { x: 6, z: -5.2, angle: 0 });
+
+  wallTorch(world, -5.8, 4.6); wallTorch(world, 5.8, 4.6);
+  wallTorch(world, -6.6, -2.6); wallTorch(world, 6.6, -2.6);
+  stoneDoorway(world, 0, 5.4, 'x');
+
+  // the barrier wall with one central gap — stones must go THROUGH the
+  // middle, then LEFT and RIGHT to their plates (push-order thinking)
+  blockRow(world, -6.4, -1.5, -1.8, -1.5, 1.4);
+  blockRow(world, 1.8, -1.5, 6.4, -1.5, 1.4);
+  spikeTrap(world, 0, -3.2, 0.6); // the gap is guarded — time the push
+
+  boulder(world, -2.2, 1.2);
+  boulder(world, 2.2, 0.2);
+  pressurePlate(world, 'e2b_p1', -5, -4.6, () => { if (world.checkVault) world.checkVault(); });
+  pressurePlate(world, 'e2b_p2', 5, -4.6, () => { if (world.checkVault) world.checkVault(); });
+  world.markers.boulderSpot = { x: -2.2, z: 1.2 };
+
+  // the treasure vault (NE corner) opens only when BOTH plates hold weight
+  {
+    const bars = prepareModel(dkit.bars.scene.clone());
+    bars.position.set(6.9, 0, -4.4);
+    bars.scale.set(0.9, 0.8, 1);
+    const vaultCollider = { minX: 5.9, maxX: 7.9, minZ: -6, maxZ: -4.1 };
+    const bothDown = () => !!state.flags.plates.e2b_p1 && !!state.flags.plates.e2b_p2;
+    if (!bothDown()) {
+      world.add(bars);
+      world.boxColliders.push(vaultCollider);
+    }
+    world.checkVault = () => {
+      if (!bothDown()) return;
+      const i = world.boxColliders.indexOf(vaultCollider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      let rise = 0;
+      world.onAnimate((t, dt) => {
+        if (rise >= 2.6) return;
+        rise += dt * 1.6;
+        bars.position.y = Math.min(2.6, rise);
+        if (rise >= 2.6) world.root.remove(bars);
+      });
+      audio.play('checkpoint', { volume: 0.9, rate: 1.1 });
+      world.checkVault = null;
+    };
+  }
+  world.markers.chestDefs = [
+    { id: 'c_e2b_vault', tier: 'gold', x: 6.9, z: -5.3, ry: 2.8, loot: { shards: 24, heartPiece: 1 } },
+  ];
+
+  // the Mill's own wheels — turning once the machinery woke
+  {
+    const wheels = [];
+    for (const wz of [1.4, -3.4]) {
+      const wg = new THREE.Group();
+      wg.position.set(-7.6, 0.75, wz);
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
+        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
+      );
+      wheel.rotation.x = Math.PI / 2;
+      wg.add(wheel);
+      wg.rotation.y = Math.PI / 2;
+      world.add(wg);
+      wheels.push(wg);
+    }
+    if (WS.get('stone', 'mill')) world.onAnimate((t, dt) => { for (const w of wheels) w.rotation.z += dt * 1.1; });
+  }
+
+  // the ambush: rogues from the flanks while you're mid-push
+  world.markers.rogueSpots = [{ x: -4.2, z: 3.0 }, { x: 4.4, z: 3.4 }];
+  world.markers.minionSpots = [{ x: 0, z: -5.0 }];
+
+  checkpoint(world, 'cp_e2b', -6.8, 5.0);
+  potionPickup(world, 6.8, 5.0);
+  world.markers.breakables = [
+    { x: -7.3, z: -5.4, kind: 'barrel', shards: 3 },
+    { x: 3.2, z: 5.4, kind: 'vase', shards: 2 },
+  ];
+  await mushroomPatches(world, [[-4.6, -5.2], [2.8, 2.2, 1.4], [-2.4, 4.8]]);
+  if (WS.get('stone', 'restored')) {
+    healedGlowmoss(world, [[-6.2, 0.4], [4.8, -0.8]]);
+    world.markers.healed = true;
+  }
+  return world;
+}
+
+// ---------------------------------------------------------------------------
 // E2 — The Deep Hall (teaches: spike timing, boulder pushing; rogue ambush)
 // ---------------------------------------------------------------------------
 
@@ -2030,10 +2224,12 @@ async function buildE2(scene) {
   buildStoneShell(world, 20, 12, [
     { side: 's', from: -7.2, to: -4.8 }, // back to E1
     { side: 'e', from: -1.2, to: 1.2 },  // gated crypt door
+    { side: 'n', from: 4.8, to: 7.2 },   // up into the Mill
   ]);
   world.spawn = { x: -6, z: 4.4, angle: Math.PI };
   world.addDoor(-7.2, -4.8, 5.85, 6.9, 'e1', { x: 0, z: -4.4, angle: 0 });
   world.addDoor(9.15, 10.15, -1.2, 1.2, 'e3', { x: 0, z: 5.4, angle: Math.PI });
+  world.addDoor(4.8, 7.2, -6.9, -5.85, 'e2b', { x: 0, z: 4.6, angle: Math.PI });
 
   wallTorch(world, -6, 2.2); wallTorch(world, -2.8, -1.4);
   wallTorch(world, 3.4, 2.6); wallTorch(world, 7.8, -2.2);
@@ -2436,7 +2632,7 @@ export async function emberRestorationLive(world) {
   return DURATION;
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
+export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
@@ -2444,11 +2640,13 @@ export async function buildRoom(id, scene) {
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot && !state.flags.bossDefeated) {
-    const [dragonGltf, slimeGltf] = await Promise.all([
-      loadGLB('./assets/chars/monsters/Dragon.glb'),
+    // The Shadowgrip wears the WOLF body now (user call + canon: a giant
+    // shadow-echo of the first great wolf) — same style family as Kael.
+    const [wolfGltf, slimeGltf] = await Promise.all([
+      loadGLB('./assets/chars/wolf.gltf'),
       loadGLB('./assets/chars/monsters/Slime.glb'),
     ]);
-    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, dragonGltf, slimeGltf);
+    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, wolfGltf, slimeGltf);
   }
   return world;
 }

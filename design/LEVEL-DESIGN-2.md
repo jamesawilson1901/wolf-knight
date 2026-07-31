@@ -42,15 +42,17 @@ Den ── R1 Hollow Entrance ── R1b Ash Warrens (maze, dark pockets, secret
          R3 Heart of the Hollow (boss; shortcut back to R1)     [exists]
 ```
 
-### Stoneroot 2.0
+### Stoneroot 2.0  [BUILT v3.8 — five rooms, each a different test]
 ```
-E1 Cavern Gate ── E1b Echo Chasm (pitch-dark tiered chasm, Dark Wolf,
-   │                 ledge drops between tiers, bat nests, cracked secret)
-   E2 Deep Hall ── E2b The Mill (TWO boulders → twin plates, spike maze,
-   │                 Stone Key → E3 treasure vault)
+E1 Cavern Gate ── E1b Echo Chasm  [BUILT: Pokémon fall-hole maze in full
+   │                 dark — 3 holes / 3 pockets (ambush · treasure · cracked
+   │                 secret), gold climb rings back up, bat nests]
+   E2 Deep Hall ── E2b The Mill   [BUILT: TWO millstones → TWIN plates
+   │                 through a spike-guarded gap, rogue ambush mid-push,
+   │                 both plates open the treasure vault (heart piece)]
    E3 Warden's Crypt (mini-boss)
-   TWIST: solving the Mill starts the old machinery — background wheels
-   turn in E1/E2, gates lift, one new passage grinds open.
+   TWIST: the E2 millstone plate wakes the machinery — wheels turn in
+   E1/E2/E2b, the E1 grate grinds open.  [BUILT v3.6]
 ```
 
 ### S3 Wild Woods (design-ahead)

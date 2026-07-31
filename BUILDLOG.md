@@ -1088,3 +1088,36 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   steel / 2.0 fire-bolt), rogue first-swing dodge, roll travel+i-frames
   via synthetic input, grounded enemy refusing lava, warrens full-dark
   zone, blood moon fires. Zero errors. SW v3.7.0.
+
+## v3.8.0 — the Shadowgrip reborn, fire breath, Stoneroot grows to 5 rooms
+- BOSS BODY SWAP (user + canon): the off-style dragon is gone. The
+  Shadowgrip is now a GIANT SHADOW WOLF — the same Quaternius wolf as
+  Kael's forms at 3.5x their size (1.96), near-black with burning violet
+  eyes. A dark echo of the first great wolf: the Grimm reveal, made flesh.
+- THE POUNCE (phase 2 signature, fixed readable loop): rest (pulsing core
+  windows) → crouch + flashing RED LANE (1.0s) → leap down the lane →
+  crashes TIRED for 2.0s with the core FORCE-OPEN (the big window) → pads
+  back. Deep snarl wind-up, crash shake, spark burst. Every beat
+  telegraphed; the loop repeats on a steady 5s rhythm kids can learn.
+- DRAMATIC DEFEAT: triple expanding shockwave rings (orange/violet/gold),
+  a 12-point spark ring, heavy shake + freeze-frame, then the dissolve
+  sheds SMOKE and embers every fraction of a second as the shadow lifts
+  away and burns out. Cinder's light floods up through it.
+- FIRE BREATH: the Fire Wolf's throw is now a roaring CONE OF FLAME —
+  instant fan (3.4u, ±38°), fire damage to everything in it, rolling
+  pooled flame bursts + crackle. Braziers still demand the slam (the
+  region verb stays sacred).
+- STONEROOT = 5 ROOMS, each a different test (Terranigma base, Pokémon
+  puzzle, Zelda combat):
+  e1 Cavern Gate (camp + intro combat) · e1b ECHO CHASM [NEW]: Pokémon
+  fall-hole maze in full dark — 3 holes to 3 sealed pockets (ambush /
+  treasure / cracked heart-piece secret), gold climb rings back up, jump
+  clears holes · e2 Deep Hall (spike timing + millstone plate, full dark)
+  · e2b THE MILL [NEW]: push TWO millstones through a spike-guarded gap
+  onto twin plates while rogues ambush — both plates open the treasure
+  vault (heart piece) · e3 Warden's Crypt (boss). Drop-hole/climb engine
+  is generic (world.holes) for future regions.
+- Verified headless: breath cone hits with fire element; wolf boss builds
+  at 1.96 scale; full pounce cycle crouch→charge→tired(core exposed)→
+  rest; dramatic defeat clean; e1→chasm door, hole drop + climb return;
+  e2→Mill door, twin plates open the vault. Zero errors. SW v3.8.0.
