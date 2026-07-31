@@ -517,6 +517,22 @@ async function buildR1(scene) {
 
   kilnLandmark(world);
 
+  // Restoration dressing: once the region is healed, green rises through the
+  // ash — EXCEPT one scar by the Den stairs that never mends (WORLD-DESIGN §3:
+  // one thing stays broken makes the rest believable).
+  if (WS.get('ember', 'restored')) {
+    healedSprouts(world, [[-2.2, 1.2], [2.6, 3.4], [-5.8, -2.6], [4.4, 0.8], [7.0, -3.6], [-0.6, 5.0]]);
+    const scar = new THREE.Mesh(
+      new THREE.CircleGeometry(0.85, 20),
+      new THREE.MeshStandardMaterial({ color: 0x241d1c, roughness: 1 })
+    );
+    scar.rotation.x = -Math.PI / 2;
+    scar.position.set(2.6, 0.045, 5.1);
+    world.add(scar);
+    world.markers.scarSpot = { x: 2.6, z: 5.1 };
+    world.markers.healed = true;
+  }
+
   // Scattered rocks (center kept walkable)
   placeRocks(world, [
     { kind: 'lb', x: 2.4, z: -4.7, s: 2.2, ry: 2.1, cr: 0.95 },
@@ -711,6 +727,25 @@ async function buildDen(scene) {
   world.onAnimate((t, dt) => mixer.update(dt));
   world.markers.shopSpot = { x: 3.2, z: -2.2 };
 
+  // DEN ARRIVAL (WORLD-DESIGN §3): Cinder's ember settles by the campfire
+  // once Ember Hollow is healed — the first of seven spirits to come home.
+  if (WS.get('ember', 'restored')) {
+    const homeEmber = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.2, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 3.0, roughness: 1 })
+    );
+    homeEmber.position.set(1.4, 0.9, -0.9);
+    world.add(homeEmber);
+    const homeGlow = new THREE.PointLight(0xffc27a, 5, 8, 1.9);
+    homeGlow.position.set(1.4, 1.1, -0.9);
+    world.add(homeGlow);
+    world.onAnimate((t) => {
+      homeEmber.position.y = 0.9 + Math.sin(t * 1.6 + 0.8) * 0.07;
+      homeGlow.intensity = 4.4 + Math.sin(t * 2.3) * 0.7;
+    });
+    world.markers.cinderHome = { x: 1.4, z: -0.9 };
+  }
+
   // Luna's moonstone — the fast-travel waystone. Glows once there is
   // somewhere to travel (a second region freed).
   {
@@ -807,6 +842,12 @@ async function buildR2(scene) {
   world.addDoor(-10.15, -9.1, 3.2, 5.6, 'r1', { x: 5.6, z: -4.9, angle: Math.PI });
   world.addDoor(7.3, 9.7, -6.9, -5.85, 'k1', { x: 0, z: 4.6, angle: Math.PI });
   world.addDoor(9.9, 10.9, 2.2, 4.6, 'r2b', { x: -5.9, z: 0, angle: Math.PI / 2 });
+
+  // Restoration dressing along the south bank once the region is healed
+  if (WS.get('ember', 'restored')) {
+    healedSprouts(world, [[-7.0, 5.2], [-3.5, 5.4], [1.0, 5.2], [5.0, 5.3]]);
+    world.markers.healed = true;
+  }
 
   // The boss door is sealed by shadow until the Ember Key is found in the
   // Cinder Bridges — the region now has a real dungeon loop, not a straight
@@ -1390,6 +1431,12 @@ async function buildR3(scene) {
     ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20, powerup: 'fury' } }]
     : [];
 
+  // The live restoration's regrowth persists on every rebuild after healing
+  if (WS.get('ember', 'restored')) {
+    healedSprouts(world, [[-3, 4.4], [3, 4.4], [-5.2, -1], [5.2, -1], [-2.4, -4.2], [2.4, -4.2], [0, 2.6], [5.7, 3.4]]);
+    world.markers.healed = true;
+  }
+
   // Way-finding: torch-lit entry + shortcut doorway (once open) + path
   doorway(world, 0, 6.35, 'x');
   if (state.flags.shortcutOpen) doorway(world, -6.4, 0.6, 'z');
@@ -1786,6 +1833,13 @@ async function buildE1(scene) {
   world.addCircle(-1.5, 3.4, 0.4);
   world.addCircle(1.5, 3.4, 0.4);
 
+  // RIPPLE (WORLD-DESIGN §3): once Ember Hollow heals, two green shoots
+  // push through the cave mouth — the next region already feels touched.
+  if (WS.get('ember', 'restored')) {
+    healedSprouts(world, [[1.9, 4.9], [-1.7, 5.1]], 1.1);
+    world.markers.rippleShoots = { x: 0, z: 4.9 };
+  }
+
   // columns + cobwebs + skulls: ruins of the old stone hall
   for (const [x, z, s] of [[-5.6, -3.8, 0.5], [5.6, -3.8, 0.5], [-5.8, 2.8, 0.45]]) {
     const col = prepareModel(dkit.column2.scene.clone());
@@ -2042,6 +2096,87 @@ async function buildE3(scene) {
   ]);
 
   return world;
+}
+
+// ---------------------------------------------------------------------------
+// Witnessed restoration (design/WORLD-DESIGN.md §3) — shared helpers
+// ---------------------------------------------------------------------------
+
+// Natural (non-volcanic) colors for regrowth props — same trick as the Den.
+function naturalTint(m) {
+  m.traverse((n) => {
+    if (!n.isMesh) return;
+    n.material = n.material.clone();
+    if (n.material.name === 'grass' || n.material.name === 'foliage') n.material.color.setHex(0x4e9a4a);
+    if (n.material.name === 'dirt') n.material.color.setHex(0x8a6a48);
+  });
+  return m;
+}
+
+// Static regrowth dressing, applied at room BUILD time once a region's
+// restoration flag is set (rooms rebuild on entry, so this persists free).
+async function healedSprouts(world, spots, scale = 1.3) {
+  const [fa, fb, bush] = await Promise.all([
+    loadGLB('./assets/env/flower-a.glb'),
+    loadGLB('./assets/env/flower-b.glb'),
+    loadGLB('./assets/env/bush-large.glb'),
+  ]);
+  spots.forEach(([x, z], i) => {
+    const src = i % 3 === 2 ? bush : (i % 2 === 0 ? fa : fb);
+    const m = naturalTint(prepareModel(src.scene.clone(), { castShadow: false }));
+    m.position.set(x, 0, z);
+    m.rotation.y = (i * 2.1) % (Math.PI * 2);
+    m.scale.setScalar(src === bush ? scale * 0.8 : scale);
+    world.add(m); // decoration only — no colliders, kids walk through flowers
+  });
+}
+
+// The LIVE restoration: plays in the boss arena the moment the Shadowgrip
+// falls, while the player is standing in it. Green rises around them and
+// Cinder's ember climbs to the ridge. Returns total duration (seconds).
+export async function emberRestorationLive(world) {
+  const [fa, fb, bush] = await Promise.all([
+    loadGLB('./assets/env/flower-a.glb'),
+    loadGLB('./assets/env/flower-b.glb'),
+    loadGLB('./assets/env/bush-large.glb'),
+  ]);
+  const spots = [[-3, 4.4], [3, 4.4], [-5.2, -1], [5.2, -1], [-2.4, -4.2], [2.4, -4.2], [0, 2.6], [5.7, 3.4]];
+  const sprouts = spots.map(([x, z], i) => {
+    const src = i % 3 === 2 ? bush : (i % 2 === 0 ? fa : fb);
+    const m = naturalTint(prepareModel(src.scene.clone(), { castShadow: false }));
+    m.position.set(x, 0, z);
+    m.rotation.y = (i * 2.1) % (Math.PI * 2);
+    m.scale.setScalar(0.001);
+    world.add(m);
+    return { m, delay: 0.6 + i * 0.5, target: src === bush ? 1.05 : 1.3 };
+  });
+  // Cinder's ember rises from where the grip held it toward the north ridge
+  const ember = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.26, 1),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 3.2, roughness: 1 })
+  );
+  ember.position.set(0, 1.2, -0.5);
+  const glow = new THREE.PointLight(0xffc27a, 8, 13, 1.8);
+  glow.position.copy(ember.position);
+  world.add(ember); world.add(glow);
+
+  const DURATION = 9;
+  let t = 0;
+  world.onAnimate((tt, dt) => {
+    t += dt;
+    for (const s of sprouts) {
+      const p = Math.min(1, Math.max(0, (t - s.delay) / 1.1));
+      const e = 1 - (1 - p) * (1 - p); // ease-out grow, slight overshoot pop
+      s.m.scale.setScalar(Math.max(0.001, s.target * (e * 1.08 - 0.08 * e * e)));
+    }
+    const f = Math.min(1, t / 4.5);
+    const ef = f * f * (3 - 2 * f); // smoothstep climb
+    ember.position.set(0, 1.2 + ef * 2.4, -0.5 - ef * 5.2);
+    ember.position.y += Math.sin(t * 1.7) * 0.06; // gentle bob, always
+    glow.position.copy(ember.position);
+  });
+  world.markers.restorationPlayed = true;
+  return DURATION;
 }
 
 export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };

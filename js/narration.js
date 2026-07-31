@@ -47,6 +47,11 @@ export const LINES = {
   region_complete: { voice: 'pip', text: 'Ember Hollow is free, Kael. The light is coming back. Let’s go on.' },
 
   den_intro: { voice: 'pip', text: 'The Moonlit Den! Luna keeps it safe. The pups we rescue will live here.' },
+  restoration_1: { voice: 'pip', text: 'Look, Kael! The Hollow remembers the sun — everything is waking up!' },
+  restoration_2: { voice: 'pip', text: 'The ash is turning green. You did this, Kael.' },
+  cinder_den: { voice: 'pip', text: 'Cinder’s ember came to live by our fire! The Den feels warmer already.' },
+  scar_r1: { voice: 'pip', text: 'This one patch won’t heal… so we remember. That’s okay.' },
+  ripple_shoot: { voice: 'pip', text: 'A green shoot — all the way down here! Ember Hollow’s light is spreading.' },
   shop_intro: { voice: 'pip', text: 'That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!' },
   moonstone_intro: { voice: 'pip', text: 'Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.' },
 

@@ -24,8 +24,18 @@ import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { juice } from './juice.js';
+import { validateRegions } from './regions.js';
+import { emberRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+
+// World-rule validation (lock-before-key etc.) — loud in the console so
+// region drift is caught the moment a dev build boots.
+{
+  const v = validateRegions();
+  for (const e of v.errors) console.error('[regions]', e);
+  for (const w of v.warnings) console.warn('[regions]', w);
+}
 
 // ---------------------------------------------------------------------------
 // Renderer / scene / camera
@@ -298,12 +308,14 @@ function narrationTriggers(dt, t) {
     if (state.formsUnlocked.includes('fire_wolf') && !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 3.2)) {
       narration.say('burn_prompt');
     }
+    if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_r1');
   }
 
   if (state.room === 'den') {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
     if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
+    if (m.cinderHome && nearSpot(m.cinderHome, 2.6)) narration.say('cinder_den');
   }
 
   if (state.room === 'r2') {
@@ -318,6 +330,7 @@ function narrationTriggers(dt, t) {
   // Stoneroot Caverns
   if (state.room === 'e1') {
     narration.say('stone_enter');
+    if (m.rippleShoots && nearSpot(m.rippleShoots, 2.6)) narration.say('ripple_shoot');
     const skel = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonMinion' && !e.dead);
     if (skel && nearXZ(skel.x, skel.z, 4.6)) narration.say('skeleton_intro');
   }
@@ -864,7 +877,13 @@ async function start() {
             narration.say('boss_defeat');
             narration.say('firewolf_grant');
             narration.say('firewolf_howto');
-            persist(); // form unlock is a save point
+            // WITNESSED RESTORATION (WORLD-DESIGN §3): the Hollow heals
+            // around the player, live — green rises, Cinder climbs the ridge.
+            WS.set('ember', 'restored');
+            emberRestorationLive(world);
+            narration.say('restoration_1');
+            setTimeout(() => narration.say('restoration_2'), 8000);
+            persist(); // form unlock + healed world is a save point
           };
         }
         world.boss.update(dt, t, player);

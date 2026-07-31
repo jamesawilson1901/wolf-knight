@@ -845,3 +845,30 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified headless: real-attack-path burst (10 parts, medium), cloud
   hides when spent, 720 spawns cap at 256 (pool proof), 19 buffers
   preloaded, hurt path clean, zero errors. SW v3.1.0.
+
+## v3.2.0 — WORLD-DESIGN adopted; Session A + Region 1 to template
+- design/WORLD-DESIGN.md committed: the region-building playbook (nine-beat
+  template, lock-before-key as a machine-checked rule, routes, witnessed
+  restoration + ripple/Den-growth/one-scar, kid rules, canon region chain
+  reconciled to the STORY-BIBLE addendum). Process locked: ONE region per
+  pass, user approval gates each.
+- NEW js/regions.js: per-region data manifests (beats, gates with
+  requires/hint/firstShownIn, restoration blocks, ripple/scar/Den hooks) +
+  validateRegions() — errors fail verify scripts, boot logs loudly.
+  Current: 0 errors; 2 honest warnings pointing at Session B work.
+- WITNESSED RESTORATION (Ember): the moment the Shadowgrip falls, green
+  sprouts rise around the arena while the player stands in it and Cinder's
+  ember climbs to the north ridge (~9s, non-blocking). Persisted as
+  WS ember.restored; on rebuild r1/r2/r3 keep the regrowth.
+- COMPOUND HOOKS live: RIPPLE (two green shoots at Stoneroot's cave mouth
+  + Pip line), DEN ARRIVAL (Cinder's ember settles by the campfire — first
+  of seven spirits home), ONE SCAR (an ash patch by the Den stairs that
+  never heals + Pip line). 5 new narration lines.
+- Verified headless end-to-end through the production _defeat() path:
+  restoration plays + persists + survives save round-trip; healed dressing
+  in r1/r2; scar/den/ripple markers + lines all fire; zero errors.
+  (Test gotcha logged: the +60xp celebration can level a fresh profile to
+  a perk-pick pause — tests pre-level to 4. Playwright waitForFunction
+  needs null arg before options.)
+- SW v3.2.0 (precache regions.js). AWAITING user approval of Region 1
+  before Session B (Stoneroot to template).
