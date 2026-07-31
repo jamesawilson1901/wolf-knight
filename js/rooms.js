@@ -12,6 +12,8 @@ import { state } from './state.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip } from './boss.js';
 import { audio } from './audio.js';
+import { WS } from './worldstate.js';
+import { boulderGate, waterGate, brazier } from './gates.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -363,6 +365,31 @@ function doorway(world, x, z, axis /* 'x': gap runs along x */) {
   });
 }
 
+// THE LANDMARK: the Kiln — a distant volcano cone on the northern skyline
+// of every Ember Hollow room. Kids orient by it: the boss is always where
+// the mountain is.
+function kilnLandmark(world) {
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(11, 15, 24),
+    new THREE.MeshStandardMaterial({ color: 0x241a20, roughness: 1 })
+  );
+  cone.position.set(3, -1.5, -34);
+  world.add(cone);
+  const tip = new THREE.Mesh(
+    new THREE.ConeGeometry(2.6, 2.4, 16),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff5a2b, emissiveIntensity: 1.6, roughness: 1 })
+  );
+  tip.position.set(3, 6.6, -34);
+  world.add(tip);
+  const glow = new THREE.PointLight(0xff5a2b, 8, 30, 2);
+  glow.position.set(3, 8, -33);
+  world.add(glow);
+  world.onAnimate((t) => {
+    tip.material.emissiveIntensity = 1.3 + Math.sin(t * 0.9) * 0.5;
+    glow.intensity = 7 + Math.sin(t * 1.3) * 2;
+  });
+}
+
 // A visible dirt path along the critical route (real Kenney path tiles laid
 // a hair above the floor). Skips lava cells — bridges carry the route there.
 function pathTiles(world, waypoints) {
@@ -487,6 +514,8 @@ async function buildR1(scene) {
   // Checkpoint CP1 at the exit, with a potion beside the fire
   checkpoint(world, 'cp1', 5.9, -4.4);
   potionPickup(world, 4.6, -3.6);
+
+  kilnLandmark(world);
 
   // Scattered rocks (center kept walkable)
   placeRocks(world, [
@@ -776,7 +805,7 @@ async function buildR2(scene) {
   world.spawn = { x: -8, z: 4.4, angle: 0 };
 
   world.addDoor(-10.15, -9.1, 3.2, 5.6, 'r1', { x: 5.6, z: -4.9, angle: Math.PI });
-  world.addDoor(7.3, 9.7, -6.9, -5.85, 'r3', { x: 0, z: 6.2, angle: Math.PI });
+  world.addDoor(7.3, 9.7, -6.9, -5.85, 'k1', { x: 0, z: 4.6, angle: Math.PI });
   world.addDoor(9.9, 10.9, 2.2, 4.6, 'r2b', { x: -5.9, z: 0, angle: Math.PI / 2 });
 
   // The boss door is sealed by shadow until the Ember Key is found in the
@@ -851,6 +880,15 @@ async function buildR2(scene) {
   world.markers.pup2Spot = { x: 7.2, z: 4.4 };
   world.markers.houndSpot = { x: 6.0, z: 3.6 };
   world.markers.branchMouth = { x: 4.6, z: 3.2 };
+
+  // "NOT YET" GATE (Earth Wolf): one huge gold-veined boulder plugs a pocket
+  // where a heart-piece chest glitters — smash it on a return trip.
+  boulderGate(world, prepareModel, kit.rockLB, 'em_boulder', -8.2, 1.6);
+  world.markers.boulderGateSpot = { x: -8.2, z: 1.6 };
+  world.markers.chestDefs = [
+    { id: 'c_r2_boulder', tier: 'gold', x: -9.2, z: 1.6, ry: 1.5, loot: { shards: 25, heartPiece: 2 } },
+  ];
+  kilnLandmark(world);
 
   // West-side scatter + a stump for flavor
   placeRocks(world, [
@@ -952,9 +990,16 @@ async function buildR2b(scene) {
     world.addCircle(px, pz, 0.5);
   }
   world.markers.houndSpot = { x: 5.2, z: 0.2 };
+
+  // "NOT YET" GATE (Tide Wolf, region 6): rushing fire-water seals a wall
+  // pocket; the golden chest inside glitters in plain sight.
+  waterGate(world, 5.6, -3.2, 2.8, 0.9);
+  placeRocks(world, [{ kind: 'sb', x: 3.85, z: -3.9, s: 1.6, ry: 0.8, cr: 0.6 }]);
+  world.markers.waterGateSpot = { x: 5.6, z: -3.2 };
   world.markers.chestDefs = [
     { id: 'c_r2b_key', tier: 'gold', x: 6.1, z: -0.4, ry: -1.3,
       loot: { shards: 12, key: 'ember', keyName: 'Ember Key' } },
+    { id: 'c_r2b_water', tier: 'gold', x: 5.6, z: -4.3, ry: 2.0, loot: { shards: 30, heartPiece: 2 } },
   ];
   world.markers.breakables = [
     { x: -5.6, z: 3.6, kind: 'crate', shards: 2 },
@@ -972,6 +1017,300 @@ async function buildR2b(scene) {
 }
 
 // ---------------------------------------------------------------------------
+// THE KILN — the volcano dungeon (Zelda hub-and-spoke). Hub K1 has three
+// doors: A open (yields the FIRE WOLF at a shrine, then teach→test→combine
+// braziers), B brazier-locked (yields the Kiln Key), C key-locked (boss).
+// ---------------------------------------------------------------------------
+
+async function buildK1(scene) {
+  const world = new World(scene);
+  world.lightScale = 0.7;
+  world.bgColor = 0x160e14;
+  buildShell(world, 16, 12, [
+    { side: 's', from: -1.2, to: 1.2 },   // entrance from the Causeway
+    { side: 'n', from: -6.2, to: -3.8 },  // door A — open
+    { side: 'n', from: -1.2, to: 1.2 },   // door B — brazier-locked
+    { side: 'n', from: 3.8, to: 6.2 },    // door C — Kiln Key → boss
+  ]);
+  world.spawn = { x: 0, z: 4.6, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 5.85, 6.9, 'r2', { x: 8.5, z: -4.9, angle: Math.PI });
+  world.addDoor(-6.2, -3.8, -6.9, -5.85, 'ka', { x: 0, z: 3.6, angle: Math.PI });
+  world.addDoor(-1.2, 1.2, -6.9, -5.85, 'kb', { x: 0, z: 3.6, angle: Math.PI },
+    () => WS.get('ember', 'kiln_doorB'));
+  world.addDoor(3.8, 6.2, -6.9, -5.85, 'r3', { x: 0, z: 6.2, angle: Math.PI },
+    () => !!state.flags.keys.kiln);
+
+  // door B: plugged until BOTH flanking braziers burn (Fire Wolf from door A)
+  if (!WS.get('ember', 'kiln_doorB')) {
+    const plugB = new THREE.Group();
+    for (const p of [{ x: -0.7, s: 1.7 }, { x: 0.6, s: 1.9 }]) {
+      const rock = prepareModel(kit.rockSB.scene.clone());
+      rock.position.set(p.x, 0, -6.2);
+      rock.scale.setScalar(p.s);
+      plugB.add(rock);
+    }
+    world.add(plugB);
+    const colB = { minX: -1.4, maxX: 1.4, minZ: -6.9, maxZ: -5.6 };
+    world.boxColliders.push(colB);
+    let litCount = 0;
+    const onFlank = () => {
+      litCount++;
+      if (litCount >= 2) {
+        WS.set('ember', 'kiln_doorB');
+        world.root.remove(plugB);
+        const i = world.boxColliders.indexOf(colB);
+        if (i >= 0) world.boxColliders.splice(i, 1);
+        audio.play('checkpoint', { volume: 0.9, rate: 1.25 });
+      }
+    };
+    brazier(world, prepareModel, dkit.torch, 'k1_bl', -2.2, -5.0, onFlank);
+    brazier(world, prepareModel, dkit.torch, 'k1_br', 2.2, -5.0, onFlank);
+  }
+  // door C: sealed with the gold keyhole until the Kiln Key
+  if (!state.flags.keys.kiln) {
+    const plugC = new THREE.Group();
+    for (const p of [{ x: 4.2, s: 1.8 }, { x: 5.6, s: 2.0 }]) {
+      const rock = prepareModel(kit.rockLA.scene.clone());
+      rock.position.set(p.x, 0, -6.2);
+      rock.scale.setScalar(p.s);
+      rock.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.lerp(new THREE.Color(0x1a1226), 0.5); } });
+      plugC.add(rock);
+    }
+    const hole = new THREE.Mesh(
+      new THREE.RingGeometry(0.16, 0.3, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
+    );
+    hole.position.set(5, 1.2, -5.6);
+    plugC.add(hole);
+    world.add(plugC);
+    const colC = { minX: 3.6, maxX: 6.4, minZ: -6.9, maxZ: -5.6 };
+    world.boxColliders.push(colC);
+    world.onAnimate((t) => { hole.material.opacity = 0.6 + 0.3 * Math.sin(t * 3); });
+    world.openBossDoor = () => {
+      world.root.remove(plugC);
+      const i = world.boxColliders.indexOf(colC);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      audio.play('checkpoint', { volume: 0.9, rate: 1.2 });
+      world.openBossDoor = null;
+    };
+  }
+
+  // hub dressing: lava veins, columns, a resting fire before the boss wing
+  lavaPool(world, -6.6, 1.8, 1.6, 5.2, { light: true });
+  lavaPool(world, 6.6, 1.8, 1.6, 5.2, { light: false });
+  checkpoint(world, 'cp_k1', 0, 0.4);
+  potionPickup(world, 1.6, 0.8);
+  for (const [px, pz] of [[-3.2, -3.6], [3.2, -3.6]]) {
+    const col = prepareModel(dkit.column2.scene.clone());
+    col.position.set(px, 0, pz);
+    col.scale.setScalar(0.5);
+    world.add(col);
+    world.addCircle(px, pz, 0.4);
+  }
+  world.markers.shadeSpots = [{ x: -3.4, z: 2.4 }];
+  doorway(world, 0, 5.6, 'x');
+  return world;
+}
+
+// Spoke A — the Ember Shrine: clear the bones of the hollow, receive the
+// FIRE WOLF, then use it three ways (trivial / timed twist / in combat).
+async function buildKa(scene) {
+  const world = new World(scene);
+  world.lightScale = 0.62;
+  world.bgColor = 0x160e14;
+  buildShell(world, 18, 10, [
+    { side: 's', from: -1.2, to: 1.2 }, // back to the hub
+  ]);
+  world.spawn = { x: 0, z: 3.6, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 4.85, 5.9, 'k1', { x: -5, z: -4.9, angle: 0 });
+
+  // STAGE 1 (west third): the guard pack — clear it to open the shrine bars
+  blockRow(world, -3.2, -4.9, -3.2, -1.2, 1.5);
+  blockRow(world, -3.2, 0.8, -3.2, 4.9, 1.5);
+  world.markers.shadeSpots = [{ x: -6.2, z: -1.8 }, { x: -5.4, z: 2.2 }];
+  world.markers.mothSpots = [{ x: -6.8, z: 0.6 }];
+  const bars1 = prepareModel(dkit.bars.scene.clone());
+  bars1.position.set(-3.2, 0, -0.2);
+  bars1.rotation.y = Math.PI / 2;
+  bars1.scale.set(0.85, 0.62, 1);
+  world.add(bars1);
+  const col1 = { minX: -3.7, maxX: -2.7, minZ: -1.4, maxZ: 1.0 };
+  world.boxColliders.push(col1);
+  let stage1Done = false;
+  world.onAnimate(() => {
+    if (stage1Done || !world.enemies) return;
+    const alive = world.enemies.some((e) => !e.dead && e.constructor.name !== 'Breakable' && e.x < -3.2);
+    if (!alive) {
+      stage1Done = true;
+      world.root.remove(bars1);
+      const i = world.boxColliders.indexOf(col1);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
+    }
+  });
+
+  // STAGE 2 (center): the fire shrine — Cinder's spark reaches out here.
+  // main.js grants the FIRE WOLF on approach (see narrationTriggers).
+  const ped = prepareModel(dkit.pedestal.scene.clone());
+  ped.position.set(0, 0, -2.6);
+  ped.scale.setScalar(0.6);
+  world.add(ped);
+  world.addCircle(0, -2.6, 0.65);
+  const shrineFlame = new THREE.Mesh(
+    new THREE.ConeGeometry(0.3, 0.9, 8),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff8a3a, emissiveIntensity: 2.6, roughness: 1 })
+  );
+  shrineFlame.position.set(0, 1.8, -2.6);
+  world.add(shrineFlame);
+  const shrineGlow = new THREE.PointLight(0xff8a3a, 7, 10, 1.8);
+  shrineGlow.position.set(0, 2, -2.6);
+  world.add(shrineGlow);
+  world.onAnimate((t) => {
+    shrineFlame.scale.setScalar(1 + Math.sin(t * 5) * 0.12);
+    shrineGlow.intensity = 6 + Math.sin(t * 3.4) * 1.6;
+  });
+  world.markers.shrineSpot = { x: 0, z: -2.6 };
+
+  // STAGE 3 (east third, behind bars): teach → test → combine
+  blockRow(world, 3.2, -4.9, 3.2, -1.2, 1.5);
+  blockRow(world, 3.2, 0.8, 3.2, 4.9, 1.5);
+  const bars2 = prepareModel(dkit.bars.scene.clone());
+  bars2.position.set(3.2, 0, -0.2);
+  bars2.rotation.y = Math.PI / 2;
+  bars2.scale.set(0.85, 0.62, 1);
+  world.add(bars2);
+  const col2 = { minX: 2.7, maxX: 3.7, minZ: -1.4, maxZ: 1.0 };
+  world.boxColliders.push(col2);
+  // TEACH: one cold brazier by the shrine opens the east bars — trivial
+  brazier(world, prepareModel, dkit.torch, 'ka_teach', 1.8, -2.6, () => {
+    world.root.remove(bars2);
+    const i = world.boxColliders.indexOf(col2);
+    if (i >= 0) world.boxColliders.splice(i, 1);
+    audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
+  });
+  // TEST (twist): two guttering braziers — both must burn at once
+  const t1 = brazier(world, prepareModel, dkit.torch, 'ka_t1', 5.0, -3.4, () => checkPair());
+  const t2 = brazier(world, prepareModel, dkit.torch, 'ka_t2', 7.4, -1.6, () => checkPair());
+  t1.gutterAfter = 6; t2.gutterAfter = 6;
+  let pairDone = false;
+  const drop = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 1.0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.0, transparent: true, opacity: 0.4, roughness: 1, depthWrite: false })
+  );
+  drop.rotation.x = -Math.PI / 2;
+  drop.position.set(7.4, 0.04, 3.9);
+  world.add(drop);
+  function checkPair() {
+    if (pairDone || !t1.lit || !t2.lit) return;
+    pairDone = true;
+    t1.gutterAfter = 0; t2.gutterAfter = 0; // they hold their flame now
+    drop.material.emissiveIntensity = 0.8;
+    audio.play('checkpoint', { volume: 0.9, rate: 1.4 });
+  }
+  // COMBINE: shades haunt the last brazier — slam does both jobs at once
+  world.markers.shadeSpots.push({ x: 6.4, z: 2.2 }, { x: 7.8, z: 1.0 });
+  brazier(world, prepareModel, dkit.torch, 'ka_combat', 7.0, 2.8, () => {
+    WS.set('ember', 'kiln_A_done');
+  });
+  // one-way glowing drop back to the hub once the pair puzzle is done
+  world.addDoor(6.5, 8.3, 3.4, 4.4, 'k1', { x: 0, z: 4.2, angle: Math.PI }, () => pairDone);
+
+  world.markers.breakables = [
+    { x: -7.6, z: 3.9, kind: 'crate', shards: 3 },
+    { x: 7.9, z: -4.2, kind: 'vase', shards: 3 },
+  ];
+  doorway(world, 0, 4.6, 'x');
+  return world;
+}
+
+// Spoke B — the Order of Flame: light the numbered braziers 1→2→3.
+// Wrong order snuffs them all (anti-soft-lock reset). Reward: the Kiln Key
+// + a shortcut back to the Causeway, opened from the far side.
+async function buildKb(scene) {
+  const world = new World(scene);
+  world.lightScale = 0.6;
+  world.bgColor = 0x160e14;
+  buildShell(world, 14, 10, [
+    { side: 's', from: -1.2, to: 1.2 },
+  ]);
+  world.spawn = { x: 0, z: 3.6, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 4.85, 5.9, 'k1', { x: 0, z: -4.9, angle: 0 });
+
+  world.markers.mothSpots = [{ x: -3.4, z: -1.4 }, { x: 3.8, z: 0.8 }];
+
+  // the numbered braziers (pip-count rings show the order)
+  const order = [];
+  let solved = state.flags.keys.kiln === true; // returning trips skip it
+  const defs = [
+    { id: 'kb_1', x: -4.4, z: -2.6, n: 1 },
+    { id: 'kb_2', x: 0.2, z: -3.6, n: 2 },
+    { id: 'kb_3', x: 4.6, z: -2.2, n: 3 },
+  ];
+  const brs = [];
+  for (const d of defs) {
+    for (let i = 0; i < d.n; i++) { // pip rings above the bowl = its number
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.1, 0.16, 14),
+        new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
+      );
+      ring.position.set(d.x, 2.2 + i * 0.28, d.z);
+      world.add(ring);
+    }
+    const b = brazier(world, prepareModel, dkit.torch, d.id, d.x, d.z, (br) => {
+      if (solved) return;
+      order.push(br.id);
+      const want = ['kb_1', 'kb_2', 'kb_3'].slice(0, order.length);
+      if (order.join() !== want.join()) {
+        // wrong order — everything gutters, try again (reset, never stuck)
+        order.length = 0;
+        for (const o of brs) { o.lit = false; o.flame.visible = false; o.light.intensity = 0; }
+        audio.play('parry', { volume: 0.5, rate: 0.5 });
+      } else if (order.length === 3) {
+        solved = true;
+        audio.play('checkpoint', { volume: 1, rate: 1.2 });
+      }
+    });
+    brs.push(b);
+  }
+  world.markers.orderSpot = { x: 0.2, z: -3.6 };
+
+  // key chest appears solved (spawned gated by chest system on rebuild; on
+  // the live solve the chest is already placed but walled by bars)
+  const bars = prepareModel(dkit.bars.scene.clone());
+  bars.position.set(5.4, 0, 1.4);
+  bars.scale.set(0.8, 0.6, 1);
+  if (!solved) world.add(bars);
+  const colK = { minX: 4.4, maxX: 6.4, minZ: 1.2, maxZ: 1.9 };
+  if (!solved) world.boxColliders.push(colK);
+  world.onAnimate(() => {
+    if (solved && bars.parent) {
+      world.root.remove(bars);
+      const i = world.boxColliders.indexOf(colK);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+    }
+  });
+  world.markers.chestDefs = [
+    { id: 'c_kb_key', tier: 'gold', x: 5.4, z: 3.0, ry: -0.6,
+      loot: { shards: 10, key: 'kiln', keyName: 'Kiln Key' } },
+  ];
+
+  // the clever shortcut: a ledge drop from deep here straight back to the
+  // Causeway, only enterable from this side
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 1.0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.7, transparent: true, opacity: 0.45, roughness: 1, depthWrite: false })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(-5.8, 0.04, 3.9);
+  world.add(glow);
+  world.addDoor(-6.6, -5.0, 3.4, 4.4, 'r2', { x: 8.5, z: -4.2, angle: Math.PI });
+
+  world.markers.breakables = [{ x: -5.8, z: -3.8, kind: 'barrel', shards: 3 }];
+  doorway(world, 0, 4.6, 'x');
+  return world;
+}
+
+// ---------------------------------------------------------------------------
 // Room 3 — Heart of the Hollow (boss arena)
 // ---------------------------------------------------------------------------
 
@@ -983,7 +1322,7 @@ async function buildR3(scene) {
   ]);
   world.spawn = { x: 0, z: 6.2, angle: Math.PI };
 
-  world.addDoor(-1.3, 1.3, 7.85, 8.9, 'r2', { x: 8.5, z: -4.9, angle: Math.PI });
+  world.addDoor(-1.3, 1.3, 7.85, 8.9, 'k1', { x: 5, z: -4.6, angle: Math.PI });
   world.addDoor(-8.9, -7.85, -0.6, 1.8, 'r1', { x: -7.2, z: -2, angle: Math.PI / 2 });
   if (!state.flags.shortcutOpen) {
     // The shortcut is plugged with rocks until the boss falls; beating it
@@ -1705,11 +2044,11 @@ async function buildE3(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
+export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e2: buildE2, e3: buildE3 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
-  if (id[0] === 'e') await loadDungeonKit();
+  if (id[0] === 'e' || id[0] === 'k') await loadDungeonKit();
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot && !state.flags.bossDefeated) {

@@ -129,6 +129,11 @@ Seven lights guarded the kingdom; Grimm's shadow took them one by one.
 Pip's counted lines are canon: after Ember "six to go", after Stoneroot
 "five to go" … seven lights total (the 7th is Luna's own moonlight).
 
+## Gameplay override (user-approved): the Fire Wolf is granted at the fire
+shrine INSIDE the Kiln (Cinder's spark reaching out), not after the boss —
+best-practice dungeon design (teach→test→combine, boss fought with the
+gift). Cinder's freeing stays the emotional climax.
+
 ## The reveal (APPROVED — canon)
 Grimm the Shadow King was once the FIRST guardian — the great wolf whose
 heart the shadow took first. Every wolf form Kael earns is a piece of

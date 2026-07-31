@@ -245,6 +245,7 @@ export class Menus {
       { id: 'r1b', name: 'Ash Warrens', icons: '🕳️🌑' },
       { id: 'r2', name: 'Ember Causeway', icons: '⛲🐺' },
       { id: 'r2b', name: 'Cinder Bridges', icons: '🌉🗝️' },
+      { id: 'k1', name: 'The Kiln', icons: '🌋🚪' },
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
     ]);
     if (state.spoken.region_complete || state.region === 'stoneroot') {
@@ -253,6 +254,24 @@ export class Menus {
         { id: 'e2', name: 'The Deep Hall', icons: '🪨⚙️' },
         { id: 'e3', name: 'Warden’s Crypt', icons: state.flags.wardenDefeated ? '🪨✓' : '💀' },
       ]);
+    }
+    // the mystery log: promises the world made ("we'll come back")
+    const mys = Object.entries(state.flags.mysteries || {}).filter(([, v]) => !v.found);
+    if (mys.length) {
+      const mt = document.createElement('div');
+      mt.style.cssText = 'font-size:15px;opacity:.85;margin-top:6px';
+      mt.textContent = '❓ Mysteries';
+      el.appendChild(mt);
+      const row = document.createElement('div');
+      row.className = 'map-rooms';
+      for (const [, v] of mys) {
+        const d = document.createElement('div');
+        d.className = 'map-room';
+        d.innerHTML = `<div style="font-size:24px">${v.icon}</div><div>???</div>`;
+        d.title = v.label;
+        row.appendChild(d);
+      }
+      el.appendChild(row);
     }
     const hint = document.createElement('div');
     hint.style.cssText = 'font-size:14px;opacity:.8';

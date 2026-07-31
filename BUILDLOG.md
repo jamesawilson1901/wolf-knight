@@ -774,3 +774,28 @@ All tuning in js/config.js (single CONFIG object). Changes:
 Verified headless: stick spawn/deadzone/ramp/release, lock-on snap+hit,
 buffer refire, form tap-cycle + hold-picker, attack button, HUD fade,
 zero console errors. SW v2.6.0.
+
+## v3.0 — Ember Hollow 2.0: the Kiln dungeon + gates + mysteries (pillar pass A)
+
+Per the user's four-pillar spec (Zelda/Terranigma/Pokémon/lived-in world),
+pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
+(boulder/water promises + braziers), worldstate.js (WS flags + mystery log).
+- THE KILN: hub K1 (3 doors, campfire) + spoke KA (guard fight → fire
+  shrine grants FIRE WOLF MID-DUNGEON [user-approved bible override] →
+  brazier teach/timed-pair test/combat combine → one-way drop home) + spoke
+  KB (numbered-brazier order puzzle, wrong = self-reset → KILN KEY → far-
+  side shortcut ledge to R2). Door C = Kiln Key → R3 boss. R2's sealed door
+  now leads to the dungeon; R3 entered from the hub.
+- "NOT YET" gates: gold-veined mega-boulder (R2, Earth Wolf) and water
+  channel (R2b, Tide Wolf) bracketing visible heart-piece chests; both log
+  ??? mysteries on the map with a toast; Earth stomp resolves the boulder.
+- Landmark: the Kiln volcano cone + ember tip glows on the northern skyline
+  of R1/R2 (kilnLandmark helper; extend to remaining ember rooms in pass B).
+- Music: kiln.mp3 (volcanic-crater) in the dungeon; ember-calm.ogg
+  (peaceful-village) replaces region-ember everywhere once the boss falls.
+- Verified end-to-end with REAL fire-slams: key→hub→shrine→teach→pair→
+  combine→drop→door B→order (incl. wrong-order reset)→key→shortcut→door C→
+  boss; mystery log + map ??? cards. Zero errors. SW v3.0.0.
+- QUEUED pass B: settlement NPCs, 5 vignettes, mid-region restorations ×2,
+  witnessed healing sequence, S-bend route rework, ambient critters,
+  atmosphere crossfades, LEVEL-MAP SVG.

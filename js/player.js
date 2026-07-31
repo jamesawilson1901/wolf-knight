@@ -719,6 +719,7 @@ export class Player {
     audio.play('slam');
     if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2);
     if (world.burnAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('burn');
+    if (world.igniteAt) world.igniteAt(x, z, SLAM_BURN_RADIUS);
     this.specialCooldown = this.specialMax;
     return true;
   }

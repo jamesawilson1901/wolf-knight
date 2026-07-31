@@ -34,6 +34,8 @@ const MUSIC_FILES = {
   victory: './assets/audio/music/victory.ogg',
   'region-stone': './assets/audio/music/region-stone.ogg',
   'stone-deep': './assets/audio/music/stone-deep.ogg',
+  kiln: './assets/audio/music/kiln.mp3',
+  'ember-calm': './assets/audio/music/ember-calm.ogg',
 };
 
 class AudioSystem {

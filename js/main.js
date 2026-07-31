@@ -22,6 +22,7 @@ import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from 
 import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
+import { WS, logMystery, resolveMystery } from './worldstate.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 
@@ -343,6 +344,34 @@ function narrationTriggers(dt, t) {
     narration.say('crack_prompt');
   }
 
+  // The Kiln
+  if (state.room === 'k1') narration.say('kiln_enter');
+  if (state.room === 'ka' && m.shrineSpot) {
+    if (nearSpot(m.shrineSpot, 2.4) && !state.formsUnlocked.includes('fire_wolf')) {
+      state.formsUnlocked.push('fire_wolf');
+      effects.warmFlood();
+      narration.say('kiln_shrine');
+      narration.say('firewolf_grant');
+      narration.say('firewolf_howto');
+      ui.refreshBadge();
+      bigToast('🔥 The Fire Wolf awakens!');
+      persist();
+    }
+    if (state.formsUnlocked.includes('fire_wolf') && nearXZ(1.8, -2.6, 3)) narration.say('brazier_hint');
+  }
+  if (state.room === 'kb' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+
+  // "not yet" gates: log the promise + Pip acknowledges it
+  if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {
+    if (logMystery('boulder_ember', '🪨', 'A huge boulder — Ember Causeway')) bigToast('🗺️ Added to the map: ???');
+    narration.say('gate_promise');
+  }
+  if (state.flags.cracked.em_boulder) resolveMystery('boulder_ember');
+  if (m.waterGateSpot && nearSpot(m.waterGateSpot, 3)) {
+    if (logMystery('water_ember', '💧', 'A rushing channel — Cinder Bridges')) bigToast('🗺️ Added to the map: ???');
+    narration.say('gate_promise');
+  }
+
   const boss = world.boss;
   if (boss && !boss.defeated) {
     if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
@@ -384,11 +413,13 @@ function updateMusic() {
   if (state.room === 'den') audio.playMusic('den');
   else if (state.room === 'r3' && world.boss && !world.boss.defeated) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
-  } else if (state.room === 'r2') audio.playMusic('causeway');
+  } else if (state.room[0] === 'k') audio.playMusic('kiln');
   else if (state.room === 'e3') audio.playMusic('stone-deep');
   else if (state.room[0] === 'e') audio.playMusic('region-stone');
+  else if (state.flags.bossDefeated) audio.playMusic('ember-calm'); // the healed Hollow sings softly
+  else if (state.room === 'r2') audio.playMusic('causeway');
   else audio.playMusic('region-ember');
-  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0, e1: 0.3, e2: 0.35, e3: 0.3 }[state.room] ?? 0.5);
+  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0, e1: 0.3, e2: 0.35, e3: 0.3, k1: 0.8, ka: 0.7, kb: 0.7 }[state.room] ?? 0.5);
 }
 
 // ---------------------------------------------------------------------------
@@ -816,7 +847,7 @@ async function start() {
             effects.shake(0.35, 0.8);
             ui.refreshBadge();
             if (world.openShortcut) world.openShortcut(); // the way home opens
-            audio.playMusic('victory', { loop: false, then: 'region-ember' });
+            audio.playMusic('victory', { loop: false, then: 'ember-calm' });
             bumpCounter('bosses');
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower

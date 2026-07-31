@@ -114,3 +114,29 @@ Purpose: the climax. See COMBAT-SPEC.md for the full Shadowgrip fight.
 
 **Dark zones (Dark Wolf):** R1 nook (Pup #1) · boss Phase 3 darkness · *(optional)* a short R2 passage.
 **Burnable obstacles (Fire Wolf):** R1 cubby (Pup #3) is the required one; add 1-2 optional ones for flavor.
+
+
+---
+
+# ADDENDUM — Ember Hollow 2.0 (v3.0 rework; supersedes the diagram above)
+
+```
+ DEN(settlement) — R1 ENTRANCE — R1b ASH WARRENS (maze, secret, one-way drop)
+                     |
+                  R2 CAUSEWAY — R2b CINDER BRIDGES (branch: hound → EMBER KEY;
+                     |            water gate ??? promise)
+        boulder ??? -+           EMBER KEY also cools the region's lava (twist)
+                     |
+              [EMBER KEY seal]
+                     |
+        THE KILN — K1 HUB (campfire, 3 doors)   ⛰ landmark: the Kiln volcano,
+          |A open      |B brazier-locked  |C key   visible from every room
+        KA SHRINE     KB ORDER PUZZLE     R3 BOSS
+        FIRE WOLF     → KILN KEY          Shadowgrip
+        mid-dungeon   → shortcut to R2    → Cinder freed
+        teach→test→combine                → region heals (calm music)
+        → drop to hub
+```
+Fire Wolf timing change (user-approved, overrides the slice bible): granted
+at the KA shrine MID-dungeon so the dungeon teaches→tests→combines it and
+the boss is fought with it. Freeing Cinder remains the story climax.

@@ -77,6 +77,8 @@ export function persist() {
       plates: { ...state.flags.plates },
       chests: { ...state.flags.chests },
       keys: { ...(state.flags.keys || {}) },
+      world: JSON.parse(JSON.stringify(state.flags.world || {})),
+      mysteries: JSON.parse(JSON.stringify(state.flags.mysteries || {})),
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -124,6 +126,8 @@ export function applySave(profileId, profileName, data) {
     state.flags.plates = data.flags.plates || {};
     state.flags.chests = data.flags.chests || {};
     state.flags.keys = data.flags.keys || {};
+    state.flags.world = data.flags.world || {};
+    state.flags.mysteries = data.flags.mysteries || {};
   }
   state.spoken = data.spoken || {};
   if (data.settings) Object.assign(state.settings, data.settings);
