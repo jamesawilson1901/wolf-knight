@@ -303,6 +303,9 @@ function narrationTriggers(dt, t) {
     if (state.flags.keys.ember) narration.say('lava_cooled');
     const shade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
     if (shade && nearXZ(shade.x, shade.z, 5.5)) narration.say('first_enemy');
+    // Dark Wolf is Luna's gift from minute one — introduce it ON the critical
+    // path (right after the first victory), not just at the optional dark nook
+    if ((state.counters.kills || 0) >= 1) narration.say('darkwolf_intro');
     if (m.darkNookMouth && nearSpot(m.darkNookMouth, 2.4)) narration.say('dark_nook');
     if (!state.formsUnlocked.includes('fire_wolf') && nearXZ(-3.95, 4.4, 2.2)) narration.say('obstacle_first');
     if (state.formsUnlocked.includes('fire_wolf') && !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 3.2)) {
@@ -514,7 +517,8 @@ function refreshControlReveal() {
   document.getElementById('btn-jump').classList.toggle('revealed', !!state.spoken.learn_jump);
   document.getElementById('form-badge').classList.toggle(
     'revealed',
-    !!state.spoken.dark_nook || state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf')
+    !!state.spoken.darkwolf_intro || !!state.spoken.dark_nook ||
+      state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf')
   );
 }
 
@@ -1012,10 +1016,29 @@ function wireSettings() {
     audio.play('ui-click', { volume: 0.7 });
     persist();
   });
-  captions.addEventListener('change', () => { state.settings.captions = captions.checked; persist(); });
+  // ONE master switch for all of Pip's talking (voice + captions together) —
+  // flipping it off also cuts the line that is playing RIGHT NOW.
+  const talk = document.getElementById('talk-toggle');
+  const syncTalk = () => { talk.checked = state.settings.captions || state.settings.voice; };
+  syncTalk();
+  const silenceNow = () => {
+    narration.queue.length = 0;               // drop everything waiting
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    narration.skip();                          // end the current line cleanly
+  };
+  talk.addEventListener('change', () => {
+    state.settings.captions = talk.checked;
+    state.settings.voice = talk.checked;
+    captions.checked = talk.checked;
+    voice.checked = talk.checked;
+    if (!talk.checked) silenceNow();
+    persist();
+  });
+  captions.addEventListener('change', () => { state.settings.captions = captions.checked; syncTalk(); persist(); });
   voice.addEventListener('change', () => {
     state.settings.voice = voice.checked;
     if (!voice.checked && 'speechSynthesis' in window) speechSynthesis.cancel();
+    syncTalk();
     persist();
   });
 }

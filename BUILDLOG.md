@@ -882,3 +882,32 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   design (the mid-dungeon twist) — they never hurt; hot lava lives in
   r2b/kiln/r3 and pre-key rooms. Verified headless: damage 5→4, bounce
   state mid-flight, lands on safe ground facing the pool, zero errors.
+
+## v3.3.0 — playtest fixes: entry flash, Dark Wolf intro, per-wolf ranged, solid lava, talk toggle
+- RED FLASH BUG: the hurt-flicker keyed off i-frames, and room entry grants
+  0.6s grace i-frames — so every door made Kael flash red like a hit. Now a
+  separate hurtFlashT only set by REAL damage drives the flicker; grace
+  windows (entry, respawn, parry) protect without flashing.
+- DARK WOLF INTRO: Luna's gift now gets introduced ON the critical path —
+  right after the first Shade falls, Pip teaches the wolf badge (new
+  darkwolf_intro line) and the badge reveals. Before, the intro lived only
+  in the optional dark nook, so kids could reach the Kiln shrine never
+  knowing wolves existed ("you get both fire and dark for some reason").
+- PER-FORM RANGED (FORM_DEFS.rangedKind): knight = spark dart · dark wolf
+  = moon CRESCENT that pierces through up to 3 in a line (stops homing at
+  the first pierced foe) · fire wolf = ember spit that BURSTS (small AoE
+  splash) · earth wolf = slow lobbed ROCK, +0.5 dmg, dazes 0.9s. Bolts now
+  substep on long frames so they can't tunnel through small enemies on a
+  slow phone.
+- LAVA IMPASSABLE: the bounce-back now fires on EVERY grounded touch, not
+  only when i-frames are down — you can no longer walk across a pool
+  during the 1s damage grace. Damage still ticks at most once per second;
+  deliberate jumps still clear gaps.
+- "🦊 PIP TALKS" master toggle at the top of the pause menu: one switch
+  flips voice+captions together and instantly cuts the line playing right
+  now (clears the queue too). Fine-grained captions/voice toggles remain.
+- Verified headless: no flash on entry + flash on damage; darkwolf_intro
+  after first real kill + badge reveal; crescent pierced two pinned shades
+  in a probed clear lane; rock landed + 0.85s daze; lava double-touch =
+  one damage, two bounces, ends on land; talk toggle silences + clears.
+  SW v3.3.0.

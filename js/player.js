@@ -9,6 +9,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { weaponDef, shieldDef } from './items.js';
 import { CONFIG } from './config.js';
+import { juice } from './juice.js';
 
 const BODY_RADIUS = 0.32;
 const TURN_SPEED = CONFIG.TURN_SPEED;
@@ -43,7 +44,7 @@ const FORM_DEFS = {
       ranged: 'Throw', block: 'Melee_Blocking', jump: 'Jump_Idle',
     },
     attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
-    boltColor: 0xbfe3ff,
+    boltColor: 0xbfe3ff, rangedKind: 'spark',   // classic dart: one target
   },
   dark_wolf: {
     speed: 5.2,
@@ -52,7 +53,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
-    boltColor: 0xb08aff,
+    boltColor: 0xb08aff, rangedKind: 'pierce',  // moon crescent: flies THROUGH foes
   },
   fire_wolf: {
     speed: 5.2,
@@ -61,7 +62,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
-    boltColor: 0xffab4a,
+    boltColor: 0xffab4a, rangedKind: 'ember',   // ember spit: bursts on impact
   },
   earth_wolf: {
     speed: 4.9, // steady like the mountain — hits harder, runs a touch slower
@@ -70,7 +71,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.5, hitAt: 0.26, range: 1.7, dmg: 1.5 },
-    boltColor: 0xd8b06a,
+    boltColor: 0xd8b06a, rangedKind: 'rock',    // lobbed stone: slow, heavy, dazes
   },
 };
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -126,6 +127,8 @@ export class Player {
     this.maxHearts = state.maxHearts || MAX_HEARTS;
     this.hearts = this.maxHearts;
     this.iframes = 0;
+    this.hurtFlashT = 0;         // red flash ONLY when actually damaged —
+                                 // grace iframes (room entry, respawn) don't flash
     this.lockTime = 0;           // movement lock (howl, attacks)
     this.specialCooldown = 0;
     this.specialMax = BLOOD_MOON_COOLDOWN;
@@ -537,22 +540,34 @@ export class Player {
       this.root.rotation.y = Math.atan2(aim.x, aim.z); // Kael turns to the shot
     }
 
+    // Each form throws its OWN projectile (FORM_DEFS.rangedKind):
+    // spark = dart · pierce = crescent through foes · ember = burst · rock = daze
+    const kind = f.def.rangedKind || 'spark';
     const bolt = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.13, 0),
+      kind === 'rock' ? new THREE.DodecahedronGeometry(0.2, 0) : new THREE.OctahedronGeometry(0.13, 0),
       new THREE.MeshStandardMaterial({
         color: 0x000000, emissive: f.def.boltColor, emissiveIntensity: 2.6, roughness: 1,
       })
     );
-    bolt.scale.z = 2.4;
+    if (kind === 'pierce') bolt.scale.set(1.9, 0.7, 2.2); // flat moon crescent
+    else if (kind !== 'rock') bolt.scale.z = 2.4;
     const dir = aim;
     bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
     bolt.rotation.y = this.root.rotation.y;
     world.root.add(bolt);
-    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target });
+    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target, kind, pierced: null });
     return true;
   }
 
   _updateProjectiles(dt, world) {
+    // Substep long frames: a fast bolt must never skip PAST a small enemy
+    // between two collision checks (slow phones / heavy scenes).
+    const steps = Math.max(1, Math.ceil(dt / 0.024));
+    const h = dt / steps;
+    for (let s = 0; s < steps && this._projectiles.length; s++) this._projStep(h, world);
+  }
+
+  _projStep(dt, world) {
     for (let i = this._projectiles.length - 1; i >= 0; i--) {
       const p = this._projectiles[i];
       // mild homing: the spark bends toward its chosen target in flight
@@ -568,26 +583,53 @@ export class Player {
           p.mesh.rotation.y = Math.atan2(p.dir.x, p.dir.z);
         }
       }
-      const step = RANGED_SPEED * dt;
+      const speed = p.kind === 'rock' ? 7.5 : p.kind === 'pierce' ? 12.5 : RANGED_SPEED;
+      const step = speed * dt;
       p.mesh.position.x += p.dir.x * step;
       p.mesh.position.z += p.dir.z * step;
       p.mesh.rotation.x += dt * 14;
       p.traveled += step;
+      // the rock lobs in a lazy arc; everything else flies flat
+      if (p.kind === 'rock') p.mesh.position.y = 0.85 + Math.sin(Math.min(1, p.traveled / RANGED_RANGE) * Math.PI) * 0.55;
       const px = p.mesh.position.x, pz = p.mesh.position.z;
       let gone = p.traveled > RANGED_RANGE;
       // walls stop bolts
       const solved = world.resolveCircle(px, pz, 0.12);
       if (Math.hypot(solved.x - px, solved.z - pz) > 0.01) gone = true;
       // enemies — bolts are the moths' natural counter: full damage vs
-      // flyers, chip damage vs grounded enemies (the sword's job)
+      // flyers, chip damage vs grounded enemies (the sword's job).
+      // Per-form flavor: pierce sails through (up to 3), ember bursts,
+      // rock hits harder and dazes.
       if (!gone && world.enemies) {
         for (const e of world.enemies) {
           if (e.dead) continue;
+          if (p.pierced && p.pierced.has(e)) continue;
           const dx = e.x - px, dz = e.z - pz;
           if (dx * dx + dz * dz < (e.radius + 0.25) * (e.radius + 0.25)) {
-            e.takeDamage(this.boltDamage(e));
-            audio.play('hit', { volume: 0.8 });
-            gone = true;
+            if (p.kind === 'pierce') {
+              e.takeDamage(this.boltDamage(e));
+              (p.pierced || (p.pierced = new Set())).add(e);
+              p.target = null; // stop homing at the pierced one — fly ON through
+              audio.play('hit', { volume: 0.8, vary: 0.08 });
+              juice.burst(px, 0.85, pz, 0xb08aff, 5);
+              if (p.pierced.size >= 3) gone = true;
+            } else if (p.kind === 'ember') {
+              e.takeDamage(this.boltDamage(e));
+              if (world.damageEnemiesAt) world.damageEnemiesAt(px, pz, 1.3, 0.5); // the burst
+              juice.burst(px, 0.85, pz, 0xff8a3a, 12);
+              audio.play('burn', { volume: 0.5, rate: 1.5 });
+              gone = true;
+            } else if (p.kind === 'rock') {
+              e.takeDamage(this.boltDamage(e) + 0.5);
+              if (e.takeStun && !e.flying) e.takeStun(0.9);
+              juice.burst(px, 0.85, pz, 0xd8b06a, 8);
+              audio.play('hit', { volume: 0.9, rate: 0.75 });
+              gone = true;
+            } else {
+              e.takeDamage(this.boltDamage(e));
+              audio.play('hit', { volume: 0.8, vary: 0.08 });
+              gone = true;
+            }
             break;
           }
         }
@@ -895,6 +937,7 @@ export class Player {
 
   _hazards(dt, world) {
     if (this.iframes > 0) this.iframes -= dt;
+    if (this.hurtFlashT > 0) this.hurtFlashT -= dt;
     const hz = world.hazardAt(this.root.position.x, this.root.position.z);
     // remember the last safe footing (used for the lava bounce-back)
     if (!hz && this.airY <= 0) {
@@ -903,9 +946,15 @@ export class Player {
       this._lastSafe.z = this.root.position.z;
     }
     // Fire ignores shields — but a well-timed jump clears small lava gaps.
-    if (!this.airborne && hz && this.iframes <= 0) {
-      this.damage(1);
-      this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
+    // Lava is IMPASSABLE on foot: EVERY grounded touch bounces Kael back to
+    // land (damage only when i-frames are down, so it can't shred a kid, but
+    // the bounce always fires — you cannot walk across during i-frames).
+    // Deliberate jumps still clear gaps: airborne skips this entirely.
+    if (!this.airborne && hz && !this._lavaBounce) {
+      if (this.iframes <= 0) {
+        this.damage(1);
+        this.iframes = Math.max(IFRAME_TIME, LAVA_TICK);
+      }
       audio.play('burn', { volume: 0.55, rate: 1.35 }); // sizzle!
       // OUCH — leap BACKWARDS out of the lava to the last safe footing,
       // facing the lava the whole way (the classic startled Zelda bounce).
@@ -925,7 +974,7 @@ export class Player {
         this._softLock = false;
       }
     }
-    const flicker = this.iframes > 0 && Math.sin(this.iframes * 30) > 0;
+    const flicker = this.hurtFlashT > 0 && Math.sin(this.hurtFlashT * 30) > 0;
     for (const m of this.form.meshes) {
       const mats = Array.isArray(m.material) ? m.material : [m.material];
       for (const mat of mats) {
@@ -939,6 +988,7 @@ export class Player {
 
   damage(n) {
     this.hearts = Math.max(0, this.hearts - n);
+    this.hurtFlashT = 0.9;
     audio.play('hurt', { volume: 0.9 });
     if (this.onDamaged) this.onDamaged(this.hearts);
     if (this.hearts === 0 && this.onDefeated) this.onDefeated();

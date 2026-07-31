@@ -47,6 +47,7 @@ export const LINES = {
   region_complete: { voice: 'pip', text: 'Ember Hollow is free, Kael. The light is coming back. Let’s go on.' },
 
   den_intro: { voice: 'pip', text: 'The Moonlit Den! Luna keeps it safe. The pups we rescue will live here.' },
+  darkwolf_intro: { voice: 'pip', text: 'Remember Luna’s gift, Kael! Tap the wolf badge and become the Dark Wolf — the moon fights beside you!' },
   restoration_1: { voice: 'pip', text: 'Look, Kael! The Hollow remembers the sun — everything is waking up!' },
   restoration_2: { voice: 'pip', text: 'The ash is turning green. You did this, Kael.' },
   cinder_den: { voice: 'pip', text: 'Cinder’s ember came to live by our fire! The Den feels warmer already.' },
