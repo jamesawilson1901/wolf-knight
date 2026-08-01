@@ -1185,3 +1185,45 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   the picker, HUD hidden while titling and restored in-game, boot into a
   run works, die-in-phase-2 → rebuilt boss resumes at phase 2, defeat
   clears the flag. Screenshots reviewed. Zero errors. SW v3.10.0.
+
+## v3.11.0 — FORM IDENTITY + the MOON GAUGE SURGE (audit items #2 + #3)
+- FORMS ARE TOOLS NOW. The Dark Wolf is the fast fragile hunter: 6.7u/s
+  (knight 4.6), 1.35x turn rate, +30% damage taken (applied BEFORE the
+  kid-difficulty softening so Gentle still protects), a quicker bite
+  chain that STEPS IN with every snap, and the LUNGE — tap attack while
+  the stick is pushed for a ~2.5u dash-bite with 150ms dodge frames
+  (1.1s cooldown). Wolf senses: hidden cubbies/cracked rock/unopened
+  chests shimmer moonlight near the Dark Wolf. The SHIELD is Knight-only
+  (wolves dodge, never hide) — the dodge roll still works in every form.
+  Fire/Earth keep their familiar stats for now; FORM_DEFS carries the
+  identity fields so the seven later wolves slot in as data.
+- BLOOD MOON REBUILT: no longer a 24s cooldown button. A crescent MOON
+  GAUGE fills from hits landed, hits taken and time in combat (pressure
+  feeds the moon — the struggling kid reaches it sooner; pots don't
+  count). Full = GOLD act-here pulse (contract color law; first draft
+  pulsed red and was corrected in review). Tap it → a 2.5s ceremony:
+  the world dims red, a blood moon RISES, time bends ~30%, Kael is
+  forced into the Dark Wolf mid-howl (bass + 250ms haptic), and a
+  no-damage shockwave staggers everything nearby. Then ~10 seconds of
+  SURGE: 1.25x-scale wolf, red aura trail, every hit one juice tier
+  heavier (the weightBoost hook finally earns its keep), x2 staggering
+  bites, free lunges, ½-heart/s regen, the gauge draining as the timer,
+  a 2s warning flicker, and an exhale back to whichever form you wore.
+  'Quicker Moon' perk now boosts gauge fill; Moon Shard fills it whole.
+  The gauge persists in the save (additive field — old saves load).
+- ORDINARY SWITCHES got the Layer-C spectacle: 120ms self-hitstop,
+  form-colored burst, adjacent enemies shoved (no damage), 4% camera
+  punch, per-form audio stings, 400ms morph i-frames, badge flourish.
+  Mid-attack switches QUEUE and land the instant the swing ends.
+- LESSON: world.enemies contains POTS (Breakables) so swords can smash
+  them — the first gauge build let a den pot trickle-charge the surge.
+  Anything decorative in the enemies list now wears `scenery = true`,
+  and the gauge/shockwave/switch-push all skip it.
+- Verified headless (16 checks, real input paths): identity numbers,
+  +30% hurt math under Brave, shield knight-only via held key, step-in
+  vs lunge dash, switch queue, gauge fill from a real sword fight,
+  perk boost math, tap-to-surge ceremony → morph → shockwave → surge
+  (x2 dmg, weightBoost, deny switch, free lunge) → regen → exhale
+  revert, save round-trip, Moon Shard, scenery pots. v3.8 boss/breath
+  regression suite still green. Screenshots reviewed (740x360).
+  Zero page errors. SW v3.11.0, badge v3.11.

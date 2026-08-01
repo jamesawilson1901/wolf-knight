@@ -29,6 +29,8 @@ import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+// contact-burst colors for the form-switch spectacle
+const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
 // World-rule validation (lock-before-key etc.) — loud in the console so
 // region drift is caught the moment a dev build boots.
@@ -422,6 +424,8 @@ function narrationTriggers(dt, t) {
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
   if (state.room === 'r2' && nearXZ(4.5, -4.4, 5)) narration.say('learn_jump');
+  // the FIRST full moon: Pip teaches the surge the moment it's earned
+  if (state.moonGauge >= 1 && !player.surging && !player.ceremonyActive) narration.say('moon_full');
   refreshControlReveal();
 
   if (state.room === 'r1') {
@@ -539,8 +543,8 @@ function narrationTriggers(dt, t) {
     if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
     if (boss.slamState === 'telegraph') narration.say('boss_p1_telegraph');
     if (boss.phase === 2) narration.say('boss_p2');
-    if (boss.phase >= 2 && player.specialCooldown <= 0 && state.form === 'dark_wolf') {
-      narration.say('boss_bloodmoon');
+    if (boss.phase >= 2 && state.moonGauge >= 1) {
+      narration.say('boss_bloodmoon'); // "ready" now means a FULL moon gauge
     }
     if (boss.phase === 3) narration.say('boss_p3');
   }
@@ -557,7 +561,7 @@ function narrationTriggers(dt, t) {
   // contextual (repeatable, throttled)
   const shadesNear = (world.enemies || []).filter((e) =>
     e.constructor.name === 'Shade' && !e.dead && nearXZ(e.x, e.z, 6.5)).length;
-  if (shadesNear >= 2) sayThrottled('enemy_group', t, 35);
+  if (shadesNear >= 2 && state.moonGauge >= 1) sayThrottled('enemy_group', t, 35);
 
   // stuck re-hints: linger ~22s at a gate → replay the teach line
   for (const h of stuckHints) {
@@ -664,11 +668,12 @@ function refreshControlReveal() {
   // jump is a CORE verb (lava gaps, dodges) — always available, never gated
   // behind reaching the geyser lesson. Pip's line there still teaches timing.
   document.getElementById('btn-jump').classList.add('revealed');
-  document.getElementById('form-badge').classList.toggle(
-    'revealed',
+  const formsRevealed =
     !!state.spoken.darkwolf_intro || !!state.spoken.dark_nook ||
-      state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf')
-  );
+      state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf');
+  document.getElementById('form-badge').classList.toggle('revealed', formsRevealed);
+  // the moon gauge rides with the forms: once the wolf exists, the moon waits
+  document.getElementById('moon-gauge').classList.toggle('revealed', formsRevealed);
 }
 
 function showCompleteScreen() {
@@ -845,6 +850,16 @@ async function respawnAtCheckpoint() {
 let effects = null;
 let ui = null;
 let menus = null;
+const surgeVignetteEl = document.getElementById('surge-vignette');
+
+// THE BLOOD MOON SURGE trigger — tap the full moon gauge (or the special
+// button/K in a form with no cooldown special). Guarded so the ceremony can
+// never collide with scripted beats, room transitions or menus.
+function triggerSurge() {
+  if (!player || !world || !effects) return false;
+  if (transitioning || paused || menuPaused || narration.blocking) return false;
+  return player.startSurge(effects, world);
+}
 let titleScene = null;
 let menuPaused = false;
 let shopWasNear = false;
@@ -916,8 +931,30 @@ async function start() {
       if (player.setForm(id)) { ui.refreshBadge(); audio.play('ui-click', { volume: 0.6 }); }
       else { flashLockedForm(); narration.say('form_locked'); }
     },
-    onSpecial: () => player.trySpecial(effects, world),
+    // knight/dark have no cooldown special — a full moon gauge answers instead
+    onSpecial: () => { if (!player.trySpecial(effects, world)) triggerSurge(); },
+    onSurge: () => triggerSurge(),
   });
+
+  // ORDINARY-SWITCH SPECTACLE: every transformation is a tiny event — a
+  // heartbeat of hitstop, a form-colored burst, nearby enemies shoved back
+  // (no damage), and a quick camera punch. ~0.5s total, all pooled.
+  player.onFormFx = (name) => {
+    const P = player.root.position;
+    effects.hitStop(CONFIG.SWITCH_FX.STOP);
+    effects.punch(CONFIG.SWITCH_FX.PUNCH, CONFIG.SWITCH_FX.PUNCH_T);
+    juice.burst(P.x, 0.8, P.z, FORM_BURST[name] || 0xffffff, 14);
+    if (world && world.enemies) {
+      for (const e of world.enemies) {
+        if (e.dead || !e.takeStun || e.scenery) continue; // boss hitboxes + pots stay put
+        const dx = e.x - P.x, dz = e.z - P.z;
+        const d = Math.hypot(dx, dz);
+        if (d > CONFIG.SWITCH_FX.PUSH_RADIUS || d < 0.05) continue;
+        const s = world.resolveCircle(e.x + (dx / d) * 0.9, e.z + (dz / d) * 0.9, e.radius || 0.3);
+        e.x = s.x; e.z = s.z;
+      }
+    }
+  };
   player.onDamaged = () => {
     juice.onHurt(player.root.position.x, 0.8, player.root.position.z);
     renderHearts(player);
@@ -1014,8 +1051,8 @@ async function start() {
         const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
         if (player.setForm(next)) ui.refreshBadge();
       }
-      if (input.consumeSpecial()) player.trySpecial(effects, world);
-      if (input.consumeAttack()) player.tryAttack(world);
+      if (input.consumeSpecial()) { if (!player.trySpecial(effects, world)) triggerSurge(); }
+      if (input.consumeAttack()) player.tryAttack(world, input);
       if (input.consumeRanged()) player.tryRanged(world);
       if (input.consumeJump()) {
         const wasAirborne = player.jumpsUsed >= 1;
@@ -1027,8 +1064,9 @@ async function start() {
       world.updateBoulders(dt, player);
       pip.update(dt, t, player, world);
       // 🌸 Gentle profiles: the whole enemy world runs at 80% time —
-      // slower moves AND longer telegraphs, one lever (CONFIG.DIFFICULTY)
-      const edt = state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt;
+      // slower moves AND longer telegraphs, one lever (CONFIG.DIFFICULTY).
+      // effects.timeScale bends it further (the surge morph's slow-motion).
+      const edt = (state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale;
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
       updateShards(world, dt, t, player);
@@ -1073,7 +1111,7 @@ async function start() {
             persist(); // form unlock + healed world is a save point
           };
         }
-        world.boss.update(state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt, t, player);
+        world.boss.update((state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale, t, player);
       }
 
       // Door transitions
@@ -1148,6 +1186,8 @@ async function start() {
     updateDmgNums(realDt);
     updateBossBar();
     ui.update(player);
+    // the blood-red vignette breathes with the ceremony + surge
+    surgeVignetteEl.style.opacity = String(player.surgeGlow);
     // ranged button dims while on cooldown
     document.getElementById('btn-ranged').style.opacity =
       player.rangedCooldown > 0 ? '0.35' : '1';

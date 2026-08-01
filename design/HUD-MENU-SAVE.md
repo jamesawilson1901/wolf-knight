@@ -59,10 +59,11 @@ localStorage["wolfknight:save:<id>"] = {   // v2 (shipped) — js/save.js is aut
   profileId, name, region, room, checkpoint: {room,x,z,id},
   maxHearts, potions, formsUnlocked: [...], form,
   pups: { region: [ids] }, shards, xp, level,
+  moonGauge,                               // v3.11: Blood Moon Surge charge (0..1)
   perks: { sword, cooldown, ... }, stickers: { id: count },
   gear: { weapon, shield }, spoken: { lineId: true },
-  flags: { bossDefeated, shortcutOpen, wardenDefeated, burned, cracked,
-           plates, chests, keys, world, mysteries },
+  flags: { bossDefeated, bossProgress, shortcutOpen, wardenDefeated, burned,
+           cracked, plates, chests, keys, world, mysteries },
   settings: { captions, voice, musicVol, sfxVol, voiceRate, brave },
   updatedAt
 }

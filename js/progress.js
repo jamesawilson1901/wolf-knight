@@ -36,7 +36,7 @@ export function enemyScale() {
 export const PERKS = [
   { id: 'sword', icon: '⚔️', name: 'Sharper Sword', blurb: '+¼ sword damage' },
   { id: 'bolt', icon: '✨', name: 'Brighter Spark', blurb: '+¼ bolt damage' },
-  { id: 'cooldown', icon: '⏱️', name: 'Quicker Moon', blurb: 'Special charges faster' },
+  { id: 'cooldown', icon: '⏱️', name: 'Quicker Moon', blurb: 'Specials charge faster · moon gauge fills faster' },
   { id: 'speed', icon: '👟', name: 'Swift Paws', blurb: 'Run a little faster' },
 ];
 

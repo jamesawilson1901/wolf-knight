@@ -14,9 +14,10 @@ const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
-  constructor({ onFormPick, onSpecial }) {
+  constructor({ onFormPick, onSpecial, onSurge }) {
     this.onFormPick = onFormPick;
     this.onSpecial = onSpecial;
+    this.onSurge = onSurge;
     this._pickerPointer = null;
     this._options = [];
 
@@ -25,10 +26,19 @@ export class UI {
     this.specialRing = document.getElementById('special-ring');
     this.specialIcon = document.getElementById('special-icon');
     this.badge = document.getElementById('form-badge');
+    // The MOON GAUGE: a crescent that fills toward the Blood Moon Surge.
+    // Tapping it while FULL fires the surge (from any form).
+    this.moonGauge = document.getElementById('moon-gauge');
+    this.moonRing = document.getElementById('moon-ring');
+    this.moonIcon = document.getElementById('moon-icon');
 
     this.specialBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       this.onSpecial();
+    });
+    this.moonGauge.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (this.onSurge) this.onSurge();
     });
 
     window.addEventListener('pointermove', (e) => this._pickerMove(e));
@@ -108,9 +118,14 @@ export class UI {
     const meta = FORM_META[state.form];
     this.badge.textContent = meta.icon;
     this.badge.style.background = meta.color;
-    const hasSpecial = state.form === 'dark_wolf' || state.form === 'fire_wolf' || state.form === 'earth_wolf';
-    // the button NEVER moves or vanishes — stable layout for small thumbs.
-    // The knight has no special: same spot, dimmed.
+    // the switch FLOURISH: the badge pops with every transformation
+    this.badge.classList.remove('switched');
+    void this.badge.offsetWidth;
+    this.badge.classList.add('switched');
+    // Cooldown specials are fire (slam) and earth (stomp). The Dark Wolf's
+    // Blood Moon is the EARNED gauge now — its button dims like the knight's.
+    // The button NEVER moves or vanishes — stable layout for small thumbs.
+    const hasSpecial = state.form === 'fire_wolf' || state.form === 'earth_wolf';
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
@@ -118,6 +133,20 @@ export class UI {
   }
 
   update(player) {
+    // moon gauge: crescent fill; FULL pulses and waits for the tap; while
+    // surging it becomes the drain timer (red)
+    const g = Math.max(0, Math.min(1, state.moonGauge || 0));
+    const gdeg = Math.round(g * 360);
+    const surging = player.surging || player.ceremonyActive;
+    // charging = moon-lavender · FULL = gold act-here · surging = red power
+    const fillCol = surging ? 'rgba(255,60,60,.85)' : g >= 1 ? 'rgba(255,215,106,.9)' : 'rgba(180,150,255,.85)';
+    this.moonRing.style.background =
+      `conic-gradient(${fillCol} 0deg ${gdeg}deg, rgba(20,14,28,.8) ${gdeg}deg 360deg)`;
+    const full = g >= 1 && !surging;
+    this.moonGauge.classList.toggle('full', full);
+    this.moonGauge.classList.toggle('surging', surging);
+    this.moonIcon.textContent = surging ? '🔴' : full ? '🌕' : '🌙';
+
     if (this.specialBtn.classList.contains('disabled')) return;
     const frac = Math.max(0, player.specialCooldown) / player.specialMax;
     const deg = Math.round(frac * 360);

@@ -11,10 +11,13 @@
   shake, contact particles, audio, haptics) with weight tiers; particles/
   audio pooled + preloaded — no allocation or first-play decode stutter
   mid-combat. [#1]
-- Forms are distinct TOOLS (safe Knight vs fast fragile Dark Wolf with
-  lunge + senses); Blood Moon is an EARNED Moon-Gauge surge, not a
-  cooldown button; the gauge fills faster under pressure (hidden assist,
-  alongside the existing 3-death rubber-band). [#2, #3]
+- ✅ DONE v3.11: Forms are distinct TOOLS (safe shielded Knight vs fast
+  fragile Dark Wolf with lunge + senses; shield Knight-only); Blood Moon
+  is an EARNED Moon-Gauge surge, not a cooldown button; the gauge fills
+  under pressure (hits landed/taken + in-combat time — hidden assist,
+  alongside the existing 3-death rubber-band). Full gauge pulses GOLD
+  (act-here); the surge itself burns RED. Dials: CONFIG.FORMS,
+  CONFIG.MOON, CONFIG.SWITCH_FX. [#2, #3]
 - The settlement has characterful NPCs; a freed region's healing is
   WITNESSED (visible sequence, persistent, revisit rewards). [#5]
 - A reduce-motion setting tames shake/hitstop/flash. [polish list]

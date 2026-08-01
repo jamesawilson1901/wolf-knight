@@ -19,18 +19,36 @@ one frame. Tunables: CONFIG JOY_*, FORM_HOLD_MS.
 
 ## Player & forms (js/player.js)
 Kael's movement (velocity ramp: CONFIG ACCEL/DECEL/TURN_SPEED), jump/
-double-jump, shield+parry, potions, i-frames, lava bounce-back. FORM_DEFS
-maps each form to model/clips/speed/attack numbers; wolves are ONE model
-tinted per form (WOLF_TINTS) with elemental auras. Melee: soft lock-on,
-input buffering, thrust combo, generous hitboxes (CONFIG combat block).
-Specials: Blood Moon (dark), ground-slam (fire), stone-stomp (earth).
+double-jump, shield+parry (KNIGHT-ONLY — FORM_DEFS.shield), potions,
+i-frames, lava bounce-back. FORM_DEFS is the form-identity data sheet
+(speed/turnMult/hurtMult/stepIn/lunge/senses per form — the seven later
+wolves slot in here); wolves are ONE model tinted per form (WOLF_TINTS)
+with elemental auras. Dark Wolf = fast fragile hunter (CONFIG.FORMS):
+6.7u/s, +30% damage taken, step-in bites, LUNGE dash-bite, wolf-senses
+shimmer on hidden things. Melee: soft lock-on, input buffering, thrust
+combo, generous hitboxes (CONFIG combat block). Mid-attack switches
+queue to the swing's end. Specials: ground-slam (fire), stone-stomp
+(earth); the Dark Wolf's Blood Moon is the MOON GAUGE SURGE (below).
+
+## Moon Gauge & Blood Moon Surge (js/player.js + ui.js, CONFIG.MOON)
+state.moonGauge (0..1, persisted) fills from hits landed/taken +
+in-combat time (pots excluded via Breakable.scenery); Quicker Moon perk
+boosts fills, Moon Shard fills instantly. Full = gold act-here pulse on
+the HUD crescent; tap → 2.5s ceremony (red vignette #surge-vignette,
+rising blood moon, time-slow via effects.timeScale, forced morph, howl +
+bass + haptics, no-damage shockwave stun) → 10s surge (locked 1.25x Dark
+Wolf, juice.weightBoost 1, x2 staggering bites, free lunge, regen,
+gauge-as-timer, 2s warning flicker, exhale revert). main.triggerSurge
+guards scripted beats/transitions.
 
 ## Effects & juice (js/effects.js)
-Self-contained updaters: screen shake, hitstop, camera zoom punch,
-ground-slam ring, warm flood, Blood Moon cinematic. main.js applies
-shakeOffset/zoom to the camera and freezes world updates during hitstop.
-(Fix plan #1 unifies hits into one weighted juice pipeline with pooled
-particles + haptics.)
+Self-contained updaters: screen shake, hitstop, camera zoom punch
+(punch), time-slow (slow/timeScale — main scales enemy+boss dt),
+ground-slam ring, warm flood, surge ceremony (rising blood moon + red
+wash). main.js applies shakeOffset/zoom to the camera and freezes world
+updates during hitstop. js/juice.js is the ONE hit pipeline (tiers in
+CONFIG.JUICE, weightBoost = surge tier promotion, pooled particles,
+haptics).
 
 ## Enemies (js/enemies.js)
 All REAL models (code-built creatures banned — ASSETS.md casting sheet).

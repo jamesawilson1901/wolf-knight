@@ -104,6 +104,8 @@ export class Breakable {
     this.hp = 1;
     this.dead = false;
     this.stunned = 0;
+    this.scenery = true; // a pot, not a foe: never feeds the moon gauge,
+                         // never shoved by transformation shockwaves
     this.shardCount = shards;
     world.addCircle(x, z, 0.38);
     this._collider = world.circleColliders[world.circleColliders.length - 1];

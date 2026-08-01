@@ -34,6 +34,47 @@ export const CONFIG = {
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle
 
+  // ---- FORM IDENTITY (the Dark Wolf is the fast, fragile hunter) ----
+  FORMS: {
+    DARK_SPEED: 6.7,       // u/s (knight 4.6 — the wolf RUNS, +45%)
+    DARK_TURN_MULT: 1.35,  // snappier facing turns
+    DARK_HURT_MULT: 1.3,   // +30% damage taken — fast but fragile
+    LUNGE_DIST: 2.5,       // u, tap attack while the stick is pushed
+    LUNGE_DUR: 0.26,       // s, dash-bite travel time
+    LUNGE_IFRAMES: 0.15,   // s of dodge frames inside the lunge
+    LUNGE_COOLDOWN: 1.1,   // s between lunges (0 while surging)
+    SENSE_RANGE: 7,        // u, hidden things shimmer for wolf senses
+  },
+
+  // ---- MOON GAUGE (fills under pressure; full = the Blood Moon Surge) ----
+  // All fills are fractions of the full gauge. The 'cooldown' perk
+  // (Quicker Moon) adds +25%/rank to every fill.
+  MOON: {
+    PER_HIT: 0.055,        // each landed melee swing
+    PER_BOLT: 0.03,        // each landed bolt / breath
+    PER_HURT: 0.10,        // each hit Kael takes — pressure feeds the moon
+    COMBAT_PER_S: 0.016,   // trickle while enemies are close (hidden assist)
+    PERK_MULT: 0.25,       // Quicker Moon: fill bonus per rank
+    CEREMONY: 2.5,         // s, the transformation ceremony
+    SURGE_DUR: 10,         // s of Blood Moon Surge
+    WARN: 2,               // s left when the warning flicker starts
+    SURGE_SCALE: 1.25,     // the surging wolf looms larger
+    SURGE_DMG: 2,          // bite damage multiplier while surging
+    SURGE_STAGGER: 0.9,    // s of stagger every surge bite inflicts
+    SURGE_REGEN: 0.5,      // hearts/s while surging
+    SHOCK_RADIUS: 4,       // u, transformation shockwave
+    SHOCK_STUN: 1.6,       // s enemies reel from the shockwave
+  },
+
+  // ---- SWITCH FX (every ordinary form change is a tiny spectacle) ----
+  SWITCH_FX: {
+    STOP: 0.12,            // s self-hitstop on the morph
+    PUNCH: 0.3,            // camera punch-in amount (~4% of the frame)
+    PUNCH_T: 0.25,         // s the punch releases over
+    IFRAMES: 0.4,          // s of morph i-frames (no hurt flash)
+    PUSH_RADIUS: 1.6,      // u, adjacent enemies get nudged (no damage)
+  },
+
   // ---- DIFFICULTY (first family playtest verdict 2026-07-31: "too easy") ----
   // Flat hp bonus on every enemy (grunts stop dying in 2 hits) and how much
   // Cozy mode softens incoming damage (was 0.5 = half; floor ½ heart stays).

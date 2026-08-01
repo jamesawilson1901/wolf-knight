@@ -60,6 +60,7 @@ export function persist() {
     potions: state.potions,
     shards: state.shards,
     inventory: JSON.parse(JSON.stringify(state.inventory)),
+    moonGauge: state.moonGauge || 0,
     xp: state.xp,
     level: state.level,
     perks: { ...state.perks },
@@ -106,6 +107,7 @@ export function applySave(profileId, profileName, data) {
   state.potions = data.potions !== undefined ? data.potions : 2;
   state.shards = data.shards || 0;
   if (data.inventory && data.inventory.gear) state.inventory = data.inventory;
+  state.moonGauge = data.moonGauge || 0; // additive: old saves start empty
   state.xp = data.xp || 0;
   state.level = data.level || 1;
   if (data.perks) Object.assign(state.perks, data.perks);

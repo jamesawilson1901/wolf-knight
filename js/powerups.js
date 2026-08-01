@@ -24,7 +24,8 @@ export function grantPowerup(player, kind) {
   const def = POWERUPS[kind];
   audio.play('pup-chime', { volume: 0.8, rate: 0.9 });
   if (kind === 'moonshard') {
-    player.specialCooldown = 0;
+    player.specialCooldown = 0;   // fire/earth specials recharge...
+    player.gainMoon(1);           // ...and the moon gauge FILLS at once
   } else {
     player.buffs[kind] = def.time;
   }

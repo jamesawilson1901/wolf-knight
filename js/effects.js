@@ -10,9 +10,34 @@ export class Effects {
     this.shakeOffset = new THREE.Vector3();
     this.hitStopTime = 0; // freeze-frame on solid hits (real-time seconds)
     this.zoom = 0;        // 0..1 camera punch-in (Blood Moon drama)
+    this.timeScale = 1;   // <1 = the world moves through syrup (surge morph)
     this._shakeTime = 0;
     this._shakeStrength = 0;
     this._active = [];
+  }
+
+  // Camera punch-in: a quick lean toward the action that releases over dur.
+  punch(amount = 0.3, dur = 0.25) {
+    let elapsed = 0;
+    this._active.push((dt) => {
+      elapsed += dt;
+      const f = Math.min(1, elapsed / dur);
+      this.zoom = Math.max(this.zoom, amount * (1 - f));
+      return f < 1;
+    });
+  }
+
+  // Brief time-slow: world updates run at `scale` speed, easing back to 1.
+  slow(scale = 0.7, dur = 0.6) {
+    let elapsed = 0;
+    this.timeScale = Math.min(this.timeScale, scale);
+    this._active.push((dt) => {
+      elapsed += dt;
+      const f = Math.min(1, elapsed / dur);
+      this.timeScale = scale + (1 - scale) * f * f;
+      if (f >= 1) { this.timeScale = 1; return false; }
+      return true;
+    });
   }
 
   shake(strength = 0.4, time = 0.5) {
@@ -93,88 +118,63 @@ export class Effects {
     });
   }
 
-  // The Blood Moon: Kael howls, the sky bleeds red, and a blood-red moon
-  // crashes down at the target point. onImpact fires for gameplay damage.
-  // Returns the total sequence duration in seconds.
-  bloodMoon(target, { onImpact } = {}) {
+  // The Blood Moon Surge ceremony (~2.5s + fade): the world dims red and a
+  // BLOOD MOON RISES behind Kael while he morphs and howls. Pure spectacle —
+  // gameplay beats (morph, shockwave) live in Player._tickCeremony, timed to
+  // the same clock. The moon hangs through the early surge, then fades.
+  surgeCeremony(pos) {
     const scene = this.scene;
 
-    // Red wash over the whole scene while the moon falls
+    // red wash over the whole scene
     const wash = new THREE.HemisphereLight(0xff2a33, 0x330a10, 0);
     scene.add(wash);
 
-    // The moon: a glowing red sphere + red point light, descending
+    // the moon: a huge red disc climbing the sky behind the player
     const moon = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.95, 2),
+      new THREE.IcosahedronGeometry(1.6, 2),
       new THREE.MeshStandardMaterial({
-        color: 0x1a0508, emissive: 0xff1e2e, emissiveIntensity: 2.6, roughness: 0.9,
+        color: 0x1a0508, emissive: 0xff1e2e, emissiveIntensity: 2.4, roughness: 0.9,
       })
     );
-    const moonLight = new THREE.PointLight(0xff2233, 0, 30, 1.6);
-    moon.position.set(target.x, 16, target.z);
+    const moonLight = new THREE.PointLight(0xff2233, 0, 34, 1.5);
+    moon.position.set(pos.x - 3.5, 0.4, pos.z - 9);
     moonLight.position.copy(moon.position);
     scene.add(moon, moonLight);
 
-    // Impact ring (expands + fades after the hit)
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.55, 1.0, 40),
-      new THREE.MeshBasicMaterial({
-        color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
-      })
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(target.x, 0.06, target.z);
-    scene.add(ring);
-
-    const HOWL = 1.1;    // red rises while Kael howls
-    const FALL = 0.9;    // the moon descends
-    const AFTER = 1.0;   // ring + fadeout
+    const RISE = 2.2;    // the moon climbs while red floods in
+    const HOLD = 1.6;    // it hangs there through the shockwave
+    const FADE = 1.6;    // then dissolves into the surge
     let elapsed = 0;
-    let impacted = false;
 
     this._active.push((dt) => {
       elapsed += dt;
-      if (elapsed < HOWL) {
-        const f = elapsed / HOWL;
-        wash.intensity = f * 2.4;
-        moon.position.y = 16;
-        moonLight.intensity = f * 6;
-        this.zoom = Math.max(this.zoom, f); // camera leans in as the sky turns
-      } else if (elapsed < HOWL + FALL) {
-        const f = (elapsed - HOWL) / FALL;
-        const e = f * f; // accelerate downward
-        moon.position.y = 16 - e * 15.1; // lands at ~0.9 (its radius)
+      if (elapsed < RISE) {
+        const f = elapsed / RISE;
+        const e = 1 - (1 - f) * (1 - f); // decelerate upward
+        wash.intensity = f * 2.2;
+        moon.position.y = 0.4 + e * 6.2;
         moonLight.position.copy(moon.position);
-        moonLight.intensity = 6 + e * 16;
-        wash.intensity = 2.4;
+        moonLight.intensity = f * 14;
+        this.zoom = Math.max(this.zoom, f * 0.85); // the camera leans in
+      } else if (elapsed < RISE + HOLD) {
+        wash.intensity = 2.2;
+        moonLight.intensity = 14;
+        this.zoom = Math.max(this.zoom, 0.85);
       } else {
-        if (!impacted) {
-          impacted = true;
-          this.shake(0.5, 0.6);
-          if (onImpact) onImpact();
-        }
-        const f = (elapsed - HOWL - FALL) / AFTER;
-        this.zoom = Math.max(0, 1 - f); // release the punch-in
-        // moon sinks + dims, ring expands + fades, wash releases
-        moon.position.y = 0.9 - f * 1.6;
-        moon.material.emissiveIntensity = 2.6 * (1 - f);
-        moonLight.intensity = 22 * (1 - f);
-        wash.intensity = 2.4 * (1 - f);
-        const s = 1 + f * 3.4;
-        ring.scale.set(s, s, 1);
-        ring.material.opacity = 0.9 * (1 - f);
+        const f = Math.min(1, (elapsed - RISE - HOLD) / FADE);
+        this.zoom = Math.max(this.zoom, 0.85 * (1 - f)); // release the lean
+        moon.material.emissiveIntensity = 2.4 * (1 - f);
+        moonLight.intensity = 14 * (1 - f);
+        wash.intensity = 2.2 * (1 - f);
+        moon.position.y = 6.6 + f * 1.4; // drifts up and away
         if (f >= 1) {
-          scene.remove(moon, moonLight, ring, wash);
+          scene.remove(moon, moonLight, wash);
           moon.geometry.dispose();
           moon.material.dispose();
-          ring.geometry.dispose();
-          ring.material.dispose();
           return false;
         }
       }
       return true;
     });
-
-    return HOWL + FALL + AFTER;
   }
 }

@@ -38,7 +38,7 @@ export const LINES = {
   boss_p1: { voice: 'pip', text: 'It’s holding the spirit! When a tendril gets stuck, hit it — quick!' },
   boss_p1_telegraph: { voice: 'pip', text: 'Look out — move off the dark circle!' },
   boss_p2: { voice: 'pip', text: 'The core is open — strike it!' },
-  boss_bloodmoon: { voice: 'pip', text: 'Your Blood Moon is ready — crash it down on the core!' },
+  boss_bloodmoon: { voice: 'pip', text: 'The moon is full! Unleash your Blood Moon and tear into the core!' },
   boss_p3: { voice: 'pip', text: 'It’s too dark! Become the Dark Wolf — you can see in the shadows!' },
   boss_defeat: { voice: 'cinder', text: 'You broke the shadow’s hold, kind knight. I am Cinder, keeper of the flame.' },
   firewolf_grant: { voice: 'cinder', text: 'Take this gift — the heart of the Fire Wolf.' },
@@ -68,7 +68,8 @@ export const LINES = {
   // Part B — contextual (repeatable)
   checkpoint: { voice: 'pip', text: 'We can rest here. You’re safe.', repeat: true },
   pup_found: { voice: 'pip', text: 'A lost wolf pup! You found one. Good eyes, Kael.', repeat: true },
-  enemy_group: { voice: 'pip', text: 'Lots of shadows! Your Blood Moon can clear them — use it!', repeat: true },
+  enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
+  moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon when you’re ready — Luna’s power will pour into you!' },
   low_hearts: { voice: 'pip', text: 'Careful, Kael… let’s find somewhere safe.', repeat: true },
   respawn: { voice: 'pip', text: 'It’s okay. Let’s try again — together.', repeat: true },
   form_locked: { voice: 'pip', text: 'We can’t be the Fire Wolf yet. First we free the fire spirit.', repeat: true },

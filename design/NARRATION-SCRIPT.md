@@ -40,7 +40,7 @@ and so later regions reuse the structure. Captions show each line on screen (def
 - **boss_p1** *(phase 1 start)* [Pip]: "It's holding the spirit! When a tendril gets stuck, hit it — quick!"
 - **boss_p1_telegraph** *(first tendril slam telegraph)* [Pip]: "Look out — move off the dark circle!"
 - **boss_p2** *(phase 2, core exposed)* [Pip]: "The core is open — strike it!"
-- **boss_bloodmoon** *(Blood Moon ready during the fight)* [Pip]: "Your Blood Moon is ready — crash it down on the core!"
+- **boss_bloodmoon** *(moon gauge FULL during the fight)* [Pip]: "The moon is full! Unleash your Blood Moon and tear into the core!"
 - **boss_p3** *(phase 3, room darkens)* [Pip]: "It's too dark! Become the Dark Wolf — you can see in the shadows!"
 - **boss_defeat** *(boss beaten)* [Cinder]: "You broke the shadow's hold, kind knight. I am Cinder, keeper of the flame."
 - **firewolf_grant** *(immediately after)* [Cinder]: "Take this gift — the heart of the Fire Wolf."
@@ -53,7 +53,8 @@ and so later regions reuse the structure. Captions show each line on screen (def
 
 - **checkpoint** *(at any checkpoint)* [Pip]: "We can rest here. You're safe."
 - **pup_found** *(any pup collected; reused for pups 1–2, and 3 also triggers all_pups)* [Pip]: "A lost wolf pup! You found one. Good eyes, Kael."
-- **enemy_group** *(2–3 Shades clustered)* [Pip]: "Lots of shadows! Your Blood Moon can clear them — use it!"
+- **enemy_group** *(2–3 Shades clustered AND the gauge is full)* [Pip]: "Lots of shadows! The moon is full — let the Blood Moon loose!"
+- **moon_full** *(the FIRST time the moon gauge fills)* [Pip]: "The moon is FULL, Kael! Tap the glowing moon when you’re ready — Luna’s power will pour into you!"
 - **low_hearts** *(hearts ≤ 2)* [Pip]: "Careful, Kael… let's find somewhere safe."
 - **respawn** *(after losing all hearts — gentle, no "Game Over")* [Pip]: "It's okay. Let's try again — together."
 - **form_locked** *(player opens the locked Fire Wolf slot pre-boss)* [Pip]: "We can't be the Fire Wolf yet. First we free the fire spirit."

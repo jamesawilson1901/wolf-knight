@@ -28,6 +28,7 @@ export const state = {
     treasures: [],
     heartPieces: 0,
   },
+  moonGauge: 0,                 // 0..1 — the Blood Moon Surge charge
   xp: 0,
   level: 1,
   perks: { sword: 0, bolt: 0, cooldown: 0, speed: 0 },

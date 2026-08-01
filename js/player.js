@@ -16,8 +16,6 @@ const TURN_SPEED = CONFIG.TURN_SPEED;
 const RUN_THRESHOLD = 0.62;
 const IFRAME_TIME = 1.0;
 const LAVA_TICK = 1.0;
-const BLOOD_MOON_COOLDOWN = 24; // seconds
-const BLOOD_MOON_RANGE = 2.4;   // impact point this far ahead of Kael
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
 const SLAM_BURN_RADIUS = 2.6;
@@ -35,9 +33,18 @@ export const WOLF_TINTS = {
   earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
 };
 
+// FORM IDENTITY fields (data-driven so the seven later wolves slot in):
+//   turnMult  — facing turn-rate multiplier
+//   hurtMult  — incoming damage multiplier (>1 = fragile, applied BEFORE
+//               the kid-difficulty softening so Gentle still protects)
+//   stepIn    — u of forward drive during a bite (the hunter presses in)
+//   lunge     — tap attack while the stick is pushed = a dash-bite
+//   senses    — hidden things (burnables, cracked rock, chests) shimmer
+//   shield    — may raise the shield (the Knight's tool; wolves dodge)
 const FORM_DEFS = {
   knight: {
     speed: 4.6,
+    shield: true,
     clips: {
       idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A',
       attack: 'Melee_1H_Attack_Slice_Diagonal', attack2: 'Melee_1H_Attack_Stab',
@@ -47,12 +54,17 @@ const FORM_DEFS = {
     boltColor: 0xbfe3ff, rangedKind: 'spark',   // classic dart: one target
   },
   dark_wolf: {
-    speed: 5.2,
+    // THE FAST FRAGILE HUNTER: outruns everything, turns on a claw, bites in
+    // quick chains — and pays for every mistake (+30% damage taken).
+    speed: CONFIG.FORMS.DARK_SPEED,
+    turnMult: CONFIG.FORMS.DARK_TURN_MULT,
+    hurtMult: CONFIG.FORMS.DARK_HURT_MULT,
+    stepIn: 0.5, lunge: true, senses: true,
     clips: {
       idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
-    attack: { lock: 0.45, hitAt: 0.24, range: 1.7, dmg: 1 },
+    attack: { lock: 0.34, hitAt: 0.19, range: 1.7, dmg: 1 },
     boltColor: 0xb08aff, rangedKind: 'pierce',  // moon crescent: flies THROUGH foes
   },
   fire_wolf: {
@@ -136,8 +148,17 @@ export class Player {
                                  // grace iframes (room entry, respawn) don't flash
     this.lockTime = 0;           // movement lock (howl, attacks)
     this.specialCooldown = 0;
-    this.specialMax = BLOOD_MOON_COOLDOWN;
+    this.specialMax = SLAM_COOLDOWN;
     this.rangedCooldown = 0;
+    this.lungeCooldown = 0;      // Dark Wolf dash-bite (free while surging)
+    this._dash = null;           // {t, dur, dx, dz, speed} — lunge/step-in drive
+    this._queuedForm = null;     // switch requested mid-attack lands at its end
+    this._ceremony = null;       // Blood Moon Surge transformation in progress
+    this._surge = null;          // {t} — the surge itself
+    this._preSurgeForm = null;
+    this.onSurgeStart = null;    // (phase) — 'ceremony' fired at trigger
+    this.onSurgeEnd = null;
+    this.onFormFx = null;        // non-silent switches → main's spectacle
     this.defending = false;
     this.defendStart = -99;      // timestamp (game time) shield was raised
     this.airY = 0;               // visual jump height (gameplay stays on XZ)
@@ -353,10 +374,24 @@ export class Player {
   get potions() { return state.potions; }
   set potions(v) { state.potions = v; }
 
+  // Base scale for the CURRENT form (the surge makes the wolf loom larger).
+  _baseScale() {
+    const s = state.form === 'knight' ? 0.5 : WOLF_SCALE;
+    return this._surge ? s * CONFIG.MOON.SURGE_SCALE : s;
+  }
+
   setForm(name, { silent = false } = {}) {
     if (!this.forms[name]) return false;
     if (!state.formsUnlocked.includes(name)) return false;
+    // The surge locks Kael into the Dark Wolf until it ends.
+    if (!silent && (this._surge || this._ceremony)) return false;
     if (state.form === name && !silent) return true;
+    // Mid-attack: the switch QUEUES and lands the instant the swing ends —
+    // taps are never eaten, but a swing is never cut in half either.
+    if (!silent && this.lockTime > 0.06) {
+      this._queuedForm = name;
+      return true;
+    }
 
     for (const ff of Object.values(this.forms)) {
       ff.model.visible = false;
@@ -365,9 +400,10 @@ export class Player {
     state.form = name;
     const f = this.forms[name];
     f.model.visible = true;
+    f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || BLOOD_MOON_COOLDOWN;
+    const baseCd = { fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -375,7 +411,11 @@ export class Player {
     if (!silent) {
       this._popTime = 0.22; // transform pop (scale-in)
       this.lockTime = Math.max(this.lockTime, 0.12);
-      audio.play('form-switch', { volume: 0.9 });
+      this.iframes = Math.max(this.iframes, CONFIG.SWITCH_FX.IFRAMES); // morph grace
+      // per-form sting: each form ANNOUNCES itself in a different register
+      const sting = { knight: 1.0, dark_wolf: 0.85, fire_wolf: 1.12, earth_wolf: 0.68 }[name] || 1;
+      audio.play('form-switch', { volume: 0.9, rate: sting, vary: 0.05 });
+      if (this.onFormFx) this.onFormFx(name); // burst/push/punch spectacle
     }
     if (this.onFormChanged) this.onFormChanged(name);
     return true;
@@ -426,13 +466,16 @@ export class Player {
     }
     cfg.dmg += (state.perks.sword || 0) * 0.25;
     if (this.buffs.fury > 0) cfg.dmg *= 3;
+    if (this._surge) cfg.dmg *= CONFIG.MOON.SURGE_DMG; // blood-moon bites
     return cfg;
   }
 
   // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
   // A second tap right after a slash becomes a THRUST — a straight stab with
   // longer reach and a narrower hit arc (slash the crowd, poke the one).
-  tryAttack(world) {
+  // DARK WOLF: tapping attack while the STICK IS PUSHED becomes a LUNGE —
+  // a dash-bite that covers ground with dodge frames inside it.
+  tryAttack(world, input) {
     if (this.defending) return false;
     if (this.lockTime > 0) {
       // buffer taps in the tail of the current swing instead of eating them
@@ -458,6 +501,30 @@ export class Player {
     }
     this._softLock = true;
     const cfg = this.attackConfig();
+
+    // THE LUNGE (form identity, FORM_DEFS.lunge): stick pushed + tap = a
+    // dash-bite. The soft lock-on above already aimed the dash; the bite
+    // lands as the dash finishes. Brief dodge frames make it an attack AND
+    // an escape — the fragile hunter's answer to standing and trading.
+    const F = CONFIG.FORMS;
+    if (this.form.def.lunge && input && this.lungeCooldown <= 0 &&
+        this.airY <= 0 && !this._lavaBounce) {
+      const mv = input.getMove();
+      if (Math.hypot(mv.x, mv.z) > 0.5) {
+        const dx = Math.sin(this.root.rotation.y), dz = Math.cos(this.root.rotation.y);
+        this._dash = { t: 0, dur: F.LUNGE_DUR, dx, dz, speed: F.LUNGE_DIST / F.LUNGE_DUR, hop: 0.18 };
+        this.iframes = Math.max(this.iframes, F.LUNGE_IFRAMES);
+        this.lungeCooldown = this._surge ? 0 : F.LUNGE_COOLDOWN; // free while surging
+        this.lockTime = F.LUNGE_DUR + 0.1;
+        this._playOnce('attack');
+        this._pendingHit = { timer: F.LUNGE_DUR * 0.8, range: cfg.range, dmg: cfg.dmg };
+        this._comboUntil = this._time + this.lockTime + COMBO_WINDOW;
+        audio.play('whoosh', { volume: 0.8, rate: 1.25, vary: 0.08 });
+        audio.play('bite', { volume: 0.9, rate: 0.95, vary: 0.06 });
+        return true;
+      }
+    }
+
     const thrust = !!this.form.actions.attack2 &&
       this._comboUntil !== undefined && this._time < this._comboUntil;
     if (thrust) {
@@ -476,6 +543,16 @@ export class Player {
       this.lockTime = cfg.lock;
       this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
       this._comboUntil = this._time + cfg.lock + COMBO_WINDOW;
+      // step-in bite (FORM_DEFS.stepIn): the hunter PRESSES FORWARD as it
+      // snaps — chained taps walk the wolf through a retreating target
+      if (this.form.def.stepIn) {
+        const dur = cfg.lock * 0.55;
+        this._dash = {
+          t: 0, dur,
+          dx: Math.sin(this.root.rotation.y), dz: Math.cos(this.root.rotation.y),
+          speed: this.form.def.stepIn / dur, hop: 0,
+        };
+      }
       // steel sings for the knight; wolves SNAP their jaws (per-form pitch)
       if (state.form === 'knight') {
         audio.play(Math.random() < 0.5 ? 'sword-swing' : 'sword-swing2', { volume: 0.8 });
@@ -507,12 +584,186 @@ export class Player {
       if (d > range + e.radius + CONFIG.HITBOX_PAD) continue; // generous hitbox
       if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
       e.takeDamage(dmg, FORM_ELEMENT[state.form] || 'steel', 'melee');
+      // surge bites STAGGER — everything reels from the blood-moon wolf
+      if (this._surge && !e.dead && e.takeStun) e.takeStun(CONFIG.MOON.SURGE_STAGGER);
       audio.play('hit', { volume: 0.9, vary: 0.08 });
       connected = true;
       struck = e;
+      if (!e.scenery) this._moonHit = true; // pots don't feed the moon
       if (e.dead) killed = true;
     }
-    if (connected && this.onHitConnected) this.onHitConnected(struck, killed); // juice pipeline
+    if (connected) {
+      if (this._moonHit) { this._moonHit = false; this.gainMoon(CONFIG.MOON.PER_HIT); }
+      if (this.onHitConnected) this.onHitConnected(struck, killed); // juice pipeline
+    }
+  }
+
+  // ---- THE MOON GAUGE ----------------------------------------------------
+  // Fills from landed hits, hits TAKEN and time spent in combat — pressure
+  // feeds the moon (a hidden assist: a kid who is struggling reaches the
+  // surge sooner). Never decays outside the surge; survives form switches,
+  // room changes and save/load (state.moonGauge is persisted).
+
+  gainMoon(amount) {
+    if (this._surge || this._ceremony) return; // the surge itself owns the gauge
+    const mult = 1 + CONFIG.MOON.PERK_MULT * (state.perks.cooldown || 0); // Quicker Moon
+    state.moonGauge = Math.min(1, (state.moonGauge || 0) + amount * mult);
+  }
+
+  get moonFull() { return (state.moonGauge || 0) >= 1; }
+  get surging() { return !!this._surge; }
+  get ceremonyActive() { return !!this._ceremony; }
+
+  // 0..1 intensity for the red screen vignette (main drives the DOM overlay).
+  // Rises with the ceremony, holds through the surge, FLICKERS as the
+  // 2-second warning that the blood moon is about to set.
+  get surgeGlow() {
+    if (this._ceremony) return Math.min(1, this._ceremony.t / 1.0) * 0.55;
+    if (this._surge) {
+      if (this._surge.t <= CONFIG.MOON.WARN) return Math.sin(this._surge.t * 18) > 0 ? 0.42 : 0.15;
+      return 0.35;
+    }
+    return 0;
+  }
+
+  // THE BLOOD MOON SURGE. Trigger: tap the full moon gauge (main guards
+  // narration/transitions). ~2.5s ceremony — the world dims red, a blood
+  // moon rises, time bends, Kael morphs into the Dark Wolf and HOWLS, and
+  // the shockwave staggers everything nearby — then ~10s of surge.
+  startSurge(effects, world) {
+    if (this._surge || this._ceremony) return false;
+    if (!this.moonFull) return false;
+    if (!state.formsUnlocked.includes('dark_wolf')) return false;
+    const C = CONFIG.MOON;
+    this._preSurgeForm = state.form;
+    this._ceremony = { t: 0, effects, world, morphed: false };
+    // the ceremony owns Kael: input locked, untouchable, movement zeroed
+    this.lockTime = Math.max(this.lockTime, C.CEREMONY + 0.1);
+    this._softLock = false;
+    this._roll = null;
+    this._dash = null;
+    this._pendingHit = null;
+    this._queuedAttack = false;
+    this._queuedForm = null;
+    this.iframes = Math.max(this.iframes, C.CEREMONY + 0.6);
+    this._vel.x = 0; this._vel.z = 0;
+    effects.surgeCeremony(this.root.position.clone());
+    audio.play('moon-impact', { volume: 0.55, rate: 0.55 }); // the sky answers
+    if (this.onSurgeStart) this.onSurgeStart('ceremony');
+    return true;
+  }
+
+  _tickCeremony(dt) {
+    const c = this._ceremony;
+    const C = CONFIG.MOON;
+    c.t += dt;
+    // the MORPH beat: time bends, the wolf takes over, the HOWL
+    if (!c.morphed && c.t >= 1.0) {
+      c.morphed = true;
+      c.effects.slow(0.7, 0.6); // ~30% time-slow while the change happens
+      this.setForm('dark_wolf', { silent: true });
+      this._popTime = 0.22;
+      this._playOnce('howl', 0.1);
+      audio.howl({ volume: 0.9, rate: 1.15 });
+      audio.play('slam', { volume: 0.7, rate: 0.35 }); // the bass under the howl
+      juice.buzz(250);
+    }
+    if (c.t >= C.CEREMONY) {
+      // SHOCKWAVE: no damage — a knockback + stagger that clears space
+      const px = this.root.position.x, pz = this.root.position.z;
+      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a);
+      c.effects.shake(0.4, 0.5);
+      if (c.world && c.world.enemies) {
+        for (const e of c.world.enemies) {
+          if (e.dead) continue;
+          const dx = e.x - px, dz = e.z - pz;
+          const d = Math.hypot(dx, dz);
+          if (d > C.SHOCK_RADIUS) continue;
+          if (!e.takeStun || e.scenery) continue; // boss hitboxes + pots stay put
+          e.takeStun(C.SHOCK_STUN);
+          if (d > 0.05 && c.world.resolveCircle) {
+            const push = 1.3 * (1 - d / C.SHOCK_RADIUS) + 0.4;
+            const s = c.world.resolveCircle(e.x + (dx / d) * push, e.z + (dz / d) * push, e.radius || 0.3);
+            e.x = s.x; e.z = s.z;
+          }
+        }
+      }
+      this._ceremony = null;
+      this._surge = { t: C.SURGE_DUR, trailAcc: 0 };
+      juice.weightBoost = 1; // every hit lands one tier heavier
+      this.form.model.scale.setScalar(this._baseScale());
+      this._popTime = 0.22;
+      this.lockTime = 0; // the wolf is FREE
+      this._setSurgeAuraRed(true);
+    }
+  }
+
+  _tickSurge(dt) {
+    const s = this._surge;
+    const C = CONFIG.MOON;
+    s.t -= dt;
+    state.moonGauge = Math.max(0, s.t / C.SURGE_DUR); // the gauge IS the timer now
+    // blood regen: the surge heals ~half a heart a second
+    if (this.hearts > 0 && this.hearts < this.maxHearts) {
+      const before = this.hearts;
+      this.hearts = Math.min(this.maxHearts, this.hearts + C.SURGE_REGEN * dt);
+      if (Math.floor(before * 2) !== Math.floor(this.hearts * 2) && this.onDamaged) {
+        this.onDamaged(this.hearts); // refresh hearts HUD on each half-heart
+      }
+    }
+    // red trail — and a warning flicker in the last seconds (trail sputters)
+    s.trailAcc += dt;
+    const warning = s.t <= C.WARN;
+    const trailGap = warning ? (Math.sin(s.t * 18) > 0 ? 0.1 : 0.5) : 0.11;
+    if (s.trailAcc > trailGap) {
+      s.trailAcc = 0;
+      juice.burst(this.root.position.x, 0.55, this.root.position.z, 0xff3a4a, 2);
+    }
+    if (s.t <= 0) this._endSurge();
+  }
+
+  // The exhale: the surge releases, Kael returns to whichever form he wore.
+  _endSurge() {
+    if (!this._surge) return;
+    this._surge = null;
+    juice.weightBoost = 0;
+    state.moonGauge = 0;
+    this._setSurgeAuraRed(false);
+    audio.play('whoosh', { volume: 0.7, rate: 0.55 }); // the long exhale
+    const back = this._preSurgeForm && this._preSurgeForm !== 'dark_wolf' ? this._preSurgeForm : null;
+    if (back) {
+      this.setForm(back, { silent: true });
+      audio.play('form-switch', { volume: 0.6, rate: 0.8 });
+    } else {
+      this.form.model.scale.setScalar(this._baseScale());
+    }
+    this._popTime = 0.22;
+    this._preSurgeForm = null;
+    if (this.onSurgeEnd) this.onSurgeEnd();
+  }
+
+  // Quiet teardown (death, room-respawn) — no exhale theatre, no refund.
+  abortSurge() {
+    if (!this._surge && !this._ceremony) return;
+    this._ceremony = null;
+    this._surge = null;
+    juice.weightBoost = 0;
+    state.moonGauge = 0;
+    this._setSurgeAuraRed(false);
+    const back = this._preSurgeForm;
+    this._preSurgeForm = null;
+    if (back && back !== state.form) this.setForm(back, { silent: true });
+    else this.form.model.scale.setScalar(this._baseScale());
+    if (this.onSurgeEnd) this.onSurgeEnd();
+  }
+
+  // While surging the Dark Wolf's violet lightning burns BLOOD RED.
+  _setSurgeAuraRed(on) {
+    const d = this.forms.dark_wolf && this.forms.dark_wolf.auraData;
+    if (!d || d.kind !== 'dark') return;
+    const c = on ? 0xff5a4a : 0xc7a8ff;
+    for (const b of d.bolts) b.line.material.color.setHex(c);
+    d.zap.color.setHex(on ? 0xff2a2a : 0x9a6bff);
   }
 
   boltDamage(target) {
@@ -543,6 +794,7 @@ export class Player {
       const CONE_COS = Math.cos(THREE.MathUtils.degToRad(38));
       const RANGE = 3.4;
       if (world && world.enemies) {
+        let seared = false;
         for (const e of world.enemies) {
           if (e.dead) continue;
           const dx = e.x - this.root.position.x, dz = e.z - this.root.position.z;
@@ -550,7 +802,9 @@ export class Player {
           if (d > RANGE + e.radius) continue;
           if (d > 0.2 && (dx * bfx + dz * bfz) / d < CONE_COS) continue;
           e.takeDamage(this.boltDamage(e) + 0.5, 'fire', 'aoe');
+          if (!e.scenery) seared = true;
         }
+        if (seared) this.gainMoon(CONFIG.MOON.PER_BOLT);
       }
       // rolling flame: three widening puffs down the cone
       for (let i = 0; i < 3; i++) {
@@ -695,6 +949,7 @@ export class Player {
               audio.play('hit', { volume: 0.8, vary: 0.08 });
               gone = true;
             }
+            if (!e.scenery) this.gainMoon(CONFIG.MOON.PER_BOLT);
             break;
           }
         }
@@ -758,6 +1013,10 @@ export class Player {
     if (this.iframes > 0) return;
     if (source.groundAttack && this.airborne) return; // jumped clean over it
     if (this.buffs.star > 0) return; // starlight makes Kael untouchable
+    // Form fragility (FORM_DEFS.hurtMult): the Dark Wolf pays +30% for its
+    // speed. Applied BEFORE the kid-difficulty softening so Gentle still
+    // protects exactly as much.
+    n *= this.form.def.hurtMult || 1;
     // Cozy mode (default) halves incoming hits; the rubber-band does the
     // same after repeated defeats at one checkpoint. Both round to halves.
     let soften = 1;
@@ -765,7 +1024,7 @@ export class Player {
     else if (!state.settings.brave) soften *= CONFIG.DIFFICULTY.COZY_SOFTEN;
     if (this.softenDamage) soften *= 0.5;
     n = Math.max(0.5, Math.round(n * soften * 2) / 2);
-    if (this.defending && !source.pierceDefend) {
+    if (this.defending && this.form.def.shield && !source.pierceDefend) {
       const sinceRaise = this._time - this.defendStart;
       if (sinceRaise <= PARRY_WINDOW + shieldDef().parryBonus) {
         // PARRY: no damage, attacker dazed
@@ -784,9 +1043,10 @@ export class Player {
     this.iframes = IFRAME_TIME;
   }
 
-  // Route the special button/key by form.
+  // Route the special button/key by form. The Dark Wolf has NO cooldown
+  // special anymore — its Blood Moon is the EARNED Moon-Gauge surge (main
+  // routes the trigger through its scripted-beat guards).
   trySpecial(effects, world) {
-    if (state.form === 'dark_wolf') return this.tryBloodMoon(effects, world);
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
     return false;
@@ -836,35 +1096,6 @@ export class Player {
     return true;
   }
 
-  // The Blood Moon ultimate (Dark Wolf). Returns true if it fired.
-  tryBloodMoon(effects, world) {
-    if (state.form !== 'dark_wolf') return false;
-    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
-
-    const dir = new THREE.Vector3(
-      Math.sin(this.root.rotation.y),
-      0,
-      Math.cos(this.root.rotation.y)
-    );
-    const target = this.root.position.clone().addScaledVector(dir, BLOOD_MOON_RANGE);
-
-    this._playOnce('howl', 0.12);
-    audio.howl({ volume: 0.75, rate: 1.15 }); // Kael's howl calls the moon
-    this.lockTime = 1.15; // hold the howl while the sky turns red
-    this._softLock = false;
-
-    effects.bloodMoon(target, {
-      onImpact: () => {
-        audio.play('moon-impact');
-        // 2.5 moon damage: one-shots grunts (shadow-things are WEAK to moon
-        // → 3.75), but elites survive — a crowd-clearer, not a delete button
-        if (world && world.damageEnemiesAt) world.damageEnemiesAt(target.x, target.z, 3.0, 2.5, 'moon');
-      },
-    });
-    this.specialCooldown = this.specialMax;
-    return true;
-  }
-
   place(x, z, angle = 0) {
     this.root.position.set(x, 0, z);
     this.root.rotation.y = angle;
@@ -875,18 +1106,54 @@ export class Player {
     this._time += dt;
     if (this.specialCooldown > 0) this.specialCooldown -= dt;
     if (this.rangedCooldown > 0) this.rangedCooldown -= dt;
+    if (this.lungeCooldown > 0) this.lungeCooldown -= dt;
+    // Blood Moon Surge lifecycle (ceremony beats, then the surge timer)
+    if (this._ceremony) this._tickCeremony(dt);
+    else if (this._surge) this._tickSurge(dt);
     if (this._popTime > 0) {
       this._popTime -= dt;
       const p = 1 - Math.max(0, this._popTime) / 0.22;
       const s = 0.6 + 0.4 * (1 - (1 - p) * (1 - p));
-      f.model.scale.setScalar((state.form === 'knight' ? 0.5 : WOLF_SCALE) * s);
+      f.model.scale.setScalar(this._baseScale() * s);
+    }
+
+    // in-combat trickle: enemies close by feed the gauge a little every
+    // second — the hidden assist that shortens a hard fight
+    if (world.enemies && (state.moonGauge || 0) < 1) {
+      for (const e of world.enemies) {
+        if (e.dead || e.scenery) continue; // pots are not pressure
+        const dx = e.x - this.root.position.x, dz = e.z - this.root.position.z;
+        if (dx * dx + dz * dz < 81) { // within 9u
+          this.gainMoon(CONFIG.MOON.COMBAT_PER_S * dt);
+          break;
+        }
+      }
+    }
+
+    // WOLF SENSES (FORM_DEFS.senses): hidden things — unburned cubbies,
+    // cracked rock, unopened chests — shimmer moonlight while the Dark Wolf
+    // is near. An in-world cue, never a UI marker (WORLD-DESIGN §4).
+    if (f.def.senses) {
+      this._senseAcc = (this._senseAcc || 0) + dt;
+      if (this._senseAcc > 1.1) {
+        this._senseAcc = 0;
+        const R2 = CONFIG.FORMS.SENSE_RANGE * CONFIG.FORMS.SENSE_RANGE;
+        const px = this.root.position.x, pz = this.root.position.z;
+        const shimmer = (x, z) => {
+          const dx = x - px, dz = z - pz;
+          if (dx * dx + dz * dz < R2) juice.burst(x, 0.9, z, 0x9fb8ff, 2);
+        };
+        for (const b of world.burnables || []) if (!b.burned) shimmer(b.x, b.z);
+        for (const c of world.crackables || []) if (!c.cracked) shimmer(c.x, c.z);
+        for (const c of world.chests || []) if (!c.opened) shimmer(c.x, c.z);
+      }
     }
 
     // FOOTSTEPS: cadence follows real speed; grass in the Den, stone
     // everywhere else. Wolves patter — lighter, quicker steps.
     {
       const spd = Math.hypot(this._vel.x, this._vel.z);
-      if (this.airY <= 0 && !this._roll && !this._lavaBounce && spd > 1.2 && this.lockTime <= 0) {
+      if (this.airY <= 0 && !this._roll && !this._lavaBounce && !this._dash && spd > 1.2 && this.lockTime <= 0) {
         this._stepAcc = (this._stepAcc || 0) + spd * dt;
         const stride = state.form === 'knight' ? 1.4 : 1.15;
         if (this._stepAcc > stride) {
@@ -943,9 +1210,29 @@ export class Player {
       }
     }
 
+    // DASH DRIVE (lunge + step-in bite): a straight, collision-solved push
+    // that overrides stick movement while it plays.
+    if (this._dash) {
+      const d = this._dash;
+      d.t += dt;
+      const s = world.resolveCircle(
+        this.root.position.x + d.dx * d.speed * dt,
+        this.root.position.z + d.dz * d.speed * dt, BODY_RADIUS);
+      this.root.position.x = s.x;
+      this.root.position.z = s.z;
+      if (d.hop) {
+        this.airY = Math.sin(Math.min(1, d.t / d.dur) * Math.PI) * d.hop;
+        this.root.position.y = this.airY;
+      }
+      if (d.t >= d.dur) {
+        this._dash = null;
+        if (d.hop) { this.airY = 0; this.root.position.y = 0; }
+      }
+    }
+
     // DODGE ROLL: tapping the shield WHILE MOVING tumbles Kael in the stick
     // direction with brief i-frames. Holding it while standing still raises
-    // the shield exactly as before.
+    // the shield exactly as before (Knight only — wolves dodge, never hide).
     const defendPressed = input.defending && !this._defendWasHeld;
     this._defendWasHeld = input.defending;
     const mvMag = Math.hypot(input.move.x, input.move.z);
@@ -977,8 +1264,9 @@ export class Player {
       }
     }
 
-    // shield state: track raise time for the parry window
-    const wantDefend = input.defending && this.lockTime <= 0 && this.airY <= 0;
+    // shield state: track raise time for the parry window (Knight-only —
+    // FORM_DEFS.shield; a wolf holding the button simply keeps prowling)
+    const wantDefend = input.defending && !!f.def.shield && this.lockTime <= 0 && this.airY <= 0;
     if (wantDefend && !this.defending) this.defendStart = this._time;
     this.defending = wantDefend;
 
@@ -988,13 +1276,21 @@ export class Player {
     if (this.lockTime > 0) {
       this.lockTime -= dt;
       locked = true;
+      if (this.lockTime <= 0 && this._queuedForm) {
+        // a switch requested mid-swing lands the instant the swing ends
+        const qf = this._queuedForm;
+        this._queuedForm = null;
+        this.setForm(qf);
+        locked = this.lockTime > 0;
+      }
       if (this.lockTime <= 0 && this._queuedAttack) {
         this._queuedAttack = false;
         locked = false;
-        this.tryAttack(world); // buffered tap fires the instant the swing ends
+        this.tryAttack(world, input); // buffered tap fires the instant the swing ends
         locked = this.lockTime > 0;
       }
-      if (locked && !this._softLock) {
+      // a live dash steers itself — stick drift must not fight it
+      if (locked && (!this._softLock || this._dash)) {
         this._vel.x = 0; this._vel.z = 0;
         f.mixer.update(dt);
         this._hazards(dt, world);
@@ -1033,7 +1329,8 @@ export class Player {
       let delta = target - this.root.rotation.y;
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      this.root.rotation.y += THREE.MathUtils.clamp(delta, -TURN_SPEED * dt, TURN_SPEED * dt);
+      const turn = TURN_SPEED * (f.def.turnMult || 1); // the hunter turns on a claw
+      this.root.rotation.y += THREE.MathUtils.clamp(delta, -turn * dt, turn * dt);
     }
 
     if (locked) {
@@ -1093,6 +1390,7 @@ export class Player {
         };
         this.root.rotation.y = Math.atan2(this._lavaBounce.fromX - s.x, this._lavaBounce.fromZ - s.z);
         this._roll = null; // the ouch-leap overrides a roll in progress
+        this._dash = null; // ...and any lunge/step-in
         this._vel.x = 0; this._vel.z = 0;
         this.airV = 0;
         this.jumpsUsed = 2;
@@ -1115,9 +1413,13 @@ export class Player {
   damage(n) {
     this.hearts = Math.max(0, this.hearts - n);
     this.hurtFlashT = 0.9;
+    this.gainMoon(CONFIG.MOON.PER_HURT); // pressure feeds the moon
     audio.play('hurt', { volume: 0.9 });
     if (this.onDamaged) this.onDamaged(this.hearts);
-    if (this.hearts === 0 && this.onDefeated) this.onDefeated();
+    if (this.hearts === 0) {
+      this.abortSurge(); // a fall ends the surge quietly, no refund
+      if (this.onDefeated) this.onDefeated();
+    }
   }
 
   healFull() {

@@ -207,6 +207,7 @@
     /* the in-game HUD stays hidden while the title screens are up */
     body.titling #hearts, body.titling #pups, body.titling #pause-btn,
     body.titling #potions, body.titling #shards, body.titling #level-badge,
+    body.titling #moon-gauge, body.titling #surge-vignette,
     body.titling #joy-hint, body.titling #btn-attack, body.titling #special-btn,
     body.titling #form-badge, body.titling #btn-ranged, body.titling #btn-defend,
     body.titling #btn-jump, body.titling #boss-bar, body.titling #inv-btn {
@@ -443,6 +444,40 @@
       25% { transform: translateX(-6px); }
       75% { transform: translateX(6px); }
     }
+    #form-badge.switched { animation: badge-flourish .45s cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes badge-flourish {
+      0% { transform: scale(.6); box-shadow: 0 0 0 rgba(255,255,255,0); }
+      55% { transform: scale(1.3); box-shadow: 0 0 22px rgba(255,255,255,.75); }
+      100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+    }
+    /* MOON GAUGE — the crescent that fills toward the Blood Moon Surge.
+       Sits above the right-hand button column; tap while FULL = surge. */
+    #moon-gauge {
+      position: fixed; right: calc(30px + env(safe-area-inset-right)); bottom: calc(180px + env(safe-area-inset-bottom));
+      z-index: 7; width: 52px; height: 52px; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(30, 22, 48, .78);
+      border: 2px solid rgba(190, 165, 255, .45);
+      touch-action: none; box-shadow: 0 3px 10px rgba(0,0,0,.4);
+    }
+    #moon-gauge.revealed { display: flex; }
+    #moon-ring { position: absolute; inset: -3px; border-radius: 50%; z-index: -1; }
+    #moon-icon { font-size: 24px; }
+    /* FULL = "act here": GOLD pulse (contract color law — red is danger) */
+    #moon-gauge.full {
+      border-color: #ffd76a;
+      animation: moon-full 1.1s ease-in-out infinite;
+    }
+    @keyframes moon-full {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 215, 106, .6); }
+      50% { transform: scale(1.14); box-shadow: 0 0 26px rgba(255, 215, 106, .95); }
+    }
+    #moon-gauge.surging { border-color: #ff5a4a; }
+    /* red vignette over the whole frame during the ceremony + surge */
+    #surge-vignette {
+      position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(120,0,10,0) 42%, rgba(150,8,22,.62) 100%);
+    }
   </style>
   <script type="importmap">
   {
@@ -539,6 +574,8 @@
   <div id="btn-attack" class="ui">⚔️</div>
   <div id="picker"></div>
   <div id="special-btn" class="ui"><div id="special-ring"></div><span id="special-icon">🌙</span></div>
+  <div id="moon-gauge" class="ui"><div id="moon-ring"></div><span id="moon-icon">🌙</span></div>
+  <div id="surge-vignette"></div>
   <div id="btn-ranged" class="action-btn ui">✨</div>
   <div id="btn-defend" class="action-btn ui">🛡️</div>
   <div id="btn-jump" class="action-btn ui">⬆️</div>
@@ -556,7 +593,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.10</div>
+  <div id="badge">Wolf Knight &middot; v3.11</div>
 
   <script>
     window.addEventListener('error', (e) => {
