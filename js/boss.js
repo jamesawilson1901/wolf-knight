@@ -217,6 +217,17 @@ export class Shadowgrip {
     world.add(this.tendrilRing);
 
     world.boss = this;
+
+    // PHASE-PRESERVING RESPAWN (kid rule): dying never sends the fight back
+    // to phase 1 — the rebuilt boss resumes at the phase the kid reached.
+    const resume = state.flags.bossProgress || 1;
+    if (resume >= 2) {
+      this.severed = 3;
+      this.cageShell.material.opacity = 0.8 - 3 * 0.22;
+      this.cageShell.scale.setScalar(1 - 3 * 0.12);
+      this._enterPhase2();
+    }
+    if (resume >= 3) this._enterPhase3();
   }
 
   // ------------------------------------------------------------------
@@ -261,6 +272,7 @@ export class Shadowgrip {
   _enterPhase2() {
     this.phase = 2;
     this.stateT = 0;
+    state.flags.bossProgress = 2; // respawns resume here
     audio.howl({ volume: 0.9, rate: 0.75 }); // the great wolf answers the severs
     this.slamState = 'wait';
     this.slamTimer = 999; // no slams in phase 2
@@ -282,6 +294,7 @@ export class Shadowgrip {
   _enterPhase3() {
     this.phase = 3;
     this.stateT = 0;
+    state.flags.bossProgress = 3; // respawns resume here
     audio.howl({ volume: 1, rate: 0.6 }); // deepest howl — the dark closes in
     this.world.bossDarkness = true;  // the room goes dark — Dark Wolf time
     this.waveActive = false;
@@ -323,6 +336,7 @@ export class Shadowgrip {
     this._dissolveT = 1.6;
 
     state.flags.bossDefeated = true;
+    state.flags.bossProgress = 0; // the fight is over — nothing to resume
     state.flags.shortcutOpen = true;
     if (!state.formsUnlocked.includes('fire_wolf')) state.formsUnlocked.push('fire_wolf');
     if (this.onDefeated) this.onDefeated();

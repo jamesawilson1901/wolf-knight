@@ -25,6 +25,7 @@ import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
+import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
@@ -844,6 +845,7 @@ async function respawnAtCheckpoint() {
 let effects = null;
 let ui = null;
 let menus = null;
+let titleScene = null;
 let menuPaused = false;
 let shopWasNear = false;
 let travelWasNear = false;
@@ -855,7 +857,26 @@ async function start() {
   const loading = Promise.all([player.load(), pip.load()]);
   document.getElementById('loading').style.display = 'none';
 
+  // The LIVING title: campfire diorama fades in behind the menu once its
+  // models are ready, and the 3D avatar portraits render in the background.
+  (async () => {
+    titleScene = await createTitleScene(renderer);
+    document.getElementById('title').classList.add('live');
+    // the game loop isn't installed yet — the diorama drives its own until
+    // a profile is chosen (then the game loop takes the renderer over)
+    const tClock = new THREE.Clock();
+    renderer.setAnimationLoop(() => {
+      if (titleScene) titleScene.render(Math.min(tClock.getDelta(), 0.05));
+    });
+    await buildPortraits();
+  })().catch((e) => console.warn('title scene skipped:', e));
+
+  document.body.classList.add('titling'); // no gameplay HUD over the title
   const { profile, save } = await showTitle();
+  document.body.classList.remove('titling');
+  renderer.setAnimationLoop(null); // hand the renderer back to the game
+  if (titleScene) { titleScene.dispose(); titleScene = null; }
+  document.getElementById('title').classList.remove('live');
   applySave(profile.id, profile.name, save);
 
   document.getElementById('loading').style.display = 'flex';
@@ -963,7 +984,10 @@ async function start() {
     const realDt = timer.getDelta();
     const dt = Math.min(realDt, 0.05);
     const t = timer.getElapsed();
-    if (!world) return;
+    if (!world) {
+      if (titleScene) titleScene.render(dt); // the campfire lives behind the menu
+      return;
+    }
 
     if (paused || menuPaused) {
       renderer.render(scene, camera);

@@ -5,8 +5,8 @@
 > that the code does not yet satisfy. Each maps to a fix-plan item.
 
 ## Adopted law, code catching up (audit 2026-07-31)
-- Boss respawn preserves the reached phase — dying never restarts a boss
-  from phase 1. [fix plan #4]
+- ✅ DONE v3.10: Boss respawn preserves the reached phase — dying never
+  restarts a boss from phase 1 (flags.bossProgress, saved per profile).
 - Every hit fires layered feedback through ONE juice pipeline (hitstop,
   shake, contact particles, audio, haptics) with weight tiers; particles/
   audio pooled + preloaded — no allocation or first-play decode stutter

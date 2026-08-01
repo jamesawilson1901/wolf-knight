@@ -29,7 +29,7 @@ export const MAX_HEARTS = 5;
 const WOLF_SCALE = 0.56; // wolf forms loom larger than the knight — the beast is the power form
 
 // Wolf tints from the casting sheet (ASSETS.md)
-const WOLF_TINTS = {
+export const WOLF_TINTS = {
   dark_wolf: { main: 0x4a3b6b, eyes: 0x9fb8ff },
   fire_wolf: { main: 0xff5a2b, eyes: 0xffd27a },
   earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
@@ -104,7 +104,7 @@ const POTION_HEAL = 3;
 const FLAME_GEO = new THREE.ConeGeometry(0.13, 0.4, 6);
 const CHIP_GEO = new THREE.DodecahedronGeometry(0.11, 0);
 
-function tintWolf(model, tint) {
+export function tintWolf(model, tint) {
   model.traverse((n) => {
     if (!n.isMesh) return;
     const mats = Array.isArray(n.material) ? n.material : [n.material];

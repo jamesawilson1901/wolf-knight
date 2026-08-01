@@ -79,6 +79,7 @@ export function persist() {
       keys: { ...(state.flags.keys || {}) },
       world: JSON.parse(JSON.stringify(state.flags.world || {})),
       mysteries: JSON.parse(JSON.stringify(state.flags.mysteries || {})),
+      bossProgress: state.flags.bossProgress || 0,
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -119,6 +120,7 @@ export function applySave(profileId, profileName, data) {
   state.flags.pups = Object.fromEntries(pupList.map((id) => [id, true]));
   if (data.flags) {
     state.flags.bossDefeated = !!data.flags.bossDefeated;
+    state.flags.bossProgress = data.flags.bossProgress || 0;
     state.flags.shortcutOpen = !!data.flags.shortcutOpen;
     state.flags.wardenDefeated = !!data.flags.wardenDefeated;
     state.flags.burned = data.flags.burned || {};

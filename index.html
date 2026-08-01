@@ -204,6 +204,23 @@
         radial-gradient(ellipse at 76% 8%, rgba(255,138,58,.28), transparent 45%),
         linear-gradient(#171021, #2c1626);
     }
+    /* the in-game HUD stays hidden while the title screens are up */
+    body.titling #hearts, body.titling #pups, body.titling #pause-btn,
+    body.titling #potions, body.titling #shards, body.titling #level-badge,
+    body.titling #joy-hint, body.titling #btn-attack, body.titling #special-btn,
+    body.titling #form-badge, body.titling #btn-ranged, body.titling #btn-defend,
+    body.titling #btn-jump, body.titling #boss-bar, body.titling #inv-btn {
+      display: none !important;
+    }
+    /* once the 3D campfire diorama is running, the menu becomes a veil */
+    #title.live {
+      background:
+        radial-gradient(ellipse at 50% 118%, rgba(255,90,43,.25), transparent 60%),
+        linear-gradient(rgba(23,16,33,.05), rgba(23,16,33,.42));
+    }
+    .avatar-img { width: 64px; height: 64px; border-radius: 14px; display: block; margin: 0 auto; }
+    .icon-pick .avatar-img { width: 54px; height: 54px; }
+    .detail-name .avatar-img { display: inline-block; vertical-align: middle; width: 44px; height: 44px; }
     #title-logo { width: 108px; height: 108px; border-radius: 24px; box-shadow: 0 8px 40px rgba(255,90,43,.45); }
     #title h1 {
       color: #ffe9c8; font-size: 44px; letter-spacing: .1em; font-weight: 900;
@@ -539,7 +556,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.9</div>
+  <div id="badge">Wolf Knight &middot; v3.10</div>
 
   <script>
     window.addEventListener('error', (e) => {

@@ -1161,3 +1161,27 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified headless: all 10 files decode, synths run clean, footstep
   cycle advances under real movement. Zero errors. SW v3.9.0
   (all new files precached — offline still complete).
+
+## v3.10.0 — the LIVING title screen + real 3D avatars + boss phase respawn
+- NEW js/titlescene.js: the title is now a live 3D campfire diorama —
+  the Dark and Fire Wolves and Pip resting at a flickering woodfire under
+  a pale moon, drifting embers, slow camera sway. It drives its own
+  render loop until a profile is chosen (the game loop isn't installed
+  yet — that was the first bug: a black canvas), then hands the renderer
+  back. The menu becomes a translucent veil over it; the tableau is
+  framed LEFT so the centered menu never covers it. Gameplay HUD is
+  hidden while titling (body.titling) — it was bleeding through the veil.
+- REAL 3D AVATARS: six character portraits (Kael, Dark/Fire/Earth Wolf,
+  Pip, a pup) rendered once at boot by a small offscreen renderer
+  (auto-framed on each model's bounds, warm key + violet rim light) and
+  used as profile pictures — in the picker, the profile list, and the
+  detail card. Legacy emoji profiles still render fine.
+- BOSS PHASE RESPAWN (contract law ✅): dying to the Shadowgrip no longer
+  restarts the fight — flags.bossProgress records the reached phase (set
+  in the production phase transitions, saved per profile, cleared on
+  victory) and the rebuilt boss RESUMES there, severs pre-done, shell
+  shattered.
+- Verified headless: diorama live + own loop, all 6 portraits render into
+  the picker, HUD hidden while titling and restored in-game, boot into a
+  run works, die-in-phase-2 → rebuilt boss resumes at phase 2, defeat
+  clears the flag. Screenshots reviewed. Zero errors. SW v3.10.0.

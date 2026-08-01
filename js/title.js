@@ -5,8 +5,17 @@
 import { loadProfiles, createProfile, loadSave, clearSave } from './save.js';
 import { audio } from './audio.js';
 import { state } from './state.js';
+import { PORTRAITS, AVATARS } from './titlescene.js';
 
-const ICONS = ['🐺', '🦊', '🌙', '🔥', '⚔️', '💜'];
+const ICONS = ['🐺', '🦊', '🌙', '🔥', '⚔️', '💜']; // legacy profiles only
+
+// Avatar: new profiles store a character id ('knight','dark_wolf', …) and
+// show the real 3D portrait once it's rendered; legacy emoji still work.
+function avatarHTML(icon) {
+  if (PORTRAITS[icon]) return `<img class="avatar-img" src="${PORTRAITS[icon]}" alt="">`;
+  const av = AVATARS.find((a) => a.id === icon);
+  return `<span class="profile-icon">${av ? '🐺' : icon}</span>`;
+}
 
 export function showTitle() {
   return new Promise((resolve) => {
@@ -42,7 +51,7 @@ export function showTitle() {
       for (const p of profiles) {
         const b = document.createElement('div');
         b.className = 'profile-btn ui';
-        b.innerHTML = `<span class="profile-icon">${p.icon}</span><span>${p.name}</span>`;
+        b.innerHTML = `${avatarHTML(p.icon)}<span>${p.name}</span>`;
         b.addEventListener('pointerdown', () => {
           audio.play('ui-click', { volume: 0.7 });
           selected = p;
@@ -66,7 +75,7 @@ export function showTitle() {
       confirmingNewGame = false;
       const save = loadSave(selected.id);
       detail.innerHTML = `
-        <div class="detail-name">${selected.icon} ${selected.name}</div>
+        <div class="detail-name">${avatarHTML(selected.icon)} ${selected.name}</div>
         ${save ? `<div class="menu-btn ui" id="t-continue">▶ Continue</div>` : ''}
         <div class="menu-btn ${save ? 'secondary' : ''} ui" id="t-newgame">✨ New Game</div>
         <div class="menu-btn secondary ui" id="t-back">← Back</div>`;
@@ -101,19 +110,26 @@ export function showTitle() {
         <div id="t-icons"></div>
         <div class="menu-btn ui" id="t-start">Let's go!</div>
         <div class="menu-btn secondary ui" id="t-cancel">← Back</div>`;
-      let icon = ICONS[0];
+      // pick your character portrait (real 3D renders; emoji until ready)
+      let icon = AVATARS[0].id;
       const iconsEl = create.querySelector('#t-icons');
-      for (const ic of ICONS) {
-        const s = document.createElement('span');
-        s.className = 'icon-pick' + (ic === icon ? ' picked' : '');
-        s.textContent = ic;
-        s.addEventListener('pointerdown', () => {
-          icon = ic;
-          iconsEl.querySelectorAll('.icon-pick').forEach((n) => n.classList.toggle('picked', n === s));
-          audio.play('ui-click', { volume: 0.6 });
-        });
-        iconsEl.appendChild(s);
-      }
+      const renderPicker = () => {
+        iconsEl.innerHTML = '';
+        for (const av of AVATARS) {
+          const s = document.createElement('span');
+          s.className = 'icon-pick' + (av.id === icon ? ' picked' : '');
+          s.innerHTML = avatarHTML(av.id);
+          s.title = av.label;
+          s.addEventListener('pointerdown', () => {
+            icon = av.id;
+            iconsEl.querySelectorAll('.icon-pick').forEach((n) => n.classList.toggle('picked', n === s));
+            audio.play('ui-click', { volume: 0.6 });
+          });
+          iconsEl.appendChild(s);
+        }
+      };
+      renderPicker();
+      window.addEventListener('portraits-ready', renderPicker, { once: true });
       create.querySelector('#t-start').addEventListener('pointerdown', () => {
         const name = create.querySelector('#t-name').value.trim() || 'Hero';
         const id = createProfile(name, icon);
@@ -124,5 +140,9 @@ export function showTitle() {
     };
 
     renderList();
+    // when the 3D portraits finish rendering, refresh whatever is visible
+    window.addEventListener('portraits-ready', () => {
+      if (list.style.display !== 'none') renderList();
+    });
   });
 }
