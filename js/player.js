@@ -16,6 +16,9 @@ const TURN_SPEED = CONFIG.TURN_SPEED;
 const RUN_THRESHOLD = 0.62;
 const IFRAME_TIME = 1.0;
 const LAVA_TICK = 1.0;
+const SPIN_COOLDOWN = 6;        // Knight whirlwind spin (all-around sweep)
+const SPIN_RANGE = 2.3;
+const SPIN_DMG_MULT = 1.2;
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
 const SLAM_BURN_RADIUS = 2.6;
@@ -49,6 +52,7 @@ const FORM_DEFS = {
       idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A',
       attack: 'Melee_1H_Attack_Slice_Diagonal', attack2: 'Melee_1H_Attack_Stab',
       ranged: 'Throw', block: 'Melee_Blocking', jump: 'Jump_Idle',
+      special: 'Melee_2H_Attack_Spin', // the WHIRLWIND — sword out, full circle
     },
     attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
     boltColor: 0xbfe3ff, rangedKind: 'spark',   // classic dart: one target
@@ -406,7 +410,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -933,7 +937,15 @@ export class Player {
             if (p.kind === 'pierce') {
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
               (p.pierced || (p.pierced = new Set())).add(e);
-              p.target = null; // stop homing at the pierced one — fly ON through
+              // the blood-moon crescent HUNTS: after piercing one foe it
+              // curves toward the next nearest living target (playtest ask)
+              p.target = null;
+              let nd = 7;
+              for (const n2 of world.enemies) {
+                if (n2.dead || n2.scenery || p.pierced.has(n2)) continue;
+                const d2 = Math.hypot(n2.x - px, n2.z - pz);
+                if (d2 < nd) { nd = d2; p.target = n2; }
+              }
               audio.play('hit', { volume: 0.8, vary: 0.08 });
               juice.burst(px, 0.85, pz, 0xb08aff, 5);
               if (p.pierced.size >= 3) gone = true;
@@ -1052,9 +1064,40 @@ export class Player {
   // special anymore — its Blood Moon is the EARNED Moon-Gauge surge (main
   // routes the trigger through its scripted-beat guards).
   trySpecial(effects, world) {
+    if (state.form === 'knight') return this.trySpinAttack(effects, world);
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
     return false;
+  }
+
+  // Knight WHIRLWIND: Kael spins with his sword out and strikes everything
+  // around him — the answer to being surrounded (KayKit's spin clip; the
+  // rig library already ships it). Full 360° arc via arcCos -1.
+  trySpinAttack(effects, world) {
+    if (state.form !== 'knight') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('special', 0.06);
+    this.lockTime = 0.75;
+    this._softLock = false;
+    const cfg = this.attackConfig();
+    this._pendingHit = {
+      timer: 0.32,
+      range: Math.max(SPIN_RANGE, cfg.range),
+      dmg: cfg.dmg * SPIN_DMG_MULT,
+      arcCos: -1, // the whole circle — behind him too
+    };
+    audio.play('sword-swing', { volume: 0.9, rate: 0.85 });
+    audio.play('sword-swing2', { volume: 0.8, rate: 1.2 });
+    audio.play('whoosh', { volume: 0.8, rate: 0.9, vary: 0.06 });
+    // a ring of sparks makes the reach readable
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      juice.burst(this.root.position.x + Math.cos(a) * 1.6, 0.8,
+        this.root.position.z + Math.sin(a) * 1.6, 0xbfe3ff, 3);
+    }
+    if (effects) effects.shake(0.15, 0.2);
+    this.specialCooldown = this.specialMax;
+    return true;
   }
 
   // Earth Wolf stone-stomp: a quake that dazes grounded enemies and smashes

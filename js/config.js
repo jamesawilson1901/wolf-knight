@@ -58,7 +58,8 @@ export const CONFIG = {
     CEREMONY: 2.5,         // s, the transformation ceremony
     SURGE_DUR: 10,         // s of Blood Moon Surge
     WARN: 2,               // s left when the warning flicker starts
-    SURGE_SCALE: 1.25,     // the surging wolf looms larger
+    SURGE_SCALE: 1.0,      // same size as every wolf (playtest) — the red
+                           // aura, trail and vignette carry the drama
     SURGE_DMG: 2,          // bite damage multiplier while surging
     SURGE_STAGGER: 0.9,    // s of stagger every surge bite inflicts
     SURGE_REGEN: 0.5,      // hearts/s while surging

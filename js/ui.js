@@ -122,14 +122,14 @@ export class UI {
     this.badge.classList.remove('switched');
     void this.badge.offsetWidth;
     this.badge.classList.add('switched');
-    // Cooldown specials are fire (slam) and earth (stomp). The Dark Wolf's
-    // Blood Moon is the EARNED gauge now — its button dims like the knight's.
+    // Cooldown specials: knight (whirlwind), fire (slam), earth (stomp).
+    // The Dark Wolf's Blood Moon is the EARNED gauge — its button dims.
     // The button NEVER moves or vanishes — stable layout for small thumbs.
-    const hasSpecial = state.form === 'fire_wolf' || state.form === 'earth_wolf';
+    const hasSpecial = state.form === 'knight' || state.form === 'fire_wolf' || state.form === 'earth_wolf';
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
-      state.form === 'fire_wolf' ? '🔥' : state.form === 'earth_wolf' ? '🪨' : '🌙';
+      state.form === 'knight' ? '🌀' : state.form === 'fire_wolf' ? '🔥' : state.form === 'earth_wolf' ? '🪨' : '🌙';
   }
 
   update(player) {

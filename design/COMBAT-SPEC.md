@@ -28,6 +28,8 @@ identity dials in CONFIG.FORMS):
   0.7s = longer, narrower stab), throwing spark (auto-aim + homing),
   **the only form with the shield** (hold = blunted damage; fresh raise
   ≤0.3s = perfect parry: negates + stuns 2.2s), jump/double-jump.
+  Special: **WHIRLWIND** (6s cd) — a full-circle spin that strikes
+  everything around him, the answer to being surrounded.
 - **Dark Wolf — the fast fragile hunter.** From minute one. 6.7u/s (knight
   4.6), 1.35x turn rate, **+30% damage taken** (applied before kid-mode
   softening, so Gentle still protects). Quick bite chain (0.34s lock) with
@@ -85,7 +87,7 @@ other or Kael); a raised shield physically bumps basic enemies back.
 
 ## Boss 1 — The Shadowgrip (Heart of the Hollow)
 
-GIANT SHADOW WOLF (wolf model at 3.5x player wolves, violet eyes),
+GIANT SHADOW WOLF (wolf model at ~2.9x player wolves, violet eyes),
 looming over the caged ember (Cinder). Core is ALWAYS targetable but only
 takes damage when EXPOSED (gold strike ring + chime); guarded hits clank
 + "BLOCKED".
@@ -94,7 +96,10 @@ takes damage when EXPOSED (gold strike ring + chime); guarded hits clank
   ≥0.9s) → a slammed tendril STICKS ~1.7s (gold ring = sever it, 1 hit)
   → severing exposes the core (gold strike ring, cage cracks per sever).
 - **Phase 2 — THE POUNCE:** rest (pulse windows ~1.7s open) → crouch 1s +
-  red charge lane → charge → TIRED 2s with the core force-exposed.
+  red charge lane → charge → **THE COLLAPSE**: the wolf visibly FALLS
+  OVER (Death clip, held) for 2.6s with a pulsing GOLD ring under it,
+  slow-mo blip + thud on the crash, core force-exposed, Pip calls it.
+  Severing a tendril in phase 1 makes the giant FLINCH (hit-react).
 - **Phase 3:** whole-room darkness (Dark Wolf sight payoff) + bursts.
 - Boss parts cap any single strike at 3 (surge bites hit for 2 — strong,
   never trivializing). Pip re-teaches the loop if the player flounders.

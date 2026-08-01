@@ -55,10 +55,11 @@ export class Shadowgrip {
 
     // --- the Shadowgrip itself: a GIANT shadow wolf — a dark echo of the
     // first great wolf, looming over the caged Cinder. Same Quaternius
-    // wolf as Kael's forms, 3.5x their size, near-black with violet eyes.
+    // wolf as Kael's forms, ~2.9x their size (playtest: "a little smaller
+    // but still intimidating"), near-black with violet eyes.
     this.core = new THREE.Group();
     const wolf = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
-    wolf.scale.setScalar(1.96); // 3.5 × the player wolves' 0.56
+    wolf.scale.setScalar(1.62); // ≈2.9 × the player wolves' 0.56
     this.eyeMat = null;
     wolf.traverse((n) => {
       if (!n.isMesh) return;
@@ -92,6 +93,18 @@ export class Shadowgrip {
     this.attackAction = atkClip ? this.mixer.clipAction(atkClip) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
     this.runAction = runClip ? this.mixer.clipAction(runClip) : null;
+    // COLLAPSE (the vulnerable read): the Death clip plays and HOLDS while
+    // the wolf lies tired — an unmissable "it fell over, hit it now"
+    const dieClip = dragonGltf.animations.find((c) => c.name === 'Death');
+    this.collapseAction = dieClip ? this.mixer.clipAction(dieClip) : null;
+    if (this.collapseAction) {
+      this.collapseAction.setLoop(THREE.LoopOnce);
+      this.collapseAction.clampWhenFinished = true;
+    }
+    // ...and the giant FLINCHES when a tendril is severed (phase-1 feedback)
+    const flinchClip = dragonGltf.animations.find((c) => c.name === 'Idle_HitReact1');
+    this.flinchAction = flinchClip ? this.mixer.clipAction(flinchClip) : null;
+    if (this.flinchAction) this.flinchAction.setLoop(THREE.LoopOnce);
     this._attackT = 0;
     this.core.position.set(0, 0, -1.4); // stands guard just behind the light
     this.root.add(this.core);
@@ -109,6 +122,18 @@ export class Shadowgrip {
     this.chargeStreak.rotation.x = -Math.PI / 2;
     this.chargeStreak.position.y = 0.05;
     world.add(this.chargeStreak);
+
+    // big GOLD "hit it now" ring under the collapsed wolf (act-here law)
+    this.tiredRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.5, 2.05, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    this.tiredRing.rotation.x = -Math.PI / 2;
+    this.tiredRing.position.y = 0.06;
+    this.tiredRing.visible = false;
+    world.add(this.tiredRing);
 
     // --- caged Cinder: weak warm ember held under the core ---
     this.cinder = new THREE.Mesh(
@@ -261,6 +286,8 @@ export class Shadowgrip {
 
   _severTendril() {
     this.severed++;
+    // the giant FLINCHES — severing visibly hurts it (phase-1 readability)
+    if (this.flinchAction) this.flinchAction.reset().fadeIn(0.08).play();
     // the shell cracks: thinner, smaller, letting more of Cinder's light out
     this.cageShell.material.opacity = 0.8 - this.severed * 0.22;
     this.cageShell.scale.setScalar(1 - this.severed * 0.12);
@@ -324,6 +351,7 @@ export class Shadowgrip {
     audio.play('slam', { volume: 1, rate: 0.5 });
     audio.howl({ volume: 0.85, rate: 0.5 }); // the long dying howl
     this.chargeStreak.visible = false;
+    this.tiredRing.visible = false;
     this._setCoreExposed(false);
     this.coreHittable.dead = true;
     this.strikeRing.visible = false;
@@ -544,20 +572,43 @@ export class Shadowgrip {
         const pdz = player.root.position.z - (this.z + this.core.position.z);
         if (pdx * pdx + pdz * pdz < 1.6 * 1.6) player.hurt(1, { attacker: this, groundAttack: true });
         if (Math.hypot(this.wolfOff.x, this.wolfOff.z) > 6.2 || this.chargeTimer <= 0) {
+          // THE COLLAPSE — the pounce spends everything and the giant wolf
+          // visibly FALLS OVER (Death clip, held): the "hit it now" read is
+          // the whole body, not just a ring. A breath of slow-motion sells
+          // the crash and stretches the window for small hands.
           this.chargeState = 'tired';
-          this.chargeTimer = 2.0;
+          this.chargeTimer = 2.6;
           if (this.runAction) this.runAction.fadeOut(0.2);
+          if (this.attackAction) this.attackAction.fadeOut(0.15);
+          if (this.collapseAction) {
+            if (this.flyAction) this.flyAction.fadeOut(0.15);
+            this.collapseAction.reset().fadeIn(0.1).play();
+          }
           juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, 0x8f6bff, 12);
-          if (juice.effects) juice.effects.shake(0.3, 0.4);
-          audio.play('slam', { volume: 0.8, rate: 0.7 });
+          juice.burst(this.x + this.core.position.x, 0.3, this.z + this.core.position.z, 0x9a8f80, 10); // dust
+          if (juice.effects) {
+            juice.effects.shake(0.4, 0.5);
+            if (juice.effects.slow) juice.effects.slow(0.75, 0.6);
+          }
+          audio.play('slam', { volume: 0.95, rate: 0.6 }); // the THUD
         }
       } else if (this.chargeState === 'tired') {
-        // panting, head low, eyes dim — HIT IT NOW (core force-exposed below)
+        // COLLAPSED: flat on the ground, eyes dim, gold ring pulsing under
+        // it — force-exposed below. This IS the fight's punish window.
         this.eyeMat.emissiveIntensity = 0.3;
-        this.core.scale.y = 0.9 + Math.sin(t * 9) * 0.03; // heaving breaths
+        this.tiredRing.visible = true;
+        this.tiredRing.position.x = this.x + this.core.position.x;
+        this.tiredRing.position.z = this.z + this.core.position.z;
+        const pulse = 1 + Math.sin(t * 5) * 0.06;
+        this.tiredRing.scale.set(pulse, pulse, 1);
+        this.tiredRing.material.opacity = 0.6 + Math.sin(t * 5) * 0.25;
         if (this.chargeTimer <= 0) {
           this.chargeState = 'return';
           this.chargeTimer = 1.2;
+          this.tiredRing.visible = false;
+          // it hauls itself back up and pads home
+          if (this.collapseAction) this.collapseAction.fadeOut(0.3);
+          if (this.flyAction) this.flyAction.reset().fadeIn(0.3).play();
         }
       } else if (this.chargeState === 'return') {
         const k = Math.min(1, dt * 3);

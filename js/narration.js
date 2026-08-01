@@ -73,6 +73,8 @@ export const LINES = {
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
   moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon when you’re ready — Luna’s power will pour into you!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },
+  boss_tired: { voice: 'pip', text: 'It FELL! Now, Kael — strike with everything you have!' },
+  shield_foe: { voice: 'pip', text: 'A shield-bearer! Blows just bounce off its front. Wait for its swing — or slip around BEHIND it!' },
   low_hearts: { voice: 'pip', text: 'Careful, Kael… let’s find somewhere safe.', repeat: true },
   respawn: { voice: 'pip', text: 'It’s okay. Let’s try again — together.', repeat: true },
   form_locked: { voice: 'pip', text: 'We can’t be the Fire Wolf yet. First we free the fire spirit.', repeat: true },

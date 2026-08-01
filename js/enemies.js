@@ -462,16 +462,35 @@ export class Shade extends Slime {
     this._flashMats = [];
     this.registerFlashMats(this.root);
     this._lurchT = 0;
+    this._retreatT = 0;
   }
 
   // Lurch rhythm: rest ~0.8s, then a quick 0.4s skip toward Kael. A totally
-  // different read from the cave slime's steady squelch.
+  // different read from the cave slime's steady squelch. HIT-AND-RUN
+  // (playtest: "some attack and retreat"): the moment it strikes home it
+  // darts BACK out of reach, watches, then comes again — intercept it on
+  // the way in or chase it down.
   update(dt, t, player) {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
+    if (this._retreatT > 0) {
+      this._retreatT -= dt;
+      this._play('walk');
+      if (d > 0.01 && d < 4.2) {
+        const sv = this._moveSolved(this.x - (dx / d) * 3.6 * dt, this.z - (dz / d) * 3.6 * dt);
+        this.root.position.x = sv.x;
+        this.root.position.z = sv.z;
+      }
+      this.root.rotation.y = Math.atan2(dx, dz); // backs away still facing Kael
+      this.contact(player);
+      this.flashUpdate(dt);
+      this.mixer.update(dt);
+      return;
+    }
+    if (d < 1.05) this._retreatT = 1.1; // struck home — dart back out
     this._lurchT -= dt;
     if (this._lurchT <= -0.8) this._lurchT = 0.4;
     if (d < this.aggroRange && d > 0.01 && this._lurchT > 0) {
@@ -898,6 +917,110 @@ export class SkeletonRogue extends SkeletonBase {
 // axe + tower shield. Two attacks, both loudly telegraphed: an overhead chop
 // (parry it!) and a slow spin when Kael hugs too close. After three swings it
 // wheezes — a big open punish window.
+// Skeleton Shieldling — the WALL that walks (playtest: "some approach with
+// a shield and damage is null till they drop it"). It advances slowly behind
+// a tower shield: every frontal hit CLANKS off (BLOCKED). Three honest ways
+// in, all taught by feedback: wait for its swing (the shield drops for the
+// whole wind-up + recovery), slip around BEHIND it, or stun it (parry /
+// rock / stomp) to break its guard.
+export class SkeletonShield extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, shieldGltf, bladeGltf) {
+    super(world, x, z, {
+      hp: 2.5, radius: 0.38, scale: 0.5, gltf, anims,
+      clips: {
+        inactive: 'Skeletons_Inactive_Floor_Pose', awaken: 'Skeletons_Awaken_Floor',
+        walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
+        block: 'Melee_Blocking', swing: 'Melee_1H_Attack_Chop',
+      },
+    });
+    this.awakenTime = 1.9;
+    this.dropChance = 0.6;
+    if (shieldGltf) this.mount('l', shieldGltf);
+    if (bladeGltf) this.mount('r', bladeGltf);
+    this.swingTimer = 2.2;
+    this._pp = null;
+  }
+
+  // shield up = frontal damage nulls (same honest cone as the Warden);
+  // guard is DOWN while it swings/recovers, while stunned, and from behind
+  get shieldUp() {
+    return this.state === 'chase' && this.stunned <= 0;
+  }
+
+  takeDamage(n, element, kind) {
+    if (!this.dead && this.shieldUp && this._pp) {
+      const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
+      const dd = Math.hypot(dx, dz);
+      const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+      if (dd > 0.05 && (dx * fx + dz * fz) / dd > 0.35) {
+        audio.play('parry', { volume: 0.45, rate: 0.6 }); // CLANK — teach
+        this._pop = 0.1;
+        if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.2, this.z, 'BLOCKED');
+        return;
+      }
+    }
+    super.takeDamage(n, element, kind);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    this._pp = { x: player.root.position.x, z: player.root.position.z };
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    if (this.awakenUpdate(dt, d, 3.6)) return;
+
+    if (this.state === 'chase') {
+      // a slow, deliberate shield-wall shuffle — menace, not speed. It
+      // TURNS slowly too (2 rad/s): a quick kid can genuinely circle
+      // behind the shield, which is the whole lesson.
+      this._play(d < 2.4 ? 'block' : 'walk', 0.2);
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        const want = Math.atan2(dx, dz);
+        let delta = want - this.root.rotation.y;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        this.root.rotation.y += Math.max(-2.0 * dt, Math.min(2.0 * dt, delta));
+        const s = this._moveSolved(
+          this.x + Math.sin(this.root.rotation.y) * 1.0 * dt,
+          this.z + Math.cos(this.root.rotation.y) * 1.0 * dt);
+        this.root.position.x = s.x;
+        this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      if (d < 1.9 && this.swingTimer <= 0 && this.engaged !== false) {
+        // THE OPENING: the shield comes DOWN for the whole swing + recovery
+        this.state = 'swing';
+        this.stateT = 0;
+        this._play('swing', 0.1, { once: true });
+        audio.play('bones', { volume: 0.5, rate: 1.1 });
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > 0.55 && this.stateT < 0.75) {
+        // the chop lands in a short frontal arc
+        const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+        const px2 = player.root.position.x - this.x, pz2 = player.root.position.z - this.z;
+        const pd = Math.hypot(px2, pz2);
+        if (pd < 1.6 && pd > 0.05 && (px2 * fx + pz2 * fz) / pd > 0.5) {
+          player.hurt(1, { attacker: this, groundAttack: true });
+        }
+      }
+      if (this.stateT > 1.7) { // long recovery — the punish window
+        this.state = 'chase';
+        this.swingTimer = 3.2;
+        this._current = null;
+      }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
 export class BoneWarden extends SkeletonBase {
   constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
     super(world, x, z, {
@@ -1183,7 +1306,8 @@ export async function spawnEnemies(world) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
     for (const s of mk.batSpots) world.enemies.push(new Bat(world, s.x, s.z, batGltf));
   }
-  if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) || mk.wardenSpot) {
+  if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
+      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot) {
     const [special, movement, general, combat] = await Promise.all([
       loadGLB('./assets/anims/rig-medium-special.glb'),
       loadGLB('./assets/anims/rig-medium-movement-basic.glb'),
@@ -1201,6 +1325,14 @@ export async function spawnEnemies(world) {
         loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
       ]);
       for (const s of mk.rogueSpots) world.enemies.push(new SkeletonRogue(world, s.x, s.z, rogueGltf, anims, bladeGltf));
+    }
+    if (mk.shieldSpots && mk.shieldSpots.length) {
+      const [minGltf, shieldGltf, bladeGltf] = await Promise.all([
+        loadGLB('./assets/chars/skeletons/Skeleton_Minion.glb'),
+        loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf'),
+        loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
+      ]);
+      for (const s of mk.shieldSpots) world.enemies.push(new SkeletonShield(world, s.x, s.z, minGltf, anims, shieldGltf, bladeGltf));
     }
     if (mk.wardenSpot) {
       const [warriorGltf, axeGltf, shieldGltf] = await Promise.all([
@@ -1255,7 +1387,7 @@ function assignEngagement(world, player) {
     const e = fighters[i];
     // an attack in motion keeps its token — patterns never fizzle mid-swing
     const committed = e.state === 'charge' || e.state === 'dive' || e.state === 'lunge' ||
-      e.state === 'telegraph' || e.state === 'crouch' || e.state === 'dash';
+      e.state === 'telegraph' || e.state === 'crouch' || e.state === 'dash' || e.state === 'swing';
     e.engaged = i < max || committed;
   }
 }

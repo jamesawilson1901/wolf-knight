@@ -64,6 +64,18 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-01 — dad, session 3: boss "a little smaller but still
+  intimidating" → 1.96→1.62 (~2.9x wolves). "Make it obvious when it's
+  vulnerable" → THE COLLAPSE: falls over (Death clip) 2.6s + pulsing
+  gold ring + thud/slow-mo + Pip callout; phase-1 severs now flinch.
+  "Dark wolf same size as fire wolf" → SURGE_SCALE 1.25→1.0 (aura is
+  the drama). "Blood moon attack should home" → the pierce crescent
+  re-acquires the next target after each pierce. "Attack and retreat"
+  → Shades dart back out of reach after striking home. "Approach with
+  a shield, damage null till they drop it" → Skeleton Shieldling
+  (Stoneroot): front-immune wall, slow 2 rad/s turn (flankable), opens
+  on its own swing + recovery or when stunned. + dad asked for a spin:
+  Knight WHIRLWIND special (KayKit Melee_2H_Attack_Spin, 6s cd, 360°).
   2026-08-01 — dad, session 2: "entering r2 feels like getting swarmed,
   just button mashing — we want skill: learn patterns, experiment with
   attack types." → ATTACK TOKENS (1/2/3 by difficulty; waiters prowl a

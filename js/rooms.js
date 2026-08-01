@@ -2042,6 +2042,9 @@ async function buildE1(scene) {
   // bats roost by the cobwebbed corners
   world.markers.minionSpots = [{ x: 0.6, z: 0.6 }, { x: -2.0, z: -2.6 }];
   world.markers.batSpots = [{ x: -6.6, z: -4.4 }, { x: 6.6, z: 4.6 }];
+  // the first SHIELD-BEARER: a slow wall of bone that teaches "wait for the
+  // swing or go around" (Pip explains on approach)
+  world.markers.shieldSpots = [{ x: 0.6, z: -1.8 }];
 
   // the caverns bloom once the Warden falls (Terranigma-style revival)
   await mushroomPatches(world, [
@@ -2351,6 +2354,7 @@ async function buildE2(scene) {
   world.markers.minionSpots = [{ x: -3.4, z: 3.2 }];
   world.markers.rogueSpots = [{ x: 1.6, z: 0.2 }, { x: 4.8, z: 1.8 }];
   world.markers.slimeSpots = [{ x: -5.6, z: 0.2 }, { x: 5.8, z: 3.6 }];
+  world.markers.shieldSpots = [{ x: 2.8, z: 1.0 }]; // the wall walks the Deep Hall
   world.markers.batSpots = [{ x: 5.2, z: -4.6 }];
 
   // the WHOLE Deep Hall is cave-dark — spikes, plates and bones read only

@@ -1398,3 +1398,41 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
 - Verified with real touch: ten lights, the OLD 8-key code no longer
   unlocks (dies at the 5th press, red blink), the full 10-key code opens
   the level grid, and a level button warps to the Kiln Hub. SW v3.14.1.
+
+## v3.15.0 — playtest round: the collapse, the shieldling, the whirlwind
+- BOSS RESIZED 1.96 → 1.62 (~2.9x the player wolves — "a little smaller
+  but still intimidating") and its vulnerability is now UNMISSABLE: when
+  the pounce ends the wolf visibly FALLS OVER (the Death clip plays and
+  holds — best-practice "whole body is the tell"), a big GOLD ring
+  pulses beneath it, the crash lands with a thud + dust + a breath of
+  slow-motion (which also stretches the window for small hands), the
+  window grew 2.0→2.6s, and Pip shouts "It FELL! Now, Kael!". Severing
+  a tendril in phase 1 now makes the giant FLINCH. It hauls itself back
+  up through the same animation in reverse fade.
+- SURGE SIZE: the blood-moon wolf no longer grows (SURGE_SCALE 1.0) —
+  same size as the Fire Wolf, exactly as asked; the red aura, trail and
+  vignette carry the drama.
+- THE CRESCENT HUNTS: the Dark Wolf's moon crescent now re-acquires the
+  nearest fresh target after every pierce — it genuinely homes from foe
+  to foe (up to its 3-pierce limit).
+- SHADES HIT-AND-RUN: the moment a shade strikes home it darts BACK out
+  of reach (still facing Kael), watches, then comes again — intercept it
+  on the way in or chase it down. First of the "attack and retreat"
+  behaviors.
+- NEW ENEMY — SKELETON SHIELDLING (Stoneroot: Cavern Gate + Deep Hall):
+  a slow wall of bone behind a tower shield. Every frontal hit CLANKS
+  off with BLOCKED — damage is NULL until it commits to its slow chop
+  (shield down for the whole wind-up + recovery), until you slip BEHIND
+  it (it turns at only 2 rad/s — circling works for real), or until you
+  stun it (parry/rock/stomp). Pip teaches all three on first approach.
+  Built from the vendored Minion + tower shield + blade — no new assets.
+- KNIGHT WHIRLWIND (dad asked mid-build "do you have a spin?"): YES —
+  KayKit's Melee_2H_Attack_Spin was already in our vendored rig library,
+  no downloads needed. It's now the Knight's special (his button was the
+  only dimmed one): a full-circle sword sweep (360° arc, 1.2x damage,
+  6s cooldown, spark ring + whoosh) — the answer to being surrounded.
+- Verified headless end-to-end: whirlwind hits a shade BEHIND Kael,
+  shade retreats after touching, crescent pierces A then curves into B,
+  surging wolf measures 0.56 = fire wolf, shieldling blocks frontal /
+  takes flank + stunned damage + Pip line, boss at 1.62 collapses with
+  ring+slowmo+exposure and gets back up. Zero page errors. SW v3.15.0.

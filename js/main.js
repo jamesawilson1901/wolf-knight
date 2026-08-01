@@ -538,6 +538,12 @@ function narrationTriggers(dt, t) {
       }
     }
   }
+  // the first shield-bearer: teach the three ways past a raised shield
+  if (state.region === 'stoneroot') {
+    const sh = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonShield' && !e.dead);
+    if (sh && nearXZ(sh.x, sh.z, 5.5)) narration.say('shield_foe');
+  }
+
   // Earth Wolf verb prompts (both regions carry cracked rocks)
   if (state.formsUnlocked.includes('earth_wolf') && m.crackSpot &&
       !state.flags.cracked.e1_alcove && nearSpot(m.crackSpot, 3.4)) {
@@ -577,6 +583,8 @@ function narrationTriggers(dt, t) {
     if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
     if (boss.slamState === 'telegraph') narration.say('boss_p1_telegraph');
     if (boss.phase === 2) narration.say('boss_p2');
+    if (boss.chargeState === 'tired') narration.say('boss_tired'); // the collapse
+
     if (boss.phase >= 2 && state.moonGauge >= 1) {
       narration.say('boss_bloodmoon'); // "ready" now means a FULL moon gauge
     }
