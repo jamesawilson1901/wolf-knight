@@ -1295,3 +1295,40 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   and the enemies list comes out clean, busy-exclusion holds, chip
   shows during rounds, precache complete (195 files). Screenshot
   reviewed. Zero page errors. SW v3.13.0, badge v3.13.
+
+## v3.13.1 — phone playtest fix pass (dad's session, four bugs)
+- SURGE CRASH ("Cannot set property x of Enemy which has only a getter",
+  player.js:687): enemies expose x/z as getters over root.position — the
+  surge shockwave and the form-switch push assigned them directly. Both
+  now write e.root.position. WHY TESTS MISSED IT: the surge and switch
+  suites ran in the enemy-free den, so the push paths never touched a
+  real Enemy. The regression suite now stages both beside LIVE Shades
+  in r1.
+- LAVA + PATH-TILE FLICKER: the light-brown Kenney path tiles (y 0.02)
+  and lava sheets z-fight the floor on phones with 16-bit depth buffers
+  (precision at 11u ≈ 0.018 — right at our offsets). Camera near plane
+  0.1 → 1.5 (nothing ever comes closer than ~8u; precision improves
+  ~15x) and path tiles raised to 0.035. Ordering (bridges OVER lava)
+  untouched.
+- BLANK AVATAR SQUARE = Kael's portrait, and he was also silently
+  MISSING from the title campfire. Two stacked causes: (1) player.load()
+  consumed the CACHED knight.glb scene and the form machine set it
+  visible=false — every later SkeletonUtils.clone inherited the hidden
+  flag (wolves never broke because the player clones those). The player
+  now clones too — the shared cache is never mutated. (2) the v3.10
+  "frame the tableau left" reframe left the knight's diorama spot ~44°
+  off-axis with ~38° of half-view — off-frame even when visible. He now
+  sits AT the fire, in frame. LESSON: pixel-check rendered artifacts;
+  "the img element exists" proved nothing.
+- CHEAT MENU UNREACHABLE: touch-action:none on .menu-btn ate every
+  vertical drag that started on a button, and the pause menu is mostly
+  buttons — nothing below the fold (the faint 🎮 included) could be
+  scrolled to on a phone. Pause-menu items are now touch-action:pan-y
+  and the menu container is a .ui element (the joystick can never grab
+  drags through it). Verified: the full ↑↑↓↓○□□○ code still opens the
+  level select.
+- Verified headless: all 6 portraits pixel-checked (knight 34% opaque),
+  switch-push shoves a real Shade, surge shockwave stuns beside live
+  Shades with zero page errors, pause rows report pan-y, cheat pad +
+  code + level grid work end-to-end. Title screenshot reviewed — the
+  whole cast is finally at the fire. SW v3.13.1.

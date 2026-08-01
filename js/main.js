@@ -55,7 +55,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x17101f);
 scene.fog = new THREE.Fog(0x17101f, 26, 52);
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+// near=1.5: the camera never comes closer than ~8u to anything, and a tight
+// near plane is what keeps 16-bit mobile depth buffers from z-fighting the
+// flat ground decals (lava sheets, path tiles) against the floor.
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1.5, 100);
 const CAM_PITCH = THREE.MathUtils.degToRad(50);
 const CAM_DIST = 11;
 const CAM_OFFSET = new THREE.Vector3(
@@ -892,7 +895,7 @@ async function start() {
     renderer.setAnimationLoop(() => {
       if (titleScene) titleScene.render(Math.min(tClock.getDelta(), 0.05));
     });
-    await buildPortraits();
+    await buildPortraits(renderer); // main renderer: one context, one truth
   })().catch((e) => console.warn('title scene skipped:', e));
 
   document.body.classList.add('titling'); // no gameplay HUD over the title
@@ -955,12 +958,14 @@ async function start() {
     juice.burst(P.x, 0.8, P.z, FORM_BURST[name] || 0xffffff, 14);
     if (world && world.enemies) {
       for (const e of world.enemies) {
-        if (e.dead || !e.takeStun || e.scenery) continue; // boss hitboxes + pots stay put
+        if (e.dead || !e.takeStun || e.scenery || !e.root) continue; // real foes only
         const dx = e.x - P.x, dz = e.z - P.z;
         const d = Math.hypot(dx, dz);
         if (d > CONFIG.SWITCH_FX.PUSH_RADIUS || d < 0.05) continue;
         const s = world.resolveCircle(e.x + (dx / d) * 0.9, e.z + (dz / d) * 0.9, e.radius || 0.3);
-        e.x = s.x; e.z = s.z;
+        // x/z are getters over root.position — write the root, never the getter
+        e.root.position.x = s.x;
+        e.root.position.z = s.z;
       }
     }
   };

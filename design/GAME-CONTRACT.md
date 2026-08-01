@@ -55,6 +55,16 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-01 — dad, phone session: SURGE CRASHED in r1 ("Cannot set
+  property x of Enemy which has only a getter") → shockwave/switch-push
+  now write enemy root.position; regression suites must include LIVE
+  enemies (the den-only tests never touched a real one). Lava + path
+  tiles "glitching" → 16-bit mobile depth z-fight; camera near 0.1→1.5
+  + tiles raised. One BLANK avatar square → player.load() consumed +
+  hid the cached knight scene; clones inherited visible=false. Law:
+  never mutate the shared asset cache, and pixel-check rendered
+  artifacts. Cheat menu unreachable → touch-action:none on menu
+  buttons ate scroll drags; pause menu items now pan-y.
   2026-07-31 — dad, session 3: "Blood Moon wildly overpowered" → 99 dmg
   nuke becomes 2.5 moon dmg (one-shots weak-to-moon grunts, elites
   survive). "Dragon windows more frequent + shorter" → tendril stick

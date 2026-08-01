@@ -78,9 +78,13 @@ export async function createTitleScene(renderer) {
   // the cast around the fire
   const mixers = [];
   const knight = prepareCharacter(SkeletonUtils.clone(cast.knight.scene));
+  knight.visible = true; // belt-and-braces: never inherit a hidden cache state
   knight.scale.setScalar(0.55);
-  knight.position.set(-1.9, 0, -0.5);
-  knight.rotation.y = 1.6; // firelight on his face, sword at rest
+  // close to the fire AND inside the frame: the old (-1.9, -0.5) spot sat
+  // ~44° off the camera axis — outside the ~38° half-view — so Kael was
+  // missing from his own title screen
+  knight.position.set(-1.15, 0, 0.5);
+  knight.rotation.y = 1.35; // firelight on his face, sword at rest
   scene.add(knight);
   const km = poseIdle(knight, cast.general.animations, 'Idle_A');
   if (km) mixers.push(km);
@@ -162,10 +166,14 @@ export const AVATARS = [
   { id: 'pup', label: 'Pup' },
 ];
 
-export async function buildPortraits() {
+// Portraits are shot on the MAIN renderer through a render target — never a
+// second WebGL context. (Lesson: the knight's shared texture uploaded fine to
+// the game's context but came up empty in a fresh offscreen one → Kael's
+// avatar square was blank on real phones. One context = one truth.)
+export async function buildPortraits(renderer) {
   const cast = await loadCast();
-  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
-  r.setSize(220, 220);
+  const SIZE = 220;
+  const rt = new THREE.WebGLRenderTarget(SIZE, SIZE, { depthBuffer: true });
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(35, 1, 0.1, 30);
   scene.add(new THREE.HemisphereLight(0xbfb0d8, 0x4a3a30, 1.5));
@@ -175,6 +183,12 @@ export async function buildPortraits() {
   const rim = new THREE.PointLight(0x8f6bff, 3, 10, 1.8);
   rim.position.set(-2, 2, -2);
   scene.add(rim);
+
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = SIZE;
+  const ctx = cnv.getContext('2d');
+  const buf = new Uint8Array(SIZE * SIZE * 4);
+  const prevColor = new THREE.Color();
 
   const shoot = (model, animations, clipName) => {
     poseIdle(model, animations, clipName);
@@ -186,13 +200,30 @@ export async function buildPortraits() {
     const d = Math.max(size.x, size.y, size.z);
     cam.position.set(c.x + d * 0.85, c.y + d * 0.55, c.z + d * 1.25);
     cam.lookAt(c.x, c.y + d * 0.05, c.z);
-    r.render(scene, cam);
-    const url = r.domElement.toDataURL('image/png');
+
+    const prevRT = renderer.getRenderTarget();
+    renderer.getClearColor(prevColor);
+    const prevAlpha = renderer.getClearAlpha();
+    renderer.setRenderTarget(rt);
+    renderer.setClearColor(0x000000, 0); // transparent backdrop
+    renderer.clear();
+    renderer.render(scene, cam);
+    renderer.readRenderTargetPixels(rt, 0, 0, SIZE, SIZE, buf);
+    renderer.setRenderTarget(prevRT);
+    renderer.setClearColor(prevColor, prevAlpha);
+
+    // GL reads bottom-up — flip rows into the 2D canvas
+    const img = ctx.createImageData(SIZE, SIZE);
+    for (let y = 0; y < SIZE; y++) {
+      img.data.set(buf.subarray((SIZE - 1 - y) * SIZE * 4, (SIZE - y) * SIZE * 4), y * SIZE * 4);
+    }
+    ctx.putImageData(img, 0, 0);
     scene.remove(model);
-    return url;
+    return cnv.toDataURL('image/png');
   };
 
   const knight = prepareCharacter(SkeletonUtils.clone(cast.knight.scene));
+  knight.visible = true; // the cache may be hidden by the player's form machine
   PORTRAITS.knight = shoot(knight, cast.general.animations, 'Idle_A');
   for (const form of ['dark_wolf', 'fire_wolf', 'earth_wolf']) {
     const w = prepareCharacter(tintWolf(SkeletonUtils.clone(cast.wolf.scene), WOLF_TINTS[form]));
@@ -203,7 +234,6 @@ export async function buildPortraits() {
   const pup = prepareCharacter(tintWolf(SkeletonUtils.clone(cast.wolf.scene), PUP_TINT));
   pup.scale.setScalar(0.75); // framing handles size; a hint of smallness
   PORTRAITS.pup = shoot(pup, cast.wolf.animations, 'Idle_2_HeadLow');
-  r.dispose();
-  r.forceContextLoss && r.forceContextLoss();
+  rt.dispose();
   window.dispatchEvent(new Event('portraits-ready'));
 }

@@ -195,8 +195,11 @@ export class Player {
       loadGLB('./assets/chars/wolf.gltf'),
     ]);
 
-    // Knight: KayKit model + rig-library clips (bind by matching bone names)
-    const knightModel = prepareCharacter(knight.scene);
+    // Knight: KayKit model + rig-library clips (bind by matching bone names).
+    // CLONE the cached scene — never consume it. The form machine hides
+    // inactive forms (visible=false), and mutating the shared cache made the
+    // title/portrait knight clones inherit invisibility (blank avatar bug).
+    const knightModel = prepareCharacter(SkeletonUtils.clone(knight.scene));
     knightModel.scale.setScalar(0.5);
     this._addForm('knight', knightModel, [...movement.animations, ...general.animations, ...combat.animations]);
 
@@ -681,10 +684,12 @@ export class Player {
           if (d > C.SHOCK_RADIUS) continue;
           if (!e.takeStun || e.scenery) continue; // boss hitboxes + pots stay put
           e.takeStun(C.SHOCK_STUN);
-          if (d > 0.05 && c.world.resolveCircle) {
+          // enemies expose x/z as GETTERS over root.position — write the root
+          if (d > 0.05 && e.root && c.world.resolveCircle) {
             const push = 1.3 * (1 - d / C.SHOCK_RADIUS) + 0.4;
             const s = c.world.resolveCircle(e.x + (dx / d) * push, e.z + (dz / d) * push, e.radius || 0.3);
-            e.x = s.x; e.z = s.z;
+            e.root.position.x = s.x;
+            e.root.position.z = s.z;
           }
         }
       }

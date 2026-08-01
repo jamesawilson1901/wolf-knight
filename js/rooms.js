@@ -408,7 +408,8 @@ function pathTiles(world, waypoints) {
       const cx = Math.floor(ax + (bx - ax) * f) + 0.5;
       const cz = Math.floor(az + (bz - az) * f) + 0.5;
       if (world.lavaZones.some((l) => cx > l.minX && cx < l.maxX && cz > l.minZ && cz < l.maxZ)) continue;
-      cells.set(cx + '|' + cz, { x: cx, y: 0.02, z: cz, ry: ((cells.size * 7) % 4) * Math.PI / 2 });
+      // 0.035 up: clear of the floor tops even on 16-bit mobile depth buffers
+      cells.set(cx + '|' + cz, { x: cx, y: 0.035, z: cz, ry: ((cells.size * 7) % 4) * Math.PI / 2 });
     }
   }
   world.add(instancePlacements(kit.pathTile.scene, [...cells.values()], {
