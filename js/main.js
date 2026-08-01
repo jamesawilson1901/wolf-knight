@@ -175,12 +175,13 @@ const dmgNums = [];
 const _dmgV = new THREE.Vector3();
 function spawnDmgNum(x, y, z, v) {
   const el = document.createElement('div');
-  const block = typeof v === 'string';
-  const big = !block && v >= 2;
-  el.className = 'dmg-num' + (big ? ' big' : '') + (block ? ' block' : '');
-  el.textContent = block ? v : (v % 1 ? v.toFixed(1) : String(v));
+  const superHit = v === 'SUPER!'; // weakness landed — gold and loud
+  const block = typeof v === 'string' && !superHit;
+  const big = typeof v === 'number' && v >= 2;
+  el.className = 'dmg-num' + (big ? ' big' : '') + (block ? ' block' : '') + (superHit ? ' super' : '');
+  el.textContent = typeof v === 'string' ? v : (v % 1 ? v.toFixed(1) : String(v));
   document.body.appendChild(el);
-  dmgNums.push({ el, x, y, z, life: 0.9 });
+  dmgNums.push({ el, x, y, z, life: superHit ? 1.1 : 0.9 });
 }
 function updateDmgNums(realDt) {
   for (let i = dmgNums.length - 1; i >= 0; i--) {
@@ -439,6 +440,8 @@ function narrationTriggers(dt, t) {
   // teaching reveals: shield when a shade closes in, bolt when moths appear,
   // jump at the geyser crossing
   if ((state.counters.kills || 0) >= 1) narration.say('learn_thrust');
+  // the first WEAKNESS hit: teach that every creature fears something
+  if ((state.counters.weakHits || 0) >= 1) narration.say('element_teach');
   const anyShade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);

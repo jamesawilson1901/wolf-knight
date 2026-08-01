@@ -38,6 +38,15 @@
   after 3 deaths in one room (respawn = that room's entrance). Never more
   than 3 simultaneous aggro enemies near a kid (spawn spacing must respect
   this).
+- ATTACK TOKENS (v3.14, CONFIG.ENGAGE): at most 1 (Gentle) / 2 (Cozy) /
+  3 (Brave) enemies press the attack at once; the rest PROWL a ~3u ring,
+  visibly waiting. An attack in motion always finishes. Fights are turns,
+  never pile-ons — pattern-reading is the skill, not mashing.
+- Telegraphs live ON THE BODY (crouches, eye flares, wind-ups, dust) —
+  no floor decals under enemies (playtest verdict; boss lane telegraphs
+  for room-crossing charges are the exception).
+- Weakness hits announce themselves: gold flare + "SUPER!" callout; Pip
+  teaches "every creature fears something" on the first one.
 
 ## Progression targets (tune toward, verify per region)
 ## Elements & armor (law, v3.7)
@@ -55,6 +64,14 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-01 — dad, session 2: "entering r2 feels like getting swarmed,
+  just button mashing — we want skill: learn patterns, experiment with
+  attack types." → ATTACK TOKENS (1/2/3 by difficulty; waiters prowl a
+  ring), r2 shades moved off the doorway, weakness hits now shout
+  SUPER! + Pip element lesson. "Enemy wolves cast a dark rectangular
+  shadow before attacking — get rid of it" → hound charge streak decal
+  DELETED; telegraph moved onto the body (deep crouch, eyes flare red,
+  paw-scrape dust, low growl).
   2026-08-01 — dad, phone session: SURGE CRASHED in r1 ("Cannot set
   property x of Enemy which has only a getter") → shockwave/switch-push
   now write enemy root.position; regression suites must include LIVE

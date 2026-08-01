@@ -983,10 +983,11 @@ async function buildR2(scene) {
   world.add(stump);
   world.addCircle(-4.8, 5.0, 0.4);
 
-  // Ember Moths near the lava channel; a small Shade cluster mid-room
-  // (2-3 max per COMBAT-SPEC — never swarms)
+  // Ember Moths near the lava channel; Shades DEEPER in the room and apart
+  // (playtest: the old pair camped the doorway — walking in felt like an
+  // ambush; now each is met on Kael's terms, one pattern at a time)
   world.markers.mothSpots = [{ x: -4.5, z: -3.4 }, { x: -1.8, z: -0.6 }];
-  world.markers.shadeSpots = [{ x: -5.5, z: 2.2 }, { x: -6.5, z: 3.4 }];
+  world.markers.shadeSpots = [{ x: -3.6, z: 1.0 }, { x: -0.8, z: 3.6 }];
 
   // The optional branch should look tempting-but-scary: shadowed ground and
   // a faint red glow around the hound's pocket (the pup is visible beyond).

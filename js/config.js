@@ -66,6 +66,18 @@ export const CONFIG = {
     SHOCK_STUN: 1.6,       // s enemies reel from the shockwave
   },
 
+  // ---- ENGAGEMENT (anti-swarm: fights are turns, not pile-ons) ----
+  // At most MAX enemies actively press the attack; the rest PROWL a ring
+  // around Kael, visibly waiting their turn. Difficulty moves the cap:
+  // Gentle duels one at a time, Brave lets a third join.
+  ENGAGE: {
+    MAX: 2,
+    MAX_GENTLE: 1,
+    MAX_BRAVE: 3,
+    HOLD_DIST: 3.0,      // u, the waiting ring around Kael
+    HOLD_SPEED: 0.95,    // u/s sideways prowl while waiting
+  },
+
   // ---- DEN GAMES (the villagers' minigames — js/minigames.js) ----
   DEN_GAMES: {
     TARGET_COUNT: 6,     // Rook: targets to hit (Gentle plays 5)

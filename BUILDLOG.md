@@ -1351,3 +1351,38 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   + user-select:none so no zoom/select can interrupt a code entry.
 - Verified with real touchscreen input end-to-end: ghost mid-code,
   full unlock, fast doubles, wrong-key restart + red blink. SW v3.13.2.
+
+## v3.14.0 — combat readability: attack tokens, body telegraphs, SUPER!
+- Playtest: "entering r2 feels like getting swarmed and it's just button
+  mashing — we want skill: learn enemy patterns, experiment with attack
+  types." r2 actually fields FIVE foes (2 shades camped ON the doorway,
+  2 moths, the branch hound) and nothing stopped them all converging.
+- ATTACK TOKENS (CONFIG.ENGAGE): every frame the closest few enemies
+  get to press the attack; everyone else PROWLS a ~3u ring around Kael —
+  sideways drift, eyes locked on, visibly waiting their turn (classic
+  brawler engagement management). The cap is a difficulty lever: Gentle
+  duels ONE at a time, Cozy two, Brave three — the same per-kid profiles
+  as everything else. Attacks in motion always finish (a charge never
+  fizzles mid-lane); boss choreography is exempt. Wired through Shades,
+  Slimes, Bats, Moths, Hounds and Skeleton Minions; Rogues already
+  circle by design, the Warden duels solo.
+- r2's doorway shades moved deep into the room and apart — the room now
+  introduces its residents one pattern at a time (verified: zero enemies
+  within 4u of the entrance).
+- HOUND TELEGRAPH REBUILT (playtest: "enemy wolves cast a dark shadow
+  rectangular shape before they attack — get rid of it"): the charge-lane
+  floor decal is DELETED. The ~1s telegraph now lives entirely on the
+  wolf's body — it sinks into a deep crouch, its red eyes FLARE (up to
+  ~4x glow through the charge), its paws scrape up dust, and it lets out
+  a low growl. Same timing, honest read, no ugly rectangle. New contract
+  law: telegraphs live ON THE BODY; lane decals are boss-only.
+- EXPERIMENTATION MADE LOUD: a weakness hit now shouts "SUPER!" in gold
+  above the damage number (on top of the existing flare), and Pip
+  teaches it once: "every creature fears something — try all your
+  forms!" (element_teach, fires on the first weakness hit anywhere).
+- Verified headless: doorway clear, token caps hold per difficulty
+  (2 free attackers Cozy / 1 Gentle with 3 waiting), a waiting shade
+  provably prowls without closing in, the hound runs crouch→charge with
+  no streak mesh and 2.6x eye glow, a real moon bite on a Shade fires
+  SUPER! + the teach line. Boss + dungeon regression suite green.
+  SW v3.14.0, badge v3.14.

@@ -130,7 +130,13 @@ class Enemy {
     this.hp -= n;
     this._flash = 0.14;
     this._pop = weak ? 0.2 : 0.14;    // weakness hits pop harder
-    if (weak) juice.burst(this.x, 0.9, this.z, 0xffe14a, 8); // gold flare
+    if (weak) {
+      // make experimentation LOUD: gold flare + a SUPER! callout so kids
+      // instantly see "this element is the one" (Pip teaches it once too)
+      juice.burst(this.x, 0.9, this.z, 0xffe14a, 8);
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'SUPER!');
+      bumpCounter('weakHits');
+    }
     if (this.world.onDmgNum) this.world.onDmgNum(this.x, 0.9, this.z, n);
     if (this.hp <= 0) this.die();
   }
@@ -145,6 +151,26 @@ class Enemy {
     const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
     if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
     this.world.root.remove(this.root);
+  }
+
+  // Un-engaged foes PROWL: hold the waiting ring around Kael, drifting
+  // sideways — a visible "waiting their turn", never a pile-on. dx/dz point
+  // TOWARD the player.
+  holdOrbit(dt, dx, dz, d) {
+    const H = CONFIG.ENGAGE;
+    if (d < 0.01) return;
+    const nx = dx / d, nz = dz / d;
+    let mx, mz;
+    if (d < H.HOLD_DIST - 0.5) { mx = -nx; mz = -nz; }        // too close: give ground
+    else if (d > H.HOLD_DIST + 1.4) { mx = nx; mz = nz; }     // drifted off: close up
+    else {
+      if (this._orbitSign === undefined) this._orbitSign = (this.x + this.z) % 2 < 1 ? 1 : -1;
+      mx = -nz * this._orbitSign; mz = nx * this._orbitSign;  // circle Kael
+    }
+    const s = this._moveSolved(this.x + mx * H.HOLD_SPEED * dt, this.z + mz * H.HOLD_SPEED * dt);
+    this.root.position.x = s.x;
+    this.root.position.z = s.z;
+    this.root.rotation.y = Math.atan2(dx, dz); // eyes stay ON Kael
   }
 
   contact(player, dmg = 1, { ground = true } = {}) {
@@ -196,6 +222,7 @@ export class Hound extends Enemy {
     this.puffTint = 0x241a30;
     this.dropChance = 1; // the elite always leaves an ember
 
+    this.eyeMats = []; // the telegraph lives in the EYES now, not a floor decal
     const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
     model.traverse((n) => {
       if (!n.isMesh) return;
@@ -205,6 +232,7 @@ export class Hound extends Enemy {
         if (m.name === 'Eyes_Black') {
           c.emissive = new THREE.Color(0xff3a2a);
           c.emissiveIntensity = 1.4;
+          this.eyeMats.push(c);
         } else {
           c.color.setHex(m.name === 'Main_Light' ? 0x2a2136 : 0x171021);
         }
@@ -228,18 +256,10 @@ export class Hound extends Enemy {
     this._play('idle');
     this.registerFlashMats(this.root);
 
-    // charge-lane telegraph streak
-    this.streak = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.7, 6),
-      new THREE.MeshBasicMaterial({ color: 0x0d0716, transparent: true, opacity: 0, depthWrite: false })
-    );
-    this.streak.rotation.x = -Math.PI / 2;
-    this.streak.position.y = 0.05;
-    world.add(this.streak);
-
     this.state = 'stalk';
     this.stateT = 0;
     this.chargeDir = { x: 0, z: 1 };
+    this._scrapeAcc = 0;
   }
 
   _play(name, fade = 0.18) {
@@ -248,11 +268,6 @@ export class Hound extends Enemy {
     next.reset().play();
     if (this._current) this.actions[this._current].crossFadeTo(next, fade, false);
     this._current = name;
-  }
-
-  die() {
-    this.world.root.remove(this.streak);
-    super.die();
   }
 
   update(dt, t, player) {
@@ -266,34 +281,44 @@ export class Hound extends Enemy {
     if (this.state === 'stalk') {
       this._play('walk');
       if (d > 0.01) {
-        const speed = 1.8; // playtest bump: stalks with intent
-        const nx = this.x + (dx / d) * speed * dt;
-        const nz = this.z + (dz / d) * speed * dt;
-        const solved = this._moveSolved(nx, nz);
-        this.root.position.x = solved.x;
-        this.root.position.z = solved.z;
-        this.root.rotation.y = Math.atan2(dx, dz);
+        if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+          this.holdOrbit(dt, dx, dz, d); // circles, red eyes on Kael, waiting
+        } else {
+          const speed = 1.8; // playtest bump: stalks with intent
+          const nx = this.x + (dx / d) * speed * dt;
+          const nz = this.z + (dz / d) * speed * dt;
+          const solved = this._moveSolved(nx, nz);
+          this.root.position.x = solved.x;
+          this.root.position.z = solved.z;
+          this.root.rotation.y = Math.atan2(dx, dz);
+        }
       }
-      if (d < 4.4 && this.stateT > 1.2) {
+      if (d < 4.4 && this.stateT > 1.2 && this.engaged !== false) {
         this.state = 'crouch';
         this.stateT = 0;
         const dd = Math.max(d, 0.01);
         this.chargeDir = { x: dx / dd, z: dz / dd };
         this.root.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
+        audio.play('bite', { volume: 0.5, rate: 0.42, vary: 0.05 }); // low GROWL
       }
     } else if (this.state === 'crouch') {
-      // ~1s telegraph: crouch low + a shadow streak shows the charge lane
+      // ~1s telegraph, ALL on the wolf's body (the floor decal is gone —
+      // playtest verdict): it crouches LOW, its eyes flare bright red, and
+      // its paws scrape up little bursts of dust as it winds the spring.
       this._play('crouch', 0.1);
-      this.model.scale.y = 0.35 * (1 - 0.18 * Math.min(1, this.stateT * 2));
       const f = Math.min(1, this.stateT / 1.0);
-      this.streak.material.opacity = f * 0.55;
-      this.streak.position.set(this.x + this.chargeDir.x * 3.2, 0.05, this.z + this.chargeDir.z * 3.2);
-      this.streak.rotation.z = -Math.atan2(this.chargeDir.x, this.chargeDir.z);
+      this.model.scale.y = 0.35 * (1 - 0.18 * Math.min(1, this.stateT * 2));
+      for (const m of this.eyeMats) m.emissiveIntensity = 1.4 + f * 2.6;
+      this._scrapeAcc += dt;
+      if (this._scrapeAcc > 0.24) {
+        this._scrapeAcc = 0;
+        juice.burst(this.x - this.chargeDir.x * 0.35, 0.18, this.z - this.chargeDir.z * 0.35, 0x6a5a48, 3);
+      }
       if (this.stateT >= 1.0) { this.state = 'charge'; this.stateT = 0; }
     } else if (this.state === 'charge') {
       this._play('charge', 0.08);
       this.model.scale.y = 0.35;
-      this.streak.material.opacity = Math.max(0, this.streak.material.opacity - dt * 2);
+      for (const m of this.eyeMats) m.emissiveIntensity = 4.0; // burning as it flies
       const speed = 9.6; // playtest bump: the charge should scare a little
       const nx = this.x + this.chargeDir.x * speed * dt;
       const nz = this.z + this.chargeDir.z * speed * dt;
@@ -305,7 +330,7 @@ export class Hound extends Enemy {
       if (this.stateT > 0.7 || blocked) { this.state = 'recover'; this.stateT = 0; }
     } else { // recover — slow, vulnerable
       this._play('idle', 0.25);
-      this.streak.material.opacity = 0;
+      for (const m of this.eyeMats) m.emissiveIntensity = Math.max(1.4, m.emissiveIntensity - dt * 6);
       if (this.stateT > 1.6) { this.state = 'stalk'; this.stateT = 0; }
     }
 
@@ -378,11 +403,15 @@ export class Slime extends Enemy {
     const d = Math.hypot(dx, dz);
     if (d < this.aggroRange && d > 0.01) {
       this._play('walk');
-      const speed = this.speed;
-      const solved = this._moveSolved(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt);
-      this.root.position.x = solved.x;
-      this.root.position.z = solved.z;
-      this.root.rotation.y = Math.atan2(dx, dz);
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d); // no token: prowl the ring, wait
+      } else {
+        const speed = this.speed;
+        const solved = this._moveSolved(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt);
+        this.root.position.x = solved.x;
+        this.root.position.z = solved.z;
+        this.root.rotation.y = Math.atan2(dx, dz);
+      }
     } else {
       this._play('idle');
     }
@@ -447,10 +476,14 @@ export class Shade extends Slime {
     if (this._lurchT <= -0.8) this._lurchT = 0.4;
     if (d < this.aggroRange && d > 0.01 && this._lurchT > 0) {
       this._play('walk');
-      const sv = this._moveSolved(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt);
-      this.root.position.x = sv.x;
-      this.root.position.z = sv.z;
-      this.root.rotation.y = Math.atan2(dx, dz);
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d); // waiting shades skip AROUND, not in
+      } else {
+        const sv = this._moveSolved(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt);
+        this.root.position.x = sv.x;
+        this.root.position.z = sv.z;
+        this.root.rotation.y = Math.atan2(dx, dz);
+      }
     } else {
       this._play('idle');
     }
@@ -510,7 +543,8 @@ export class Bat extends Enemy {
       this.root.position.z += (this.home.z + Math.cos(t * 0.7 + this._seed) * 0.7 - this.z) * dt;
       this.root.position.y = 1.4 + Math.sin(t * 2.6 + this._seed) * 0.15;
       this.root.rotation.y = Math.atan2(dx, dz);
-      if (d < 4.6 && this.stateT > 1.0) { this.state = 'telegraph'; this.stateT = 0; }
+      // only a token-holder may wind up a dive — the rest keep hovering
+      if (d < 4.6 && this.stateT > 1.0 && this.engaged !== false) { this.state = 'telegraph'; this.stateT = 0; }
     } else if (this.state === 'telegraph') {
       // fast flap + rising pitch flutter (~0.8s) before the swoop
       if (this.flyAction) this.flyAction.timeScale = 2.6;
@@ -738,9 +772,13 @@ export class SkeletonMinion extends SkeletonBase {
 
     if (this.state === 'chase') {
       this._play('walk');
-      this.chaseToward(dt, dx, dz, d, 1.5);
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d); // bones queue up too
+      } else {
+        this.chaseToward(dt, dx, dz, d, 1.5);
+      }
       this.lungeTimer -= dt;
-      if (d < 1.6 && this.lungeTimer <= 0) {
+      if (d < 1.6 && this.lungeTimer <= 0 && this.engaged !== false) {
         this.state = 'lunge';
         this.stateT = 0;
         this._play('lunge', 0.08, { once: true });
@@ -1189,8 +1227,35 @@ export async function spawnEnemies(world) {
   };
 
   world.updateEnemies = (dt, t, player) => {
+    assignEngagement(world, player);
     for (const e of world.enemies) if (!e.dead) e.update(dt, t, player);
     resolveBodies(world, dt, player);
     updateDrops(world, dt, t, player);
   };
+}
+
+// ATTACK TOKENS (CONFIG.ENGAGE): the closest few foes get to press the
+// attack; everyone else prowls the waiting ring (Enemy.holdOrbit). This is
+// what turns "swarmed at the door" into readable, one-pattern-at-a-time
+// combat — Gentle duels 1, Cozy 2, Brave 3. Boss parts and scenery are
+// exempt (bosses run their own choreography).
+function assignEngagement(world, player) {
+  const M = CONFIG.ENGAGE;
+  const max = state.settings.easy ? M.MAX_GENTLE : state.settings.brave ? M.MAX_BRAVE : M.MAX;
+  const px = player.root.position.x, pz = player.root.position.z;
+  const fighters = [];
+  for (const e of world.enemies) {
+    if (e.dead || e.scenery || !e.takeStun || !e.root) continue;
+    const dx = e.x - px, dz = e.z - pz;
+    e._engageD = dx * dx + dz * dz;
+    fighters.push(e);
+  }
+  fighters.sort((a, b) => a._engageD - b._engageD);
+  for (let i = 0; i < fighters.length; i++) {
+    const e = fighters[i];
+    // an attack in motion keeps its token — patterns never fizzle mid-swing
+    const committed = e.state === 'charge' || e.state === 'dive' || e.state === 'lunge' ||
+      e.state === 'telegraph' || e.state === 'crouch' || e.state === 'dash';
+    e.engaged = i < max || committed;
+  }
 }
