@@ -473,6 +473,14 @@
       50% { transform: scale(1.14); box-shadow: 0 0 26px rgba(255, 215, 106, .95); }
     }
     #moon-gauge.surging { border-color: #ff5a4a; }
+    /* den minigame chip: live score/round readout, top center */
+    #mg-chip {
+      position: fixed; left: 50%; top: 10px; transform: translateX(-50%);
+      z-index: 7; display: none; padding: 6px 16px; border-radius: 14px;
+      background: rgba(30, 20, 48, .9); border: 2px solid #ffd76a;
+      color: #ffe9c8; font-size: 16px; font-weight: 900; pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    }
     /* red vignette over the whole frame during the ceremony + surge */
     #surge-vignette {
       position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
@@ -576,6 +584,7 @@
   <div id="special-btn" class="ui"><div id="special-ring"></div><span id="special-icon">🌙</span></div>
   <div id="moon-gauge" class="ui"><div id="moon-ring"></div><span id="moon-icon">🌙</span></div>
   <div id="surge-vignette"></div>
+  <div id="mg-chip"></div>
   <div id="btn-ranged" class="action-btn ui">✨</div>
   <div id="btn-defend" class="action-btn ui">🛡️</div>
   <div id="btn-jump" class="action-btn ui">⬆️</div>
@@ -593,7 +602,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.12</div>
+  <div id="badge">Wolf Knight &middot; v3.13</div>
 
   <script>
     window.addEventListener('error', (e) => {

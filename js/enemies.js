@@ -1067,7 +1067,7 @@ function updateDrops(world, dt, t, player) {
 // Boss parts (Hittable) and breakables (already static colliders) stay out.
 function resolveBodies(world, dt, player) {
   const solid = world.enemies.filter((e) =>
-    !e.dead && e.radius &&
+    !e.dead && e.radius && !e.scenery &&
     e.constructor.name !== 'Hittable' && e.constructor.name !== 'Breakable');
 
   // enemy vs enemy: split the overlap evenly

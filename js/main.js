@@ -1079,6 +1079,7 @@ async function start() {
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
+      if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
       updatePowerups(world, dt, t, player);

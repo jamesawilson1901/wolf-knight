@@ -69,6 +69,9 @@ export const STICKERS = [
   { id: 'pups', icon: '🐺', name: 'Pup Rescuer', counter: 'pupsFound', at: 3 },
   { id: 'boss1', icon: '🔥', name: 'Hollow Hero', counter: 'bosses', at: 1 },
   { id: 'jumper', icon: '🦘', name: 'Sky Dancer', counter: 'doubleJumps', at: 20 },
+  { id: 'game_rook', icon: '🎯', name: 'Sharp Eye', counter: 'gameRook', at: 1 },
+  { id: 'game_wren', icon: '📦', name: 'Never Fooled', counter: 'gameWren', at: 1 },
+  { id: 'game_pip', icon: '🐾', name: 'Paw Path Pro', counter: 'gamePip', at: 1 },
   { id: 'level5', icon: '⭐', name: 'Level 5!', counter: 'level', at: 5 },
   { id: 'level10', icon: '🌟', name: 'Level 10!', counter: 'level', at: 10 },
 ];

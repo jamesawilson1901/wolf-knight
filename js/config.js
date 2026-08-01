@@ -66,6 +66,18 @@ export const CONFIG = {
     SHOCK_STUN: 1.6,       // s enemies reel from the shockwave
   },
 
+  // ---- DEN GAMES (the villagers' minigames — js/minigames.js) ----
+  DEN_GAMES: {
+    TARGET_COUNT: 6,     // Rook: targets to hit (Gentle plays 5)
+    TARGET_TIME: 45,     // s on Rook's clock (Gentle gets 60)
+    SHUFFLE_SWAPS: 5,    // Wren: crate swaps to follow (Gentle 4)
+    SWAP_TIME: 0.42,     // s per swap (Gentle 0.55 — easier to track)
+    PAW_ROUNDS: 5,       // Pip: memory rounds to win (Gentle 4)
+    PAW_STEP_TIME: 0.55, // s each paw lights during playback (Gentle 0.75)
+    REWARD_FIRST: 12,    // shards for a game's FIRST win
+    REWARD_REPEAT: 5,    // shards for wins after that
+  },
+
   // ---- SWITCH FX (every ordinary form change is a tiny spectacle) ----
   SWITCH_FX: {
     STOP: 0.12,            // s self-hitstop on the morph

@@ -101,6 +101,20 @@ Biscuit the Husky (world.dog) wanders DOG_STOPS with Idle/Walk/Eating.
 main calls world.updateNpcs(dt, t, player); markers (<id>Spot, dogSpot)
 drive the narration greetings in main's den trigger block.
 
+## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
+Each villager hosts a game behind a gold act-here ring (step in to play;
+one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any
+attack pops them — appears with Rook once Ember heals) · 📦 Wren's
+Shuffle (coin under a crate, watch the swaps, smash the right one —
+frame-collected pick candidates resolve to the crate nearest the player)
+· 🐾 Pip's Paw Path (Simon-style pad memory, chimes pitched per pad).
+Game props ride world.enemies with scenery=true (hittable, never fed to
+the moon gauge or body-resolver). Rewards: shards (REWARD_FIRST once,
+REWARD_REPEAT after) + first-win stickers (gameRook/gameWren/gamePip
+counters). Gentle profiles get longer clocks, slower swaps, shorter
+patterns. #mg-chip is the live score readout; main calls
+world.updateMinigames(dt, t, player).
+
 ## Narration (js/narration.js) — CANONICAL line table
 Data table {id, voice, text}; Web Speech per-character rate/pitch;
 captions; music ducking; once-per-save vs repeatable; stuck hints.

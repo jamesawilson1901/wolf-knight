@@ -1258,3 +1258,40 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   Wren's intro fires from proximity and she turns to face Kael
   (facing delta 0.03 rad). Screenshot reviewed. Zero page errors.
   SW v3.12.0 (new models + npcs.js precached — offline complete).
+
+## v3.13.0 — DEN GAMES: the villagers host a little fairground
+- Asked-for feature ("could we make the den into some sort of mini game
+  or series of mini games?"): every den villager now HOSTS one, each
+  behind a pulsing GOLD ring (act-here law). Step into the ring to play;
+  only one game runs at a time; all infinitely retryable — campfire
+  games, not exams. New js/minigames.js, dials in CONFIG.DEN_GAMES.
+  · 🎯 ROOK'S SHARP EYE (arrives with Rook once Ember heals): gold
+    targets pop up around the den one at a time — hit the lot before
+    his clock runs out. Bolt, bite, breath or blade all count, so
+    every form (and every kid) has a way to play it.
+  · 📦 WREN'S SHUFFLE: a coin drops into one of three crates, the
+    crates dance their swaps, smash the right one. Wrong crate =
+    "watch closer" and a fresh shuffle — no fail state, ever.
+  · 🐾 PIP'S PAW PATH: four glowing paw-pads chime a pattern (each pad
+    its own note — the sequence is a little song); step it back, one
+    more paw per round. Three slips = "great try!" + consolation
+    sparkle.
+- REWARDS: shards — a real pocketful on a game's FIRST win, pocket
+  change on repeats (kids can play forever without breaking the shop
+  economy) — plus three new sticker-book stickers (Sharp Eye / Never
+  Fooled / Paw Path Pro). Gentle profiles get longer clocks, slower
+  swaps and shorter patterns from the same difficulty lever as the
+  rest of the game. #mg-chip shows live score/round at top-center.
+- ENGINEERING: game props (targets, crates) ride world.enemies with
+  scenery=true so every real attack path can hit them while the moon
+  gauge, shockwaves and the body-resolver all ignore them (the
+  resolver now keys off the scenery flag, not class names). One sword
+  swing can clip TWO crates — pick candidates collect for a frame and
+  the crate NEAREST the player wins, so the kid's aim decides, never
+  array order.
+- Verified headless through real play: ring entry starts each game,
+  real pad-stepping wins Paw Path (sticker + shard shower), a real
+  sword swing smashes the coin crate, real melee pops Rook's targets
+  and the enemies list comes out clean, busy-exclusion holds, chip
+  shows during rounds, precache complete (195 files). Screenshot
+  reviewed. Zero page errors. SW v3.13.0, badge v3.13.
