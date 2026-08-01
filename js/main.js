@@ -256,7 +256,9 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
 // (↑ ↑ ↓ ↓ ○ □ □ ○) to open the level selector. Dad-only by obscurity.
 // ---------------------------------------------------------------------------
 {
-  const CODE = ['up', 'up', 'down', 'down', 'circle', 'square', 'square', 'circle'];
+  // Dad's code (v3.14.1 — as he remembers it, and his memory is the spec):
+  // ↑ ↑ ↓ ↓ ← → ○ □ □ ○
+  const CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'circle', 'square', 'square', 'circle'];
   const LEVELS = [
     ['den', '🏡 Moonlit Den'], ['r1', '🌋 Hollow Entrance'], ['r1b', '🕳️ Ash Warrens'],
     ['r2', '🌉 Ember Causeway'], ['r2b', '🔥 Cinder Bridges'], ['k1', '🏛️ Kiln Hub'],

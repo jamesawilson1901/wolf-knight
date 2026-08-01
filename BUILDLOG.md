@@ -1386,3 +1386,15 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   no streak mesh and 2.6x eye glow, a real moon bite on a Shade fires
   SUPER! + the teach line. Boss + dungeon regression suite green.
   SW v3.14.0, badge v3.14.
+
+## v3.14.1 — the code was never the code
+- MYSTERY SOLVED on the "glitched" cheat pad: dad's fingers were entering
+  ↑↑↓↓←→○□□○ (with the d-pad ← →), but the pad shipped with the shorter
+  ↑↑↓↓○□□○ from the original request — so his ← was scored as a WRONG
+  key and wiped the lights every single time. Not a bug, a password
+  mismatch (the ghost-tap guard from v3.13.2 was still worth having).
+- The code is now his 10-press version: ↑ ↑ ↓ ↓ ← → ○ □ □ ○.
+  The lights row sizes itself from the code, so it shows ten.
+- Verified with real touch: ten lights, the OLD 8-key code no longer
+  unlocks (dies at the 5th press, red blink), the full 10-key code opens
+  the level grid, and a level button warps to the Kiln Hub. SW v3.14.1.
