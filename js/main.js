@@ -284,12 +284,24 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   const closeAll = () => { pad.style.display = 'none'; levels.style.display = 'none'; };
   document.getElementById('cheat-close').addEventListener('pointerdown', (e) => { e.stopPropagation(); closeAll(); });
   document.getElementById('cheat-close2').addEventListener('pointerdown', (e) => { e.stopPropagation(); closeAll(); });
+  // GHOST-TAP GUARD: some phones deliver pointerdown TWICE for one touch.
+  // With a double-press code (↑↑↓↓…), one ghost on a ↓ silently advances the
+  // counter and the kid's REAL second ↓ then "fails" — the pad looked
+  // haunted. A same-key press inside 90ms can't be human; drop it.
+  let lastKey = '';
+  let lastKeyT = 0;
   for (const btn of pad.querySelectorAll('.cbtn[data-k]')) {
     btn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
+      e.preventDefault(); // also suppresses compat mouse events on touch
+      const k = btn.dataset.k;
+      const now = performance.now();
+      if (k === lastKey && now - lastKeyT < 90) return;
+      lastKey = k;
+      lastKeyT = now;
       btn.classList.add('hit');
       setTimeout(() => btn.classList.remove('hit'), 160);
-      if (btn.dataset.k === CODE[progress]) {
+      if (k === CODE[progress]) {
         progress++;
         audio.play('ui-click', { volume: 0.6, rate: 1 + progress * 0.07 }); // rising chirps
         renderLights();
@@ -298,8 +310,13 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
           setTimeout(() => { pad.style.display = 'none'; levels.style.display = 'flex'; }, 350);
         }
       } else {
-        progress = 0;
+        // a stray ↑ RESTARTS the code (progress 1), anything else clears it —
+        // and the lights blink red so a reset never looks like a glitch
+        progress = k === CODE[0] ? 1 : 0;
         renderLights();
+        lights.classList.remove('err');
+        void lights.offsetWidth;
+        lights.classList.add('err');
         audio.play('parry', { volume: 0.4, rate: 0.5 }); // dull buzz — wrong
       }
     });

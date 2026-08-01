@@ -1332,3 +1332,22 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   Shades with zero page errors, pause rows report pan-y, cheat pad +
   code + level grid work end-to-end. Title screenshot reviewed — the
   whole cast is finally at the fire. SW v3.13.1.
+
+## v3.13.2 — the haunted cheat pad (ghost taps)
+- Dad's phone: entering ↑↑↓↓ the code kept RESETTING mid-sequence.
+  Chromium touch emulation entered all 8 cleanly, so this is a device
+  quirk: some phones deliver pointerdown TWICE for one physical touch.
+  With a double-press code, one ghost on the first ↓ silently advances
+  the counter — the kid's real second ↓ then compares against 'circle'
+  and wipes everything. Looked possessed, was just a duplicate event.
+- Fixes: (1) GHOST-TAP GUARD — a same-key press within 90ms of the
+  last is dropped (a human double-press measures 150ms+; ghosts arrive
+  within ~30ms). Verified both ways with real touch injection: a
+  10ms duplicate counts once, a deliberate 170ms ↑↑ counts twice.
+  (2) preventDefault on pad presses suppresses compat mouse events.
+  (3) a wrong key now RESTARTS from a stray ↑ instead of always
+  clearing, and the code lights BLINK RED on a reset — a reset must
+  never look like a glitch. (4) the pad overlays get touch-action:none
+  + user-select:none so no zoom/select can interrupt a code entry.
+- Verified with real touchscreen input end-to-end: ghost mid-code,
+  full unlock, fast doubles, wrong-key restart + red blink. SW v3.13.2.

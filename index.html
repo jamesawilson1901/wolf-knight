@@ -125,6 +125,7 @@
       position: fixed; inset: 0; z-index: 17; display: none;
       align-items: center; justify-content: center; flex-direction: column; gap: 14px;
       background: rgba(8, 5, 14, .92);
+      touch-action: none; user-select: none; /* no zoom/select mid-code */
     }
     #cheat-shell {
       display: flex; align-items: center; gap: 34px;
@@ -147,6 +148,12 @@
     #cheat-lights { display: flex; gap: 8px; }
     .clight { width: 12px; height: 12px; border-radius: 50%; background: #3a3344; }
     .clight.on { background: #ffd76a; box-shadow: 0 0 8px #ffd76a; }
+    /* wrong press: the lights blink red — a reset must never look broken */
+    #cheat-lights.err .clight { animation: clight-err .45s ease; }
+    @keyframes clight-err {
+      0%, 60% { background: #ff4a4a; box-shadow: 0 0 8px #ff4a4a; }
+      100% { background: #3a3344; box-shadow: none; }
+    }
     #cheat-close, #cheat-close2 {
       position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
       width: 52px; height: 52px; border-radius: 50%; z-index: 18;
