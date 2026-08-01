@@ -1227,3 +1227,34 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   revert, save round-trip, Moon Shard, scenery pots. v3.8 boss/breath
   regression suite still green. Screenshots reviewed (740x360).
   Zero page errors. SW v3.11.0, badge v3.11.
+
+## v3.12.0 — DEN LIFE: villagers, rumors, and a dog named Biscuit
+- The Moonlit Den has FACES now (contract law #5 ✅). New js/npcs.js:
+  villagers are DATA (model, spot, arrival condition) using the KayKit
+  Adventurers models — they share the Knight's Rig_Medium skeleton, so
+  the existing rig-library clips bind by bone name for free. Each one
+  idles, breathes an occasional gesture (Idle_B / Interact), stands
+  SOLID, and turns to greet Kael when he walks up.
+- THE DEN GROWS with the healed world (Terranigma rule, home edition):
+  · WREN the hooded wanderer (Rogue_Hooded) waits by the far tent from
+    minute one — her repeatable rumour foreshadows the thorny Wild
+    Woods, seeding region 3 before it exists.
+  · ROOK the ranger (Ranger) arrives once Ember Hollow is freed — he
+    watched the smoke stop from this hill.
+  · OLD BRAM (Barbarian) climbs up from his cavern camp once Stoneroot
+    sings — the same Bram voice the kids met at the e1 campfire.
+  · BISCUIT the husky (Quaternius Husky, own Idle/Walk/Eating clips)
+    trots her sniff-rounds between five spots, snacks sometimes, and
+    turns to look when Kael comes close — dogs always know. Pip:
+    "She guards the den. Well… mostly she guards her dinner."
+- Narration: two new voices (Wren, Rook), intro lines once per save,
+  gentle repeatable chat throttled 45s, all mirrored in
+  NARRATION-SCRIPT.md; den arrival beats updated in regions.js
+  (validateRegions still 0 errors / 0 warnings).
+- Verified headless: precache list vs disk (194 files, all present),
+  fresh den = Wren + Biscuit only, ember-restored save adds Rook,
+  stone-restored save seats all three (plus Petra's heart + pup
+  playtime), Biscuit provably wanders through the real update loop,
+  Wren's intro fires from proximity and she turns to face Kael
+  (facing delta 0.03 rad). Screenshot reviewed. Zero page errors.
+  SW v3.12.0 (new models + npcs.js precached — offline complete).

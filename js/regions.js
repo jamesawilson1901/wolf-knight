@@ -53,7 +53,7 @@ export const REGIONS = {
     },
     ripple: { room: 'e1', what: 'green shoots by the Stoneroot gate' },
     scar: { room: 'r1', what: 'one ash patch by the Den stairs never heals' },
-    denArrival: 'Cinder\'s ember settles by the Den campfire',
+    denArrival: 'Cinder\'s ember settles by the Den campfire; Rook the ranger arrives',
   },
 
   stoneroot: {
@@ -83,7 +83,7 @@ export const REGIONS = {
     },
     ripple: { room: 'e3', what: 'a living vine through the NE wall — the Wild Woods calling (mystery: wildwoods_way)' },
     scar: { room: 'e2', what: 'one floor crack never closes' },
-    denArrival: 'Petra\'s stone-heart hums beside the moonstone',
+    denArrival: 'Petra\'s stone-heart hums beside the moonstone; Old Bram visits the fire',
   },
 
   wildwoods: { name: 'Wild Woods', built: false, spirit: 'Sylva', grants: 'verdant_wolf', gates: [] },

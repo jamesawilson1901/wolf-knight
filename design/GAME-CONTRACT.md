@@ -18,8 +18,12 @@
   alongside the existing 3-death rubber-band). Full gauge pulses GOLD
   (act-here); the surge itself burns RED. Dials: CONFIG.FORMS,
   CONFIG.MOON, CONFIG.SWITCH_FX. [#2, #3]
-- The settlement has characterful NPCs; a freed region's healing is
-  WITNESSED (visible sequence, persistent, revisit rewards). [#5]
+- ✅ DONE v3.12 (+v3.5/v3.8 witnessed healing): the settlement has
+  characterful NPCs — named villagers (Wren always; Rook when Ember
+  heals; Bram when Stoneroot sings) who greet Kael, gesture, and carry
+  rumors that foreshadow the next region; Biscuit the den dog wanders;
+  rescued pups play by the fire. A freed region's healing is WITNESSED
+  (visible sequence, persistent, revisit rewards). [#5]
 - A reduce-motion setting tames shake/hitstop/flash. [polish list]
 
 ## Combat grammar (already true — now law)

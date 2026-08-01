@@ -73,4 +73,13 @@ and so later regions reuse the structure. Captions show each line on screen (def
 - Respect the captions toggle and the narration on/off toggle independently (a kid may want text but
   no voice, or voice but no text).
 - Keep a single `lines` data table keyed by id; trigger from game events. Later regions add their own
-  ids with the same shape (e.g., earth_intro, petra_grant, grimm_taunt_2, luna_dream_2…).
+  ids with the same shape (e.g., earth_intro, petra_grant, grimm_taunt_2, luna_dream_2…).### Den villagers (v3.12 — the den grows faces as regions heal)
+
+- **wren_intro** *(near Wren, the hooded wanderer — there from the start)* [Wren]: "A knight who turns into wolves… I walk every road, and I've never seen THAT. Call me Wren. I hear things — come find me when you want a rumour."
+- **wren_rumour** *(near Wren again; repeatable, throttled)* [Wren]: "A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…"
+- **rook_intro** *(near Rook the ranger — arrives once Ember Hollow is freed)* [Rook]: "So you're the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I'll keep watch while you wander."
+- **rook_chat** *(near Rook again; repeatable, throttled)* [Rook]: "The horizon's quiet today. Quiet is GOOD, little knight."
+- **bram_den** *(near Bram in the den — visits once Stoneroot sings)* [Old Bram]: "Ha! Thought I'd see this famous fire of yours. The caverns sing so sweet now, my pick near swings itself. You've a fine den, knight."
+- **den_dog** *(near Biscuit the husky)* [Pip]: "That's Biscuit! She guards the den. Well… mostly she guards her dinner."
+
+

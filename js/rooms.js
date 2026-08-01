@@ -14,6 +14,7 @@ import { Shadowgrip } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate } from './gates.js';
+import { spawnDenNpcs } from './npcs.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -849,6 +850,10 @@ async function buildDen(scene) {
       pup.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI / 2;
     });
   });
+
+  // DEN LIFE: villagers + the den dog (real faces — js/npcs.js). The
+  // roster grows with the healed regions.
+  await spawnDenNpcs(world);
 
   // soft daylight mood handled by main (den has no lava rumble)
   return world;

@@ -91,6 +91,16 @@ ROOMS registry builds each room from kit pieces; flat-plane collisions
 (kilnLandmark). Region = room id prefix. LEVEL-DESIGN-2.md holds the
 seven layout rules + region graphs.
 
+## Den villagers (js/npcs.js)
+spawnDenNpcs(world) populates the Den from VILLAGERS data (id, model,
+spot, arrival condition): Wren (Rogue_Hooded, always) · Rook (Ranger,
+after ember restored) · Bram (Barbarian, after stone restored) — KayKit
+Rig_Medium models bound to the rig-library clips (Idle_A + occasional
+Idle_B/Interact gesture), solid colliders, smooth face-Kael greeting.
+Biscuit the Husky (world.dog) wanders DOG_STOPS with Idle/Walk/Eating.
+main calls world.updateNpcs(dt, t, player); markers (<id>Spot, dogSpot)
+drive the narration greetings in main's den trigger block.
+
 ## Narration (js/narration.js) — CANONICAL line table
 Data table {id, voice, text}; Web Speech per-character rate/pitch;
 captions; music ducking; once-per-save vs repeatable; stuck hints.

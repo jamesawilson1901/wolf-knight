@@ -59,6 +59,14 @@ Web Speech API narration).
   Cinder (code builds only the cage shell/rings — never the creature).
 - **Stoneroot roster:** Slime, Bat, Skeleton Minion/Rogue, armored skeleton = Bone Warden —
   all real pack models, tinted per role.
+- **Den shopkeeper:** KayKit Adventurers **Mage** (rig-library Idle_A).
+- **Den villagers (v3.12):** KayKit Adventurers, same Rig_Medium skeleton as the
+  Knight so the rig-library clips bind by bone name — **Wren the wanderer** =
+  Rogue_Hooded (there from the start) · **Rook the ranger** = Ranger (arrives once
+  Ember Hollow is healed) · **Old Bram** = Barbarian (visits once Stoneroot sings —
+  same Bram as the e1 camp voice). Idle_A base + occasional Idle_B/Interact gesture.
+- **Biscuit the den dog:** Quaternius **Husky** (own clips: Idle/Walk/Eating),
+  wandering waypoints around the campfire.
 - **Cinder (freed spirit):** glowing ember-orange sphere/flame with a strong warm point light,
   gentle float animation. Code, not a model.
 - **Lava:** flat plane with emissive orange material (+ slow UV scroll if easy). It genuinely

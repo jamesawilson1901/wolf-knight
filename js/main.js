@@ -449,6 +449,15 @@ function narrationTriggers(dt, t) {
     if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
     if (m.cinderHome && nearSpot(m.cinderHome, 2.6)) narration.say('cinder_den');
     if (m.petraHome && nearSpot(m.petraHome, 2.6)) narration.say('petra_den');
+    // villagers: intro once, then gentle repeatable chat (throttled)
+    if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
+      if (!narration.say('wren_intro')) sayThrottled('wren_rumour', t, 45);
+    }
+    if (m.rookSpot && nearSpot(m.rookSpot, 2.6)) {
+      if (!narration.say('rook_intro')) sayThrottled('rook_chat', t, 45);
+    }
+    if (m.bramSpot && nearSpot(m.bramSpot, 2.6)) narration.say('bram_den');
+    if (m.dogSpot && nearSpot(m.dogSpot, 1.8)) narration.say('den_dog');
   }
 
   if (state.room === 'r2') {
@@ -1069,6 +1078,7 @@ async function start() {
       const edt = (state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale;
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
+      if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
       updatePowerups(world, dt, t, player);

@@ -15,8 +15,8 @@ below is either CC0 (public domain — no attribution required, given gladly) or
 |---|---|---|---|
 | Nature Kit | Kenney | Floor tiles, rocks, cliff wall blocks (`assets/env/floor-tile.glb`, `rock-*.glb`, `cliff-block.glb`) | https://kenney.nl/assets/nature-kit |
 | Castle Kit | Kenney | Pillars (`assets/env/pillar.glb` + `Textures/colormap.png`) | https://kenney.nl/assets/castle-kit |
-| Ultimate Animated Animal Pack | Quaternius | Wolf (Kael's wolf forms), Fox (Pip) — from Phase 1+ | https://quaternius.com/packs/ultimateanimatedanimals.html |
-| Character Pack: Adventurers | KayKit (Kay Lousberg) | Knight (Kael) — from Phase 1+ | https://kaylousberg.itch.io/kaykit-adventurers |
+| Ultimate Animated Animal Pack | Quaternius | Wolf (Kael's wolf forms), Fox (Pip), Husky (Biscuit the den dog) | https://quaternius.com/packs/ultimateanimatedanimals.html |
+| Character Pack: Adventurers | KayKit (Kay Lousberg) | Knight (Kael), Mage (shopkeeper), Ranger/Barbarian/Rogue_Hooded (den villagers) | https://kaylousberg.itch.io/kaykit-adventurers |
 | Character Animations | KayKit (Kay Lousberg) | Humanoid animation library — from Phase 1+ | https://kaylousberg.itch.io/kaykit-character-animations |
 | Mini Arena | Kenney | Arena props — later regions | https://kenney.nl/assets/mini-arena |
 | Survival Kit | Kenney | Crates, chest, camp props | https://kenney.nl/assets/survival-kit |

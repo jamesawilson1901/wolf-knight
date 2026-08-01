@@ -13,6 +13,8 @@ const VOICES = {
   luna: { rate: 0.9, pitch: 1.1, label: 'Luna' },
   petra: { rate: 0.82, pitch: 0.95, label: 'Petra' },
   bram: { rate: 0.85, pitch: 0.7, label: 'Old Bram' },
+  wren: { rate: 0.95, pitch: 1.05, label: 'Wren' },
+  rook: { rate: 0.9, pitch: 0.9, label: 'Rook' },
 };
 
 export const LINES = {
@@ -95,6 +97,13 @@ export const LINES = {
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
   camp_rumour: { voice: 'bram', text: 'Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.' },
+  // Den villagers (v3.12: the den grows faces as regions heal)
+  wren_intro: { voice: 'wren', text: 'A knight who turns into wolves… I walk every road, and I’ve never seen THAT. Call me Wren. I hear things — come find me when you want a rumour.' },
+  wren_rumour: { voice: 'wren', text: 'A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…', repeat: true },
+  rook_intro: { voice: 'rook', text: 'So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.' },
+  rook_chat: { voice: 'rook', text: 'The horizon’s quiet today. Quiet is GOOD, little knight.', repeat: true },
+  bram_den: { voice: 'bram', text: 'Ha! Thought I’d see this famous fire of yours. The caverns sing so sweet now, my pick near swings itself. You’ve a fine den, knight.' },
+  den_dog: { voice: 'pip', text: 'That’s Biscuit! She guards the den. Well… mostly she guards her dinner.' },
   camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },
   mill_wakes: { voice: 'pip', text: 'The old mill turns again! I heard something grind open back near the gate hall!' },
   stone_restore_1: { voice: 'pip', text: 'Kael, look! The caverns are lighting up — the stone remembers how to sing!' },
