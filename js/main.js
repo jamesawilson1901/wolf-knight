@@ -920,6 +920,7 @@ async function start() {
   lootEvents.onShards = () => renderShards();
   progressEvents.onXp = () => renderLevel();
   progressEvents.onLevelUp = (level) => {
+    audio.fanfare(); // C-E-G-C — a real moment, not a chime
     renderLevel();
     player.hearts = Math.min(player.maxHearts, player.hearts + 1);
     renderHearts(player);

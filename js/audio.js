@@ -24,6 +24,16 @@ const SFX_FILES = {
   potion: './assets/audio/sfx/potion.ogg',
   bones: './assets/audio/sfx/bones.ogg',
   bite: './assets/audio/sfx/bite.ogg',
+  'step-stone-0': './assets/audio/sfx/step-stone-0.ogg',
+  'step-stone-1': './assets/audio/sfx/step-stone-1.ogg',
+  'step-stone-2': './assets/audio/sfx/step-stone-2.ogg',
+  'step-grass-0': './assets/audio/sfx/step-grass-0.ogg',
+  'step-grass-1': './assets/audio/sfx/step-grass-1.ogg',
+  'step-grass-2': './assets/audio/sfx/step-grass-2.ogg',
+  'chest-open': './assets/audio/sfx/chest-open.ogg',
+  coin: './assets/audio/sfx/coin.ogg',
+  'gate-creak': './assets/audio/sfx/gate-creak.ogg',
+  whoosh: './assets/audio/sfx/whoosh.ogg',
 };
 
 const MUSIC_FILES = {
@@ -228,6 +238,66 @@ class AudioSystem {
         if (this._musicName === name) this.playMusic(opts.then);
       };
     }
+  }
+
+  // A stylized wolf HOWL, synthesized (no CC0 howl exists in our packs):
+  // two detuned voices glide up, hold with vibrato, and fall away through a
+  // low-pass — reads as a low-poly howl, matches the art. rate < 1 = bigger
+  // wolf (the boss), rate > 1 = Kael's wolves.
+  howl({ volume = 0.8, rate = 1 } = {}) {
+    if (!this.ctx || state.settings.sfxVol <= 0) return;
+    const t0 = this.ctx.currentTime;
+    const dur = 2.2 / rate;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(volume * 0.5, t0 + 0.25 / rate);
+    g.gain.setValueAtTime(volume * 0.5, t0 + dur * 0.62);
+    g.gain.linearRampToValueAtTime(0, t0 + dur);
+    g.connect(this.sfxGain);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1100 * rate;
+    lp.connect(g);
+    for (const det of [0, 5]) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sawtooth'; // breathy through the low-pass
+      const f0 = 210 * rate + det;
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.linearRampToValueAtTime(f0 * 2.1, t0 + 0.5 / rate);
+      o.frequency.setValueAtTime(f0 * 2.1, t0 + dur * 0.6);
+      o.frequency.linearRampToValueAtTime(f0 * 1.2, t0 + dur);
+      const v = this.ctx.createOscillator();
+      v.frequency.value = 5.5;
+      const vg = this.ctx.createGain();
+      vg.gain.value = 7;
+      v.connect(vg);
+      vg.connect(o.frequency);
+      v.start(t0); v.stop(t0 + dur);
+      o.connect(lp);
+      o.start(t0); o.stop(t0 + dur);
+    }
+  }
+
+  // Four rising notes — the level-up fanfare (synthesized; our CC0 packs
+  // have no fanfare and the moment deserves more than a chime).
+  fanfare({ volume = 0.7 } = {}) {
+    if (!this.ctx || state.settings.sfxVol <= 0) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C E G C
+    const t0 = this.ctx.currentTime;
+    notes.forEach((f, i) => {
+      const o = this.ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      const g = this.ctx.createGain();
+      const ts = t0 + i * 0.11;
+      g.gain.setValueAtTime(0, ts);
+      g.gain.linearRampToValueAtTime(volume * (i === 3 ? 0.5 : 0.35), ts + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ts + (i === 3 ? 0.7 : 0.25));
+      o.connect(g);
+      g.connect(this.sfxGain);
+      o.start(ts);
+      o.stop(ts + 0.8);
+    });
   }
 
   stopMusic() {

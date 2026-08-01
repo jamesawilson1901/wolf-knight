@@ -1141,3 +1141,23 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   (LEVEL-DESIGN-2, regions manifest) updated. Verified headless: key
   held + boss alive → pools still burn; boss down → basalt + line.
   SW v3.8.2.
+
+## v3.9.0 — the audio pass (the world finally makes sound)
+- 10 new SFX vendored from packs we ALREADY OWN (Kenney RPG Audio +
+  Impact Sounds, both credited): 3 stone + 3 grass footsteps, chest
+  latch, coin jingle, gate creak, cloth whoosh.
+- FOOTSTEPS: cadence follows real speed; grass in the Den, stone
+  everywhere else; wolves patter (lighter, quicker, higher). Silent
+  while airborne/rolling/locked.
+- WIRED: chests = latch click THEN chime · shards = coin jingle (pitch
+  varied) · dodge roll = real cloth whoosh · gates/vault/crypt bars =
+  old iron GROANS as they rise · the millstone GRINDS as it rolls
+  (distance-throttled) · level-up = synthesized C-E-G-C FANFARE.
+- THE HOWL (synthesized — no CC0 howl exists in our packs): two detuned
+  voices glide up, hold with vibrato, fall away through a low-pass.
+  rate scales the wolf: Kael's Blood Moon howl (1.15), the boss answers
+  the severs (0.75), deepest at phase 3 (0.6), and a long dying howl on
+  defeat. Ready for the future Surge.
+- Verified headless: all 10 files decode, synths run clean, footstep
+  cycle advances under real movement. Zero errors. SW v3.9.0
+  (all new files precached — offline still complete).

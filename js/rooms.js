@@ -2171,6 +2171,7 @@ async function buildE2b(scene) {
         bars.position.y = Math.min(2.6, rise);
         if (rise >= 2.6) world.root.remove(bars);
       });
+      audio.play('gate-creak', { volume: 0.85, rate: 0.45 }); // the vault groans
       audio.play('checkpoint', { volume: 0.9, rate: 1.1 });
       world.checkVault = null;
     };
@@ -2270,6 +2271,7 @@ async function buildE2(scene) {
       if (rise >= 2.6) world.root.remove(gateBars);
     });
     audio.play('slam', { volume: 0.5, rate: 0.6 });
+    audio.play('gate-creak', { volume: 0.85, rate: 0.5 }); // old iron groans up
     // THE MID-DUNGEON TWIST (WORLD-DESIGN beat 6): the millstone on the
     // plate wakes the OLD MACHINERY region-wide — wheels turn here and in
     // the gate hall, where the rusted grate grinds open (rebuilt rooms

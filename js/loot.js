@@ -76,7 +76,7 @@ export function updateShards(world, dt, t, player) {
       if (s.life > 0) {
         state.shards++;
         bumpCounter('shardsEarned');
-        audio.play('ui-click', { volume: 0.4, rate: 1.8 + Math.random() * 0.3 });
+        audio.play('coin', { volume: 0.35, rate: 1.5, vary: 0.2 });
         if (lootEvents.onShards) lootEvents.onShards();
       }
       continue;
@@ -208,7 +208,8 @@ export function updateChests(world, player, giveLoot) {
     c.opened = true;
     state.flags.chests[c.id] = true;
     bumpCounter('chests');
-    audio.play('checkpoint', { volume: 0.9, rate: 0.8 });
+    audio.play('chest-open', { volume: 0.95 }); // the latch clicks...
+    audio.play('checkpoint', { volume: 0.7, rate: 0.8 }); // ...then the chime
     // celebratory hop + burst
     const mesh = c.mesh;
     let tPop = 0.45;

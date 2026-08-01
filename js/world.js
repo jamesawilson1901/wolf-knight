@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { state } from './state.js';
+import { audio } from './audio.js';
 
 const _rollAxis = new THREE.Vector3();
 
@@ -157,6 +158,12 @@ export class World {
         // roll the rock about the axis perpendicular to its motion
         _rollAxis.set(mz / moved, 0, -mx / moved);
         b.mesh.rotateOnWorldAxis(_rollAxis, moved / b.r);
+        // the millstone GRINDS as it rolls (throttled by distance)
+        b._rollAcc = (b._rollAcc || 0) + moved;
+        if (b._rollAcc > 0.55) {
+          b._rollAcc = 0;
+          audio.play('gate-creak', { volume: 0.3, rate: 0.55, vary: 0.15 });
+        }
       }
       if (this.plates) {
         for (const p of this.plates) {

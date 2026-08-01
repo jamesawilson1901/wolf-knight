@@ -261,6 +261,7 @@ export class Shadowgrip {
   _enterPhase2() {
     this.phase = 2;
     this.stateT = 0;
+    audio.howl({ volume: 0.9, rate: 0.75 }); // the great wolf answers the severs
     this.slamState = 'wait';
     this.slamTimer = 999; // no slams in phase 2
     this.slamTendril.visible = false;
@@ -281,6 +282,7 @@ export class Shadowgrip {
   _enterPhase3() {
     this.phase = 3;
     this.stateT = 0;
+    audio.howl({ volume: 1, rate: 0.6 }); // deepest howl — the dark closes in
     this.world.bossDarkness = true;  // the room goes dark — Dark Wolf time
     this.waveActive = false;
     this.wave.material.opacity = 0;
@@ -307,6 +309,7 @@ export class Shadowgrip {
         i % 2 ? 0xff8a3a : 0x8f6bff, 12);
     }
     audio.play('slam', { volume: 1, rate: 0.5 });
+    audio.howl({ volume: 0.85, rate: 0.5 }); // the long dying howl
     this.chargeStreak.visible = false;
     this._setCoreExposed(false);
     this.coreHittable.dead = true;

@@ -849,6 +849,7 @@ export class Player {
     const target = this.root.position.clone().addScaledVector(dir, BLOOD_MOON_RANGE);
 
     this._playOnce('howl', 0.12);
+    audio.howl({ volume: 0.75, rate: 1.15 }); // Kael's howl calls the moon
     this.lockTime = 1.15; // hold the howl while the sky turns red
     this._softLock = false;
 
@@ -879,6 +880,28 @@ export class Player {
       const p = 1 - Math.max(0, this._popTime) / 0.22;
       const s = 0.6 + 0.4 * (1 - (1 - p) * (1 - p));
       f.model.scale.setScalar((state.form === 'knight' ? 0.5 : WOLF_SCALE) * s);
+    }
+
+    // FOOTSTEPS: cadence follows real speed; grass in the Den, stone
+    // everywhere else. Wolves patter — lighter, quicker steps.
+    {
+      const spd = Math.hypot(this._vel.x, this._vel.z);
+      if (this.airY <= 0 && !this._roll && !this._lavaBounce && spd > 1.2 && this.lockTime <= 0) {
+        this._stepAcc = (this._stepAcc || 0) + spd * dt;
+        const stride = state.form === 'knight' ? 1.4 : 1.15;
+        if (this._stepAcc > stride) {
+          this._stepAcc = 0;
+          this._stepIdx = ((this._stepIdx || 0) + 1) % 3;
+          const mat = state.room === 'den' ? 'grass' : 'stone';
+          audio.play(`step-${mat}-${this._stepIdx}`, {
+            volume: state.form === 'knight' ? 0.3 : 0.2,
+            rate: state.form === 'knight' ? 1 : 1.25,
+            vary: 0.08,
+          });
+        }
+      } else {
+        this._stepAcc = 0;
+      }
     }
 
     this._applyPendingHit(dt, world);
@@ -935,7 +958,7 @@ export class Player {
       this._softLock = false;
       this.root.rotation.y = Math.atan2(this._roll.dx, this._roll.dz);
       this._playOnce('jump', 0.06);
-      audio.play('form-switch', { volume: 0.4, rate: 1.9 }); // tumble whoosh
+      audio.play('whoosh', { volume: 0.75, rate: 1.1, vary: 0.1 }); // tumble
     }
     if (this._roll) {
       const r = this._roll;
