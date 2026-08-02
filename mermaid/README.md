@@ -56,10 +56,12 @@ Dev helpers: `?test=controls` is the plain-rectangle control test scene;
   `audio-source/<slot>.mp3` (slots: `ambient`, `tap`, `pearl`, `coin`, `joy`,
   `chest`, `complete`) and `npm run audio` decodes, monos, trims, normalises
   and (for ambient) loop-crossfades it to WAV; slots without a recording fall
-  back to synthesized bell/harp sounds. Current recordings, all from Pixabay:
-  underwater ambience #6201 and water drop #85731 (freesound_community),
-  harp glissando ascending #103885 (Serge Quadrado). `pearl`, `coin`, `joy`,
-  `complete` are still synthesized.
+  back to synthesized bell/harp sounds. All seven slots now use recordings,
+  all from Pixabay: underwater ambience #6201, water drop #85731 and chime
+  #74910 (freesound_community — chime unused, kept as a spare), harp
+  glissando #103885 (Serge Quadrado), fairy sparkle #451415 (HumorDome),
+  sparkle #355937 (KoiRoylers), magic twinkle #244951 (UNIVERSFIELD),
+  success #340660 (Meldix).
 - `src/level.ts` — level 1 hardcoded by design; no level format yet.
 - Portrait handling: pure-CSS overlay (`#rotate` in `index.html`) plus a
   `matchMedia` pause/resume in `src/main.ts`. No Screen Orientation API.

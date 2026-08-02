@@ -92,7 +92,7 @@ if (hasRecording('coin')) {
 }
 if (hasRecording('joy')) {
   const { pcm, rate } = await decodeMp3('joy');
-  writeWav('joy.wav', trim(pcm, rate, { maxDur: 1.2, fadeOut: 0.1 }), rate);
+  writeWav('joy.wav', trim(pcm, rate, { maxDur: 1.6, fadeOut: 0.15 }), rate);
 }
 if (hasRecording('complete')) {
   const { pcm, rate } = await decodeMp3('complete');
