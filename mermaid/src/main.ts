@@ -20,6 +20,9 @@ const game = new Phaser.Game({
   },
 });
 
+// dev handle for automated smoke tests
+(window as unknown as { __game: Phaser.Game }).__game = game;
+
 const test = new URLSearchParams(location.search).get('test');
 if (test === 'controls') {
   game.scene.add('controls', ControlTestScene, true);

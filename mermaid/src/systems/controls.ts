@@ -34,6 +34,10 @@ export class VerticalControl {
   private firstTouchFired = false;
   onFirstTouch?: () => void;
   onTouchDown?: () => void;
+  /** Touches inside this region (e.g. the sound toggle) don't drive movement. */
+  ignoreRegion?: (x: number, y: number) => boolean;
+  /** Disabled during the chest ending, when she swims in on her own. */
+  enabled = true;
 
   constructor(scene: Phaser.Scene, startY: number) {
     this.y = startY;
@@ -66,6 +70,7 @@ export class VerticalControl {
   }
 
   private onDown(pointer: Phaser.Input.Pointer) {
+    if (this.ignoreRegion?.(pointer.x, pointer.y)) return;
     if (!this.firstTouchFired) {
       this.firstTouchFired = true;
       this.onFirstTouch?.();
@@ -102,6 +107,10 @@ export class VerticalControl {
   }
 
   update(dtMs: number) {
+    if (!this.enabled) {
+      this.vy = 0;
+      return;
+    }
     const dt = Math.min(dtMs / 1000, 0.05);
     const prevY = this.y;
     if (!this.held) this.sinceRelease += dt;
@@ -129,6 +138,10 @@ export class VerticalControl {
     }
 
     this.y = Phaser.Math.Clamp(this.y, PLAY_TOP, SEAFLOOR_Y);
+    // Resting against a bound: bleed off velocity so she settles into Idle
+    // instead of reporting phantom movement.
+    if (this.y >= SEAFLOOR_Y && this.vy > 0) this.vy = 0;
+    if (this.y <= PLAY_TOP && this.vy < 0) this.vy = 0;
   }
 
   // Soft easing near the top and bottom of the play area, not a hard stop.
