@@ -81,6 +81,8 @@ export function persist() {
       world: JSON.parse(JSON.stringify(state.flags.world || {})),
       mysteries: JSON.parse(JSON.stringify(state.flags.mysteries || {})),
       bossProgress: state.flags.bossProgress || 0,
+      bossHp: state.flags.bossHp || 0,        // v3.18: the duel remembers wounds
+      e2bCleared: !!state.flags.e2bCleared,   // v3.18: the Old Quarry stays open
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -132,6 +134,12 @@ export function applySave(profileId, profileName, data) {
     state.flags.keys = data.flags.keys || {};
     state.flags.world = data.flags.world || {};
     state.flags.mysteries = data.flags.mysteries || {};
+    state.flags.bossHp = data.flags.bossHp || 0;
+    state.flags.e2bCleared = !!data.flags.e2bCleared;
+    // v3.18: the "dead machinery" mystery was retired with the mill fiction —
+    // old saves that logged it get it quietly marked found (additive law:
+    // old profiles must always load clean)
+    if (state.flags.mysteries.stone_mill) state.flags.mysteries.stone_mill.found = true;
   }
   state.spoken = data.spoken || {};
   if (data.settings) Object.assign(state.settings, data.settings);

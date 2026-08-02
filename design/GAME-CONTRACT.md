@@ -47,6 +47,29 @@
   for room-crossing charges are the exception).
 - Weakness hits announce themselves: gold flare + "SUPER!" callout; Pip
   teaches "every creature fears something" on the first one.
+- BOSSES FIGHT LIKE THEIR FAMILY (v3.18, dad's law): a boss is a bigger,
+  tougher version of enemies the kids already read — same telegraphs,
+  same answers (dodge the charge, shield/parry the swipe) — never a
+  separate machine of tendrils/waves/phases. The Shadowgrip is a giant
+  hound: 20 hp (3-per-hit cap), 1.5-heart hits, always hittable, every
+  charge ends in a 2.6s gold-ring collapse, parry staggers it. Its
+  wounds persist across deaths (flags.bossHp).
+- THE BLOOD MOON BELONGS TO THE DARK WOLF (v3.18): the gauge fills in
+  every form, but the button, the "moon is full" nags and the trigger
+  exist only while wearing the Dark Wolf. The surge opens with the risen
+  moon CRASHING DOWN on the nearest enemy (2 moon dmg + AoE stun) — a
+  visible payoff, never just a screen tint.
+- NOTHING TELEPORTS THE PLAYER without a door they walked through
+  (v3.18; the Echo Chasm drop-holes are banned and gone).
+- ONE PUZZLE ROOM PER LEVEL (v3.18, dad's law). Puzzles are never hidden
+  in darkness, and rooms only reference things the player can SEE (the
+  "Mill/machinery" fiction with no machinery on screen is banned).
+- HEIGHT LAW (v3.18, learned the hard way): Stoneroot's modular floor
+  tiles top out around y≈0.17 — floor decals (plates, rings, scars) must
+  sit ABOVE that or they are invisible inside the floor. BLIND-STRIP LAW:
+  the camera looks north over the tall south wall, which hides a ~2u
+  strip of floor in front of it — interactives never live at z within
+  ~2.5u of a room's south shell.
 
 ## Progression targets (tune toward, verify per region)
 ## Elements & armor (law, v3.7)
@@ -64,6 +87,25 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-02 (evening) — dad, big round: "boss fight still doesn't work —
+  get rid of the tentacles completely; have him act like the little
+  wolves, just more health and attack; make the player dodge and use
+  shield" → v3.18 boss rewrite (see BOSSES FIGHT LIKE THEIR FAMILY law).
+  "Blood moon doesn't work — no animation crashing down; button shows in
+  every form; ready audio nags in other forms" → the CRASH + dark-wolf-
+  only law. "Spin attack: no animation, Kael just stands there" → ROOT
+  CAUSE: clips.special was Melee_2H_Attack_Spin, a 2.4s clip whose body
+  rotation starts at ~0.7s — our 0.75s lock cut it before it ever turned;
+  switched to Melee_2H_Attack_Spinning (0.67s true 360°). "Boulders too
+  unpredictable" → cardinal step-slide + plate snap. "There is no
+  pressure plate" → TWO buried truths: the plate mesh sat UNDER the
+  stone floor tiles (height law) AND in the south-wall camera blind
+  strip (blind-strip law) — plus the room was fully dark. "Two plates on
+  the wall as round circles" → those were code-built millstone DISCS;
+  all fake machinery + the Mill fiction removed. "Shadow floor randomly
+  teleports you — redesign; one puzzle room per level" → Echo Chasm
+  drop-holes deleted (no-teleport law), e2b became a combat room, e2
+  keeps the single lit puzzle.
   2026-08-02 — dad: "the boss is disappointing. still too big. all he
   does is rotate to look at the player, doesn't move at all." → THE
   WOLF UNCHAINED (v3.16): 1.62→1.3 (~2.3x), and it MOVES in every

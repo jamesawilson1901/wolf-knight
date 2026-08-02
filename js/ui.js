@@ -130,6 +130,9 @@ export class UI {
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
       state.form === 'knight' ? '🌀' : state.form === 'fire_wolf' ? '🔥' : state.form === 'earth_wolf' ? '🪨' : '🌙';
+    // The moon gauge is the DARK WOLF's power — no other form shows the
+    // button (v3.18 playtest law; the gauge still fills quietly underneath)
+    this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');
   }
 
   update(player) {

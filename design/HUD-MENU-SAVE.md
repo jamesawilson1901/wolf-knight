@@ -63,7 +63,9 @@ localStorage["wolfknight:save:<id>"] = {   // v2 (shipped) — js/save.js is aut
   perks: { sword, cooldown, ... }, stickers: { id: count },
   gear: { weapon, shield }, spoken: { lineId: true },
   flags: { bossDefeated, bossProgress, shortcutOpen, wardenDefeated, burned,
-           cracked, plates, chests, keys, world, mysteries },
+           cracked, plates, chests, keys, world, mysteries,
+           bossHp,        // v3.18: Shadowgrip wounds persist across deaths
+           e2bCleared },  // v3.18: the Old Quarry vault stays open
   settings: { captions, voice, musicVol, sfxVol, voiceRate, brave },
   updatedAt
 }

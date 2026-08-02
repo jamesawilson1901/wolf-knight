@@ -1747,7 +1747,7 @@ function boulder(world, x, z) {
     new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.06;
+  ring.position.y = 0.22; // above the stone floor tiles (height law, v3.18)
   group.add(ring);
   world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
   const b = { x, z, r: 0.62, group, mesh: rock, collider };
@@ -1755,75 +1755,68 @@ function boulder(world, x, z) {
   return b;
 }
 
-// Pressure plate: a glowing floor switch a boulder can hold down.
+// Pressure plate: a floor switch a boulder holds down. v3.18 readability
+// pass — it is now a big, IN-THE-FLOOR target: recessed stone base, glowing
+// disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
+// ring, so "roll THIS onto THAT" reads at a glance.
 function pressurePlate(world, id, x, z, onPressed) {
-  const base = prepareModel(dkit.trapBase.scene.clone(), { castShadow: false });
-  base.position.set(x, 0.09, z);
-  base.scale.setScalar(0.8);
+  // HEIGHT LAW (v3.18, learned the hard way): Stoneroot's modular floor
+  // tiles sit at y 0.06 + tile thickness — any decal below ~y 0.17 is BURIED
+  // inside the floor and invisible. This is why "there is no pressure plate":
+  // the plate existed, under the tiles, since the room shipped.
+  // a round stone plate (NOT the dungeon-kit trap grid — that reads as
+  // "danger, keep off", the exact opposite of an act-here target)
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
+    new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
+  );
+  base.position.set(x, 0.17, z);
   world.add(base);
   const glow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.55, 22),
+    new THREE.CircleGeometry(0.62, 24),
     new THREE.MeshStandardMaterial({
       color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.9,
       transparent: true, opacity: 0.75, roughness: 1, depthWrite: false,
     })
   );
   glow.rotation.x = -Math.PI / 2;
-  glow.position.set(x, 0.12, z);
+  glow.position.set(x, 0.235, z);
   world.add(glow);
+  // the GOLD "act here" ring — same grammar (and same gold) as the boulder
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 0.92, 28),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, 0.225, z);
+  world.add(ring);
   if (!world.plates) world.plates = [];
   const pressed = !!state.flags.plates[id];
   const p = {
     id, x, z, pressed,
     onPressed: () => {
       glow.material.emissive.setHex(0x7aff8a);
+      ring.material.color.setHex(0x7aff8a); // the ring agrees: DONE
       audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
       if (onPressed) onPressed();
     },
   };
-  if (pressed) glow.material.emissive.setHex(0x7aff8a);
+  if (pressed) {
+    glow.material.emissive.setHex(0x7aff8a);
+    ring.material.color.setHex(0x7aff8a);
+  }
   world.plates.push(p);
   world.onAnimate((t) => {
     glow.material.emissiveIntensity = p.pressed ? 1.4 : 0.7 + 0.35 * Math.sin(t * 2.6 + x);
+    ring.material.opacity = p.pressed ? 0.4 : 0.4 + 0.3 * Math.sin(t * 2.4 + x);
+    const s = p.pressed ? 1 : 1 + 0.06 * Math.sin(t * 2.4 + x);
+    ring.scale.set(s, s, 1);
   });
   return p;
 }
 
-// Pokémon-style DROP HOLE: walk onto the dark circle and fall to a lower
-// pocket (main.js handles the teleport). A JUMP clears it — walking doesn't.
-function dropHole(world, x, z, landing) {
-  const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(0.6, 20),
-    new THREE.MeshBasicMaterial({ color: 0x05030a })
-  );
-  disc.rotation.x = -Math.PI / 2;
-  disc.position.set(x, 0.04, z);
-  world.add(disc);
-  const rim = new THREE.Mesh(
-    new THREE.RingGeometry(0.58, 0.7, 20),
-    new THREE.MeshBasicMaterial({ color: 0x6b56a8, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
-  );
-  rim.rotation.x = -Math.PI / 2;
-  rim.position.set(x, 0.05, z);
-  world.add(rim);
-  world.onAnimate((t) => { rim.material.opacity = 0.45 + 0.3 * Math.sin(t * 2.2 + x); });
-  if (!world.holes) world.holes = [];
-  world.holes.push({ x, z, r: 0.55, landing });
-}
-
-// The way back up out of a pocket: a GOLD climb ring (act-here grammar).
-function climbSpot(world, x, z, top) {
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.5, 0.68, 22),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, 0.05, z);
-  world.add(ring);
-  world.onAnimate((t) => { ring.material.opacity = 0.4 + 0.3 * Math.sin(t * 2.6 + z); });
-  if (!world.holes) world.holes = [];
-  world.holes.push({ x, z, r: 0.55, landing: top });
-}
+// (v3.18: the drop-hole/climb-spot teleport pair is GONE — dad's law:
+// nothing moves the player without a door they walked through.)
 
 // Cracked rock pile — the Earth Wolf's stomp shatters these (region verb,
 // mirrors Ember's burnables).
@@ -1981,35 +1974,10 @@ async function buildE1(scene) {
     world.markers.campSpot = { x: -4.6, z: 4.2 };
   }
 
-  // THE DEAD MACHINERY GRATE (the Mill twist's promise): a barred alcove in
-  // the NE corner flanked by two half-sunk millstones. Solving the Mill in
-  // the Deep Hall (WS stone.mill) wakes the gears and grinds it open.
-  {
-    const millOpen = !!WS.get('stone', 'mill');
-    const wheels = [];
-    for (const wx of [5.0, 7.2]) {
-      const wg = new THREE.Group();
-      wg.position.set(wx, 0.75, -5.6);
-      const wheel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
-        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
-      );
-      wheel.rotation.x = Math.PI / 2; // upright disc facing the room
-      wg.add(wheel);
-      world.add(wg);
-      wheels.push(wg);
-    }
-    if (millOpen) world.onAnimate((t, dt) => { for (const w of wheels) w.rotation.z += dt * 1.1; });
-    const grateBars = prepareModel(dkit.bars.scene.clone());
-    grateBars.position.set(6.1, 0, -5.35);
-    grateBars.scale.set(0.85, 0.8, 1);
-    const grateCollider = { minX: 5.3, maxX: 6.9, minZ: -6, maxZ: -5.0 };
-    if (!millOpen) {
-      world.add(grateBars);
-      world.boxColliders.push(grateCollider);
-    }
-    world.markers.millGrate = { x: 6.1, z: -4.9, open: millOpen };
-  }
+  // The NE treasure alcove — open to any curious explorer. (v3.18: the old
+  // "dead machinery" grate + code-built millstone discs are GONE — playtest:
+  // the grey discs read as nonsense wall-circles, and the mill fiction had
+  // no real machinery to back it. Rooms only promise what they can show.)
 
   // Post-restore: glow-moss lights the old hall
   if (WS.get('stone', 'restored')) {
@@ -2060,8 +2028,8 @@ async function buildE1(scene) {
   crackedRocks(world, 'e1_alcove', 6.0, 1.8);
   world.markers.crackSpot = { x: 6.0, z: 1.8 };
   world.markers.chestDefs = [
-    { id: 'c_e1_hall', tier: 'wood', x: -6.8, z: 4.6, ry: 0.9, loot: { shards: 10 } },
-    // behind the machinery grate — the Mill twist's payoff back at the gate
+    { id: 'c_e1_hall', tier: 'wood', x: -6.8, z: 3.4, ry: 0.9, loot: { shards: 10 } },
+    // the NE alcove treasure (id kept from the old grate version — saves)
     { id: 'c_e1_mill', tier: 'gold', x: 6.1, z: -5.5, ry: 3.1, loot: { shards: 22, potion: 1 } },
     ...(state.flags.cracked.e1_alcove
       ? [{ id: 'c_e1_crack', tier: 'gold', x: 7.0, z: 1.6, ry: -1.2, loot: { shards: 20, heartPiece: 1 } }]
@@ -2077,8 +2045,10 @@ async function buildE1(scene) {
 }
 
 // ---------------------------------------------------------------------------
-// E1b — The Echo Chasm (Pokémon fall-hole maze in full dark; Dark Wolf +
-// careful feet are the test. Ride the right hole down to the right pocket.)
+// E1b — The Hidden Hollow (a simple pitch-dark treasure cave: the Dark
+// Wolf's eyes are the only tool it asks for. v3.18 playtest law replaced the
+// old Echo Chasm fall-hole maze — "you randomly disappear and reappear" is
+// banned; nothing in this game teleports the player without a door.)
 // ---------------------------------------------------------------------------
 
 async function buildE1b(scene) {
@@ -2095,33 +2065,31 @@ async function buildE1b(scene) {
   wallTorch(world, -6.4, -5.2); wallTorch(world, 6.4, -5.2);
   stoneDoorway(world, -7.4, -2.8, 'z');
 
-  // the divider: upper tier north, three sealed pockets south — the only
-  // way down is THROUGH the floor
-  blockRow(world, -8, 1.2, 8, 1.2, 1.5);
-  blockRow(world, -2.7, 1.2, -2.7, 6, 1.5);
-  blockRow(world, 2.7, 1.2, 2.7, 6, 1.5);
+  // a winding cave: rock spurs shape two bays, everything walkable on foot
+  for (const [x, z, s, ry] of [
+    [-2.6, -1.4, 1.9, 0.7], [2.4, 1.8, 2.1, 2.3], [-5.0, 2.6, 1.7, 4.1],
+    [5.8, -2.2, 1.8, 1.1],
+  ]) {
+    const rock = prepareModel(kit.rockLA.scene.clone());
+    rock.position.set(x, 0, z);
+    rock.rotation.y = ry;
+    rock.scale.setScalar(s);
+    world.add(rock);
+    world.addCircle(x, z, 0.65 * (s / 1.8));
+  }
 
-  // three holes, three different landings — which do you trust?
-  dropHole(world, -4.5, -2.2, { x: -5.4, z: 3.2 }); // pocket 1: an ambush
-  dropHole(world, 0.3, -3.6, { x: 0, z: 3.2 });     // pocket 2: treasure
-  dropHole(world, 4.6, -1.8, { x: 5.0, z: 3.0 });   // pocket 3: the deep secret
-  climbSpot(world, -7.4, 5.2, { x: -6.6, z: -1.2 });
-  climbSpot(world, 0.2, 5.4, { x: 0.3, z: -2.2 });
-  climbSpot(world, 7.4, 5.2, { x: 6.6, z: -1.0 });
-
-  // pocket 1: a shade waits in the dark; pocket 2: the chest; pocket 3:
-  // cracked rocks hide a heart piece (Earth Wolf backtrack)
-  world.markers.shadeSpots = [{ x: -4.6, z: 4.4 }, { x: 3.2, z: -4.6 }];
+  // shades and bats wait where the torchlight can't reach
+  world.markers.shadeSpots = [{ x: -3.6, z: 3.4 }, { x: 3.2, z: -4.2 }];
   world.markers.batSpots = [{ x: -1.5, z: -4.8 }, { x: 5.8, z: -4.2 }];
-  crackedRocks(world, 'e1b_deep', 6.2, 4.2);
+  crackedRocks(world, 'e1b_deep', 6.2, 3.0); // kept OUT of the south blind strip
   world.markers.chestDefs = [
-    { id: 'c_e1b_maze', tier: 'wood', x: 0, z: 4.8, ry: 3.1, loot: { shards: 16, potion: 1 } },
+    { id: 'c_e1b_maze', tier: 'wood', x: 1.8, z: 3.2, ry: 3.1, loot: { shards: 16, potion: 1 } },
     ...(state.flags.cracked.e1b_deep
-      ? [{ id: 'c_e1b_deep', tier: 'gold', x: 7.2, z: 5.2, ry: -2.4, loot: { shards: 14, heartPiece: 1 } }]
+      ? [{ id: 'c_e1b_deep', tier: 'gold', x: 7.0, z: 3.4, ry: -2.4, loot: { shards: 14, heartPiece: 1 } }]
       : []),
   ];
   world.markers.breakables = [
-    { x: -6.9, z: 3.9, kind: 'vase', shards: 2 },
+    { x: -6.9, z: 3.0, kind: 'vase', shards: 2 },
     { x: 6.6, z: -5.4, kind: 'crate', shards: 3 },
   ];
   checkpoint(world, 'cp_e1b', -7.2, -4.6);
@@ -2136,8 +2104,10 @@ async function buildE1b(scene) {
 }
 
 // ---------------------------------------------------------------------------
-// E2b — The Mill (Zelda push-puzzle: TWO millstones onto TWIN plates while
-// rogues ambush; both plates open the treasure vault. Lit, loud, mechanical.)
+// E2b — The Old Quarry (v3.18: the second push-puzzle is GONE — one puzzle
+// room per level, dad's law — and the "Mill" fiction went with it. This is
+// now a straight COMBAT challenge: an old bone-quarry arena. Clear the
+// ambush and the treasure vault grinds open on its own.)
 // ---------------------------------------------------------------------------
 
 async function buildE2b(scene) {
@@ -2153,77 +2123,72 @@ async function buildE2b(scene) {
   wallTorch(world, -6.6, -2.6); wallTorch(world, 6.6, -2.6);
   stoneDoorway(world, 0, 5.4, 'x');
 
-  // the barrier wall with one central gap — stones must go THROUGH the
-  // middle, then LEFT and RIGHT to their plates (push-order thinking)
-  blockRow(world, -6.4, -1.5, -1.8, -1.5, 1.4);
-  blockRow(world, 1.8, -1.5, 6.4, -1.5, 1.4);
-  spikeTrap(world, 0, -3.2, 0.6); // the gap is guarded — time the push
+  // quarry dressing: half-cut stone piles and old crates — cover to fight
+  // around, nothing that pretends to be machinery
+  for (const [x, z, s, ry] of [
+    [-4.6, -0.6, 1.9, 0.4], [4.2, 1.6, 1.7, 2.1], [-2.2, -3.8, 1.6, 5.2],
+  ]) {
+    const rock = prepareModel(kit.rockLA.scene.clone());
+    rock.position.set(x, 0, z);
+    rock.rotation.y = ry;
+    rock.scale.setScalar(s);
+    world.add(rock);
+    world.addCircle(x, z, 0.65 * (s / 1.8));
+  }
 
-  boulder(world, -2.2, 1.2);
-  boulder(world, 2.2, 0.2);
-  pressurePlate(world, 'e2b_p1', -5, -4.6, () => { if (world.checkVault) world.checkVault(); });
-  pressurePlate(world, 'e2b_p2', 5, -4.6, () => { if (world.checkVault) world.checkVault(); });
-  world.markers.boulderSpot = { x: -2.2, z: 1.2 };
-
-  // the treasure vault (NE corner) opens only when BOTH plates hold weight
+  // THE TREASURE VAULT (NE corner): barred until the quarry is CLEARED —
+  // beat every skeleton in the room and it grinds open. Old saves that
+  // solved the retired twin-plate puzzle keep their open vault.
   {
+    const cleared = () =>
+      !!state.flags.e2bCleared || (!!state.flags.plates.e2b_p1 && !!state.flags.plates.e2b_p2);
     const bars = prepareModel(dkit.bars.scene.clone());
     bars.position.set(6.9, 0, -4.4);
     bars.scale.set(0.9, 0.8, 1);
     const vaultCollider = { minX: 5.9, maxX: 7.9, minZ: -6, maxZ: -4.1 };
-    const bothDown = () => !!state.flags.plates.e2b_p1 && !!state.flags.plates.e2b_p2;
-    if (!bothDown()) {
+    if (!cleared()) {
       world.add(bars);
       world.boxColliders.push(vaultCollider);
     }
-    world.checkVault = () => {
-      if (!bothDown()) return;
+    world.quarryCleared = cleared;
+    let opened = cleared();
+    world.onAnimate((t, dt) => {
+      if (opened) return;
+      // the fight is over when every real enemy (not pots/crates) is down
+      const foes = (world.enemies || []).filter((e) => !e.scenery && e.takeStun);
+      if (!foes.length || foes.some((e) => !e.dead)) return;
+      opened = true;
+      state.flags.e2bCleared = true;
       const i = world.boxColliders.indexOf(vaultCollider);
       if (i >= 0) world.boxColliders.splice(i, 1);
       let rise = 0;
-      world.onAnimate((t, dt) => {
+      world.onAnimate((t2, dt2) => {
         if (rise >= 2.6) return;
-        rise += dt * 1.6;
+        rise += dt2 * 1.6;
         bars.position.y = Math.min(2.6, rise);
         if (rise >= 2.6) world.root.remove(bars);
       });
       audio.play('gate-creak', { volume: 0.85, rate: 0.45 }); // the vault groans
       audio.play('checkpoint', { volume: 0.9, rate: 1.1 });
-      world.checkVault = null;
-    };
+    });
   }
   world.markers.chestDefs = [
     { id: 'c_e2b_vault', tier: 'gold', x: 6.9, z: -5.3, ry: 2.8, loot: { shards: 24, heartPiece: 1 } },
   ];
 
-  // the Mill's own wheels — turning once the machinery woke
-  {
-    const wheels = [];
-    for (const wz of [1.4, -3.4]) {
-      const wg = new THREE.Group();
-      wg.position.set(-7.6, 0.75, wz);
-      const wheel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
-        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
-      );
-      wheel.rotation.x = Math.PI / 2;
-      wg.add(wheel);
-      wg.rotation.y = Math.PI / 2;
-      world.add(wg);
-      wheels.push(wg);
-    }
-    if (WS.get('stone', 'mill')) world.onAnimate((t, dt) => { for (const w of wheels) w.rotation.z += dt * 1.1; });
-  }
-
-  // the ambush: rogues from the flanks while you're mid-push
+  // THE AMBUSH: rogues from the flanks, minions from the dark corners, and
+  // the Bone Brute anchoring the floor — the room IS the challenge
   world.markers.rogueSpots = [{ x: -4.2, z: 3.0 }, { x: 4.4, z: 3.4 }];
-  world.markers.minionSpots = [{ x: 0, z: -5.0, variant: 'brute' }]; // a wall of old bone
+  world.markers.minionSpots = [
+    { x: 0, z: -5.0, variant: 'brute' }, // a wall of old bone
+    { x: -5.2, z: -4.2 }, { x: 5.4, z: -1.8 },
+  ];
 
-  checkpoint(world, 'cp_e2b', -6.8, 5.0);
-  potionPickup(world, 6.8, 5.0);
+  checkpoint(world, 'cp_e2b', -6.8, 3.4);
+  potionPickup(world, 6.8, 3.4);
   world.markers.breakables = [
     { x: -7.3, z: -5.4, kind: 'barrel', shards: 3 },
-    { x: 3.2, z: 5.4, kind: 'vase', shards: 2 },
+    { x: 3.2, z: 3.0, kind: 'vase', shards: 2 },
   ];
   await mushroomPatches(world, [[-4.6, -5.2], [2.8, 2.2, 1.4], [-2.4, 4.8]]);
   if (WS.get('stone', 'restored')) {
@@ -2275,7 +2240,10 @@ async function buildE2(scene) {
     world.add(gateBars);
     world.boxColliders.push(gateCollider);
   }
-  pressurePlate(world, 'e2_gate', -1.6, 4.6, () => {
+  // plate placement law (v3.18): the tall SOUTH wall hides a ~2u strip of
+  // floor from the camera — interactives NEVER live there ("there is no
+  // pressure plate" = a plate parked in the blind strip). z 2.6 is open floor.
+  pressurePlate(world, 'e2_gate', -1.6, 2.6, () => {
     // the way is open the moment the plate clicks (collider first, visual after)
     const ci = world.boxColliders.indexOf(gateCollider);
     if (ci >= 0) world.boxColliders.splice(ci, 1);
@@ -2288,39 +2256,10 @@ async function buildE2(scene) {
     });
     audio.play('slam', { volume: 0.5, rate: 0.6 });
     audio.play('gate-creak', { volume: 0.85, rate: 0.5 }); // old iron groans up
-    // THE MID-DUNGEON TWIST (WORLD-DESIGN beat 6): the millstone on the
-    // plate wakes the OLD MACHINERY region-wide — wheels turn here and in
-    // the gate hall, where the rusted grate grinds open (rebuilt rooms
-    // read the WS flag). Earlier rooms now read differently.
-    if (!WS.get('stone', 'mill')) {
-      WS.set('stone', 'mill');
-      audio.play('slam', { volume: 0.6, rate: 0.35 }); // deep old grind
-      if (world.millWheels) world.millWheels.wake();
-    }
   });
-  // the Deep Hall's own mill wheels flank the crypt arch; they turn once
-  // the machinery wakes
-  {
-    const wheels = [];
-    for (const wz of [-2.1, 2.1]) {
-      const wg = new THREE.Group();
-      wg.position.set(8.8, 0.75, wz);
-      const wheel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 0.2, 18),
-        new THREE.MeshStandardMaterial({ color: 0x4a4152, roughness: 0.9 })
-      );
-      wheel.rotation.x = Math.PI / 2;
-      wg.add(wheel);
-      wg.rotation.y = Math.PI / 2; // discs face down the hall
-      world.add(wg);
-      wheels.push(wg);
-    }
-    let turning = !!WS.get('stone', 'mill');
-    world.millWheels = { wake: () => { turning = true; } };
-    world.onAnimate((t, dt) => {
-      if (turning) for (const w of wheels) w.rotation.z += dt * 1.1;
-    });
-  }
+  // (v3.18: the region-wide "mill wakes" twist and the code-built wheel
+  // discs are GONE — playtest: they read as nonsense circles, and the game
+  // showed no real machinery. The plate simply opens the crypt gate.)
 
   // Region 3's LOCK, shown a region early (machine-checked in regions.js):
   // a thorny bramble tangle chokes the SE treasure corner. Only the
@@ -2338,7 +2277,7 @@ async function buildE2(scene) {
       new THREE.MeshStandardMaterial({ color: 0x14101c, roughness: 1 })
     );
     scar.rotation.x = -Math.PI / 2;
-    scar.position.set(3.0, 0.045, 3.6);
+    scar.position.set(3.0, 0.17, 3.6); // above the stone tiles (height law)
     world.add(scar);
     world.markers.scarSpot = { x: 3.0, z: 3.6 };
     world.markers.healed = true;
@@ -2358,16 +2297,19 @@ async function buildE2(scene) {
   world.markers.shieldSpots = [{ x: 2.8, z: 1.0 }]; // the wall walks the Deep Hall
   world.markers.batSpots = [{ x: 5.2, z: -4.6 }];
 
-  // the WHOLE Deep Hall is cave-dark — spikes, plates and bones read only
-  // through the Dark Wolf's eyes or the torch pools (user rule)
-  darkZone(world, -10, 10, -6, 6);
+  // the deep NORTH half is cave-dark — spikes and bones read through the
+  // Dark Wolf's eyes or the torch pools. The SOUTH half (entrance + the
+  // boulder puzzle) stays lit: v3.18 playtest law — a puzzle the player
+  // must SOLVE is never hidden in the dark ("there is no pressure plate"
+  // was a plate the dark had swallowed).
+  darkZone(world, -10, 10, -6, 0.2);
   world.markers.pup4Spot = { x: -9.0, z: -5.0 };
   // ...and a second pup shivers in the far corner past the spikes
   world.markers.pup5Spot = { x: 9.2, z: -5.2 };
 
-  checkpoint(world, 'cp_e2', 7.6, 3.8);
+  checkpoint(world, 'cp_e2', 7.6, 3.0);
   potionPickup(world, -8.6, -4.2);
-  potionPickup(world, 8.4, 4.4); // campfire + potion directly before the boss door (contract law)
+  potionPickup(world, 8.4, 3.2); // campfire + potion directly before the boss door (contract law)
   await mushroomPatches(world, [
     [-7.8, 3.2], [-1.2, -2.2, 1.3], [2.2, 4.6], [7.0, 0.8, 2.0], [-4.6, -4.8], [8.6, 4.6],
   ]);
@@ -2663,11 +2605,8 @@ export async function buildRoom(id, scene) {
   if (world.markers.bossSpot && !state.flags.bossDefeated) {
     // The Shadowgrip wears the WOLF body now (user call + canon: a giant
     // shadow-echo of the first great wolf) — same style family as Kael.
-    const [wolfGltf, slimeGltf] = await Promise.all([
-      loadGLB('./assets/chars/wolf.gltf'),
-      loadGLB('./assets/chars/monsters/Slime.glb'),
-    ]);
-    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, wolfGltf, slimeGltf);
+    const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, wolfGltf);
   }
   return world;
 }

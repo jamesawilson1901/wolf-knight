@@ -52,7 +52,10 @@ const FORM_DEFS = {
       idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A',
       attack: 'Melee_1H_Attack_Slice_Diagonal', attack2: 'Melee_1H_Attack_Stab',
       ranged: 'Throw', block: 'Melee_Blocking', jump: 'Jump_Idle',
-      special: 'Melee_2H_Attack_Spin', // the WHIRLWIND — sword out, full circle
+      // the WHIRLWIND — a true 360° body spin. NOT 'Melee_2H_Attack_Spin':
+      // that clip is 2.4s with 0.6s of dead wind-up, so at our 0.75s lock it
+      // was cut before the body ever turned ("Kael just stands there" bug).
+      special: 'Melee_2H_Attack_Spinning',
     },
     attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
     boltColor: 0xbfe3ff, rangedKind: 'spark',   // classic dart: one target
@@ -666,7 +669,33 @@ export class Player {
     this._queuedForm = null;
     this.iframes = Math.max(this.iframes, C.CEREMONY + 0.6);
     this._vel.x = 0; this._vel.z = 0;
-    effects.surgeCeremony(this.root.position.clone());
+    // The moon rises with the ceremony… then CRASHES DOWN into the nearest
+    // enemy (playtest ask: the blood moon must visibly slam into someone).
+    // Aim resolves at dive time so it tracks a moving fight.
+    effects.surgeCeremony(this.root.position.clone(), {
+      at: () => {
+        let best = null, bd = 9;
+        for (const e of (world.enemies || [])) {
+          if (e.dead || e.scenery) continue;
+          const d = Math.hypot(e.x - this.root.position.x, e.z - this.root.position.z);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (best) return { x: best.x, z: best.z };
+        return { // no one to crush — the moon buries itself just ahead
+          x: this.root.position.x + Math.sin(this.root.rotation.y) * 2.6,
+          z: this.root.position.z + Math.cos(this.root.rotation.y) * 2.6,
+        };
+      },
+      onImpact: (x, z) => {
+        audio.play('moon-impact', { volume: 0.95, rate: 0.8 });
+        audio.play('slam', { volume: 0.9, rate: 0.45 });
+        if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, 2.4, 2, 'moon');
+        for (const e of (world.enemies || [])) {
+          if (e.dead || e.scenery || !e.takeStun) continue;
+          if (Math.hypot(e.x - x, e.z - z) < 2.6) e.takeStun(1.4);
+        }
+      },
+    });
     audio.play('moon-impact', { volume: 0.55, rate: 0.55 }); // the sky answers
     if (this.onSurgeStart) this.onSurgeStart('ceremony');
     return true;

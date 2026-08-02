@@ -477,7 +477,9 @@
       border: 2px solid rgba(190, 165, 255, .45);
       touch-action: none; box-shadow: 0 3px 10px rgba(0,0,0,.4);
     }
-    #moon-gauge.revealed { display: flex; }
+    /* v3.18 playtest law: the Blood Moon belongs to the DARK WOLF — the
+       button only exists while Kael wears that form */
+    #moon-gauge.revealed.wolf { display: flex; animation: reveal-pop .5s ease; }
     #moon-ring { position: absolute; inset: -3px; border-radius: 50%; z-index: -1; }
     #moon-icon { font-size: 24px; }
     /* FULL = "act here": GOLD pulse (contract color law — red is danger) */
@@ -619,7 +621,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.17</div>
+  <div id="badge">Wolf Knight &middot; v3.18</div>
 
   <script>
     window.addEventListener('error', (e) => {

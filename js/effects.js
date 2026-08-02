@@ -3,6 +3,7 @@
 // adds effects.shakeOffset to the camera each frame.
 
 import * as THREE from 'three';
+import { juice } from './juice.js';
 
 export class Effects {
   constructor(scene) {
@@ -118,11 +119,14 @@ export class Effects {
     });
   }
 
-  // The Blood Moon Surge ceremony (~2.5s + fade): the world dims red and a
-  // BLOOD MOON RISES behind Kael while he morphs and howls. Pure spectacle —
-  // gameplay beats (morph, shockwave) live in Player._tickCeremony, timed to
-  // the same clock. The moon hangs through the early surge, then fades.
-  surgeCeremony(pos) {
+  // The Blood Moon Surge ceremony (~2.5s + crash): the world dims red and a
+  // BLOOD MOON RISES behind Kael while he morphs and howls — then the moon
+  // itself DIVES OUT OF THE SKY and CRASHES INTO the nearest enemy (playtest
+  // ask: the blood moon must visibly slam down on someone). Gameplay beats
+  // (morph, shockwave) live in Player._tickCeremony, timed to the same clock;
+  // `crash` is { at: () => ({x,z}), onImpact: (x,z) => {} } supplied by the
+  // player so the dive aims and deals damage through real game systems.
+  surgeCeremony(pos, crash = null) {
     const scene = this.scene;
 
     // red wash over the whole scene
@@ -142,9 +146,12 @@ export class Effects {
     scene.add(moon, moonLight);
 
     const RISE = 2.2;    // the moon climbs while red floods in
-    const HOLD = 1.6;    // it hangs there through the shockwave
-    const FADE = 1.6;    // then dissolves into the surge
+    const HOLD = 0.8;    // it hangs there through the howl + shockwave
+    const DIVE = 0.5;    // then PLUMMETS onto its target
+    const FADE = 0.9;    // impact afterglow releases
     let elapsed = 0;
+    let diveFrom = null, diveTo = null, impacted = false;
+    let trailAcc = 0;
 
     this._active.push((dt) => {
       elapsed += dt;
@@ -160,13 +167,43 @@ export class Effects {
         wash.intensity = 2.2;
         moonLight.intensity = 14;
         this.zoom = Math.max(this.zoom, 0.85);
+      } else if (crash && elapsed < RISE + HOLD + DIVE) {
+        // THE CRASH: aim once (at dive start), then scream down in a curve
+        if (!diveFrom) {
+          diveFrom = moon.position.clone();
+          const target = crash.at();
+          diveTo = new THREE.Vector3(target.x, 0.55, target.z);
+        }
+        const f = Math.min(1, (elapsed - RISE - HOLD) / DIVE);
+        const e2 = f * f; // accelerate downward — a falling sky
+        moon.position.lerpVectors(diveFrom, diveTo, e2);
+        moon.scale.setScalar(1 - f * 0.45); // rushing in
+        moonLight.position.copy(moon.position);
+        moonLight.intensity = 14 + f * 10;
+        trailAcc += dt;
+        if (trailAcc > 0.05) {
+          trailAcc = 0;
+          juice.burst(moon.position.x, moon.position.y, moon.position.z, 0xff3a4a, 4);
+        }
       } else {
-        const f = Math.min(1, (elapsed - RISE - HOLD) / FADE);
+        if (crash && !impacted) {
+          // IMPACT — the moon buries itself in the target
+          impacted = true;
+          const ix = diveTo ? diveTo.x : pos.x, iz = diveTo ? diveTo.z : pos.z;
+          this.groundSlam({ x: ix, z: iz }, 0xff3a4a);
+          this.shake(0.55, 0.5);
+          this.hitStop(0.09);
+          for (let i = 0; i < 3; i++) {
+            juice.burst(ix, 0.4 + i * 0.5, iz, i === 1 ? 0xffd76a : 0xff3a4a, 12);
+          }
+          crash.onImpact(ix, iz);
+        }
+        const f = Math.min(1, (elapsed - RISE - HOLD - (crash ? DIVE : 0)) / FADE);
         this.zoom = Math.max(this.zoom, 0.85 * (1 - f)); // release the lean
         moon.material.emissiveIntensity = 2.4 * (1 - f);
-        moonLight.intensity = 14 * (1 - f);
+        moonLight.intensity = 20 * (1 - f);
         wash.intensity = 2.2 * (1 - f);
-        moon.position.y = 6.6 + f * 1.4; // drifts up and away
+        moon.scale.setScalar(Math.max(0.01, 0.55 * (1 - f))); // melts into the ground
         if (f >= 1) {
           scene.remove(moon, moonLight, wash);
           moon.geometry.dispose();

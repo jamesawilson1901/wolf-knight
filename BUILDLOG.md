@@ -1532,3 +1532,48 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   their stats in their rooms, a real hammer swing leaves a shade
   stunned, the Moon Sword scores SUPER! for the knight, the spear's
   arc math is exact. Zero page errors. SW v3.17.0, badge v3.17.
+
+## v3.18.0 — The wolf duel + the buried-plate hunt (2026-08-02)
+
+Dad's six-complaint playtest round, all root-caused:
+
+- **Boss rewritten as a pure wolf duel** (boss.js, ~40% smaller): tendrils,
+  slam telegraphs, shadow wave, phases and room-darkness all DELETED. The
+  Shadowgrip now fights exactly like the little hounds — prowl, crouch-and-
+  charge (dodge it; ends in a 2.6s gold-ring collapse), snarl-and-swipe
+  (shield/parry it; a perfect parry staggers the boss). 20 hp, 3-per-hit
+  cap, 1.5-heart hits, half-health howl enrage. Wounds persist across
+  deaths via flags.bossHp (old "phase 2/3" saves resume at 60%).
+- **Blood Moon**: the risen moon now DIVES and CRASHES into the nearest
+  enemy at ceremony end (2 moon dmg, 2.4u blast, 1.4s stun; aim resolves
+  at dive time). The whole feature is Dark-Wolf-only now: button, nags,
+  trigger (dad: "the button is there no matter what form you're in").
+- **Whirlwind root cause**: `Melee_2H_Attack_Spin` is 2.4s with 0.6s of
+  dead wind-up — our 0.75s lock cut it before the body ever turned, so the
+  spin NEVER visibly played. Swapped to `Melee_2H_Attack_Spinning` (0.67s
+  true 360°), bone-verified rotating >85° mid-lock.
+- **Boulders**: continuous free-rolling replaced with cardinal STEP-SLIDE —
+  lean a beat, boulder rolls one clean 1.2u step (dominant axis), stops
+  when blocked, SNAPS dead-center onto a plate and locks. Sokoban clarity.
+- **"There is no pressure plate" — three stacked causes**: (1) the plate
+  decals sat BELOW the stone floor tiles' top surface (y≈0.17) — invisible
+  since Stoneroot shipped (HEIGHT LAW added; boulder ring + e2 scar raised
+  too); (2) the plate sat in the south-wall camera BLIND STRIP (~2u of
+  floor the tall wall hides — BLIND-STRIP LAW; plate/checkpoints/chests/
+  potions moved north); (3) the room was fully dark (dark zone now covers
+  only the north half). Plate rebuilt as a round stone plinth + gold disc
+  + pulsing gold act-here ring (the dungeon-kit trap grid read as DANGER).
+- **Room redesign, one puzzle per level**: e1's fake machinery grate +
+  code-built millstone discs deleted (they were dad's "plates on the
+  wall"), alcove open; the region-wide "mill wakes" fiction removed
+  everywhere; e1b Echo Chasm drop-hole teleports deleted (NO-TELEPORT
+  LAW) — now the Hidden Hollow, a simple pitch-dark cave; e2b Mill is now
+  the Old Quarry, a combat room whose vault opens when the ambush is
+  cleared (flags.e2bCleared; old twin-plate saves honored).
+- **Voice recording**: design/VOICE-RECORDING-SCRIPT.md generated from
+  narration.js (87 lines, grouped by character, file-per-line naming) —
+  dad is recording custom audio; wiring will prefer assets/voice/<id>.
+- Verified: 13-check headless suite (spin bone rotation, dark-wolf-only
+  gating, crash damage, boss loop/persistence/parry, boulder step + plate
+  snap + gate, room redesigns) + eyeball screenshots incl. a real-input
+  walk to the plate. SW cache wolfknight-v3.18.0.
