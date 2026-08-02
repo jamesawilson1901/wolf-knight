@@ -1044,9 +1044,11 @@ async function buildR2b(scene) {
   world.addDoor(-8.05, -7.0, -1.2, 1.2, 'r2', { x: 8.9, z: 3.4, angle: -Math.PI / 2 });
 
   // two lava channels, crossed by narrow bridges offset from each other —
-  // the walk is a zigzag under moth fire
-  lavaPool(world, -2.2, 0, 1.6, 9.6);
-  lavaPool(world, 2.4, 0, 1.6, 9.6, { light: false });
+  // the walk is a zigzag under moth fire. Coolable (v3.18.1 playtest):
+  // when the boss falls, EVERY Ember pool sleeps as black stone — not
+  // just room 1's.
+  lavaPool(world, -2.2, 0, 1.6, 9.6, { coolable: true });
+  lavaPool(world, 2.4, 0, 1.6, 9.6, { light: false, coolable: true });
   const b1 = prepareModel(kit.bridge.scene.clone());
   b1.position.set(-2.2, 0.02, -2.6);
   b1.scale.set(1.3, 1.1, 1.6);
@@ -1180,8 +1182,8 @@ async function buildK1(scene) {
   }
 
   // hub dressing: lava veins, columns, a resting fire before the boss wing
-  lavaPool(world, -6.6, 1.8, 1.6, 5.2, { light: true });
-  lavaPool(world, 6.6, 1.8, 1.6, 5.2, { light: false });
+  lavaPool(world, -6.6, 1.8, 1.6, 5.2, { light: true, coolable: true });
+  lavaPool(world, 6.6, 1.8, 1.6, 5.2, { light: false, coolable: true });
   checkpoint(world, 'cp_k1', 0, 0.4);
   potionPickup(world, 1.6, 0.8);
   for (const [px, pz] of [[-3.2, -3.6], [3.2, -3.6]]) {
@@ -1439,13 +1441,13 @@ async function buildR3(scene) {
 
   // Lava rim inside the walls (the arena boundary "edge") — the entry
   // walkway crosses the south rim on a stone bridge.
-  lavaPool(world, 0, -7.35, 15.6, 1.1, { light: true });
-  lavaPool(world, -4.45, 7.35, 6.7, 1.1, { light: false });
-  lavaPool(world, 4.45, 7.35, 6.7, 1.1, { light: false });
+  lavaPool(world, 0, -7.35, 15.6, 1.1, { light: true, coolable: true });
+  lavaPool(world, -4.45, 7.35, 6.7, 1.1, { light: false, coolable: true });
+  lavaPool(world, 4.45, 7.35, 6.7, 1.1, { light: false, coolable: true });
   // west rim leaves a clear walkway where the shortcut opens (z -0.8..2.0)
-  lavaPool(world, -7.35, -3.8, 1.1, 6.0, { light: false });
-  lavaPool(world, -7.35, 4.4, 1.1, 4.8, { light: false });
-  lavaPool(world, 7.35, 0, 1.1, 13.6, { light: true });
+  lavaPool(world, -7.35, -3.8, 1.1, 6.0, { light: false, coolable: true });
+  lavaPool(world, -7.35, 4.4, 1.1, 4.8, { light: false, coolable: true });
+  lavaPool(world, 7.35, 0, 1.1, 13.6, { light: true, coolable: true });
   const walkway = prepareModel(kit.bridge.scene.clone());
   walkway.position.set(0, 0.02, 7.35);
   walkway.scale.set(2.4, 1.1, 1.5);
@@ -2171,9 +2173,38 @@ async function buildE2b(scene) {
       audio.play('gate-creak', { volume: 0.85, rate: 0.45 }); // the vault groans
       audio.play('checkpoint', { volume: 0.9, rate: 1.1 });
     });
+
+    // v3.18.1 (playtest: "the chest is unobtainable"): a sleeping skeleton
+    // in a dim corner could stall the clear forever without the player
+    // knowing WHY. Two fixes: the AMBUSH SPRINGS all at once the moment
+    // Kael steps onto the quarry floor (no hidden sleepers), and a bones
+    // counter chip shows exactly how many remain until the vault opens.
+    const chipEl = document.getElementById('mg-chip');
+    let sprung = false;
+    world.updateMinigames = (dt, t, player) => {
+      if (opened) { chipEl.style.display = 'none'; return; }
+      const foes = (world.enemies || []).filter((e) => !e.scenery && e.takeStun);
+      if (!sprung && player.root.position.z < 3.2) {
+        sprung = true;
+        let woke = false;
+        for (const e of foes) {
+          if (!e.dead && e.state === 'sleep') {
+            e.state = 'awaken';
+            e.stateT = 0;
+            e._play('awaken', 0.08, { once: true });
+            woke = true;
+          }
+        }
+        if (woke) audio.play('bones', { volume: 0.85, rate: 0.6 }); // they ALL rise
+      }
+      const left = foes.filter((e) => !e.dead).length;
+      chipEl.textContent = `🦴 ${left} left — clear the quarry!`;
+      chipEl.style.display = sprung && left > 0 ? 'block' : 'none';
+    };
   }
   world.markers.chestDefs = [
-    { id: 'c_e2b_vault', tier: 'gold', x: 6.9, z: -5.3, ry: 2.8, loot: { shards: 24, heartPiece: 1 } },
+    // clear of the NE wall visuals (it used to sink into the corner blocks)
+    { id: 'c_e2b_vault', tier: 'gold', x: 6.8, z: -5.0, ry: 2.6, loot: { shards: 24, heartPiece: 1 } },
   ];
 
   // THE AMBUSH: rogues from the flanks, minions from the dark corners, and

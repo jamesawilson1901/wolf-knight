@@ -817,6 +817,7 @@ async function loadRoom(id, entry) {
   transitioning = true;
   await fadeTo(1, 260);
   player.clearProjectiles();
+  document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;

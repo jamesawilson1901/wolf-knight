@@ -87,6 +87,15 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-02 (night, photos) — dad: "Cinder Bridges lava doesn't turn to
+  stone after the boss" → ALL Ember pools are coolable now (law: the
+  victory cools every pool in the region, not just room 1's). "The
+  quarry chest is unobtainable" → all 5 skeletons spawned ASLEEP, flat
+  and invisible in the dim room — one unfound sleeper stalled the vault
+  with zero feedback. LAW: a clear-the-room challenge must (a) show all
+  its enemies (the ambush springs at once) and (b) show its progress (a
+  counter chip). "Spin needs to be significantly faster" → 1.7x
+  timeScale, 0.5s lock.
   2026-08-02 (evening) — dad, big round: "boss fight still doesn't work —
   get rid of the tentacles completely; have him act like the little
   wolves, just more health and attack; make the player dodge and use

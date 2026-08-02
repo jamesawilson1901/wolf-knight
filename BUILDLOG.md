@@ -1577,3 +1577,23 @@ Dad's six-complaint playtest round, all root-caused:
   gating, crash damage, boss loop/persistence/parry, boulder step + plate
   snap + gate, room redesigns) + eyeball screenshots incl. a real-input
   walk to the plate. SW cache wolfknight-v3.18.0.
+
+## v3.18.1 — Photo-playtest fixes (2026-08-02)
+
+- **Post-boss lava cools EVERYWHERE** (dad's photo: Cinder Bridges still
+  glowing): r2b's channels, the Kiln hub strips and the boss arena moat
+  are now `coolable` like r1's pools — once the Shadowgrip falls, every
+  Ember pool sleeps as walkable black basalt.
+- **"The chest is unobtainable" (Old Quarry vault)**: root cause — all
+  FIVE quarry skeletons spawn asleep, lying flat and nearly invisible in
+  the dim room; one un-found sleeper stalled the clear-check forever with
+  no feedback. Now the whole ambush RISES AT ONCE the moment Kael steps
+  onto the quarry floor (bones rattle), and a HUD chip counts down
+  "🦴 N left — clear the quarry!" until the vault opens. Chip clears on
+  room change. The vault chest also sat visually sunk into the NE corner
+  wall blocks — moved to (6.8, -5.0).
+- **Whirlwind sped up significantly**: clip timeScale 1.7x (SPIN_TIMESCALE,
+  player.js), lock 0.75→0.5s, hit at 0.22s — a whip-fast blur.
+- Verified: 6-check headless run (three rooms' lava zones empty post-boss,
+  mass wake + counter + vault open + chest position, spin 1.7x bone-verified
+  rotating inside the 0.5s lock). SW cache wolfknight-v3.18.1.

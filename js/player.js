@@ -19,6 +19,7 @@ const LAVA_TICK = 1.0;
 const SPIN_COOLDOWN = 6;        // Knight whirlwind spin (all-around sweep)
 const SPIN_RANGE = 2.3;
 const SPIN_DMG_MULT = 1.2;
+const SPIN_TIMESCALE = 1.7;     // clip playback speed — a whip-fast blur (playtest)
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
 const SLAM_BURN_RADIUS = 2.6;
@@ -1118,11 +1119,14 @@ export class Player {
     if (state.form !== 'knight') return false;
     if (this.specialCooldown > 0 || this.lockTime > 0) return false;
     this._playOnce('special', 0.06);
-    this.lockTime = 0.75;
+    // playtest (v3.18.1): "sped up significantly" — the spin whips around
+    // at 1.7x, so the whole whirlwind is ~0.4s of blur instead of a lazy turn
+    this.form.actions.special.setEffectiveTimeScale(SPIN_TIMESCALE);
+    this.lockTime = 0.5;
     this._softLock = false;
     const cfg = this.attackConfig();
     this._pendingHit = {
-      timer: 0.32,
+      timer: 0.22,
       range: Math.max(SPIN_RANGE, cfg.range),
       dmg: cfg.dmg * SPIN_DMG_MULT,
       arcCos: -1, // the whole circle — behind him too
