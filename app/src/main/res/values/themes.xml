@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window-level theme only; all real theming lives in Compose (WombatTheme).
+         Fixed brand palette — no Material You/dynamic colour overlays. -->
+    <style name="Theme.Wombat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/wombat_window_background_light</item>
+    </style>
+</resources>

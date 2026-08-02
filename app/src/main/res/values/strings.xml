@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wombat</string>
+    <string name="new_job">New job</string>
+    <string name="empty_state">No split jobs yet.</string>
+</resources>
