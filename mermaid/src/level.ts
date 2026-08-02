@@ -3,7 +3,8 @@
 // that get this right (Mario's level grammar, Kirby, Sago Mini, Toca Boca):
 //  - one new element per level, introduced generously (never two at once)
 //  - difficulty = density and variety, never punishment: there is still no
-//    fail state anywhere, an ouch costs nothing but a red flash
+//    fail state anywhere, an ouch costs a red flash and a bump (jellyfish,
+//    urchins, crabs and sharks all sting now)
 //  - every level is completable by doing nothing at all
 //  - the reward at the end is always the same big, reliable ritual
 //    (chest -> sparkles -> a new friend), so finishing feels safe to want
@@ -64,31 +65,31 @@ export interface LevelConfig {
 export const LEVELS: LevelConfig[] = [
   // L1 — shipwreck reef: the baseline. A few urchins, one crab.
   { scene: { id: 'b1s1', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 130, scrollLength: 7800, pearlGroups: 5, coins: 4,
-    urchins: 3, crabs: 1, sharks: 0, magnets: 0, shields: 0, fish: 8, jellies: 3 },
+    scrollSpeed: 170, scrollLength: 7800, pearlGroups: 5, coins: 4,
+    urchins: 3, crabs: 1, sharks: 0, magnets: 0, shields: 0, fish: 8, jellies: 2 },
   // L2 — bright coral reef: introduces the magnet.
   { scene: { id: 'b1s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 135, scrollLength: 8200, pearlGroups: 5, coins: 5,
-    urchins: 4, crabs: 1, sharks: 0, magnets: 1, shields: 0, fish: 9, jellies: 3 },
+    scrollSpeed: 178, scrollLength: 8200, pearlGroups: 5, coins: 5,
+    urchins: 4, crabs: 1, sharks: 0, magnets: 1, shields: 0, fish: 9, jellies: 2 },
   // L3 — sunken ruins: introduces the shield bubble.
   { scene: { id: 'b2s1', layers: 8, floorLayer: 7, foregroundLayer: 8 },
-    scrollSpeed: 140, scrollLength: 8600, pearlGroups: 6, coins: 5,
+    scrollSpeed: 186, scrollLength: 8600, pearlGroups: 6, coins: 5,
     urchins: 5, crabs: 2, sharks: 0, magnets: 1, shields: 1, fish: 9, jellies: 3 },
   // L4 — rocky canyon: denser, a little faster.
   { scene: { id: 'b2s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 145, scrollLength: 9000, pearlGroups: 6, coins: 6,
+    scrollSpeed: 194, scrollLength: 9000, pearlGroups: 6, coins: 6,
     urchins: 6, crabs: 2, sharks: 0, magnets: 1, shields: 1, fish: 10, jellies: 4 },
   // L5 — gem cave: introduces the shark (slow, well telegraphed).
   { scene: { id: 'b1s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 150, scrollLength: 9400, pearlGroups: 6, coins: 6,
+    scrollSpeed: 202, scrollLength: 9400, pearlGroups: 6, coins: 6,
     urchins: 6, crabs: 3, sharks: 1, magnets: 1, shields: 1, fish: 10, jellies: 4 },
   // L6 — pebble cove: two sharks, everything a notch denser.
   { scene: { id: 'b2s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 155, scrollLength: 9800, pearlGroups: 7, coins: 7,
+    scrollSpeed: 212, scrollLength: 9800, pearlGroups: 7, coins: 7,
     urchins: 7, crabs: 3, sharks: 2, magnets: 1, shields: 1, fish: 11, jellies: 4 },
   // L7 — dragon graveyard: the grand finale mix.
   { scene: { id: 'b2s3', layers: 6, floorLayer: 4, extraFloorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 160, scrollLength: 10200, pearlGroups: 7, coins: 8,
+    scrollSpeed: 222, scrollLength: 10200, pearlGroups: 7, coins: 8,
     urchins: 8, crabs: 3, sharks: 2, magnets: 2, shields: 1, fish: 11, jellies: 5 },
 ];
 

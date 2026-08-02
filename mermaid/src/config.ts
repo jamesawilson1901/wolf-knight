@@ -34,6 +34,7 @@ export const STORAGE_KEYS = {
   level: 'mermaid-reef.level',
   character: 'mermaid-reef.character',
   tint: 'mermaid-reef.tint',
+  crowned: 'mermaid-reef.crowned',
 };
 
 // Customisation: gentle pastel shimmer tints (0 = natural).

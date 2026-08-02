@@ -61,6 +61,15 @@ Toggle while testing: **4 quick taps in the top-left corner** (or `C` on a
 keyboard). Dots flash: one = A, two = B, three = C. The choice persists. You
 can also force it via `?scheme=a` / `?scheme=b` / `?scheme=c`.
 
+## Magic
+
+Each mermaid has her own power, cast by tapping with the **second thumb**
+(Space on desktop), with a ~7 s recharge shown as a golden star in the HUD:
+redhead calls every nearby pearl to her, the middle mermaid conjures a
+shield bubble, the third does a starlight dash (2 s surge, un-ouchable).
+Quick pearl streaks rise in pitch. Finishing all seven levels earns a crown
+she wears forever after.
+
 ## Ouch and friends
 
 - Sea urchins drift mid-water and two slow crabs patrol the sand. Touching

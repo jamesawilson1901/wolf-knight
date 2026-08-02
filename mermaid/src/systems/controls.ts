@@ -3,8 +3,8 @@ import { PLAY_TOP, SEAFLOOR_Y, SOFT_MARGIN, type SchemeId, STORAGE_KEYS } from '
 
 // Scheme A — hold to rise: touch anywhere and she swims up with easing;
 // release and she sinks gently. The seafloor is a resting place.
-const A_RISE_SPEED = -430;
-const A_SINK_SPEED = 175;
+const A_RISE_SPEED = -520;
+const A_SINK_SPEED = 195;
 const A_RISE_TAU = 0.16; // smoothing time constant (s)
 const A_SINK_TAU = 0.55;
 
@@ -13,16 +13,16 @@ const A_SINK_TAU = 0.55;
 // then she drifts down gently (inattention is never punished, floor is safe).
 const B_GAIN = 1.5;
 const B_DEADZONE = 18; // design px
-const B_TAU = 0.13;
+const B_TAU = 0.11;
 const B_HOLD_AFTER_RELEASE = 2.5; // s of holding height after thumb lifts
 const B_DRIFT_SPEED = 70; // gentle sink after that
 
 // Scheme C — finger-follow (default): she swims to the finger's height,
 // offset upward so the thumb never covers her. Release behaves like B.
 const C_OFFSET = 150; // design px above the finger
-const C_TAU = 0.15;
+const C_TAU = 0.11;
 
-const KEY_SPEED = 420; // desktop dev fallback
+const KEY_SPEED = 520; // desktop dev fallback
 
 export class VerticalControl {
   y: number;
@@ -41,6 +41,8 @@ export class VerticalControl {
   onTouchDown?: () => void;
   /** Touches inside this region (e.g. the sound toggle) don't drive movement. */
   ignoreRegion?: (x: number, y: number) => boolean;
+  /** A second finger landing while one is already down — used to cast magic. */
+  onSecondTouch?: () => void;
   /** Disabled during the chest ending, when she swims in on her own. */
   enabled = true;
 
@@ -80,8 +82,11 @@ export class VerticalControl {
       this.onFirstTouch?.();
     }
     this.onTouchDown?.();
-    // Multi-touch tolerant: take the first pointer, ignore the second.
-    if (this.activePointerId !== -1) return;
+    // Multi-touch tolerant: the first pointer steers; a second one casts magic.
+    if (this.activePointerId !== -1) {
+      this.onSecondTouch?.();
+      return;
+    }
     this.activePointerId = pointer.id;
     this.held = true;
     this.anchorPointerY = pointer.y;

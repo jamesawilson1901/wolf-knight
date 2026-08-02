@@ -60,6 +60,11 @@ export class GameScene extends Phaser.Scene {
   private scrollX = 0;
   private scrollVel = 0;
   private magnetUntil = 0;
+  private magicReadyAt = 0;
+  private dashUntil = 0;
+  private vacuumUntil = 0;
+  private streak = 0;
+  private lastCollect = 0;
   private ending: 'no' | 'arriving' | 'done' = 'no';
   private t = 0;
 
@@ -147,6 +152,13 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, insets, this.levelIndex + 1);
     this.mermaid.control.ignoreRegion = (x, y) => this.hud.inSoundButton(x, y);
     this.mermaid.control.onTouchDown = () => sfx(this, 'tap');
+    this.mermaid.control.onSecondTouch = () => this.castMagic();
+    this.input.keyboard?.on('keydown-SPACE', () => this.castMagic());
+    this.hud.showMagicStar();
+    this.magicReadyAt = 0;
+    this.dashUntil = 0;
+    this.vacuumUntil = 0;
+    this.streak = 0;
     attachSchemeToggle(this, this.mermaid.control);
 
     const content = buildLevel(this.levelIndex);
@@ -232,15 +244,18 @@ export class GameScene extends Phaser.Scene {
     const w = this.scale.width;
     const band = safeBandLeft(w);
 
-    // forward scroll — hers to ride, never to steer
-    this.scrollX += this.scrollVel * dt;
+    // forward scroll — hers to ride, never to steer (starlight dash surges it)
+    const dashing = this.time.now < this.dashUntil;
+    this.scrollX += this.scrollVel * (dashing ? 2.2 : 1) * dt;
     if (this.ending === 'no' && this.scrollX >= this.cfg.scrollLength) this.beginEnding();
     this.layers.forEach((ts, i) => {
       ts.tilePositionX = this.scrollX * this.factors[i];
     });
 
     this.mermaid.update(delta);
-    const magnetOn = this.time.now < this.magnetUntil;
+    this.hud.setMagicReady(this.time.now >= this.magicReadyAt && this.ending === 'no');
+    const vacuumOn = this.time.now < this.vacuumUntil;
+    const magnetOn = vacuumOn || this.time.now < this.magnetUntil;
 
     for (const p of this.pickups) {
       if (p.taken) continue;
@@ -255,8 +270,9 @@ export class GameScene extends Phaser.Scene {
         const dx = this.mermaid.x - (baseX + p.pullX);
         const dy = this.mermaid.y - (bobY + p.pullY);
         const d = Math.hypot(dx, dy);
-        if (d < MAGNET_RANGE) {
-          const pull = (1 - d / MAGNET_RANGE) * 900 * dt;
+        const range = vacuumOn ? 1500 : MAGNET_RANGE;
+        if (d < range) {
+          const pull = (1 - d / range) * (vacuumOn ? 3200 : 900) * dt;
           p.pullX += (dx / (d || 1)) * pull * 1.4;
           p.pullY += (dy / (d || 1)) * pull;
         }
@@ -307,6 +323,18 @@ export class GameScene extends Phaser.Scene {
       if (!j.sprite.visible) continue;
       j.sprite.x = x;
       j.sprite.y = j.baseY + Math.sin(this.t * 0.42 + j.phase) * 46;
+      // jellyfish sting (harmlessly) now, like everything ouchy
+      if (
+        this.ending === 'no' &&
+        Phaser.Math.Distance.Between(x, j.sprite.y, this.mermaid.x, this.mermaid.y) < 85
+      ) {
+        const result = this.mermaid.triggerHurt();
+        if (result === 'hurt') sfx(this, 'ouch', { volume: 0.8 });
+        else if (result === 'shielded') {
+          sfx(this, 'pop');
+          this.sparkles.explode(10, this.mermaid.x, this.mermaid.y);
+        }
+      }
     }
 
     this.chest.x = band + chestWorldX(this.cfg) - this.scrollX;
@@ -315,7 +343,13 @@ export class GameScene extends Phaser.Scene {
   private collect(p: Pickup) {
     p.taken = true;
     const { x, y } = p.sprite;
-    sfx(this, p.data.kind === 'pearl' ? 'pearl' : 'coin', { volume: 0.9 });
+    // quick streaks climb in pitch — a tiny musical reward for flowing
+    // through a whole arc (resets after a 1.5 s gap)
+    const now = this.time.now;
+    this.streak = now - this.lastCollect < 1500 ? this.streak + 1 : 0;
+    this.lastCollect = now;
+    const rate = Math.min(1.5, 1 + this.streak * 0.06);
+    sfx(this, p.data.kind === 'pearl' ? 'pearl' : 'coin', { volume: 0.9, rate });
     this.sparkles.explode(p.data.kind === 'pearl' ? 10 : 16, x, y);
     this.mermaid.triggerJoy();
 
@@ -354,6 +388,32 @@ export class GameScene extends Phaser.Scene {
       ease: 'Cubic.easeIn',
       onComplete: () => pu.sprite.destroy(),
     });
+  }
+
+  // Each mermaid has her own magic, cast by tapping with the second thumb
+  // (or Space on desktop). ~7 s recharge, shown by the golden HUD star.
+  private castMagic() {
+    if (this.ending !== 'no' || !this.worldReady) return;
+    const now = this.time.now;
+    if (now < this.magicReadyAt) return;
+    this.magicReadyAt = now + 7000;
+    sfx(this, 'power');
+    this.sparkles.explode(24, this.mermaid.x, this.mermaid.y);
+    this.mermaid.triggerJoy();
+    switch (this.mermaid.character) {
+      case 1: // pearl call: every pearl nearby rushes to her
+        this.vacuumUntil = now + 1600;
+        break;
+      case 2: // bubble magic: conjure a shield
+        this.mermaid.gainShield();
+        sfx(this, 'pop', { delay: 0.15, volume: 0.6 });
+        break;
+      case 3: // starlight dash: surge forward, sparkling and unbumpable
+        this.dashUntil = now + 2000;
+        this.mermaid.grantGrace(2400);
+        this.mermaid.triggerAcceleration(2000);
+        break;
+    }
   }
 
   private beginEnding() {
@@ -414,6 +474,30 @@ export class GameScene extends Phaser.Scene {
     localStorage.setItem(STORAGE_KEYS.friends, String(count + 1));
     // finishing a level advances to the next one (wraps around at the end)
     localStorage.setItem(STORAGE_KEYS.level, String((this.levelIndex + 1) % LEVELS.length));
+
+    // finishing the last level earns the crown, worn forever after
+    if (this.levelIndex === LEVELS.length - 1 && localStorage.getItem(STORAGE_KEYS.crowned) !== '1') {
+      localStorage.setItem(STORAGE_KEYS.crowned, '1');
+      const crown = this.add
+        .image(this.chest.x, this.chest.y - 90, 'items', 'crown')
+        .setDepth(32)
+        .setScale(0.3);
+      this.tweens.add({
+        targets: crown,
+        x: this.mermaid.sprite.x + 6,
+        y: this.mermaid.y - 100,
+        scale: 0.75,
+        duration: 1200,
+        delay: 400,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          crown.destroy();
+          this.mermaid.wearCrown();
+          this.sparkles.explode(20, this.mermaid.sprite.x, this.mermaid.y - 90);
+          sfx(this, 'complete', { volume: 0.8 });
+        },
+      });
+    }
 
     const fish = this.add
       .sprite(this.chest.x, this.chest.y - 60, 'creatures', `fish-${species}-move_000`)

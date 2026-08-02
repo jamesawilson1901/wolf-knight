@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MERMAID_SCREEN_X, safeBandLeft, savedCharacter, savedTint } from '../config';
+import { MERMAID_SCREEN_X, STORAGE_KEYS, safeBandLeft, savedCharacter, savedTint } from '../config';
 import { VerticalControl } from '../systems/controls';
 
 // Animation state machine: Idle when still, Move when travelling, Joy briefly
@@ -19,6 +19,7 @@ export class Mermaid {
   private baseX: number;
   private bumpX = 0;
   private shieldBubble?: Phaser.GameObjects.Image;
+  private crown?: Phaser.GameObjects.Image;
   shielded = false;
 
   constructor(private scene: Phaser.Scene, startY: number) {
@@ -46,6 +47,17 @@ export class Mermaid {
     });
     this.bubbles.setDepth(9);
     if (this.baseTint) this.bubbles.setParticleTint(this.baseTint);
+
+    // Finishing all seven levels earns the crown, worn forever after.
+    if (localStorage.getItem(STORAGE_KEYS.crowned) === '1') this.wearCrown();
+  }
+
+  wearCrown() {
+    if (this.crown) return;
+    this.crown = this.scene.add
+      .image(this.sprite.x, this.sprite.y - 100, 'items', 'crown')
+      .setDepth(11)
+      .setScale(0.75);
   }
 
   private anim(name: string): string {
@@ -58,11 +70,13 @@ export class Mermaid {
     this.sprite.play(this.anim('joy'), true);
   }
 
-  // Wired up for later levels; intentionally never triggered yet.
-  triggerAcceleration(until: number) {
+  private accelUntil = 0;
+
+  /** Starlight dash pose, held for the duration of the surge. */
+  triggerAcceleration(ms: number) {
     this.joyUntil = 0;
+    this.accelUntil = this.scene.time.now + ms;
     this.sprite.play(this.anim('acceleration'), true);
-    this.scene.time.delayedCall(until, () => this.sprite.play(this.anim('idle'), true));
   }
 
   gainShield() {
@@ -97,6 +111,11 @@ export class Mermaid {
    * a grace period. A shield bubble absorbs it with a pop instead. Returns
    * what happened so the scene can pick the sound.
    */
+  /** Extra grace period (e.g. while starlight-dashing through the reef). */
+  grantGrace(ms: number) {
+    this.invulnUntil = Math.max(this.invulnUntil, this.scene.time.now + ms);
+  }
+
   triggerHurt(): 'shielded' | 'hurt' | 'grace' {
     const now = this.scene.time.now;
     if (now < this.invulnUntil) return 'grace';
@@ -138,13 +157,20 @@ export class Mermaid {
     this.sprite.y = c.y + bob;
     this.sprite.rotation = Phaser.Math.Clamp(c.vy / 2600, -0.3, 0.3);
     this.shieldBubble?.setPosition(this.sprite.x, this.sprite.y);
+    if (this.crown) {
+      this.crown.setPosition(this.sprite.x + 6, this.sprite.y - 100);
+      this.crown.rotation = this.sprite.rotation * 0.6;
+    }
 
     const now = this.scene.time.now;
     const inHurt = now < this.hurtUntil;
     const inJoy = now < this.joyUntil;
+    const inAccel = now < this.accelUntil;
     const key = this.sprite.anims.currentAnim?.key;
     if (inHurt) {
       if (key !== this.anim('hurt')) this.sprite.play(this.anim('hurt'), true);
+    } else if (inAccel) {
+      if (key !== this.anim('acceleration')) this.sprite.play(this.anim('acceleration'), true);
     } else if (!inJoy) {
       const want = c.isMoving ? this.anim('move') : this.anim('idle');
       if (key !== want) this.sprite.play(want, true);
