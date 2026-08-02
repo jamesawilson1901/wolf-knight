@@ -1597,3 +1597,17 @@ Dad's six-complaint playtest round, all root-caused:
 - Verified: 6-check headless run (three rooms' lava zones empty post-boss,
   mass wake + counter + vault open + chest position, spin 1.7x bone-verified
   rotating inside the 0.5s lock). SW cache wolfknight-v3.18.1.
+
+## v3.18.2 — The Bone Warden, giant-sized (2026-08-02)
+
+- Dad's call: "make the second boss bigger like the wolf boss was." The
+  Warden grows 0.68 → 1.1 scale (2.2x his minions — the same ratio the
+  Shadowgrip holds over the little wolves), radius 0.52 → 0.8, with
+  boss-sized reach: attack trigger 3.0u, chop range 2.9, spin sweep 2.6,
+  danger ring outer radius 1.35 → 2.0.
+- Same buried-decal family as the plate: his red telegraph rings sat at
+  y 0.05 — UNDER the crypt's stone floor tiles, invisible since Stoneroot
+  shipped. Raised to y 0.19 (height law).
+- hp base unchanged (14 + pre-existing level scaling).
+- Verified headless (scale/radius/reach/ring height + chop telegraph
+  firing) + crypt screenshot. SW cache wolfknight-v3.18.2.

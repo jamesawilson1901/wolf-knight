@@ -1109,7 +1109,10 @@ export class SkeletonShield extends SkeletonBase {
 export class BoneWarden extends SkeletonBase {
   constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
     super(world, x, z, {
-      hp: 14, radius: 0.52, scale: 0.68, gltf, anims,
+      // v3.18.2 (dad's call: "bigger, like the wolf boss"): a true GIANT of
+      // old bone — ~2.2x his minions (the same ratio the Shadowgrip has
+      // over the little wolves). Reach and rings scale with him below.
+      hp: 14, radius: 0.8, scale: 1.1, gltf, anims,
       clips: {
         inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
@@ -1124,13 +1127,14 @@ export class BoneWarden extends SkeletonBase {
     this.swings = 0;
     this.attackTimer = 1.4;
 
-    // telegraph ring shows the chop's danger zone
+    // telegraph ring shows the chop's danger zone (boss-sized) — and it sits
+    // ABOVE the crypt's stone floor tiles (height law: y<~0.17 is buried)
     this.dangerRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 1.35, 28, 1, 0, Math.PI * 0.9),
+      new THREE.RingGeometry(0.7, 2.0, 28, 1, 0, Math.PI * 0.9),
       new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
     );
     this.dangerRing.rotation.x = -Math.PI / 2;
-    this.dangerRing.position.y = 0.05;
+    this.dangerRing.position.y = 0.19;
     world.add(this.dangerRing);
   }
 
@@ -1184,13 +1188,13 @@ export class BoneWarden extends SkeletonBase {
       this._play('walk');
       this.chaseToward(dt, dx, dz, d, 1.35);
       this.attackTimer -= dt;
-      if (this.attackTimer <= 0 && d < 2.2) {
+      if (this.attackTimer <= 0 && d < 3.0) { // giant reach (scale 1.1)
         if (this.swings >= 3) {
           this.state = 'tired';
           this.stateT = 0;
           this.swings = 0;
           this._play('tired', 0.3);
-        } else if (d < 1.2) {
+        } else if (d < 1.9) {
           this.state = 'spin_tele';
           this.stateT = 0;
           this._play('idle', 0.1);
@@ -1204,7 +1208,7 @@ export class BoneWarden extends SkeletonBase {
     } else if (this.state === 'chop_tele') {
       // 0.9s: the danger arc fades in where the axe will land
       const f = Math.min(1, this.stateT / 0.9);
-      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.position.set(this.x, 0.19, this.z);
       this.dangerRing.rotation.z = -this.root.rotation.y + Math.PI / 2 + Math.PI * 0.45;
       this.dangerRing.material.opacity = f * 0.55;
       if (this.stateT >= 0.9) {
@@ -1217,16 +1221,16 @@ export class BoneWarden extends SkeletonBase {
       this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 2);
       if (this.stateT > 0.32 && !this._chopHit) {
         this._chopHit = true;
-        this._swingDamage(player, 130, 1.9, 1.5);
+        this._swingDamage(player, 130, 2.9, 1.5); // giant's axe reach
         audio.play('slam', { volume: 0.5, rate: 1.4 });
       }
       if (this.stateT > 0.8) { this.state = 'chase'; this._chopHit = false; this.swings++; this.attackTimer = 1.1; }
     } else if (this.state === 'spin_tele') {
       // 1.0s: full-circle warning ring
       const f = Math.min(1, this.stateT / 1.0);
-      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.position.set(this.x, 0.19, this.z);
       this.dangerRing.material.opacity = f * 0.55;
-      this.dangerRing.scale.setScalar(1.15);
+      this.dangerRing.scale.setScalar(1.3);
       if (this.stateT >= 1.0) {
         this.state = 'spin';
         this.stateT = 0;
@@ -1237,7 +1241,7 @@ export class BoneWarden extends SkeletonBase {
       this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 1.6);
       if (this.stateT > 0.45 && !this._spinHit) {
         this._spinHit = true;
-        this._swingDamage(player, 360, 1.7, 1.5);
+        this._swingDamage(player, 360, 2.6, 1.5); // giant's full-circle sweep
       }
       if (this.stateT > 1.1) {
         this.state = 'chase'; this._spinHit = false; this.dangerRing.scale.setScalar(1);
