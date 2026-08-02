@@ -218,6 +218,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this, scrollVel: 0, duration: 1400, ease: 'Sine.easeOut' });
     this.time.delayedCall(1500, () => {
       // she swims over to it on her own — no input needed, no way to miss it
+      sfx(this, 'joy');
       this.tweens.add({
         targets: this.mermaid.sprite,
         x: this.chest.x - 250,

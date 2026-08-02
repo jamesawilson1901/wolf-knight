@@ -7,4 +7,4 @@ node_modules/
 # Mermaid Reef (mermaid/)
 mermaid/node_modules/
 mermaid/assets-source/
-mermaid/dist/
+# mermaid/dist is committed: it is the deployable static build
