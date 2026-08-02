@@ -98,6 +98,42 @@ export const VARIANTS = {
       if (m.color) m.color.multiplyScalar(0.82); // old bone runs darker
     },
   },
+
+  // --- the WILD WOODS family (v3.19): forest creatures wound in thorns.
+  // All of them FEAR FIRE (burn the brambles off) — the region's element
+  // lesson, taught with the Fire Wolf the kids have owned since region 1.
+  thorn: {
+    label: 'Thorn Hound',
+    hp: 3.5, weakness: 'fire', puffTint: 0x39502c, dropChance: 0.45,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.5; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x3c5a2e); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x55793f); }
+    },
+  },
+  elderthorn: {
+    label: 'Elder Thorn Hound',
+    scale: 1.3, hp: 6, chargeSpeed: 11, weakness: 'fire', dropChance: 1, puffTint: 0x39502c,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffe14a); m.emissiveIntensity = 1.9; }
+      else if (m.name === 'Main' || m.name === 'Main_Light') { m.color && m.color.setHex(0x2c4a22); }
+    },
+  },
+  bramble: {
+    label: 'Bramble Blob',
+    hp: 3, weakness: 'fire', puffTint: 0x39502c,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.6; }
+      else if (m.color) { m.color.setHex(0x35521f); m.emissive && m.emissive.setHex(0x1d3312); m.emissiveIntensity = 0.35; }
+    },
+  },
+  wisp: {
+    label: 'Wisp Moth',
+    hp: 1.5, weakness: 'fire', puffTint: 0xb8ffc8,
+    tint: (m) => {
+      if (m.color) { m.color.setHex(0x9fd8a8); m.emissive && m.emissive.setHex(0x8fdc6a); m.emissiveIntensity = 0.7; }
+    },
+  },
 };
 
 function applyVariant(e, name) {
@@ -1381,23 +1417,35 @@ export async function spawnEnemies(world) {
   }
   if ((world.markers.mothSpots || []).length) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
-    for (const m of world.markers.mothSpots) world.enemies.push(new Moth(world, m.x, m.z, batGltf));
+    for (const m of world.markers.mothSpots) {
+      world.enemies.push(applyVariant(new Moth(world, m.x, m.z, batGltf), m.variant));
+    }
   }
   if (world.markers.houndSpot) {
     world.enemies.push(applyVariant(
       new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf),
       world.markers.houndSpot.variant));
   }
+  // packs of hounds (Wild Woods runs on them — v3.19)
+  if ((world.markers.houndSpots || []).length) {
+    for (const s of world.markers.houndSpots) {
+      world.enemies.push(applyVariant(new Hound(world, s.x, s.z, wolfGltf), s.variant));
+    }
+  }
 
   // Cavern natives — Quaternius monsters, loaded only when a room asks
   const mk = world.markers;
   if (mk.slimeSpots && mk.slimeSpots.length) {
     const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
-    for (const s of mk.slimeSpots) world.enemies.push(new Slime(world, s.x, s.z, slimeGltf));
+    for (const s of mk.slimeSpots) {
+      world.enemies.push(applyVariant(new Slime(world, s.x, s.z, slimeGltf), s.variant));
+    }
   }
   if (mk.batSpots && mk.batSpots.length) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
-    for (const s of mk.batSpots) world.enemies.push(new Bat(world, s.x, s.z, batGltf));
+    for (const s of mk.batSpots) {
+      world.enemies.push(applyVariant(new Bat(world, s.x, s.z, batGltf), s.variant));
+    }
   }
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
       (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot) {

@@ -26,6 +26,10 @@ const SLAM_BURN_RADIUS = 2.6;
 const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
 const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
+const VINE_COOLDOWN = 7;        // Verdant Wolf vine-lash (forward line + cuts brambles)
+const VINE_RANGE = 3.8;         // how far the whip reaches
+const VINE_HALFWIDTH = 0.9;     // corridor half-width the lash sweeps
+const VINE_DMG = 1.5;
 
 export const MAX_HEARTS = 5;
 const WOLF_SCALE = 0.56; // wolf forms loom larger than the knight — the beast is the power form
@@ -35,6 +39,7 @@ export const WOLF_TINTS = {
   dark_wolf: { main: 0x4a3b6b, eyes: 0x9fb8ff },
   fire_wolf: { main: 0xff5a2b, eyes: 0xffd27a },
   earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
+  verdant_wolf: { main: 0x6fae4a, eyes: 0xd8ffb0 }, // Sylva's gift (region 3)
 };
 
 // FORM IDENTITY fields (data-driven so the seven later wolves slot in):
@@ -93,11 +98,20 @@ const FORM_DEFS = {
     attack: { lock: 0.5, hitAt: 0.26, range: 1.7, dmg: 1.5 },
     boltColor: 0xd8b06a, rangedKind: 'rock',    // lobbed stone: slow, heavy, dazes
   },
+  verdant_wolf: {
+    speed: 5.4, // quick between the trees — the forest runs with her gift
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.42, hitAt: 0.22, range: 1.7, dmg: 1 },
+    boltColor: 0x8fdc6a, rangedKind: 'thorn',   // thrown thorn: chips + ROOTS
+  },
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth' };
-const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire' };
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant' };
+const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
 // Thrust (2nd tap of the combo): narrow and long — a poke, not a sweep
@@ -222,7 +236,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
@@ -296,6 +310,24 @@ export class Player {
       this.forms.earth_wolf.aura = aura;
       this.forms.earth_wolf.auraData = { kind: 'earth', chips };
     }
+    // VERDANT — drifting leaves spiralling gently upward
+    if (this.forms.verdant_wolf) {
+      const aura = new THREE.Group();
+      const leafGeo = new THREE.TetrahedronGeometry(0.09, 0);
+      const leaves = [];
+      for (let i = 0; i < 6; i++) {
+        const mat = new THREE.MeshStandardMaterial({
+          color: i % 2 ? 0x8fdc6a : 0x5a9440, roughness: 1,
+        });
+        const m = new THREE.Mesh(leafGeo, mat);
+        aura.add(m);
+        leaves.push({ m, phase: i / 6 });
+      }
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.verdant_wolf.aura = aura;
+      this.forms.verdant_wolf.auraData = { kind: 'verdant', leaves };
+    }
   }
 
   _updateAura(dt) {
@@ -348,6 +380,15 @@ export class Player {
         c.rotation.x = t * (1.1 + i * 0.2);
         c.rotation.y = t * 0.9 + i;
       });
+    } else if (d.kind === 'verdant') {
+      for (const lf of d.leaves) {
+        const cyc = (t * 0.45 + lf.phase) % 1;              // slow rising spiral
+        const a = cyc * Math.PI * 2 + lf.phase * 9;
+        lf.m.position.set(Math.cos(a) * (0.55 - cyc * 0.2), 0.25 + cyc * 1.1, Math.sin(a) * (0.55 - cyc * 0.2));
+        lf.m.rotation.x = t * 2 + lf.phase * 5;
+        lf.m.rotation.z = t * 1.4;
+        lf.m.scale.setScalar(1 - cyc * 0.6);
+      }
     }
   }
 
@@ -414,7 +455,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -957,7 +998,8 @@ export class Player {
         p._trailAcc = (p._trailAcc || 0) + step;
         if (p._trailAcc > 0.4) {
           p._trailAcc = 0;
-          const tc = p.kind === 'pierce' ? 0xb08aff : p.kind === 'ember' ? 0xff8a3a : 0xd8b06a;
+          const tc = p.kind === 'pierce' ? 0xb08aff : p.kind === 'ember' ? 0xff8a3a
+            : p.kind === 'thorn' ? 0x8fdc6a : 0xd8b06a;
           juice.burst(px, p.mesh.position.y, pz, tc, 2);
         }
       }
@@ -1002,6 +1044,13 @@ export class Player {
               if (e.takeStun && !e.flying) e.takeStun(0.9);
               juice.burst(px, 0.85, pz, 0xd8b06a, 8);
               audio.play('hit', { volume: 0.9, rate: 0.75 });
+              gone = true;
+            } else if (p.kind === 'thorn') {
+              // the thrown thorn ROOTS its target: light damage, long tangle
+              e.takeDamage(this.boltDamage(e), elem, 'bolt');
+              if (e.takeStun && !e.flying) e.takeStun(1.2);
+              juice.burst(px, 0.85, pz, 0x8fdc6a, 7);
+              audio.play('hit', { volume: 0.8, rate: 1.2 });
               gone = true;
             } else {
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
@@ -1109,7 +1158,49 @@ export class Player {
     if (state.form === 'knight') return this.trySpinAttack(effects, world);
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
+    if (state.form === 'verdant_wolf') return this.tryVineLash(effects, world);
     return false;
+  }
+
+  // Verdant Wolf VINE-LASH: a living vine whips straight ahead — damages
+  // everything in the corridor and CUTS bramble tangles (the region-3 verb,
+  // mirrors Ember's burnables and Stoneroot's crackables).
+  tryVineLash(effects, world) {
+    if (state.form !== 'verdant_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('attack');
+    this.lockTime = 0.5;
+    this._softLock = false;
+    const px = this.root.position.x, pz = this.root.position.z;
+    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+    audio.play('whoosh', { volume: 0.9, rate: 1.05 });
+    audio.play('bite', { volume: 0.5, rate: 1.2 });
+    // damage the corridor ahead (project onto the facing line)
+    if (world.enemies) {
+      for (const e of world.enemies) {
+        if (e.dead) continue;
+        const dx = e.x - px, dz = e.z - pz;
+        const along = dx * fx + dz * fz;             // distance down the whip
+        if (along < 0.2 || along > VINE_RANGE + e.radius) continue;
+        const side = Math.abs(dx * fz - dz * fx);    // distance off the line
+        if (side > VINE_HALFWIDTH + e.radius) continue;
+        e.takeDamage(VINE_DMG, 'verdant', 'melee');
+        if (!e.dead && e.takeStun && !e.flying) e.takeStun(0.6); // tangled
+      }
+    }
+    // ...and CUT any bramble tangle in reach (gates.js registers cuttables)
+    const tip = { x: px + fx * VINE_RANGE * 0.75, z: pz + fz * VINE_RANGE * 0.75 };
+    if (world.cutAt && world.cutAt(tip.x, tip.z, 2.2) + (world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) || 0) > 0) {
+      if (effects && effects.punch) effects.punch(0.18, 0.2);
+    }
+    // the whip itself: a green arc of leaf-bursts down the line
+    for (let i = 1; i <= 4; i++) {
+      const f = i / 4;
+      juice.burst(px + fx * VINE_RANGE * f, 0.5 + 0.25 * Math.sin(f * Math.PI), pz + fz * VINE_RANGE * f, 0x8fdc6a, 5);
+    }
+    if (effects) effects.groundSlam({ x: px + fx * 1.6, z: pz + fz * 1.6 }, 0x6fae4a);
+    this.specialCooldown = this.specialMax;
+    return true;
   }
 
   // Knight WHIRLWIND: Kael spins with his sword out and strikes everything

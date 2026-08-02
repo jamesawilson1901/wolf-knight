@@ -95,7 +95,11 @@ identity dials in CONFIG.FORMS):
 | **Bone Warden** | armored skeleton | mini-boss: tower shield front-blocks (clank + BLOCKED); flank or parry-stun to hurt | Stoneroot |
 | **Cinder Shade** ⭐ | Shade, kiln-baked tint, 1.3x | RESISTS fire (0.4x + grey callout); moon shreds it | Ember (Kiln) |
 | **Elder Hound** ⭐ | Hound, gold eyes, 1.3x | pack leader: hp 6, harder charge, guaranteed ember | Ember (r2b) |
-| **Bone Brute** ⭐ | Minion, darkened, 1.4x | a slow walking wall: hp 5, heavier contact | Stoneroot (Mill) |
+| **Bone Brute** ⭐ | Minion, darkened, 1.4x | a slow walking wall: hp 5, heavier contact | Stoneroot (Quarry) |
+| **Thorn Hound** ⭐ | Wolf, mossy green | hound grammar; FEARS FIRE (burn the thorns) | Wild Woods |
+| **Elder Thorn Hound** ⭐ | Thorn Hound, 1.3x, gold eyes | hp 6, harder charge, guaranteed drop | Wild Woods |
+| **Bramble Blob** ⭐ | Slime, deep green | splits; fears fire | Wild Woods |
+| **Wisp Moth** ⭐ | Bat, pale-green glow | dive pattern; fears fire | Wild Woods |
 
 ⭐ = VARIANTS (asset-multiplication law): tint + scale + stat + element
 swaps on models we already ship — the registry lives in enemies.js.
@@ -131,6 +135,16 @@ ring RIDE THE WOLF.
   shell visibly THINS as the wolf weakens — the room shows the score.
 - Defeat is DRAMATIC (staggered shockwaves, smoke dissolve, howl) →
   Cinder freed → the Hollow heals live around the player → shortcut opens.
+
+## Boss 3 — Sylva, Thornbound (Sylva's Glade, Wild Woods)
+
+The giant-wolf duel grammar in GREEN (the boss class is a skin system now):
+the forest's own guardian, wrapped and maddened by Grimm's thorns. 24 hp,
+~8% quicker than the Shadowgrip, same honest reads — crouch+flare = charge
+(dodge; ends collapsed under gold), snarl+coil = swipe (shield/parry; a
+perfect parry staggers her). Her wounds persist across deaths
+(flags.sylvaHp). Freed, she grants the VERDANT WOLF: vine-lash special
+(cuts brambles — the e2 promise pays out), rooting thorn bolt, leaf aura.
 
 ## Boss 2 — Bone Warden (Warden's Crypt)
 

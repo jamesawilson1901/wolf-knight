@@ -28,7 +28,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf'];
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -151,7 +151,8 @@ function renderPotions(player) {
 
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
-  const total = state.spoken.region_complete ? 6 : 3; // Stoneroot adds three
+  // each opened region adds three pups to the count the HUD promises
+  const total = state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3;
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -206,7 +207,7 @@ const bossFillEl = document.getElementById('boss-fill');
 function updateBossBar() {
   let bar = null;
   if (world.boss && !world.boss.defeated) {
-    bar = { name: 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / (world.boss.maxHp || 8) };
+    bar = { name: world.boss.name || 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / (world.boss.maxHp || 8) };
   } else if (world.warden && !world.warden.dead && world.warden.state !== 'sleep') {
     bar = { name: 'The Bone Warden', f: Math.max(0, world.warden.hp) / world.warden.maxHp };
   }
@@ -269,6 +270,11 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       id: 'e1', label: '⛰️ Level 2 — Stoneroot Caverns',
       forms: ['fire_wolf'], // earned by finishing Level 1...
       emberDone: true,      // ...so Level 1 counts as complete
+    },
+    {
+      id: 'w1', label: '🌲 Level 3 — Wild Woods',
+      forms: ['fire_wolf', 'earth_wolf'],
+      emberDone: true, stoneDone: true, // both earlier levels count as complete
     },
   ];
   const pad = document.getElementById('cheat-pad');
@@ -349,6 +355,11 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
         state.flags.bossHp = 0;
         state.flags.keys.ember = true;
         state.flags.keys.kiln = true;
+      }
+      if (lvl.stoneDone) {
+        state.flags.wardenDefeated = true;
+        state.flags.plates.e2_gate = true;
+        WS.set('stone', 'restored');
       }
       // the save follows the jump: Continue and respawns use the level start
       state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
@@ -441,7 +452,16 @@ function guideTarget() {
     case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the boulder, then the crypt gate
     case 'e2b': return (f.e2bCleared || (f.plates.e2b_p1 && f.plates.e2b_p2))
       ? { x: 6.9, z: -5.0 } : { x: 0, z: -1.0 }; // the fight, then the vault
-    case 'e3': return { x: 0, z: -2 };
+    case 'e3': return f.wardenDefeated ? { x: 5.5, z: -6.2 } : { x: 0, z: -2 }; // then: the vine way
+    case 'w1': return { x: 0, z: -5.6 };    // deeper: the Gloomwood
+    case 'w1b': return { x: -2.0, z: -3.6 }; // the pup in the dell
+    case 'w2': return WS.get('wild', 'lanterns')
+      ? { x: 0, z: -6.4 }
+      : (f.cracked.w2_lantern ? { x: 0.5, z: -4.4 } : { x: 0.5, z: -2.6 }); // lanterns: crack, then light
+    case 'w2b': return { x: 4.4, z: -3.4 };
+    case 'w3': return (f.plates.w3_p1 && f.plates.w3_p2) ? { x: 0, z: -6.4 } : { x: -5.8, z: 2.2 };
+    case 'w4': return { x: 0, z: -5.6 };    // the boss door
+    case 'w5': return { x: 0, z: -0.5 };
     default: return null;
   }
 }
@@ -559,6 +579,38 @@ function narrationTriggers(dt, t) {
         persist();
       }
     }
+    if (WS.get('stone', 'restored') && nearXZ(5.5, -5.5, 3.4)) narration.say('wildwoods_open');
+  }
+
+  // The Wild Woods (region 3)
+  if (state.room[0] === 'w') {
+    narration.say('wild_enter');
+    if (state.room === 'w1') {
+      const th = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
+      if (th && nearXZ(th.x, th.z, 6)) narration.say('thornhound_intro');
+    }
+    if (state.room === 'w1b' && m.iceSpot && nearSpot(m.iceSpot, 3.2)) {
+      if (logMystery('frost_spring', '❄️', 'A spring sealed in ice — the Mossy Dell')) bigToast('🗺️ Added to the map: ???');
+      narration.say('gate_promise');
+    }
+    if (state.room === 'w2') {
+      const ls = m.lanternSpots || [];
+      if (!WS.get('wild', 'lanterns')) {
+        if (ls.some((l) => nearXZ(l.x, l.z, 4.2))) narration.say('lantern_hint');
+        if (m.crackSpot && !state.flags.cracked.w2_lantern && nearSpot(m.crackSpot, 3.6)) narration.say('lantern_rock');
+      } else {
+        narration.say('lantern_open');
+      }
+    }
+    if (state.room === 'w3') {
+      if (m.boulderSpot && nearSpot(m.boulderSpot, 4.2)) narration.say('plates2_hint');
+      if (state.flags.plates.w3_p1 && state.flags.plates.w3_p2) narration.say('plates2_open');
+    }
+    if (state.room === 'w4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('wild_boss_door');
+    if (state.room === 'w5' && state.flags.sylvaDefeated &&
+        m.sylvaShrine && nearSpot(m.sylvaShrine, 2.8)) {
+      if (narration.say('wild_complete')) persist();
+    }
   }
   // the first shield-bearer: teach the three ways past a raised shield
   if (state.region === 'stoneroot') {
@@ -642,9 +694,10 @@ function narrationTriggers(dt, t) {
 
 function updateMusic() {
   if (state.room === 'den') audio.playMusic('den');
-  else if (state.room === 'r3' && world.boss && !world.boss.defeated) {
+  else if ((state.room === 'r3' || state.room === 'w5') && world.boss && !world.boss.defeated) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
-  } else if (state.room[0] === 'k') audio.playMusic('kiln');
+  } else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
+  else if (state.room[0] === 'k') audio.playMusic('kiln');
   else if (state.room === 'e3') audio.playMusic('stone-deep');
   else if (state.room[0] === 'e') audio.playMusic('region-stone');
   else if (state.flags.bossDefeated) audio.playMusic('ember-calm'); // the healed Hollow sings softly
@@ -783,6 +836,13 @@ function onPupCollected() {
     player.healFull();
     effects.warmFlood();
     narration.say('all_pups_stone');
+  } else if (found >= 9 && state.maxHearts === 7) {
+    // all Wild Woods pups → the den is FULL of happy howls
+    state.maxHearts = 8;
+    player.maxHearts = 8;
+    player.healFull();
+    effects.warmFlood();
+    narration.say('all_pups_wild');
   } else {
     narration.say('pup_found');
   }
@@ -842,7 +902,7 @@ async function loadRoom(id, entry) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
-  state.region = id[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods' : 'ember_hollow';
   applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
@@ -856,6 +916,7 @@ async function loadRoom(id, entry) {
   updateMusic();
   if (id === 'r2') narration.say('r2_enter');
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
+  if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
@@ -1166,21 +1227,33 @@ async function start() {
             effects.warmFlood();
             effects.shake(0.35, 0.8);
             ui.refreshBadge();
-            if (world.openShortcut) world.openShortcut(); // the way home opens
-            audio.playMusic('victory', { loop: false, then: 'ember-calm' });
             bumpCounter('bosses');
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
             spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
-            narration.say('boss_defeat');
-            narration.say('firewolf_grant');
-            narration.say('firewolf_howto');
-            // WITNESSED RESTORATION (WORLD-DESIGN §3): the Hollow heals
-            // around the player, live — green rises, Cinder climbs the ridge.
-            WS.set('ember', 'restored');
-            emberRestorationLive(world);
-            narration.say('restoration_1');
-            setTimeout(() => narration.say('restoration_2'), 8000);
+            if (state.room === 'w5') {
+              // SYLVA FREED — the Wild Woods breathe again, the Verdant
+              // Wolf is earned (boss.js set the flags; here is the party)
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('sylva_defeat');
+              narration.say('verdant_grant');
+              narration.say('verdant_howto');
+              WS.set('wild', 'restored');
+              narration.say('wild_restore_1');
+              setTimeout(() => narration.say('luna_dream_3'), 9000);
+            } else {
+              if (world.openShortcut) world.openShortcut(); // the way home opens
+              audio.playMusic('victory', { loop: false, then: 'ember-calm' });
+              narration.say('boss_defeat');
+              narration.say('firewolf_grant');
+              narration.say('firewolf_howto');
+              // WITNESSED RESTORATION (WORLD-DESIGN §3): the Hollow heals
+              // around the player, live — green rises, Cinder climbs the ridge.
+              WS.set('ember', 'restored');
+              emberRestorationLive(world);
+              narration.say('restoration_1');
+              setTimeout(() => narration.say('restoration_2'), 8000);
+            }
             persist(); // form unlock + healed world is a save point
           };
         }

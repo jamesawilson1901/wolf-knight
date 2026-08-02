@@ -1,4 +1,4 @@
-# Wolf Knight — Voice Recording Script (v3.18)
+# Wolf Knight — Voice Recording Script (v3.19)
 
 Every spoken line in the game, grouped by character. Recorded lines will
 replace the robot text-to-speech voice.
@@ -18,7 +18,7 @@ replace the robot text-to-speech voice.
   back to the robot voice for anything missing.
 
 
-## Pip — 72 lines
+## Pip — 85 lines
 
 *Pip the fox — the kids’ cheerful guide. Bright, warm, encouraging, a little quick. He does nearly all the coaching.*
 
@@ -182,6 +182,35 @@ replace the robot text-to-speech voice.
 - `quarry_clear`
   “You cleared the quarry! Hear that? The treasure gate is open!”
 
+**The Wild Woods (region 3)**
+
+- `wildwoods_open`
+  “The vine grew into a doorway! The Wild Woods are open, Kael — the trees are calling us.”
+- `wild_enter`
+  “The Wild Woods… the trees here grew WRONG. Thorns everywhere. Something has the forest by the roots.”
+- `thornhound_intro`
+  “A thorn hound! The brambles are wearing the animals like coats… FIRE burns thorns, Kael!”
+- `lantern_hint`
+  “Cold wisp-lanterns! Light ALL THREE and the thorn gate will wither. Your fiery slam should wake them!”
+- `lantern_rock`
+  “This lantern is walled in cracked stone… Stone first, THEN fire. Stomp it open as the Earth Wolf!”
+- `lantern_open`
+  “All three burning! Hear the thorns creak — the way north is open!”
+- `plates2_hint`
+  “TWO boulders, TWO floor circles — one for each side of the hedge. Line each boulder up with its gap first!”
+- `plates2_open`
+  “Both circles hold their weight! The rootbound door remembers. Onward!”
+- `wild_boss_door`
+  “Beyond here… I hear a wolf crying, Kael. A BIG one. Something has her tangled tight. Be brave.”
+- `verdant_howto`
+  “You can be the Verdant Wolf now! Hold the screen to change. Your vine-lash CUTS thorn tangles — try that one right there!”
+- `wild_restore_1`
+  “Look! The thorns are melting away — the woods remember how to be green!”
+- `wild_complete`
+  “The Wild Woods breathe again. Three lights found, Kael… four to go.”
+- `all_pups_wild`
+  “NINE pups safe! The den is bursting with happy howls. Your heart grows stronger!”
+
 ## Cinder — 2 lines
 
 *Cinder — the fire spirit freed from the first boss. Warm, gentle, grateful. Slow and glowing.*
@@ -194,7 +223,7 @@ replace the robot text-to-speech voice.
 - `firewolf_grant`
   “Take this gift — the heart of the Fire Wolf.”
 
-## Luna — 2 lines
+## Luna — 3 lines
 
 *Luna — the moon spirit. Calm, kind, a lullaby voice.*
 
@@ -209,6 +238,11 @@ replace the robot text-to-speech voice.
 - `luna_dream_2`
   “Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.”
 
+**The Wild Woods (region 3)**
+
+- `luna_dream_3`
+  “Three lights burn beside you now, brave one. Rest. Far to the north, the frost peaks glitter… and wait.”
+
 ## Petra — 2 lines
 
 *Petra — the stone spirit. Steady, deep-ish, motherly; like a mountain talking softly.*
@@ -221,7 +255,19 @@ replace the robot text-to-speech voice.
 - `earthwolf_grant`
   “Take my gift — the heart of the Earth Wolf. The mountain walks with you now.”
 
-## Grimm — 2 lines
+## Sylva — 2 lines
+
+*Sylva — the forest spirit (region 3). Windy, light, a rustle-of-leaves warmth; fierce joy once freed.*
+
+
+**The Wild Woods (region 3)**
+
+- `sylva_defeat`
+  “The thorns… are gone. You fought me to free me, little knight. I am Sylva, keeper of the green.”
+- `verdant_grant`
+  “Run with my gift — the heart of the Verdant Wolf. The forest runs with you now.”
+
+## Grimm — 3 lines
 
 *Grimm — the shadow villain. Low, slow, theatrical menace (scary-fun, never terrifying).*
 
@@ -235,6 +281,11 @@ replace the robot text-to-speech voice.
 
 - `warden_intro`
   “My warden of bone guards the stone spirit, little knight. It will grind you to dust.”
+
+**The Wild Woods (region 3)**
+
+- `sylva_intro`
+  “Behold the forest’s precious guardian, little knight — wrapped in my thorns, wild with pain. She will tear you apart for me.”
 
 ## Old Bram — 3 lines
 
@@ -279,4 +330,4 @@ replace the robot text-to-speech voice.
 
 ---
 
-**Total: 87 lines.** Pip is the big role — record him first; every other character is a handful of lines.
+**Total: 104 lines.** Pip is the big role — record him first; every other character is a handful of lines.

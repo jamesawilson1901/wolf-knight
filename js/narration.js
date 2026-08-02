@@ -15,6 +15,7 @@ const VOICES = {
   bram: { rate: 0.85, pitch: 0.7, label: 'Old Bram' },
   wren: { rate: 0.95, pitch: 1.05, label: 'Wren' },
   rook: { rate: 0.9, pitch: 0.9, label: 'Rook' },
+  sylva: { rate: 0.92, pitch: 1.15, label: 'Sylva' },
 };
 
 export const LINES = {
@@ -116,6 +117,25 @@ export const LINES = {
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },
   luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
+
+  // The Wild Woods (region 3)
+  wildwoods_open: { voice: 'pip', text: 'The vine grew into a doorway! The Wild Woods are open, Kael — the trees are calling us.' },
+  wild_enter: { voice: 'pip', text: 'The Wild Woods… the trees here grew WRONG. Thorns everywhere. Something has the forest by the roots.' },
+  thornhound_intro: { voice: 'pip', text: 'A thorn hound! The brambles are wearing the animals like coats… FIRE burns thorns, Kael!' },
+  lantern_hint: { voice: 'pip', text: 'Cold wisp-lanterns! Light ALL THREE and the thorn gate will wither. Your fiery slam should wake them!' },
+  lantern_rock: { voice: 'pip', text: 'This lantern is walled in cracked stone… Stone first, THEN fire. Stomp it open as the Earth Wolf!' },
+  lantern_open: { voice: 'pip', text: 'All three burning! Hear the thorns creak — the way north is open!' },
+  plates2_hint: { voice: 'pip', text: 'TWO boulders, TWO floor circles — one for each side of the hedge. Line each boulder up with its gap first!' },
+  plates2_open: { voice: 'pip', text: 'Both circles hold their weight! The rootbound door remembers. Onward!' },
+  wild_boss_door: { voice: 'pip', text: 'Beyond here… I hear a wolf crying, Kael. A BIG one. Something has her tangled tight. Be brave.' },
+  sylva_intro: { voice: 'grimm', text: 'Behold the forest’s precious guardian, little knight — wrapped in my thorns, wild with pain. She will tear you apart for me.' },
+  sylva_defeat: { voice: 'sylva', text: 'The thorns… are gone. You fought me to free me, little knight. I am Sylva, keeper of the green.' },
+  verdant_grant: { voice: 'sylva', text: 'Run with my gift — the heart of the Verdant Wolf. The forest runs with you now.' },
+  verdant_howto: { voice: 'pip', text: 'You can be the Verdant Wolf now! Hold the screen to change. Your vine-lash CUTS thorn tangles — try that one right there!' },
+  wild_restore_1: { voice: 'pip', text: 'Look! The thorns are melting away — the woods remember how to be green!' },
+  wild_complete: { voice: 'pip', text: 'The Wild Woods breathe again. Three lights found, Kael… four to go.' },
+  all_pups_wild: { voice: 'pip', text: 'NINE pups safe! The den is bursting with happy howls. Your heart grows stronger!' },
+  luna_dream_3: { voice: 'luna', text: 'Three lights burn beside you now, brave one. Rest. Far to the north, the frost peaks glitter… and wait.' },
 };
 
 export class Narration {

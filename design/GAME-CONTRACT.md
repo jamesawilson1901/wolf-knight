@@ -87,6 +87,15 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-02 (late) — dad's region-3 go-word: "more rooms, slightly more
+  difficult puzzles, lantern lighting for one door, boulder pressure
+  points for the second, building on skills previously learned" →
+  v3.19 THE WILD WOODS: 7 rooms, Gloomwood lantern door (crack→slam
+  chain), Rootbound twin-plate door (routed pushes), Sylva duel, the
+  Verdant Wolf + vine-lash. LAW REAFFIRMED: each region's puzzles BUILD
+  on earlier regions' verbs; new regions ship with the next region's
+  lock visible (the ice-sealed spring) and pay an old promise (the e2
+  bramble). AWAITING dad's region approval pass.
   2026-08-02 (night, photos) — dad: "Cinder Bridges lava doesn't turn to
   stone after the boss" → ALL Ember pools are coolable now (law: the
   victory cools every pool in the region, not just room 1's). "The

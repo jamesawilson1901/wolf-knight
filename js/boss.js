@@ -19,6 +19,25 @@ const MAX_HP = 20;        // "a lot more health" — the little hounds have 3
 const HIT_CAP = 3;        // any single strike caps at 3 (surges stay strong, never trivial)
 const ATTACK_DMG = 1.5;   // "his attack is more" — hounds hit for 1
 
+// v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
+// it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
+// grammar the kids mastered (bosses fight like their family), new skin/stats.
+const SKINS = {
+  shadowgrip: {
+    name: 'The Shadowgrip',
+    body: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
+    maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
+    cinder: 0xffb25a, // the caged fire spirit
+  },
+  sylva: {
+    name: 'Sylva, Thornbound',
+    body: 0x24381c, glow: 0x2e5220, eyes: 0xcaff8a, burst: 0x8fdc6a,
+    maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
+    cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
+    speedMult: 1.08,  // the forest is quicker than the shadow
+  },
+};
+
 class Hittable {
   // Minimal enemy-shaped adapter so sword arcs / bolts / the Blood Moon land.
   constructor(x, z, radius, onHit) {
@@ -32,19 +51,22 @@ class Hittable {
 }
 
 export class Shadowgrip {
-  constructor(world, x, z, wolfGltf) {
+  constructor(world, x, z, wolfGltf, skinName = 'shadowgrip') {
+    this.skin = SKINS[skinName] || SKINS.shadowgrip;
+    this.name = this.skin.name;
     this.world = world;
     this.x = x; this.z = z;
     this.root = new THREE.Group();
     this.root.position.set(x, 0, z);
     world.add(this.root);
 
-    this.maxHp = MAX_HP;
+    this.maxHp = this.skin.maxHp;
     // dying never resets the duel: the wounds Kael landed are REMEMBERED
-    // (state.flags.bossHp, additive save field). Old saves that reached the
-    // legacy "phase 2/3" get the same courtesy.
-    const legacy = state.flags.bossProgress >= 2 ? MAX_HP * 0.6 : MAX_HP;
-    this.coreHp = Math.min(state.flags.bossHp || legacy, MAX_HP);
+    // (state.flags[saveKey], additive save field). Old Ember saves that
+    // reached the legacy "phase 2/3" get the same courtesy.
+    const legacy = (this.skin.legacyPhases && state.flags.bossProgress >= 2)
+      ? this.maxHp * 0.6 : this.maxHp;
+    this.coreHp = Math.min(state.flags[this.skin.saveKey] || legacy, this.maxHp);
     this.defeated = false;
     this.onDefeated = null;
 
@@ -60,14 +82,14 @@ export class Shadowgrip {
       n.material = mats.map((m) => {
         const c = m.clone();
         if (m.name === 'Eyes_Black') {
-          c.emissive = new THREE.Color(0xb9a8ff);
+          c.emissive = new THREE.Color(this.skin.eyes);
           c.emissiveIntensity = 1.2;
           this.eyeMat = c;
         } else if (m.name === 'Nose') {
           c.color.setHex(0x0a0710);
         } else {
-          if (c.color) c.color.setHex(0x161020);
-          c.emissive = new THREE.Color(0x2a1040);
+          if (c.color) c.color.setHex(this.skin.body);
+          c.emissive = new THREE.Color(this.skin.glow);
           c.emissiveIntensity = 0.35;
         }
         return c;
@@ -75,7 +97,7 @@ export class Shadowgrip {
       if (n.material.length === 1) n.material = n.material[0];
     });
     if (!this.eyeMat) {
-      this.eyeMat = new THREE.MeshStandardMaterial({ emissive: 0xb9a8ff, emissiveIntensity: 1.2 });
+      this.eyeMat = new THREE.MeshStandardMaterial({ emissive: this.skin.eyes, emissiveIntensity: 1.2 });
     }
     this.core.add(wolf);
     this.dragon = wolf; // legacy name kept: the boss's body
@@ -97,14 +119,14 @@ export class Shadowgrip {
     this.core.position.set(0, 0, -1.4); // starts just behind the caged light
     this.root.add(this.core);
 
-    // --- caged Cinder: the weak warm ember the wolf is guarding ---
+    // --- the caged spirit-light the great wolf is guarding ---
     this.cinder = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 1.6, roughness: 1 })
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: this.skin.cinder, emissiveIntensity: 1.6, roughness: 1 })
     );
     this.cinder.position.y = 1.1;
     this.root.add(this.cinder);
-    this.cinderLight = new THREE.PointLight(0xffb25a, 3.5, 8, 1.9);
+    this.cinderLight = new THREE.PointLight(this.skin.cinder, 3.5, 8, 1.9);
     this.cinderLight.position.set(0, 1.3, 0);
     this.root.add(this.cinderLight);
     // a dark shell smothers the light; it thins as the wolf weakens —
@@ -127,7 +149,7 @@ export class Shadowgrip {
     this.chargeDir = { x: 0, z: 1 };
     this.wolfOff = { x: 0, z: 0 };
     this._scrapeAcc = 0;
-    this._halfHowled = this.coreHp <= MAX_HP / 2;
+    this._halfHowled = this.coreHp <= this.maxHp / 2;
     // legacy fields some old saves/tests may read — inert now
     this.phase = 1;
     this.chargeState = 'rest';
@@ -172,17 +194,17 @@ export class Shadowgrip {
   _hitCore(n) {
     if (this.defeated) return;
     this.coreHp -= n;
-    state.flags.bossHp = Math.max(0, this.coreHp); // wounds are remembered
+    state.flags[this.skin.saveKey] = Math.max(0, this.coreHp); // wounds are remembered
     const wx = this.x + this.core.position.x, wz = this.z + this.core.position.z;
     if (this.world.onDmgNum) this.world.onDmgNum(wx, 2.2, wz, n);
     this._hurtFlash = 0.2;
     this.eyeMat.emissiveIntensity = 3;
     this._eyeFlash = 0.25;
     // the midpoint beat: at half health it howls and hunts HARDER
-    if (!this._halfHowled && this.coreHp <= MAX_HP / 2) {
+    if (!this._halfHowled && this.coreHp <= this.maxHp / 2) {
       this._halfHowled = true;
       audio.howl({ volume: 0.95, rate: 0.7 });
-      juice.burst(wx, 1.2, wz, 0x8f6bff, 14);
+      juice.burst(wx, 1.2, wz, this.skin.burst, 14);
     }
     if (this.coreHp <= 0) this._defeat();
   }
@@ -202,7 +224,7 @@ export class Shadowgrip {
 
   _defeat() {
     this.defeated = true;
-    state.flags.bossHp = 0;
+    state.flags[this.skin.saveKey] = 0;
     // DRAMATIC END: triple shockwave + spark storm + heavy shake before
     // the long dissolve (which sheds smoke and embers each frame in update)
     if (juice.effects) {
@@ -215,7 +237,7 @@ export class Shadowgrip {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       juice.burst(this.x + Math.cos(a) * 1.2, 0.5 + (i % 3) * 0.6, this.z + Math.sin(a) * 1.2,
-        i % 2 ? 0xff8a3a : 0x8f6bff, 12);
+        i % 2 ? 0xff8a3a : this.skin.burst, 12);
     }
     audio.play('slam', { volume: 1, rate: 0.5 });
     audio.howl({ volume: 0.85, rate: 0.5 }); // the long dying howl
@@ -223,10 +245,15 @@ export class Shadowgrip {
     this.coreHittable.dead = true;
     this._dissolveT = 1.6;
 
-    state.flags.bossDefeated = true;
-    state.flags.bossProgress = 0;
-    state.flags.shortcutOpen = true;
-    if (!state.formsUnlocked.includes('fire_wolf')) state.formsUnlocked.push('fire_wolf');
+    if (this.skin === SKINS.shadowgrip) {
+      state.flags.bossDefeated = true;
+      state.flags.bossProgress = 0;
+      state.flags.shortcutOpen = true;
+      if (!state.formsUnlocked.includes('fire_wolf')) state.formsUnlocked.push('fire_wolf');
+    } else if (this.skin === SKINS.sylva) {
+      state.flags.sylvaDefeated = true;
+      if (!state.formsUnlocked.includes('verdant_wolf')) state.formsUnlocked.push('verdant_wolf');
+    }
     if (this.onDefeated) this.onDefeated();
   }
 
@@ -246,7 +273,7 @@ export class Shadowgrip {
           const a = Math.random() * Math.PI * 2;
           const r = 0.4 + Math.random() * 1.6;
           juice.burst(this.x + Math.cos(a) * r, 0.5 + Math.random() * 1.6, this.z + Math.sin(a) * r,
-            Math.random() < 0.5 ? 0xff8a3a : 0x8f6bff, 10);
+            Math.random() < 0.5 ? 0xff8a3a : this.skin.burst, 10);
           smokePuff(this.world, this.x + Math.cos(a) * r, 0.8, this.z + Math.sin(a) * r, 0x241238);
         }
         this.cageShell.visible = false;
@@ -333,6 +360,7 @@ export class Shadowgrip {
     const d = Math.hypot(dx, dz) || 0.01;
     this.actionT -= dt;
     const enraged = this._halfHowled; // below half health it hunts harder
+    const SM = this.skin.speedMult || 1;
     const facePlayer = () => { this.core.rotation.y = Math.atan2(dx, dz); };
     const move = (mx, mz, speed) => {
       const nx = wx + mx * speed * dt, nz = wz + mz * speed * dt;
@@ -352,7 +380,7 @@ export class Shadowgrip {
       let mx = -nzr * this.orbitSign, mz = nxr * this.orbitSign; // tangent
       if (d > R + 0.8) { mx = mx * 0.4 + nxr * 0.8; mz = mz * 0.4 + nzr * 0.8; }
       else if (d < R - 1.2) { mx = mx * 0.4 - nxr * 0.8; mz = mz * 0.4 - nzr * 0.8; }
-      move(mx, mz, enraged ? 2.7 : 2.1);
+      move(mx, mz, (enraged ? 2.7 : 2.1) * SM);
       this.attackIn -= dt;
       if (this.attackIn <= 0) {
         if (Math.random() < 0.35) this.orbitSign *= -1; // keep the circling fresh
@@ -378,7 +406,7 @@ export class Shadowgrip {
     } else if (A === 'stalk') {
       facePlayer();
       this._setAnim('run');
-      move(dx / d, dz / d, enraged ? 3.6 : 3.1);
+      move(dx / d, dz / d, (enraged ? 3.6 : 3.1) * SM);
       if (d < 2.6 || this.actionT <= 0) {
         this.action = 'windup';
         this.actionT = 0.9;
@@ -409,8 +437,8 @@ export class Shadowgrip {
         // (attacker passed so a perfect parry STAGGERS the wolf), and a
         // jump clears it (groundAttack).
         const cone = (dx * this.chargeDir.x + dz * this.chargeDir.z) / d;
-        if (d < 2.8 && cone > 0.35) player.hurt(ATTACK_DMG, { attacker: this, groundAttack: true });
-        juice.burst(wx + this.chargeDir.x * 1.6, 0.4, wz + this.chargeDir.z * 1.6, 0x8f6bff, 8);
+        if (d < 2.8 && cone > 0.35) player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+        juice.burst(wx + this.chargeDir.x * 1.6, 0.4, wz + this.chargeDir.z * 1.6, this.skin.burst, 8);
         audio.play('slam', { volume: 0.6, rate: 1.1 });
       }
       if (this.actionT <= 0) {
@@ -445,11 +473,11 @@ export class Shadowgrip {
       }
     } else if (A === 'charge') {
       this.core.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
-      move(this.chargeDir.x, this.chargeDir.z, enraged ? 11.5 : 10.0);
-      this._chargeDist += (enraged ? 11.5 : 10.0) * dt;
+      move(this.chargeDir.x, this.chargeDir.z, (enraged ? 11.5 : 10.0) * SM);
+      this._chargeDist += (enraged ? 11.5 : 10.0) * SM * dt;
       if (!this._chargeHit && d < 1.4) {
         this._chargeHit = true; // one hit per charge — never a grinder
-        player.hurt(ATTACK_DMG, { attacker: this, groundAttack: true });
+        player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
       }
       if (this._chargeDist > 6.5 || this.actionT <= 0) {
         // THE COLLAPSE — the charge spends everything and the wolf visibly
@@ -466,7 +494,7 @@ export class Shadowgrip {
           this._anim = 'collapsed';
         }
         this.tiredRing.visible = true;
-        juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, 0x8f6bff, 12);
+        juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, this.skin.burst, 12);
         juice.burst(this.x + this.core.position.x, 0.3, this.z + this.core.position.z, 0x9a8f80, 10); // dust
         if (juice.effects) {
           juice.effects.shake(0.4, 0.5);

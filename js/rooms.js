@@ -13,7 +13,7 @@ import { spawnEnemies } from './enemies.js';
 import { Shadowgrip } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier, brambleGate } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate, iceGate } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 
@@ -2374,9 +2374,14 @@ async function buildE3(scene) {
   cavernMood(world);
   buildStoneShell(world, 14, 14, [
     { side: 's', from: -1.3, to: 1.3 }, // entry from E2
+    // once Stoneroot sings, the living vine opens the way to the WILD WOODS
+    ...(WS.get('stone', 'restored') ? [{ side: 'n', from: 4.4, to: 6.6 }] : []),
   ]);
   world.spawn = { x: 0, z: 5.4, angle: Math.PI };
   world.addDoor(-1.3, 1.3, 6.85, 7.9, 'e2', { x: 8.4, z: 0, angle: 0 });
+  if (WS.get('stone', 'restored')) {
+    world.addDoor(4.4, 6.6, -8.0, -6.85, 'w1', { x: 0, z: 4.2, angle: Math.PI });
+  }
 
   wallTorch(world, -4.6, 4.6); wallTorch(world, 4.6, 4.6);
   wallTorch(world, -5.4, -3.2); wallTorch(world, 5.4, -3.2);
@@ -2626,18 +2631,537 @@ export async function emberRestorationLive(world) {
   return DURATION;
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3 };
+// ---------------------------------------------------------------------------
+// THE WILD WOODS (region 3, v3.19) — a thorn-corrupted forest. Seven rooms,
+// two puzzle DOORS that build on learned skills (dad's brief): the Gloomwood
+// opens to LANTERN-LIGHTING (Fire Wolf slams — one lantern hides behind
+// cracked rock, chaining the Earth Wolf first), the Rootbound Door opens to
+// TWIN boulders on TWIN plates (the Stoneroot skill, now with routing).
+// Sylva, the forest's own great wolf, waits thornbound at the heart.
+// ---------------------------------------------------------------------------
+
+let fkit = null;
+async function loadForestKit() {
+  if (fkit) return fkit;
+  const base = './assets/env/forest/';
+  const names = {
+    tree1: 'Tree_1_A.gltf', tree2: 'Tree_2_B.gltf', tree3: 'Tree_3_A.gltf', tree4: 'Tree_4_B.gltf',
+    bare1: 'Tree_Bare_1_A.gltf', bare2: 'Tree_Bare_2_A.gltf',
+    bush1: 'Bush_1_A.gltf', bush2: 'Bush_2_C.gltf', bush3: 'Bush_4_B.gltf',
+    rock1: 'Rock_1_F.gltf', rock2: 'Rock_2_C.gltf', rock3: 'Rock_3_H.gltf',
+    grass1: 'Grass_1_A.gltf', grass2: 'Grass_2_B.gltf',
+  };
+  const entries = await Promise.all(
+    Object.entries(names).map(async ([k, f]) => [k, await loadGLB(base + f)])
+  );
+  fkit = Object.fromEntries(entries);
+  return fkit;
+}
+
+// Forest shell: mossy ground + a border of TREES with door gaps. The SOUTH
+// edge uses low bushes + rocks instead of tall trees (blind-strip law: the
+// camera looks north over the south border — nothing tall may live there).
+function buildForestShell(world, w, d, gaps = []) {
+  const halfW = w / 2, halfD = d / 2;
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(w + 8, d + 8),
+    new THREE.MeshStandardMaterial({ color: 0x36502b, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  world.add(ground);
+
+  const inGap = (side, coord) =>
+    gaps.some((g) => g.side === side && coord > g.from && coord < g.to);
+
+  // tree border (n/w/e) — three species interleaved, deterministic jitter
+  const treeP = { tree1: [], tree2: [], bare1: [] };
+  const keys = ['tree1', 'tree2', 'tree1', 'bare1', 'tree2'];
+  let ti = 0;
+  const addTree = (x, z, side, coord) => {
+    if (inGap(side, coord)) return;
+    const k = keys[ti++ % keys.length];
+    treeP[k].push({
+      x: x + ((ti * 13) % 5 - 2) * 0.12, z: z + ((ti * 7) % 5 - 2) * 0.12,
+      ry: (ti % 8) * 0.8, s: 1.1 + (ti % 3) * 0.2,
+    });
+  };
+  for (let tx = 0; tx <= w; tx += 1.6) {
+    addTree(tx - halfW, -halfD - 0.6, 'n', tx - halfW);
+  }
+  for (let tz = 0; tz <= d; tz += 1.6) {
+    addTree(-halfW - 0.6, tz - halfD, 'w', tz - halfD);
+    addTree(halfW + 0.6, tz - halfD, 'e', tz - halfD);
+  }
+  for (const [k, ps] of Object.entries(treeP)) {
+    if (ps.length) world.add(instancePlacements(fkit[k].scene, ps));
+  }
+  // low south border: bushes + rocks (never taller than Kael)
+  const bushP = [], rockP = [];
+  for (let tx = 0; tx <= w; tx += 1.3) {
+    const coord = tx - halfW;
+    if (inGap('s', coord)) continue;
+    (tx % 2.6 < 1.3 ? bushP : rockP).push({
+      x: coord, z: halfD + 0.55, ry: tx * 1.7, s: 1.15 + (tx % 2) * 0.25,
+    });
+  }
+  if (bushP.length) world.add(instancePlacements(fkit.bush2.scene, bushP));
+  if (rockP.length) world.add(instancePlacements(fkit.rock2.scene, rockP));
+
+  // colliders, split around gaps (same segment logic as every shell)
+  const segments = (side, lo, hi) => {
+    const cuts = gaps.filter((g) => g.side === side).sort((a, b) => a.from - b.from);
+    let start = lo;
+    const out = [];
+    for (const c of cuts) {
+      if (c.from > start) out.push([start, c.from]);
+      start = c.to;
+    }
+    if (start < hi) out.push([start, hi]);
+    return out;
+  };
+  for (const [a, b] of segments('n', -halfW - 1, halfW + 1)) world.addBox(a, b, -halfD - 1.3, -halfD + 0.1);
+  for (const [a, b] of segments('s', -halfW - 1, halfW + 1)) world.addBox(a, b, halfD - 0.1, halfD + 1.3);
+  for (const [a, b] of segments('w', -halfD - 1, halfD + 1)) world.addBox(-halfW - 1.3, -halfW + 0.1, a, b);
+  for (const [a, b] of segments('e', -halfD - 1, halfD + 1)) world.addBox(halfW - 0.1, halfW + 1.3, a, b);
+
+  // scattered grass tufts — the floor feels alive for one instanced draw
+  const tufts = [];
+  for (let i = 0; i < 16; i++) {
+    tufts.push({
+      x: ((i * 37) % (w - 2)) - halfW + 1, z: ((i * 23) % (d - 2)) - halfD + 1,
+      ry: i * 1.3, s: 0.9 + (i % 3) * 0.25,
+    });
+  }
+  world.add(instancePlacements(fkit.grass1.scene, tufts, { castShadow: false }));
+
+  // drifting wisp-motes: the woods breathe (six cheap glow dots)
+  const motes = [];
+  for (let i = 0; i < 6; i++) {
+    const m = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.05, 0),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xbfffc8, emissiveIntensity: 1.5, roughness: 1 })
+    );
+    world.add(m);
+    motes.push({ m, p: i * 1.05 });
+  }
+  world.onAnimate((t) => {
+    for (const mo of motes) {
+      mo.m.position.set(
+        Math.sin(t * 0.21 + mo.p * 5) * (halfW - 1.5),
+        0.8 + Math.sin(t * 0.9 + mo.p * 3) * 0.4,
+        Math.cos(t * 0.17 + mo.p * 4) * (halfD - 1.5)
+      );
+    }
+  });
+  return { halfW, halfD };
+}
+
+// A thorn-wood gate across a door gap — three dark tangles that tear away
+// when open() is called (the forest's version of rising bars).
+function thornGate(world, x, z, span = 2.6) {
+  const group = new THREE.Group();
+  for (const [ox, s, ry] of [[-span * 0.33, 1.35, 0.6], [0, 1.5, 2.4], [span * 0.33, 1.3, 4.2]]) {
+    const b = prepareModel(fkit.bush3.scene.clone());
+    b.position.set(x + ox, 0, z);
+    b.rotation.y = ry;
+    b.scale.setScalar(s);
+    b.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      if (n.material.color) n.material.color.setHex(0x28381e); // dark thorn
+    });
+    group.add(b);
+  }
+  world.add(group);
+  const collider = { minX: x - span / 2 - 0.4, maxX: x + span / 2 + 0.4, minZ: z - 0.8, maxZ: z + 0.8 };
+  world.boxColliders.push(collider);
+  return {
+    open: (silent = false) => {
+      world.root.remove(group);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      if (!silent) {
+        audio.play('gate-creak', { volume: 0.85, rate: 0.7 });
+        audio.play('puff', { volume: 0.8, rate: 1.1 });
+      }
+    },
+  };
+}
+
+// inner clumps of trees/bushes with colliders — the woods' walls and cover
+function grove(world, spots) {
+  for (const [kind, x, z, s, ry, cr] of spots) {
+    const m = prepareModel(fkit[kind].scene.clone());
+    m.position.set(x, 0, z);
+    m.rotation.y = ry || 0;
+    m.scale.setScalar(s || 1.2);
+    world.add(m);
+    if (cr) world.addCircle(x, z, cr);
+  }
+}
+
+// --- w1 — The Thorn Gate (entry: the woods gone wrong; first thorn hounds)
+async function buildW1(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 18, 12, [
+    { side: 's', from: -1.2, to: 1.2 }, // back to the Warden's Crypt
+    { side: 'n', from: -1.2, to: 1.2 }, // deeper: the Gloomwood
+    { side: 'e', from: -1.2, to: 1.2 }, // the Mossy Dell (branch)
+  ]);
+  world.spawn = { x: 0, z: 4.2, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 5.85, 7.2, 'e3', { x: 5.5, z: -4.6, angle: 0 });
+  world.addDoor(-1.2, 1.2, -7.2, -5.85, 'w2', { x: 0, z: 5.6, angle: Math.PI });
+  world.addDoor(8.85, 10.2, -1.2, 1.2, 'w1b', { x: -6.0, z: 0, angle: Math.PI / 2 });
+
+  grove(world, [
+    ['tree3', -5.8, -3.6, 1.4, 0.7, 0.55], ['tree4', 5.6, -4.0, 1.5, 2.1, 0.6],
+    ['bare2', -3.0, -0.8, 1.3, 1.2, 0.5], ['bush1', 3.2, 2.4, 1.4, 0.4, 0],
+    ['rock3', -6.8, 1.0, 1.5, 2.8, 0.7], ['bush3', 6.9, 2.6, 1.3, 3.4, 0],
+  ]);
+  world.markers.houndSpots = [
+    { x: -4.0, z: -1.2, variant: 'thorn' }, { x: 4.4, z: 0.6, variant: 'thorn' },
+  ];
+  world.markers.mothSpots = [{ x: -1.6, z: -3.6, variant: 'wisp' }];
+  checkpoint(world, 'cp_w1', -6.6, 3.2);
+  potionPickup(world, 6.6, 3.4);
+  world.markers.chestDefs = [
+    { id: 'c_w1_gate', tier: 'wood', x: -7.6, z: -4.4, ry: 1.1, loot: { shards: 12 } },
+  ];
+  world.markers.breakables = [
+    { x: 7.4, z: -4.8, kind: 'crate', shards: 3 },
+    { x: -2.2, z: 3.4, kind: 'crate', shards: 2 },
+  ];
+  return world;
+}
+
+// --- w1b — The Mossy Dell (branch: pup + the ICE-SEALED SPRING, region 4's
+// promise — frost's lock shown a region early, per the lock-before-key law)
+async function buildW1b(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 14, 10, [
+    { side: 'w', from: -1.2, to: 1.2 }, // back to the Thorn Gate
+  ]);
+  world.spawn = { x: -6, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-8.2, -6.85, -1.2, 1.2, 'w1', { x: 8.2, z: 0, angle: -Math.PI / 2 });
+
+  grove(world, [
+    ['tree2', -2.4, -3.4, 1.4, 0.9, 0.55], ['tree1', 2.8, 2.2, 1.3, 1.7, 0.5],
+    ['bush1', 0.4, -1.4, 1.5, 2.2, 0], ['rock1', -4.2, 2.6, 1.4, 0.8, 0.6],
+  ]);
+  // a rock spur walls a little nook; the frozen spring seals its doorway
+  blockRowRocks(world, 4.6, -1.8, 7.0, -1.8);
+  iceGate(world, 5.0, -3.2, 'w_ice');
+  world.markers.chestDefs = [
+    // visible past the ice — region 4's promise reward
+    { id: 'c_w1b_ice', tier: 'gold', x: 6.4, z: -3.2, ry: -1.6, loot: { shards: 20, heartPiece: 1 } },
+    { id: 'c_w1b_dell', tier: 'wood', x: -6.4, z: -3.8, ry: 0.8, loot: { shards: 10, potion: 1 } },
+  ];
+  world.markers.slimeSpots = [
+    { x: -1.8, z: 2.6, variant: 'bramble' }, { x: 2.4, z: -2.8, variant: 'bramble' },
+  ];
+  world.markers.pup7Spot = { x: -2.0, z: -3.6 };
+  world.markers.breakables = [{ x: 6.6, z: 2.6, kind: 'barrel', shards: 3 }];
+  return world;
+}
+
+// --- w2 — The Gloomwood (PUZZLE DOOR 1: light the three wisp-lanterns.
+// Fire Wolf slams — and one lantern hides behind CRACKED ROCK, so the kids
+// chain Earth stomp → Fire slam. Dark room: the Dark Wolf's eyes help hunt
+// the cold lanterns down. Skills from regions 1+2, braided.)
+async function buildW2(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 18, 14, [
+    { side: 's', from: -1.2, to: 1.2 }, // back to the Thorn Gate
+    { side: 'n', from: -1.3, to: 1.3 }, // the Rootbound Door (thorn-sealed)
+    { side: 'e', from: -1.2, to: 1.2 }, // the Hollow Oak (branch)
+  ]);
+  world.spawn = { x: 0, z: 5.2, angle: Math.PI };
+  world.addDoor(-1.2, 1.2, 6.85, 8.2, 'w1', { x: 0, z: -4.9, angle: 0 });
+  world.addDoor(-1.3, 1.3, -8.2, -6.85, 'w3', { x: 0, z: 5.6, angle: Math.PI });
+  world.addDoor(8.85, 10.2, -1.2, 1.2, 'w2b', { x: -5.0, z: 0, angle: Math.PI / 2 });
+
+  // the gloom: whole-room twilight — lantern light (and wolf eyes) matter
+  darkZone(world, -8.9, 8.9, -6.9, 6.9);
+  const fire = prepareModel(kit.campfire.scene.clone());
+  fire.position.set(-1.8, 0, 4.6);
+  world.add(fire);
+  const fl = new THREE.PointLight(0xffa04a, 2.4, 7, 1.8);
+  fl.position.set(-1.8, 1.2, 4.6);
+  world.add(fl);
+  world.onAnimate((t) => { fl.intensity = 2.2 + Math.sin(t * 7.1) * 0.4; });
+
+  grove(world, [
+    ['tree4', -6.2, -2.6, 1.5, 1.1, 0.6], ['tree2', 6.4, -3.8, 1.4, 2.6, 0.55],
+    ['bare1', 3.4, 0.8, 1.3, 0.5, 0.5], ['bush1', -3.8, 1.8, 1.4, 1.9, 0],
+    ['rock3', 7.2, 3.2, 1.4, 0.4, 0.65],
+  ]);
+
+  // THE THREE WISP-LANTERNS (cold braziers — the Fire Wolf's slam wakes them)
+  const lit = () => !!WS.get('wild', 'lanterns');
+  const gate = thornGate(world, 0, -7.05, 2.8);
+  if (lit()) gate.open(true);
+  let litCount = 0;
+  const onLantern = () => {
+    litCount++;
+    audio.play('pup-chime', { volume: 0.7, rate: 1.1 + litCount * 0.15 }); // rising
+    if (litCount >= 3 && !lit()) {
+      WS.set('wild', 'lanterns');
+      gate.open();
+      audio.play('checkpoint', { volume: 0.9, rate: 1.2 });
+    }
+  };
+  const L = [
+    brazier(world, prepareModel, dkit.torch, 'w2_l1', -5.2, 1.6, onLantern),
+    brazier(world, prepareModel, dkit.torch, 'w2_l2', 5.4, -1.2, onLantern),
+    // the third hides in a rock pocket behind CRACKED STONE (Earth first!)
+    brazier(world, prepareModel, dkit.torch, 'w2_l3', 0.5, -4.4, onLantern),
+  ];
+  if (lit()) {
+    for (const b of L) { b.lit = true; b.flame.visible = true; b.light.intensity = 5; }
+  }
+  // the pocket: rock rows east+west, the cracked pile is the only way in
+  blockRowRocks(world, -1.1, -6.4, -1.1, -3.1);
+  blockRowRocks(world, 2.1, -6.4, 2.1, -3.1);
+  crackedRocks(world, 'w2_lantern', 0.5, -2.6);
+  world.markers.crackSpot = { x: 0.5, z: -2.6 };
+  world.markers.lanternSpots = L.map((b) => ({ x: b.x, z: b.z }));
+
+  world.markers.mothSpots = [
+    { x: -3.4, z: -2.2, variant: 'wisp' }, { x: 4.2, z: 2.6, variant: 'wisp' },
+  ];
+  world.markers.houndSpots = [{ x: 2.6, z: -0.6, variant: 'thorn' }];
+  checkpoint(world, 'cp_w2', -6.8, 3.8);
+  world.markers.chestDefs = [
+    { id: 'c_w2_gloom', tier: 'wood', x: -7.6, z: -5.4, ry: 1.3, loot: { shards: 14, potion: 1 } },
+  ];
+  world.markers.breakables = [{ x: 6.8, z: 4.0, kind: 'crate', shards: 3 }];
+  return world;
+}
+
+// --- w2b — The Hollow Oak (branch: the Elder Thorn Hound guards a pup)
+async function buildW2b(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 12, 10, [
+    { side: 'w', from: -1.2, to: 1.2 },
+  ]);
+  world.spawn = { x: -5, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-7.2, -5.85, -1.2, 1.2, 'w2', { x: 8.2, z: 0, angle: -Math.PI / 2 });
+
+  // the great hollow oak itself
+  grove(world, [
+    ['tree4', -1.6, -1.8, 2.6, 0.8, 0.9],
+    ['bush1', 1.8, 2.0, 1.4, 1.2, 0], ['rock2', 4.0, -0.6, 1.3, 2.2, 0.55],
+  ]);
+  world.markers.houndSpots = [{ x: 1.6, z: -0.4, variant: 'elderthorn' }];
+  world.markers.pup8Spot = { x: 4.4, z: -3.4 };
+  crackedRocks(world, 'w2b_alcove', -4.2, -3.2);
+  world.markers.chestDefs = [
+    ...(state.flags.cracked.w2b_alcove
+      ? [{ id: 'c_w2b_oak', tier: 'gold', x: -5.2, z: -3.8, ry: 0.9, loot: { shards: 18, gear: 'hammer_a' } }]
+      : []),
+  ];
+  world.markers.breakables = [{ x: 5.0, z: 2.8, kind: 'barrel', shards: 3 }];
+  return world;
+}
+
+// --- w3 — The Rootbound Door (PUZZLE DOOR 2: TWIN boulders, TWIN plates.
+// The Stoneroot skill grown up: a hedge splits the north half into two bays;
+// each boulder must be routed through the center gap, then into ITS bay.)
+async function buildW3(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 18, 14, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Gloomwood
+    { side: 'n', from: -1.3, to: 1.3 }, // the Bramble Heart (thorn-sealed)
+  ]);
+  world.spawn = { x: 0, z: 5.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 6.85, 8.2, 'w2', { x: 0, z: -6.4, angle: 0 });
+  world.addDoor(-1.3, 1.3, -8.2, -6.85, 'w4', { x: 0, z: 4.6, angle: Math.PI });
+
+  // THE HEDGE: a bush wall across the room with TWO narrow gaps (x ±3.4).
+  // Each boulder starts OFFSET from its gap, so the route is a real plan:
+  // push EAST to line up with a gap, NORTH through it, then a final turn
+  // onto the plate. (Wrong-gap mistakes just mean re-entering to reset —
+  // rooms rebuild, anti-soft-lock law.)
+  bushRow(world, -8.9, -1.5, -4.75, -1.5); // west wall
+  bushRow(world, -2.05, -1.5, 2.05, -1.5); // middle island
+  bushRow(world, 4.75, -1.5, 8.9, -1.5);   // east wall
+
+  boulder(world, -5.8, 2.2);
+  boulder(world, 1.0, 2.2);
+  pressurePlate(world, 'w3_p1', -4.6, -4.0, () => { if (world.checkRoot) world.checkRoot(); });
+  pressurePlate(world, 'w3_p2', 4.6, -4.0, () => { if (world.checkRoot) world.checkRoot(); });
+  world.markers.boulderSpot = { x: -5.8, z: 2.2 };
+
+  const gate = thornGate(world, 0, -7.05, 2.8);
+  const done = () => !!state.flags.plates.w3_p1 && !!state.flags.plates.w3_p2;
+  if (done()) gate.open(true);
+  world.checkRoot = () => {
+    if (!done()) return;
+    gate.open();
+    audio.play('checkpoint', { volume: 0.9, rate: 1.15 });
+    world.checkRoot = null;
+  };
+
+  grove(world, [
+    ['tree3', -6.8, -5.6, 1.4, 0.8, 0.55], ['tree1', 6.8, -5.8, 1.4, 2.0, 0.5],
+    ['bush1', -6.4, 2.8, 1.4, 0.6, 0], ['rock1', 7.0, 2.6, 1.4, 1.6, 0.6],
+  ]);
+  world.markers.slimeSpots = [
+    { x: -5.2, z: 0.8, variant: 'bramble' }, { x: 5.6, z: 1.4, variant: 'bramble' },
+  ];
+  checkpoint(world, 'cp_w3', -7.2, 3.6);
+  world.markers.chestDefs = [
+    { id: 'c_w3_root', tier: 'wood', x: -7.8, z: -6.0, ry: 1.2, loot: { shards: 14 } },
+  ];
+  world.markers.breakables = [{ x: 7.6, z: 4.0, kind: 'crate', shards: 2 }];
+  return world;
+}
+
+// --- w4 — The Bramble Heart (the gauntlet; rest before the boss — law)
+async function buildW4(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 16, 12, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Rootbound Door
+    { side: 'n', from: -1.3, to: 1.3 }, // Sylva's Glade
+  ]);
+  world.spawn = { x: 0, z: 4.6, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 5.85, 7.2, 'w3', { x: 0, z: -6.4, angle: 0 });
+  world.addDoor(-1.3, 1.3, -7.2, -5.85, 'w5', { x: 0, z: 6.2, angle: Math.PI });
+
+  grove(world, [
+    ['bare1', -4.6, -2.2, 1.5, 0.7, 0.55], ['bare2', 4.8, -1.6, 1.5, 2.3, 0.55],
+    ['tree2', -6.6, -4.4, 1.4, 1.1, 0.55], ['tree3', 6.6, -4.6, 1.4, 0.3, 0.55],
+    ['bush3', -2.6, 0.8, 1.5, 1.8, 0], ['bush3', 2.8, -3.2, 1.4, 3.9, 0],
+    ['rock3', -7.0, 0.6, 1.4, 2.4, 0.65],
+  ]);
+  // the thorn pack — the woods' last stand (attack tokens keep it a duel)
+  world.markers.houndSpots = [
+    { x: -3.6, z: -3.0, variant: 'thorn' }, { x: 3.8, z: -2.4, variant: 'thorn' },
+    { x: 0.4, z: -0.8, variant: 'elderthorn' },
+  ];
+  world.markers.slimeSpots = [{ x: -5.4, z: 1.8, variant: 'bramble' }];
+  world.markers.mothSpots = [{ x: 5.6, z: 0.8, variant: 'wisp' }];
+  world.markers.pup9Spot = { x: 7.0, z: -4.6 };
+  // rest before the door (contract law): flame + potion side by side
+  checkpoint(world, 'cp_w4', -1.9, -3.4);
+  potionPickup(world, 1.9, -3.4);
+  world.markers.bossDoorSpot = { x: 0, z: -5.6 };
+  world.markers.breakables = [
+    { x: -7.0, z: 3.6, kind: 'crate', shards: 3 }, { x: 7.2, z: 3.8, kind: 'barrel', shards: 3 },
+  ];
+  return world;
+}
+
+// --- w5 — Sylva's Glade (the boss; then the grant + the healing)
+async function buildW5(scene) {
+  const world = new World(scene);
+  await loadForestKit();
+  buildForestShell(world, 16, 16, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Bramble Heart
+  ]);
+  world.spawn = { x: 0, z: 6.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 7.85, 9.2, 'w4', { x: 0, z: -4.9, angle: 0 });
+
+  // scattered cover — the duel weaves between old stones
+  grove(world, [
+    ['rock3', -4.6, -3.0, 1.6, 0.8, 0.75], ['rock3', 4.8, -2.6, 1.5, 2.2, 0.7],
+    ['rock1', -4.2, 2.6, 1.5, 1.2, 0.65], ['rock1', 4.4, 3.0, 1.5, 3.1, 0.65],
+    ['tree4', -6.9, -6.4, 1.6, 0.5, 0.7], ['tree4', 6.9, -6.6, 1.6, 1.9, 0.7],
+  ]);
+
+  if (!state.flags.sylvaDefeated) {
+    world.markers.bossSpot = { x: 0, z: -0.5, skin: 'sylva' };
+  } else {
+    // THE HEALED GLADE: flowers bloom, her light rests free, treasure waits
+    await (async () => {
+      const [fa, fb] = await Promise.all([
+        loadGLB('./assets/env/flower-a.glb'), loadGLB('./assets/env/flower-b.glb'),
+      ]);
+      const ps = [];
+      for (let i = 0; i < 14; i++) {
+        ps.push({ x: ((i * 29) % 12) - 6, z: ((i * 17) % 12) - 6, ry: i * 1.1, s: 1.1 });
+      }
+      world.add(instancePlacements((i => i % 2 ? fa : fb)(1).scene, ps.slice(0, 7)));
+      world.add(instancePlacements(fb.scene, ps.slice(7)));
+    })();
+    const heart = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.24, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xb8ffc8, emissiveIntensity: 2.2, roughness: 1 })
+    );
+    heart.position.set(0, 1.4, -2.5);
+    world.add(heart);
+    const hl = new THREE.PointLight(0xb8ffc8, 5, 11, 1.8);
+    hl.position.set(0, 1.7, -2.5);
+    world.add(hl);
+    world.onAnimate((t) => { heart.position.y = 1.4 + Math.sin(t * 1.5) * 0.14; heart.rotation.y = t * 0.8; });
+    world.markers.sylvaShrine = { x: 0, z: -2.5 };
+    world.markers.healed = true;
+  }
+  // GRANT + 30s law: the moment the Verdant Wolf is earned, a bramble
+  // tangle RIGHT HERE hides gold — cut it with the new lash immediately
+  brambleGate(world, prepareModel, kit.bush, 'w5_reward', 5.6, -5.2, 'wild');
+  world.markers.chestDefs = [
+    ...(state.flags.sylvaDefeated
+      ? [{ id: 'c_w5_glade', tier: 'gold', x: -2.8, z: -3.4, ry: 0.7, loot: { shards: 30, powerup: 'star' } }]
+      : []),
+    { id: 'c_w5_bramble', tier: 'gold', x: 6.6, z: -5.8, ry: -2.2, loot: { shards: 22, heartPiece: 1 } },
+  ];
+  checkpoint(world, 'cp_w5', -6.6, 5.4);
+  return world;
+}
+
+// small helpers the Wild Woods rooms lean on
+function bushRow(world, x0, z0, x1, z1) {
+  const dx = x1 - x0, dz = z1 - z0;
+  const len = Math.hypot(dx, dz);
+  const count = Math.max(1, Math.round(len / 0.95));
+  const ps = [];
+  for (let i = 0; i <= count; i++) {
+    const f = i / count;
+    ps.push({ x: x0 + dx * f, z: z0 + dz * f, ry: i * 2.1, s: 1.25 + (i % 2) * 0.2 });
+  }
+  world.add(instancePlacements(fkit.bush3.scene, ps));
+  const pad = 0.55;
+  world.addBox(Math.min(x0, x1) - pad, Math.max(x0, x1) + pad, Math.min(z0, z1) - pad, Math.max(z0, z1) + pad);
+}
+
+function blockRowRocks(world, x0, z0, x1, z1) {
+  const dx = x1 - x0, dz = z1 - z0;
+  const len = Math.hypot(dx, dz);
+  const count = Math.max(1, Math.round(len / 1.1));
+  for (let i = 0; i <= count; i++) {
+    const f = i / count;
+    const m = prepareModel(fkit.rock3.scene.clone());
+    m.position.set(x0 + dx * f, 0, z0 + dz * f);
+    m.rotation.y = i * 1.9;
+    m.scale.setScalar(1.35 + (i % 2) * 0.2);
+    world.add(m);
+  }
+  const pad = 0.6;
+  world.addBox(Math.min(x0, x1) - pad, Math.max(x0, x1) + pad, Math.min(z0, z1) - pad, Math.max(z0, z1) + pad);
+}
+
+export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
-  if (id[0] === 'e' || id[0] === 'k') await loadDungeonKit();
+  if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w') await loadDungeonKit();
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
-  if (world.markers.bossSpot && !state.flags.bossDefeated) {
-    // The Shadowgrip wears the WOLF body now (user call + canon: a giant
-    // shadow-echo of the first great wolf) — same style family as Kael.
+  if (world.markers.bossSpot) {
+    // Giant-wolf duels wear the same class: the Shadowgrip in Ember, Sylva
+    // the Thornbound in the Wild Woods (bosses fight like their family).
+    const bs = world.markers.bossSpot;
     const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-    new Shadowgrip(world, world.markers.bossSpot.x, world.markers.bossSpot.z, wolfGltf);
+    new Shadowgrip(world, bs.x, bs.z, wolfGltf, bs.skin || 'shadowgrip');
   }
   return world;
 }

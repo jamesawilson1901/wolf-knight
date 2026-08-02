@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.18.3';
+const CACHE_NAME = 'wolfknight-v3.19.0';
 
 const PRECACHE = [
   './',
@@ -163,6 +163,21 @@ const PRECACHE = [
   './assets/chars/monsters/Dragon.glb',
   './assets/env/mushroom-group.glb',
   './assets/env/mushroom-tall.glb',
+  './assets/env/forest/Tree_1_A.gltf', './assets/env/forest/Tree_1_A.bin',
+  './assets/env/forest/Tree_2_B.gltf', './assets/env/forest/Tree_2_B.bin',
+  './assets/env/forest/Tree_3_A.gltf', './assets/env/forest/Tree_3_A.bin',
+  './assets/env/forest/Tree_4_B.gltf', './assets/env/forest/Tree_4_B.bin',
+  './assets/env/forest/Tree_Bare_1_A.gltf', './assets/env/forest/Tree_Bare_1_A.bin',
+  './assets/env/forest/Tree_Bare_2_A.gltf', './assets/env/forest/Tree_Bare_2_A.bin',
+  './assets/env/forest/Bush_1_A.gltf', './assets/env/forest/Bush_1_A.bin',
+  './assets/env/forest/Bush_2_C.gltf', './assets/env/forest/Bush_2_C.bin',
+  './assets/env/forest/Bush_4_B.gltf', './assets/env/forest/Bush_4_B.bin',
+  './assets/env/forest/Rock_1_F.gltf', './assets/env/forest/Rock_1_F.bin',
+  './assets/env/forest/Rock_2_C.gltf', './assets/env/forest/Rock_2_C.bin',
+  './assets/env/forest/Rock_3_H.gltf', './assets/env/forest/Rock_3_H.bin',
+  './assets/env/forest/Grass_1_A.gltf', './assets/env/forest/Grass_1_A.bin',
+  './assets/env/forest/Grass_2_B.gltf', './assets/env/forest/Grass_2_B.bin',
+  './assets/env/forest/forest_texture.png',
   './vendor/three.module.min.js',
   './vendor/three.core.min.js',
   './vendor/addons/loaders/GLTFLoader.js',

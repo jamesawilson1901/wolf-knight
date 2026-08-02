@@ -1626,3 +1626,51 @@ Dad's six-complaint playtest round, all root-caused:
 - Verified headless: 3 entries; Level 1 grants nothing extra and doesn't
   spoil Ember; Level 2 lands on e1's spawn with fire wolf + completion
   flags. SW cache wolfknight-v3.18.3.
+
+## v3.19.0 — THE WILD WOODS (region 3) + the Verdant Wolf (2026-08-02)
+
+Dad's go-word: "more rooms, slightly more difficult puzzles, lantern
+lighting for one door and boulder pressure points for the second —
+building on the skills previously learned."
+
+- **Seven rooms** (Stoneroot had five): w1 Thorn Gate → w2 Gloomwood →
+  w3 Rootbound Door → w4 Bramble Heart → w5 Sylva's Glade, with two
+  optional branches (w1b Mossy Dell, w2b Hollow Oak). Entry: a living
+  vine doorway in the Warden's Crypt that opens once Stoneroot sings.
+- **Forest tech**: 14 KayKit Forest Nature models vendored (260 KB);
+  buildForestShell — mossy ground, instanced tree borders with door gaps,
+  LOW bushes/rocks on the south edge (blind-strip law), grass tufts,
+  drifting wisp-motes; thornGate (bushes that tear away = the woods'
+  rising bars).
+- **PUZZLE DOOR 1 (w2 Gloomwood)**: three cold wisp-lanterns in a
+  twilight-dark room — Fire Wolf slams light them; the third is walled
+  behind CRACKED ROCK (Earth stomp first). Skills from regions 1+2
+  braided, exactly as briefed. Persisted via WS wild.lanterns.
+- **PUZZLE DOOR 2 (w3 Rootbound Door)**: TWIN boulders onto TWIN plates
+  through a two-gap hedge — line each boulder up with its gap, push it
+  through, then the final turn onto the plate. The Stoneroot skill with
+  real routing. Wrong-gap mistakes reset on re-entry (anti-soft-lock).
+- **Enemy family by the asset-multiplication law** (no new models):
+  Thorn Hound / Elder Thorn Hound (wolf, mossy green, fire-weak),
+  Bramble Blob (slime), Wisp Moth (bat) — ALL fear fire: the region's
+  element lesson. Spawners now take hound packs + variants on every type.
+- **Sylva, Thornbound (w5)**: the boss class is now a parameterized
+  giant-wolf-duel SKIN system — Sylva is the Shadowgrip grammar in
+  green: 24 hp, 8% quicker, same charge→collapse / swipe→parry reads
+  (bosses fight like their family). Her wounds persist (flags.sylvaHp).
+  Freed → the VERDANT WOLF is earned.
+- **The Verdant Wolf**: 5th form (green tint, leaf aura, 5.4 speed);
+  special = VINE-LASH (7s cd): a forward corridor of damage that CUTS
+  bramble tangles — pays out the e2 bramble promise from region 2, and
+  a tangle in the glade itself feeds the grant30s law. Thrown thorn
+  bolt ROOTS its target (1.2s).
+- Wiring: region flag, music (causeway loop for now — custom woods track
+  on the polish list), travel stone + cheat Level 3 (grants fire+earth +
+  both completions), pups 7–9 (9/9 = 8th heart), 18 narration lines +
+  Sylva's voice, regions.js manifest validates clean, saves additive
+  (sylvaHp/sylvaDefeated; WS wild.* rides flags.world).
+- Verified: 11-check headless suite (region validation, level-3 skip,
+  vine door, both puzzle doors through real crack/ignite/step-slide
+  systems, gauntlet, Sylva duel + grant, vine-lash cuts in w5 AND e2)
+  + four screenshots. SW cache wolfknight-v3.19.0, badge v3.19,
+  VOICE-RECORDING-SCRIPT regenerated (104 lines).
