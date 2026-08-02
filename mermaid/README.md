@@ -52,11 +52,14 @@ Dev helpers: `?test=controls` is the plain-rectangle control test scene;
   onto a centroid-aligned common canvas so animation swaps never jump, packs
   atlases, verifies background layers tile before relying on it, generates
   the icon set.
-- `scripts/build-audio.ts` — synthesized audio (bell/harp tones, filtered
-  ocean ambience) written as WAV for seamless looping and universal decode.
-  The intended CC0 sources (Kenney/Pixabay) were unreachable from the build
-  sandbox's network; swap files in `public/assets/audio/` any time — names
-  and lengths are the contract.
+- `scripts/build-audio.ts` — audio pipeline. Drop a recording at
+  `audio-source/<slot>.mp3` (slots: `ambient`, `tap`, `pearl`, `coin`, `joy`,
+  `chest`, `complete`) and `npm run audio` decodes, monos, trims, normalises
+  and (for ambient) loop-crossfades it to WAV; slots without a recording fall
+  back to synthesized bell/harp sounds. Current recordings, all from Pixabay:
+  underwater ambience #6201 and water drop #85731 (freesound_community),
+  harp glissando ascending #103885 (Serge Quadrado). `pearl`, `coin`, `joy`,
+  `complete` are still synthesized.
 - `src/level.ts` — level 1 hardcoded by design; no level format yet.
 - Portrait handling: pure-CSS overlay (`#rotate` in `index.html`) plus a
   `matchMedia` pause/resume in `src/main.ts`. No Screen Orientation API.

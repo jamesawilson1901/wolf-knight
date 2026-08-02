@@ -1,21 +1,103 @@
 /**
- * Synthesizes the game's audio to public/assets/audio/*.wav.
+ * Builds the game's audio to public/assets/audio/*.wav.
  *
- * The intended CC0 sources (Kenney / Pixabay) are unreachable from this build
- * environment's network policy, so these are carefully-designed synthesized
- * sounds (bell/harp tones with proper envelopes, filtered ocean ambience) —
- * not placeholder beeps. Swap the files for CC0 recordings any time; keys and
- * filenames are stable.
+ * Preferred source: real recordings in audio-source/<slot>.mp3 (Pixabay /
+ * CC0) — decoded, mixed to mono, trimmed, normalised, and (for ambient)
+ * loop-crossfaded. Slots without a recording fall back to the synthesized
+ * versions below (bell/harp tones with proper envelopes — not beeps), which
+ * shipped originally because the build sandbox's network blocked the CC0
+ * sources.
+ *
+ * Slots: ambient, tap, pearl, coin, joy, chest, complete.
  *
  * WAV (PCM16) on purpose: seamless ambient looping (no MP3 encoder gap) and
- * universal decode support incl. iOS Safari. Total ~1.3 MB.
+ * universal decode support incl. iOS Safari.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MPEGDecoder } from 'mpg123-decoder';
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'assets', 'audio');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const OUT = join(ROOT, 'public', 'assets', 'audio');
+const REC = join(ROOT, 'audio-source'); // real CC0/Pixabay recordings, preferred
 mkdirSync(OUT, { recursive: true });
+
+/** True if a real recording exists for this slot (audio-source/<slot>.mp3). */
+function hasRecording(slot: string): boolean {
+  return existsSync(join(REC, `${slot}.mp3`));
+}
+
+async function decodeMp3(slot: string): Promise<{ pcm: Float32Array; rate: number }> {
+  const decoder = new MPEGDecoder();
+  await decoder.ready;
+  const { channelData, sampleRate } = decoder.decode(new Uint8Array(readFileSync(join(REC, `${slot}.mp3`))));
+  decoder.free();
+  // mixdown to mono — it's a phone speaker
+  const n = channelData[0].length;
+  const pcm = new Float32Array(n);
+  for (const ch of channelData) for (let i = 0; i < n; i++) pcm[i] += ch[i] / channelData.length;
+  return { pcm, rate: sampleRate };
+}
+
+function trim(pcm: Float32Array, rate: number, opts: { maxDur?: number; fadeOut?: number } = {}): Float32Array {
+  let start = 0;
+  while (start < pcm.length && Math.abs(pcm[start]) < 0.012) start++;
+  start = Math.max(0, start - Math.floor(rate * 0.015));
+  let end = pcm.length - 1;
+  while (end > start && Math.abs(pcm[end]) < 0.006) end--;
+  end = Math.min(pcm.length - 1, end + Math.floor(rate * 0.05));
+  if (opts.maxDur) end = Math.min(end, start + Math.floor(rate * opts.maxDur));
+  const out = pcm.slice(start, end + 1);
+  const fade = Math.min(out.length, Math.floor(rate * (opts.fadeOut ?? 0.03)));
+  for (let i = 0; i < fade; i++) out[out.length - 1 - i] *= i / fade;
+  return out;
+}
+
+/** Crossfade the tail into the head so the loop wraps seamlessly. */
+function loopify(pcm: Float32Array, rate: number, overlapS: number): Float32Array {
+  const overlap = Math.floor(rate * overlapS);
+  const loopN = pcm.length - overlap;
+  const out = new Float32Array(loopN);
+  out.set(pcm.subarray(0, loopN));
+  for (let i = 0; i < overlap; i++) {
+    const t = i / overlap;
+    out[i] = out[i] * t + pcm[loopN + i] * (1 - t);
+  }
+  return out;
+}
+
+// ---- real recordings (preferred when present) ----------------------------
+if (hasRecording('ambient')) {
+  const { pcm, rate } = await decodeMp3('ambient');
+  // cap at ~32 s to keep the precache lean, then make the loop seamless
+  const capped = pcm.subarray(0, Math.min(pcm.length, Math.floor(rate * 32)));
+  writeWav('ambient.wav', loopify(capped, rate, 1.6), rate);
+}
+if (hasRecording('tap')) {
+  const { pcm, rate } = await decodeMp3('tap');
+  writeWav('tap.wav', trim(pcm, rate, { maxDur: 1.2, fadeOut: 0.12 }), rate);
+}
+if (hasRecording('chest')) {
+  const { pcm, rate } = await decodeMp3('chest');
+  writeWav('chest.wav', trim(pcm, rate, { maxDur: 2.6, fadeOut: 0.2 }), rate);
+}
+if (hasRecording('pearl')) {
+  const { pcm, rate } = await decodeMp3('pearl');
+  writeWav('pearl.wav', trim(pcm, rate, { maxDur: 0.8, fadeOut: 0.06 }), rate);
+}
+if (hasRecording('coin')) {
+  const { pcm, rate } = await decodeMp3('coin');
+  writeWav('coin.wav', trim(pcm, rate, { maxDur: 0.9, fadeOut: 0.06 }), rate);
+}
+if (hasRecording('joy')) {
+  const { pcm, rate } = await decodeMp3('joy');
+  writeWav('joy.wav', trim(pcm, rate, { maxDur: 1.2, fadeOut: 0.1 }), rate);
+}
+if (hasRecording('complete')) {
+  const { pcm, rate } = await decodeMp3('complete');
+  writeWav('complete.wav', trim(pcm, rate, { maxDur: 3.2, fadeOut: 0.25 }), rate);
+}
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -106,7 +188,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- tap: soft waterdrop blip -------------------------------------------
-{
+if (!hasRecording('tap')) {
   const rate = 44100;
   const dur = 0.16;
   const n = Math.floor(rate * dur);
@@ -122,7 +204,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- pearl: glassy ascending ding ---------------------------------------
-{
+if (!hasRecording('pearl')) {
   const rate = 44100;
   const out = new Float32Array(Math.floor(rate * 0.55));
   mix(out, bell(rate, 1046.5, 0.55), 0, 0.9); // C6
@@ -131,7 +213,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- coin: brighter two-note chime --------------------------------------
-{
+if (!hasRecording('coin')) {
   const rate = 44100;
   const out = new Float32Array(Math.floor(rate * 0.5));
   mix(out, bell(rate, 1318.5, 0.3, 1.3), 0, 0.8); // E6
@@ -140,7 +222,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- joy: quick harp flourish -------------------------------------------
-{
+if (!hasRecording('joy')) {
   const rate = 44100;
   const out = new Float32Array(Math.floor(rate * 0.8));
   const notes = [783.99, 1046.5]; // G5 C6
@@ -149,7 +231,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- chest: rising harp gliss + warm swell ------------------------------
-{
+if (!hasRecording('chest')) {
   const rate = 44100;
   const out = new Float32Array(Math.floor(rate * 1.9));
   const gliss = [523.25, 659.26, 783.99, 1046.5, 1318.5, 1568]; // C5 E5 G5 C6 E6 G6
@@ -164,7 +246,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- complete: gentle pentatonic fanfare --------------------------------
-{
+if (!hasRecording('complete')) {
   const rate = 44100;
   const out = new Float32Array(Math.floor(rate * 2.4));
   const notes = [523.25, 659.26, 783.99, 1046.5]; // C5 E5 G5 C6
@@ -177,7 +259,7 @@ function onePole(samples: Float32Array, rate: number, cutoff: number) {
 }
 
 // ---- ambient: 24 s seamless underwater loop ------------------------------
-{
+if (!hasRecording('ambient')) {
   const rate = 22050;
   const durRender = 27; // render long, wrap-blend the tail into the head
   const loop = 24;
