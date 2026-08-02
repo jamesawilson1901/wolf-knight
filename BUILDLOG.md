@@ -1611,3 +1611,18 @@ Dad's six-complaint playtest round, all root-caused:
 - hp base unchanged (14 + pre-existing level scaling).
 - Verified headless (scale/radius/reach/ring height + chop telegraph
   firing) + crypt screenshot. SW cache wolfknight-v3.18.2.
+
+## v3.18.3 — The secret menu skips LEVELS, not rooms (2026-08-02)
+
+- Dad: the cheat menu "skips to rooms instead of the beginning of a level,
+  and doesn't unlock the previous wolves needed to continue." The old menu
+  was a 14-entry developer room list that granted nothing. It is now three
+  LEVEL entries — Moonlit Den, Level 1 (Ember Hollow, r1), Level 2
+  (Stoneroot Caverns, e1) — and each jump grants the whole journey up to
+  that point: Level 2 unlocks the Fire Wolf and marks Ember complete
+  (bossDefeated, shortcut, both keys) — never the Earth Wolf, which is
+  earned INSIDE Level 2. The checkpoint follows the jump so Continue and
+  respawns use the level start, and the jump persists immediately.
+- Verified headless: 3 entries; Level 1 grants nothing extra and doesn't
+  spoil Ember; Level 2 lands on e1's spawn with fire wolf + completion
+  flags. SW cache wolfknight-v3.18.3.

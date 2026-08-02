@@ -259,12 +259,17 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   // Dad's code (v3.14.1 — as he remembers it, and his memory is the spec):
   // ↑ ↑ ↓ ↓ ← → ○ □ □ ○
   const CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'circle', 'square', 'square', 'circle'];
+  // LEVELS, not rooms (v3.18.3 — dad's rule): each entry skips to the
+  // BEGINNING of a level and grants the whole journey up to that point
+  // (forms, keys, boss flags), so the level is playable from its first step.
   const LEVELS = [
-    ['den', '🏡 Moonlit Den'], ['r1', '🌋 Hollow Entrance'], ['r1b', '🕳️ Ash Warrens'],
-    ['r2', '🌉 Ember Causeway'], ['r2b', '🔥 Cinder Bridges'], ['k1', '🏛️ Kiln Hub'],
-    ['ka', '⛩️ Kiln Shrine'], ['kb', '🔢 Kiln Order'], ['r3', '🐺 Boss Arena'],
-    ['e1', '⛺ Cavern Gate'], ['e1b', '🕳️ Echo Chasm'], ['e2', '💀 Deep Hall'],
-    ['e2b', '⚙️ The Mill'], ['e3', '👑 Warden’s Crypt'],
+    { id: 'den', label: '🏡 Moonlit Den' },
+    { id: 'r1', label: '🌋 Level 1 — Ember Hollow' },
+    {
+      id: 'e1', label: '⛰️ Level 2 — Stoneroot Caverns',
+      forms: ['fire_wolf'], // earned by finishing Level 1...
+      emberDone: true,      // ...so Level 1 counts as complete
+    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');
@@ -325,16 +330,32 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
     });
   }
   const grid = document.getElementById('cheat-grid');
-  for (const [id, label] of LEVELS) {
+  for (const lvl of LEVELS) {
     const b = document.createElement('div');
     b.className = 'cheat-lvl ui';
-    b.textContent = label;
+    b.textContent = lvl.label;
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       audio.play('form-switch', { volume: 0.8 });
+      // grant the journey so far — the skip must never strand a kid
+      // without the wolves/keys the level assumes they have
+      for (const f of lvl.forms || []) {
+        if (!state.formsUnlocked.includes(f)) state.formsUnlocked.push(f);
+      }
+      if (lvl.emberDone) {
+        state.flags.bossDefeated = true;
+        state.flags.shortcutOpen = true;
+        state.flags.bossProgress = 0;
+        state.flags.bossHp = 0;
+        state.flags.keys.ember = true;
+        state.flags.keys.kiln = true;
+      }
+      // the save follows the jump: Continue and respawns use the level start
+      state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
+      persist();
       closeAll();
       setPaused(false);
-      loadRoom(id);
+      loadRoom(lvl.id);
     });
     grid.appendChild(b);
   }
