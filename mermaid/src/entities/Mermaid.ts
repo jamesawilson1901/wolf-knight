@@ -9,6 +9,8 @@ export class Mermaid {
   sprite: Phaser.GameObjects.Sprite;
   control: VerticalControl;
   private joyUntil = 0;
+  private hurtUntil = 0;
+  private invulnUntil = 0;
   private bubbles: Phaser.GameObjects.Particles.ParticleEmitter;
   private bobT = 0;
 
@@ -36,8 +38,36 @@ export class Mermaid {
   }
 
   triggerJoy() {
+    if (this.scene.time.now < this.hurtUntil) return;
     this.joyUntil = this.scene.time.now + 750;
     this.sprite.play('mermaid-joy', true);
+  }
+
+  /**
+   * Harmless "ouch": red flash + Hurt animation + brief grace period.
+   * No health, no loss, no knockback — the flash and sound are the whole
+   * consequence. Returns false while she's still in the grace period.
+   */
+  triggerHurt(): boolean {
+    const now = this.scene.time.now;
+    if (now < this.invulnUntil) return false;
+    this.hurtUntil = now + 950;
+    this.invulnUntil = now + 2000;
+    this.joyUntil = 0;
+    this.sprite.play('mermaid-hurt', true);
+    this.sprite.setTint(0xff7a7a);
+    this.scene.tweens.add({
+      targets: this.sprite,
+      alpha: 0.55,
+      duration: 150,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        this.sprite.clearTint();
+        this.sprite.setAlpha(1);
+      },
+    });
+    return true;
   }
 
   // Wired up for later levels; intentionally never triggered in level 1.
@@ -58,9 +88,12 @@ export class Mermaid {
     this.sprite.rotation = Phaser.Math.Clamp(c.vy / 2600, -0.3, 0.3);
 
     const now = this.scene.time.now;
+    const inHurt = now < this.hurtUntil;
     const inJoy = now < this.joyUntil;
     const key = this.sprite.anims.currentAnim?.key;
-    if (!inJoy) {
+    if (inHurt) {
+      if (key !== 'mermaid-hurt') this.sprite.play('mermaid-hurt', true);
+    } else if (!inJoy) {
       const want = c.isMoving ? 'mermaid-move' : 'mermaid-idle';
       if (key !== want) this.sprite.play(want, true);
     }

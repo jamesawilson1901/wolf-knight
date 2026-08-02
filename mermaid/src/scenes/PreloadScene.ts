@@ -34,6 +34,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio('complete', 'audio/complete.wav');
     this.load.audio('tap', 'audio/tap.wav');
     this.load.audio('joy', 'audio/joy.wav');
+    this.load.audio('ouch', 'audio/ouch.wav');
   }
 
   create() {
@@ -59,6 +60,30 @@ export class PreloadScene extends Phaser.Scene {
     mk('mermaid-move', 'move_', 14);
     mk('mermaid-joy', 'joy_', 16, 0);
     mk('mermaid-accel', 'acceleration_', 16);
+    mk('mermaid-hurt', 'hurt_', 14, 0);
+
+    this.anims.create({
+      key: 'urchin',
+      frames: this.anims.generateFrameNames('creatures', {
+        prefix: 'urchin-move_',
+        start: 0,
+        end: 9,
+        zeroPad: 3,
+      }),
+      frameRate: 7,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'crab',
+      frames: this.anims.generateFrameNames('creatures', {
+        prefix: 'crab-move_',
+        start: 0,
+        end: 9,
+        zeroPad: 3,
+      }),
+      frameRate: 9,
+      repeat: -1,
+    });
 
     for (let f = 1; f <= 4; f++) {
       this.anims.create({

@@ -22,6 +22,11 @@ export interface JellyDef {
   worldX: number;
   baseY: number;
 }
+export interface HazardDef {
+  kind: 'urchin' | 'crab';
+  worldX: number;
+  baseY: number;
+}
 
 // Gentle arcs and waves — readable paths, nothing requiring precision.
 // Collectible band stays well off the floor and well below the ceiling.
@@ -71,6 +76,19 @@ export const jellyDefs: JellyDef[] = [
   { species: 1, worldX: 2500, baseY: 430 },
   { species: 2, worldX: 4400, baseY: 520 },
   { species: 3, worldX: 6700, baseY: 380 },
+];
+
+// Ouchy-but-harmless: touching one flashes her red for a moment, nothing
+// else. Placed off the pearl paths so following the pearls steers around
+// them naturally; the floor keeps only two slow crabs, well telegraphed.
+export const hazardDefs: HazardDef[] = [
+  { kind: 'urchin', worldX: 2100, baseY: 300 },
+  { kind: 'urchin', worldX: 3400, baseY: 700 },
+  { kind: 'urchin', worldX: 4550, baseY: 330 },
+  { kind: 'urchin', worldX: 5750, baseY: 720 },
+  { kind: 'urchin', worldX: 7000, baseY: 320 },
+  { kind: 'crab', worldX: 3050, baseY: 952 },
+  { kind: 'crab', worldX: 5450, baseY: 952 },
 ];
 
 // The chest waits on the sand just past the last stretch of scroll.

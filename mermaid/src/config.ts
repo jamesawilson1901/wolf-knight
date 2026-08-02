@@ -28,9 +28,11 @@ export const LEVEL_SCROLL = 7800; // total scroll distance before the chest stop
 
 export const MERMAID_SCREEN_X = 620; // fixed x inside the safe band
 
-export type SchemeId = 'A' | 'B';
+export type SchemeId = 'A' | 'B' | 'C';
 
 export const STORAGE_KEYS = {
-  scheme: 'mermaid-reef.scheme',
+  // v2: default flipped to scheme C (finger-follow) after phone testing
+  scheme: 'mermaid-reef.scheme.v2',
   muted: 'mermaid-reef.muted',
+  friends: 'mermaid-reef.friends',
 };

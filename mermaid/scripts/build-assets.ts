@@ -164,8 +164,9 @@ function animFiles(dir: string, prefix: string): string[] {
 
 async function buildMermaid() {
   const dir = join(SRC, 'Mermaid', 'PNG', 'Mermaid_1');
-  // Only Idle, Move, Acceleration, Joy. Attack/Hurt/Die are out of scope by design.
-  const anims = ['Idle', 'Move', 'Joy', 'Acceleration'].map((a) => ({
+  // Idle, Move, Joy, Acceleration, plus Hurt for the harmless "ouch" flash.
+  // Attack/Die stay out of scope.
+  const anims = ['Idle', 'Move', 'Joy', 'Acceleration', 'Hurt'].map((a) => ({
     name: a.toLowerCase(),
     files: animFiles(dir, a + '_'),
   }));
@@ -203,6 +204,9 @@ async function buildCreatures() {
     { key: 'jellyfish-1', dir: 'Jellyfish_1', prefix: 'Jellyfish_move_1_', scale: 1 },
     { key: 'jellyfish-2', dir: 'Jellyfish_2', prefix: 'Jellyfish_move_2_', scale: 0.8 },
     { key: 'jellyfish-3', dir: 'Jellyfish_3', prefix: 'Jellyfish_move_3_', scale: 0.62 },
+    // ouchy (but harmless) creatures — urchin only ships idle/attack, use idle
+    { key: 'urchin', dir: 'Sea urchin', prefix: 'Sea urchin_idle_', scale: 0.35 },
+    { key: 'crab', dir: 'Crab_1', prefix: 'Crab_move_1_', scale: 0.45 },
   ];
   const all: Frame[] = [];
   for (const s of sets) {

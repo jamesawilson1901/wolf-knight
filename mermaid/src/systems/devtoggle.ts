@@ -20,8 +20,10 @@ export function attachSchemeToggle(scene: Phaser.Scene, control: VerticalControl
 }
 
 function toggle(scene: Phaser.Scene, control: VerticalControl) {
-  control.setScheme(control.scheme === 'A' ? 'B' : 'A');
-  showDots(scene, control.scheme === 'A' ? 1 : 2);
+  const order = ['A', 'B', 'C'] as const;
+  const next = order[(order.indexOf(control.scheme) + 1) % order.length];
+  control.setScheme(next);
+  showDots(scene, order.indexOf(next) + 1);
 }
 
 function showDots(scene: Phaser.Scene, count: number) {

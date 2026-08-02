@@ -98,6 +98,10 @@ if (hasRecording('complete')) {
   const { pcm, rate } = await decodeMp3('complete');
   writeWav('complete.wav', trim(pcm, rate, { maxDur: 3.2, fadeOut: 0.25 }), rate);
 }
+if (hasRecording('ouch')) {
+  const { pcm, rate } = await decodeMp3('ouch');
+  writeWav('ouch.wav', trim(pcm, rate, { maxDur: 0.9, fadeOut: 0.08 }), rate);
+}
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -256,6 +260,25 @@ if (!hasRecording('complete')) {
     mix(out, bell(rate, f, 1.5, 0.7), rate * 0.62, 0.4),
   );
   writeWav('complete.wav', out, rate);
+}
+
+// ---- ouch: soft comedic "boop" slide-down — startling-free, not scary ----
+if (!hasRecording('ouch')) {
+  const rate = 44100;
+  const dur = 0.55;
+  const n = Math.floor(rate * dur);
+  const out = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    // two-step downward slide (E4 -> C4) with a wah envelope
+    const f = t < 0.16 ? 330 : 262 * Math.exp(-Math.max(0, t - 0.16) * 1.2);
+    phase += (2 * Math.PI * f) / rate;
+    const wob = 1 + 0.06 * Math.sin(2 * Math.PI * 9 * t);
+    const env = Math.min(1, i / (rate * 0.008)) * Math.exp(-t * 5.5);
+    out[i] = (Math.sin(phase * wob) + 0.25 * Math.sin(2 * phase)) * env;
+  }
+  writeWav('ouch.wav', out, rate);
 }
 
 // ---- ambient: 24 s seamless underwater loop ------------------------------

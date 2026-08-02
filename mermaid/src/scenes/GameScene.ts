@@ -12,10 +12,14 @@ import {
   PARALLAX,
   collectibles,
   fishDefs,
+  hazardDefs,
   jellyDefs,
   type Collectible,
 } from '../level';
+import { STORAGE_KEYS } from '../config';
 import { Fish } from '../entities/Fish';
+import { FriendFish } from '../entities/FriendFish';
+import { Hazard } from '../entities/Hazard';
 import { Mermaid } from '../entities/Mermaid';
 import { sfx, startAmbient } from '../systems/audio';
 import { attachSchemeToggle } from '../systems/devtoggle';
@@ -38,6 +42,10 @@ export class GameScene extends Phaser.Scene {
   private fish: Fish[] = [];
   private jellies: { sprite: Phaser.GameObjects.Sprite; baseY: number; phase: number }[] = [];
   private pickups: Pickup[] = [];
+  private hazards: Hazard[] = [];
+  private friends: FriendFish[] = [];
+  private trailY: number[] = []; // mermaid height history for the friend chain
+  private rescued = false;
   private chest!: Phaser.GameObjects.Image;
   private sparkles!: Phaser.GameObjects.Particles.ParticleEmitter;
   private chestBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -57,6 +65,10 @@ export class GameScene extends Phaser.Scene {
     this.jellies = [];
     this.pickups = [];
     this.layers = [];
+    this.hazards = [];
+    this.friends = [];
+    this.trailY = [];
+    this.rescued = false;
 
     for (let i = 1; i <= 6; i++) {
       const ts = this.add
@@ -96,6 +108,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const def of fishDefs) this.fish.push(new Fish(this, def));
+    for (const def of hazardDefs) this.hazards.push(new Hazard(this, def));
+
+    // rescued fish friends from previous runs swim with her from the start
+    const rescuedCount = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
+    for (let i = 0; i < rescuedCount; i++) {
+      this.friends.push(
+        new FriendFish(this, (i % 4) + 1, i, this.mermaid.x - 120 - i * 95, this.mermaid.y),
+      );
+    }
     for (const def of jellyDefs) {
       const sprite = this.add
         .sprite(-500, def.baseY, 'creatures', `jellyfish-${def.species}-move_000`)
@@ -178,6 +199,20 @@ export class GameScene extends Phaser.Scene {
     for (const f of this.fish) {
       f.update(delta, band, this.scrollX, this.mermaid.x, this.mermaid.y, w);
     }
+    for (const h of this.hazards) {
+      h.update(delta, band, this.scrollX, w);
+      if (this.ending === 'no' && h.touches(this.mermaid.x, this.mermaid.y)) {
+        if (this.mermaid.triggerHurt()) sfx(this, 'ouch', { volume: 0.8 });
+      }
+    }
+
+    // friend chain follows her height with a delay
+    this.trailY.push(this.mermaid.y);
+    if (this.trailY.length > 140) this.trailY.shift();
+    this.friends.forEach((fr, i) => {
+      const idx = Math.max(0, this.trailY.length - 1 - (i + 1) * 13);
+      fr.update(delta, this.t, this.mermaid.sprite.x, this.trailY[idx]);
+    });
     for (const j of this.jellies) {
       const x = band + j.phase - this.scrollX;
       j.sprite.setVisible(x > -250 && x < w + 250);
@@ -256,7 +291,57 @@ export class GameScene extends Phaser.Scene {
         sfx(this, 'complete');
         this.mermaid.triggerJoy();
       });
-      this.time.delayedCall(1600, () => this.showReplay());
+      this.time.delayedCall(900, () => this.rescueFriend());
+      this.time.delayedCall(2400, () => this.showReplay());
+    });
+  }
+
+  // A fish friend was trapped in the chest: it pops out, circles up with a
+  // sparkle trail, and joins the chain behind her — permanently (persisted),
+  // so every finished run adds one more friend to the family.
+  private rescueFriend() {
+    if (this.rescued) return;
+    this.rescued = true;
+    const count = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
+    const species = (count % 4) + 1;
+    localStorage.setItem(STORAGE_KEYS.friends, String(count + 1));
+
+    const fish = this.add
+      .sprite(this.chest.x, this.chest.y - 60, 'creatures', `fish-${species}-move_000`)
+      .setScale(0.2)
+      .setDepth(31)
+      .setFlipX(true)
+      .play(`fish-${species}`);
+    sfx(this, 'joy');
+    this.sparkles.explode(14, this.chest.x, this.chest.y - 60);
+
+    const slot = this.friends.length;
+    const targetX = this.mermaid.sprite.x - 120 - slot * 95;
+    this.tweens.add({
+      targets: fish,
+      scale: 0.55,
+      duration: 1100,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: fish,
+      x: targetX,
+      duration: 1100,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: fish,
+      y: this.mermaid.y - 160,
+      duration: 550,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        fish.destroy();
+        this.friends.push(
+          new FriendFish(this, species, slot, targetX, this.mermaid.y),
+        );
+        this.sparkles.explode(8, targetX, this.mermaid.y);
+      },
     });
   }
 

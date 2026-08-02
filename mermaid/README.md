@@ -30,17 +30,28 @@ main feedback channel, check the switch before handing her the phone.
 
 ## Control schemes (the thing to test on her actual phone)
 
-Both are built; which one she handles better is an empirical question:
+Three are built; which one she handles better is an empirical question:
 
-- **Scheme A — hold to rise** (default): touch anywhere, she swims up;
-  release, she sinks gently.
+- **Scheme A — hold to rise:** touch anywhere, she swims up; release, she
+  sinks gently.
 - **Scheme B — relative drag:** wherever her thumb lands is the zero point;
-  drag up/down from there. Lifting holds height a moment, then she drifts
-  down slowly.
+  drag up/down from there.
+- **Scheme C — finger-follow** (default): she swims to the finger's height,
+  offset upward so the thumb never covers her. Lifting holds height a
+  moment, then she drifts down slowly.
 
 Toggle while testing: **4 quick taps in the top-left corner** (or `C` on a
-keyboard). One dot flashes = A, two dots = B. The choice persists. You can
-also force it via `?scheme=a` / `?scheme=b`.
+keyboard). Dots flash: one = A, two = B, three = C. The choice persists. You
+can also force it via `?scheme=a` / `?scheme=b` / `?scheme=c`.
+
+## Ouch and friends
+
+- Sea urchins drift mid-water and two slow crabs patrol the sand. Touching
+  one flashes her red for a second with an "ouch" sound — no health, no
+  loss, no fail state; the level carries on.
+- The chest holds a trapped fish friend: each finished run rescues one, and
+  rescued friends (persisted on the device) swim in a chain behind her on
+  every later run, up to six.
 
 Dev helpers: `?test=controls` is the plain-rectangle control test scene;
 `?t0=7000` starts partway through the level (the chest arrives at 7800).
