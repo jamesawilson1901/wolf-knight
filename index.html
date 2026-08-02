@@ -630,6 +630,19 @@
     });
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
+        // Was an old version already in control? Then a controllerchange
+        // means AN UPDATE just took over (not a first install).
+        const hadController = !!navigator.serviceWorker.controller;
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController || reloaded) return;
+          reloaded = true;
+          // Only reload while still on the title — never mid-game. This
+          // kills the "close it fully and reopen" ritual: the first launch
+          // after a deploy self-updates before play begins.
+          const inGame = window.__game && window.__game.world;
+          if (!inGame) location.reload();
+        });
         navigator.serviceWorker.register('./sw.js').catch((err) => {
           console.warn('Service worker registration failed:', err);
         });

@@ -1089,13 +1089,18 @@ export class Player {
     audio.play('sword-swing', { volume: 0.9, rate: 0.85 });
     audio.play('sword-swing2', { volume: 0.8, rate: 1.2 });
     audio.play('whoosh', { volume: 0.8, rate: 0.9, vary: 0.06 });
-    // a ring of sparks makes the reach readable
+    // UNMISSABLE: a steel-blue shockwave ring sweeps out to the spin's
+    // reach + a spark ring + a camera punch (playtest: it must never
+    // read as "nothing happened")
+    if (effects) {
+      effects.groundSlam(this.root.position.clone(), 0xbfe3ff);
+      if (effects.punch) effects.punch(0.22, 0.22);
+    }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
       juice.burst(this.root.position.x + Math.cos(a) * 1.6, 0.8,
         this.root.position.z + Math.sin(a) * 1.6, 0xbfe3ff, 3);
     }
-    if (effects) effects.shake(0.15, 0.2);
     this.specialCooldown = this.specialMax;
     return true;
   }

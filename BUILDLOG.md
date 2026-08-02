@@ -1482,3 +1482,20 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   hunt where it fell, phase-3 dash covers real distance behind a 5.5x
   eye flare. Screenshot reviewed: paws on the ground, in Kael's face.
   Zero page errors. SW v3.16.0, badge v3.16.
+
+## v3.16.1 — the spin was fine; the UPDATE ritual wasn't
+- "Spinning attack doesn't work, no animation, no anything" — reproduced
+  with real touch on the CURRENT build: it fires perfectly (animation,
+  sparks, cooldown ring). The phone was running an older cached version
+  where the knight's special button existed but was dead. Root cause is
+  the PWA update dance: a new version installs on launch but the page
+  keeps running the old code until the NEXT full restart.
+- FIXED THE DISEASE: the page now listens for the new service worker
+  taking control and — only while still on the TITLE screen, never
+  mid-game, never on a first install — reloads itself once. The first
+  launch after any deploy now self-updates before play begins. The
+  "close it fully and reopen" ritual is dead.
+- And the whirlwind is now UNMISSABLE anyway: a steel-blue shockwave
+  ring sweeps out to the spin's full reach + camera punch on top of the
+  animation, sparks and dual swing sounds. Screenshot reviewed — you
+  cannot miss it. SW v3.16.1.
