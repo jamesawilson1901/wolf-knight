@@ -16,7 +16,7 @@ export class Fish {
       .sprite(-500, def.baseY, 'creatures', `fish-${def.species}-move_000`)
       .setScale(def.scale)
       .setDepth(def.depth)
-      .play({ key: `fish-${def.species}`, startFrame: def.worldX % 10 });
+      .play({ key: `fish-${def.species}`, startFrame: Math.floor(def.worldX) % 10 });
     if (def.depth === 6) this.sprite.setAlpha(0.92); // slightly hazier behind her
   }
 

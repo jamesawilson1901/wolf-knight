@@ -22,10 +22,6 @@ export const PLAY_TOP = 120;
 export const SEAFLOOR_Y = 930; // resting height when she sinks all the way
 export const SOFT_MARGIN = 140; // easing distance near top/bottom, not a hard stop
 
-// Forward scroll: constant, gentle. ~60s of level.
-export const SCROLL_SPEED = 130; // design px / second
-export const LEVEL_SCROLL = 7800; // total scroll distance before the chest stop
-
 export const MERMAID_SCREEN_X = 620; // fixed x inside the safe band
 
 export type SchemeId = 'A' | 'B' | 'C';
@@ -35,4 +31,23 @@ export const STORAGE_KEYS = {
   scheme: 'mermaid-reef.scheme.v2',
   muted: 'mermaid-reef.muted',
   friends: 'mermaid-reef.friends',
+  level: 'mermaid-reef.level',
+  character: 'mermaid-reef.character',
+  tint: 'mermaid-reef.tint',
 };
+
+// Customisation: gentle pastel shimmer tints (0 = natural).
+export const TINTS = [0, 0xffd9ee, 0xd6ecff, 0xd9ffe3];
+
+export function savedCharacter(): 1 | 2 | 3 {
+  const c = Number(localStorage.getItem(STORAGE_KEYS.character));
+  return c === 2 || c === 3 ? c : 1;
+}
+export function savedTint(): number {
+  const i = Number(localStorage.getItem(STORAGE_KEYS.tint));
+  return TINTS[i] ?? 0;
+}
+export function savedLevel(): number {
+  const l = Number(localStorage.getItem(STORAGE_KEYS.level));
+  return Number.isFinite(l) && l >= 0 ? Math.floor(l) : 0;
+}

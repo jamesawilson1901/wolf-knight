@@ -102,6 +102,14 @@ if (hasRecording('ouch')) {
   const { pcm, rate } = await decodeMp3('ouch');
   writeWav('ouch.wav', trim(pcm, rate, { maxDur: 0.9, fadeOut: 0.08 }), rate);
 }
+if (hasRecording('power')) {
+  const { pcm, rate } = await decodeMp3('power');
+  writeWav('power.wav', trim(pcm, rate, { maxDur: 1.2, fadeOut: 0.1 }), rate);
+}
+if (hasRecording('pop')) {
+  const { pcm, rate } = await decodeMp3('pop');
+  writeWav('pop.wav', trim(pcm, rate, { maxDur: 0.5, fadeOut: 0.05 }), rate);
+}
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -279,6 +287,30 @@ if (!hasRecording('ouch')) {
     out[i] = (Math.sin(phase * wob) + 0.25 * Math.sin(2 * phase)) * env;
   }
   writeWav('ouch.wav', out, rate);
+}
+
+// ---- power: quick ascending sparkle arpeggio (magnet/shield pickup) ------
+if (!hasRecording('power')) {
+  const rate = 44100;
+  const out = new Float32Array(Math.floor(rate * 0.9));
+  const notes = [659.26, 880, 1174.7, 1568]; // E5 A5 D6 G6
+  notes.forEach((f, i) => mix(out, bell(rate, f, 0.5, 1.1), rate * 0.07 * i, 0.55));
+  writeWav('power.wav', out, rate);
+}
+
+// ---- pop: shield bubble pop — bright, round, friendly --------------------
+if (!hasRecording('pop')) {
+  const rate = 44100;
+  const n = Math.floor(rate * 0.22);
+  const out = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const f = 900 - 500 * t;
+    phase += (2 * Math.PI * f) / rate;
+    out[i] = Math.sin(phase) * Math.min(1, i / (rate * 0.002)) * Math.exp(-t * 30);
+  }
+  writeWav('pop.wav', out, rate);
 }
 
 // ---- ambient: 24 s seamless underwater loop ------------------------------

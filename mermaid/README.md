@@ -1,7 +1,24 @@
-# Mermaid Reef — Level 1 vertical slice
+# Mermaid Reef
 
 A gentle underwater side-scroller for a 5-year-old: one axis of control, no
-fail states, no enemies, no text, works fully offline as a home-screen PWA.
+fail states, no text, works fully offline as a home-screen PWA.
+
+Seven levels across seven scenes, each slightly denser than the last. The
+difficulty design follows what good kids' games do: one new element per
+level (magnet → shield → shark), difficulty comes from density and variety
+rather than punishment (an "ouch" costs a red flash and a little bump —
+nothing else), every level completes on its own even with no input, and the
+end-of-level ritual (chest → sparkles → rescued fish friend) is always the
+same reliable reward. Finishing a level advances to the next; after level 7
+it wraps around. Rescued friends and all menu choices persist on the device.
+
+The menu is the customise screen: tap one of the three mermaids to play as
+her, tap a shimmer pearl for a tint, tap play. Icon-only, no text. In-browser
+play goes fullscreen on the first tap (Android); on iOS, fullscreen comes
+from Add to Home Screen — Safari has no fullscreen API.
+
+Dev helpers: `?level=5` forces a level, `?t0=7000` jumps into the scroll,
+`?scheme=a|b|c` forces a control scheme.
 
 ## Running it
 
