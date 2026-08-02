@@ -1073,7 +1073,7 @@ async function buildR2b(scene) {
     world.add(pillar);
     world.addCircle(px, pz, 0.5);
   }
-  world.markers.houndSpot = { x: 5.2, z: 0.2 };
+  world.markers.houndSpot = { x: 5.2, z: 0.2, variant: 'elder' }; // the pack leader
 
   // "NOT YET" GATE (Tide Wolf, region 6): rushing fire-water seals a wall
   // pocket; the golden chest inside glitters in plain sight.
@@ -1191,7 +1191,8 @@ async function buildK1(scene) {
     world.add(col);
     world.addCircle(px, pz, 0.4);
   }
-  world.markers.shadeSpots = [{ x: -3.4, z: 2.4 }];
+  // one of the Kiln's shades is BAKED — a Cinder Shade that shrugs off fire
+  world.markers.shadeSpots = [{ x: -3.4, z: 2.4, variant: 'cinder' }];
   doorway(world, 0, 5.6, 'x');
   return world;
 }
@@ -1211,7 +1212,7 @@ async function buildKa(scene) {
   // STAGE 1 (west third): the guard pack — clear it to open the shrine bars
   blockRow(world, -3.2, -4.9, -3.2, -1.2, 1.5);
   blockRow(world, -3.2, 0.8, -3.2, 4.9, 1.5);
-  world.markers.shadeSpots = [{ x: -6.2, z: -1.8 }, { x: -5.4, z: 2.2 }];
+  world.markers.shadeSpots = [{ x: -6.2, z: -1.8, variant: 'cinder' }, { x: -5.4, z: 2.2 }];
   world.markers.mothSpots = [{ x: -6.8, z: 0.6 }];
   const bars1 = prepareModel(dkit.bars.scene.clone());
   bars1.position.set(-3.2, 0, -0.2);
@@ -2216,7 +2217,7 @@ async function buildE2b(scene) {
 
   // the ambush: rogues from the flanks while you're mid-push
   world.markers.rogueSpots = [{ x: -4.2, z: 3.0 }, { x: 4.4, z: 3.4 }];
-  world.markers.minionSpots = [{ x: 0, z: -5.0 }];
+  world.markers.minionSpots = [{ x: 0, z: -5.0, variant: 'brute' }]; // a wall of old bone
 
   checkpoint(world, 'cp_e2b', -6.8, 5.0);
   potionPickup(world, 6.8, 5.0);

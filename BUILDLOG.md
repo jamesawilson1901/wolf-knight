@@ -1499,3 +1499,36 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   ring sweeps out to the spin's full reach + camera punch on top of the
   animation, sparks and dual swing sounds. Screenshot reviewed — you
   cannot miss it. SW v3.16.1.
+
+## v3.17.0 — ASSET MULTIPLICATION (dad's standing rule made law + code)
+- The rule, now in GAME-CONTRACT + ASSETS.md: use the old tricks
+  relentlessly — every model is MANY monsters (recolor, resize, restat,
+  re-element), every weapon prop is a STYLE. Prefer a variant over a new
+  model whenever the silhouette still reads.
+- ENEMY VARIANTS (VARIANTS registry in enemies.js; spawn markers opt in
+  with `variant: 'name'`; per-instance tint/scale/hp/speed/element with
+  a shared-material guard so skeleton recolors never leak into the
+  loader cache):
+  · CINDER SHADE (Kiln hub + shrine): kiln-baked, 1.3x, hp 4.5 — and it
+    RESISTS FIRE. The Fire Wolf's home-turf advantage vanishes and the
+    grey "RESIST" callout (the new counterpart to SUPER!) says why:
+    0.4x + fizzle sound. Switch to moon and it melts. Experimentation
+    taught by the world, both directions.
+  · ELDER HOUND (the r2b branch): the pack leader — 1.3x, hp 6, harder
+    charge, burning gold eyes, always drops its ember.
+  · BONE BRUTE (the Mill): 1.4x darkened minion, hp 5, lumbers slowly,
+    hits 1.5 — a walking wall guarding the twin-plate vault.
+- WEAPON STYLES (items.js fields flow through attackConfig into every
+  swing, thrust AND the whirlwind):
+  · arc — swing width: the Long Spear is now a true ±36° POKE (was the
+    same wide sweep as a sword).
+  · stun — the Boulder Hammer leaves targets DIZZY 0.6s (and a hammer
+    whirlwind is a 360° daze — worth every shard of its 300 price).
+  · element — the Ember Blade strikes as FIRE, the Moon Sword as MOON:
+    the KNIGHT can now hit elemental weaknesses if he buys the right
+    blade. A shop with real decisions instead of a stat ladder.
+- Verified headless through real combat: cinder shade takes 0.5 from
+  fire / 1.5 from moon at 1.3x scale, elder hound + brute spawn with
+  their stats in their rooms, a real hammer swing leaves a shade
+  stunned, the Moon Sword scores SUPER! for the knight, the spear's
+  arc math is exact. Zero page errors. SW v3.17.0, badge v3.17.

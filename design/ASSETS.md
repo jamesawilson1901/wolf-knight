@@ -74,6 +74,13 @@ Web Speech API narration).
 - **Dark zones / Dark Wolf "see in the dark":** real lighting — dark rooms are simply unlit;
   Dark Wolf form attaches a light to Kael / raises ambient. Boss Phase 3 uses the same trick.
 
+## Asset multiplication (standing rule)
+One model, many monsters: tint + scale + stats + elements make variants
+(VARIANTS registry in enemies.js — Cinder Shade / Elder Hound / Bone
+Brute shipped as the pattern). Weapon props from the gear packs become
+distinct STYLES via arc/stun/element fields in items.js. Prefer a new
+variant over a new model whenever the silhouette still reads.
+
 ## Licence notes
 Everything above is CC0 → CREDITS.md still lists sources as courtesy. three.js is MIT — include
 its licence line in CREDITS.md.

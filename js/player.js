@@ -467,7 +467,13 @@ export class Player {
     let cfg;
     if (state.form === 'knight') {
       const w = weaponDef();
-      cfg = { lock: w.lock, hitAt: Math.min(0.3, w.lock * 0.55), range: w.range, dmg: w.dmg };
+      cfg = {
+        lock: w.lock, hitAt: Math.min(0.3, w.lock * 0.55), range: w.range, dmg: w.dmg,
+        // weapon STYLE (items.js): swing width, on-hit daze, strike element
+        arcCos: w.arc !== undefined ? Math.cos(THREE.MathUtils.degToRad(w.arc)) : undefined,
+        stun: w.stun,
+        element: w.element,
+      };
     } else {
       cfg = { ...base };
     }
@@ -542,13 +548,17 @@ export class Player {
         range: cfg.range + THRUST_RANGE_BONUS,
         dmg: cfg.dmg * THRUST_DMG_MULT,
         arcCos: THRUST_ARC_COS,
+        stun: cfg.stun, element: cfg.element,
       };
       this._comboUntil = 0; // slash again to re-open the combo
       audio.play('sword-swing2', { volume: 0.85, rate: 1.25 });
     } else {
       this._playOnce('attack');
       this.lockTime = cfg.lock;
-      this._pendingHit = { timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg };
+      this._pendingHit = {
+        timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg,
+        arcCos: cfg.arcCos, stun: cfg.stun, element: cfg.element,
+      };
       this._comboUntil = this._time + cfg.lock + COMBO_WINDOW;
       // step-in bite (FORM_DEFS.stepIn): the hunter PRESSES FORWARD as it
       // snaps — chained taps walk the wolf through a retreating target
@@ -575,7 +585,7 @@ export class Player {
     if (!this._pendingHit) return;
     this._pendingHit.timer -= dt;
     if (this._pendingHit.timer > 0) return;
-    const { range, dmg, arcCos } = this._pendingHit;
+    const { range, dmg, arcCos, stun, element } = this._pendingHit;
     this._pendingHit = null;
     if (!world.enemies) return;
     const fx = Math.sin(this.root.rotation.y);
@@ -590,7 +600,9 @@ export class Player {
       const d = Math.hypot(dx, dz);
       if (d > range + e.radius + CONFIG.HITBOX_PAD) continue; // generous hitbox
       if (d > 0.2 && (dx * fx + dz * fz) / d < (arcCos !== undefined ? arcCos : ATTACK_ARC_COS)) continue;
-      e.takeDamage(dmg, FORM_ELEMENT[state.form] || 'steel', 'melee');
+      e.takeDamage(dmg, element || FORM_ELEMENT[state.form] || 'steel', 'melee');
+      // weapon style: the hammer leaves them DIZZY (items.js stun field)
+      if (stun && !e.dead && e.takeStun && !e.flying) e.takeStun(stun);
       // surge bites STAGGER — everything reels from the blood-moon wolf
       if (this._surge && !e.dead && e.takeStun) e.takeStun(CONFIG.MOON.SURGE_STAGGER);
       audio.play('hit', { volume: 0.9, vary: 0.08 });
@@ -1085,6 +1097,7 @@ export class Player {
       range: Math.max(SPIN_RANGE, cfg.range),
       dmg: cfg.dmg * SPIN_DMG_MULT,
       arcCos: -1, // the whole circle — behind him too
+      stun: cfg.stun, element: cfg.element, // hammer spin = a dizzying WHAM-nado
     };
     audio.play('sword-swing', { volume: 0.9, rate: 0.85 });
     audio.play('sword-swing2', { volume: 0.8, rate: 1.2 });

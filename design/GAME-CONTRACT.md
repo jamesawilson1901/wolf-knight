@@ -148,6 +148,19 @@
   2 music tracks (region + deep/boss) + narration set per STORY-BIBLE.
 - Headless verify script + offline check + both branches pushed.
 
+## Asset multiplication (standing rule, v3.17 — dad's law)
+- Use the OLD tricks relentlessly: every model we ship is MANY monsters.
+  Recolor (tint), resize (scale), restat (hp/speed/damage), re-element
+  (weakness + RESIST). VARIANTS in enemies.js is the registry; a spawn
+  marker opts in with `variant: 'name'`. Shipped: Cinder Shade (kiln,
+  fire-proof), Elder Hound (pack leader), Bone Brute (walking wall).
+- RESIST is the counterpart lesson to SUPER!: wrong element = 0.4x + a
+  grey RESIST callout — "this one shrugs that off, switch forms."
+- Weapons are STYLES, not stat rows: swing width (arc), on-hit daze
+  (stun), strike ELEMENT (Ember Blade burns, Moon Sword carries moon —
+  the Knight can hit weaknesses if he buys the right blade). Fields in
+  items.js flow through attackConfig into every swing incl. the spin.
+
 ## Engineering law
 - Saves are additive-forever; old saves must load. No code-built creatures.
   All URLs relative. SW cache bump every deploy. Nothing merges to main

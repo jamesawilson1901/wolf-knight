@@ -57,8 +57,86 @@ const TRAITS = {
   Bat: { weakness: 'fire' },
   SkeletonMinion: { weakness: 'fire', armored: true },
   SkeletonRogue: { weakness: 'fire', armored: true },
+  SkeletonShield: { weakness: 'fire', armored: true },
   BoneWarden: { weakness: 'fire', armored: true },
 };
+
+// ---------------------------------------------------------------------------
+// VARIANTS — the oldest trick in the book (standing rule): recolor, resize
+// and restat the models we already ship. A spawn marker carries
+// `variant: 'cinder'` and the base enemy becomes a new foe: different tint,
+// size, hp, speed, element RESISTANCE (0.4x + a grey "RESIST" callout — the
+// counterpart lesson to SUPER!). One model, many monsters.
+// ---------------------------------------------------------------------------
+
+export const VARIANTS = {
+  // Kiln elite: a shade baked in the kiln's own fire — FIRE bounces off it
+  // (the Fire Wolf's home advantage disappears; moon still shreds it)
+  cinder: {
+    label: 'Cinder Shade',
+    scale: 1.3, hp: 4.5, speed: 3.0, resist: 'fire', dropChance: 0.7,
+    puffTint: 0x6a2a10,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xffd75a); m.emissiveIntensity = 2.0; }
+      else if (m.color) { m.color.setHex(0x4a1408); m.emissive && m.emissive.setHex(0x8a2a10); m.emissiveIntensity = 0.5; }
+    },
+  },
+  // The pack leader: bigger, tougher, faster charge, gold-burning eyes
+  elder: {
+    label: 'Elder Hound',
+    scale: 1.3, hp: 6, chargeSpeed: 10.8, dropChance: 1,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffd75a); m.emissiveIntensity = 1.8; }
+    },
+  },
+  // A wall of old bone: slow, huge, hits harder — same armor law as all bone
+  brute: {
+    label: 'Bone Brute',
+    scale: 1.4, hp: 5, speed: 1.1, contactDmg: 1.5, dropChance: 0.8,
+    sharedMats: true, // skeletons share loader materials — clone before tinting
+    tint: (m) => {
+      if (m.color) m.color.multiplyScalar(0.82); // old bone runs darker
+    },
+  },
+};
+
+function applyVariant(e, name) {
+  const v = VARIANTS[name];
+  if (!v) return e;
+  if (v.hp) { e.hp = v.hp; e.maxHp = v.hp; }
+  if (v.scale && e.model) {
+    e.model.scale.multiplyScalar(v.scale);
+    e.radius = e.radius * (1 + (v.scale - 1) * 0.6);
+  }
+  if (v.speed !== undefined) e.speed = v.speed;
+  if (v.chargeSpeed !== undefined) e.chargeSpeed = v.chargeSpeed;
+  if (v.contactDmg !== undefined) e.contactDmg = v.contactDmg;
+  if (v.resist) e.resist = v.resist;
+  if (v.weakness) e.weakness = v.weakness;
+  if (v.dropChance !== undefined) e.dropChance = v.dropChance;
+  if (v.puffTint !== undefined) e.puffTint = v.puffTint;
+  if (v.tint && e.model) {
+    e.model.traverse((n) => {
+      if (!n.isMesh) return;
+      if (v.sharedMats) {
+        // clone first — never recolor the loader cache other spawns share
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        const cloned = mats.map((m) => { const c = m.clone(); v.tint(c); return c; });
+        n.material = Array.isArray(n.material) ? cloned : cloned[0];
+      } else {
+        // shades/hounds already own per-instance clones (eye-flare mats
+        // must stay the SAME objects the class holds references to)
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        for (const m of mats) v.tint(m);
+      }
+    });
+  }
+  if (v.sharedMats) {
+    e._flashMats = [];
+    e.registerFlashMats(e.model); // re-point the hurt flash at the clones
+  }
+  return e;
+}
 
 class Enemy {
   constructor(world, x, z, { hp, radius }) {
@@ -124,6 +202,13 @@ class Enemy {
     }
     const weak = this.weakness && element === this.weakness;
     if (weak) mult *= 1.5;
+    // variant RESISTANCE: the wrong element fizzles (0.4x + grey callout) —
+    // the counterpart lesson to SUPER!: "this one shrugs that off, switch!"
+    if (this.resist && element === this.resist) {
+      mult *= 0.4;
+      audio.play('puff', { volume: 0.4, rate: 1.7 });
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'RESIST');
+    }
     n = Math.round(n * mult * 2) / 2;
     if (n <= 0) n = 0.5;
     if (this.stunned > 0) n *= 2; // parry payoff: dizzy enemies take double
@@ -319,7 +404,7 @@ export class Hound extends Enemy {
       this._play('charge', 0.08);
       this.model.scale.y = 0.35;
       for (const m of this.eyeMats) m.emissiveIntensity = 4.0; // burning as it flies
-      const speed = 9.6; // playtest bump: the charge should scare a little
+      const speed = this.chargeSpeed || 9.6; // elders charge harder (VARIANTS)
       const nx = this.x + this.chargeDir.x * speed * dt;
       const nz = this.z + this.chargeDir.z * speed * dt;
       const solved = this._moveSolved(nx, nz);
@@ -794,7 +879,7 @@ export class SkeletonMinion extends SkeletonBase {
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // bones queue up too
       } else {
-        this.chaseToward(dt, dx, dz, d, 1.5);
+        this.chaseToward(dt, dx, dz, d, this.speed || 1.5); // brutes lumber (VARIANTS)
       }
       this.lungeTimer -= dt;
       if (d < 1.6 && this.lungeTimer <= 0 && this.engaged !== false) {
@@ -811,7 +896,7 @@ export class SkeletonMinion extends SkeletonBase {
       }
       if (this.stateT > 0.9) { this.state = 'chase'; this.lungeTimer = 2.4; this._current = null; }
     }
-    this.contact(player);
+    this.contact(player, this.contactDmg || 1); // brutes hit harder (VARIANTS)
     this.flashUpdate(dt);
     this.mixer.update(dt);
   }
@@ -1286,14 +1371,18 @@ export async function spawnEnemies(world) {
 
   if ((world.markers.shadeSpots || []).length) {
     const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
-    for (const s of world.markers.shadeSpots) world.enemies.push(new Shade(world, s.x, s.z, slimeGltf));
+    for (const s of world.markers.shadeSpots) {
+      world.enemies.push(applyVariant(new Shade(world, s.x, s.z, slimeGltf), s.variant));
+    }
   }
   if ((world.markers.mothSpots || []).length) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
     for (const m of world.markers.mothSpots) world.enemies.push(new Moth(world, m.x, m.z, batGltf));
   }
   if (world.markers.houndSpot) {
-    world.enemies.push(new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf));
+    world.enemies.push(applyVariant(
+      new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf),
+      world.markers.houndSpot.variant));
   }
 
   // Cavern natives — Quaternius monsters, loaded only when a room asks
@@ -1317,7 +1406,9 @@ export async function spawnEnemies(world) {
     const anims = [...special.animations, ...movement.animations, ...general.animations, ...combat.animations];
     if (mk.minionSpots && mk.minionSpots.length) {
       const minionGltf = await loadGLB('./assets/chars/skeletons/Skeleton_Minion.glb');
-      for (const s of mk.minionSpots) world.enemies.push(new SkeletonMinion(world, s.x, s.z, minionGltf, anims));
+      for (const s of mk.minionSpots) {
+        world.enemies.push(applyVariant(new SkeletonMinion(world, s.x, s.z, minionGltf, anims), s.variant));
+      }
     }
     if (mk.rogueSpots && mk.rogueSpots.length) {
       const [rogueGltf, bladeGltf] = await Promise.all([

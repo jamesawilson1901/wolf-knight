@@ -79,7 +79,14 @@ identity dials in CONFIG.FORMS):
 | **Slime** | slime | splits into 2 minis on death | Stoneroot |
 | **Cave Bat** | bat | dive then crash-lands grounded (vulnerable) | Stoneroot |
 | **Skeleton Minion / Rogue** | skeletons | minion swarms slowly; rogue circles + lunges | Stoneroot |
+| **Skeleton Shieldling** | minion + tower shield | advances shield-up (front damage NULL); opens on its own swing, from behind (slow 2 rad/s turn), or stunned | Stoneroot |
 | **Bone Warden** | armored skeleton | mini-boss: tower shield front-blocks (clank + BLOCKED); flank or parry-stun to hurt | Stoneroot |
+| **Cinder Shade** ⭐ | Shade, kiln-baked tint, 1.3x | RESISTS fire (0.4x + grey callout); moon shreds it | Ember (Kiln) |
+| **Elder Hound** ⭐ | Hound, gold eyes, 1.3x | pack leader: hp 6, harder charge, guaranteed ember | Ember (r2b) |
+| **Bone Brute** ⭐ | Minion, darkened, 1.4x | a slow walking wall: hp 5, heavier contact | Stoneroot (Mill) |
+
+⭐ = VARIANTS (asset-multiplication law): tint + scale + stat + element
+swaps on models we already ship — the registry lives in enemies.js.
 
 Deaths puff into smoke (not gory). Never more than 3 simultaneous aggro
 enemies near a kid. Enemies have solid bodies (no walking through each
