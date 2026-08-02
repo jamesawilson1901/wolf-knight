@@ -3,3 +3,8 @@ asset-raw/
 
 .DS_Store
 node_modules/
+
+# Mermaid Reef (mermaid/)
+mermaid/node_modules/
+mermaid/assets-source/
+mermaid/dist/
