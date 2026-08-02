@@ -17,6 +17,11 @@ const B_TAU = 0.13;
 const B_HOLD_AFTER_RELEASE = 2.5; // s of holding height after thumb lifts
 const B_DRIFT_SPEED = 70; // gentle sink after that
 
+// Scheme C — finger-follow (default): she swims to the finger's height,
+// offset upward so the thumb never covers her. Release behaves like B.
+const C_OFFSET = 150; // design px above the finger
+const C_TAU = 0.15;
+
 const KEY_SPEED = 420; // desktop dev fallback
 
 export class VerticalControl {
@@ -43,10 +48,9 @@ export class VerticalControl {
     this.y = startY;
     this.targetY = startY;
     const saved = localStorage.getItem(STORAGE_KEYS.scheme);
-    this.scheme = saved === 'B' ? 'B' : 'A';
-    const qs = new URLSearchParams(location.search).get('scheme');
-    if (qs === 'a' || qs === 'A') this.scheme = 'A';
-    if (qs === 'b' || qs === 'B') this.scheme = 'B';
+    this.scheme = saved === 'A' || saved === 'B' ? saved : 'C';
+    const qs = new URLSearchParams(location.search).get('scheme')?.toUpperCase();
+    if (qs === 'A' || qs === 'B' || qs === 'C') this.scheme = qs;
 
     scene.input.addPointer(2); // tolerate both thumbs landing
     scene.input.on('pointerdown', this.onDown, this);
@@ -82,11 +86,19 @@ export class VerticalControl {
     this.held = true;
     this.anchorPointerY = pointer.y;
     this.anchorMermaidY = this.y;
-    this.targetY = this.y;
+    this.targetY = this.scheme === 'C' ? this.fingerTarget(pointer.y) : this.y;
+  }
+
+  private fingerTarget(pointerY: number): number {
+    return Phaser.Math.Clamp(pointerY - C_OFFSET, PLAY_TOP, SEAFLOOR_Y);
   }
 
   private onMove(pointer: Phaser.Input.Pointer) {
     if (pointer.id !== this.activePointerId) return;
+    if (this.scheme === 'C') {
+      this.targetY = this.fingerTarget(pointer.y);
+      return;
+    }
     if (this.scheme !== 'B') return;
     let delta = (pointer.y - this.anchorPointerY) * B_GAIN;
     if (Math.abs(delta) < B_DEADZONE) delta = 0;
@@ -128,11 +140,12 @@ export class VerticalControl {
       this.vy = approach(this.vy, target, dt, tau);
       this.y += this.softened(this.vy) * dt;
     } else {
-      // Scheme B
+      // Schemes B and C: ease toward a target height
       if (!this.held && this.sinceRelease > B_HOLD_AFTER_RELEASE) {
         this.targetY = Math.min(SEAFLOOR_Y, this.targetY + B_DRIFT_SPEED * dt);
       }
-      const k = 1 - Math.exp(-dt / B_TAU);
+      const tau = this.scheme === 'C' ? C_TAU : B_TAU;
+      const k = 1 - Math.exp(-dt / tau);
       this.y += (this.targetY - this.y) * k;
       this.vy = dt > 0 ? (this.y - prevY) / dt : 0;
     }

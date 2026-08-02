@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { DESIGN_HEIGHT } from '../config';
 
-// Loads everything up front (it's all precached offline anyway) with a
-// text-free progress bar.
+// Loads the shared assets up front with a text-free progress bar. Background
+// layers are per-level and loaded by GameScene on demand (everything is
+// precached by the service worker either way).
 export class PreloadScene extends Phaser.Scene {
   preload() {
     const w = this.scale.width;
@@ -21,19 +22,15 @@ export class PreloadScene extends Phaser.Scene {
     });
 
     this.load.setPath('assets');
-    this.load.atlas('mermaid', 'mermaid.webp', 'mermaid.json');
+    for (let ch = 1; ch <= 3; ch++) {
+      this.load.atlas(`mermaid${ch}`, `mermaid${ch}.webp`, `mermaid${ch}.json`);
+    }
     this.load.atlas('creatures', 'creatures.webp', 'creatures.json');
     this.load.atlas('items', 'items.webp', 'items.json');
-    for (let i = 1; i <= 6; i++) {
-      this.load.image(`bg${i}`, `bg/layer-${i}.webp`);
+    this.load.image('menu-bg', 'bg/b1s1/layer-1.webp');
+    for (const key of ['ambient', 'pearl', 'coin', 'chest', 'complete', 'tap', 'joy', 'ouch', 'power', 'pop']) {
+      this.load.audio(key, `audio/${key}.wav`);
     }
-    this.load.audio('ambient', 'audio/ambient.wav');
-    this.load.audio('pearl', 'audio/pearl.wav');
-    this.load.audio('coin', 'audio/coin.wav');
-    this.load.audio('chest', 'audio/chest.wav');
-    this.load.audio('complete', 'audio/complete.wav');
-    this.load.audio('tap', 'audio/tap.wav');
-    this.load.audio('joy', 'audio/joy.wav');
   }
 
   create() {
@@ -42,49 +39,44 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private registerAnimations() {
-    const mk = (key: string, prefix: string, rate = 12, repeat = -1) => {
+    for (let ch = 1; ch <= 3; ch++) {
+      const mk = (name: string, prefix: string, rate = 12, repeat = -1) => {
+        this.anims.create({
+          key: `m${ch}-${name}`,
+          frames: this.anims.generateFrameNames(`mermaid${ch}`, {
+            prefix,
+            start: 0,
+            end: 9,
+            zeroPad: 3,
+          }),
+          frameRate: rate,
+          repeat,
+        });
+      };
+      mk('idle', 'idle_');
+      mk('move', 'move_', 14);
+      mk('joy', 'joy_', 16, 0);
+      mk('acceleration', 'acceleration_', 16);
+      mk('hurt', 'hurt_', 14, 0);
+    }
+
+    const creature = (key: string, prefix: string, rate: number) => {
       this.anims.create({
         key,
-        frames: this.anims.generateFrameNames('mermaid', {
+        frames: this.anims.generateFrameNames('creatures', {
           prefix,
           start: 0,
           end: 9,
           zeroPad: 3,
         }),
         frameRate: rate,
-        repeat,
+        repeat: -1,
       });
     };
-    mk('mermaid-idle', 'idle_');
-    mk('mermaid-move', 'move_', 14);
-    mk('mermaid-joy', 'joy_', 16, 0);
-    mk('mermaid-accel', 'acceleration_', 16);
-
-    for (let f = 1; f <= 4; f++) {
-      this.anims.create({
-        key: `fish-${f}`,
-        frames: this.anims.generateFrameNames('creatures', {
-          prefix: `fish-${f}-move_`,
-          start: 0,
-          end: 9,
-          zeroPad: 3,
-        }),
-        frameRate: 10,
-        repeat: -1,
-      });
-    }
-    for (let j = 1; j <= 3; j++) {
-      this.anims.create({
-        key: `jellyfish-${j}`,
-        frames: this.anims.generateFrameNames('creatures', {
-          prefix: `jellyfish-${j}-move_`,
-          start: 0,
-          end: 9,
-          zeroPad: 3,
-        }),
-        frameRate: 8,
-        repeat: -1,
-      });
-    }
+    for (let f = 1; f <= 4; f++) creature(`fish-${f}`, `fish-${f}-move_`, 10);
+    for (let j = 1; j <= 3; j++) creature(`jellyfish-${j}`, `jellyfish-${j}-move_`, 8);
+    creature('urchin', 'urchin-move_', 7);
+    creature('crab', 'crab-move_', 9);
+    creature('shark', 'shark-move_', 9);
   }
 }

@@ -11,12 +11,26 @@ export class Hud {
   private soundBtn: Phaser.GameObjects.Image;
   private soundCenter: { x: number; y: number };
 
-  constructor(private scene: Phaser.Scene, insets: Insets) {
+  constructor(private scene: Phaser.Scene, insets: Insets, levelNumber?: number) {
     const band = safeBandLeft(scene.scale.width);
     const x = Math.max(band + 70, insets.left + 60);
     const y = Math.max(70, insets.top + 50);
     this.icon = scene.add.image(x, y, 'items', 'pearl').setDepth(100).setScale(1.15);
     this.renderDigits();
+
+    // level number: a small crown + digit, top centre (numbers are allowed;
+    // words are not)
+    if (levelNumber !== undefined) {
+      const cx = scene.scale.width / 2;
+      scene.add.image(cx - 38, y, 'items', 'crown').setDepth(100).setScale(0.8).setAlpha(0.9);
+      const str = String(levelNumber);
+      [...str].forEach((chDigit, i) => {
+        scene.add
+          .image(cx + 14 + i * 46, y, 'items', `digit-${chDigit}`)
+          .setDepth(100)
+          .setAlpha(0.95);
+      });
+    }
 
     // Sound toggle: top-right, adult-finger sized, away from her thumbs
     // (they live in the bottom corners).

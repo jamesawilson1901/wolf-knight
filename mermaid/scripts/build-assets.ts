@@ -163,14 +163,22 @@ function animFiles(dir: string, prefix: string): string[] {
 }
 
 async function buildMermaid() {
-  const dir = join(SRC, 'Mermaid', 'PNG', 'Mermaid_1');
-  // Only Idle, Move, Acceleration, Joy. Attack/Hurt/Die are out of scope by design.
-  const anims = ['Idle', 'Move', 'Joy', 'Acceleration'].map((a) => ({
-    name: a.toLowerCase(),
-    files: animFiles(dir, a + '_'),
-  }));
-  const frames = await alignAnimationSet(anims, MERMAID_SCALE);
-  await packAtlas('mermaid', frames);
+  // All three playable characters, one atlas each.
+  for (let ch = 1; ch <= 3; ch++) {
+    const dir = join(SRC, 'Mermaid', 'PNG', `Mermaid_${ch}`);
+    // Idle, Move, Joy, Acceleration, plus Hurt for the harmless "ouch" flash.
+    // Attack/Die stay out of scope.
+    const anims = ['Idle', 'Move', 'Joy', 'Acceleration', 'Hurt'].map((a) => ({
+      name: a.toLowerCase(),
+      files: animFiles(dir, a + '_'),
+    }));
+    const frames = await alignAnimationSet(anims, MERMAID_SCALE);
+    await packAtlas(`mermaid${ch}`, frames);
+    if (ch === 1) await writeDebugStrip(frames);
+  }
+}
+
+async function writeDebugStrip(frames: Frame[]) {
 
   // Debug strip: frame 0 of each animation with anchor crosshair, for eyeballing.
   const w = frames[0].w;
@@ -203,6 +211,10 @@ async function buildCreatures() {
     { key: 'jellyfish-1', dir: 'Jellyfish_1', prefix: 'Jellyfish_move_1_', scale: 1 },
     { key: 'jellyfish-2', dir: 'Jellyfish_2', prefix: 'Jellyfish_move_2_', scale: 0.8 },
     { key: 'jellyfish-3', dir: 'Jellyfish_3', prefix: 'Jellyfish_move_3_', scale: 0.62 },
+    // ouchy (but harmless) creatures — urchin only ships idle/attack, use idle
+    { key: 'urchin', dir: 'Sea urchin', prefix: 'Sea urchin_idle_', scale: 0.35 },
+    { key: 'crab', dir: 'Crab_1', prefix: 'Crab_move_1_', scale: 0.45 },
+    { key: 'shark', dir: 'Shark_1', prefix: 'Shark_move_1_', scale: 0.42 },
   ];
   const all: Frame[] = [];
   for (const s of sets) {
@@ -252,6 +264,9 @@ async function buildItems() {
   for (let d = 0; d <= 9; d++) {
     frames.push(await singleFrame(`digit-${d}`, join(ui, 'number', `${d}.png`), 1));
   }
+  frames.push(await singleFrame('magnet', join(items, 'Bonus', 'Magnet.png'), 0.62));
+  frames.push(await singleFrame('shield', join(items, 'Bonus', 'Shield.png'), 0.7));
+  frames.push(await singleFrame('crown', join(items, 'Bonus', 'Crown.png'), 0.6));
   frames.push(await singleFrame('btn-play', join(ui, 'btn', 'play.png'), 1));
   frames.push(await singleFrame('btn-restart', join(ui, 'btn', 'restart.png'), 1));
   frames.push(await singleFrame('btn-sound', join(ui, 'btn', 'sound.png'), 1.4));
@@ -299,11 +314,30 @@ function makeTileable(data: Buffer, w: number, h: number, ch: number, F: number)
   return { data: out, w: W2 };
 }
 
+// The seven level scenes (kelp forest b1s3 skipped — too dark and busy for
+// this player). floorLayer notes which layer is the sand the chest sits on.
+export const SCENES = [
+  { id: 'b1s1', pack: 'Backgrounds_1', scene: 1, layers: 6 },
+  { id: 'b1s4', pack: 'Backgrounds_1', scene: 4, layers: 6 },
+  { id: 'b2s1', pack: 'Backgrounds_2', scene: 1, layers: 8 },
+  { id: 'b2s2', pack: 'Backgrounds_2', scene: 2, layers: 6 },
+  { id: 'b1s2', pack: 'Backgrounds_1', scene: 2, layers: 6 },
+  { id: 'b2s4', pack: 'Backgrounds_2', scene: 4, layers: 6 },
+  { id: 'b2s3', pack: 'Backgrounds_2', scene: 3, layers: 6 },
+];
+
 async function buildBackgrounds() {
-  const dir = join(SRC, 'Game Backgrounds', 'Backgrounds_1', 'PNG', '1_game_background', 'layers');
-  mkdirSync(join(OUT, 'bg'), { recursive: true });
-  for (let i = 1; i <= 6; i++) {
-    const file = join(dir, `${i}.png`);
+  for (const sc of SCENES) {
+    const dir = join(SRC, 'Game Backgrounds', sc.pack, 'PNG', `${sc.scene}_game_background`, 'layers');
+    mkdirSync(join(OUT, 'bg', sc.id), { recursive: true });
+    for (let i = 1; i <= sc.layers; i++) {
+      await buildLayer(join(dir, `${i}.png`), join(OUT, 'bg', sc.id, `layer-${i}.webp`), `${sc.id}/${i}`);
+    }
+  }
+}
+
+async function buildLayer(file: string, out: string, label: string) {
+  {
     const { data, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
     const { width: w, height: h, channels: ch } = info;
 
@@ -327,11 +361,11 @@ async function buildBackgrounds() {
     }
     const img = sharp(outData, { raw: { width: outW, height: h, channels: ch } });
     if (ch === 3) {
-      await img.webp({ quality: 72 }).toFile(join(OUT, 'bg', `layer-${i}.webp`));
+      await img.webp({ quality: 72 }).toFile(out);
     } else {
-      await img.webp({ quality: 80, alphaQuality: 85 }).toFile(join(OUT, 'bg', `layer-${i}.webp`));
+      await img.webp({ quality: 78, alphaQuality: 82 }).toFile(out);
     }
-    console.log(`bg layer ${i}: ${seamless ? 'tiles cleanly' : 'wrap-blended'} (wrap=${wrap}, base=${base}) -> ${outW}x${h}`);
+    console.log(`bg ${label}: ${seamless ? 'tiles cleanly' : 'wrap-blended'} (wrap=${wrap}, base=${base}) -> ${outW}x${h}`);
   }
 }
 

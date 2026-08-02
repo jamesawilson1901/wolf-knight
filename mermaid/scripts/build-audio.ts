@@ -98,6 +98,18 @@ if (hasRecording('complete')) {
   const { pcm, rate } = await decodeMp3('complete');
   writeWav('complete.wav', trim(pcm, rate, { maxDur: 3.2, fadeOut: 0.25 }), rate);
 }
+if (hasRecording('ouch')) {
+  const { pcm, rate } = await decodeMp3('ouch');
+  writeWav('ouch.wav', trim(pcm, rate, { maxDur: 0.9, fadeOut: 0.08 }), rate);
+}
+if (hasRecording('power')) {
+  const { pcm, rate } = await decodeMp3('power');
+  writeWav('power.wav', trim(pcm, rate, { maxDur: 1.2, fadeOut: 0.1 }), rate);
+}
+if (hasRecording('pop')) {
+  const { pcm, rate } = await decodeMp3('pop');
+  writeWav('pop.wav', trim(pcm, rate, { maxDur: 0.5, fadeOut: 0.05 }), rate);
+}
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -256,6 +268,49 @@ if (!hasRecording('complete')) {
     mix(out, bell(rate, f, 1.5, 0.7), rate * 0.62, 0.4),
   );
   writeWav('complete.wav', out, rate);
+}
+
+// ---- ouch: soft comedic "boop" slide-down — startling-free, not scary ----
+if (!hasRecording('ouch')) {
+  const rate = 44100;
+  const dur = 0.55;
+  const n = Math.floor(rate * dur);
+  const out = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    // two-step downward slide (E4 -> C4) with a wah envelope
+    const f = t < 0.16 ? 330 : 262 * Math.exp(-Math.max(0, t - 0.16) * 1.2);
+    phase += (2 * Math.PI * f) / rate;
+    const wob = 1 + 0.06 * Math.sin(2 * Math.PI * 9 * t);
+    const env = Math.min(1, i / (rate * 0.008)) * Math.exp(-t * 5.5);
+    out[i] = (Math.sin(phase * wob) + 0.25 * Math.sin(2 * phase)) * env;
+  }
+  writeWav('ouch.wav', out, rate);
+}
+
+// ---- power: quick ascending sparkle arpeggio (magnet/shield pickup) ------
+if (!hasRecording('power')) {
+  const rate = 44100;
+  const out = new Float32Array(Math.floor(rate * 0.9));
+  const notes = [659.26, 880, 1174.7, 1568]; // E5 A5 D6 G6
+  notes.forEach((f, i) => mix(out, bell(rate, f, 0.5, 1.1), rate * 0.07 * i, 0.55));
+  writeWav('power.wav', out, rate);
+}
+
+// ---- pop: shield bubble pop — bright, round, friendly --------------------
+if (!hasRecording('pop')) {
+  const rate = 44100;
+  const n = Math.floor(rate * 0.22);
+  const out = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const f = 900 - 500 * t;
+    phase += (2 * Math.PI * f) / rate;
+    out[i] = Math.sin(phase) * Math.min(1, i / (rate * 0.002)) * Math.exp(-t * 30);
+  }
+  writeWav('pop.wav', out, rate);
 }
 
 // ---- ambient: 24 s seamless underwater loop ------------------------------
