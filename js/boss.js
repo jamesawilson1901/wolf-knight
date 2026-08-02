@@ -53,13 +53,13 @@ export class Shadowgrip {
     this.defeated = false;
     this.onDefeated = null;
 
-    // --- the Shadowgrip itself: a GIANT shadow wolf — a dark echo of the
-    // first great wolf, looming over the caged Cinder. Same Quaternius
-    // wolf as Kael's forms, ~2.9x their size (playtest: "a little smaller
-    // but still intimidating"), near-black with violet eyes.
+    // --- the Shadowgrip itself: a big shadow wolf — a dark echo of the
+    // first great wolf, PROWLING the arena (playtest: it must MOVE — a
+    // statue that rotates is not a boss). Same Quaternius wolf as Kael's
+    // forms, ~2.3x their size, near-black with violet eyes.
     this.core = new THREE.Group();
     const wolf = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
-    wolf.scale.setScalar(1.62); // ≈2.9 × the player wolves' 0.56
+    wolf.scale.setScalar(1.3); // ≈2.3 × the player wolves' 0.56
     this.eyeMat = null;
     wolf.traverse((n) => {
       if (!n.isMesh) return;
@@ -93,6 +93,9 @@ export class Shadowgrip {
     this.attackAction = atkClip ? this.mixer.clipAction(atkClip) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
     this.runAction = runClip ? this.mixer.clipAction(runClip) : null;
+    const walkClip = dragonGltf.animations.find((c) => c.name === 'Walk');
+    this.walkAction = walkClip ? this.mixer.clipAction(walkClip) : null;
+    this._anim = 'idle'; // idle | walk | run — crossfaded locomotion
     // COLLAPSE (the vulnerable read): the Death clip plays and HOLDS while
     // the wolf lies tired — an unmissable "it fell over, hit it now"
     const dieClip = dragonGltf.animations.find((c) => c.name === 'Death');
@@ -109,12 +112,18 @@ export class Shadowgrip {
     this.core.position.set(0, 0, -1.4); // stands guard just behind the light
     this.root.add(this.core);
 
-    // --- THE POUNCE (phase 2 signature): crouch + red lane telegraph →
-    // leap across the arena → crashes down TIRED (a big, obvious window)
-    this.chargeState = 'rest';
+    // --- THE HUNT: the wolf is ALIVE in every phase — it prowls a circle
+    // around Kael, stalks in, and attacks with its body (phase 1 swipes,
+    // phase 2 pounces, phase 3 dashes in the dark). wolfOff is its offset
+    // from the arena center; the HITBOX and every gold ring ride the wolf.
+    this.action = 'prowl';
+    this.actionT = 0;
+    this.attackIn = 3.0;          // next body-attack countdown
+    this.orbitSign = 1;
+    this.chargeState = 'rest';    // legacy field (respawn/save safe)
     this.chargeTimer = 4.5;
     this.chargeDir = { x: 0, z: 1 };
-    this.wolfOff = { x: 0, z: 0 }; // body offset from center while pouncing
+    this.wolfOff = { x: 0, z: 0 }; // body offset from center
     this.chargeStreak = new THREE.Mesh(
       new THREE.PlaneGeometry(8.0, 1.0),
       new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0, depthWrite: false })
@@ -308,7 +317,8 @@ export class Shadowgrip {
     this._setCoreExposed(true);
     this._burstT = 0; // phase 2 pulses too: short frequent windows
     this.cageShell.visible = false; // the grip shatters — the light is free-ish
-    this.chargeTimer = 3.0; // the wolf starts hunting: first pounce soon
+    this.action = 'prowl';
+    this.attackIn = 2.5; // the wolf starts hunting: first pounce soon
     this.waveActive = true;
     this.wave.material.opacity = 0.5;
     // summon exactly 2 Shades
@@ -324,6 +334,8 @@ export class Shadowgrip {
     state.flags.bossProgress = 3; // respawns resume here
     audio.howl({ volume: 1, rate: 0.6 }); // deepest howl — the dark closes in
     this.world.bossDarkness = true;  // the room goes dark — Dark Wolf time
+    this.action = 'prowl';
+    this.attackIn = 2.0; // it hunts hardest in its own darkness
     this.waveActive = false;
     this.wave.material.opacity = 0;
     this.slamState = 'wait';
@@ -493,7 +505,7 @@ export class Shadowgrip {
       this._attackT -= dt;
       if (this._attackT <= 0 && this.attackAction) this.attackAction.fadeOut(0.25);
     }
-    this.dragon.position.y = -1.0 + Math.sin(t * 1.9) * 0.12;
+    this.dragon.position.y = 0; // paws on the ground — it WALKS now
     // strike-window rings pulse so they read as "hit me NOW"
     if (this.strikeRing.visible) {
       this.strikeRing.scale.setScalar(1 + Math.sin(t * 6) * 0.08);
@@ -517,10 +529,6 @@ export class Shadowgrip {
         m.emissiveIntensity = on ? 0.8 : m.userData.bi;
       }
     }
-    this.core.rotation.y = Math.atan2(
-      player.root.position.x - this.x,
-      player.root.position.z - this.z
-    );
     if (this._eyeFlash > 0) {
       this._eyeFlash -= dt;
       if (this._eyeFlash <= 0) this.eyeMat.emissiveIntensity = this.coreExposed ? 1.6 : 0.7;
@@ -533,107 +541,17 @@ export class Shadowgrip {
       this.cageShell.position.y = 1.1 + Math.sin(t * 1.7) * 0.05;
     }
 
+    // THE WOLF ITSELF — alive in every phase (prowl/stalk/attack/recover)
+    this._updateWolf(dt, t, player);
+
     if (this.phase === 1) {
       this._updateSlams(dt, player, false);
     } else if (this.phase === 2) {
-      // THE POUNCE — the wolf's signature, on a fixed readable loop:
-      // rest → crouch (red lane flashes 1.0s) → leap down the lane →
-      // crash, TIRED for 2.0s (the big open window) → pad back to the light.
-      this.chargeTimer -= dt;
-      const wolfWX = this.x + this.core.position.x;
-      const wolfWZ = this.z + this.core.position.z;
-      if (this.chargeState === 'rest' && this.chargeTimer <= 0) {
-        this.chargeState = 'crouch';
-        this.chargeTimer = 1.0;
-        const cx = player.root.position.x - wolfWX, cz = player.root.position.z - wolfWZ;
-        const cd = Math.hypot(cx, cz) || 1;
-        this.chargeDir = { x: cx / cd, z: cz / cd };
-        this.chargeStreak.position.set(wolfWX + this.chargeDir.x * 4, 0.05, wolfWZ + this.chargeDir.z * 4);
-        this.chargeStreak.rotation.z = -Math.atan2(this.chargeDir.x, this.chargeDir.z) + Math.PI / 2;
-        audio.play('bite', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
-      } else if (this.chargeState === 'crouch') {
-        this.core.scale.y = 0.8; // visibly coils down
-        this.chargeStreak.material.opacity = 0.25 + 0.3 * Math.abs(Math.sin(this.chargeTimer * 18));
-        if (this.chargeTimer <= 0) {
-          this.chargeState = 'charge';
-          this.chargeTimer = 1.0;
-          this.core.scale.y = 1;
-          if (this.runAction) this.runAction.reset().play();
-          if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
-          audio.play('tendril-slam', { volume: 0.8, rate: 1.3 });
-        }
-      } else if (this.chargeState === 'charge') {
-        this.chargeStreak.material.opacity = Math.max(0, this.chargeStreak.material.opacity - dt * 3);
-        this.wolfOff.x += this.chargeDir.x * 10.5 * dt;
-        this.wolfOff.z += this.chargeDir.z * 10.5 * dt;
-        this.core.position.x = this.wolfOff.x;
-        this.core.position.z = -1.4 + this.wolfOff.z;
-        const pdx = player.root.position.x - (this.x + this.core.position.x);
-        const pdz = player.root.position.z - (this.z + this.core.position.z);
-        if (pdx * pdx + pdz * pdz < 1.6 * 1.6) player.hurt(1, { attacker: this, groundAttack: true });
-        if (Math.hypot(this.wolfOff.x, this.wolfOff.z) > 6.2 || this.chargeTimer <= 0) {
-          // THE COLLAPSE — the pounce spends everything and the giant wolf
-          // visibly FALLS OVER (Death clip, held): the "hit it now" read is
-          // the whole body, not just a ring. A breath of slow-motion sells
-          // the crash and stretches the window for small hands.
-          this.chargeState = 'tired';
-          this.chargeTimer = 2.6;
-          if (this.runAction) this.runAction.fadeOut(0.2);
-          if (this.attackAction) this.attackAction.fadeOut(0.15);
-          if (this.collapseAction) {
-            if (this.flyAction) this.flyAction.fadeOut(0.15);
-            this.collapseAction.reset().fadeIn(0.1).play();
-          }
-          juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, 0x8f6bff, 12);
-          juice.burst(this.x + this.core.position.x, 0.3, this.z + this.core.position.z, 0x9a8f80, 10); // dust
-          if (juice.effects) {
-            juice.effects.shake(0.4, 0.5);
-            if (juice.effects.slow) juice.effects.slow(0.75, 0.6);
-          }
-          audio.play('slam', { volume: 0.95, rate: 0.6 }); // the THUD
-        }
-      } else if (this.chargeState === 'tired') {
-        // COLLAPSED: flat on the ground, eyes dim, gold ring pulsing under
-        // it — force-exposed below. This IS the fight's punish window.
-        this.eyeMat.emissiveIntensity = 0.3;
-        this.tiredRing.visible = true;
-        this.tiredRing.position.x = this.x + this.core.position.x;
-        this.tiredRing.position.z = this.z + this.core.position.z;
-        const pulse = 1 + Math.sin(t * 5) * 0.06;
-        this.tiredRing.scale.set(pulse, pulse, 1);
-        this.tiredRing.material.opacity = 0.6 + Math.sin(t * 5) * 0.25;
-        if (this.chargeTimer <= 0) {
-          this.chargeState = 'return';
-          this.chargeTimer = 1.2;
-          this.tiredRing.visible = false;
-          // it hauls itself back up and pads home
-          if (this.collapseAction) this.collapseAction.fadeOut(0.3);
-          if (this.flyAction) this.flyAction.reset().fadeIn(0.3).play();
-        }
-      } else if (this.chargeState === 'return') {
-        const k = Math.min(1, dt * 3);
-        this.wolfOff.x += (0 - this.wolfOff.x) * k;
-        this.wolfOff.z += (0 - this.wolfOff.z) * k;
-        this.core.position.x = this.wolfOff.x;
-        this.core.position.z = -1.4 + this.wolfOff.z;
-        this.core.scale.y = 1;
-        if (this.chargeTimer <= 0) {
-          this.wolfOff.x = 0; this.wolfOff.z = 0;
-          this.core.position.set(0, 0, -1.4);
-          this.chargeState = 'rest';
-          this.chargeTimer = 5.0; // next pounce on a steady, learnable beat
-        }
-      }
-      // the core guards in a rhythm too: open while the wolf rests (1.7s
-      // pulses) and WIDE open while it lies tired after a pounce
-      this._burstT += dt;
-      const c2 = this._burstT % 2.9;
-      this._setCoreExposed(this.chargeState === 'tired' || (this.chargeState === 'rest' && c2 < 1.7));
       // rotating shadow wave — slow, always a safe arc
       this.waveAngle += dt * 0.55;
-      const wx = this.x + Math.cos(this.waveAngle) * 3.4;
-      const wz = this.z + Math.sin(this.waveAngle) * 3.4;
-      this.wave.position.set(wx, 0.06, wz);
+      const wx2 = this.x + Math.cos(this.waveAngle) * 3.4;
+      const wz2 = this.z + Math.sin(this.waveAngle) * 3.4;
+      this.wave.position.set(wx2, 0.06, wz2);
       this.wave.rotation.z = -this.waveAngle;
       // damage if the player stands in the sweeping bar — unless a pillar
       // stands between them and the core (cover is real)
@@ -649,18 +567,228 @@ export class Shadowgrip {
       }
     } else if (this.phase === 3) {
       this._updateSlams(dt, player, true);
-      // the core opens in bursts: 1.4s open / 1.4s guarded (short + frequent)
-      this._burstT += dt;
-      const cycle = this._burstT % 2.8;
-      const open = cycle < 1.4;
-      this._setCoreExposed(open);
-      this.eyeMat.emissiveIntensity = open ? 1.8 : 0.4;
-      // the wolf lunges its head in when open, rears back when guarded
-      this.core.position.z = open ? -0.7 : -1.8;
     }
 
-    // keep the core hittable's position in sync
-    this.coreHittable.x = this.x;
-    this.coreHittable.z = this.z;
+    // the HITBOX and the gold strike ring RIDE THE WOLF — you hit the wolf,
+    // wherever it is (the old center-anchored hitbox made collapsed-wolf
+    // hits land on empty air: playtest-fatal, never again)
+    const wwx = this.x + this.core.position.x;
+    const wwz = this.z + this.core.position.z;
+    this.coreHittable.x = wwx;
+    this.coreHittable.z = wwz;
+    if (this.strikeRing.visible) this.strikeRing.position.set(wwx, 0.04, wwz);
+  }
+
+  // Crossfaded locomotion so the walk/gallop always match the movement.
+  _setAnim(name) {
+    if (this._anim === name) return;
+    const map = { idle: this.flyAction, walk: this.walkAction, run: this.runAction };
+    const next = map[name];
+    const prev = map[this._anim];
+    if (next) next.reset().fadeIn(0.2).play();
+    if (prev && prev !== next) prev.fadeOut(0.2);
+    this._anim = name;
+  }
+
+  // The living wolf: a state machine shared by all phases.
+  //   prowl  — circles Kael at ~4u (walk), menace with patience
+  //   stalk  — gallops in until it's on top of him            (p1, p3)
+  //   windup — 0.9s ON-BODY telegraph: deep crouch, eyes FLARE, growl
+  //   swipe  — one big paw arc in front (p1) / dash THROUGH him (p3)
+  //   crouch/charge/tired — the phase-2 pounce + COLLAPSE (unchanged read)
+  //   recover — panting and EXPOSED (gold ring on the wolf): the answer
+  // Every attack ends in a readable punish window ON THE WOLF'S BODY.
+  _updateWolf(dt, t, player) {
+    const px = player.root.position.x, pz = player.root.position.z;
+    const wx = this.x + this.wolfOff.x;
+    const wz = this.z - 1.4 + this.wolfOff.z;
+    const dx = px - wx, dz = pz - wz;
+    const d = Math.hypot(dx, dz) || 0.01;
+    this.actionT -= dt;
+    const facePlayer = () => { this.core.rotation.y = Math.atan2(dx, dz); };
+    const move = (mx, mz, speed) => {
+      const nx = wx + mx * speed * dt, nz = wz + mz * speed * dt;
+      const s = this.world.resolveCircle(nx, nz, 0.85);
+      this.wolfOff.x = s.x - this.x;
+      this.wolfOff.z = s.z - (this.z - 1.4);
+      this.core.position.x = this.wolfOff.x;
+      this.core.position.z = -1.4 + this.wolfOff.z;
+    };
+    const A = this.action;
+
+    if (A === 'prowl') {
+      // circle Kael — never a statue. Radial correction + tangential drift.
+      facePlayer();
+      this._setAnim('walk');
+      const R = 4.2;
+      const nxr = dx / d, nzr = dz / d;
+      let mx = -nzr * this.orbitSign, mz = nxr * this.orbitSign; // tangent
+      if (d > R + 0.8) { mx = mx * 0.4 + nxr * 0.8; mz = mz * 0.4 + nzr * 0.8; }
+      else if (d < R - 1.2) { mx = mx * 0.4 - nxr * 0.8; mz = mz * 0.4 - nzr * 0.8; }
+      move(mx, mz, this.phase === 1 ? 2.1 : 2.6);
+      this.attackIn -= dt;
+      if (this.attackIn <= 0) {
+        if (Math.random() < 0.35) this.orbitSign *= -1; // keep the circling fresh
+        if (this.phase === 2) {
+          // THE POUNCE: crouch + red lane from wherever it stands
+          this.action = 'crouch';
+          this.actionT = 1.0;
+          this.chargeDir = { x: dx / d, z: dz / d };
+          this.chargeStreak.position.set(wx + this.chargeDir.x * 4, 0.05, wz + this.chargeDir.z * 4);
+          this.chargeStreak.rotation.z = -Math.atan2(this.chargeDir.x, this.chargeDir.z) + Math.PI / 2;
+          audio.play('bite', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
+        } else {
+          this.action = 'stalk';
+          this.actionT = 2.6; // stalk has a time budget — never chases forever
+        }
+      }
+    } else if (A === 'stalk') {
+      // run him down until it's close enough to strike
+      facePlayer();
+      this._setAnim('run');
+      move(dx / d, dz / d, this.phase === 3 ? 3.6 : 3.1);
+      if (d < 2.4 || this.actionT <= 0) {
+        this.action = 'windup';
+        this.actionT = 0.9;
+        this.chargeDir = { x: dx / d, z: dz / d };
+        this._setAnim('idle');
+        audio.play('bite', { volume: 0.6, rate: 0.42, vary: 0.05 }); // GROWL
+      }
+    } else if (A === 'windup') {
+      // ON-BODY telegraph: coils low, eyes flare bright — same language as
+      // the hounds, big enough to read across the room (and in the dark)
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / 0.9;
+      this.core.scale.y = 1 - 0.22 * f;
+      this.eyeMat.emissiveIntensity = 1.2 + f * (this.phase === 3 ? 4.5 : 2.6);
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        const dd = Math.hypot(px - wx, pz - wz) || 0.01;
+        this.chargeDir = { x: (px - wx) / dd, z: (pz - wz) / dd };
+        if (this.phase === 3) {
+          // DARK DASH: it tears THROUGH where you stood — sidestep it
+          this.action = 'dash';
+          this.actionT = 0.75;
+          if (this.runAction) this.runAction.reset().fadeIn(0.06).play();
+          audio.play('whoosh', { volume: 0.9, rate: 0.7 });
+          audio.play('bite', { volume: 0.8, rate: 0.55 });
+        } else {
+          // THE SWIPE: one huge paw, frontal arc — jump or roll away
+          this.action = 'swipe';
+          this.actionT = 0.55;
+          this._swipeHit = false;
+          if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
+          audio.play('whoosh', { volume: 0.85, rate: 0.65 });
+        }
+      }
+    } else if (A === 'swipe') {
+      facePlayer();
+      if (!this._swipeHit && this.actionT <= 0.35) {
+        this._swipeHit = true;
+        // frontal arc: close + in front = hit (jump clears it — groundAttack)
+        const cone = (dx * this.chargeDir.x + dz * this.chargeDir.z) / d;
+        if (d < 2.8 && cone > 0.35) player.hurt(1, { attacker: this, groundAttack: true });
+        juice.burst(wx + this.chargeDir.x * 1.6, 0.4, wz + this.chargeDir.z * 1.6, 0x8f6bff, 8);
+        audio.play('slam', { volume: 0.6, rate: 1.1 });
+      }
+      if (this.actionT <= 0) this._startRecover();
+    } else if (A === 'dash') {
+      this._setAnim('run');
+      this.core.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
+      move(this.chargeDir.x, this.chargeDir.z, 8.5);
+      if (d < 1.3) player.hurt(1, { attacker: this, groundAttack: true });
+      if (this.actionT <= 0) this._startRecover();
+    } else if (A === 'crouch') {
+      facePlayer();
+      this.core.scale.y = 0.8; // visibly coils down
+      this.chargeStreak.material.opacity = 0.25 + 0.3 * Math.abs(Math.sin(this.actionT * 18));
+      if (this.actionT <= 0) {
+        this.action = 'charge';
+        this.actionT = 1.0;
+        this._chargeDist = 0;
+        this.core.scale.y = 1;
+        if (this.runAction) this.runAction.reset().play();
+        if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
+        audio.play('tendril-slam', { volume: 0.8, rate: 1.3 });
+      }
+    } else if (A === 'charge') {
+      this.chargeStreak.material.opacity = Math.max(0, this.chargeStreak.material.opacity - dt * 3);
+      this.core.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
+      move(this.chargeDir.x, this.chargeDir.z, 10.5);
+      this._chargeDist += 10.5 * dt;
+      if (d < 1.3) player.hurt(1, { attacker: this, groundAttack: true });
+      if (this._chargeDist > 6.2 || this.actionT <= 0) {
+        // THE COLLAPSE — the pounce spends everything and the wolf visibly
+        // FALLS OVER (Death clip, held). A breath of slow-motion sells the
+        // crash and stretches the window for small hands.
+        this.action = 'tired';
+        this.actionT = 2.6;
+        if (this.runAction) this.runAction.fadeOut(0.2);
+        if (this.attackAction) this.attackAction.fadeOut(0.15);
+        if (this.collapseAction) {
+          if (this.flyAction) this.flyAction.fadeOut(0.15);
+          if (this.walkAction) this.walkAction.fadeOut(0.15);
+          this.collapseAction.reset().fadeIn(0.1).play();
+          this._anim = 'collapsed';
+        }
+        juice.burst(this.x + this.core.position.x, 0.5, this.z + this.core.position.z, 0x8f6bff, 12);
+        juice.burst(this.x + this.core.position.x, 0.3, this.z + this.core.position.z, 0x9a8f80, 10); // dust
+        if (juice.effects) {
+          juice.effects.shake(0.4, 0.5);
+          if (juice.effects.slow) juice.effects.slow(0.75, 0.6);
+        }
+        audio.play('slam', { volume: 0.95, rate: 0.6 }); // the THUD
+      }
+    } else if (A === 'tired') {
+      // COLLAPSED: flat on the ground, eyes dim — the punish window
+      this.eyeMat.emissiveIntensity = 0.3;
+      if (this.actionT <= 0) {
+        if (this.collapseAction) this.collapseAction.fadeOut(0.3);
+        this._anim = 'x';
+        this._setAnim('idle');
+        this._backToProwl();
+      }
+    } else if (A === 'recover') {
+      // panting after the attack — the punish window
+      facePlayer();
+      this._setAnim('idle');
+      if (this.actionT <= 0) this._backToProwl();
+    }
+
+    // EXPOSURE LAW (on the FRESH state — a window must open the same frame
+    // its action begins): the wolf can be hurt while it recovers or lies
+    // collapsed — the punish window IS the attack's cost. Phase 2 keeps a
+    // brief extra pulse mid-prowl so the fight never starves a careful kid.
+    this._burstT += dt;
+    const A2 = this.action;
+    const open = A2 === 'tired' || A2 === 'recover';
+    const pulseOpen = this.phase >= 2 && A2 === 'prowl' && (this._burstT % 3.4) < 1.2;
+    this._setCoreExposed(open || pulseOpen);
+    // ...and the gold body-ring rides the wolf whenever a window is open
+    if (open) {
+      this.tiredRing.visible = true;
+      this.tiredRing.position.x = this.x + this.core.position.x;
+      this.tiredRing.position.z = this.z + this.core.position.z;
+      const pulse = 1 + Math.sin(t * 5) * 0.06;
+      this.tiredRing.scale.set(pulse, pulse, 1);
+      this.tiredRing.material.opacity = 0.6 + Math.sin(t * 5) * 0.25;
+    } else {
+      this.tiredRing.visible = false;
+    }
+    if (this.phase === 3 && A2 !== 'windup') {
+      this.eyeMat.emissiveIntensity = this.coreExposed ? 1.8 : 1.0; // beacon in the dark
+    }
+  }
+
+  _startRecover() {
+    this.action = 'recover';
+    this.actionT = 1.6;
+    this.eyeMat.emissiveIntensity = 0.5;
+  }
+
+  _backToProwl() {
+    this.action = 'prowl';
+    // attack cadence per phase: p1 measured, p2 pounce rhythm, p3 relentless
+    this.attackIn = this.phase === 1 ? 3.4 : this.phase === 2 ? 4.2 : 2.6;
   }
 }

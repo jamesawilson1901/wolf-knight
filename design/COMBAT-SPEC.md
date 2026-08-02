@@ -87,20 +87,27 @@ other or Kael); a raised shield physically bumps basic enemies back.
 
 ## Boss 1 — The Shadowgrip (Heart of the Hollow)
 
-GIANT SHADOW WOLF (wolf model at ~2.9x player wolves, violet eyes),
-looming over the caged ember (Cinder). Core is ALWAYS targetable but only
-takes damage when EXPOSED (gold strike ring + chime); guarded hits clank
-+ "BLOCKED".
+A big shadow wolf (~2.3x player wolves, violet eyes) that is ALIVE in
+every phase (v3.16 — playtest: "it just rotates" is banned forever): it
+PROWLS a circle around Kael, stalks in, and attacks with its BODY. The
+hitbox and every gold ring RIDE THE WOLF — you always hit the wolf,
+wherever it stands. Guarded hits clank + "BLOCKED"; every attack it
+makes ends in a punish window ON its body (gold ring + chime).
 
-- **Phase 1:** tendrils rise and slam telegraphed spots (red rings,
-  ≥0.9s) → a slammed tendril STICKS ~1.7s (gold ring = sever it, 1 hit)
-  → severing exposes the core (gold strike ring, cage cracks per sever).
-- **Phase 2 — THE POUNCE:** rest (pulse windows ~1.7s open) → crouch 1s +
-  red charge lane → charge → **THE COLLAPSE**: the wolf visibly FALLS
-  OVER (Death clip, held) for 2.6s with a pulsing GOLD ring under it,
-  slow-mo blip + thud on the crash, core force-exposed, Pip calls it.
-  Severing a tendril in phase 1 makes the giant FLINCH (hit-react).
-- **Phase 3:** whole-room darkness (Dark Wolf sight payoff) + bursts.
+- **Phase 1 — the Prowl:** the wolf circles (walk), then stalks in and
+  SWIPES (0.9s on-body telegraph: deep crouch + eyes flare + growl —
+  hound language, bigger) → 1.6s recover, EXPOSED. Meanwhile the cage's
+  tendrils slam as before: stuck ~1.7s (gold ring = sever), 3 severs
+  crack the shell → phase 2. Each sever makes the wolf FLINCH.
+- **Phase 2 — the Hunt:** prowls FASTER between POUNCES (crouch 1s +
+  red lane → leap → **THE COLLAPSE**: falls over (Death clip, held)
+  2.6s, gold ring, thud + slow-mo blip, Pip calls it) — then gets up
+  and keeps hunting from where it fell (never teleports home). Brief
+  extra exposure pulses mid-prowl. Shadow wave + 2 Shades as before.
+- **Phase 3 — the Dark Hunt:** whole-room darkness. The wolf circles
+  with GLOWING eyes (the only thing the Knight can see; the Dark Wolf
+  sees everything), then a HUGE eye-flare windup → a dash THROUGH where
+  you stood → exposed recover. Slams run faster.
 - Boss parts cap any single strike at 3 (surge bites hit for 2 — strong,
   never trivializing). Pip re-teaches the loop if the player flounders.
 - Dying mid-fight preserves the reached phase (flags.bossProgress, saved).

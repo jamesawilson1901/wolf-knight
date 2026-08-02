@@ -64,6 +64,15 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-02 — dad: "the boss is disappointing. still too big. all he
+  does is rotate to look at the player, doesn't move at all." → THE
+  WOLF UNCHAINED (v3.16): 1.62→1.3 (~2.3x), and it MOVES in every
+  phase — prowls a circle around Kael, stalks + swipes (p1), hunts
+  between pounces (p2), eye-flare dashes in the dark (p3). Found
+  underneath: the HITBOX + strike ring were anchored to the arena
+  CENTER, so hitting the collapsed wolf hit empty air — hitbox and all
+  gold rings now RIDE THE WOLF. LAW: a boss is a creature, never a
+  turret; its hitbox lives on its body.
   2026-08-01 — dad, session 3: boss "a little smaller but still
   intimidating" → 1.96→1.62 (~2.9x wolves). "Make it obvious when it's
   vulnerable" → THE COLLAPSE: falls over (Death clip) 2.6s + pulsing

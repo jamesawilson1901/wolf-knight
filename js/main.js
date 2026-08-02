@@ -583,7 +583,7 @@ function narrationTriggers(dt, t) {
     if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
     if (boss.slamState === 'telegraph') narration.say('boss_p1_telegraph');
     if (boss.phase === 2) narration.say('boss_p2');
-    if (boss.chargeState === 'tired') narration.say('boss_tired'); // the collapse
+    if (boss.action === 'tired') narration.say('boss_tired'); // the collapse
 
     if (boss.phase >= 2 && state.moonGauge >= 1) {
       narration.say('boss_bloodmoon'); // "ready" now means a FULL moon gauge

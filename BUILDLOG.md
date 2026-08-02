@@ -1436,3 +1436,49 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   surging wolf measures 0.56 = fire wolf, shieldling blocks frontal /
   takes flank + stunned damage + Pip line, boss at 1.62 collapses with
   ring+slowmo+exposure and gets back up. Zero page errors. SW v3.15.0.
+
+## v3.16.0 — THE WOLF UNCHAINED (boss rework) + ten new asset packs staged
+- Playtest verdict, deserved: "still too big. all he does is rotate to
+  look at the player. doesn't move at all." True — in phase 1 the wolf
+  was a statue that faced you while abstract tendrils did the fighting.
+  Worse, underneath: the boss HITBOX and gold strike ring were anchored
+  to the ARENA CENTER — during the collapse the ring said "hit the
+  wolf" while damage only landed on the empty middle of the room.
+- THE REWORK: the wolf is a LIVING HUNTER in every phase, driven by one
+  state machine (prowl → stalk → windup → attack → recover):
+  · It PROWLS a circle around Kael constantly (Walk anim, radius ~4u,
+    flips direction unpredictably) — never a statue, never idle.
+  · PHASE 1: it stalks in and SWIPES — 0.9s on-body telegraph (deep
+    crouch, eyes flare, growl — the hound language writ large), then a
+    big frontal paw arc (jumpable), then 1.6s of EXPOSED recovery.
+    The cage's tendril slams continue underneath: sever 3 to crack the
+    shell exactly as before. Aggressive kids also chip the boss early
+    by punishing swipes — both play styles progress the fight.
+  · PHASE 2: it hunts faster between POUNCES and the COLLAPSE window
+    (unchanged read: falls over, gold ring, thud, slow-mo) — and gets
+    up where it fell and keeps hunting. No more teleport-home rest.
+  · PHASE 3: it circles in its own darkness, eyes glowing (the only
+    visible thing for the Knight — the Dark Wolf sees all), then a
+    HUGE eye flare → a dash through where you stood → exposed recover.
+  · The HITBOX + strike ring + collapse ring all RIDE THE WOLF now.
+    New law in the contract: a boss is a creature, never a turret.
+  · Smaller again: 1.62 → 1.3 (~2.3x the player wolves) and its paws
+    are ON THE GROUND (it used to hover slightly, a dragon leftover).
+- Found + fixed while verifying: the exposure law read the STALE action
+  from the top of the frame, so every punish window opened one frame
+  late (and the in-page frame sampler caught it). Windows now open the
+  same frame their action begins.
+- NEW ASSET PACKS staged in asset-raw (gitignored, vendored per need):
+  RPG Tools Bits, Character Animations 1.1 (adds MovementAdvanced /
+  CombatRanged / Tools / Simulation rigs), Skeletons, Halloween Bits
+  (crypt dressing for e3), Forest Nature Pack (the Wild Woods region),
+  Resource Bits, Block Bits, Fantasy Weapons Bits, Medieval Hexagon
+  (2-part zip joined — world-map material), Kenney Digital Audio.
+  Mage Animations turned out to be a Godot-only .res — unusable here.
+- Verified headless (in-page frame sampling): the wolf provably TRAVELS
+  while prowling, full swipe cycle with flare/crouch/exposed-ring-on-
+  body, sword damage lands ON the wolf wherever it is, severing intact,
+  collapse ring+hitbox on the fallen wolf + Pip line, it resumes the
+  hunt where it fell, phase-3 dash covers real distance behind a 5.5x
+  eye flare. Screenshot reviewed: paws on the ground, in Kael's face.
+  Zero page errors. SW v3.16.0, badge v3.16.
