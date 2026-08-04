@@ -1674,3 +1674,27 @@ building on the skills previously learned."
   systems, gauntlet, Sylva duel + grant, vine-lash cuts in w5 AND e2)
   + four screenshots. SW cache wolfknight-v3.19.0, badge v3.19,
   VOICE-RECORDING-SCRIPT regenerated (104 lines).
+
+## v3.19.1 — The shield-bearers actually hold their shields (2026-08-02)
+
+- Dad: "the skeletons and the bone warden don't have a shield holding up
+  animation." Two separate gaps, both real:
+  (1) the **Bone Warden had NO block clip at all** — he front-blocked
+  every hit while strolling with the tower shield at his hip;
+  (2) the **Shieldling only posed within 2.4u**, but its guard rule was
+  true for the whole chase — so it walked in normally while hits clanked
+  off it. The pose and the damage rule disagreed.
+- Root problem: the rig's `Melee_Blocking` clip poses the WHOLE body, so
+  playing it outright would freeze the legs mid-advance. Fix: a **guard
+  LAYER** — `upperBodyClip()` strips the clip to spine/chest/head/arms and
+  `_setupGuard()` plays it as a second action at weight 8 against the walk
+  clip's 1 (~89% guard on the arms, legs 100% walk). `_guard(up, dt)` eases
+  it in/out in ~0.1s, driven every frame by the enemy's own `shieldUp`
+  getter — which the Warden's `takeDamage` now reads too, so the pose and
+  the hitbox can never drift apart again.
+- Result: both shield-bearers advance with the shield braced and visibly
+  DROP it for every swing, every stun and every recovery — the three
+  taught openings now read on the body, not just in the damage numbers.
+- Verified: 6-check headless suite (guard raised while walking, dropped
+  mid-swing, dropped when stunned, both enemies, front-block/back-hurt
+  rule intact) + crypt screenshots. SW cache wolfknight-v3.19.1.

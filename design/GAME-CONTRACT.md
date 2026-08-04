@@ -47,6 +47,13 @@
   for room-crossing charges are the exception).
 - Weakness hits announce themselves: gold flare + "SUPER!" callout; Pip
   teaches "every creature fears something" on the first one.
+- THE POSE NEVER LIES (v3.19.1, dad's law): if a guard blocks damage, the
+  body must visibly HOLD it — and must visibly DROP it the instant the
+  guard opens (swing, stun, recovery). Enemies expose one `shieldUp`
+  getter that BOTH `takeDamage` and the animation read, so the hitbox and
+  the pose can never drift apart. Whole-body block clips are layered onto
+  the UPPER BODY only (`upperBodyClip` + weight 8 vs walk's 1) so a
+  shield-bearer can brace and stride at the same time.
 - BOSSES FIGHT LIKE THEIR FAMILY (v3.18, dad's law): a boss is a bigger,
   tougher version of enemies the kids already read — same telegraphs,
   same answers (dodge the charge, shield/parry the swipe) — never a

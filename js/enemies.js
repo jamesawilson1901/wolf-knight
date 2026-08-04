@@ -796,6 +796,22 @@ export class Moth extends Bat {
 // waking up" beat before any fight starts).
 // ---------------------------------------------------------------------------
 
+// GUARD LAYER (v3.19.1 — playtest: "the skeletons and the bone warden don't
+// have a shield holding up animation"). The rig's `Melee_Blocking` clip poses
+// the whole body, so playing it whole would freeze the legs mid-advance. We
+// strip it down to the UPPER BODY (spine/chest/head/arms) and play that as a
+// second, heavier-weighted action ON TOP of walk: the legs keep striding, the
+// shield stays braced. LAW: a guard that blocks damage must LOOK raised —
+// the pose and the damage rule are never allowed to disagree.
+const UPPER_BODY = /^(spine|chest|head|upperarm|lowerarm|wrist|hand)/;
+const GUARD_WEIGHT = 8; // vs the locomotion clip's 1 → ~89% guard on the arms
+
+function upperBodyClip(src, name) {
+  const tracks = src.tracks.filter((t) => UPPER_BODY.test(t.name.split('.')[0]));
+  if (!tracks.length) return null;
+  return new THREE.AnimationClip(name, src.duration, tracks);
+}
+
 class SkeletonBase extends Enemy {
   constructor(world, x, z, cfg) {
     super(world, x, z, { hp: cfg.hp, radius: cfg.radius });
@@ -848,6 +864,28 @@ class SkeletonBase extends Enemy {
     const m = prepareCharacter(gltf.scene.clone());
     m.scale.setScalar(scale);
     bone.add(m);
+  }
+
+  // Build the shield-up layer (call once, after the clips are bound).
+  _setupGuard(anims, clipName = 'Melee_Blocking') {
+    const src = anims.find((c) => c.name === clipName);
+    if (!src) return;
+    const clip = upperBodyClip(src, clipName + '_upper');
+    if (!clip) return;
+    this.guardAction = this.mixer.clipAction(clip);
+    this.guardAction.setEffectiveWeight(0);
+    this.guardAction.play(); // always running; weight is the switch
+    this._guardW = 0;
+  }
+
+  // Ease the guard pose in/out (~0.1s) so raising and DROPPING the shield
+  // both read — the drop IS the opening the kids are taught to watch for.
+  _guard(up, dt) {
+    if (!this.guardAction) return;
+    const target = up ? GUARD_WEIGHT : 0;
+    this._guardW += (target - this._guardW) * Math.min(1, dt * 14);
+    if (Math.abs(target - this._guardW) < 0.02) this._guardW = target;
+    this.guardAction.setEffectiveWeight(this._guardW);
   }
 
   die() {
@@ -1051,7 +1089,7 @@ export class SkeletonShield extends SkeletonBase {
       clips: {
         inactive: 'Skeletons_Inactive_Floor_Pose', awaken: 'Skeletons_Awaken_Floor',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
-        block: 'Melee_Blocking', swing: 'Melee_1H_Attack_Chop',
+        swing: 'Melee_1H_Attack_Chop', // the guard pose is a LAYER (_setupGuard)
       },
     });
     this.awakenTime = 1.9;
@@ -1060,6 +1098,7 @@ export class SkeletonShield extends SkeletonBase {
     if (bladeGltf) this.mount('r', bladeGltf);
     this.swingTimer = 2.2;
     this._pp = null;
+    this._setupGuard(anims); // the tower shield RIDES UP while it walks
   }
 
   // shield up = frontal damage nulls (same honest cone as the Warden);
@@ -1086,6 +1125,9 @@ export class SkeletonShield extends SkeletonBase {
   update(dt, t, player) {
     if (this.dead) return;
     this._pp = { x: player.root.position.x, z: player.root.position.z };
+    // the guard pose follows the guard RULE exactly, every frame — stunned
+    // or mid-swing, the shield visibly drops
+    this._guard(this.shieldUp, dt);
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
@@ -1095,8 +1137,9 @@ export class SkeletonShield extends SkeletonBase {
     if (this.state === 'chase') {
       // a slow, deliberate shield-wall shuffle — menace, not speed. It
       // TURNS slowly too (2 rad/s): a quick kid can genuinely circle
-      // behind the shield, which is the whole lesson.
-      this._play(d < 2.4 ? 'block' : 'walk', 0.2);
+      // behind the shield, which is the whole lesson. The legs walk; the
+      // guard layer holds the shield braced the whole way in.
+      this._play('walk', 0.2);
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d);
       } else if (d > 0.01) {
@@ -1162,6 +1205,10 @@ export class BoneWarden extends SkeletonBase {
     if (shieldGltf) this.mount('l', shieldGltf);
     this.swings = 0;
     this.attackTimer = 1.4;
+    // v3.19.1: the Warden had NO guard pose at all — he front-blocked
+    // everything while strolling with the tower shield at his hip. Now the
+    // shield rides UP the whole advance and drops for every swing.
+    this._setupGuard(anims);
 
     // telegraph ring shows the chop's danger zone (boss-sized) — and it sits
     // ABOVE the crypt's stone floor tiles (height law: y<~0.17 is buried)
@@ -1184,8 +1231,7 @@ export class BoneWarden extends SkeletonBase {
   // flank him, or parry the chop and punish the stun. Punish windows
   // (tired / stunned / mid-swing) take full damage.
   takeDamage(n, element, kind) {
-    if (!this.dead && this.stunned <= 0 && this._pp &&
-        (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele')) {
+    if (!this.dead && this.shieldUp && this._pp) {
       const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
       const dd = Math.hypot(dx, dz);
       const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
@@ -1210,8 +1256,16 @@ export class BoneWarden extends SkeletonBase {
     player.hurt(dmg, { attacker: this, groundAttack: true });
   }
 
+  // his front-block law (takeDamage) in one place — the pose reads from the
+  // SAME expression, so the shield can never lie about the hitbox
+  get shieldUp() {
+    return this.stunned <= 0 &&
+      (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele');
+  }
+
   update(dt, t, player) {
     if (this.dead) return;
+    this._guard(this.shieldUp, dt);
     if (this.stunUpdate(dt)) { this.mixer.update(dt); this.dangerRing.material.opacity = 0; return; }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;

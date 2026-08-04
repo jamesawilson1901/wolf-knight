@@ -91,7 +91,7 @@ identity dials in CONFIG.FORMS):
 | **Slime** | slime | splits into 2 minis on death | Stoneroot |
 | **Cave Bat** | bat | dive then crash-lands grounded (vulnerable) | Stoneroot |
 | **Skeleton Minion / Rogue** | skeletons | minion swarms slowly; rogue circles + lunges | Stoneroot |
-| **Skeleton Shieldling** | minion + tower shield | advances shield-up (front damage NULL); opens on its own swing, from behind (slow 2 rad/s turn), or stunned | Stoneroot |
+| **Skeleton Shieldling** | minion + tower shield | advances **visibly** shield-up (front damage NULL); the shield DROPS on its own swing, when stunned, or you slip behind (slow 2 rad/s turn) | Stoneroot |
 | **Bone Warden** | armored skeleton | mini-boss: tower shield front-blocks (clank + BLOCKED); flank or parry-stun to hurt | Stoneroot |
 | **Cinder Shade** ⭐ | Shade, kiln-baked tint, 1.3x | RESISTS fire (0.4x + grey callout); moon shreds it | Ember (Kiln) |
 | **Elder Hound** ⭐ | Hound, gold eyes, 1.3x | pack leader: hp 6, harder charge, guaranteed ember | Ember (r2b) |
