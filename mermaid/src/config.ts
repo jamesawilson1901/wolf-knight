@@ -37,6 +37,9 @@ export const STORAGE_KEYS = {
   crowned: 'mermaid-reef.crowned',
 };
 
+/** Set once she has finished every level at least once. */
+export const LEVELS_COMPLETE_KEY = 'mermaid-reef.complete';
+
 // Customisation: gentle pastel shimmer tints (0 = natural).
 export const TINTS = [0, 0xffd9ee, 0xd6ecff, 0xd9ffe3];
 

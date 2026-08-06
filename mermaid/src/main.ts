@@ -4,6 +4,7 @@ import { ControlTestScene } from './scenes/ControlTestScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StartScene } from './scenes/StartScene';
 import { GameScene } from './scenes/GameScene';
+import { VictoryScene } from './scenes/VictoryScene';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -76,6 +77,7 @@ if (test === 'controls') {
   game.scene.add('preload', PreloadScene, true);
   game.scene.add('start', StartScene, false);
   game.scene.add('game', GameScene, false);
+  game.scene.add('victory', VictoryScene, false);
 }
 
 // Portrait: the CSS overlay (index.html) shows a rotate hint; pause the game

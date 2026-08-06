@@ -239,6 +239,46 @@ async function singleFrame(name: string, file: string, scale: number): Promise<F
   return { name, data, w: meta.width!, h: meta.height! };
 }
 
+/**
+ * The pack ships no seahorse sprite, but there is a lovely one drawn into the
+ * app icon. Lift it out: flood-fill the blue water in from the border and
+ * knock it transparent, leaving the outlined seahorse. Its own white eye
+ * highlight survives because the dark outline walls the fill out.
+ */
+async function cutoutSeahorse(): Promise<Frame> {
+  const src = join(SRC, 'App Icons', 'Underwater world_1024x1024_1.png');
+  const box = { left: 445, top: 35, width: 200, height: 245 };
+  const { data, info } = await sharp(src).extract(box).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const isWater = (i: number) => {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    return b > r + 12 || (r > 222 && g > 232 && b > 232); // water, or a bubble highlight
+  };
+  const seen = new Uint8Array(w * h);
+  const stack: number[] = [];
+  for (let x = 0; x < w; x++) stack.push(x, 0, x, h - 1);
+  for (let y = 0; y < h; y++) stack.push(0, y, w - 1, y);
+  while (stack.length) {
+    const y = stack.pop()!;
+    const x = stack.pop()!;
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const p = y * w + x;
+    if (seen[p] || !isWater(p * 4)) continue;
+    seen[p] = 1;
+    stack.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
+  }
+  for (let p = 0; p < w * h; p++) if (seen[p]) data[p * 4 + 3] = 0;
+  const png = await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+    .trim()
+    .resize(Math.round(w * 0.55))
+    .png()
+    .toBuffer();
+  const meta = await sharp(png).metadata();
+  return { name: 'seahorse', data: png, w: meta.width!, h: meta.height! };
+}
+
 function svgFrame(name: string, svg: string, w: number, h: number): Promise<Frame> {
   return sharp(Buffer.from(svg)).png().toBuffer().then((data) => ({ name, data, w, h }));
 }
@@ -276,9 +316,14 @@ async function buildItems() {
     ['rock-round', 'Stone_1.png', 0.5],
     ['rock-wide', 'Stone_6.png', 0.45],
     ['rock-spire', 'Stone_4.png', 0.55],
+    ['rock-small', 'Stone_5.png', 0.5],
+    ['rock-flat', 'Stone_3.png', 0.7],
     ['mast', 'Mast.png', 0.5],
     ['anchor', 'Anchor.png', 0.6],
     ['barrel', 'Barrel_1.png', 0.6],
+    ['crate', 'Barrel_2.png', 0.6],
+    ['wheel', 'Steering-wheel.png', 0.55],
+    ['chain', 'Chain.png', 1],
     ['weed-wide', 'Seaweed_1.png', 0.6],
     ['weed-tall', 'Seaweed_2.png', 0.6],
   ];
@@ -289,6 +334,7 @@ async function buildItems() {
   frames.push(await singleFrame('magnet', join(items, 'Bonus', 'Magnet.png'), 0.62));
   frames.push(await singleFrame('shield', join(items, 'Bonus', 'Shield.png'), 0.7));
   frames.push(await singleFrame('boost', join(items, 'Bonus', 'Acceleration.png'), 0.62));
+  frames.push(await cutoutSeahorse());
   frames.push(await singleFrame('heart', join(items, 'Bonus', 'Heart.png'), 0.62));
   frames.push(await singleFrame('crown', join(items, 'Bonus', 'Crown.png'), 0.6));
   frames.push(await singleFrame('btn-play', join(ui, 'btn', 'play.png'), 1));
