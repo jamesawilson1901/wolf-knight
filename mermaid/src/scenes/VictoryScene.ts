@@ -26,13 +26,13 @@ export class VictoryScene extends Phaser.Scene {
 
     const character = savedCharacter();
     const tint = savedTint();
-    const her = this.add.sprite(cx, cy, `mermaid${character}`, 'idle_000').setScale(1.5).play(`m${character}-joy`);
+    const her = this.add.sprite(cx, cy, `mermaid${character}`, 'idle_000').setScale(2.2).play(`m${character}-joy`);
     if (tint) her.setTint(tint);
     her.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => her.play(`m${character}-idle`));
     this.tweens.add({ targets: her, y: cy - 24, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    const crown = this.add.image(cx + 8, cy - 150, 'items', 'crown').setScale(1.1);
-    this.tweens.add({ targets: crown, y: cy - 168, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const crown = this.add.image(cx + 10, cy - 232, 'items', 'crown').setScale(1.5).setDepth(4);
+    this.tweens.add({ targets: crown, y: cy - 252, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // every friend she rescued, swimming a slow ring around her
     const friends = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
@@ -41,7 +41,8 @@ export class VictoryScene extends Phaser.Scene {
       const species = (i % 3) + 1;
       const sprite = this.add
         .sprite(cx, cy, 'creatures', `fish-${species}-move_000`)
-        .setScale(0.7)
+        .setScale(0.85)
+        .setDepth(5)
         .play({ key: `fish-${species}`, startFrame: (i * 3) % 10 });
       ring.push({ sprite, phase: (i / Math.max(1, friends)) * Math.PI * 2 });
     }
@@ -49,8 +50,8 @@ export class VictoryScene extends Phaser.Scene {
       this.ringT += delta / 1000;
       for (const f of ring) {
         const a = this.ringT * 0.5 + f.phase;
-        f.sprite.x = cx + Math.cos(a) * 330;
-        f.sprite.y = cy + Math.sin(a) * 150;
+        f.sprite.x = cx + Math.cos(a) * 300;
+        f.sprite.y = cy + Math.sin(a) * 130;
         f.sprite.setFlipX(Math.sin(a) < 0);
       }
     });

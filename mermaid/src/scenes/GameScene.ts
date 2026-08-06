@@ -143,6 +143,10 @@ export class GameScene extends Phaser.Scene {
     this.vacuumUntil = 0;
     this.streak = 0;
     this.t = 0;
+    // friend powers are on timers; without resetting these they carry stale
+    // values across a level restart and go quiet for a long stretch
+    this.nextLucky = this.time.now + 4000;
+    this.nextGuard = this.time.now + 6000;
     this.fish = [];
     this.jellies = [];
     this.pickups = [];
@@ -236,8 +240,9 @@ export class GameScene extends Phaser.Scene {
 
     const rescuedCount = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
     for (let i = 0; i < rescuedCount; i++) {
+      // species 4 is the lionfish, which is an enemy — friends cycle 1..3
       this.friends.push(
-        new FriendFish(this, (i % 4) + 1, i, this.mermaid.x - 120 - i * 95, this.mermaid.y),
+        new FriendFish(this, (i % 3) + 1, i, this.mermaid.x - 120 - i * 95, this.mermaid.y),
       );
     }
 
