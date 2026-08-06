@@ -21,10 +21,21 @@ export function sfx(
   scene.sound.play(key, opts);
 }
 
+// Flipped on by the asset build when audio-source/music.mp3 exists. Keeping
+// it a constant means the loader never 404s looking for a track we don't have.
+export const MUSIC_PRESENT = __MUSIC_PRESENT__;
+
 export function startAmbient(scene: Phaser.Scene) {
   const existing = scene.sound.get('ambient');
-  if (existing?.isPlaying) return;
-  scene.sound.play('ambient', { loop: true, volume: isMuted() ? 0 : 0.55 });
+  if (!existing?.isPlaying) {
+    scene.sound.play('ambient', { loop: true, volume: isMuted() ? 0 : 0.55 });
+  }
+  if (MUSIC_PRESENT) {
+    const music = scene.sound.get('music');
+    if (!music?.isPlaying) {
+      scene.sound.play('music', { loop: true, volume: isMuted() ? 0 : 0.4 });
+    }
+  }
 }
 
 export function isMuted(): boolean {
@@ -33,8 +44,10 @@ export function isMuted(): boolean {
 
 export function setMuted(scene: Phaser.Scene, muted: boolean) {
   localStorage.setItem(STORAGE_KEYS.muted, muted ? '1' : '0');
-  const ambient = scene.sound.get('ambient');
-  if (ambient && 'setVolume' in ambient) {
-    (ambient as Phaser.Sound.WebAudioSound).setVolume(muted ? 0 : 0.55);
-  }
+  const set = (key: string, vol: number) => {
+    const s = scene.sound.get(key);
+    if (s && 'setVolume' in s) (s as Phaser.Sound.WebAudioSound).setVolume(muted ? 0 : vol);
+  };
+  set('ambient', 0.55);
+  if (MUSIC_PRESENT) set('music', 0.4);
 }

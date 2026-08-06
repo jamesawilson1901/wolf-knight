@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DESIGN_HEIGHT } from '../config';
+import { MUSIC_PRESENT } from '../systems/audio';
 
 // Loads the shared assets up front with a text-free progress bar. Background
 // layers are per-level and loaded by GameScene on demand (everything is
@@ -28,9 +29,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.atlas('creatures', 'creatures.webp', 'creatures.json');
     this.load.atlas('items', 'items.webp', 'items.json');
     this.load.image('menu-bg', 'bg/b1s1/layer-1.webp');
-    for (const key of ['ambient', 'pearl', 'coin', 'chest', 'complete', 'tap', 'joy', 'ouch', 'power', 'pop']) {
+    for (const key of ['ambient', 'pearl', 'coin', 'chest', 'complete', 'tap', 'joy', 'ouch', 'power', 'pop', 'danger', 'rumble']) {
       this.load.audio(key, `audio/${key}.wav`);
     }
+    // Optional: only present once a music loop is dropped into audio-source/
+    if (MUSIC_PRESENT) this.load.audio('music', 'audio/music.wav');
   }
 
   create() {
@@ -78,5 +81,7 @@ export class PreloadScene extends Phaser.Scene {
     creature('urchin', 'urchin-move_', 7);
     creature('crab', 'crab-move_', 9);
     creature('shark', 'shark-move_', 9);
+    creature('shark-attack', 'shark-attack-move_', 11);
+    creature('lionfish', 'lionfish-move_', 10);
   }
 }

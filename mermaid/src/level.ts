@@ -1,19 +1,29 @@
-// Seven levels across seven background scenes, each a touch harder than the
-// last. Difficulty design for an almost-six-year-old, borrowed from the games
-// that get this right (Mario's level grammar, Kirby, Sago Mini, Toca Boca):
-//  - one new element per level, introduced generously (never two at once)
-//  - difficulty = density and variety, never punishment: there is still no
-//    fail state anywhere, an ouch costs nothing but a red flash
-//  - every level is completable by doing nothing at all
-//  - the reward at the end is always the same big, reliable ritual
-//    (chest -> sparkles -> a new friend), so finishing feels safe to want
+// Twelve levels across the pack's eight scenes, each harder than the last.
+//
+// Difficulty design for an almost-six-year-old, borrowed from the games that
+// get this right (Mario's level grammar, Ori's spike corridors, Kirby):
+//  - one new element per level, introduced generously and never two at once
+//  - difficulty is navigation, density and precision — never punishment.
+//    There is still no fail state: an ouch is a red flash and a small bump.
+//  - a pearl always sits in the safe gap of a spike gate or tunnel, so the
+//    collectible trail *is* the tutorial for the route through
+//  - the resting lane along the seafloor is kept clear of gate spikes, so a
+//    child who puts the phone down still reaches the end untouched
+//  - the reward is always the same reliable ritual (chest, sparkles, a new
+//    fish friend), so wanting to finish never feels risky
+//
+// Levels 4, 8 and 12 hide a shark in the chest: it bursts out, chases her
+// back the way she came, a rockfall drives it off, and the real chest waits
+// beyond the original start with a fish friend inside.
+import { PLAY_TOP, SEAFLOOR_Y } from './config';
+
 export interface Collectible {
   kind: 'pearl' | 'coin';
   worldX: number;
   y: number;
 }
 export interface FishDef {
-  species: 1 | 2 | 3 | 4;
+  species: 1 | 2 | 3;
   worldX: number;
   baseY: number;
   amp: number;
@@ -27,23 +37,60 @@ export interface JellyDef {
   worldX: number;
   baseY: number;
 }
+export type HazardKind = 'urchin' | 'crab' | 'shark' | 'lionfish';
 export interface HazardDef {
-  kind: 'urchin' | 'crab' | 'shark';
+  kind: HazardKind;
+  worldX: number;
+  baseY: number;
+  still?: boolean; // gate spikes hold position so the gap stays predictable
+}
+export interface HelperDef {
+  kind: 'dolphin' | 'turtle';
   worldX: number;
   baseY: number;
 }
+export type PowerupKind = 'magnet' | 'shield' | 'boost' | 'heart';
 export interface PowerupDef {
-  kind: 'magnet' | 'shield';
+  kind: PowerupKind;
   worldX: number;
   y: number;
 }
+export type ObstacleKind =
+  | 'rock-tall'
+  | 'rock-round'
+  | 'rock-wide'
+  | 'rock-spire'
+  | 'mast'
+  | 'anchor'
+  | 'barrel'
+  | 'weed-wide'
+  | 'weed-tall';
+export interface ObstacleDef {
+  kind: ObstacleKind;
+  worldX: number;
+  y: number;
+  flipY?: boolean; // hang it from the ceiling instead of standing on the floor
+}
+
+/** Collision half-extents per prop, deliberately smaller than the art. */
+export const OBSTACLE_SIZE: Record<ObstacleKind, { rx: number; ry: number }> = {
+  'rock-tall': { rx: 62, ry: 118 },
+  'rock-round': { rx: 58, ry: 80 },
+  'rock-wide': { rx: 78, ry: 62 },
+  'rock-spire': { rx: 42, ry: 132 },
+  mast: { rx: 96, ry: 118 },
+  anchor: { rx: 52, ry: 70 },
+  barrel: { rx: 48, ry: 60 },
+  'weed-wide': { rx: 78, ry: 62 },
+  'weed-tall': { rx: 52, ry: 74 },
+};
 
 export interface SceneConfig {
   id: string;
   layers: number;
-  floorLayer: number; // the sand/rock the chest sits on — scrolls at 1.0
-  extraFloorLayer?: number; // floor-level feature (e.g. the dino skeleton)
-  foregroundLayer?: number; // rendered in front of gameplay
+  floorLayer: number;
+  extraFloorLayer?: number;
+  foregroundLayer?: number;
 }
 
 export interface LevelConfig {
@@ -52,47 +99,97 @@ export interface LevelConfig {
   scrollLength: number;
   pearlGroups: number;
   coins: number;
+  gates: number;
+  gateGap: number; // half-height of the safe opening; smaller = tighter
+  tunnels: number; // horizontal spike corridors
+  obstacles: number;
   urchins: number;
   crabs: number;
   sharks: number;
-  magnets: number;
-  shields: number;
+  lionfish: number;
+  powerups: number;
   fish: number;
   jellies: number;
+  sharkChase?: boolean; // the chest is a trap on these levels
 }
 
+const SCENES: Record<string, SceneConfig> = {
+  reef: { id: 'b1s1', layers: 6, floorLayer: 5, foregroundLayer: 6 },
+  coral: { id: 'b1s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
+  ruins: { id: 'b2s1', layers: 8, floorLayer: 7, foregroundLayer: 8 },
+  canyon: { id: 'b2s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
+  gems: { id: 'b1s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
+  kelp: { id: 'b1s3', layers: 7, floorLayer: 5, foregroundLayer: 7 },
+  cove: { id: 'b2s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
+  bones: { id: 'b2s3', layers: 6, floorLayer: 4, extraFloorLayer: 5, foregroundLayer: 6 },
+};
+
+// Chase levels get a shorter outward leg, because the escape run back is a
+// whole second act on top.
 export const LEVELS: LevelConfig[] = [
-  // L1 — shipwreck reef: the baseline. A few urchins, one crab.
-  { scene: { id: 'b1s1', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 130, scrollLength: 7800, pearlGroups: 5, coins: 4,
-    urchins: 3, crabs: 1, sharks: 0, magnets: 0, shields: 0, fish: 8, jellies: 3 },
-  // L2 — bright coral reef: introduces the magnet.
-  { scene: { id: 'b1s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 135, scrollLength: 8200, pearlGroups: 5, coins: 5,
-    urchins: 4, crabs: 1, sharks: 0, magnets: 1, shields: 0, fish: 9, jellies: 3 },
-  // L3 — sunken ruins: introduces the shield bubble.
-  { scene: { id: 'b2s1', layers: 8, floorLayer: 7, foregroundLayer: 8 },
-    scrollSpeed: 140, scrollLength: 8600, pearlGroups: 6, coins: 5,
-    urchins: 5, crabs: 2, sharks: 0, magnets: 1, shields: 1, fish: 9, jellies: 3 },
-  // L4 — rocky canyon: denser, a little faster.
-  { scene: { id: 'b2s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 145, scrollLength: 9000, pearlGroups: 6, coins: 6,
-    urchins: 6, crabs: 2, sharks: 0, magnets: 1, shields: 1, fish: 10, jellies: 4 },
-  // L5 — gem cave: introduces the shark (slow, well telegraphed).
-  { scene: { id: 'b1s2', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 150, scrollLength: 9400, pearlGroups: 6, coins: 6,
-    urchins: 6, crabs: 3, sharks: 1, magnets: 1, shields: 1, fish: 10, jellies: 4 },
-  // L6 — pebble cove: two sharks, everything a notch denser.
-  { scene: { id: 'b2s4', layers: 6, floorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 155, scrollLength: 9800, pearlGroups: 7, coins: 7,
-    urchins: 7, crabs: 3, sharks: 2, magnets: 1, shields: 1, fish: 11, jellies: 4 },
-  // L7 — dragon graveyard: the grand finale mix.
-  { scene: { id: 'b2s3', layers: 6, floorLayer: 4, extraFloorLayer: 5, foregroundLayer: 6 },
-    scrollSpeed: 160, scrollLength: 10200, pearlGroups: 7, coins: 8,
-    urchins: 8, crabs: 3, sharks: 2, magnets: 2, shields: 1, fish: 11, jellies: 5 },
+  // L1 reef — learn to swim. Open water, a few urchins to notice.
+  { scene: SCENES.reef, scrollSpeed: 172, scrollLength: 7400, pearlGroups: 5, coins: 4,
+    gates: 0, gateGap: 260, tunnels: 0, obstacles: 2, urchins: 3, crabs: 1, sharks: 0,
+    lionfish: 0, powerups: 1, fish: 8, jellies: 2 },
+  // L2 coral — the magnet, more props to weave past.
+  { scene: SCENES.coral, scrollSpeed: 184, scrollLength: 7800, pearlGroups: 5, coins: 5,
+    gates: 1, gateGap: 250, tunnels: 0, obstacles: 4, urchins: 4, crabs: 1, sharks: 0,
+    lionfish: 1, powerups: 2, fish: 8, jellies: 2 },
+  // L3 ruins — first proper spike gates and the lionfish.
+  { scene: SCENES.ruins, scrollSpeed: 196, scrollLength: 8200, pearlGroups: 6, coins: 5,
+    gates: 2, gateGap: 240, tunnels: 0, obstacles: 6, urchins: 4, crabs: 2, sharks: 0,
+    lionfish: 2, powerups: 2, fish: 8, jellies: 3 },
+  // L4 canyon — the first trapped chest. Shark chase!
+  { scene: SCENES.canyon, scrollSpeed: 206, scrollLength: 7000, pearlGroups: 5, coins: 6,
+    gates: 2, gateGap: 232, tunnels: 1, obstacles: 6, urchins: 5, crabs: 2, sharks: 0,
+    lionfish: 2, powerups: 3, fish: 9, jellies: 3, sharkChase: true },
+  // L5 gems — free-roaming sharks join in.
+  { scene: SCENES.gems, scrollSpeed: 218, scrollLength: 9000, pearlGroups: 6, coins: 6,
+    gates: 3, gateGap: 224, tunnels: 1, obstacles: 8, urchins: 5, crabs: 3, sharks: 1,
+    lionfish: 2, powerups: 3, fish: 9, jellies: 4 },
+  // L6 kelp — dark, dense, gaps tightening.
+  { scene: SCENES.kelp, scrollSpeed: 228, scrollLength: 9400, pearlGroups: 7, coins: 7,
+    gates: 3, gateGap: 214, tunnels: 2, obstacles: 9, urchins: 6, crabs: 3, sharks: 1,
+    lionfish: 3, powerups: 3, fish: 9, jellies: 4 },
+  // L7 cove — four gates and two sharks.
+  { scene: SCENES.cove, scrollSpeed: 238, scrollLength: 9800, pearlGroups: 7, coins: 7,
+    gates: 4, gateGap: 206, tunnels: 2, obstacles: 10, urchins: 6, crabs: 3, sharks: 2,
+    lionfish: 3, powerups: 3, fish: 10, jellies: 4 },
+  // L8 bones — the graveyard, and another trapped chest.
+  { scene: SCENES.bones, scrollSpeed: 246, scrollLength: 8200, pearlGroups: 6, coins: 8,
+    gates: 3, gateGap: 200, tunnels: 2, obstacles: 9, urchins: 7, crabs: 3, sharks: 1,
+    lionfish: 3, powerups: 4, fish: 10, jellies: 5, sharkChase: true },
+  // L9-L11 — a second, harder lap through the best scenes.
+  { scene: SCENES.coral, scrollSpeed: 258, scrollLength: 10600, pearlGroups: 8, coins: 8,
+    gates: 5, gateGap: 192, tunnels: 2, obstacles: 12, urchins: 7, crabs: 4, sharks: 2,
+    lionfish: 4, powerups: 4, fish: 10, jellies: 5 },
+  { scene: SCENES.canyon, scrollSpeed: 268, scrollLength: 11000, pearlGroups: 8, coins: 9,
+    gates: 5, gateGap: 182, tunnels: 3, obstacles: 13, urchins: 8, crabs: 4, sharks: 2,
+    lionfish: 4, powerups: 4, fish: 11, jellies: 5 },
+  { scene: SCENES.gems, scrollSpeed: 280, scrollLength: 11400, pearlGroups: 8, coins: 9,
+    gates: 6, gateGap: 172, tunnels: 3, obstacles: 14, urchins: 8, crabs: 4, sharks: 3,
+    lionfish: 5, powerups: 4, fish: 11, jellies: 6 },
+  // L12 bones — the finale: hardest run, trapped chest, and the crown.
+  { scene: SCENES.bones, scrollSpeed: 292, scrollLength: 9800, pearlGroups: 7, coins: 10,
+    gates: 5, gateGap: 164, tunnels: 3, obstacles: 13, urchins: 9, crabs: 4, sharks: 2,
+    lionfish: 5, powerups: 5, fish: 11, jellies: 6, sharkChase: true },
 ];
 
 export const CHEST_Y = 880;
+
+/** On chase levels the real chest waits back beyond the original start. */
+export const REAL_CHEST_WORLD_X = -2600;
+/** Scroll position where the escape run stops, with the real chest in view. */
+export const ESCAPE_END_SCROLL = REAL_CHEST_WORLD_X - 350;
+/** The rockfall that drives the shark off fires here, part-way back. */
+export const ROCKFALL_SCROLL = 1500;
+
+/**
+ * Gate spikes never come below this, so the seafloor resting lane stays a
+ * safe corridor for a child who stops playing.
+ */
+const GATE_FLOOR_LIMIT = 800;
+const SPIKE_STEP = 92;
 
 export function chestWorldX(cfg: LevelConfig): number {
   return cfg.scrollLength + 1430;
@@ -104,10 +201,10 @@ export function parallaxFactors(scene: SceneConfig): number[] {
   for (let i = 1; i <= scene.layers; i++) {
     if (i === scene.floorLayer || i === scene.extraFloorLayer) f.push(1.0);
     else if (i === scene.foregroundLayer) f.push(1.18);
+    else if (i > scene.floorLayer) f.push(1.08); // e.g. light shafts in the kelp
     else {
-      // geometric ramp through the background layers
       const backCount = scene.floorLayer - 1;
-      const t = (i - 1) / Math.max(1, backCount - 1);
+      const t = Math.min(1, (i - 1) / Math.max(1, backCount - 1));
       f.push(0.03 + (0.55 - 0.03) * t * t);
     }
   }
@@ -131,65 +228,152 @@ export interface LevelContent {
   jellyDefs: JellyDef[];
   hazardDefs: HazardDef[];
   powerupDefs: PowerupDef[];
+  obstacleDefs: ObstacleDef[];
+  helperDefs: HelperDef[];
 }
 
+const BAND_TOP = 300;
+const BAND_BOTTOM = 760;
+
 /**
- * Deterministic layout per level: gentle arcs and waves of pearls with
- * hazards placed *between* groups and vertically away from each group's path,
- * so following the pearls steers around trouble. The collectible band stays
- * well off the floor and ceiling.
+ * Deterministic layout per level. Pearl runs come in five shapes so no two
+ * levels read the same; gates and tunnels are spike walls with a pearl in
+ * the opening; obstacles and creatures fill the space between.
  */
 export function buildLevel(index: number): LevelContent {
   const cfg = LEVELS[index % LEVELS.length];
-  const rand = mulberry32(1000 + index * 77);
+  const rand = mulberry32(7000 + index * 131);
   const pick = (lo: number, hi: number) => lo + rand() * (hi - lo);
+  const clamp = (y: number) => Math.min(BAND_BOTTOM, Math.max(BAND_TOP, y));
 
   const collectibles: Collectible[] = [];
   const hazardDefs: HazardDef[] = [];
   const powerupDefs: PowerupDef[] = [];
+  const obstacleDefs: ObstacleDef[] = [];
+  const helperDefs: HelperDef[] = [];
 
   const startX = 1400;
   const endX = cfg.scrollLength - 500;
   const span = (endX - startX) / cfg.pearlGroups;
-  const groupYs: number[] = [];
 
+  // --- pearl runs: five shapes, rotated so levels never feel identical ---
+  const shapes = ['arc', 'wave', 'stair', 'zigzag', 'ring'] as const;
+  const groupYs: number[] = [];
   for (let g = 0; g < cfg.pearlGroups; g++) {
-    const gx = startX + g * span + pick(0, span * 0.2);
-    const cy = pick(380, 700);
+    const gx = startX + g * span + pick(0, span * 0.15);
+    const cy = pick(BAND_TOP + 90, BAND_BOTTOM - 90);
     groupYs.push(cy);
-    const n = 5 + Math.floor(rand() * 2);
-    const spacing = pick(145, 175);
-    const amp = pick(140, 190);
-    const isArc = g % 2 === 0;
+    const shape = shapes[(g + index) % shapes.length];
+    const n = 5 + Math.floor(rand() * 3);
+    const spacing = pick(140, 170);
+    const amp = pick(130, 195);
+
     for (let i = 0; i < n; i++) {
       const t = n === 1 ? 0.5 : i / (n - 1);
-      const y = isArc
-        ? cy - Math.sin(t * Math.PI) * amp * (rand() > 0.5 ? 1 : -0.8)
-        : cy + Math.sin(t * Math.PI * 2) * amp * 0.8;
-      collectibles.push({
-        kind: 'pearl',
-        worldX: gx + i * spacing,
-        y: Math.min(760, Math.max(300, y)),
-      });
+      let x = gx + i * spacing;
+      let y = cy;
+      switch (shape) {
+        case 'arc':
+          y = cy - Math.sin(t * Math.PI) * amp * (rand() > 0.5 ? 1 : -0.85);
+          break;
+        case 'wave':
+          y = cy + Math.sin(t * Math.PI * 2) * amp * 0.85;
+          break;
+        case 'stair':
+          y = cy - amp + t * amp * 2;
+          break;
+        case 'zigzag':
+          y = cy + (i % 2 === 0 ? -amp * 0.7 : amp * 0.7);
+          break;
+        case 'ring': {
+          const a = t * Math.PI * 2;
+          x = gx + 220 + Math.cos(a) * 200;
+          y = cy + Math.sin(a) * amp * 0.75;
+          break;
+        }
+      }
+      collectibles.push({ kind: 'pearl', worldX: x, y: clamp(y) });
     }
   }
 
-  // coins between groups, on the path a drifting mermaid might take
   for (let c = 0; c < cfg.coins; c++) {
     const t = (c + 0.5) / cfg.coins;
     collectibles.push({
       kind: 'coin',
       worldX: startX + t * (endX - startX) + pick(-120, 120),
-      y: pick(360, 700),
+      y: pick(BAND_TOP + 60, BAND_BOTTOM - 60),
     });
   }
 
-  // urchins live between pearl groups, offset away from the group height
+  // --- spike gates: a wall of urchins with one clear opening -------------
+  const busyXs: number[] = [];
+  const addGate = (gateX: number, gapY: number, half: number) => {
+    busyXs.push(gateX);
+    for (let y = PLAY_TOP + 30; y < gapY - half; y += SPIKE_STEP) {
+      hazardDefs.push({ kind: 'urchin', worldX: gateX, baseY: y, still: true });
+    }
+    for (let y = gapY + half; y < GATE_FLOOR_LIMIT; y += SPIKE_STEP) {
+      hazardDefs.push({ kind: 'urchin', worldX: gateX, baseY: y, still: true });
+    }
+    collectibles.push({ kind: 'pearl', worldX: gateX, y: gapY });
+    collectibles.push({ kind: 'pearl', worldX: gateX + 190, y: gapY });
+  };
+
+  for (let k = 0; k < cfg.gates; k++) {
+    const gateX = startX + span * 0.55 + ((k + 0.5) / cfg.gates) * (endX - startX - span);
+    addGate(gateX, pick(BAND_TOP + 40, BAND_BOTTOM - 100), cfg.gateGap);
+  }
+
+  // --- tunnels: a horizontal spike corridor with a pearl line inside -----
+  for (let k = 0; k < cfg.tunnels; k++) {
+    const tx = startX + span * 0.3 + ((k + 0.25) / Math.max(1, cfg.tunnels)) * (endX - startX - span * 1.5);
+    const midY = pick(BAND_TOP + 120, BAND_BOTTOM - 120);
+    const half = cfg.gateGap * 0.78;
+    const length = pick(700, 1100);
+    busyXs.push(tx + length / 2);
+    for (let x = tx; x < tx + length; x += SPIKE_STEP * 1.35) {
+      hazardDefs.push({ kind: 'urchin', worldX: x, baseY: midY - half, still: true });
+      if (midY + half < GATE_FLOOR_LIMIT) {
+        hazardDefs.push({ kind: 'urchin', worldX: x, baseY: midY + half, still: true });
+      }
+    }
+    for (let x = tx + 60; x < tx + length; x += 175) {
+      collectibles.push({ kind: 'pearl', worldX: x, y: midY });
+    }
+  }
+
+  const clearOfBusy = (x: number, pad = 430) => busyXs.every((bx) => Math.abs(x - bx) > pad);
+
+  // --- obstacles: props to swim around, standing or hanging --------------
+  const floorProps: ObstacleKind[] = ['rock-tall', 'rock-round', 'rock-wide', 'anchor', 'barrel', 'weed-wide', 'weed-tall', 'mast'];
+  const hangProps: ObstacleKind[] = ['rock-spire', 'rock-tall', 'rock-round'];
+  let placed = 0;
+  for (let attempt = 0; attempt < cfg.obstacles * 14 && placed < cfg.obstacles; attempt++) {
+    const x = pick(startX + 200, endX);
+    if (!clearOfBusy(x)) continue;
+    if (rand() > 0.55) {
+      obstacleDefs.push({
+        kind: hangProps[Math.floor(rand() * hangProps.length)],
+        worldX: x,
+        y: PLAY_TOP + pick(40, 150),
+        flipY: true,
+      });
+    } else {
+      obstacleDefs.push({
+        kind: floorProps[Math.floor(rand() * floorProps.length)],
+        worldX: x,
+        y: pick(700, 860),
+      });
+    }
+    placed++;
+  }
+
+  // --- free-swimming ouchy creatures ------------------------------------
   for (let u = 0; u < cfg.urchins; u++) {
     const g = u % cfg.pearlGroups;
     const gx = startX + (g + 0.82) * span;
-    const awayFrom = groupYs[g];
-    const y = awayFrom > 520 ? pick(290, 400) : pick(620, 730);
+    if (!clearOfBusy(gx)) continue;
+    const y = groupYs[g] > 520 ? pick(290, 400) : pick(620, 730);
     hazardDefs.push({ kind: 'urchin', worldX: gx + pick(-80, 80), baseY: y });
   }
   for (let c = 0; c < cfg.crabs; c++) {
@@ -199,25 +383,52 @@ export function buildLevel(index: number): LevelContent {
       baseY: 952,
     });
   }
+  for (let l = 0; l < cfg.lionfish; l++) {
+    const x = startX + ((l + 0.35) / cfg.lionfish) * (endX - startX) + pick(-260, 260);
+    if (!clearOfBusy(x, 300)) continue;
+    hazardDefs.push({ kind: 'lionfish', worldX: x, baseY: pick(330, 700) });
+  }
   for (let s = 0; s < cfg.sharks; s++) {
-    hazardDefs.push({
-      kind: 'shark',
-      worldX: 2600 + s * 3400 + pick(0, 800),
-      baseY: pick(380, 560),
-    });
+    const sharkX = 3000 + s * 3600 + pick(0, 900);
+    hazardDefs.push({ kind: 'shark', worldX: sharkX, baseY: pick(380, 560) });
+    // Roughly half the sharks get a dolphin shadowing them — it charges in
+    // and drives that shark off. Random on purpose: a lucky rescue, not a
+    // guarantee, so sharks stay worth respecting.
+    if (rand() < 0.5) {
+      helperDefs.push({ kind: 'dolphin', worldX: sharkX - pick(700, 1500), baseY: pick(340, 620) });
+    }
   }
 
-  for (let m = 0; m < cfg.magnets; m++) {
-    powerupDefs.push({ kind: 'magnet', worldX: pick(2200, endX - 2200), y: pick(380, 660) });
-  }
-  for (let s = 0; s < cfg.shields; s++) {
-    powerupDefs.push({ kind: 'shield', worldX: pick(1700, 2600), y: pick(380, 660) });
+  // Turtles: calm assists dotted along the level. Retry placement so a busy
+  // level never ends up with none — the turtle is a nice moment to find.
+  const turtles = 1 + Math.floor(index / 4);
+  for (let i = 0; i < turtles; i++) {
+    let x = 0;
+    for (let attempt = 0; attempt < 24; attempt++) {
+      x = pick(startX + 900, endX - 700);
+      if (clearOfBusy(x, 320)) break;
+      x = 0;
+    }
+    if (!x) continue;
+    helperDefs.push({ kind: 'turtle', worldX: x, baseY: pick(BAND_TOP + 80, BAND_BOTTOM - 80) });
   }
 
+  // --- powerups: a shield always lands before the first gate -------------
+  const kinds: PowerupKind[] = ['shield', 'magnet', 'boost', 'heart'];
+  for (let p = 0; p < cfg.powerups; p++) {
+    const kind = kinds[p % kinds.length];
+    const x =
+      p === 0
+        ? Math.max(1700, busyXs.length ? Math.min(...busyXs) - 520 : 2400)
+        : pick(2400, endX - 900);
+    powerupDefs.push({ kind, worldX: x, y: pick(BAND_TOP + 60, BAND_BOTTOM - 60) });
+  }
+
+  // --- friendly life (lionfish is an enemy now, so species 1-3 only) -----
   const fishDefs: FishDef[] = [];
   for (let i = 0; i < cfg.fish; i++) {
     fishDefs.push({
-      species: ((i % 4) + 1) as 1 | 2 | 3 | 4,
+      species: ((i % 3) + 1) as 1 | 2 | 3,
       worldX: 1100 + (i * (cfg.scrollLength - 1500)) / cfg.fish + pick(-200, 200),
       baseY: pick(300, 740),
       amp: pick(45, 85),
@@ -229,12 +440,35 @@ export function buildLevel(index: number): LevelContent {
   }
   const jellyDefs: JellyDef[] = [];
   for (let i = 0; i < cfg.jellies; i++) {
-    jellyDefs.push({
-      species: ((i % 3) + 1) as 1 | 2 | 3,
-      worldX: 2000 + (i * (cfg.scrollLength - 3000)) / cfg.jellies + pick(-250, 250),
-      baseY: pick(360, 560),
-    });
+    const x = 2000 + (i * (cfg.scrollLength - 3000)) / cfg.jellies + pick(-250, 250);
+    if (!clearOfBusy(x, 320)) continue;
+    jellyDefs.push({ species: ((i % 3) + 1) as 1 | 2 | 3, worldX: x, baseY: pick(360, 560) });
   }
 
-  return { collectibles, fishDefs, jellyDefs, hazardDefs, powerupDefs };
+  // --- the escape run: everything behind the original start line --------
+  // Only reachable on chase levels, when the shark drives her back past it.
+  if (cfg.sharkChase) {
+    for (let x = 600; x > REAL_CHEST_WORLD_X + 700; x -= 210) {
+      collectibles.push({
+        kind: 'pearl',
+        worldX: x,
+        y: clamp(520 + Math.sin(x * 0.0016) * 210),
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      const x = 300 - i * 520 + pick(-90, 90);
+      obstacleDefs.push(
+        i % 2 === 0
+          ? { kind: 'rock-spire', worldX: x, y: PLAY_TOP + pick(50, 130), flipY: true }
+          : { kind: 'rock-tall', worldX: x, y: pick(720, 850) },
+      );
+    }
+    powerupDefs.push({ kind: 'heart', worldX: -700, y: 520 });
+    powerupDefs.push({ kind: 'boost', worldX: -1700, y: 480 });
+  }
+
+  return { collectibles, fishDefs, jellyDefs, hazardDefs, powerupDefs, obstacleDefs, helperDefs };
 }
+
+/** Sanity guard used by the tests: nothing may block the resting lane. */
+export const RESTING_LANE_Y = SEAFLOOR_Y;

@@ -10,6 +10,7 @@ export class Hud {
   private digits: Phaser.GameObjects.Image[] = [];
   private soundBtn: Phaser.GameObjects.Image;
   private soundCenter: { x: number; y: number };
+  private magicStar?: Phaser.GameObjects.Image;
 
   constructor(private scene: Phaser.Scene, insets: Insets, levelNumber?: number) {
     const band = safeBandLeft(scene.scale.width);
@@ -48,6 +49,21 @@ export class Hud {
       this.soundBtn.setFrame(muted ? 'btn-sound-off' : 'btn-sound');
       sfx(scene, 'tap');
     });
+  }
+
+  /** Golden star showing whether her magic is ready (bright) or recharging (dim). */
+  showMagicStar() {
+    if (this.magicStar) return;
+    this.magicStar = this.scene.add
+      .image(this.icon.x + 210, this.icon.y, 'items', 'sparkle')
+      .setDepth(100)
+      .setScale(1.05)
+      .setTint(0xffe27a);
+  }
+
+  setMagicReady(ready: boolean) {
+    if (!this.magicStar) return;
+    this.magicStar.setAlpha(ready ? 1 : 0.22);
   }
 
   /** The control layer ignores touches here so tapping the toggle never moves her. */

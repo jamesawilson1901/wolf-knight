@@ -215,6 +215,9 @@ async function buildCreatures() {
     { key: 'urchin', dir: 'Sea urchin', prefix: 'Sea urchin_idle_', scale: 0.35 },
     { key: 'crab', dir: 'Crab_1', prefix: 'Crab_move_1_', scale: 0.45 },
     { key: 'shark', dir: 'Shark_1', prefix: 'Shark_move_1_', scale: 0.42 },
+    { key: 'shark-attack', dir: 'Shark_1', prefix: 'Shark_attack_1_', scale: 0.42 },
+    // Fish_4 is the lionfish — spiky, and now an enemy rather than scenery.
+    { key: 'lionfish', dir: 'Fish_4', prefix: 'Fish_move_4_', scale: 0.42 },
   ];
   const all: Frame[] = [];
   for (const s of sets) {
@@ -264,8 +267,29 @@ async function buildItems() {
   for (let d = 0; d <= 9; d++) {
     frames.push(await singleFrame(`digit-${d}`, join(ui, 'number', `${d}.png`), 1));
   }
+  // Obstacles she has to swim around. From Let/ — stones, wreck parts and
+  // weed only. The bomb and net from that folder stay out: they read as
+  // traps, and nothing here should trap her.
+  const let_ = join(items, 'Let');
+  const obstacles: [string, string, number][] = [
+    ['rock-tall', 'Stone_2.png', 0.5],
+    ['rock-round', 'Stone_1.png', 0.5],
+    ['rock-wide', 'Stone_6.png', 0.45],
+    ['rock-spire', 'Stone_4.png', 0.55],
+    ['mast', 'Mast.png', 0.5],
+    ['anchor', 'Anchor.png', 0.6],
+    ['barrel', 'Barrel_1.png', 0.6],
+    ['weed-wide', 'Seaweed_1.png', 0.6],
+    ['weed-tall', 'Seaweed_2.png', 0.6],
+  ];
+  for (const [key, file, scale] of obstacles) {
+    frames.push(await singleFrame(key, join(let_, file), scale));
+  }
+
   frames.push(await singleFrame('magnet', join(items, 'Bonus', 'Magnet.png'), 0.62));
   frames.push(await singleFrame('shield', join(items, 'Bonus', 'Shield.png'), 0.7));
+  frames.push(await singleFrame('boost', join(items, 'Bonus', 'Acceleration.png'), 0.62));
+  frames.push(await singleFrame('heart', join(items, 'Bonus', 'Heart.png'), 0.62));
   frames.push(await singleFrame('crown', join(items, 'Bonus', 'Crown.png'), 0.6));
   frames.push(await singleFrame('btn-play', join(ui, 'btn', 'play.png'), 1));
   frames.push(await singleFrame('btn-restart', join(ui, 'btn', 'restart.png'), 1));
@@ -294,7 +318,7 @@ async function buildItems() {
       192,
     ),
   );
-  await packAtlas('items', frames, 1024);
+  await packAtlas('items', frames, 1800);
 }
 
 /** Wrap-blend so column W-1 continues into column 0 (crop W by F, fade first F cols). */
@@ -314,14 +338,15 @@ function makeTileable(data: Buffer, w: number, h: number, ch: number, F: number)
   return { data: out, w: W2 };
 }
 
-// The seven level scenes (kelp forest b1s3 skipped — too dark and busy for
-// this player). floorLayer notes which layer is the sand the chest sits on.
+// All eight scenes in the pack. floorLayer (see src/level.ts) notes which
+// layer is the ground the chest sits on.
 export const SCENES = [
   { id: 'b1s1', pack: 'Backgrounds_1', scene: 1, layers: 6 },
   { id: 'b1s4', pack: 'Backgrounds_1', scene: 4, layers: 6 },
   { id: 'b2s1', pack: 'Backgrounds_2', scene: 1, layers: 8 },
   { id: 'b2s2', pack: 'Backgrounds_2', scene: 2, layers: 6 },
   { id: 'b1s2', pack: 'Backgrounds_1', scene: 2, layers: 6 },
+  { id: 'b1s3', pack: 'Backgrounds_1', scene: 3, layers: 7 },
   { id: 'b2s4', pack: 'Backgrounds_2', scene: 4, layers: 6 },
   { id: 'b2s3', pack: 'Backgrounds_2', scene: 3, layers: 6 },
 ];
