@@ -49,7 +49,7 @@ export interface HelperDef {
   worldX: number;
   baseY: number;
 }
-export type PowerupKind = 'magnet' | 'shield' | 'boost' | 'heart';
+export type PowerupKind = 'magnet' | 'shield' | 'boost' | 'heart' | 'seahorse';
 export interface PowerupDef {
   kind: PowerupKind;
   worldX: number;
@@ -60,30 +60,59 @@ export type ObstacleKind =
   | 'rock-round'
   | 'rock-wide'
   | 'rock-spire'
+  | 'rock-small'
+  | 'rock-flat'
   | 'mast'
   | 'anchor'
   | 'barrel'
+  | 'crate'
+  | 'wheel'
+  | 'chain'
   | 'weed-wide'
   | 'weed-tall';
+
+/**
+ * Props are anchored, not floated. Anything that grows or falls sits on the
+ * seabed; only stalactites and chains hang, and only in cave-roofed scenes.
+ * Free-floating pointy rocks in open water read as debris, so they are gone.
+ */
 export interface ObstacleDef {
   kind: ObstacleKind;
   worldX: number;
-  y: number;
-  flipY?: boolean; // hang it from the ceiling instead of standing on the floor
+  anchor: 'floor' | 'ceiling';
+  /** how far the prop reaches from its anchor line, in design px */
+  reach: number;
 }
 
 /** Collision half-extents per prop, deliberately smaller than the art. */
 export const OBSTACLE_SIZE: Record<ObstacleKind, { rx: number; ry: number }> = {
-  'rock-tall': { rx: 62, ry: 118 },
-  'rock-round': { rx: 58, ry: 80 },
-  'rock-wide': { rx: 78, ry: 62 },
-  'rock-spire': { rx: 42, ry: 132 },
-  mast: { rx: 96, ry: 118 },
-  anchor: { rx: 52, ry: 70 },
-  barrel: { rx: 48, ry: 60 },
-  'weed-wide': { rx: 78, ry: 62 },
-  'weed-tall': { rx: 52, ry: 74 },
+  'rock-tall': { rx: 60, ry: 118 },
+  'rock-round': { rx: 56, ry: 80 },
+  'rock-wide': { rx: 76, ry: 60 },
+  'rock-spire': { rx: 40, ry: 130 },
+  'rock-small': { rx: 42, ry: 66 },
+  'rock-flat': { rx: 62, ry: 30 },
+  mast: { rx: 92, ry: 116 },
+  anchor: { rx: 50, ry: 68 },
+  barrel: { rx: 46, ry: 58 },
+  crate: { rx: 62, ry: 50 },
+  wheel: { rx: 66, ry: 62 },
+  chain: { rx: 20, ry: 150 },
+  'weed-wide': { rx: 74, ry: 60 },
+  'weed-tall': { rx: 50, ry: 72 },
 };
+
+/** Props that stand on the seabed. */
+const FLOOR_PROPS: ObstacleKind[] = [
+  'rock-tall', 'rock-round', 'rock-wide', 'rock-small', 'rock-flat',
+  'weed-wide', 'weed-tall', 'anchor', 'barrel', 'crate', 'wheel', 'mast',
+];
+/** Wreck-flavoured props, for the shipwreck and ruins scenes. */
+const WRECK_PROPS: ObstacleKind[] = ['mast', 'anchor', 'barrel', 'crate', 'wheel'];
+/** Only these hang, and only where there is a rock roof overhead. */
+const CEILING_PROPS: ObstacleKind[] = ['rock-spire', 'chain'];
+/** Scenes with a cave roof, where hanging props make sense. */
+const ROOFED_SCENES = new Set(['b1s2', 'b2s2', 'b2s3']);
 
 export interface SceneConfig {
   id: string;
@@ -344,25 +373,28 @@ export function buildLevel(index: number): LevelContent {
 
   const clearOfBusy = (x: number, pad = 430) => busyXs.every((bx) => Math.abs(x - bx) > pad);
 
-  // --- obstacles: props to swim around, standing or hanging --------------
-  const floorProps: ObstacleKind[] = ['rock-tall', 'rock-round', 'rock-wide', 'anchor', 'barrel', 'weed-wide', 'weed-tall', 'mast'];
-  const hangProps: ObstacleKind[] = ['rock-spire', 'rock-tall', 'rock-round'];
+  // --- obstacles: props rooted to the seabed, or hanging from a rock roof
+  const roofed = ROOFED_SCENES.has(cfg.scene.id);
+  const wreck = cfg.scene.id === 'b1s1' || cfg.scene.id === 'b2s1';
+  const floorSet = wreck ? [...FLOOR_PROPS, ...WRECK_PROPS] : FLOOR_PROPS;
   let placed = 0;
   for (let attempt = 0; attempt < cfg.obstacles * 14 && placed < cfg.obstacles; attempt++) {
     const x = pick(startX + 200, endX);
     if (!clearOfBusy(x)) continue;
-    if (rand() > 0.55) {
+    // hanging props only under a rock roof, and never more than a third
+    if (roofed && rand() < 0.33) {
       obstacleDefs.push({
-        kind: hangProps[Math.floor(rand() * hangProps.length)],
+        kind: CEILING_PROPS[Math.floor(rand() * CEILING_PROPS.length)],
         worldX: x,
-        y: PLAY_TOP + pick(40, 150),
-        flipY: true,
+        anchor: 'ceiling',
+        reach: pick(180, 330),
       });
     } else {
       obstacleDefs.push({
-        kind: floorProps[Math.floor(rand() * floorProps.length)],
+        kind: floorSet[Math.floor(rand() * floorSet.length)],
         worldX: x,
-        y: pick(700, 860),
+        anchor: 'floor',
+        reach: pick(120, 300),
       });
     }
     placed++;
@@ -391,6 +423,10 @@ export function buildLevel(index: number): LevelContent {
   for (let s = 0; s < cfg.sharks; s++) {
     const sharkX = 3000 + s * 3600 + pick(0, 900);
     hazardDefs.push({ kind: 'shark', worldX: sharkX, baseY: pick(380, 560) });
+    // Two seahorses per shark: catch either one and she simply outruns it.
+    // Two, at different heights, so there is always a reachable escape.
+    powerupDefs.push({ kind: 'seahorse', worldX: sharkX - 900, y: pick(BAND_TOP + 60, 520) });
+    powerupDefs.push({ kind: 'seahorse', worldX: sharkX - 380, y: pick(560, BAND_BOTTOM - 60) });
     // Roughly half the sharks get a dolphin shadowing them — it charges in
     // and drives that shark off. Random on purpose: a lucky rescue, not a
     // guarantee, so sharks stay worth respecting.
@@ -456,12 +492,12 @@ export function buildLevel(index: number): LevelContent {
       });
     }
     for (let i = 0; i < 5; i++) {
-      const x = 300 - i * 520 + pick(-90, 90);
-      obstacleDefs.push(
-        i % 2 === 0
-          ? { kind: 'rock-spire', worldX: x, y: PLAY_TOP + pick(50, 130), flipY: true }
-          : { kind: 'rock-tall', worldX: x, y: pick(720, 850) },
-      );
+      obstacleDefs.push({
+        kind: FLOOR_PROPS[Math.floor(rand() * FLOOR_PROPS.length)],
+        worldX: 300 - i * 520 + pick(-90, 90),
+        anchor: 'floor',
+        reach: pick(140, 280),
+      });
     }
     powerupDefs.push({ kind: 'heart', worldX: -700, y: 520 });
     powerupDefs.push({ kind: 'boost', worldX: -1700, y: 480 });

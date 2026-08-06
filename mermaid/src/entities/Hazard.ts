@@ -86,9 +86,10 @@ export class Hazard {
           }
           break;
         }
-        const bored = this.t >= this.givesUpAt;
+        const bored = this.t >= this.givesUpAt || this.outrun;
         const chasing = !bored && !fleeing;
-        const targetX = chasing ? mermaidX - 210 : this.x - 320;
+        // hangs well back — menacing to look at, never crowding her
+        const targetX = chasing ? mermaidX - 430 : this.x - 320;
         const targetY = chasing ? mermaidY : this.y + Math.sin(this.t * 0.5) * 40;
         // ease toward the target: menacing, never actually faster than her
         this.chaseVX += ((targetX - this.x) * 1.5 - this.chaseVX) * (1 - Math.exp(-dt / 0.55));
@@ -113,6 +114,13 @@ export class Hazard {
   }
 
   routed = false;
+  /** Set when she grabs a seahorse: this shark simply cannot keep up. */
+  outrun = false;
+
+  /** She caught a seahorse — give up the chase and peel away. */
+  giveUp() {
+    this.outrun = true;
+  }
 
   /** Sent packing by a dolphin: turn tail and bolt off the top of the screen. */
   driveAway(scene: Phaser.Scene) {

@@ -11,6 +11,8 @@ export class ChaseShark {
   private vy = 0;
   private lunge = 0;
   active = true;
+  /** She grabbed a seahorse mid-escape: the shark drops right back. */
+  outrun = false;
 
   constructor(private scene: Phaser.Scene, x: number, y: number) {
     this.y = y;
@@ -27,7 +29,7 @@ export class ChaseShark {
     const dt = Math.min(dtMs / 1000, 0.05);
     this.lunge += dt;
     // a slow in-and-out lunge so it feels alive and threatening
-    const standoff = 330 + Math.sin(this.lunge * 1.6) * 90;
+    const standoff = (this.outrun ? 900 : 520) + Math.sin(this.lunge * 1.6) * 90;
     const targetX = mermaidX + standoff;
     this.sprite.x += (targetX - this.sprite.x) * (1 - Math.exp(-dt / 0.5));
     this.vy += ((mermaidY - this.y) * 2.2 - this.vy) * (1 - Math.exp(-dt / 0.4));

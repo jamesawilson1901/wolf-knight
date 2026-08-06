@@ -13,6 +13,10 @@ export class StartScene extends Phaser.Scene {
   private tintPearls: Phaser.GameObjects.Image[] = [];
   private tintRing!: Phaser.GameObjects.Arc;
   private starting = false;
+  private escort: { sprite: Phaser.GameObjects.Sprite; phase: number }[] = [];
+  private crown?: Phaser.GameObjects.Image;
+  private selected: 1 | 2 | 3 = 1;
+  private t = 0;
 
   create() {
     this.starting = false;
@@ -72,11 +76,45 @@ export class StartScene extends Phaser.Scene {
     });
     btn.on('pointerdown', () => this.startGame());
 
+    // Her collection, on show every time she opens the game: the fish she has
+    // rescued swim around whichever mermaid is selected, and the crown sits
+    // above her once she has finished the whole game. Ownership you can see
+    // matters a lot at this age, and it costs nothing to display.
+    const friends = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
+    for (let i = 0; i < friends; i++) {
+      const species = (i % 3) + 1;
+      this.escort.push({
+        sprite: this.add
+          .sprite(cx, charY, 'creatures', `fish-${species}-move_000`)
+          .setScale(0.42)
+          .setDepth(2)
+          .play({ key: `fish-${species}`, startFrame: (i * 3) % 10 }),
+        phase: (i / Math.max(1, friends)) * Math.PI * 2,
+      });
+    }
+    if (localStorage.getItem(STORAGE_KEYS.crowned) === '1') {
+      this.crown = this.add.image(cx, charY - 150, 'items', 'crown').setScale(0.7).setDepth(3);
+    }
+
     this.pickCharacter(savedCharacter(), true);
     this.pickTint(Math.max(0, TINTS.indexOf(savedTint())), true);
   }
 
+  update(_time: number, delta: number) {
+    this.t += delta / 1000;
+    const target = this.characters[this.selected - 1];
+    if (!target) return;
+    for (const f of this.escort) {
+      const a = this.t * 0.55 + f.phase;
+      f.sprite.x = target.x + Math.cos(a) * 190;
+      f.sprite.y = target.y + Math.sin(a) * 88;
+      f.sprite.setFlipX(Math.sin(a) < 0);
+    }
+    if (this.crown) this.crown.setPosition(target.x + 4, target.y - 150 + Math.sin(this.t * 1.3) * 6);
+  }
+
   private pickCharacter(ch: 1 | 2 | 3, silent: boolean) {
+    this.selected = ch;
     localStorage.setItem(STORAGE_KEYS.character, String(ch));
     this.characters.forEach((s, i) => {
       const selected = i === ch - 1;

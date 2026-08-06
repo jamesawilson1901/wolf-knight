@@ -92,6 +92,8 @@ export class GameScene extends Phaser.Scene {
   private vacuumUntil = 0;
   private streak = 0;
   private lastCollect = 0;
+  private nextLucky = 0;
+  private nextGuard = 0;
   phase: Phase = 'run';
   private t = 0;
 
@@ -141,6 +143,10 @@ export class GameScene extends Phaser.Scene {
     this.vacuumUntil = 0;
     this.streak = 0;
     this.t = 0;
+    // friend powers are on timers; without resetting these they carry stale
+    // values across a level restart and go quiet for a long stretch
+    this.nextLucky = this.time.now + 4000;
+    this.nextGuard = this.time.now + 6000;
     this.fish = [];
     this.jellies = [];
     this.pickups = [];
@@ -234,8 +240,9 @@ export class GameScene extends Phaser.Scene {
 
     const rescuedCount = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
     for (let i = 0; i < rescuedCount; i++) {
+      // species 4 is the lionfish, which is an enemy — friends cycle 1..3
       this.friends.push(
-        new FriendFish(this, (i % 4) + 1, i, this.mermaid.x - 120 - i * 95, this.mermaid.y),
+        new FriendFish(this, (i % 3) + 1, i, this.mermaid.x - 120 - i * 95, this.mermaid.y),
       );
     }
 
@@ -322,7 +329,7 @@ export class GameScene extends Phaser.Scene {
       }
       p.sprite.x = baseX + p.pullX;
       p.sprite.y = bobY + p.pullY;
-      if (Phaser.Math.Distance.Between(p.sprite.x, p.sprite.y, mx, my) < COLLECT_RADIUS) {
+      if (Phaser.Math.Distance.Between(p.sprite.x, p.sprite.y, mx, my) < this.collectRadius()) {
         this.collect(p);
       }
     }
@@ -354,6 +361,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    if (playing) this.friendPowers(now, band, w);
+
     this.trailY.push(my);
     if (this.trailY.length > 140) this.trailY.shift();
     this.friends.forEach((fr, i) => {
@@ -382,6 +391,49 @@ export class GameScene extends Phaser.Scene {
 
     this.chest.x = band + chestWorldX(this.cfg) - this.scrollX;
     if (this.realChest) this.realChest.x = band + REAL_CHEST_WORLD_X - this.scrollX;
+  }
+
+  /**
+   * Every rescued fish friend earns its keep, and each kind helps a different
+   * way — so a growing shoal visibly makes the game kinder, and she can tell
+   * which friend just did something because it sparkles when it acts.
+   *   yellow  finder    — widens the reach for pearls
+   *   clown   lucky     — now and then pops a bonus pearl in front of her
+   *   blue    guardian  — now and then blows her a shield bubble
+   */
+  private countFriends(species: number) {
+    return this.friends.filter((f) => f.species === species).length;
+  }
+
+  private collectRadius() {
+    return COLLECT_RADIUS + this.countFriends(1) * 45;
+  }
+
+  private friendPowers(now: number, band: number, screenW: number) {
+    const lucky = this.countFriends(2);
+    if (lucky > 0 && now > this.nextLucky) {
+      this.nextLucky = now + 9000 / lucky;
+      const friend = this.friends.find((f) => f.species === 2);
+      if (friend) this.sparkles.explode(10, friend.sprite.x, friend.sprite.y);
+      // a gift pearl, dropped just ahead of her
+      const worldX = this.scrollX + (this.mermaid.x - band) + 620;
+      const data: Collectible = { kind: 'pearl', worldX, y: Phaser.Math.Clamp(this.mermaid.y, 320, 740) };
+      const sprite = this.add.image(band + worldX - this.scrollX, data.y, 'items', 'pearl').setDepth(8);
+      this.tweens.add({ targets: sprite, scale: { from: 0.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+      this.pickups.push({ data, sprite, taken: false, phase: 0, pullX: 0, pullY: 0 });
+      sfx(this, 'power', { volume: 0.4 });
+    }
+    const guard = this.countFriends(3);
+    if (guard > 0 && now > this.nextGuard) {
+      this.nextGuard = now + 15000 / guard;
+      if (!this.mermaid.shielded) {
+        const friend = this.friends.find((f) => f.species === 3);
+        if (friend) this.sparkles.explode(12, friend.sprite.x, friend.sprite.y);
+        this.mermaid.gainShield();
+        sfx(this, 'pop', { volume: 0.5 });
+      }
+    }
+    void screenW;
   }
 
   /** A dolphin saw off a shark, or she reached a turtle. */
@@ -457,6 +509,16 @@ export class GameScene extends Phaser.Scene {
       case 'heart':
         // kindness aura: every ouchy creature politely swims out of her way
         this.heartUntil = now + HEART_MS;
+        break;
+      case 'seahorse':
+        // a lift from a seahorse: she surges away and every shark that was
+        // interested simply cannot keep up, and gives up for good
+        this.dashUntil = now + BOOST_MS + 800;
+        this.mermaid.grantGrace(BOOST_MS + 1200);
+        this.mermaid.triggerAcceleration(BOOST_MS + 800);
+        for (const h of this.hazards) if (h.def.kind === 'shark') h.giveUp();
+        if (this.chaseShark) this.chaseShark.outrun = true;
+        sfx(this, 'joy', { volume: 0.7 });
         break;
     }
     this.tweens.add({
@@ -646,7 +708,11 @@ export class GameScene extends Phaser.Scene {
         this.mermaid.triggerJoy();
       });
       this.time.delayedCall(900, () => this.rescueFriend());
-      this.time.delayedCall(2400, () => this.showReplay());
+      this.time.delayedCall(2400, () => {
+        // last level: a real ending, not another lap
+        if (this.levelIndex === LEVELS.length - 1) this.finishGame();
+        else this.showReplay();
+      });
     });
   }
 
@@ -657,11 +723,15 @@ export class GameScene extends Phaser.Scene {
     this.rescued = true;
     const chest = this.activeChest;
     const count = Math.min(6, Number(localStorage.getItem(STORAGE_KEYS.friends)) || 0);
-    const species = (count % 4) + 1;
+    // species 4 is the lionfish — an enemy — so friends cycle 1..3 only
+    const species = (count % 3) + 1;
     localStorage.setItem(STORAGE_KEYS.friends, String(count + 1));
-    localStorage.setItem(STORAGE_KEYS.level, String((this.levelIndex + 1) % LEVELS.length));
+    // The game ends after the last level: no silent wrap-around. Progress
+    // resets to level 1 so "play again" starts a proper new run.
+    const finished = this.levelIndex === LEVELS.length - 1;
+    localStorage.setItem(STORAGE_KEYS.level, finished ? '0' : String(this.levelIndex + 1));
 
-    if (this.levelIndex === LEVELS.length - 1 && localStorage.getItem(STORAGE_KEYS.crowned) !== '1') {
+    if (finished && localStorage.getItem(STORAGE_KEYS.crowned) !== '1') {
       localStorage.setItem(STORAGE_KEYS.crowned, '1');
       const crown = this.add
         .image(chest.x, chest.y - 90, 'items', 'crown')
@@ -708,6 +778,14 @@ export class GameScene extends Phaser.Scene {
         this.friends.push(new FriendFish(this, species, slot, targetX, this.mermaid.y));
         this.sparkles.explode(8, targetX, this.mermaid.y);
       },
+    });
+  }
+
+  /** She finished the whole game. Hand over to the celebration. */
+  private finishGame() {
+    this.cameras.main.fadeOut(900, 7, 37, 61);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('victory');
     });
   }
 
