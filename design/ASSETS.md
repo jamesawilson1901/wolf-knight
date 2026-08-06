@@ -74,6 +74,25 @@ Web Speech API narration).
 - **Dark zones / Dark Wolf "see in the dark":** real lighting — dark rooms are simply unlit;
   Dark Wolf form attaches a light to Kael / raises ambient. Boss Phase 3 uses the same trick.
 
+## Wild Woods casting (v3.19)
+- **Flora:** KayKit Forest Nature Pack — 14 vendored pieces (trees ×6,
+  bushes ×3, rocks ×3, grass ×2) + forest_texture.png, in assets/env/forest.
+- **Thorn Hound / Elder Thorn Hound:** the Wolf model, mossy-green tints.
+- **Bramble Blob:** Slime, deep green. **Wisp Moth:** Bat, pale-green glow.
+- **Sylva, Thornbound (boss):** the giant-wolf duel class in its 'sylva'
+  skin — green body, leaf-light instead of Cinder's ember. NO new models
+  anywhere in the region (the asset-multiplication law at full stretch).
+- **Verdant Wolf:** the one wolf model, tint 0x6fae4a, leaf aura in code.
+- Music: reusing the causeway loop for now — a dedicated woods track is on
+  the download list (HydroGene 16-bit RPG Music, CC0).
+
+## Asset multiplication (standing rule)
+One model, many monsters: tint + scale + stats + elements make variants
+(VARIANTS registry in enemies.js — Cinder Shade / Elder Hound / Bone
+Brute shipped as the pattern). Weapon props from the gear packs become
+distinct STYLES via arc/stun/element fields in items.js. Prefer a new
+variant over a new model whenever the silhouette still reads.
+
 ## Licence notes
 Everything above is CC0 → CREDITS.md still lists sources as courtesy. three.js is MIT — include
 its licence line in CREDITS.md.

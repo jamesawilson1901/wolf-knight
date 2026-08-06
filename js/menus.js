@@ -96,7 +96,7 @@ export class Menus {
 
     const foot = document.createElement('div');
     foot.style.cssText = 'font-size:16px;color:#ffd76a;font-weight:800';
-    foot.textContent = `🔸 ${state.shards} shards · 🧪 ${state.potions} potions · 🐺 pups ${Object.keys(state.flags.pups).length}/3`;
+    foot.textContent = `🔸 ${state.shards} shards · 🧪 ${state.potions} potions · 🐺 pups ${Object.keys(state.flags.pups).length}/${state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3}`;
     el.appendChild(foot);
     el.appendChild(this._closeBtn('inv-menu'));
   }
@@ -192,6 +192,7 @@ export class Menus {
     const spots = [
       { room: 'r1', name: 'Ember Hollow', icon: '🔥' },
       ...(state.spoken.region_complete ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
+      ...(state.spoken.stone_complete ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
     ];
     for (const s of spots) {
       const d = document.createElement('div');

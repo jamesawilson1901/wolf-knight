@@ -9,8 +9,9 @@ const FORM_META = {
   dark_wolf: { icon: '🌙', label: 'Dark Wolf', color: '#6b56a8' },
   fire_wolf: { icon: '🔥', label: 'Fire Wolf', color: '#ff5a2b' },
   earth_wolf: { icon: '🪨', label: 'Earth Wolf', color: '#d8b06a' },
+  verdant_wolf: { icon: '🌿', label: 'Verdant Wolf', color: '#6fae4a' },
 };
-const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf'];
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
@@ -64,7 +65,9 @@ export class UI {
     FORM_ORDER.forEach((id, i) => {
       const meta = FORM_META[id];
       const locked = !state.formsUnlocked.includes(id);
-      const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * 0.92;
+      // five forms fan a little tighter so the ring stays on-screen
+      const spread = FORM_ORDER.length >= 5 ? 0.74 : 0.92;
+      const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * spread;
       const ox = cx + Math.cos(angle) * PICK_RADIUS;
       const oy = cy + Math.sin(angle) * PICK_RADIUS;
       const el = document.createElement('div');
@@ -125,11 +128,14 @@ export class UI {
     // Cooldown specials: knight (whirlwind), fire (slam), earth (stomp).
     // The Dark Wolf's Blood Moon is the EARNED gauge — its button dims.
     // The button NEVER moves or vanishes — stable layout for small thumbs.
-    const hasSpecial = state.form === 'knight' || state.form === 'fire_wolf' || state.form === 'earth_wolf';
+    const hasSpecial = state.form !== 'dark_wolf'; // every form but the moon-powered wolf
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
-      state.form === 'knight' ? '🌀' : state.form === 'fire_wolf' ? '🔥' : state.form === 'earth_wolf' ? '🪨' : '🌙';
+      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿' }[state.form] || '🌙';
+    // The moon gauge is the DARK WOLF's power — no other form shows the
+    // button (v3.18 playtest law; the gauge still fills quietly underneath)
+    this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');
   }
 
   update(player) {

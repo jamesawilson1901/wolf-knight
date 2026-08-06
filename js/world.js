@@ -136,46 +136,83 @@ export class World {
     return burned;
   }
 
-  // Pushable boulders: lean on one and it rolls, resolved against the room
-  // (minus its own collider). Landing on a pressure plate opens things.
+  // Pushable boulders — v3.18 playtest law: PREDICTABLE. Lean on a boulder
+  // for a beat and it rolls ONE clean step in the straight direction you
+  // pushed (snapped to north/south/east/west), then stops and waits. Push
+  // from the side you want it to LEAVE. If a step carries it over a pressure
+  // plate the boulder SNAPS onto the plate with a click and stays forever.
+  _moveBoulder(b, nx, nz) {
+    const mx = nx - b.x, mz = nz - b.z;
+    const moved = Math.hypot(mx, mz);
+    b.x = b.collider.x = nx;
+    b.z = b.collider.z = nz;
+    b.group.position.set(nx, 0, nz);
+    if (moved > 1e-5 && b.mesh) {
+      // roll the rock about the axis perpendicular to its motion
+      _rollAxis.set(mz / moved, 0, -mx / moved);
+      b.mesh.rotateOnWorldAxis(_rollAxis, moved / b.r);
+      b._rollAcc = (b._rollAcc || 0) + moved;
+      if (b._rollAcc > 0.55) {
+        b._rollAcc = 0;
+        audio.play('gate-creak', { volume: 0.3, rate: 0.55, vary: 0.15 });
+      }
+    }
+    return moved;
+  }
+
+  _boulderPlateAt(x, z, r = 0.6) {
+    for (const p of (this.plates || [])) {
+      const px = p.x - x, pz = p.z - z;
+      if (px * px + pz * pz < r * r) return p;
+    }
+    return null;
+  }
+
   updateBoulders(dt, player) {
     for (const b of this.boulders) {
+      // a step in flight advances on its own — the player just watches it land
+      if (b._slide) {
+        const s = b._slide;
+        const step = Math.min(s.remaining, 2.4 * dt);
+        const i = this.circleColliders.indexOf(b.collider);
+        if (i >= 0) this.circleColliders.splice(i, 1);
+        const solved = this.resolveCircle(b.x + s.dx * step, b.z + s.dz * step, b.r);
+        if (i >= 0) this.circleColliders.splice(i, 0, b.collider);
+        const moved = this._moveBoulder(b, solved.x, solved.z);
+        s.remaining -= step;
+        if (moved < step * 0.35) s.remaining = 0; // hit something — stop clean
+        // rolling onto a plate ends the step immediately: CLICK, locked in
+        const plate = this._boulderPlateAt(b.x, b.z, 0.55);
+        if (plate) s.remaining = 0;
+        if (s.remaining <= 0) {
+          b._slide = null;
+          if (plate) {
+            this._moveBoulder(b, plate.x, plate.z); // snap dead-center
+            b._locked = true;                        // it holds the weight forever
+            if (!plate.pressed) {
+              plate.pressed = true;
+              state.flags.plates[plate.id] = true;
+              if (plate.onPressed) plate.onPressed();
+            }
+          }
+        }
+        continue;
+      }
+      if (b._locked) continue;
+
+      // leaning: standing against the boulder starts the next step
       const dx = b.x - player.root.position.x;
       const dz = b.z - player.root.position.z;
       const d = Math.hypot(dx, dz);
-      if (d > b.r + 0.32 + 0.06 || d < 1e-4) continue;
-      const push = 1.5 * dt;
-      const i = this.circleColliders.indexOf(b.collider);
-      if (i >= 0) this.circleColliders.splice(i, 1);
-      const solved = this.resolveCircle(b.x + (dx / d) * push, b.z + (dz / d) * push, b.r);
-      if (i >= 0) this.circleColliders.splice(i, 0, b.collider);
-      const mx = solved.x - b.x, mz = solved.z - b.z;
-      const moved = Math.hypot(mx, mz);
-      b.x = b.collider.x = solved.x;
-      b.z = b.collider.z = solved.z;
-      b.group.position.set(solved.x, 0, solved.z);
-      if (moved > 1e-5 && b.mesh) {
-        // roll the rock about the axis perpendicular to its motion
-        _rollAxis.set(mz / moved, 0, -mx / moved);
-        b.mesh.rotateOnWorldAxis(_rollAxis, moved / b.r);
-        // the millstone GRINDS as it rolls (throttled by distance)
-        b._rollAcc = (b._rollAcc || 0) + moved;
-        if (b._rollAcc > 0.55) {
-          b._rollAcc = 0;
-          audio.play('gate-creak', { volume: 0.3, rate: 0.55, vary: 0.15 });
-        }
-      }
-      if (this.plates) {
-        for (const p of this.plates) {
-          if (p.pressed) continue;
-          const px = p.x - b.x, pz = p.z - b.z;
-          if (px * px + pz * pz < 0.55 * 0.55) {
-            p.pressed = true;
-            state.flags.plates[p.id] = true;
-            if (p.onPressed) p.onPressed();
-          }
-        }
-      }
+      if (d > b.r + 0.32 + 0.1 || d < 1e-4) { b._lean = 0; continue; }
+      b._lean = (b._lean || 0) + dt;
+      if (b._lean < 0.12) continue; // a brief lean, so a stray bump can't shove it
+      b._lean = 0;
+      // snap the push to the dominant axis: one clean cardinal step
+      const dir = Math.abs(dx) > Math.abs(dz)
+        ? { dx: Math.sign(dx), dz: 0 }
+        : { dx: 0, dz: Math.sign(dz) };
+      b._slide = { ...dir, remaining: 1.2 };
     }
   }
 

@@ -1436,3 +1436,265 @@ pass A of the Ember rework. New reusable systems (SYSTEMS.md): gates.js
   surging wolf measures 0.56 = fire wolf, shieldling blocks frontal /
   takes flank + stunned damage + Pip line, boss at 1.62 collapses with
   ring+slowmo+exposure and gets back up. Zero page errors. SW v3.15.0.
+
+## v3.16.0 — THE WOLF UNCHAINED (boss rework) + ten new asset packs staged
+- Playtest verdict, deserved: "still too big. all he does is rotate to
+  look at the player. doesn't move at all." True — in phase 1 the wolf
+  was a statue that faced you while abstract tendrils did the fighting.
+  Worse, underneath: the boss HITBOX and gold strike ring were anchored
+  to the ARENA CENTER — during the collapse the ring said "hit the
+  wolf" while damage only landed on the empty middle of the room.
+- THE REWORK: the wolf is a LIVING HUNTER in every phase, driven by one
+  state machine (prowl → stalk → windup → attack → recover):
+  · It PROWLS a circle around Kael constantly (Walk anim, radius ~4u,
+    flips direction unpredictably) — never a statue, never idle.
+  · PHASE 1: it stalks in and SWIPES — 0.9s on-body telegraph (deep
+    crouch, eyes flare, growl — the hound language writ large), then a
+    big frontal paw arc (jumpable), then 1.6s of EXPOSED recovery.
+    The cage's tendril slams continue underneath: sever 3 to crack the
+    shell exactly as before. Aggressive kids also chip the boss early
+    by punishing swipes — both play styles progress the fight.
+  · PHASE 2: it hunts faster between POUNCES and the COLLAPSE window
+    (unchanged read: falls over, gold ring, thud, slow-mo) — and gets
+    up where it fell and keeps hunting. No more teleport-home rest.
+  · PHASE 3: it circles in its own darkness, eyes glowing (the only
+    visible thing for the Knight — the Dark Wolf sees all), then a
+    HUGE eye flare → a dash through where you stood → exposed recover.
+  · The HITBOX + strike ring + collapse ring all RIDE THE WOLF now.
+    New law in the contract: a boss is a creature, never a turret.
+  · Smaller again: 1.62 → 1.3 (~2.3x the player wolves) and its paws
+    are ON THE GROUND (it used to hover slightly, a dragon leftover).
+- Found + fixed while verifying: the exposure law read the STALE action
+  from the top of the frame, so every punish window opened one frame
+  late (and the in-page frame sampler caught it). Windows now open the
+  same frame their action begins.
+- NEW ASSET PACKS staged in asset-raw (gitignored, vendored per need):
+  RPG Tools Bits, Character Animations 1.1 (adds MovementAdvanced /
+  CombatRanged / Tools / Simulation rigs), Skeletons, Halloween Bits
+  (crypt dressing for e3), Forest Nature Pack (the Wild Woods region),
+  Resource Bits, Block Bits, Fantasy Weapons Bits, Medieval Hexagon
+  (2-part zip joined — world-map material), Kenney Digital Audio.
+  Mage Animations turned out to be a Godot-only .res — unusable here.
+- Verified headless (in-page frame sampling): the wolf provably TRAVELS
+  while prowling, full swipe cycle with flare/crouch/exposed-ring-on-
+  body, sword damage lands ON the wolf wherever it is, severing intact,
+  collapse ring+hitbox on the fallen wolf + Pip line, it resumes the
+  hunt where it fell, phase-3 dash covers real distance behind a 5.5x
+  eye flare. Screenshot reviewed: paws on the ground, in Kael's face.
+  Zero page errors. SW v3.16.0, badge v3.16.
+
+## v3.16.1 — the spin was fine; the UPDATE ritual wasn't
+- "Spinning attack doesn't work, no animation, no anything" — reproduced
+  with real touch on the CURRENT build: it fires perfectly (animation,
+  sparks, cooldown ring). The phone was running an older cached version
+  where the knight's special button existed but was dead. Root cause is
+  the PWA update dance: a new version installs on launch but the page
+  keeps running the old code until the NEXT full restart.
+- FIXED THE DISEASE: the page now listens for the new service worker
+  taking control and — only while still on the TITLE screen, never
+  mid-game, never on a first install — reloads itself once. The first
+  launch after any deploy now self-updates before play begins. The
+  "close it fully and reopen" ritual is dead.
+- And the whirlwind is now UNMISSABLE anyway: a steel-blue shockwave
+  ring sweeps out to the spin's full reach + camera punch on top of the
+  animation, sparks and dual swing sounds. Screenshot reviewed — you
+  cannot miss it. SW v3.16.1.
+
+## v3.17.0 — ASSET MULTIPLICATION (dad's standing rule made law + code)
+- The rule, now in GAME-CONTRACT + ASSETS.md: use the old tricks
+  relentlessly — every model is MANY monsters (recolor, resize, restat,
+  re-element), every weapon prop is a STYLE. Prefer a variant over a new
+  model whenever the silhouette still reads.
+- ENEMY VARIANTS (VARIANTS registry in enemies.js; spawn markers opt in
+  with `variant: 'name'`; per-instance tint/scale/hp/speed/element with
+  a shared-material guard so skeleton recolors never leak into the
+  loader cache):
+  · CINDER SHADE (Kiln hub + shrine): kiln-baked, 1.3x, hp 4.5 — and it
+    RESISTS FIRE. The Fire Wolf's home-turf advantage vanishes and the
+    grey "RESIST" callout (the new counterpart to SUPER!) says why:
+    0.4x + fizzle sound. Switch to moon and it melts. Experimentation
+    taught by the world, both directions.
+  · ELDER HOUND (the r2b branch): the pack leader — 1.3x, hp 6, harder
+    charge, burning gold eyes, always drops its ember.
+  · BONE BRUTE (the Mill): 1.4x darkened minion, hp 5, lumbers slowly,
+    hits 1.5 — a walking wall guarding the twin-plate vault.
+- WEAPON STYLES (items.js fields flow through attackConfig into every
+  swing, thrust AND the whirlwind):
+  · arc — swing width: the Long Spear is now a true ±36° POKE (was the
+    same wide sweep as a sword).
+  · stun — the Boulder Hammer leaves targets DIZZY 0.6s (and a hammer
+    whirlwind is a 360° daze — worth every shard of its 300 price).
+  · element — the Ember Blade strikes as FIRE, the Moon Sword as MOON:
+    the KNIGHT can now hit elemental weaknesses if he buys the right
+    blade. A shop with real decisions instead of a stat ladder.
+- Verified headless through real combat: cinder shade takes 0.5 from
+  fire / 1.5 from moon at 1.3x scale, elder hound + brute spawn with
+  their stats in their rooms, a real hammer swing leaves a shade
+  stunned, the Moon Sword scores SUPER! for the knight, the spear's
+  arc math is exact. Zero page errors. SW v3.17.0, badge v3.17.
+
+## v3.18.0 — The wolf duel + the buried-plate hunt (2026-08-02)
+
+Dad's six-complaint playtest round, all root-caused:
+
+- **Boss rewritten as a pure wolf duel** (boss.js, ~40% smaller): tendrils,
+  slam telegraphs, shadow wave, phases and room-darkness all DELETED. The
+  Shadowgrip now fights exactly like the little hounds — prowl, crouch-and-
+  charge (dodge it; ends in a 2.6s gold-ring collapse), snarl-and-swipe
+  (shield/parry it; a perfect parry staggers the boss). 20 hp, 3-per-hit
+  cap, 1.5-heart hits, half-health howl enrage. Wounds persist across
+  deaths via flags.bossHp (old "phase 2/3" saves resume at 60%).
+- **Blood Moon**: the risen moon now DIVES and CRASHES into the nearest
+  enemy at ceremony end (2 moon dmg, 2.4u blast, 1.4s stun; aim resolves
+  at dive time). The whole feature is Dark-Wolf-only now: button, nags,
+  trigger (dad: "the button is there no matter what form you're in").
+- **Whirlwind root cause**: `Melee_2H_Attack_Spin` is 2.4s with 0.6s of
+  dead wind-up — our 0.75s lock cut it before the body ever turned, so the
+  spin NEVER visibly played. Swapped to `Melee_2H_Attack_Spinning` (0.67s
+  true 360°), bone-verified rotating >85° mid-lock.
+- **Boulders**: continuous free-rolling replaced with cardinal STEP-SLIDE —
+  lean a beat, boulder rolls one clean 1.2u step (dominant axis), stops
+  when blocked, SNAPS dead-center onto a plate and locks. Sokoban clarity.
+- **"There is no pressure plate" — three stacked causes**: (1) the plate
+  decals sat BELOW the stone floor tiles' top surface (y≈0.17) — invisible
+  since Stoneroot shipped (HEIGHT LAW added; boulder ring + e2 scar raised
+  too); (2) the plate sat in the south-wall camera BLIND STRIP (~2u of
+  floor the tall wall hides — BLIND-STRIP LAW; plate/checkpoints/chests/
+  potions moved north); (3) the room was fully dark (dark zone now covers
+  only the north half). Plate rebuilt as a round stone plinth + gold disc
+  + pulsing gold act-here ring (the dungeon-kit trap grid read as DANGER).
+- **Room redesign, one puzzle per level**: e1's fake machinery grate +
+  code-built millstone discs deleted (they were dad's "plates on the
+  wall"), alcove open; the region-wide "mill wakes" fiction removed
+  everywhere; e1b Echo Chasm drop-hole teleports deleted (NO-TELEPORT
+  LAW) — now the Hidden Hollow, a simple pitch-dark cave; e2b Mill is now
+  the Old Quarry, a combat room whose vault opens when the ambush is
+  cleared (flags.e2bCleared; old twin-plate saves honored).
+- **Voice recording**: design/VOICE-RECORDING-SCRIPT.md generated from
+  narration.js (87 lines, grouped by character, file-per-line naming) —
+  dad is recording custom audio; wiring will prefer assets/voice/<id>.
+- Verified: 13-check headless suite (spin bone rotation, dark-wolf-only
+  gating, crash damage, boss loop/persistence/parry, boulder step + plate
+  snap + gate, room redesigns) + eyeball screenshots incl. a real-input
+  walk to the plate. SW cache wolfknight-v3.18.0.
+
+## v3.18.1 — Photo-playtest fixes (2026-08-02)
+
+- **Post-boss lava cools EVERYWHERE** (dad's photo: Cinder Bridges still
+  glowing): r2b's channels, the Kiln hub strips and the boss arena moat
+  are now `coolable` like r1's pools — once the Shadowgrip falls, every
+  Ember pool sleeps as walkable black basalt.
+- **"The chest is unobtainable" (Old Quarry vault)**: root cause — all
+  FIVE quarry skeletons spawn asleep, lying flat and nearly invisible in
+  the dim room; one un-found sleeper stalled the clear-check forever with
+  no feedback. Now the whole ambush RISES AT ONCE the moment Kael steps
+  onto the quarry floor (bones rattle), and a HUD chip counts down
+  "🦴 N left — clear the quarry!" until the vault opens. Chip clears on
+  room change. The vault chest also sat visually sunk into the NE corner
+  wall blocks — moved to (6.8, -5.0).
+- **Whirlwind sped up significantly**: clip timeScale 1.7x (SPIN_TIMESCALE,
+  player.js), lock 0.75→0.5s, hit at 0.22s — a whip-fast blur.
+- Verified: 6-check headless run (three rooms' lava zones empty post-boss,
+  mass wake + counter + vault open + chest position, spin 1.7x bone-verified
+  rotating inside the 0.5s lock). SW cache wolfknight-v3.18.1.
+
+## v3.18.2 — The Bone Warden, giant-sized (2026-08-02)
+
+- Dad's call: "make the second boss bigger like the wolf boss was." The
+  Warden grows 0.68 → 1.1 scale (2.2x his minions — the same ratio the
+  Shadowgrip holds over the little wolves), radius 0.52 → 0.8, with
+  boss-sized reach: attack trigger 3.0u, chop range 2.9, spin sweep 2.6,
+  danger ring outer radius 1.35 → 2.0.
+- Same buried-decal family as the plate: his red telegraph rings sat at
+  y 0.05 — UNDER the crypt's stone floor tiles, invisible since Stoneroot
+  shipped. Raised to y 0.19 (height law).
+- hp base unchanged (14 + pre-existing level scaling).
+- Verified headless (scale/radius/reach/ring height + chop telegraph
+  firing) + crypt screenshot. SW cache wolfknight-v3.18.2.
+
+## v3.18.3 — The secret menu skips LEVELS, not rooms (2026-08-02)
+
+- Dad: the cheat menu "skips to rooms instead of the beginning of a level,
+  and doesn't unlock the previous wolves needed to continue." The old menu
+  was a 14-entry developer room list that granted nothing. It is now three
+  LEVEL entries — Moonlit Den, Level 1 (Ember Hollow, r1), Level 2
+  (Stoneroot Caverns, e1) — and each jump grants the whole journey up to
+  that point: Level 2 unlocks the Fire Wolf and marks Ember complete
+  (bossDefeated, shortcut, both keys) — never the Earth Wolf, which is
+  earned INSIDE Level 2. The checkpoint follows the jump so Continue and
+  respawns use the level start, and the jump persists immediately.
+- Verified headless: 3 entries; Level 1 grants nothing extra and doesn't
+  spoil Ember; Level 2 lands on e1's spawn with fire wolf + completion
+  flags. SW cache wolfknight-v3.18.3.
+
+## v3.19.0 — THE WILD WOODS (region 3) + the Verdant Wolf (2026-08-02)
+
+Dad's go-word: "more rooms, slightly more difficult puzzles, lantern
+lighting for one door and boulder pressure points for the second —
+building on the skills previously learned."
+
+- **Seven rooms** (Stoneroot had five): w1 Thorn Gate → w2 Gloomwood →
+  w3 Rootbound Door → w4 Bramble Heart → w5 Sylva's Glade, with two
+  optional branches (w1b Mossy Dell, w2b Hollow Oak). Entry: a living
+  vine doorway in the Warden's Crypt that opens once Stoneroot sings.
+- **Forest tech**: 14 KayKit Forest Nature models vendored (260 KB);
+  buildForestShell — mossy ground, instanced tree borders with door gaps,
+  LOW bushes/rocks on the south edge (blind-strip law), grass tufts,
+  drifting wisp-motes; thornGate (bushes that tear away = the woods'
+  rising bars).
+- **PUZZLE DOOR 1 (w2 Gloomwood)**: three cold wisp-lanterns in a
+  twilight-dark room — Fire Wolf slams light them; the third is walled
+  behind CRACKED ROCK (Earth stomp first). Skills from regions 1+2
+  braided, exactly as briefed. Persisted via WS wild.lanterns.
+- **PUZZLE DOOR 2 (w3 Rootbound Door)**: TWIN boulders onto TWIN plates
+  through a two-gap hedge — line each boulder up with its gap, push it
+  through, then the final turn onto the plate. The Stoneroot skill with
+  real routing. Wrong-gap mistakes reset on re-entry (anti-soft-lock).
+- **Enemy family by the asset-multiplication law** (no new models):
+  Thorn Hound / Elder Thorn Hound (wolf, mossy green, fire-weak),
+  Bramble Blob (slime), Wisp Moth (bat) — ALL fear fire: the region's
+  element lesson. Spawners now take hound packs + variants on every type.
+- **Sylva, Thornbound (w5)**: the boss class is now a parameterized
+  giant-wolf-duel SKIN system — Sylva is the Shadowgrip grammar in
+  green: 24 hp, 8% quicker, same charge→collapse / swipe→parry reads
+  (bosses fight like their family). Her wounds persist (flags.sylvaHp).
+  Freed → the VERDANT WOLF is earned.
+- **The Verdant Wolf**: 5th form (green tint, leaf aura, 5.4 speed);
+  special = VINE-LASH (7s cd): a forward corridor of damage that CUTS
+  bramble tangles — pays out the e2 bramble promise from region 2, and
+  a tangle in the glade itself feeds the grant30s law. Thrown thorn
+  bolt ROOTS its target (1.2s).
+- Wiring: region flag, music (causeway loop for now — custom woods track
+  on the polish list), travel stone + cheat Level 3 (grants fire+earth +
+  both completions), pups 7–9 (9/9 = 8th heart), 18 narration lines +
+  Sylva's voice, regions.js manifest validates clean, saves additive
+  (sylvaHp/sylvaDefeated; WS wild.* rides flags.world).
+- Verified: 11-check headless suite (region validation, level-3 skip,
+  vine door, both puzzle doors through real crack/ignite/step-slide
+  systems, gauntlet, Sylva duel + grant, vine-lash cuts in w5 AND e2)
+  + four screenshots. SW cache wolfknight-v3.19.0, badge v3.19,
+  VOICE-RECORDING-SCRIPT regenerated (104 lines).
+
+## v3.19.1 — The shield-bearers actually hold their shields (2026-08-02)
+
+- Dad: "the skeletons and the bone warden don't have a shield holding up
+  animation." Two separate gaps, both real:
+  (1) the **Bone Warden had NO block clip at all** — he front-blocked
+  every hit while strolling with the tower shield at his hip;
+  (2) the **Shieldling only posed within 2.4u**, but its guard rule was
+  true for the whole chase — so it walked in normally while hits clanked
+  off it. The pose and the damage rule disagreed.
+- Root problem: the rig's `Melee_Blocking` clip poses the WHOLE body, so
+  playing it outright would freeze the legs mid-advance. Fix: a **guard
+  LAYER** — `upperBodyClip()` strips the clip to spine/chest/head/arms and
+  `_setupGuard()` plays it as a second action at weight 8 against the walk
+  clip's 1 (~89% guard on the arms, legs 100% walk). `_guard(up, dt)` eases
+  it in/out in ~0.1s, driven every frame by the enemy's own `shieldUp`
+  getter — which the Warden's `takeDamage` now reads too, so the pose and
+  the hitbox can never drift apart again.
+- Result: both shield-bearers advance with the shield braced and visibly
+  DROP it for every swing, every stun and every recovery — the three
+  taught openings now read on the body, not just in the damage numbers.
+- Verified: 6-check headless suite (guard raised while walking, dropped
+  mid-swing, dropped when stunned, both enemies, front-block/back-hurt
+  rule intact) + crypt screenshots. SW cache wolfknight-v3.19.1.

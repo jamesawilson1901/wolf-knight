@@ -28,7 +28,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf'];
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -151,7 +151,8 @@ function renderPotions(player) {
 
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
-  const total = state.spoken.region_complete ? 6 : 3; // Stoneroot adds three
+  // each opened region adds three pups to the count the HUD promises
+  const total = state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3;
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -206,7 +207,7 @@ const bossFillEl = document.getElementById('boss-fill');
 function updateBossBar() {
   let bar = null;
   if (world.boss && !world.boss.defeated) {
-    bar = { name: 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / 8 };
+    bar = { name: world.boss.name || 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / (world.boss.maxHp || 8) };
   } else if (world.warden && !world.warden.dead && world.warden.state !== 'sleep') {
     bar = { name: 'The Bone Warden', f: Math.max(0, world.warden.hp) / world.warden.maxHp };
   }
@@ -259,12 +260,22 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   // Dad's code (v3.14.1 — as he remembers it, and his memory is the spec):
   // ↑ ↑ ↓ ↓ ← → ○ □ □ ○
   const CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'circle', 'square', 'square', 'circle'];
+  // LEVELS, not rooms (v3.18.3 — dad's rule): each entry skips to the
+  // BEGINNING of a level and grants the whole journey up to that point
+  // (forms, keys, boss flags), so the level is playable from its first step.
   const LEVELS = [
-    ['den', '🏡 Moonlit Den'], ['r1', '🌋 Hollow Entrance'], ['r1b', '🕳️ Ash Warrens'],
-    ['r2', '🌉 Ember Causeway'], ['r2b', '🔥 Cinder Bridges'], ['k1', '🏛️ Kiln Hub'],
-    ['ka', '⛩️ Kiln Shrine'], ['kb', '🔢 Kiln Order'], ['r3', '🐺 Boss Arena'],
-    ['e1', '⛺ Cavern Gate'], ['e1b', '🕳️ Echo Chasm'], ['e2', '💀 Deep Hall'],
-    ['e2b', '⚙️ The Mill'], ['e3', '👑 Warden’s Crypt'],
+    { id: 'den', label: '🏡 Moonlit Den' },
+    { id: 'r1', label: '🌋 Level 1 — Ember Hollow' },
+    {
+      id: 'e1', label: '⛰️ Level 2 — Stoneroot Caverns',
+      forms: ['fire_wolf'], // earned by finishing Level 1...
+      emberDone: true,      // ...so Level 1 counts as complete
+    },
+    {
+      id: 'w1', label: '🌲 Level 3 — Wild Woods',
+      forms: ['fire_wolf', 'earth_wolf'],
+      emberDone: true, stoneDone: true, // both earlier levels count as complete
+    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');
@@ -325,16 +336,37 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
     });
   }
   const grid = document.getElementById('cheat-grid');
-  for (const [id, label] of LEVELS) {
+  for (const lvl of LEVELS) {
     const b = document.createElement('div');
     b.className = 'cheat-lvl ui';
-    b.textContent = label;
+    b.textContent = lvl.label;
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       audio.play('form-switch', { volume: 0.8 });
+      // grant the journey so far — the skip must never strand a kid
+      // without the wolves/keys the level assumes they have
+      for (const f of lvl.forms || []) {
+        if (!state.formsUnlocked.includes(f)) state.formsUnlocked.push(f);
+      }
+      if (lvl.emberDone) {
+        state.flags.bossDefeated = true;
+        state.flags.shortcutOpen = true;
+        state.flags.bossProgress = 0;
+        state.flags.bossHp = 0;
+        state.flags.keys.ember = true;
+        state.flags.keys.kiln = true;
+      }
+      if (lvl.stoneDone) {
+        state.flags.wardenDefeated = true;
+        state.flags.plates.e2_gate = true;
+        WS.set('stone', 'restored');
+      }
+      // the save follows the jump: Continue and respawns use the level start
+      state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
+      persist();
       closeAll();
       setPaused(false);
-      loadRoom(id);
+      loadRoom(lvl.id);
     });
     grid.appendChild(b);
   }
@@ -378,8 +410,8 @@ const stuckHints = [
       !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 4) },
   { line: 'boulder_hint', timer: 0, cond: () =>
       state.room === 'e2' && !state.flags.plates.e2_gate && nearXZ(-1.6, 3, 5) },
-  { line: 'boss_p1', timer: 0, cond: () =>
-      !!world.boss && !world.boss.defeated && world.boss.phase === 1 },
+  { line: 'boss_duel', timer: 0, cond: () =>
+      !!world.boss && !world.boss.defeated },
 ];
 
 function nearXZ(x, z, r) {
@@ -416,10 +448,20 @@ function guideTarget() {
     case 'kb': return { x: -4.4, z: -2.2 }; // brazier ONE of the order puzzle
     case 'r3': return f.bossDefeated ? { x: -7.4, z: 0.6 } : { x: 0, z: -0.5 };
     case 'e1': return { x: 0, z: -6.2 };    // deeper: the Deep Hall
-    case 'e1b': return { x: 0.3, z: -3.6 }; // the treasure hole
-    case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the millstone, then the crypt gate
-    case 'e2b': return (f.plates.e2b_p1 && f.plates.e2b_p2) ? { x: 6.9, z: -5.0 } : { x: -2.2, z: 1.2 };
-    case 'e3': return { x: 0, z: -2 };
+    case 'e1b': return { x: 1.8, z: 3.2 };  // the treasure chest in the dark
+    case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the boulder, then the crypt gate
+    case 'e2b': return (f.e2bCleared || (f.plates.e2b_p1 && f.plates.e2b_p2))
+      ? { x: 6.9, z: -5.0 } : { x: 0, z: -1.0 }; // the fight, then the vault
+    case 'e3': return f.wardenDefeated ? { x: 5.5, z: -6.2 } : { x: 0, z: -2 }; // then: the vine way
+    case 'w1': return { x: 0, z: -5.6 };    // deeper: the Gloomwood
+    case 'w1b': return { x: -2.0, z: -3.6 }; // the pup in the dell
+    case 'w2': return WS.get('wild', 'lanterns')
+      ? { x: 0, z: -6.4 }
+      : (f.cracked.w2_lantern ? { x: 0.5, z: -4.4 } : { x: 0.5, z: -2.6 }); // lanterns: crack, then light
+    case 'w2b': return { x: 4.4, z: -3.4 };
+    case 'w3': return (f.plates.w3_p1 && f.plates.w3_p2) ? { x: 0, z: -6.4 } : { x: -5.8, z: 2.2 };
+    case 'w4': return { x: 0, z: -5.6 };    // the boss door
+    case 'w5': return { x: 0, z: -0.5 };
     default: return null;
   }
 }
@@ -449,8 +491,10 @@ function narrationTriggers(dt, t) {
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
   if (state.room === 'r2' && nearXZ(4.5, -4.4, 5)) narration.say('learn_jump');
-  // the FIRST full moon: Pip teaches the surge the moment it's earned
-  if (state.moonGauge >= 1 && !player.surging && !player.ceremonyActive) narration.say('moon_full');
+  // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
+  // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
+  if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
+      !player.surging && !player.ceremonyActive) narration.say('moon_full');
   refreshControlReveal();
 
   if (state.room === 'r1') {
@@ -501,15 +545,10 @@ function narrationTriggers(dt, t) {
     if (m.campSpot && nearSpot(m.campSpot, 3)) {
       narration.say(WS.get('stone', 'restored') ? 'camp_healed' : 'camp_rumour');
     }
-    if (m.millGrate && !m.millGrate.open && nearSpot(m.millGrate, 3)) {
-      if (logMystery('stone_mill', '⚙️', 'Dead machinery — the Cavern Gate')) bigToast('🗺️ Added to the map: ???');
-    }
-    if (m.millGrate && m.millGrate.open) resolveMystery('stone_mill');
     const skel = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonMinion' && !e.dead);
     if (skel && nearXZ(skel.x, skel.z, 4.6)) narration.say('skeleton_intro');
   }
   if (state.room === 'e2') {
-    if (WS.get('stone', 'mill')) narration.say('mill_wakes');
     if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_e2');
     if (m.brambleSpot && nearSpot(m.brambleSpot, 3)) {
       if (logMystery('stone_bramble', '🌿', 'A thorny tangle — the Deep Hall')) bigToast('🗺️ Added to the map: ???');
@@ -522,8 +561,11 @@ function narrationTriggers(dt, t) {
     if (state.flags.plates.e2_gate) narration.say('plate_open');
     if (state.flags.plates.e2_gate && nearXZ(8.6, 0, 3)) narration.say('warden_door');
   }
-  if (state.room === 'e1b') narration.say('echo_enter');
-  if (state.room === 'e2b') narration.say('mill2_enter');
+  if (state.room === 'e1b') narration.say('darkcave_enter');
+  if (state.room === 'e2b') {
+    narration.say('quarry_enter');
+    if (world.quarryCleared && world.quarryCleared()) narration.say('quarry_clear');
+  }
   if (state.room === 'e3') {
     if (m.wildwoodsWay && nearSpot(m.wildwoodsWay, 3)) {
       narration.say('ripple_vine');
@@ -536,6 +578,38 @@ function narrationTriggers(dt, t) {
         narration.say('luna_dream_2');
         persist();
       }
+    }
+    if (WS.get('stone', 'restored') && nearXZ(5.5, -5.5, 3.4)) narration.say('wildwoods_open');
+  }
+
+  // The Wild Woods (region 3)
+  if (state.room[0] === 'w') {
+    narration.say('wild_enter');
+    if (state.room === 'w1') {
+      const th = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
+      if (th && nearXZ(th.x, th.z, 6)) narration.say('thornhound_intro');
+    }
+    if (state.room === 'w1b' && m.iceSpot && nearSpot(m.iceSpot, 3.2)) {
+      if (logMystery('frost_spring', '❄️', 'A spring sealed in ice — the Mossy Dell')) bigToast('🗺️ Added to the map: ???');
+      narration.say('gate_promise');
+    }
+    if (state.room === 'w2') {
+      const ls = m.lanternSpots || [];
+      if (!WS.get('wild', 'lanterns')) {
+        if (ls.some((l) => nearXZ(l.x, l.z, 4.2))) narration.say('lantern_hint');
+        if (m.crackSpot && !state.flags.cracked.w2_lantern && nearSpot(m.crackSpot, 3.6)) narration.say('lantern_rock');
+      } else {
+        narration.say('lantern_open');
+      }
+    }
+    if (state.room === 'w3') {
+      if (m.boulderSpot && nearSpot(m.boulderSpot, 4.2)) narration.say('plates2_hint');
+      if (state.flags.plates.w3_p1 && state.flags.plates.w3_p2) narration.say('plates2_open');
+    }
+    if (state.room === 'w4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('wild_boss_door');
+    if (state.room === 'w5' && state.flags.sylvaDefeated &&
+        m.sylvaShrine && nearSpot(m.sylvaShrine, 2.8)) {
+      if (narration.say('wild_complete')) persist();
     }
   }
   // the first shield-bearer: teach the three ways past a raised shield
@@ -580,15 +654,14 @@ function narrationTriggers(dt, t) {
 
   const boss = world.boss;
   if (boss && !boss.defeated) {
-    if (boss.phase === 1 && boss.stateT > 1.2) narration.say('boss_p1');
-    if (boss.slamState === 'telegraph') narration.say('boss_p1_telegraph');
-    if (boss.phase === 2) narration.say('boss_p2');
-    if (boss.chargeState === 'tired') narration.say('boss_tired'); // the collapse
-
-    if (boss.phase >= 2 && state.moonGauge >= 1) {
-      narration.say('boss_bloodmoon'); // "ready" now means a FULL moon gauge
+    narration.say('boss_duel'); // it fights like the little wolves — same reads
+    if (boss.action === 'crouch') narration.say('boss_charge_tell');
+    if (boss.action === 'windup') narration.say('boss_swipe_tell');
+    if (boss.action === 'tired') narration.say('boss_tired'); // the collapse
+    // the Blood Moon belongs to the Dark Wolf — only nag when it applies
+    if (state.form === 'dark_wolf' && state.moonGauge >= 1) {
+      narration.say('boss_bloodmoon');
     }
-    if (boss.phase === 3) narration.say('boss_p3');
   }
 
   if (m.exitSpot && nearSpot(m.exitSpot, 1.6)) {
@@ -603,7 +676,9 @@ function narrationTriggers(dt, t) {
   // contextual (repeatable, throttled)
   const shadesNear = (world.enemies || []).filter((e) =>
     e.constructor.name === 'Shade' && !e.dead && nearXZ(e.x, e.z, 6.5)).length;
-  if (shadesNear >= 2 && state.moonGauge >= 1) sayThrottled('enemy_group', t, 35);
+  if (shadesNear >= 2 && state.moonGauge >= 1 && state.form === 'dark_wolf') {
+    sayThrottled('enemy_group', t, 35); // "moon is full" only nags the wolf
+  }
 
   // stuck re-hints: linger ~22s at a gate → replay the teach line
   for (const h of stuckHints) {
@@ -619,9 +694,10 @@ function narrationTriggers(dt, t) {
 
 function updateMusic() {
   if (state.room === 'den') audio.playMusic('den');
-  else if (state.room === 'r3' && world.boss && !world.boss.defeated) {
+  else if ((state.room === 'r3' || state.room === 'w5') && world.boss && !world.boss.defeated) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
-  } else if (state.room[0] === 'k') audio.playMusic('kiln');
+  } else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
+  else if (state.room[0] === 'k') audio.playMusic('kiln');
   else if (state.room === 'e3') audio.playMusic('stone-deep');
   else if (state.room[0] === 'e') audio.playMusic('region-stone');
   else if (state.flags.bossDefeated) audio.playMusic('ember-calm'); // the healed Hollow sings softly
@@ -760,6 +836,13 @@ function onPupCollected() {
     player.healFull();
     effects.warmFlood();
     narration.say('all_pups_stone');
+  } else if (found >= 9 && state.maxHearts === 7) {
+    // all Wild Woods pups → the den is FULL of happy howls
+    state.maxHearts = 8;
+    player.maxHearts = 8;
+    player.healFull();
+    effects.warmFlood();
+    narration.say('all_pups_wild');
   } else {
     narration.say('pup_found');
   }
@@ -815,10 +898,11 @@ async function loadRoom(id, entry) {
   transitioning = true;
   await fadeTo(1, 260);
   player.clearProjectiles();
+  document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
-  state.region = id[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods' : 'ember_hollow';
   applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
@@ -832,6 +916,7 @@ async function loadRoom(id, entry) {
   updateMusic();
   if (id === 'r2') narration.say('r2_enter');
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
+  if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
@@ -900,6 +985,9 @@ const surgeVignetteEl = document.getElementById('surge-vignette');
 function triggerSurge() {
   if (!player || !world || !effects) return false;
   if (transitioning || paused || menuPaused || narration.blocking) return false;
+  // playtest law: the Blood Moon is the DARK WOLF's power — no other form
+  // shows the button, hears the nag, or can fire it
+  if (state.form !== 'dark_wolf') return false;
   return player.startSurge(effects, world);
 }
 let titleScene = null;
@@ -1139,21 +1227,33 @@ async function start() {
             effects.warmFlood();
             effects.shake(0.35, 0.8);
             ui.refreshBadge();
-            if (world.openShortcut) world.openShortcut(); // the way home opens
-            audio.playMusic('victory', { loop: false, then: 'ember-calm' });
             bumpCounter('bosses');
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
             spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
-            narration.say('boss_defeat');
-            narration.say('firewolf_grant');
-            narration.say('firewolf_howto');
-            // WITNESSED RESTORATION (WORLD-DESIGN §3): the Hollow heals
-            // around the player, live — green rises, Cinder climbs the ridge.
-            WS.set('ember', 'restored');
-            emberRestorationLive(world);
-            narration.say('restoration_1');
-            setTimeout(() => narration.say('restoration_2'), 8000);
+            if (state.room === 'w5') {
+              // SYLVA FREED — the Wild Woods breathe again, the Verdant
+              // Wolf is earned (boss.js set the flags; here is the party)
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('sylva_defeat');
+              narration.say('verdant_grant');
+              narration.say('verdant_howto');
+              WS.set('wild', 'restored');
+              narration.say('wild_restore_1');
+              setTimeout(() => narration.say('luna_dream_3'), 9000);
+            } else {
+              if (world.openShortcut) world.openShortcut(); // the way home opens
+              audio.playMusic('victory', { loop: false, then: 'ember-calm' });
+              narration.say('boss_defeat');
+              narration.say('firewolf_grant');
+              narration.say('firewolf_howto');
+              // WITNESSED RESTORATION (WORLD-DESIGN §3): the Hollow heals
+              // around the player, live — green rises, Cinder climbs the ridge.
+              WS.set('ember', 'restored');
+              emberRestorationLive(world);
+              narration.say('restoration_1');
+              setTimeout(() => narration.say('restoration_2'), 8000);
+            }
             persist(); // form unlock + healed world is a save point
           };
         }
@@ -1164,20 +1264,8 @@ async function start() {
       const door = world.doorAt(player.root.position.x, player.root.position.z);
       if (door) loadRoom(door.to, door.entry);
 
-      // Drop-holes + climb rings (the Echo Chasm): walk on → whoosh across.
-      // Jumping OVER a hole is legit — airborne feet never fall in.
-      if (world.holes && player.airY <= 0 && !player._lavaBounce) {
-        for (const h of world.holes) {
-          const hdx = player.root.position.x - h.x, hdz = player.root.position.z - h.z;
-          if (hdx * hdx + hdz * hdz < h.r * h.r) {
-            audio.play('puff', { volume: 0.7, rate: 0.85 });
-            player.place(h.landing.x, h.landing.z, player.root.rotation.y);
-            player.iframes = Math.max(player.iframes, 0.5);
-            player._vel.x = 0; player._vel.z = 0;
-            break;
-          }
-        }
-      }
+      // (v3.18: the Echo Chasm drop-hole teleports are gone — dad's law:
+      // nothing moves the player without a door they walked through.)
 
       narrationTriggers(dt, t);
       updateGentleGuide(dt);

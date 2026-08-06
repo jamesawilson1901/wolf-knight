@@ -1,5 +1,12 @@
 # Combat Spec — Wolf Knight (all shipped regions)
 
+> **CHANGELOG (2026-08-02, v3.18):** The Shadowgrip is REWRITTEN as a pure
+> wolf duel (no tendrils/phases — dad's law: bosses fight like their
+> family, bigger). The Blood Moon now CRASHES down on the nearest enemy
+> and belongs to the Dark Wolf only. The Knight's whirlwind uses the true
+> 0.67s spin clip (the old 2.4s clip never visibly turned). Boulders push
+> in clean cardinal steps and snap onto plates. Stoneroot: one puzzle
+> room (Deep Hall, lit), Echo Chasm teleports and all fake machinery gone.
 > **CHANGELOG (2026-08-01, v3.11):** Form identity + Moon Gauge Surge are
 > BUILT — the "approved, not yet built" section below is now the as-built
 > spec. The Dark Wolf is the fast fragile hunter (lunge, senses, +30%
@@ -29,7 +36,8 @@ identity dials in CONFIG.FORMS):
   **the only form with the shield** (hold = blunted damage; fresh raise
   ≤0.3s = perfect parry: negates + stuns 2.2s), jump/double-jump.
   Special: **WHIRLWIND** (6s cd) — a full-circle spin that strikes
-  everything around him, the answer to being surrounded.
+  everything around him, the answer to being surrounded. (v3.18: uses
+  the 0.67s `Melee_2H_Attack_Spinning` clip — a true 360° body spin.)
 - **Dark Wolf — the fast fragile hunter.** From minute one. 6.7u/s (knight
   4.6), 1.35x turn rate, **+30% damage taken** (applied before kid-mode
   softening, so Gentle still protects). Quick bite chain (0.34s lock) with
@@ -57,11 +65,15 @@ identity dials in CONFIG.FORMS):
   near enemies — pressure feeds the moon (hidden assist; pots don't
   count). No decay; survives switches, rooms and saves (state.moonGauge).
   'Quicker Moon' perk = +25%/rank fill; Moon Shard powerup fills it whole.
-- **FULL = gold act-here pulse. Tap the gauge** (any form; K/special button
-  also works in forms without a cooldown special) → **~2.5s ceremony**:
-  red vignette + a blood moon rises, ~30% time-slow at the morph, forced
-  Dark Wolf, HOWL + bass + 250ms haptic, then a no-damage shockwave that
-  staggers + shoves everything near (1.6s stun, 4u).
+- **The Blood Moon belongs to the DARK WOLF (v3.18):** the gauge fills in
+  every form, but the moon button, the "moon is full" nags and the
+  trigger only exist while wearing the Dark Wolf.
+- **FULL = gold act-here pulse. Tap the gauge** → **~2.5s ceremony**:
+  red vignette + a blood moon rises, ~30% time-slow at the morph, HOWL +
+  bass + 250ms haptic, a no-damage shockwave that staggers + shoves
+  everything near (1.6s stun, 4u) — **then THE CRASH (v3.18):** the risen
+  moon DIVES out of the sky and slams into the nearest enemy (2 moon
+  damage in a 2.4u blast + 1.4s stun, red impact ring, hit-stop).
 - **~10s SURGE:** locked into a 1.25x-scale Dark Wolf, red aura/trail,
   every hit lands one juice tier heavier (juice.weightBoost), bite damage
   x2, bites stagger, lunge is free, regen ½ heart/s, gauge drains as the
@@ -79,7 +91,18 @@ identity dials in CONFIG.FORMS):
 | **Slime** | slime | splits into 2 minis on death | Stoneroot |
 | **Cave Bat** | bat | dive then crash-lands grounded (vulnerable) | Stoneroot |
 | **Skeleton Minion / Rogue** | skeletons | minion swarms slowly; rogue circles + lunges | Stoneroot |
+| **Skeleton Shieldling** | minion + tower shield | advances **visibly** shield-up (front damage NULL); the shield DROPS on its own swing, when stunned, or you slip behind (slow 2 rad/s turn) | Stoneroot |
 | **Bone Warden** | armored skeleton | mini-boss: tower shield front-blocks (clank + BLOCKED); flank or parry-stun to hurt | Stoneroot |
+| **Cinder Shade** ⭐ | Shade, kiln-baked tint, 1.3x | RESISTS fire (0.4x + grey callout); moon shreds it | Ember (Kiln) |
+| **Elder Hound** ⭐ | Hound, gold eyes, 1.3x | pack leader: hp 6, harder charge, guaranteed ember | Ember (r2b) |
+| **Bone Brute** ⭐ | Minion, darkened, 1.4x | a slow walking wall: hp 5, heavier contact | Stoneroot (Quarry) |
+| **Thorn Hound** ⭐ | Wolf, mossy green | hound grammar; FEARS FIRE (burn the thorns) | Wild Woods |
+| **Elder Thorn Hound** ⭐ | Thorn Hound, 1.3x, gold eyes | hp 6, harder charge, guaranteed drop | Wild Woods |
+| **Bramble Blob** ⭐ | Slime, deep green | splits; fears fire | Wild Woods |
+| **Wisp Moth** ⭐ | Bat, pale-green glow | dive pattern; fears fire | Wild Woods |
+
+⭐ = VARIANTS (asset-multiplication law): tint + scale + stat + element
+swaps on models we already ship — the registry lives in enemies.js.
 
 Deaths puff into smoke (not gory). Never more than 3 simultaneous aggro
 enemies near a kid. Enemies have solid bodies (no walking through each
@@ -87,25 +110,41 @@ other or Kael); a raised shield physically bumps basic enemies back.
 
 ## Boss 1 — The Shadowgrip (Heart of the Hollow)
 
-GIANT SHADOW WOLF (wolf model at ~2.9x player wolves, violet eyes),
-looming over the caged ember (Cinder). Core is ALWAYS targetable but only
-takes damage when EXPOSED (gold strike ring + chime); guarded hits clank
-+ "BLOCKED".
+v3.18 (dad's law): **a giant shadow hound, nothing else.** No tendrils,
+no waves, no phases, no room-darkness — it fights EXACTLY like the
+little shadow hounds the kids already read, just bigger (~2.3x), much
+tougher (20 hp) and harder-hitting (1.5 hearts). Always hittable —
+every swing counts (single strikes cap at 3). The hitbox and the gold
+ring RIDE THE WOLF.
 
-- **Phase 1:** tendrils rise and slam telegraphed spots (red rings,
-  ≥0.9s) → a slammed tendril STICKS ~1.7s (gold ring = sever it, 1 hit)
-  → severing exposes the core (gold strike ring, cage cracks per sever).
-- **Phase 2 — THE POUNCE:** rest (pulse windows ~1.7s open) → crouch 1s +
-  red charge lane → charge → **THE COLLAPSE**: the wolf visibly FALLS
-  OVER (Death clip, held) for 2.6s with a pulsing GOLD ring under it,
-  slow-mo blip + thud on the crash, core force-exposed, Pip calls it.
-  Severing a tendril in phase 1 makes the giant FLINCH (hit-react).
-- **Phase 3:** whole-room darkness (Dark Wolf sight payoff) + bursts.
-- Boss parts cap any single strike at 3 (surge bites hit for 2 — strong,
-  never trivializing). Pip re-teaches the loop if the player flounders.
-- Dying mid-fight preserves the reached phase (flags.bossProgress, saved).
+- **The duel loop:** it PROWLS a circle (walk) → then either
+  **CHARGES** — 1.0s on-body telegraph (deep crouch, eyes FLARE, claws
+  scrape dust — hound language, boss-sized), then a straight run through
+  where you stood. Answer: dodge/roll aside. Every charge ends in **THE
+  COLLAPSE** — it falls over (Death clip, held) 2.6s under a pulsing
+  gold ring: the big free-hits window; or
+  **SWIPES** — when close: 0.9s snarl + coil windup, then one huge paw
+  arc. Answer: shield it (blunted), or perfect-parry to STAGGER the
+  wolf for 2.2s, or jump it.
+- **At half health** it HOWLS and hunts harder (faster prowl, shorter
+  gaps, brighter eyes) — a readable midpoint, not a new ruleset.
+- Its wounds PERSIST across deaths (flags.bossHp, saved): a kid who got
+  it to half never faces a full-health wolf again. (Legacy saves that
+  reached old "phase 2/3" resume at 60% hp.)
+- Cinder's caged light sits at the arena heart; the smothering shadow
+  shell visibly THINS as the wolf weakens — the room shows the score.
 - Defeat is DRAMATIC (staggered shockwaves, smoke dissolve, howl) →
   Cinder freed → the Hollow heals live around the player → shortcut opens.
+
+## Boss 3 — Sylva, Thornbound (Sylva's Glade, Wild Woods)
+
+The giant-wolf duel grammar in GREEN (the boss class is a skin system now):
+the forest's own guardian, wrapped and maddened by Grimm's thorns. 24 hp,
+~8% quicker than the Shadowgrip, same honest reads — crouch+flare = charge
+(dodge; ends collapsed under gold), snarl+coil = swipe (shield/parry; a
+perfect parry staggers her). Her wounds persist across deaths
+(flags.sylvaHp). Freed, she grants the VERDANT WOLF: vine-lash special
+(cuts brambles — the e2 promise pays out), rooting thorn bolt, leaf aura.
 
 ## Boss 2 — Bone Warden (Warden's Crypt)
 

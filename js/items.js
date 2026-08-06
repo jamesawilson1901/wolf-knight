@@ -5,6 +5,11 @@
 
 import { state } from './state.js';
 
+// STYLE fields (standing rule — weapons differ in HOW they swing, not just
+// numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
+// seconds of daze on hit, `element` = the strike's element (default steel —
+// elemental blades let the KNIGHT hit weaknesses: the Ember Blade burns,
+// the Moon Sword carries Luna's light).
 export const WEAPONS = {
   sword_knight: {
     name: 'Knight Sword', icon: '🗡️', file: './assets/chars/sword_1handed.gltf',
@@ -18,23 +23,23 @@ export const WEAPONS = {
   },
   sword_b: {
     name: 'Ember Blade', icon: '⚔️', file: './assets/gear/sword_B.gltf',
-    dmg: 1.5, lock: 0.55, range: 2.0, price: 90,
-    blurb: 'Forged in the Hollow.',
+    dmg: 1.5, lock: 0.55, range: 2.0, price: 90, element: 'fire',
+    blurb: 'Forged in the Hollow — it BURNS.',
   },
   spear_a: {
     name: 'Long Spear', icon: '🥢', file: './assets/gear/spear_A.gltf',
-    dmg: 1, lock: 0.6, range: 2.7, price: 120,
-    blurb: 'Poke from far away!',
+    dmg: 1, lock: 0.6, range: 2.7, price: 120, arc: 36,
+    blurb: 'Poke from FAR away. Aim true!',
   },
   sword_d: {
     name: 'Moon Sword', icon: '🌙', file: './assets/gear/sword_D.gltf',
-    dmg: 2, lock: 0.55, range: 2.1, price: 200,
-    blurb: "Luna's favorite.",
+    dmg: 2, lock: 0.55, range: 2.1, price: 200, element: 'moon',
+    blurb: "Luna's favorite — shadows fear it.",
   },
   hammer_a: {
     name: 'Boulder Hammer', icon: '🔨', file: './assets/gear/hammer_A.gltf',
-    dmg: 3, lock: 0.85, range: 1.9, price: 300,
-    blurb: 'Slow… but WHAM.',
+    dmg: 3, lock: 0.85, range: 1.9, price: 300, arc: 82, stun: 0.6,
+    blurb: 'Slow… but WHAM. Leaves them dizzy!',
   },
 };
 

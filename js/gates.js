@@ -10,20 +10,22 @@
 import * as THREE from 'three';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { WS } from './worldstate.js';
 
 export const GATE_TYPES = {
   boulder: { ability: 'earth_wolf', icon: '🪨', label: 'A huge boulder blocks the way' },
   water: { ability: 'tide_wolf', icon: '💧', label: 'A rushing fire-water channel' },
   bramble: { ability: 'verdant_wolf', icon: '🌿', label: 'A thorny tangle chokes the way' },
+  ice: { ability: 'frost_wolf', icon: '❄️', label: 'A spring sealed in old ice' },
 };
 
-// Bramble tangle — the Verdant Wolf's vine-lash cuts it (region 3). Until
-// then it is a thorny PROMISE: a dense dark tangle with a faint green
-// glint, blocking a visible reward. Cleared state lives in
-// state.flags.world (WS 'cut_<id>') so region 3 opens it with one flag.
-export function brambleGate(world, prepareModel, bushGltf, id, x, z) {
-  const cut = state.flags.world && state.flags.world.stone && state.flags.world.stone['cut_' + id];
-  if (cut) return null;
+// Bramble tangle — the Verdant Wolf's VINE-LASH cuts it (v3.19: live).
+// Until the form is earned it is a thorny PROMISE: a dense dark tangle with
+// a faint green glint, blocking a visible reward. Cleared state lives in
+// state.flags.world under its region (WS '<region>', 'cut_<id>').
+export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 'stone') {
+  if (WS.get(region, 'cut_' + id)) return null;
+  const group = new THREE.Group();
   for (const [ox, oz, s, ry] of [[-0.55, 0, 1.2, 0.4], [0.5, -0.12, 1.35, 2.1], [0, 0.42, 1.05, 4.0]]) {
     const b = prepareModel(bushGltf.scene.clone());
     b.position.set(x + ox, 0, z + oz);
@@ -34,14 +36,15 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z) {
       n.material = n.material.clone();
       if (n.material.color) n.material.color.setHex(0x2f4a26); // dark thorn green
     });
-    world.add(b);
+    group.add(b);
   }
   const glint = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.06, 0),
     new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
   );
   glint.position.set(x, 0.95, z);
-  world.add(glint);
+  group.add(glint);
+  world.add(group);
   world.onAnimate((t) => {
     glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
     glint.rotation.y = t * 1.4;
@@ -49,7 +52,63 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z) {
   const collider = { minX: x - 1.15, maxX: x + 1.15, minZ: z - 0.95, maxZ: z + 0.95 };
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
+
+  // register for the vine-lash: world.cutAt(x, z, r) clears any tangle in
+  // reach — leaf-burst, creak, collider gone, WS flag set forever
+  if (!world.cuttables) world.cuttables = [];
+  world.cuttables.push({
+    id, x, z, cut: false,
+    clear: () => {
+      world.root.remove(group);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      WS.set(region, 'cut_' + id);
+      audio.play('gate-creak', { volume: 0.7, rate: 0.9 });
+      audio.play('puff', { volume: 0.8, rate: 1.2 });
+    },
+  });
+  if (!world.cutAt) {
+    world.cutAt = (cx, cz, r) => {
+      let n = 0;
+      for (const c of world.cuttables) {
+        if (c.cut) continue;
+        const dx = c.x - cx, dz = c.z - cz;
+        if (dx * dx + dz * dz > r * r) continue;
+        c.cut = true;
+        c.clear();
+        n++;
+      }
+      return n;
+    };
+  }
   return { id, collider };
+}
+
+// Ice-sealed spring — the Frost Wolf (region 4) will thaw it. Pure promise:
+// a pale crystal mound with a cold glow, guarding a visible reward.
+export function iceGate(world, x, z, id = 'w_ice') {
+  const ice = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.95, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.35,
+      transparent: true, opacity: 0.85, roughness: 0.25,
+    })
+  );
+  ice.position.set(x, 0.5, z);
+  ice.scale.y = 0.75;
+  world.add(ice);
+  const shard = new THREE.Mesh(
+    new THREE.ConeGeometry(0.22, 0.9, 5),
+    ice.material
+  );
+  shard.position.set(x - 0.5, 0.4, z + 0.4);
+  shard.rotation.z = 0.4;
+  world.add(shard);
+  world.onAnimate((t) => {
+    ice.material.emissiveIntensity = 0.3 + 0.12 * Math.sin(t * 1.6 + x);
+  });
+  world.circleColliders.push({ x, z, r: 1.0 });
+  world.markers.iceSpot = { x, z, id };
 }
 
 // Big single boulder — visually distinct from cracked-rock piles (one huge

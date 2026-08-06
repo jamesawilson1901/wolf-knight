@@ -57,8 +57,122 @@ const TRAITS = {
   Bat: { weakness: 'fire' },
   SkeletonMinion: { weakness: 'fire', armored: true },
   SkeletonRogue: { weakness: 'fire', armored: true },
+  SkeletonShield: { weakness: 'fire', armored: true },
   BoneWarden: { weakness: 'fire', armored: true },
 };
+
+// ---------------------------------------------------------------------------
+// VARIANTS — the oldest trick in the book (standing rule): recolor, resize
+// and restat the models we already ship. A spawn marker carries
+// `variant: 'cinder'` and the base enemy becomes a new foe: different tint,
+// size, hp, speed, element RESISTANCE (0.4x + a grey "RESIST" callout — the
+// counterpart lesson to SUPER!). One model, many monsters.
+// ---------------------------------------------------------------------------
+
+export const VARIANTS = {
+  // Kiln elite: a shade baked in the kiln's own fire — FIRE bounces off it
+  // (the Fire Wolf's home advantage disappears; moon still shreds it)
+  cinder: {
+    label: 'Cinder Shade',
+    scale: 1.3, hp: 4.5, speed: 3.0, resist: 'fire', dropChance: 0.7,
+    puffTint: 0x6a2a10,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xffd75a); m.emissiveIntensity = 2.0; }
+      else if (m.color) { m.color.setHex(0x4a1408); m.emissive && m.emissive.setHex(0x8a2a10); m.emissiveIntensity = 0.5; }
+    },
+  },
+  // The pack leader: bigger, tougher, faster charge, gold-burning eyes
+  elder: {
+    label: 'Elder Hound',
+    scale: 1.3, hp: 6, chargeSpeed: 10.8, dropChance: 1,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffd75a); m.emissiveIntensity = 1.8; }
+    },
+  },
+  // A wall of old bone: slow, huge, hits harder — same armor law as all bone
+  brute: {
+    label: 'Bone Brute',
+    scale: 1.4, hp: 5, speed: 1.1, contactDmg: 1.5, dropChance: 0.8,
+    sharedMats: true, // skeletons share loader materials — clone before tinting
+    tint: (m) => {
+      if (m.color) m.color.multiplyScalar(0.82); // old bone runs darker
+    },
+  },
+
+  // --- the WILD WOODS family (v3.19): forest creatures wound in thorns.
+  // All of them FEAR FIRE (burn the brambles off) — the region's element
+  // lesson, taught with the Fire Wolf the kids have owned since region 1.
+  thorn: {
+    label: 'Thorn Hound',
+    hp: 3.5, weakness: 'fire', puffTint: 0x39502c, dropChance: 0.45,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.5; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x3c5a2e); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x55793f); }
+    },
+  },
+  elderthorn: {
+    label: 'Elder Thorn Hound',
+    scale: 1.3, hp: 6, chargeSpeed: 11, weakness: 'fire', dropChance: 1, puffTint: 0x39502c,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffe14a); m.emissiveIntensity = 1.9; }
+      else if (m.name === 'Main' || m.name === 'Main_Light') { m.color && m.color.setHex(0x2c4a22); }
+    },
+  },
+  bramble: {
+    label: 'Bramble Blob',
+    hp: 3, weakness: 'fire', puffTint: 0x39502c,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.6; }
+      else if (m.color) { m.color.setHex(0x35521f); m.emissive && m.emissive.setHex(0x1d3312); m.emissiveIntensity = 0.35; }
+    },
+  },
+  wisp: {
+    label: 'Wisp Moth',
+    hp: 1.5, weakness: 'fire', puffTint: 0xb8ffc8,
+    tint: (m) => {
+      if (m.color) { m.color.setHex(0x9fd8a8); m.emissive && m.emissive.setHex(0x8fdc6a); m.emissiveIntensity = 0.7; }
+    },
+  },
+};
+
+function applyVariant(e, name) {
+  const v = VARIANTS[name];
+  if (!v) return e;
+  if (v.hp) { e.hp = v.hp; e.maxHp = v.hp; }
+  if (v.scale && e.model) {
+    e.model.scale.multiplyScalar(v.scale);
+    e.radius = e.radius * (1 + (v.scale - 1) * 0.6);
+  }
+  if (v.speed !== undefined) e.speed = v.speed;
+  if (v.chargeSpeed !== undefined) e.chargeSpeed = v.chargeSpeed;
+  if (v.contactDmg !== undefined) e.contactDmg = v.contactDmg;
+  if (v.resist) e.resist = v.resist;
+  if (v.weakness) e.weakness = v.weakness;
+  if (v.dropChance !== undefined) e.dropChance = v.dropChance;
+  if (v.puffTint !== undefined) e.puffTint = v.puffTint;
+  if (v.tint && e.model) {
+    e.model.traverse((n) => {
+      if (!n.isMesh) return;
+      if (v.sharedMats) {
+        // clone first — never recolor the loader cache other spawns share
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        const cloned = mats.map((m) => { const c = m.clone(); v.tint(c); return c; });
+        n.material = Array.isArray(n.material) ? cloned : cloned[0];
+      } else {
+        // shades/hounds already own per-instance clones (eye-flare mats
+        // must stay the SAME objects the class holds references to)
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        for (const m of mats) v.tint(m);
+      }
+    });
+  }
+  if (v.sharedMats) {
+    e._flashMats = [];
+    e.registerFlashMats(e.model); // re-point the hurt flash at the clones
+  }
+  return e;
+}
 
 class Enemy {
   constructor(world, x, z, { hp, radius }) {
@@ -124,6 +238,13 @@ class Enemy {
     }
     const weak = this.weakness && element === this.weakness;
     if (weak) mult *= 1.5;
+    // variant RESISTANCE: the wrong element fizzles (0.4x + grey callout) —
+    // the counterpart lesson to SUPER!: "this one shrugs that off, switch!"
+    if (this.resist && element === this.resist) {
+      mult *= 0.4;
+      audio.play('puff', { volume: 0.4, rate: 1.7 });
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'RESIST');
+    }
     n = Math.round(n * mult * 2) / 2;
     if (n <= 0) n = 0.5;
     if (this.stunned > 0) n *= 2; // parry payoff: dizzy enemies take double
@@ -319,7 +440,7 @@ export class Hound extends Enemy {
       this._play('charge', 0.08);
       this.model.scale.y = 0.35;
       for (const m of this.eyeMats) m.emissiveIntensity = 4.0; // burning as it flies
-      const speed = 9.6; // playtest bump: the charge should scare a little
+      const speed = this.chargeSpeed || 9.6; // elders charge harder (VARIANTS)
       const nx = this.x + this.chargeDir.x * speed * dt;
       const nz = this.z + this.chargeDir.z * speed * dt;
       const solved = this._moveSolved(nx, nz);
@@ -675,6 +796,22 @@ export class Moth extends Bat {
 // waking up" beat before any fight starts).
 // ---------------------------------------------------------------------------
 
+// GUARD LAYER (v3.19.1 — playtest: "the skeletons and the bone warden don't
+// have a shield holding up animation"). The rig's `Melee_Blocking` clip poses
+// the whole body, so playing it whole would freeze the legs mid-advance. We
+// strip it down to the UPPER BODY (spine/chest/head/arms) and play that as a
+// second, heavier-weighted action ON TOP of walk: the legs keep striding, the
+// shield stays braced. LAW: a guard that blocks damage must LOOK raised —
+// the pose and the damage rule are never allowed to disagree.
+const UPPER_BODY = /^(spine|chest|head|upperarm|lowerarm|wrist|hand)/;
+const GUARD_WEIGHT = 8; // vs the locomotion clip's 1 → ~89% guard on the arms
+
+function upperBodyClip(src, name) {
+  const tracks = src.tracks.filter((t) => UPPER_BODY.test(t.name.split('.')[0]));
+  if (!tracks.length) return null;
+  return new THREE.AnimationClip(name, src.duration, tracks);
+}
+
 class SkeletonBase extends Enemy {
   constructor(world, x, z, cfg) {
     super(world, x, z, { hp: cfg.hp, radius: cfg.radius });
@@ -727,6 +864,28 @@ class SkeletonBase extends Enemy {
     const m = prepareCharacter(gltf.scene.clone());
     m.scale.setScalar(scale);
     bone.add(m);
+  }
+
+  // Build the shield-up layer (call once, after the clips are bound).
+  _setupGuard(anims, clipName = 'Melee_Blocking') {
+    const src = anims.find((c) => c.name === clipName);
+    if (!src) return;
+    const clip = upperBodyClip(src, clipName + '_upper');
+    if (!clip) return;
+    this.guardAction = this.mixer.clipAction(clip);
+    this.guardAction.setEffectiveWeight(0);
+    this.guardAction.play(); // always running; weight is the switch
+    this._guardW = 0;
+  }
+
+  // Ease the guard pose in/out (~0.1s) so raising and DROPPING the shield
+  // both read — the drop IS the opening the kids are taught to watch for.
+  _guard(up, dt) {
+    if (!this.guardAction) return;
+    const target = up ? GUARD_WEIGHT : 0;
+    this._guardW += (target - this._guardW) * Math.min(1, dt * 14);
+    if (Math.abs(target - this._guardW) < 0.02) this._guardW = target;
+    this.guardAction.setEffectiveWeight(this._guardW);
   }
 
   die() {
@@ -794,7 +953,7 @@ export class SkeletonMinion extends SkeletonBase {
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // bones queue up too
       } else {
-        this.chaseToward(dt, dx, dz, d, 1.5);
+        this.chaseToward(dt, dx, dz, d, this.speed || 1.5); // brutes lumber (VARIANTS)
       }
       this.lungeTimer -= dt;
       if (d < 1.6 && this.lungeTimer <= 0 && this.engaged !== false) {
@@ -811,7 +970,7 @@ export class SkeletonMinion extends SkeletonBase {
       }
       if (this.stateT > 0.9) { this.state = 'chase'; this.lungeTimer = 2.4; this._current = null; }
     }
-    this.contact(player);
+    this.contact(player, this.contactDmg || 1); // brutes hit harder (VARIANTS)
     this.flashUpdate(dt);
     this.mixer.update(dt);
   }
@@ -930,7 +1089,7 @@ export class SkeletonShield extends SkeletonBase {
       clips: {
         inactive: 'Skeletons_Inactive_Floor_Pose', awaken: 'Skeletons_Awaken_Floor',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
-        block: 'Melee_Blocking', swing: 'Melee_1H_Attack_Chop',
+        swing: 'Melee_1H_Attack_Chop', // the guard pose is a LAYER (_setupGuard)
       },
     });
     this.awakenTime = 1.9;
@@ -939,6 +1098,7 @@ export class SkeletonShield extends SkeletonBase {
     if (bladeGltf) this.mount('r', bladeGltf);
     this.swingTimer = 2.2;
     this._pp = null;
+    this._setupGuard(anims); // the tower shield RIDES UP while it walks
   }
 
   // shield up = frontal damage nulls (same honest cone as the Warden);
@@ -965,6 +1125,9 @@ export class SkeletonShield extends SkeletonBase {
   update(dt, t, player) {
     if (this.dead) return;
     this._pp = { x: player.root.position.x, z: player.root.position.z };
+    // the guard pose follows the guard RULE exactly, every frame — stunned
+    // or mid-swing, the shield visibly drops
+    this._guard(this.shieldUp, dt);
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
@@ -974,8 +1137,9 @@ export class SkeletonShield extends SkeletonBase {
     if (this.state === 'chase') {
       // a slow, deliberate shield-wall shuffle — menace, not speed. It
       // TURNS slowly too (2 rad/s): a quick kid can genuinely circle
-      // behind the shield, which is the whole lesson.
-      this._play(d < 2.4 ? 'block' : 'walk', 0.2);
+      // behind the shield, which is the whole lesson. The legs walk; the
+      // guard layer holds the shield braced the whole way in.
+      this._play('walk', 0.2);
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d);
       } else if (d > 0.01) {
@@ -1024,7 +1188,10 @@ export class SkeletonShield extends SkeletonBase {
 export class BoneWarden extends SkeletonBase {
   constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
     super(world, x, z, {
-      hp: 14, radius: 0.52, scale: 0.68, gltf, anims,
+      // v3.18.2 (dad's call: "bigger, like the wolf boss"): a true GIANT of
+      // old bone — ~2.2x his minions (the same ratio the Shadowgrip has
+      // over the little wolves). Reach and rings scale with him below.
+      hp: 14, radius: 0.8, scale: 1.1, gltf, anims,
       clips: {
         inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
@@ -1038,14 +1205,19 @@ export class BoneWarden extends SkeletonBase {
     if (shieldGltf) this.mount('l', shieldGltf);
     this.swings = 0;
     this.attackTimer = 1.4;
+    // v3.19.1: the Warden had NO guard pose at all — he front-blocked
+    // everything while strolling with the tower shield at his hip. Now the
+    // shield rides UP the whole advance and drops for every swing.
+    this._setupGuard(anims);
 
-    // telegraph ring shows the chop's danger zone
+    // telegraph ring shows the chop's danger zone (boss-sized) — and it sits
+    // ABOVE the crypt's stone floor tiles (height law: y<~0.17 is buried)
     this.dangerRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 1.35, 28, 1, 0, Math.PI * 0.9),
+      new THREE.RingGeometry(0.7, 2.0, 28, 1, 0, Math.PI * 0.9),
       new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
     );
     this.dangerRing.rotation.x = -Math.PI / 2;
-    this.dangerRing.position.y = 0.05;
+    this.dangerRing.position.y = 0.19;
     world.add(this.dangerRing);
   }
 
@@ -1059,8 +1231,7 @@ export class BoneWarden extends SkeletonBase {
   // flank him, or parry the chop and punish the stun. Punish windows
   // (tired / stunned / mid-swing) take full damage.
   takeDamage(n, element, kind) {
-    if (!this.dead && this.stunned <= 0 && this._pp &&
-        (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele')) {
+    if (!this.dead && this.shieldUp && this._pp) {
       const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
       const dd = Math.hypot(dx, dz);
       const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
@@ -1085,8 +1256,16 @@ export class BoneWarden extends SkeletonBase {
     player.hurt(dmg, { attacker: this, groundAttack: true });
   }
 
+  // his front-block law (takeDamage) in one place — the pose reads from the
+  // SAME expression, so the shield can never lie about the hitbox
+  get shieldUp() {
+    return this.stunned <= 0 &&
+      (this.state === 'chase' || this.state === 'chop_tele' || this.state === 'spin_tele');
+  }
+
   update(dt, t, player) {
     if (this.dead) return;
+    this._guard(this.shieldUp, dt);
     if (this.stunUpdate(dt)) { this.mixer.update(dt); this.dangerRing.material.opacity = 0; return; }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
@@ -1099,13 +1278,13 @@ export class BoneWarden extends SkeletonBase {
       this._play('walk');
       this.chaseToward(dt, dx, dz, d, 1.35);
       this.attackTimer -= dt;
-      if (this.attackTimer <= 0 && d < 2.2) {
+      if (this.attackTimer <= 0 && d < 3.0) { // giant reach (scale 1.1)
         if (this.swings >= 3) {
           this.state = 'tired';
           this.stateT = 0;
           this.swings = 0;
           this._play('tired', 0.3);
-        } else if (d < 1.2) {
+        } else if (d < 1.9) {
           this.state = 'spin_tele';
           this.stateT = 0;
           this._play('idle', 0.1);
@@ -1119,7 +1298,7 @@ export class BoneWarden extends SkeletonBase {
     } else if (this.state === 'chop_tele') {
       // 0.9s: the danger arc fades in where the axe will land
       const f = Math.min(1, this.stateT / 0.9);
-      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.position.set(this.x, 0.19, this.z);
       this.dangerRing.rotation.z = -this.root.rotation.y + Math.PI / 2 + Math.PI * 0.45;
       this.dangerRing.material.opacity = f * 0.55;
       if (this.stateT >= 0.9) {
@@ -1132,16 +1311,16 @@ export class BoneWarden extends SkeletonBase {
       this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 2);
       if (this.stateT > 0.32 && !this._chopHit) {
         this._chopHit = true;
-        this._swingDamage(player, 130, 1.9, 1.5);
+        this._swingDamage(player, 130, 2.9, 1.5); // giant's axe reach
         audio.play('slam', { volume: 0.5, rate: 1.4 });
       }
       if (this.stateT > 0.8) { this.state = 'chase'; this._chopHit = false; this.swings++; this.attackTimer = 1.1; }
     } else if (this.state === 'spin_tele') {
       // 1.0s: full-circle warning ring
       const f = Math.min(1, this.stateT / 1.0);
-      this.dangerRing.position.set(this.x, 0.05, this.z);
+      this.dangerRing.position.set(this.x, 0.19, this.z);
       this.dangerRing.material.opacity = f * 0.55;
-      this.dangerRing.scale.setScalar(1.15);
+      this.dangerRing.scale.setScalar(1.3);
       if (this.stateT >= 1.0) {
         this.state = 'spin';
         this.stateT = 0;
@@ -1152,7 +1331,7 @@ export class BoneWarden extends SkeletonBase {
       this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 1.6);
       if (this.stateT > 0.45 && !this._spinHit) {
         this._spinHit = true;
-        this._swingDamage(player, 360, 1.7, 1.5);
+        this._swingDamage(player, 360, 2.6, 1.5); // giant's full-circle sweep
       }
       if (this.stateT > 1.1) {
         this.state = 'chase'; this._spinHit = false; this.dangerRing.scale.setScalar(1);
@@ -1286,25 +1465,41 @@ export async function spawnEnemies(world) {
 
   if ((world.markers.shadeSpots || []).length) {
     const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
-    for (const s of world.markers.shadeSpots) world.enemies.push(new Shade(world, s.x, s.z, slimeGltf));
+    for (const s of world.markers.shadeSpots) {
+      world.enemies.push(applyVariant(new Shade(world, s.x, s.z, slimeGltf), s.variant));
+    }
   }
   if ((world.markers.mothSpots || []).length) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
-    for (const m of world.markers.mothSpots) world.enemies.push(new Moth(world, m.x, m.z, batGltf));
+    for (const m of world.markers.mothSpots) {
+      world.enemies.push(applyVariant(new Moth(world, m.x, m.z, batGltf), m.variant));
+    }
   }
   if (world.markers.houndSpot) {
-    world.enemies.push(new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf));
+    world.enemies.push(applyVariant(
+      new Hound(world, world.markers.houndSpot.x, world.markers.houndSpot.z, wolfGltf),
+      world.markers.houndSpot.variant));
+  }
+  // packs of hounds (Wild Woods runs on them — v3.19)
+  if ((world.markers.houndSpots || []).length) {
+    for (const s of world.markers.houndSpots) {
+      world.enemies.push(applyVariant(new Hound(world, s.x, s.z, wolfGltf), s.variant));
+    }
   }
 
   // Cavern natives — Quaternius monsters, loaded only when a room asks
   const mk = world.markers;
   if (mk.slimeSpots && mk.slimeSpots.length) {
     const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
-    for (const s of mk.slimeSpots) world.enemies.push(new Slime(world, s.x, s.z, slimeGltf));
+    for (const s of mk.slimeSpots) {
+      world.enemies.push(applyVariant(new Slime(world, s.x, s.z, slimeGltf), s.variant));
+    }
   }
   if (mk.batSpots && mk.batSpots.length) {
     const batGltf = await loadGLB('./assets/chars/monsters/Bat.glb');
-    for (const s of mk.batSpots) world.enemies.push(new Bat(world, s.x, s.z, batGltf));
+    for (const s of mk.batSpots) {
+      world.enemies.push(applyVariant(new Bat(world, s.x, s.z, batGltf), s.variant));
+    }
   }
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
       (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot) {
@@ -1317,7 +1512,9 @@ export async function spawnEnemies(world) {
     const anims = [...special.animations, ...movement.animations, ...general.animations, ...combat.animations];
     if (mk.minionSpots && mk.minionSpots.length) {
       const minionGltf = await loadGLB('./assets/chars/skeletons/Skeleton_Minion.glb');
-      for (const s of mk.minionSpots) world.enemies.push(new SkeletonMinion(world, s.x, s.z, minionGltf, anims));
+      for (const s of mk.minionSpots) {
+        world.enemies.push(applyVariant(new SkeletonMinion(world, s.x, s.z, minionGltf, anims), s.variant));
+      }
     }
     if (mk.rogueSpots && mk.rogueSpots.length) {
       const [rogueGltf, bladeGltf] = await Promise.all([
