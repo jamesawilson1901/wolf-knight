@@ -36,6 +36,20 @@ scroll, `?scheme=a|b|c` forces a control scheme.
 To wipe progress and start from level 1, clear the site data for the page
 (or run `localStorage.clear()` in a desktop console).
 
+## Which build am I running?
+
+Every build stamps the commit it came from. Open a desktop console on the
+page and read `window.__build`, or look for the `Mermaid Reef build <sha>`
+line logged at startup — compare it against `git rev-parse --short HEAD`.
+
+The installed app updates itself: the service worker checks for a new
+version on launch and whenever the app is brought back to the foreground,
+and reloads once as soon as a new worker takes over. (Without that reload a
+new deploy only appears on the *second* launch, because the running page
+keeps the code it already downloaded — which is exactly how an old build
+once went unnoticed for several rounds.) It still needs one launch *with
+network* to fetch the update before an offline session.
+
 ## Running it
 
 ```bash
