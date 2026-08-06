@@ -110,6 +110,22 @@ if (hasRecording('pop')) {
   const { pcm, rate } = await decodeMp3('pop');
   writeWav('pop.wav', trim(pcm, rate, { maxDur: 0.5, fadeOut: 0.05 }), rate);
 }
+if (hasRecording('danger')) {
+  const { pcm, rate } = await decodeMp3('danger');
+  writeWav('danger.wav', trim(pcm, rate, { maxDur: 2.2, fadeOut: 0.2 }), rate);
+}
+if (hasRecording('rumble')) {
+  const { pcm, rate } = await decodeMp3('rumble');
+  writeWav('rumble.wav', trim(pcm, rate, { maxDur: 3.0, fadeOut: 0.3 }), rate);
+}
+// Music is optional and has no synthesized fallback: a bad synthetic melody
+// would be worse than silence. Drop a loop at audio-source/music.mp3 and it
+// is picked up automatically (capped and loop-crossfaded like the ambience).
+if (hasRecording('music')) {
+  const { pcm, rate } = await decodeMp3('music');
+  const capped = pcm.subarray(0, Math.min(pcm.length, Math.floor(rate * 75)));
+  writeWav('music.wav', loopify(capped, rate, 2.0), rate);
+}
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -311,6 +327,46 @@ if (!hasRecording('pop')) {
     out[i] = Math.sin(phase) * Math.min(1, i / (rate * 0.002)) * Math.exp(-t * 30);
   }
   writeWav('pop.wav', out, rate);
+}
+
+// ---- danger: low swelling stab for the shark bursting out of the chest ---
+if (!hasRecording('danger')) {
+  const rate = 44100;
+  const n = Math.floor(rate * 1.6);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const env = Math.min(1, t / 0.05) * Math.exp(-t * 1.9);
+    // a minor-second cluster, low: unsettling but not shrieking
+    out[i] =
+      (Math.sin(2 * Math.PI * 73.4 * t) +
+        0.7 * Math.sin(2 * Math.PI * 77.8 * t) +
+        0.4 * Math.sin(2 * Math.PI * 110 * t)) *
+      env *
+      0.4;
+  }
+  writeWav('danger.wav', out, rate);
+}
+
+// ---- rumble: rockfall — filtered noise with a heavy thud ----------------
+if (!hasRecording('rumble')) {
+  const rate = 22050;
+  const n = Math.floor(rate * 2.2);
+  const out = new Float32Array(n);
+  const rand = mulberry32(4242);
+  let brown = 0;
+  for (let i = 0; i < n; i++) {
+    brown += (rand() * 2 - 1) * 0.06;
+    brown *= 0.995;
+    out[i] = brown;
+  }
+  onePole(out, rate, 260);
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const env = Math.min(1, t / 0.03) * Math.exp(-t * 1.5);
+    out[i] = out[i] * env * 7 + Math.sin(2 * Math.PI * 48 * t) * env * 0.35;
+  }
+  writeWav('rumble.wav', out, rate);
 }
 
 // ---- ambient: 24 s seamless underwater loop ------------------------------

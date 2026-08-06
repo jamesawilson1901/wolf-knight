@@ -23,9 +23,10 @@ export class FriendFish {
   }
 
   /** trailY samples the mermaid's height `delay` frames ago. */
-  update(dtMs: number, t: number, mermaidX: number, trailY: number) {
+  update(dtMs: number, t: number, mermaidX: number, trailY: number, facing: 1 | -1 = 1) {
     const dt = Math.min(dtMs / 1000, 0.05);
-    const targetX = mermaidX - 120 - this.slot * 95;
+    this.sprite.setFlipX(facing === 1);
+    const targetX = mermaidX - facing * (120 + this.slot * 95);
     const targetY = trailY + Math.sin(t * 2.1 + this.bob) * 12;
     const k = 1 - Math.exp(-dt / 0.22);
     this.sprite.x += (targetX - this.sprite.x) * k;

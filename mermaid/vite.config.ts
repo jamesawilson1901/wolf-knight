@@ -1,9 +1,18 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Static, relative-path build so the folder can be dropped anywhere on a host.
 export default defineConfig({
   base: './',
+  define: {
+    // music is optional; the audio build only emits music.wav when a source
+    // loop has been supplied
+    __MUSIC_PRESENT__: JSON.stringify(
+      existsSync(fileURLToPath(new URL('./public/assets/audio/music.wav', import.meta.url))),
+    ),
+  },
   build: {
     target: 'es2020',
     chunkSizeWarningLimit: 1600,

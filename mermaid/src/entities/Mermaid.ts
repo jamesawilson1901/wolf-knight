@@ -64,6 +64,15 @@ export class Mermaid {
     return `m${this.character}-${name}`;
   }
 
+  /** 1 = swimming right (normal), -1 = fleeing back the way she came. */
+  setFacing(dir: 1 | -1) {
+    this.sprite.setFlipX(dir === -1);
+  }
+
+  get facing(): 1 | -1 {
+    return this.sprite.flipX ? -1 : 1;
+  }
+
   triggerJoy() {
     if (this.scene.time.now < this.hurtUntil) return;
     this.joyUntil = this.scene.time.now + 750;
