@@ -30,6 +30,21 @@ Every region built or rebuilt from here follows these rules.
 7. **Boss doors are EARNED** (key, switch pair, or escort) and every boss
    has a unique verb the dungeon taught for the previous 20 minutes.
 
+> **⚠ SUPERSEDED FOR LEVELS 1–3 (2026-08-07).** The graphs below for **Ember
+> Hollow, Stoneroot and the Wild Woods are historical**. Those three levels are
+> now specified in `LEVEL-MAP.md` at a much larger, non-linear scale (string of
+> pearls → hub-and-spoke → loopback ring). The Frostpeak graph below is still
+> current. The seven rules above remain binding and the new design satisfies
+> them — including rules 4 and 5, which nothing had implemented before:
+> every level now has a loop-back shortcut, and every level now has a real
+> mid-dungeon twist (Ember's lava cooling · Stoneroot's three hub changes ·
+> the Wild Woods blooming from the far side).
+>
+> **Rule 3 (tiers and one-way drops) is amended by dad's v3.18 law**: drops are
+> **walked ledges you choose to step off**, never holes you fall through. The
+> Echo Chasm drop-holes were removed for exactly that reason and are not coming
+> back.
+
 ## Region graphs
 
 ### Ember Hollow 2.0 (rebuild pass)
