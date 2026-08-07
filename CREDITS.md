@@ -32,7 +32,7 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 | Mini Arena | Kenney | Arena props — later regions | https://kenney.nl/assets/mini-arena |
 | ✓ Survival Kit | Kenney | Crates, chest, camp props | https://kenney.nl/assets/survival-kit |
 | Food Kit | Kenney | Food props (quests, shop) | https://kenney.nl/assets/food-kit |
-| ⚠ Holiday Kit | Kenney | Ice/snow region pieces | https://kenney.nl/assets/holiday-kit |
+| ✓ Holiday Kit | Kenney | Ice/snow region pieces | https://kenney.nl/assets/holiday-kit |
 | ✓ Pirate Kit | Kenney | Water region, chests, docks | https://kenney.nl/assets/pirate-kit |
 | ✓ Fantasy Town Kit 2.0 | Kenney | The Moonlit Den hub + shop | https://kenney.nl/assets/fantasy-town-kit |
 | ✓ Platformer Kit | Kenney | Chests, coins, hearts, hazards | https://kenney.nl/assets/platformer-kit |
@@ -53,12 +53,19 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 
 *(✓ = licence file in `assets/LICENSES/`. ⚠ = shipping, licence not yet proven.)*
 
+> **Corrected 2026-08-07.** This table used to list three OpenGameArt tracks as the
+> game's music and HydroGene as an unused bonus "for the expansion". That was
+> backwards. Every file in `assets/audio/music` was md5-matched against the packs
+> on disk: **8 of the 10 tracks are HydroGene**, and *Boss Battle Music* by Juhani
+> Junkala — credited here for a year — **is not in the build at all** (the boss
+> music is HydroGene's Battle Theme II). The row has been removed rather than
+> credit someone whose work the game does not use.
+
 | Track / pack | Author | Used for | Source |
 |---|---|---|---|
+| ⚠ **HydroGene — High Quality 16-bit RPG Music** | HydroGene | **Eight of the game's ten tracks**: `boss-intro`+`boss-loop` (Battle Theme II), `causeway`+`kiln` (Volcanic Crater), `den`+`ember-calm` (Peaceful Village), `region-stone` (Hidden Cavern), `stone-deep` (Dwarven Mine — also Frostpeak) | https://hydrogene.itch.io/high-quality-16-bit-music |
 | ⚠ Cave Theme (`region-ember`) | Brandon Morris | Ember Hollow region music | https://opengameart.org/content/cave-theme |
-| ⚠ Boss Battle Music (`boss`) | Juhani Junkala | Shadowgrip fight | https://opengameart.org/content/boss-battle-music |
 | ⚠ Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
-| ⚠ HydroGene — 16-bit RPG Music (complete library, 28 tracks) | HydroGene | Region/hub/battle themes for the expansion (`asset-downloads/music/hydrogene/`) | https://hydrogene.itch.io/high-quality-16-bit-music |
 | ✓ RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits (`chop`), puffs/whooshes (`cloth*`) | https://kenney.nl/assets/rpg-audio |
 | ✓ UI Audio | Kenney | UI clicks, checkpoint tick (`click*`) | https://kenney.nl/assets/ui-audio |
 | ✓ Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`) | https://kenney.nl/assets/impact-sounds |

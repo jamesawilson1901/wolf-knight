@@ -4,6 +4,7 @@
     "that covers it. `licence` is the file in this folder — copied verbatim from",
     "the pack as downloaded, never written by hand. Entries with licence:null are",
     "NOT cleared: the pack ships in the build but its licence file has never been",
+    "A pack may instead carry `evidence`: a file that records the author's permission in plain words but is NOT a formal licence grant (no named licence, no public-domain dedication). That is better than nothing and worse than a licence — such packs stay PENDING, with the file on record.",
     "seen on disk, so its status rests on the creator's website alone.",
     "tools/check-licences.mjs enforces that every directory under assets/ is",
     "claimed here, and reports the pending ones."
@@ -14,7 +15,28 @@
       "licence": "kenney-nature-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/nature-kit",
-      "covers": ["assets/env/floor-tile.glb", "assets/env/cliff-block.glb", "assets/env/rock-large-a.glb", "assets/env/rock-large-b.glb", "assets/env/rock-large-c.glb", "assets/env/rock-small-a.glb", "assets/env/rock-small-b.glb", "assets/env/tree-a.glb", "assets/env/tree-b.glb", "assets/env/bush-large.glb", "assets/env/stump.glb", "assets/env/log-stack.glb", "assets/env/mushroom-group.glb", "assets/env/mushroom-tall.glb", "assets/env/flower-a.glb", "assets/env/flower-b.glb", "assets/env/path-tile.glb", "assets/env/campfire.glb", "assets/env/bridge-stone.glb", "assets/env/Textures"],
+      "covers": [
+        "assets/env/floor-tile.glb",
+        "assets/env/cliff-block.glb",
+        "assets/env/rock-large-a.glb",
+        "assets/env/rock-large-b.glb",
+        "assets/env/rock-large-c.glb",
+        "assets/env/rock-small-a.glb",
+        "assets/env/rock-small-b.glb",
+        "assets/env/tree-a.glb",
+        "assets/env/tree-b.glb",
+        "assets/env/bush-large.glb",
+        "assets/env/stump.glb",
+        "assets/env/log-stack.glb",
+        "assets/env/mushroom-group.glb",
+        "assets/env/mushroom-tall.glb",
+        "assets/env/flower-a.glb",
+        "assets/env/flower-b.glb",
+        "assets/env/path-tile.glb",
+        "assets/env/campfire.glb",
+        "assets/env/bridge-stone.glb",
+        "assets/env/Textures"
+      ],
       "note": "Files were RENAMED when vendored (ground_grass.glb → floor-tile.glb etc.), so basename matching against asset-raw/ does not find them — see BUILDLOG Phase 0 for the original names."
     },
     {
@@ -22,43 +44,59 @@
       "licence": "kenney-castle-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/castle-kit",
-      "covers": ["assets/env/pillar.glb"]
+      "covers": [
+        "assets/env/pillar.glb"
+      ]
     },
     {
       "pack": "Kenney — Survival Kit 2.0",
       "licence": "kenney-survival-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/survival-kit",
-      "covers": ["assets/env/den-survival", "assets/loot/survival"]
+      "covers": [
+        "assets/env/den-survival",
+        "assets/loot/survival"
+      ]
     },
     {
       "pack": "Kenney — Fantasy Town Kit 2.0",
       "licence": "kenney-fantasy-town-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/fantasy-town-kit",
-      "covers": ["assets/env/den-town"]
+      "covers": [
+        "assets/env/den-town"
+      ]
     },
     {
       "pack": "Kenney — Pirate Kit 2.1",
       "licence": "kenney-pirate-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/pirate-kit",
-      "covers": ["assets/loot/pirate"]
+      "covers": [
+        "assets/loot/pirate"
+      ]
     },
     {
       "pack": "Kenney — Platformer Kit 4.1",
       "licence": "kenney-platformer-kit.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/platformer-kit",
-      "covers": ["assets/loot/platformer"]
+      "covers": [
+        "assets/loot/platformer"
+      ]
     },
     {
       "pack": "Kenney — RPG Audio / UI SFX Set / Impact Sounds",
       "licence": "kenney-rpg-audio.txt",
-      "alsoLicence": ["kenney-ui-audio.txt", "kenney-impact-sounds.txt"],
+      "alsoLicence": [
+        "kenney-ui-audio.txt",
+        "kenney-impact-sounds.txt"
+      ],
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kenney.nl/assets/rpg-audio",
-      "covers": ["assets/audio/sfx"],
+      "covers": [
+        "assets/audio/sfx"
+      ],
       "note": "SFX were renamed on vendoring. assets/audio/music is a SEPARATE entry."
     },
     {
@@ -66,14 +104,23 @@
       "licence": "kaykit-adventurers.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kaylousberg.itch.io/kaykit-adventurers",
-      "covers": ["assets/chars/knight.glb", "assets/chars/knight_texture.png", "assets/chars/mage.glb", "assets/chars/ranger.glb", "assets/chars/barbarian.glb", "assets/chars/rogue_hooded.glb"]
+      "covers": [
+        "assets/chars/knight.glb",
+        "assets/chars/knight_texture.png",
+        "assets/chars/mage.glb",
+        "assets/chars/ranger.glb",
+        "assets/chars/barbarian.glb",
+        "assets/chars/rogue_hooded.glb"
+      ]
     },
     {
       "pack": "KayKit — Character Animations 1.1",
       "licence": "kaykit-character-animations.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kaylousberg.itch.io/kaykit-character-animations",
-      "covers": ["assets/anims"],
+      "covers": [
+        "assets/anims"
+      ],
       "note": "Renamed on vendoring to rig-medium-*.glb."
     },
     {
@@ -81,36 +128,51 @@
       "licence": "kaykit-skeletons.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kaylousberg.itch.io/kaykit-skeletons",
-      "covers": ["assets/chars/skeletons"]
+      "covers": [
+        "assets/chars/skeletons"
+      ]
     },
     {
       "pack": "KayKit — Fantasy Weapons Bits 1.0",
       "licence": "kaykit-fantasy-weapons-bits.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kaylousberg.itch.io/",
-      "covers": ["assets/gear", "assets/chars/sword_1handed.gltf", "assets/chars/sword_1handed.bin", "assets/chars/shield_badge.gltf", "assets/chars/shield_badge.bin"]
+      "covers": [
+        "assets/gear",
+        "assets/chars/sword_1handed.gltf",
+        "assets/chars/sword_1handed.bin",
+        "assets/chars/shield_badge.gltf",
+        "assets/chars/shield_badge.bin"
+      ]
     },
     {
       "pack": "KayKit — Forest Nature Pack 1.0",
       "licence": "kaykit-forest-nature-pack.txt",
       "states": "License: (Creative Commons Zero, CC0)",
       "source": "https://kaylousberg.itch.io/",
-      "covers": ["assets/env/forest"]
+      "covers": [
+        "assets/env/forest"
+      ]
     },
     {
       "pack": "Quaternius — LowPoly Modular Dungeon (May 2019)",
       "licence": "quaternius-modular-dungeon.txt",
       "states": "License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
       "source": "https://quaternius.itch.io/lowpoly-modular-dungeon-pack",
-      "covers": ["assets/env/dungeon"]
+      "covers": [
+        "assets/env/dungeon"
+      ]
     },
-
     {
       "pack": "Quaternius — Ultimate Animated Animals",
       "licence": null,
       "states": "UNVERIFIED — no licence file has ever been present in this repo or in asset-raw/. CREDITS.md previously asserted CC0 without evidence.",
       "source": "https://quaternius.com/packs/ultimateanimatedanimals.html",
-      "covers": ["assets/chars/wolf.gltf", "assets/chars/fox.gltf", "assets/chars/husky.gltf"],
+      "covers": [
+        "assets/chars/wolf.gltf",
+        "assets/chars/fox.gltf",
+        "assets/chars/husky.gltf"
+      ],
       "note": "SHIPPING NOW and load-bearing: Kael's four wolf forms, every hound, both giant-wolf bosses, Pip the fox and Biscuit the den dog. Blocked 2026-08-07: this build environment's network policy refuses quaternius.com, quaternius.itch.io and patreon.com (CONNECT 403), so the pack could not be re-fetched here. FIX: download the pack and drop its License.txt in as quaternius-ultimate-animated-animals.txt."
     },
     {
@@ -118,32 +180,58 @@
       "licence": null,
       "states": "UNVERIFIED — asset-raw/monsters/ contains only Blend/, FBX/, OBJ/ and Preview.jpg. No licence file in either repo.",
       "source": "https://quaternius.com",
-      "covers": ["assets/chars/monsters"],
+      "covers": [
+        "assets/chars/monsters"
+      ],
       "note": "SHIPPING NOW: the Slime and Bat enemy families, and the Dragon that is Boreal of Frostpeak. Same network block as above. FIX: download and drop in as quaternius-animated-monsters.txt."
     },
     {
       "pack": "Kenney — Holiday Kit",
-      "licence": null,
-      "states": "UNVERIFIED ON DISK — vendored v3.21 from the game-assets repo, which carried no licence file for it.",
+      "licence": "kenney-holiday-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0) — \"You can use this content for personal, educational, and commercial purposes.\"",
       "source": "https://kenney.nl/assets/holiday-kit",
-      "covers": ["assets/env/snow"],
-      "note": "Every one of the nine other Kenney packs in this folder states CC0 in its own file, and kenney.nl publishes site-wide CC0 — but per the standing rule (verify per pack, never on reputation) this stays UNVERIFIED until its own License.txt is here. FIX: drop it in as kenney-holiday-kit.txt."
-    },
-
-    {
-      "pack": "OpenGameArt music — Brandon Morris (Cave Theme), Juhani Junkala (Boss Battle), cynicmusic (Victory Fanfare)",
-      "licence": null,
-      "states": "UNVERIFIED ON DISK — per-track licences live on the OpenGameArt submission pages and vary by track (CC0 / CC-BY / GPL are all common on OGA).",
-      "source": "https://opengameart.org/content/cave-theme",
-      "covers": ["assets/audio/music"],
-      "note": "Highest-risk remaining item after the Quaternius pair, because OGA licences are genuinely mixed — a CC-BY track needs visible attribution, a GPL track would be incompatible. Each track's page must be checked individually and the result recorded here."
+      "covers": [
+        "assets/env/snow"
+      ],
+      "note": "Cleared 2026-08-07 from Kenny/kenney_holiday-kit.zip in the game-assets repo (jamesawilson1901/my-games). The licence file is dated 11-12-2024 14:31, matching the vendored GLB timestamps exactly — same download, so this is the right file."
     },
     {
       "pack": "(first-party) Wolf Knight PWA icons",
       "licence": "SELF",
       "states": "Generated for this project; no third-party rights.",
       "source": "tools/gen-icons",
-      "covers": ["assets/icons"]
+      "covers": [
+        "assets/icons"
+      ]
+    },
+    {
+      "pack": "HydroGene — High Quality 16-bit RPG Music",
+      "states": "NOT a formal licence. The pack's own readme says verbatim: \"As explained in the itch.io page, credits are not mandatory, so feel free to use it in any way you want.\" That is a broad permission from the author, but it is not a CC0 dedication and it defers to the itch.io page, which could not be read (network blocked).",
+      "source": "https://hydrogene.itch.io/high-quality-16-bit-music",
+      "covers": [
+        "assets/audio/music/boss-intro.ogg",
+        "assets/audio/music/boss-loop.ogg",
+        "assets/audio/music/causeway.mp3",
+        "assets/audio/music/den.ogg",
+        "assets/audio/music/ember-calm.ogg",
+        "assets/audio/music/kiln.mp3",
+        "assets/audio/music/region-stone.ogg",
+        "assets/audio/music/stone-deep.ogg"
+      ],
+      "note": "EIGHT OF THE TEN TRACKS IN THE SHIPPING GAME. Established 2026-08-07 by md5-matching every file in assets/audio/music against the pack in the game-assets repo: boss-intro/loop = '09. Battle Theme II', causeway+kiln = '15. Volcanic Crater', den+ember-calm = '04. Peaceful Village', region-stone = '06. Hidden Cavern', stone-deep = '10. Dwarven Mine'. CREDITS.md had described this pack as an unused bonus for future regions.",
+      "evidence": "hydrogene-16bit-rpg-music-README.txt",
+      "licence": null
+    },
+    {
+      "pack": "OpenGameArt — Cave Theme (Brandon Morris) + Victory Fanfare Short (cynicmusic)",
+      "licence": null,
+      "states": "UNVERIFIED — per-submission licences on opengameart.org, which this environment cannot reach.",
+      "source": "https://opengameart.org/content/cave-theme",
+      "covers": [
+        "assets/audio/music/region-ember.ogg",
+        "assets/audio/music/victory.ogg"
+      ],
+      "note": "The only two tracks NOT from HydroGene, confirmed by md5 against both the HydroGene pack and every Kenney audio pack (no match). OGA hosts CC0, CC-BY and GPL side by side and licences are per submission, so each page must be checked: a CC-BY track needs visible credit in-game, a GPL track could not be used at all. NOTE: 'Boss Battle Music' by Juhani Junkala is credited in CREDITS.md but is NOT in the build — the boss music is HydroGene's Battle Theme II."
     }
   ]
 }
