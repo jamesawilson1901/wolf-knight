@@ -49,15 +49,6 @@ function bakeGeometry(source, matrix) {
   return g;
 }
 
-const triCount = (g) =>
-  (g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0)) / 3;
-
-// An InstancedMesh is already ONE draw call, so expanding it only pays when it
-// can then be merged in with other groups sharing its material. Expanding a
-// 600-tile floor would cost hundreds of thousands of duplicated vertices in
-// GPU memory to save a single call — never worth it. This is the line.
-const EXPAND_TRI_LIMIT = 20000;
-
 export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   const root = world.root;
 
@@ -78,7 +69,7 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   const isHeld = (o) => { for (let p = o; p; p = p.parent) if (held.has(p)) return true; return false; };
 
   const buckets = new Map();
-  let looseSeen = 0, instancedSeen = 0, instanceCopies = 0;
+  let looseSeen = 0;
 
   // MERGE PER SPATIAL CELL, NOT PER ROOM.
   //
@@ -112,21 +103,13 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     if (isHeld(o)) return;
     if (!o.geometry || !o.geometry.attributes.position) return;
 
-    if (o.isInstancedMesh) {
-      if (triCount(o.geometry) * o.count > EXPAND_TRI_LIMIT) return;   // leave it instanced
-      o.updateWorldMatrix(true, false);
-      const local = new THREE.Matrix4();
-      const world4 = new THREE.Matrix4();
-      for (let i = 0; i < o.count; i++) {
-        o.getMatrixAt(i, local);
-        const m4 = world4.multiplyMatrices(o.matrixWorld, local);
-        put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, m4), o,
-          cellOf(m4.elements[12]), cellOf(m4.elements[14]));
-        instanceCopies++;
-      }
-      instancedSeen++;
-      return;
-    }
+    // NEVER EXPAND AN InstancedMesh. It is already exactly one draw call, so
+    // pulling it apart can only ever break even — and once merging is done per
+    // spatial cell it strictly loses: a 120-block perimeter wall that cost ONE
+    // draw came back as nine, one per cell. Measured: doing this took vc1 from
+    // 115 to 164 calls. Instancing and merging solve the same problem, and the
+    // right move is to leave whichever one already has the geometry.
+    if (o.isInstancedMesh) return;
 
     o.updateWorldMatrix(true, false);
     put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, o.matrixWorld), o,
@@ -190,7 +173,7 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     });
   }
 
-  const stats = { loose: looseSeen, instanced: instancedSeen, instanceCopies, draws, unmerged: failed, shadowCulled: culled };
+  const stats = { loose: looseSeen, draws, unmerged: failed, shadowCulled: culled };
   world._batchStats = stats;
   return stats;
 }
