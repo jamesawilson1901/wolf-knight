@@ -55,7 +55,16 @@ export function tintedModel(gltf, key, tint, darken = 1) {
   const root = prepareModel(gltf.scene.clone());
   root.traverse((n) => {
     if (!n.isMesh) return;
-    const ck = `${key}|${n.material.name}|${tint}|${darken}`;
+    // THE CACHE KEY IS THE MATERIAL'S IDENTITY, NOT THE CALLER'S LABEL.
+    // It used to start with `key` — the caller's name for the prop — so a
+    // rock and a stump cut from the SAME atlas material at the same tint got
+    // two different materials, and flattenStatic() could not merge them
+    // because it buckets by material. Keying on what actually determines
+    // appearance (material name + texture + tint) means every prop in a
+    // district that shares a surface shares one material, and the whole
+    // scatter collapses into a single merged draw.
+    const tex = n.material.map ? n.material.map.uuid : 'nomap';
+    const ck = `${n.material.name}|${tex}|${tint}|${darken}`;
     if (!tintCache.has(ck)) {
       const m = n.material.clone();
       m.name = `kit_${ck}`;
@@ -230,7 +239,13 @@ export function makeBuilders({ kit, isGrey }) {
       const kind = kinds[Math.floor(rnd() * kinds.length)];
       if (!kit0[kind]) continue;
       const big = /rockL|Column|Brick/.test(kind);
-      const rock = tintedModel(kit0[kind], kind, D.wallTint, 0.9 + rnd() * 0.2);
+      // SHADE IN THREE STEPS, NOT CONTINUOUSLY. A per-prop random float gave
+      // every rock its own material and so its own draw call — twenty props
+      // meant forty calls with shadows. Three discrete shades read the same to
+      // the eye and merge into three draws. Variety comes from rotation and
+      // scale below, which are free.
+      const shade = [0.88, 1.0, 1.1][Math.floor(rnd() * 3)];
+      const rock = tintedModel(kit0[kind], kind, D.wallTint, shade);
       rock.position.set(x, 0, z);
       // spin 0 snaps to quarter turns (fitted masonry); spin 1 is free
       rock.rotation.y = spin ? rnd() * Math.PI * 2 : Math.floor(rnd() * 4) * Math.PI / 2;
