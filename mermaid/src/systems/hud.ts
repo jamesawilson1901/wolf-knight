@@ -3,6 +3,9 @@ import { safeBandLeft, SAFE_WIDTH } from '../config';
 import { isMuted, setMuted, sfx } from './audio';
 import type { Insets } from './safearea';
 
+const ICON_SCALE = 1.15;
+const DIGIT_SCALE = 1.2;
+
 // HUD: pearl icon + digit sprites. That's it. No text anywhere.
 export class Hud {
   count = 0;
@@ -10,12 +13,13 @@ export class Hud {
   private digits: Phaser.GameObjects.Image[] = [];
   private soundBtn: Phaser.GameObjects.Image;
   private soundCenter: { x: number; y: number };
+  private magicStar?: Phaser.GameObjects.Image;
 
   constructor(private scene: Phaser.Scene, insets: Insets, levelNumber?: number) {
     const band = safeBandLeft(scene.scale.width);
     const x = Math.max(band + 70, insets.left + 60);
     const y = Math.max(70, insets.top + 50);
-    this.icon = scene.add.image(x, y, 'items', 'pearl').setDepth(100).setScale(1.15);
+    this.icon = scene.add.image(x, y, 'items', 'pearl').setDepth(100).setScale(ICON_SCALE);
     this.renderDigits();
 
     // level number: a small crown + digit, top centre (numbers are allowed;
@@ -50,6 +54,21 @@ export class Hud {
     });
   }
 
+  /** Golden star showing whether her magic is ready (bright) or recharging (dim). */
+  showMagicStar() {
+    if (this.magicStar) return;
+    this.magicStar = this.scene.add
+      .image(this.icon.x + 210, this.icon.y, 'items', 'sparkle')
+      .setDepth(100)
+      .setScale(1.05)
+      .setTint(0xffe27a);
+  }
+
+  setMagicReady(ready: boolean) {
+    if (!this.magicStar) return;
+    this.magicStar.setAlpha(ready ? 1 : 0.22);
+  }
+
   /** The control layer ignores touches here so tapping the toggle never moves her. */
   inSoundButton(x: number, y: number): boolean {
     return Phaser.Math.Distance.Between(x, y, this.soundCenter.x, this.soundCenter.y) < 95;
@@ -62,12 +81,22 @@ export class Hud {
   add(n = 1) {
     this.count = Math.min(99, this.count + n);
     this.renderDigits();
-    this.scene.tweens.add({
-      targets: [this.icon, ...this.digits],
-      scale: '*=1.25',
-      duration: 110,
-      yoyo: true,
-    });
+    // Absolute scales, and kill any in-flight pop first. A relative
+    // '*=1.25' tween compounds when pops overlap — with ~90 pearls a level
+    // that grew the pearl icon until it swallowed the screen.
+    const pop = (obj: Phaser.GameObjects.Image, base: number) => {
+      this.scene.tweens.killTweensOf(obj);
+      obj.setScale(base);
+      this.scene.tweens.add({
+        targets: obj,
+        scale: base * 1.25,
+        duration: 110,
+        yoyo: true,
+        onComplete: () => obj.setScale(base),
+      });
+    };
+    pop(this.icon, ICON_SCALE);
+    this.digits.forEach((d) => pop(d, DIGIT_SCALE));
   }
 
   private renderDigits() {
@@ -79,7 +108,7 @@ export class Hud {
       const img = this.scene.add
         .image(x, this.icon.y, 'items', `digit-${ch}`)
         .setDepth(100)
-        .setScale(1.2);
+        .setScale(DIGIT_SCALE);
       this.digits.push(img);
       x += 54;
     }

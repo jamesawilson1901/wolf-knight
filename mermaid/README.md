@@ -3,22 +3,52 @@
 A gentle underwater side-scroller for a 5-year-old: one axis of control, no
 fail states, no text, works fully offline as a home-screen PWA.
 
-Seven levels across seven scenes, each slightly denser than the last. The
-difficulty design follows what good kids' games do: one new element per
-level (magnet → shield → shark), difficulty comes from density and variety
+Twelve levels across the pack's eight scenes, each denser and faster than
+the last (172 → 292 px/s). The difficulty design follows what good kids'
+games do: one new element per level, difficulty from navigation and density
 rather than punishment (an "ouch" costs a red flash and a little bump —
-nothing else), every level completes on its own even with no input, and the
-end-of-level ritual (chest → sparkles → rescued fish friend) is always the
-same reliable reward. Finishing a level advances to the next; after level 7
-it wraps around. Rescued friends and all menu choices persist on the device.
+nothing else), every level completable even with no input, and the same
+reliable end-of-level ritual (chest → sparkles → rescued fish friend).
+Finishing a level advances to the next; after level 12 it wraps around.
+Rescued friends and all menu choices persist on the device.
+
+| # | scene | what's new |
+|---|---|---|
+| 1 | shipwreck reef | learn to swim |
+| 2 | coral reef | magnet, first obstacles |
+| 3 | sunken ruins | spike gates, lionfish |
+| 4 | rocky canyon | **trapped chest — shark chase** |
+| 5 | gem cave | roaming sharks, tunnels |
+| 6 | kelp forest | dark and dense |
+| 7 | pebble cove | four gates, two sharks |
+| 8 | dragon graveyard | **trapped chest — shark chase** |
+| 9–11 | coral / canyon / gems | a harder second lap |
+| 12 | dragon graveyard | **finale — trapped chest, then the crown** |
 
 The menu is the customise screen: tap one of the three mermaids to play as
 her, tap a shimmer pearl for a tint, tap play. Icon-only, no text. In-browser
 play goes fullscreen on the first tap (Android); on iOS, fullscreen comes
 from Add to Home Screen — Safari has no fullscreen API.
 
-Dev helpers: `?level=5` forces a level, `?t0=7000` jumps into the scroll,
-`?scheme=a|b|c` forces a control scheme.
+Dev helpers: `?level=5` forces a level (1–12), `?t0=7000` jumps into the
+scroll, `?scheme=a|b|c` forces a control scheme.
+
+To wipe progress and start from level 1, clear the site data for the page
+(or run `localStorage.clear()` in a desktop console).
+
+## Which build am I running?
+
+Every build stamps the commit it came from. Open a desktop console on the
+page and read `window.__build`, or look for the `Mermaid Reef build <sha>`
+line logged at startup — compare it against `git rev-parse --short HEAD`.
+
+The installed app updates itself: the service worker checks for a new
+version on launch and whenever the app is brought back to the foreground,
+and reloads once as soon as a new worker takes over. (Without that reload a
+new deploy only appears on the *second* launch, because the running page
+keeps the code it already downloaded — which is exactly how an old build
+once went unnoticed for several rounds.) It still needs one launch *with
+network* to fetch the update before an offline session.
 
 ## Running it
 
@@ -38,7 +68,7 @@ committed, so a fresh clone builds without the source art.
 
 1. Open the hosted URL in Safari (iOS) or Chrome (Android).
 2. Share → **Add to Home Screen**.
-3. Open it once from the icon while online (precaches everything, ~4 MB).
+3. Open it once from the icon while online (precaches everything, ~8 MB).
 4. Verify for real: aeroplane mode → cold-launch from the icon → play through.
 
 **iOS silent switch:** if the phone's physical mute switch is on, iOS mutes
@@ -60,6 +90,39 @@ Three are built; which one she handles better is an empirical question:
 Toggle while testing: **4 quick taps in the top-left corner** (or `C` on a
 keyboard). Dots flash: one = A, two = B, three = C. The choice persists. You
 can also force it via `?scheme=a` / `?scheme=b` / `?scheme=c`.
+
+## Magic
+
+Each mermaid has her own power, cast by tapping with the **second thumb**
+(Space on desktop), with a ~7 s recharge shown as a golden star in the HUD:
+redhead calls every nearby pearl to her, the middle mermaid conjures a
+shield bubble, the third does a starlight dash (2 s surge, un-ouchable).
+Quick pearl streaks rise in pitch. Finishing all seven levels earns a crown
+she wears forever after.
+
+## Enemies, helpers and the trapped chest
+
+Everything ouchy costs the same: Hurt animation, red flash, a small backwards
+bump, then two seconds of grace. Never a life, never a fail.
+
+- **Ouchy:** sea urchins (also stacked into spike gates and tunnels),
+  patrolling crabs, stinging jellyfish, lionfish that lean toward her, and
+  sharks that genuinely chase — slower than she can swim, and they lose
+  interest after about nine seconds.
+- **Obstacles:** rocks, spires, masts, anchors, barrels and weed, standing on
+  the floor or hanging from the ceiling, to weave around.
+- **Helpers:** dolphins shadow roughly half the sharks and charge in to drive
+  one off; turtles drift about and hand out a shield plus a pearl-pull when
+  she swims into one.
+- **Powerups:** magnet, shield, boost (speed surge) and heart (every ouchy
+  creature politely swims out of her way for seven seconds).
+- **Levels 4, 8 and 12 hide a shark in the chest.** It bursts out, drives her
+  back the way she came, a rockfall crashes down and sees it off, and the
+  real chest — with the fish friend in it — waits beyond the original start.
+
+**Art note:** the pack has no dolphin or turtle, so those two render as
+recoloured, upscaled friendly fish. Swapping in real sprites is a one-line
+change in `src/entities/Helper.ts` (the `LOOK` table).
 
 ## Ouch and friends
 
@@ -84,7 +147,17 @@ Dev helpers: `?test=controls` is the plain-rectangle control test scene;
   `audio-source/<slot>.mp3` (slots: `ambient`, `tap`, `pearl`, `coin`, `joy`,
   `chest`, `complete`) and `npm run audio` decodes, monos, trims, normalises
   and (for ambient) loop-crossfades it to WAV; slots without a recording fall
-  back to synthesized bell/harp sounds. All seven slots now use recordings,
+  back to synthesized bell/harp sounds. Slots: `ambient`, `tap`, `pearl`,
+  `coin`, `joy`, `chest`, `complete`, `ouch`, `power`, `pop`, `danger`,
+  `rumble`, plus an optional `music` loop — music has **no** synthesized
+  fallback, so the game simply plays no music until a loop is supplied.
+  Good CC0 / no-attribution sources for replacements:
+  [Pixabay music](https://pixabay.com/music/search/underwater/),
+  [Pixabay SFX](https://pixabay.com/sound-effects/search/underwater/),
+  [Kenney audio](https://kenney.nl/assets/category:Audio),
+  [FreePD](https://freepd.com/), and
+  [Freesound filtered to CC0](https://freesound.org/search/?q=underwater&f=license:%22Creative+Commons+0%22).
+  Seven slots use recordings,
   all from Pixabay: underwater ambience #6201, water drop #85731 and chime
   #74910 (freesound_community — chime unused, kept as a spare), harp
   glissando #103885 (Serge Quadrado), fairy sparkle #451415 (HumorDome),
