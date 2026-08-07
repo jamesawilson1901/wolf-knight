@@ -927,7 +927,7 @@ export class Player {
       // the fan takes fire damage; flames roll out as pooled particles.
       // (Braziers/burnables still need the SLAM — the verb stays sacred.)
       audio.play('burn', { volume: 0.95, rate: 1.05 });
-      audio.play('bite', { volume: 0.5, rate: 0.6 });
+      audio.play('growl', { volume: 0.5, rate: 0.6 }); // the beast under the flame
       const bfx = Math.sin(this.root.rotation.y), bfz = Math.cos(this.root.rotation.y);
       const CONE_COS = Math.cos(THREE.MathUtils.degToRad(38));
       const RANGE = 3.4;
