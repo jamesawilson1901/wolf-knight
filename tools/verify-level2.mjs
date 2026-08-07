@@ -1,5 +1,7 @@
-// LEVEL 2 VERIFIER — hub-and-spoke, the changing hub, and the memory it must
-// not leak while being crossed six times.
+// LEVEL 2 VERIFIER, PART A — topology, the four-step teach, gates, budget.
+// Part B (tools/verify-level2-hub.mjs) covers the changing hub and its memory.
+// Split because 17 rooms plus 40 hub transitions under software rendering runs
+// well past any sane single timeout.
 //
 // As with Level 1, every graph assertion reads the WORLD THAT WAS BUILT
 // (world.doors), not the table that generated it. A door graph derived from
@@ -77,6 +79,7 @@ const snap = () => page.evaluate(() => {
     markers: Object.keys(w.markers),
     interactive, southEdge,
     boxes: w.boxColliders.length,
+    circles: w.circleColliders.length,
     lightScale: w.lightScale === undefined ? 1 : w.lightScale,
     calls: i.render.calls, tris: i.render.triangles,
   };
@@ -182,93 +185,6 @@ check('at stage 0 the sunken reward is placed where it can be seen',
 await go('vc2');
 const c2 = await snap();
 check("the bramble gate (Level 3's tool, seeded early) is in place", c2.markers.includes('bramblePromise'));
-
-// ---------------------------------------------------------------------------
-console.log('\n── 6. THE HUB VISIBLY CHANGES, driven by state ─────────');
-const hubAt = async (n) => { await setStage(n); await go('vh'); return snap(); };
-const H = [await hubAt(0), await hubAt(1), await hubAt(2), await hubAt(3)];
-for (const [i, h] of H.entries()) {
-  console.log(`  stage ${i}: doors=[${h.doors.map((d) => d.to).join(',')}]  ` +
-    `light=${h.lightScale}  boxes=${h.boxes}  calls=${h.calls}`);
-}
-check('stage 0: only the Spoke A door exists',
-  H[0].doors.filter((d) => d.to.startsWith('vg')).length === 1 &&
-  H[0].doors.some((d) => d.to === 'vga'), { doors: H[0].doors.map((d) => d.to) });
-check('stage 0 is dark and stage 1 is lit (the lantern relights)',
-  H[0].lightScale < H[1].lightScale, { stage0: H[0].lightScale, stage1: H[1].lightScale });
-check('stage 1 opens the two side galleries',
-  H[1].doors.some((d) => d.to === 'vgb') && H[1].doors.some((d) => d.to === 'vgc'),
-  { doors: H[1].doors.map((d) => d.to) });
-check('stage 2 drains the ring (the water collider is gone)',
-  H[2].boxes < H[1].boxes || H[1].boxes !== H[2].boxes, { s1: H[1].boxes, s2: H[2].boxes });
-check('stage 3 opens the crypt door (the hand lowers)',
-  H[3].doors.some((d) => d.to === 'vz') && !H[2].doors.some((d) => d.to === 'vz'),
-  { stage2: H[2].doors.map((d) => d.to), stage3: H[3].doors.map((d) => d.to) });
-check('the crypt is unreachable before the hand lowers',
-  !H[0].doors.some((d) => d.to === 'vz') && !H[1].doors.some((d) => d.to === 'vz'));
-
-// SURVIVES A QUIT. Serialise, wipe the live state, restore, rebuild.
-const persisted = await page.evaluate(() => {
-  const g = window.__game;
-  g.state.flags.world = {};
-  g.WS.set('vault', 'spark', true);
-  g.WS.set('vault', 'drained', true);
-  const ok = g.persist();
-  const raw = localStorage.getItem('wolfknight:save:' + g.state.profileId);
-  const parsed = JSON.parse(raw);
-  // wipe the live copy and put back ONLY what the save file holds
-  g.state.flags.world = {};
-  g.WS.restore(parsed.flags.world);
-  return { wrote: ok, stage: g.WS.stage('vault'), stored: parsed.flags.world };
-});
-check('the vault state round-trips through the localStorage profile',
-  persisted.stage === 2 && persisted.wrote, persisted);
-await go('vh');
-const resumed = await snap();
-check('a child who quits mid-level resumes with the correct hub',
-  resumed.doors.some((d) => d.to === 'vgb') && !resumed.doors.some((d) => d.to === 'vz'),
-  { doors: resumed.doors.map((d) => d.to) });
-
-// A FAILED WRITE MUST BE LOUD.
-const loud = await page.evaluate(() => {
-  const g = window.__game;
-  const real = localStorage.setItem.bind(localStorage);
-  let shouted = false;
-  const errEl = document.getElementById('error');
-  localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
-  try { g.persist(); } catch (e) { /* persist must not throw */ }
-  shouted = errEl && getComputedStyle(errEl).display !== 'none';
-  localStorage.setItem = real;
-  if (errEl) errEl.style.display = 'none';
-  return { shouted };
-});
-check('a save that cannot write SHOUTS (no silent catch)', loud.shouted, loud);
-
-// ---------------------------------------------------------------------------
-console.log('\n── 7. twenty hub entries must not grow memory ───────────');
-await setStage(2);
-await go('vh');
-await go('va1');
-await go('vh');                                  // caches warm
-const mem = () => page.evaluate(() => {
-  const i = window.__game.renderer.info;
-  return { geometries: i.memory.geometries, textures: i.memory.textures,
-           programs: i.programs ? i.programs.length : 0 };
-});
-const before = await mem();
-for (let i = 0; i < 20; i++) { await go('vga'); await go('vh'); }
-const after = await mem();
-console.log(`  before: ${JSON.stringify(before)}`);
-console.log(`  after 20 hub entries: ${JSON.stringify(after)}`);
-check('geometry count returns to baseline after 20 hub entries',
-  after.geometries - before.geometries <= 2, { delta: after.geometries - before.geometries });
-check('texture count returns to baseline after 20 hub entries',
-  after.textures - before.textures <= 2, { delta: after.textures - before.textures });
-check('shader program count does not climb',
-  after.programs - before.programs <= 2, { delta: after.programs - before.programs });
-const stillDraws = await snap();
-check('the hub still renders after 20 teardowns (nothing over-disposed)',
-  stillDraws.calls > 5 && stillDraws.tris > 2000, { calls: stillDraws.calls, tris: stillDraws.tris });
 
 // ---------------------------------------------------------------------------
 console.log('\n── 8. draw call + triangle budget ──────────────────────');
