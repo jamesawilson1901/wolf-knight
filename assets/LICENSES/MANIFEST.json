@@ -1,0 +1,149 @@
+{
+  "_comment": [
+    "Every third-party asset pack vendored into this repo, and the licence file",
+    "that covers it. `licence` is the file in this folder — copied verbatim from",
+    "the pack as downloaded, never written by hand. Entries with licence:null are",
+    "NOT cleared: the pack ships in the build but its licence file has never been",
+    "seen on disk, so its status rests on the creator's website alone.",
+    "tools/check-licences.mjs enforces that every directory under assets/ is",
+    "claimed here, and reports the pending ones."
+  ],
+  "packs": [
+    {
+      "pack": "Kenney — Nature Kit 2.1",
+      "licence": "kenney-nature-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/nature-kit",
+      "covers": ["assets/env/floor-tile.glb", "assets/env/cliff-block.glb", "assets/env/rock-large-a.glb", "assets/env/rock-large-b.glb", "assets/env/rock-large-c.glb", "assets/env/rock-small-a.glb", "assets/env/rock-small-b.glb", "assets/env/tree-a.glb", "assets/env/tree-b.glb", "assets/env/bush-large.glb", "assets/env/stump.glb", "assets/env/log-stack.glb", "assets/env/mushroom-group.glb", "assets/env/mushroom-tall.glb", "assets/env/flower-a.glb", "assets/env/flower-b.glb", "assets/env/path-tile.glb", "assets/env/campfire.glb", "assets/env/bridge-stone.glb", "assets/env/Textures"],
+      "note": "Files were RENAMED when vendored (ground_grass.glb → floor-tile.glb etc.), so basename matching against asset-raw/ does not find them — see BUILDLOG Phase 0 for the original names."
+    },
+    {
+      "pack": "Kenney — Castle Kit 2.0",
+      "licence": "kenney-castle-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/castle-kit",
+      "covers": ["assets/env/pillar.glb"]
+    },
+    {
+      "pack": "Kenney — Survival Kit 2.0",
+      "licence": "kenney-survival-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/survival-kit",
+      "covers": ["assets/env/den-survival", "assets/loot/survival"]
+    },
+    {
+      "pack": "Kenney — Fantasy Town Kit 2.0",
+      "licence": "kenney-fantasy-town-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/fantasy-town-kit",
+      "covers": ["assets/env/den-town"]
+    },
+    {
+      "pack": "Kenney — Pirate Kit 2.1",
+      "licence": "kenney-pirate-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/pirate-kit",
+      "covers": ["assets/loot/pirate"]
+    },
+    {
+      "pack": "Kenney — Platformer Kit 4.1",
+      "licence": "kenney-platformer-kit.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/platformer-kit",
+      "covers": ["assets/loot/platformer"]
+    },
+    {
+      "pack": "Kenney — RPG Audio / UI SFX Set / Impact Sounds",
+      "licence": "kenney-rpg-audio.txt",
+      "alsoLicence": ["kenney-ui-audio.txt", "kenney-impact-sounds.txt"],
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "covers": ["assets/audio/sfx"],
+      "note": "SFX were renamed on vendoring. assets/audio/music is a SEPARATE entry."
+    },
+    {
+      "pack": "KayKit — Adventurers Character Pack 2.0",
+      "licence": "kaykit-adventurers.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kaylousberg.itch.io/kaykit-adventurers",
+      "covers": ["assets/chars/knight.glb", "assets/chars/knight_texture.png", "assets/chars/mage.glb", "assets/chars/ranger.glb", "assets/chars/barbarian.glb", "assets/chars/rogue_hooded.glb"]
+    },
+    {
+      "pack": "KayKit — Character Animations 1.1",
+      "licence": "kaykit-character-animations.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kaylousberg.itch.io/kaykit-character-animations",
+      "covers": ["assets/anims"],
+      "note": "Renamed on vendoring to rig-medium-*.glb."
+    },
+    {
+      "pack": "KayKit — Skeletons 1.1",
+      "licence": "kaykit-skeletons.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kaylousberg.itch.io/kaykit-skeletons",
+      "covers": ["assets/chars/skeletons"]
+    },
+    {
+      "pack": "KayKit — Fantasy Weapons Bits 1.0",
+      "licence": "kaykit-fantasy-weapons-bits.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kaylousberg.itch.io/",
+      "covers": ["assets/gear", "assets/chars/sword_1handed.gltf", "assets/chars/sword_1handed.bin", "assets/chars/shield_badge.gltf", "assets/chars/shield_badge.bin"]
+    },
+    {
+      "pack": "KayKit — Forest Nature Pack 1.0",
+      "licence": "kaykit-forest-nature-pack.txt",
+      "states": "License: (Creative Commons Zero, CC0)",
+      "source": "https://kaylousberg.itch.io/",
+      "covers": ["assets/env/forest"]
+    },
+    {
+      "pack": "Quaternius — LowPoly Modular Dungeon (May 2019)",
+      "licence": "quaternius-modular-dungeon.txt",
+      "states": "License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+      "source": "https://quaternius.itch.io/lowpoly-modular-dungeon-pack",
+      "covers": ["assets/env/dungeon"]
+    },
+
+    {
+      "pack": "Quaternius — Ultimate Animated Animals",
+      "licence": null,
+      "states": "UNVERIFIED — no licence file has ever been present in this repo or in asset-raw/. CREDITS.md previously asserted CC0 without evidence.",
+      "source": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "covers": ["assets/chars/wolf.gltf", "assets/chars/fox.gltf", "assets/chars/husky.gltf"],
+      "note": "SHIPPING NOW and load-bearing: Kael's four wolf forms, every hound, both giant-wolf bosses, Pip the fox and Biscuit the den dog. Blocked 2026-08-07: this build environment's network policy refuses quaternius.com, quaternius.itch.io and patreon.com (CONNECT 403), so the pack could not be re-fetched here. FIX: download the pack and drop its License.txt in as quaternius-ultimate-animated-animals.txt."
+    },
+    {
+      "pack": "Quaternius — Animated Monster Pack",
+      "licence": null,
+      "states": "UNVERIFIED — asset-raw/monsters/ contains only Blend/, FBX/, OBJ/ and Preview.jpg. No licence file in either repo.",
+      "source": "https://quaternius.com",
+      "covers": ["assets/chars/monsters"],
+      "note": "SHIPPING NOW: the Slime and Bat enemy families, and the Dragon that is Boreal of Frostpeak. Same network block as above. FIX: download and drop in as quaternius-animated-monsters.txt."
+    },
+    {
+      "pack": "Kenney — Holiday Kit",
+      "licence": null,
+      "states": "UNVERIFIED ON DISK — vendored v3.21 from the game-assets repo, which carried no licence file for it.",
+      "source": "https://kenney.nl/assets/holiday-kit",
+      "covers": ["assets/env/snow"],
+      "note": "Every one of the nine other Kenney packs in this folder states CC0 in its own file, and kenney.nl publishes site-wide CC0 — but per the standing rule (verify per pack, never on reputation) this stays UNVERIFIED until its own License.txt is here. FIX: drop it in as kenney-holiday-kit.txt."
+    },
+
+    {
+      "pack": "OpenGameArt music — Brandon Morris (Cave Theme), Juhani Junkala (Boss Battle), cynicmusic (Victory Fanfare)",
+      "licence": null,
+      "states": "UNVERIFIED ON DISK — per-track licences live on the OpenGameArt submission pages and vary by track (CC0 / CC-BY / GPL are all common on OGA).",
+      "source": "https://opengameart.org/content/cave-theme",
+      "covers": ["assets/audio/music"],
+      "note": "Highest-risk remaining item after the Quaternius pair, because OGA licences are genuinely mixed — a CC-BY track needs visible attribution, a GPL track would be incompatible. Each track's page must be checked individually and the result recorded here."
+    },
+    {
+      "pack": "(first-party) Wolf Knight PWA icons",
+      "licence": "SELF",
+      "states": "Generated for this project; no third-party rights.",
+      "source": "tools/gen-icons",
+      "covers": ["assets/icons"]
+    }
+  ]
+}

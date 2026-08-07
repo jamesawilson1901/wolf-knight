@@ -392,10 +392,60 @@ outside that family will read as a foreign object no matter how good it is.
 
 ---
 
+## FOLLOW-UP — 2026-08-07 (action 1 attempted)
+
+Dad: *"re download with license."*
+
+**Partly done. The download itself is blocked in this build environment**, and
+that block is real, not a workaround-able one: the proxy answers `CONNECT 403`
+for `quaternius.com`, `quaternius.itch.io`, `itch.io`, `patreon.com`,
+`opengameart.org`, `poly.pizza` and `kenney.nl`. Only GitHub hosts resolve.
+A web search returns third-party pages *describing* the animals pack as CC0,
+but the standing rule for this audit was to quote the licence text the ruling
+rests on — a summary of someone else's summary is not that, so no pack was
+graded on it.
+
+**What was done instead, and it turned out to be most of the value:**
+`asset-raw/` is still on disk in this container and is gitignored, so **16
+genuine licence files were sitting outside the repo the whole time.** Every
+vendored asset was traced back to its source pack by filename against
+`asset-raw/`, and the licences were copied in verbatim:
+
+- **New: `assets/LICENSES/`** — 15 licence files, exactly as the packs shipped
+  them, plus `MANIFEST.json` mapping every pack to the files it covers and
+  quoting the granting line.
+- **New: `tools/check-licences.mjs`** — fails if any directory under `assets/`
+  is unclaimed by the manifest, and reports every pack that ships without a
+  licence file on disk. `--strict` fails on those too (for release).
+- **13 packs are now cleared with evidence** (Kenney Nature/Castle/Survival/
+  Town/Pirate/Platformer/RPG-Audio/UI-Audio/Impact, KayKit Adventurers/
+  Animations/Skeletons/Weapons-Bits/Forest, Quaternius Modular Dungeon).
+  Every one of those files contains the words *"License: (Creative Commons
+  Zero, CC0)"* or *"CC0 1.0 Universal"*.
+- **4 remain PENDING and are now marked as such in `CREDITS.md`** rather than
+  sitting under a blanket "(CC0)" heading: the two Quaternius packs, the Kenney
+  Holiday Kit (vendored in v3.21 for Frostpeak — same gap, freshly created),
+  and the three OpenGameArt music tracks.
+
+**Conflicts 1 and 2 are therefore resolved as documentation:** `CREDITS.md` and
+`design/ASSETS.md` no longer assert CC0 for anything unproven. The underlying
+*evidence* gap for the two Quaternius packs is unchanged and still needs a
+download from a machine with normal internet — roughly two minutes of work,
+described step by step in `assets/LICENSES/README.md`.
+
+**Newly noticed while doing this:** the OpenGameArt music is arguably a sharper
+risk than the Quaternius pair. OGA hosts CC0, CC-BY and GPL side by side, and
+its licences are per-submission — a CC-BY track needs visible credit in-game
+and a GPL track could not be used at all. Quaternius, by contrast, ships CC0
+with everything anyone has ever checked. Worth doing that one first.
+
+---
+
 ## RECOMMENDED NEXT ACTIONS (awaiting your decision)
 
-1. **Re-download the two Quaternius packs with their licence files.** Highest
-   priority — it's the only finding that touches the current shipping build.
+1. ~~**Re-download the two Quaternius packs with their licence files.**~~
+   *Attempted 2026-08-07 — blocked by this environment's network policy; see
+   the follow-up above. Everything around it is done.*
 2. **Check the HydroGene itch.io page.** Settles 610 MB and a doc conflict in one look.
 3. **Install `unrar`/`p7zip`** (or unpack locally) to clear the 9 archives in Q2 —
    including `SummerPack.rar`, which is confirmed to contain a licence.
