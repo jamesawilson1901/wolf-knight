@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.20.0';
+const CACHE_NAME = 'wolfknight-v3.21.0';
 
 const PRECACHE = [
   './',
@@ -178,6 +178,14 @@ const PRECACHE = [
   './assets/env/forest/Grass_1_A.gltf', './assets/env/forest/Grass_1_A.bin',
   './assets/env/forest/Grass_2_B.gltf', './assets/env/forest/Grass_2_B.bin',
   './assets/env/forest/forest_texture.png',
+  // Frostpeak (v3.21) — Kenney Holiday Kit snow pieces, one shared colormap
+  './assets/env/snow/tree-snow-a.glb', './assets/env/snow/tree-snow-b.glb',
+  './assets/env/snow/tree-snow-c.glb',
+  './assets/env/snow/rocks-large.glb', './assets/env/snow/rocks-medium.glb',
+  './assets/env/snow/rocks-small.glb',
+  './assets/env/snow/snow-pile.glb', './assets/env/snow/snow-bunker.glb',
+  './assets/env/snow/snow-flat.glb', './assets/env/snow/snow-flat-large.glb',
+  './assets/env/snow/Textures/colormap.png',
   './vendor/three.module.min.js',
   './vendor/three.core.min.js',
   './vendor/addons/loaders/GLTFLoader.js',

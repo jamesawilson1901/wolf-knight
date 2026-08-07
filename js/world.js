@@ -37,6 +37,16 @@ export class World {
     // the Deep Hall's pressure plate hid itself for two regions. Each shell
     // builder sets its own value; 0 is a bare ground plane.
     this.deckY = 0;
+    // SLICK FLOOR (v3.21, Frostpeak): on ice a pushed boulder does not take
+    // one polite step — it SKIDS until something stops it. Kael himself never
+    // slides (deliberate: a kid must never lose control of their own wolf),
+    // so the ice is a puzzle, not a punishment.
+    this.slickFloor = false;
+    // Per-room LIGHT COLOUR (v3.21). The global rig is warm — firelight and
+    // ember — which turned Frostpeak's snow pink. A room may ask for its own
+    // sky/ground/key hues; null keeps the warm default every earlier region
+    // was tuned against.
+    this.lightTint = null;     // {sky, ground, key} hex
     this._animateHooks = [];
   }
 
@@ -179,7 +189,7 @@ export class World {
       // a step in flight advances on its own — the player just watches it land
       if (b._slide) {
         const s = b._slide;
-        const step = Math.min(s.remaining, 2.4 * dt);
+        const step = Math.min(s.remaining, (s.speed || 2.4) * dt);
         const i = this.circleColliders.indexOf(b.collider);
         if (i >= 0) this.circleColliders.splice(i, 1);
         const solved = this.resolveCircle(b.x + s.dx * step, b.z + s.dz * step, b.r);
@@ -218,7 +228,11 @@ export class World {
       const dir = Math.abs(dx) > Math.abs(dz)
         ? { dx: Math.sign(dx), dz: 0 }
         : { dx: 0, dz: Math.sign(dz) };
-      b._slide = { ...dir, remaining: 1.2 };
+      // on bare stone: one clean 1.2u step. On ice: a long fast skid that only
+      // ends at a wall, a rock, or a plate — so the kid must PLAN the lane.
+      b._slide = this.slickFloor
+        ? { ...dir, remaining: 26, speed: 5.5 }
+        : { ...dir, remaining: 1.2, speed: 2.4 };
     }
   }
 

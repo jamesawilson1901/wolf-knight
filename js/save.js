@@ -85,6 +85,8 @@ export function persist() {
       e2bCleared: !!state.flags.e2bCleared,   // v3.18: the Old Quarry stays open
       sylvaHp: state.flags.sylvaHp || 0,      // v3.19: Sylva's duel remembers too
       sylvaDefeated: !!state.flags.sylvaDefeated,
+      borealHp: state.flags.borealHp || 0,    // v3.21: Boreal's duel remembers too
+      borealDefeated: !!state.flags.borealDefeated,
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -140,6 +142,10 @@ export function applySave(profileId, profileName, data) {
     state.flags.e2bCleared = !!data.flags.e2bCleared;
     state.flags.sylvaHp = data.flags.sylvaHp || 0;
     state.flags.sylvaDefeated = !!data.flags.sylvaDefeated;
+    // v3.21 — additive: a pre-Frostpeak profile simply has no boreal keys,
+    // and `|| 0` / `!!undefined` give exactly the fresh-mountain state
+    state.flags.borealHp = data.flags.borealHp || 0;
+    state.flags.borealDefeated = !!data.flags.borealDefeated;
     // v3.18: the "dead machinery" mystery was retired with the mill fiction —
     // old saves that logged it get it quietly marked found (additive law:
     // old profiles must always load clean)

@@ -526,3 +526,346 @@ export class Shadowgrip {
     this.attackIn = this._halfHowled ? 2.2 : 3.2;
   }
 }
+
+// ---------------------------------------------------------------------------
+// BOREAL, THE RIMEBOUND — Frostpeak's boss (v3.21).
+// Obeys the same law as the wolves (a boss fights like its family, bigger):
+// its family is the DIVERS — the Ember Moths taught this read in region 1.
+// It circles overhead, telegraphs on its body, DIVES along a red lane, then
+// crash-lands and lies grounded under a gold ring: the collapse window, in
+// the air-to-ground register. And because flyers take full damage from bolts
+// (an existing law), the throwing spark finally gets its moment.
+// ---------------------------------------------------------------------------
+
+const BOREAL_HP = 22;
+const BOREAL_DMG = 1.5;
+// Cruising height + orbit radius (v3.21 sighting pass): the camera is pitched
+// 50° and only 11 units back, so a boss circling the ARENA centre at 2.6 up
+// and 4.2 out sailed clean off the top of a phone screen. She now wheels
+// around the PLAYER, lower and tighter — always in frame, always menacing.
+const HOVER_Y = 1.9;
+const ORBIT_R = 2.5;
+// ...and the wheel is biased NORTH of Kael. The camera sits ~7 units south of
+// him: a flyer that swings behind it leaves the frame entirely. Measured on a
+// phone-landscape viewport, not guessed.
+const ORBIT_BIAS_Z = -0.9;
+const ORBIT_CLAMP = 5.5;
+const DIVE_BOUND = 6.6;   // she lands inside the arena, never in the treeline  // she never wheels out past the arena's standing stones
+
+export class Boreal {
+  constructor(world, x, z, dragonGltf) {
+    this.world = world;
+    this.name = 'Boreal, the Rimebound';
+    this.x = x; this.z = z;
+    this.maxHp = BOREAL_HP;
+    this.coreHp = Math.min(state.flags.borealHp || BOREAL_HP, BOREAL_HP);
+    this.defeated = false;
+    this.onDefeated = null;
+
+    this.root = new THREE.Group();
+    this.root.position.set(x, 0, z);
+    world.add(this.root);
+
+    this.core = new THREE.Group();
+    const dragon = prepareCharacter(SkeletonUtils.clone(dragonGltf.scene));
+    dragon.scale.setScalar(1.15);
+    this.eyeMat = null;
+    dragon.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (c.color) c.color.setHex(0x9fd0ea);        // rime-blue hide
+        c.emissive = new THREE.Color(0x5f9fd0);
+        c.emissiveIntensity = 0.3;
+        if (!this.eyeMat) this.eyeMat = c;            // something to flare
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    this.core.add(dragon);
+    this.dragon = dragon;
+    this.mixer = new THREE.AnimationMixer(dragon);
+    const clip = (frag) => dragonGltf.animations.find((c) => c.name.includes(frag));
+    const mk = (frag, once) => {
+      const c = clip(frag);
+      if (!c) return null;
+      const a = this.mixer.clipAction(c);
+      if (once) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
+      return a;
+    };
+    this.flyAction = mk('Flying');
+    if (this.flyAction) this.flyAction.play();
+    this.attackAction = mk('Attack', true);
+    this.deathAction = mk('Death', true);
+    this.hitAction = mk('Hit', true);
+    this.core.position.set(ORBIT_R, HOVER_Y, 0); // already on her wheel
+    this.root.add(this.core);
+
+    // the DIVE lane — red marks danger (contract grammar)
+    this.lane = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.5, 1.3),
+      new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0, depthWrite: false })
+    );
+    this.lane.rotation.x = -Math.PI / 2;
+    this.lane.position.y = world.deckY + 0.05;
+    world.add(this.lane);
+
+    // GOLD "hit it now" ring for the grounded window (act-here law)
+    this.tiredRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.4, 1.95, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    this.tiredRing.rotation.x = -Math.PI / 2;
+    this.tiredRing.position.y = world.deckY + 0.06;
+    this.tiredRing.visible = false;
+    world.add(this.tiredRing);
+
+    // ALWAYS hittable — hovering low enough for a brave melee, and bolts
+    // hit flyers for full (the region-1 law finally pays off)
+    this.coreHittable = new Hittable(x, z, 1.5, (n) => this._hit(n));
+    this.coreHittable.flying = true;
+    world.enemies.push(this.coreHittable);
+    this.coreExposed = true;
+
+    this._mats = [];
+    dragon.traverse((n) => {
+      if (!n.isMesh) return;
+      const ms = Array.isArray(n.material) ? n.material : [n.material];
+      for (const m of ms) {
+        if (!m.emissive) continue;
+        m.userData.be = m.emissive.getHex();
+        m.userData.bi = m.emissiveIntensity;
+        this._mats.push(m);
+      }
+    });
+    this._hurtFlash = 0;
+
+    this.action = 'circle';   // circle | windup | dive | grounded | rise
+    this.actionT = 0;
+    this.attackIn = 3.0;
+    this.orbitA = 0;
+    this.off = { x: ORBIT_R, z: 0 };
+    this.cx = 0; this.cz = 0;   // orbit centre, relative to the arena anchor
+    this.diveDir = { x: 0, z: 1 };
+    this._enraged = this.coreHp <= BOREAL_HP / 2;
+    this._dives = 0;
+    world.boss = this;
+  }
+
+  _hit(n) {
+    if (this.defeated) return;
+    // while airborne it is a hard target for a sword — bolts are the answer,
+    // but the grounded window doubles up (that is where the fight is won)
+    this.coreHp -= n;
+    state.flags.borealHp = Math.max(0, this.coreHp);
+    const wx = this.x + this.off.x, wz = this.z + this.off.z;
+    if (this.world.onDmgNum) this.world.onDmgNum(wx, HOVER_Y + 0.6, wz, n);
+    this._hurtFlash = 0.2;
+    if (this.hitAction && this.action !== 'grounded') this.hitAction.reset().play();
+    if (!this._enraged && this.coreHp <= BOREAL_HP / 2) {
+      this._enraged = true;
+      audio.howl({ volume: 0.95, rate: 1.5 });          // a shriek, not a howl
+      juice.burst(wx, HOVER_Y, wz, 0xbfefff, 16);
+    }
+    if (this.coreHp <= 0) this._defeat();
+  }
+
+  // a parry or heavy stun swats it out of the air — the shield answers here too
+  takeStun(sec) {
+    if (this.defeated || this.action === 'grounded') return;
+    this._ground(Math.max(2.2, sec));
+  }
+
+  _ground(dur) {
+    this.action = 'grounded';
+    this.actionT = dur;
+    this.lane.material.opacity = 0;
+    this.tiredRing.visible = true;
+    if (this.flyAction) this.flyAction.fadeOut(0.2);
+    juice.burst(this.x + this.off.x, 0.5, this.z + this.off.z, 0xbfefff, 14);
+    juice.burst(this.x + this.off.x, 0.3, this.z + this.off.z, 0xeaffff, 10);
+    if (juice.effects) {
+      juice.effects.shake(0.45, 0.5);
+      if (juice.effects.slow) juice.effects.slow(0.75, 0.6);
+    }
+    audio.play('slam', { volume: 0.95, rate: 0.7 });
+  }
+
+  _defeat() {
+    this.defeated = true;
+    state.flags.borealHp = 0;
+    if (juice.effects) {
+      juice.effects.shake(0.65, 1.3);
+      juice.effects.hitStop(0.14);
+      juice.effects.groundSlam(this.root.position.clone(), 0x9be3ff);
+      setTimeout(() => juice.effects && juice.effects.groundSlam(this.root.position.clone(), 0xeaffff), 350);
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      juice.burst(this.x + Math.cos(a) * 1.2, 0.6 + (i % 3) * 0.6, this.z + Math.sin(a) * 1.2, 0xbfefff, 12);
+    }
+    audio.play('slam', { volume: 1, rate: 0.55 });
+    audio.howl({ volume: 0.85, rate: 1.3 });
+    this.tiredRing.visible = false;
+    this.lane.material.opacity = 0;
+    this.coreHittable.dead = true;
+    if (this.deathAction) {
+      if (this.flyAction) this.flyAction.fadeOut(0.2);
+      this.deathAction.reset().play();
+    }
+    this._dissolveT = 1.6;
+    state.flags.borealDefeated = true;
+    if (!state.formsUnlocked.includes('frost_wolf')) state.formsUnlocked.push('frost_wolf');
+    if (this.onDefeated) this.onDefeated();
+  }
+
+  update(dt, t, player) {
+    this.mixer.update(dt);
+    if (this.defeated) {
+      if (this._dissolveT > 0) {
+        this._dissolveT -= dt;
+        const f = Math.max(0, this._dissolveT / 1.6);
+        this.core.position.y = Math.max(0.1, HOVER_Y * f);
+        this.core.scale.setScalar(Math.max(0.02, f));
+        this._burstAcc = (this._burstAcc || 0) + dt;
+        if (this._burstAcc > 0.18) {
+          this._burstAcc = 0;
+          const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 1.6;
+          juice.burst(this.x + Math.cos(a) * r, 0.5 + Math.random() * 1.6, this.z + Math.sin(a) * r, 0xbfefff, 10);
+          smokePuff(this.world, this.x + Math.cos(a) * r, 0.8, this.z + Math.sin(a) * r, 0xdff2ff);
+        }
+        if (this._dissolveT <= 0) this.root.remove(this.core);
+      }
+      return;
+    }
+
+    if (this._hurtFlash > 0) {
+      this._hurtFlash -= dt;
+      const on = this._hurtFlash > 0;
+      for (const m of this._mats) {
+        m.emissive.setHex(on ? 0xff2a1a : m.userData.be);
+        m.emissiveIntensity = on ? 0.8 : m.userData.bi;
+      }
+    }
+
+    const px = player.root.position.x, pz = player.root.position.z;
+    const wx = this.x + this.off.x, wz = this.z + this.off.z;
+    const dx = px - wx, dz = pz - wz;
+    const d = Math.hypot(dx, dz) || 0.01;
+    this.actionT -= dt;
+    const face = () => { this.core.rotation.y = Math.atan2(dx, dz); };
+    const A = this.action;
+
+    if (A === 'circle') {
+      // she wheels around KAEL, not around the arena — so she is never a
+      // dot in the corner of the screen, and the pressure never lets up
+      face();
+      const spd = this._enraged ? 1.15 : 0.85;
+      const tx = Math.max(-ORBIT_CLAMP, Math.min(ORBIT_CLAMP, px - this.x));
+      const tz = Math.max(-ORBIT_CLAMP, Math.min(ORBIT_CLAMP, pz + ORBIT_BIAS_Z - this.z));
+      const ease = Math.min(1, dt * 1.1);   // a slow wheel, never a snap
+      this.cx += (tx - this.cx) * ease;
+      this.cz += (tz - this.cz) * ease;
+      this.orbitA += dt * spd;
+      this.off.x = this.cx + Math.cos(this.orbitA) * ORBIT_R;
+      this.off.z = this.cz + Math.sin(this.orbitA) * ORBIT_R;
+      this.core.position.set(this.off.x, HOVER_Y + Math.sin(t * 1.6) * 0.25, this.off.z);
+      this.attackIn -= dt;
+      if (this.attackIn <= 0) {
+        this.action = 'windup';
+        this.actionT = 0.9;                       // the ≥0.9s boss telegraph
+        this.diveDir = { x: dx / d, z: dz / d };
+      }
+    } else if (A === 'windup') {
+      // ON-BODY tell: it rears, wings beat hard, frost gathers — plus the
+      // RED lane on the ground, the one floor decal a boss charge is allowed
+      face();
+      const f = 1 - Math.max(0, this.actionT) / 0.9;
+      this.core.position.y = HOVER_Y + 0.5 * f;
+      this.core.scale.setScalar(1 + 0.06 * f);
+      this.lane.material.opacity = 0.2 + 0.35 * f;
+      this.lane.position.set(wx + this.diveDir.x * 4, this.world.deckY + 0.05, wz + this.diveDir.z * 4);
+      this.lane.rotation.z = -Math.atan2(this.diveDir.x, this.diveDir.z) + Math.PI / 2;
+      if (this.actionT <= 0) {
+        this.core.scale.setScalar(1);
+        const dd = Math.hypot(px - wx, pz - wz) || 0.01;
+        this.diveDir = { x: (px - wx) / dd, z: (pz - wz) / dd };
+        this.action = 'dive';
+        this.actionT = 0.85;
+        this._diveHit = false;
+        this._diveDist = 0;
+        if (this.attackAction) this.attackAction.reset().play();
+        audio.play('whoosh', { volume: 0.95, rate: 0.85 });
+      }
+    } else if (A === 'dive') {
+      this.core.rotation.y = Math.atan2(this.diveDir.x, this.diveDir.z);
+      const speed = this._enraged ? 11.5 : 9.5;
+      this.off.x += this.diveDir.x * speed * dt;
+      this.off.z += this.diveDir.z * speed * dt;
+      this._diveDist += speed * dt;
+      // swoops down to head height through the middle of the run, then up
+      const f = Math.min(1, this._diveDist / 6.5);
+      this.core.position.set(this.off.x, HOVER_Y - Math.sin(f * Math.PI) * (HOVER_Y - 0.75), this.off.z);
+      this.lane.material.opacity = Math.max(0, this.lane.material.opacity - dt * 2);
+      if (!this._diveHit && d < 1.6 && this.core.position.y < 1.7) {
+        this._diveHit = true;                     // one hit per dive, never a grinder
+        player.hurt(BOREAL_DMG, { attacker: this, groundAttack: false });
+      }
+      // she must never crash half-inside the mountainside: the run ends at the
+      // arena's edge, which reads as her clipping a standing stone
+      const edge = Math.max(Math.abs(this.off.x), Math.abs(this.off.z)) > DIVE_BOUND;
+      if (edge) {
+        this.off.x = Math.max(-DIVE_BOUND, Math.min(DIVE_BOUND, this.off.x));
+        this.off.z = Math.max(-DIVE_BOUND, Math.min(DIVE_BOUND, this.off.z));
+      }
+      if (edge || this._diveDist > 6.5 || this.actionT <= 0) {
+        this._dives++;
+        // enraged, it strings TWO dives before it has to land (but a dive cut
+        // short by the arena edge always crashes — that IS the punish window)
+        if (!edge && this._enraged && this._dives % 2 === 1) {
+          this.action = 'windup';
+          this.actionT = 0.55;                    // shorter second tell
+          this.diveDir = { x: dx / d, z: dz / d };
+        } else {
+          this._ground(2.6);                      // THE CRASH — the punish window
+        }
+      }
+    } else if (A === 'grounded') {
+      // wings folded, sprawled on the ice: hit it with everything
+      this.core.position.y += (0.2 - this.core.position.y) * Math.min(1, dt * 6);
+      this.tiredRing.position.x = this.x + this.off.x;
+      this.tiredRing.position.z = this.z + this.off.z;
+      const pulse = 1 + Math.sin(t * 5) * 0.06;
+      this.tiredRing.scale.set(pulse, pulse, 1);
+      this.tiredRing.material.opacity = 0.6 + Math.sin(t * 5) * 0.25;
+      if (this.actionT <= 0) {
+        this.action = 'rise';
+        this.actionT = 0.8;
+        this.tiredRing.visible = false;
+        if (this.flyAction) this.flyAction.reset().fadeIn(0.2).play();
+        audio.play('whoosh', { volume: 0.7, rate: 1.2 });
+      }
+    } else if (A === 'rise') {
+      face();
+      this.core.position.y += (HOVER_Y - this.core.position.y) * Math.min(1, dt * 4);
+      if (this.actionT <= 0) {
+        this.action = 'circle';
+        // resume the wheel from exactly where she is — pick the angle first,
+        // then place the centre behind her, so the orbit starts with no jump
+        this.orbitA = Math.atan2(this.off.z - this.cz, this.off.x - this.cx);
+        this.cx = this.off.x - Math.cos(this.orbitA) * ORBIT_R;
+        this.cz = this.off.z - Math.sin(this.orbitA) * ORBIT_R;
+        this.attackIn = this._enraged ? 2.0 : 3.0;
+      }
+    }
+
+    // the hitbox RIDES the dragon (a boss is a creature, never a turret)
+    this.coreHittable.x = this.x + this.off.x;
+    this.coreHittable.z = this.z + this.off.z;
+    // grounded, it is a normal target; airborne, it is a FLYER (bolts shine)
+    this.coreHittable.flying = this.action !== 'grounded';
+  }
+}

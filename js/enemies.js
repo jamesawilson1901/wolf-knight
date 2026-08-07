@@ -127,6 +127,41 @@ export const VARIANTS = {
       else if (m.color) { m.color.setHex(0x35521f); m.emissive && m.emissive.setHex(0x1d3312); m.emissiveIntensity = 0.35; }
     },
   },
+  // --- FROSTPEAK (v3.21): rime-wrapped creatures. Everything here FEARS
+  // FIRE — the same lesson the region's puzzles teach with melting ice.
+  rime: {
+    label: 'Rime Hound',
+    hp: 4, weakness: 'fire', chargeSpeed: 10.2, puffTint: 0xcfeaff, dropChance: 0.5,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xeaffff); m.emissiveIntensity = 1.6; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x8fc4e8); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0xcfe8ff); }
+    },
+  },
+  elderrime: {
+    label: 'Elder Rime Hound',
+    scale: 1.3, hp: 6.5, weakness: 'fire', chargeSpeed: 11.4, dropChance: 1, puffTint: 0xcfeaff,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 2.0; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x6fa8d8); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0xbfe0ff); }
+    },
+  },
+  snowblob: {
+    label: 'Snow Blob',
+    hp: 3.5, weakness: 'fire', puffTint: 0xeaffff,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 1.5; }
+      else if (m.color) { m.color.setHex(0xdff2ff); m.emissive && m.emissive.setHex(0x8fc4e8); m.emissiveIntensity = 0.3; }
+    },
+  },
+  frostmoth: {
+    label: 'Frost Moth',
+    hp: 1.5, weakness: 'fire', puffTint: 0xeaffff,
+    tint: (m) => {
+      if (m.color) { m.color.setHex(0xbfe8ff); m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 0.8; }
+    },
+  },
   wisp: {
     label: 'Wisp Moth',
     hp: 1.5, weakness: 'fire', puffTint: 0xb8ffc8,
@@ -188,6 +223,7 @@ class Enemy {
     this.radius = radius;
     this.dead = false;
     this.stunned = 0;
+    this.frozen = 0;   // >0 = held solid and BRITTLE (Frost Wolf breath)
     this._flash = 0;
     this._flashMats = [];
     const tr = TRAITS[this.constructor.name] || {};
@@ -214,6 +250,7 @@ class Enemy {
 
   // Returns true while stunned (callers skip their AI for the frame).
   stunUpdate(dt) {
+    if (this.frozen > 0) this.frozen = Math.max(0, this.frozen - dt);
     if (this.stunned <= 0) return false;
     this.stunned -= dt;
     this.root.rotation.y += dt * 5;              // dizzy spin
@@ -228,6 +265,15 @@ class Enemy {
   takeDamage(n, element = 'steel', kind = 'melee') {
     if (this.dead) return;
     let mult = 1;
+    // BRITTLE (v3.21): frozen solid, then struck — the ice shatters and the
+    // blow lands double. The Frost Wolf's breath is a SET-UP, not a kill.
+    if (this.frozen > 0 && kind !== 'aoe') {
+      this.frozen = 0;
+      mult *= 2;
+      audio.play('parry', { volume: 0.6, rate: 1.9 });   // the crack of ice
+      juice.burst(this.x, 0.9, this.z, 0xbfefff, 12);
+      if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.5, this.z, 'SHATTER!');
+    }
     if (this.armored) {
       if (element === 'steel') {
         mult *= 0.5; // steel skitters off old bone...

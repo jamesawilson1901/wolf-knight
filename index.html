@@ -61,6 +61,11 @@
       font-size: 22px; color: #ffd76a; letter-spacing: .04em;
       text-shadow: 0 0 10px rgba(255, 200, 90, .9), 0 2px 4px rgba(0,0,0,.8);
     }
+    /* frozen solid, then struck: the ice shatters for double (v3.21) */
+    .dmg-num.shatter {
+      font-size: 22px; color: #dff6ff; letter-spacing: .04em;
+      text-shadow: 0 0 10px rgba(155, 227, 255, .95), 0 2px 4px rgba(0,0,0,.8);
+    }
     #boss-bar {
       position: fixed; left: 50%; top: 54px; transform: translateX(-50%);
       z-index: 6; width: min(46vw, 420px); display: none; pointer-events: none;
@@ -621,7 +626,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.20</div>
+  <div id="badge">Wolf Knight &middot; v3.21</div>
 
   <script>
     window.addEventListener('error', (e) => {
