@@ -23,6 +23,7 @@ import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
+import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
@@ -46,7 +47,8 @@ const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a,
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // METRICS.md budget
+perf.attach(renderer);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -996,7 +998,7 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -1050,7 +1052,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1245,12 +1247,14 @@ async function start() {
 
     if (paused || menuPaused) {
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
     // Story hints freeze the world while they play (tap the caption to skip)
     if (narration.blocking) {
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
@@ -1258,6 +1262,7 @@ async function start() {
     if (effects.hitStopTime > 0) {
       effects.hitStopTime -= realDt;
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
@@ -1441,6 +1446,7 @@ async function start() {
     key.target.position.copy(player.root.position);
 
     renderer.render(scene, camera);
+    perf.sample(realDt !== undefined ? realDt : 0.016, state.room);
   });
 }
 
@@ -1461,7 +1467,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

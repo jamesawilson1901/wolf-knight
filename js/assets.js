@@ -8,10 +8,36 @@ const gltfLoader = new GLTFLoader(manager);
 
 const gltfCache = new Map();
 
+// Everything a loaded GLB owns is SHARED across every room that uses it, so it
+// must survive room teardown. Marking it here is what lets World.dispose()
+// safely free everything a room actually created (v3.22): the rule becomes
+// "dispose what is not marked shared" instead of "dispose nothing", which is
+// what left the game leaking a geometry and a cloned material per room build.
+// A Set of the actual OBJECTS, not a flag on them. `Material.clone()` deep-
+// copies userData, so a per-room clone of a shared material would inherit
+// `shared: true` and never be freed — the identity registry cannot be forged
+// that way, because a clone is a different object.
+export const SHARED = new Set();
+export const isShared = (o) => !!o && SHARED.has(o);
+
+function markShared(gltf) {
+  gltf.scene.traverse((n) => {
+    if (n.geometry) SHARED.add(n.geometry);
+    const mats = Array.isArray(n.material) ? n.material : (n.material ? [n.material] : []);
+    for (const m of mats) {
+      SHARED.add(m);
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap']) {
+        if (m[k]) SHARED.add(m[k]);
+      }
+    }
+  });
+  return gltf;
+}
+
 export function loadGLB(url) {
   if (!gltfCache.has(url)) {
     gltfCache.set(url, new Promise((resolve, reject) => {
-      gltfLoader.load(url, resolve, undefined, reject);
+      gltfLoader.load(url, (g) => resolve(markShared(g)), undefined, reject);
     }));
   }
   return gltfCache.get(url);
@@ -37,6 +63,7 @@ function volcanicMaterial(material) {
     fixed.roughness = 1;
     const tint = VOLCANIC_TINTS[material.name];
     if (tint !== undefined) fixed.color.setHex(tint);
+    SHARED.add(fixed);   // cached for the session — never room-owned
     tintCache.set(material.name, fixed);
   }
   return tintCache.get(material.name);

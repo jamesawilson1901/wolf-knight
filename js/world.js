@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { isShared } from './assets.js';
 
 const _rollAxis = new THREE.Vector3();
 
@@ -80,10 +81,68 @@ export class World {
     for (const fn of this._animateHooks) fn(t, dt);
   }
 
+  // ROOM TEARDOWN (rewritten v3.22). This used to remove the scene graph and
+  // nothing else, on the reasoning that "geometries/materials are shared via
+  // the asset cache". Half true: GLB geometry and the tint cache ARE shared —
+  // but every room also builds its own PlaneGeometry floors, RingGeometry
+  // decals, BoxGeometry walls, CanvasTextures and dozens of `.clone()`d
+  // materials, and none of those were ever freed. Undisposed GPU resources are
+  // the standard three.js leak, and it matters here because the kids play for
+  // an hour and cross fifty rooms doing it.
+  //
+  // The rule is now: dispose everything this room OWNS, keep everything in the
+  // SHARED identity registry (assets.js). A registry rather than a flag,
+  // because Material.clone() deep-copies userData — a per-room clone of a
+  // shared material would inherit the flag and never be freed.
   dispose() {
     this.scene.remove(this.root);
-    // Geometries/materials are shared via the asset cache — do not dispose
-    // them; just drop the scene graph.
+    const freed = { geometries: 0, materials: 0, textures: 0 };
+
+    const killTexture = (t) => {
+      if (!t || isShared(t)) return;
+      t.dispose();
+      freed.textures++;
+    };
+    const killMaterial = (m) => {
+      if (!m || isShared(m)) return;
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap',
+                       'emissiveMap', 'aoMap', 'alphaMap', 'lightMap']) {
+        killTexture(m[k]);
+      }
+      m.dispose();
+      freed.materials++;
+    };
+
+    this.root.traverse((n) => {
+      // An InstancedMesh reuses SHARED geometry and material but owns its own
+      // instance buffers — dispose() frees exactly those and nothing else.
+      if (n.isInstancedMesh || n.isBatchedMesh) { n.dispose(); return; }
+      // SKINNED CHARACTERS: every SkeletonUtils.clone() builds a fresh Skeleton,
+      // and three uploads a DataTexture of the bone matrices for GPU skinning.
+      // That texture hangs off the skeleton, NOT off a material or geometry, so
+      // it is invisible to any census that walks materials — which is exactly
+      // why this leak survived the first two attempts at fixing it. Measured at
+      // ~16 textures per room build: every enemy, pup and NPC in the room.
+      if (n.isSkinnedMesh && n.skeleton && !isShared(n.skeleton)) {
+        n.skeleton.dispose();
+        freed.textures++;
+      }
+      if (n.isLight && n.shadow && n.shadow.map) { n.shadow.map.dispose(); n.shadow.map = null; }
+      if (n.geometry && !isShared(n.geometry)) { n.geometry.dispose(); freed.geometries++; }
+      if (!n.material) return;
+      if (Array.isArray(n.material)) n.material.forEach(killMaterial);
+      else killMaterial(n.material);
+    });
+
+    this.root.clear();
+    this._animateHooks.length = 0;
+    // these arrays are populated by other modules (enemies.js sets world.enemies)
+    for (const k of ['enemies', 'boulders', 'burnables', 'crackables', 'pups',
+                     'plates', 'braziers', 'shatterables', 'cuttables', 'checkpoints']) {
+      if (Array.isArray(this[k])) this[k].length = 0;
+    }
+    this._lastFreed = freed;   // read by the headless leak test
+    return freed;
   }
 
   // True while standing somewhere that hurts (lava, erupting geyser).
