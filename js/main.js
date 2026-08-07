@@ -286,6 +286,18 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf'],
       emberDone: true, stoneDone: true, wildDone: true,
     },
+    // GREYBOX — not part of the played game. These two exist so a layout can
+    // be walked and judged before a single art asset is placed (build order
+    // law). They stay in the cheat menu, behind the code, until dressed.
+    { id: 'zoo', label: '📏 Metrics Zoo (greybox)', noSave: true, greybox: true },
+    {
+      id: 'la', label: '🧱 Level 1 REBUILD (greybox)',
+      forms: ['fire_wolf'], noSave: true, greybox: true,
+    },
+    {
+      id: 'la', label: '🎨 Level 1 REBUILD (dressed)',
+      forms: ['fire_wolf'], noSave: true, greybox: false,
+    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');
@@ -353,6 +365,9 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       audio.play('form-switch', { volume: 0.8 });
+      // the same layout, either costume — greybox to judge the SPACE, dressed
+      // to judge the art. Switching is a jump, not a rebuild of anything else.
+      if (lvl.greybox !== undefined) state.settings.greybox = lvl.greybox;
       // grant the journey so far — the skip must never strand a kid
       // without the wolves/keys the level assumes they have
       for (const f of lvl.forms || []) {
@@ -378,9 +393,13 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
         state.flags.plates.w3_p1 = true;
         state.flags.plates.w3_p2 = true;
       }
-      // the save follows the jump: Continue and respawns use the level start
-      state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
-      persist();
+      // the save follows the jump: Continue and respawns use the level start.
+      // Greybox spaces deliberately do NOT — a kid who tapped the wrong thing
+      // must not find their save parked in an untextured prototype.
+      if (!lvl.noSave) {
+        state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
+        persist();
+      }
       closeAll();
       setPaused(false);
       loadRoom(lvl.id);

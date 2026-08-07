@@ -150,3 +150,40 @@ Metrics Zoo**). It exhibits, at true scale and on the grid:
 - a draw-call/triangle readout for the zoo itself
 
 Walk it before trusting any of the numbers above.
+
+---
+
+## Touch targets (measured 2026-08-07)
+
+A control's size is a **physical** measurement and a browser only knows CSS
+pixels, so the conversion is pinned to a stated device rather than guessed:
+
+| | |
+|---|---|
+| Target device | 6.4" Android, 1080 × 2340, ~403 ppi, devicePixelRatio 3 *(Galaxy A54 / Pixel 7a class)* |
+| Landscape physical width | 2340 px ÷ 403 ppi = 5.81 in = **14.75 cm** |
+| Landscape CSS viewport | 2340 ÷ 3 = **780 × 360 CSS px** |
+| **1 CSS px** | **0.01891 cm** |
+| **2.00 cm minimum** | **105.8 CSS px** → everything is built at **108** |
+
+Every control a child presses now measures **108 × 108 CSS px = 2.04 × 2.04 cm**:
+attack, special, ranged, defend, jump, the form badge, both potion slots and the
+spare, pause, inventory, and the backdoor pad button. The joystick base is 150 px
+(2.84 cm); the knob and the joystick hint are `pointer-events: none` — they are
+feedback, not targets, and are excluded deliberately.
+
+**Thumb occlusion.** Held in landscape, a child's thumbs cover roughly the
+bottom 45 % of the outer 22 % on each side. Buttons live there on purpose;
+nothing that must be *read* may. The level badge and XP bar used to sit at
+`top: 194px`, inside the left thumb zone, and moved to the top band.
+
+**What 2 cm costs, honestly.** With every control revealed at once the HUD
+occupies about half the screen. The single worst offender is the potion row —
+three 2 cm slots is 6.4 cm of a 14.75 cm screen for a control pressed a few
+times per session. **Recommendation: collapse it to ONE 2 cm potion button
+with a count badge.** That is a gameplay-behaviour change (which potion gets
+drunk), so it is flagged rather than done.
+
+Checked by `verify-touch.mjs`, which measures `getBoundingClientRect()` on a
+real 780 × 360 landscape context with every progressively-unlocked control
+forced visible — the most crowded the HUD ever gets.

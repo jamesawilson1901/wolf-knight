@@ -77,6 +77,11 @@ export class World {
 
   onAnimate(fn) { this._animateHooks.push(fn); }
 
+  // "Do not fold this into the static batch." A builder marks anything it will
+  // move, animate or hand to gameplay later; flattenStatic() leaves it and
+  // everything under it exactly as placed. (js/batch.js)
+  keepLoose(obj) { (this._keepLoose || (this._keepLoose = [])).push(obj); return obj; }
+
   animate(t, dt) {
     for (const fn of this._animateHooks) fn(t, dt);
   }

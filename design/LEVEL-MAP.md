@@ -1,3 +1,10 @@
+> **CHANGELOG (2026-08-07, build pass).** Cinder Bridges' hero prop was
+> written as **THE GREAT CHAIN**. There is no chain model in any GREEN-bucket
+> pack, and NO FAKE FICTION forbids naming a thing the game does not show, so
+> it is now **THE BROKEN SPAN** — built from real `bridge-stone.glb` sections.
+> Same job (a colossal ruined crossing you remember the district by), same
+> place, a silhouette that actually exists.
+
 # Level Map — Levels 1–3 (Ember Hollow · Stoneroot Caverns · Wild Woods)
 
 > **THIS REWRITE (2026-08-07) — what changed and why**
@@ -191,7 +198,7 @@ can be skipped entirely.
 |---|---|---|---|---|
 | **A · The Ashfall** | ash grey + cold blue shadow | fine grey ash, boot prints stay | **THE FALLEN GATE** — a toppled stone arch you walk *under* | Pip's lantern only; first torches appear at the choke |
 | **B · Ember Causeway** | orange over black | cracked basalt, glowing seams | **THE KILN** — the volcano cone, visible from every island | a line of standing torches |
-| **C · Cinder Bridges** | deep red, black rock, lava glow | dark slabs over lava, gaps you see through | **THE GREAT CHAIN** — a colossal broken chain across the chasm | lava-light from below |
+| **C · Cinder Bridges** | deep red, black rock, lava glow | dark slabs over lava, gaps you see through | **THE BROKEN SPAN** — a collapsed stone bridge, its sections tipped and sagging over the chasm | lava-light from below |
 | **D · The Kiln** | gold + amber, warm | fitted hexagonal firebrick | **THE FORGE HEART** — a brazier bowl the size of a room | braziers you light yourself |
 | **E · Heart of the Hollow** | black + violet (the shadow's colour) | obsidian, mirror-dark | **CINDER'S CAGE** | only the cage's smothered light |
 

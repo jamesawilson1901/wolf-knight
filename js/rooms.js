@@ -16,6 +16,7 @@ import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
+import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -3751,11 +3752,24 @@ async function buildF5(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+// LEVEL 1 REBUILD (design/LEVEL-MAP.md). The `l*` rooms are the expanded,
+// non-linear Ember Hollow. They live ALONGSIDE r1/r2/r3 rather than replacing
+// them: r1/r2/r3 are what kids are playing right now, and a greybox is not
+// something you ship to a child. Reached from the cheat menu until dressed
+// and approved. Nothing existing was rescaled (dad's law).
+export const ROOMS = { ...LEVEL1_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(id, scene) {
-  await loadKit();
-  if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
+  // Greybox spaces are plain geometry by definition — loading a 40-piece art
+  // kit for them would both waste the load and hide the real cost of the box.
+  if (id === 'zoo') {
+    // the metrics zoo is greybox forever; it exists to measure, not to dress
+  } else if (id[0] === 'l') {
+    if (state.settings.greybox === false) await loadEmberKit();
+  } else {
+    await loadKit();
+    if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
+  }
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot) {

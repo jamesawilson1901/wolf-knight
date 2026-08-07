@@ -103,16 +103,16 @@
       36% { transform: scale(1.09); }
     }
     #pups {
-      position: fixed; right: calc(74px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); z-index: 5;
+      position: fixed; right: calc(246px + env(safe-area-inset-right)); top: calc(14px + env(safe-area-inset-top)); z-index: 5;
       font-size: 22px; font-weight: 700; color: #e8ddd0;
       text-shadow: 0 2px 6px rgba(0,0,0,.6); pointer-events: none;
     }
     #pause-btn {
-      position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); z-index: 7;
-      width: 48px; height: 48px; border-radius: 12px;
+      position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
+      width: 108px; height: 108px; border-radius: 22px;
       background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; color: #e8ddd0; touch-action: none;
+      font-size: 42px; color: #e8ddd0; touch-action: none;
     }
     #pause-menu {
       position: fixed; inset: 0; z-index: 15; display: none;
@@ -122,9 +122,9 @@
       padding: calc(14px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
     }
     #cheat-btn {
-      margin-top: 8px; width: 44px; height: 44px; border-radius: 12px;
+      margin-top: 8px; width: 108px; height: 108px; border-radius: 22px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; opacity: .35;
+      font-size: 42px; opacity: .35;
     }
     /* The pause menu SCROLLS on touch: its buttons/rows must allow vertical
        pans (touch-action:none on .menu-btn was eating every drag, which made
@@ -326,18 +326,23 @@
     .pick-option.hot { transform: translate(-50%, -50%) scale(1.22); border-color: #fff; }
     .pick-option.current { outline: 3px solid rgba(255,255,255,.8); outline-offset: 2px; }
     .pick-option.locked { filter: grayscale(.75) brightness(.65); }
+    /* TOUCH TARGET LAW (v3.22): every control a child has to hit is at least
+       2cm x 2cm on the target phone. On a 6.4" 1080x2340 Android in landscape
+       the CSS viewport is 780x360 and one CSS pixel is 0.0189cm, so 2cm is
+       105.8 CSS px. Everything below is 108. The buttons ARE large — that is
+       the point; a five-year-old's aim is the constraint, not screen area. */
     #btn-attack {
-      position: fixed; right: calc(108px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
-      z-index: 7; width: 76px; height: 76px; border-radius: 50%;
+      position: fixed; right: calc(126px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
+      z-index: 7; width: 108px; height: 108px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       background: rgba(168, 90, 74, .85);
       border: 3px solid rgba(255,255,255,.45);
-      font-size: 38px; touch-action: none;
+      font-size: 50px; touch-action: none;
       box-shadow: 0 4px 14px rgba(0,0,0,.45);
     }
     #special-btn {
-      position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 7;
-      width: 76px; height: 76px; border-radius: 50%;
+      position: fixed; right: calc(10px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 7;
+      width: 108px; height: 108px; border-radius: 50%;
       display: none; align-items: center; justify-content: center;
       background: rgba(107, 86, 168, .8);
       border: 3px solid rgba(255,255,255,.4);
@@ -346,12 +351,12 @@
     #special-btn.ready { border-color: #fff; box-shadow: 0 0 18px rgba(168, 140, 255, .8); }
     #special-btn.disabled { opacity: .3; filter: grayscale(.6); }
     #special-ring { position: absolute; inset: -3px; border-radius: 50%; z-index: -1; }
-    #special-icon { font-size: 34px; }
+    #special-icon { font-size: 46px; }
     #form-badge {
-      position: fixed; right: calc(200px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 7;
-      width: 58px; height: 58px; border-radius: 50%;
+      position: fixed; right: calc(242px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 7;
+      width: 108px; height: 108px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; border: 2px solid rgba(255,255,255,.5);
+      font-size: 40px; border: 2px solid rgba(255,255,255,.5);
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
     }
     .action-btn {
@@ -359,13 +364,13 @@
       display: flex; align-items: center; justify-content: center;
       background: rgba(60, 48, 82, .72);
       border: 3px solid rgba(255,255,255,.4);
-      touch-action: none; font-size: 28px;
+      touch-action: none; font-size: 44px;
       box-shadow: 0 3px 10px rgba(0,0,0,.4);
     }
-    #btn-ranged { right: calc(26px + env(safe-area-inset-right)); bottom: calc(104px + env(safe-area-inset-bottom)); width: 60px; height: 60px; display: none; }
-    #btn-defend { right: calc(116px + env(safe-area-inset-right)); bottom: calc(104px + env(safe-area-inset-bottom)); width: 60px; height: 60px; background: rgba(52, 74, 96, .75); display: none; }
+    #btn-ranged { right: calc(10px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; display: none; }
+    #btn-defend { right: calc(126px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; background: rgba(52, 74, 96, .75); display: none; }
     #btn-defend:active { background: rgba(96, 140, 180, .9); border-color: #fff; }
-    #btn-jump { right: calc(206px + env(safe-area-inset-right)); bottom: calc(102px + env(safe-area-inset-bottom)); width: 56px; height: 56px; background: rgba(72, 84, 52, .75); display: none; }
+    #btn-jump { right: calc(242px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; background: rgba(72, 84, 52, .75); display: none; }
     #form-badge { display: none; }
     #btn-ranged.revealed, #btn-defend.revealed, #btn-jump.revealed,
     #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
@@ -375,40 +380,40 @@
       100% { transform: scale(1); }
     }
     #potions {
-      position: fixed; left: 14px; top: 52px; z-index: 7;
+      position: fixed; left: calc(12px + env(safe-area-inset-left)); top: calc(48px + env(safe-area-inset-top)); z-index: 7;
       display: flex; gap: 8px;
     }
     .potion-slot {
-      width: 44px; height: 44px; border-radius: 12px;
+      width: 108px; height: 108px; border-radius: 22px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 26px; background: rgba(80, 30, 40, .55);
+      font-size: 52px; background: rgba(80, 30, 40, .55);
       border: 2px solid rgba(255,160,140,.5); touch-action: none;
     }
     .potion-slot.empty { filter: grayscale(1) brightness(.5); border-style: dashed; }
     #shards {
-      position: fixed; left: 14px; top: 104px; z-index: 5;
+      position: fixed; left: calc(200px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); z-index: 5;
       color: #ffd76a; font-size: 20px; font-weight: 800;
       text-shadow: 0 2px 6px rgba(0,0,0,.7); pointer-events: none;
     }
     #level-badge {
-      position: fixed; left: 14px; top: 136px; z-index: 5; width: 92px;
+      position: fixed; left: calc(262px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); z-index: 5; width: 92px;
       color: #cdb8ff; font-size: 15px; font-weight: 800; pointer-events: none;
       text-shadow: 0 2px 6px rgba(0,0,0,.7);
     }
     #xp-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.18); margin-top: 3px; overflow: hidden; }
     #xp-fill { height: 100%; width: 0%; background: #b48aff; border-radius: 3px; transition: width .3s ease; }
-    #buffs { position: fixed; left: 14px; top: 168px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+    #buffs { position: fixed; left: calc(370px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); z-index: 5; display: flex; gap: 6px; pointer-events: none; }
     .buff-chip {
       width: 34px; height: 34px; border-radius: 10px; font-size: 19px;
       display: flex; align-items: center; justify-content: center;
       background: rgba(40,28,60,.8); border: 2px solid rgba(255,255,255,.5);
     }
     #inv-btn {
-      position: fixed; right: 66px; top: 10px; z-index: 7;
-      width: 46px; height: 46px; border-radius: 12px;
+      position: fixed; right: calc(126px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
+      width: 108px; height: 108px; border-radius: 22px;
       background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; touch-action: none;
+      font-size: 42px; touch-action: none;
     }
     .panel {
       position: fixed; inset: 0; z-index: 16; display: none;
@@ -626,7 +631,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.21.4</div>
+  <div id="badge">Wolf Knight &middot; v3.22.0</div>
 
   <script>
     window.addEventListener('error', (e) => {
