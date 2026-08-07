@@ -93,6 +93,13 @@ off-screen and the child has a reason to move.
 | **Chokepoint** | **14 × 10 u** | *smaller* than one screen, on purpose: it must read as compression against the islands |
 | **Optional pocket** | **20 × 16 u** | one screen-ish — a pocket should be legible at a glance, it is a reward not a maze |
 | **Boss arena** | **26 × 26 u** | the Shadowgrip's charge runs ~8 u; the arena must hold a charge plus dodging room on both sides |
+| **Hub** *(added, Level 2)* | **36 × 28 u** | the Great Vault is crossed **six times**. A hub that size holds five doorways with 18 u between the two that share a wall, and leaves a corner far enough from the entrance that lighting it later is a genuine discovery rather than a recolour. Two camera-widths plus a margin |
+
+> **The hub is the only module added since the lock.** Same 1.0 u grid, same
+> even-integer rule, same door and corridor widths — it is a new *size*, not a
+> new *system*. It is drawn concentric with the 32 × 26 island in the metrics
+> zoo, because the only honest way to judge "how much bigger does this feel" is
+> to walk the 2 u border between them.
 
 **Fog check:** from one edge of a 32 u island the far edge is 32 u away, giving
 a fog factor of (32 − 26) / (52 − 26) = **23 %** — a gentle haze, not a grey

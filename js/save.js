@@ -15,6 +15,35 @@ import { state } from './state.js';
 const PROFILES_KEY = 'wolfknight:profiles';
 const SAVE_PREFIX = 'wolfknight:save:';
 
+// ---------------------------------------------------------------------------
+// A FAILED WRITE MUST BE LOUD.
+//
+// Every localStorage write in this file used to end `catch (e) {}`. That is
+// fine for a READ — a corrupt profile should start fresh rather than crash a
+// six-year-old's game. It is indefensible for a WRITE: quota exceeded, private
+// browsing, a full disk, and the child plays a whole evening, quits, and finds
+// the morning's progress gone with the game having cheerfully said nothing.
+//
+// So writes now report. The handler is injected by main.js (which owns the
+// error overlay) rather than imported, because save.js must stay loadable in a
+// headless test with no DOM.
+// ---------------------------------------------------------------------------
+let onSaveError = null;
+export function setSaveErrorHandler(fn) { onSaveError = fn; }
+
+let lastSaveOk = true;
+export function saveHealthy() { return lastSaveOk; }
+
+function reportSaveFailure(what, err) {
+  lastSaveOk = false;
+  const msg = `Could not save your game (${what}): ${err && err.name ? err.name : err}`;
+  // console first, so it is in the log even if the UI itself is broken
+  console.error('[save] ' + msg, err);
+  if (onSaveError) {
+    try { onSaveError(msg, err); } catch (e2) { /* the reporter must never mask the report */ }
+  }
+}
+
 export function loadProfiles() {
   try {
     const raw = JSON.parse(localStorage.getItem(PROFILES_KEY));
@@ -24,7 +53,10 @@ export function loadProfiles() {
 }
 
 export function saveProfiles(list) {
-  try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); } catch (e) {}
+  try {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) { reportSaveFailure('profile list', e); return false; }
 }
 
 export function createProfile(name, icon) {
@@ -44,12 +76,14 @@ export function loadSave(profileId) {
 }
 
 export function clearSave(profileId) {
-  try { localStorage.removeItem(SAVE_PREFIX + profileId); } catch (e) {}
+  try { localStorage.removeItem(SAVE_PREFIX + profileId); } catch (e) {
+    reportSaveFailure('clearing a profile', e);
+  }
 }
 
 // Serialize the live run into the profile's save slot.
 export function persist() {
-  if (!state.profileId) return;
+  if (!state.profileId) return false;
   const pupList = Object.keys(state.flags.pups).filter((k) => state.flags.pups[k]);
   const data = {
     profileId: state.profileId,
@@ -92,11 +126,23 @@ export function persist() {
     form: state.form,
     updatedAt: Date.now(),
   };
-  try { localStorage.setItem(SAVE_PREFIX + state.profileId, JSON.stringify(data)); } catch (e) {}
+  try {
+    localStorage.setItem(SAVE_PREFIX + state.profileId, JSON.stringify(data));
+    // READ IT BACK. A write that "succeeded" into a storage layer which then
+    // dropped it is the failure mode that loses a whole evening quietly, and
+    // it costs one parse to rule out.
+    const check = localStorage.getItem(SAVE_PREFIX + state.profileId);
+    if (!check) throw new Error('write reported success but nothing was stored');
+    lastSaveOk = true;
+  } catch (e) {
+    reportSaveFailure(state.profileName || 'this profile', e);
+    return false;
+  }
 
   const profiles = loadProfiles();
   const p = profiles.find((x) => x.id === state.profileId);
   if (p) { p.updatedAt = Date.now(); saveProfiles(profiles); }
+  return true;
 }
 
 // Apply a loaded save (or defaults for a fresh game) onto the run state.

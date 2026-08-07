@@ -1365,6 +1365,9 @@ export class Player {
     this._playOnce('attack');
     this.lockTime = 0.5;
     this._softLock = false;
+    // stamped so a ROOM can react to a stomp without the player having to know
+    // what a room is — the Rattle (Level 2) listens for one on its plate
+    this.stompedAt = performance.now();
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone(), 0xd8b06a);
     effects.shake(0.3, 0.35);

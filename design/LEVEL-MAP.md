@@ -378,7 +378,19 @@ stays the emotional climax at the Warden.
 1. **Introduce** — *the shrine.* One cracked pile, no enemies. Stomp. It breaks.
 2. **Develop** — *Spoke A's return leg.* Cracked piles with skeletons standing
    near them; now you have to pick your moment.
-3. **Twist — THE RATTLE (the one puzzle room, in Spoke B).** The stomp does not
+3. **Twist — THE RATTLE (the one puzzle room, in Spoke B).**
+   > **BUILD DEVIATION (2026-08-07).** The bubble diagram above draws The
+   > Rattle as an *optional* pocket. It is built **on Spoke B's critical
+   > path** instead, and it is also the spoke's terminus: ringing the chamber
+   > is what cracks the dam, and the dam draining is hub change 2.
+   >
+   > Two rules collided. "The four-step teach is laid out in order" and "the
+   > critical path is completable without any optional content" cannot both
+   > hold if the twist sits in a pocket — a child could reach the Warden
+   > having been taught three quarters of an ability, never finding out that
+   > the stomp is a *sound*. The twist is the level's best idea; it does not
+   > get to be missable. Spoke B keeps an optional pocket (**The Chalk
+   > Seam**, a chest) so the branch count is unchanged. The stomp does not
    only break rock — it **shakes**. Stomping the resonant floor plate rings the
    whole chamber: stalactites drop on whatever is beneath them, and a distant
    bell-stone answers, opening a door you cannot see from here. The verb they

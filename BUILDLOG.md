@@ -2167,3 +2167,69 @@ it to one potion button with a count badge.
   fox, monsters). They are the same models already shipping in every room, so
   this adds no new exposure — but Level 1 cannot be enemy-free, and the rule
   says stop and ask, so it is flagged here rather than silently accepted.
+
+## v3.23.0 — Level 2 rebuilt: a hub that changes (2026-08-07)
+
+Dad's brief: build the approved hub-and-spoke Level 2, Level 2 only. Seven
+steps, in his order.
+
+### Step 1 — metrics INHERITED, not derived
+Body radius 0.32u, grid snap 1.0u, door 2.4u, corridor minimums, camera
+framing: all read from the Level 1 lock and used unchanged. Level 2 adds
+exactly **one** new module — the **36 × 28 hub** — because the Great Vault is
+crossed six times and needs to hold five doorways with 18u between the two
+that share the north wall. Same grid, same even-integer rule, same door
+widths: a new *size*, not a new *system*. It is drawn concentric with the
+32 × 26 island in the metrics zoo, because the only honest way to judge how
+much bigger a module feels is to walk the border between them.
+
+### The shared kit — js/levelkit.js
+Level 1 owned private copies of the shell, the door, the wall run and the
+scatter. Two copies of "greybox and dressed must agree" is a guarantee they
+eventually will not, so the vocabulary moved into one module both levels
+import. Level 1's verifier was re-run after the extraction and reports the
+identical per-room draw calls it did before — the refactor is behaviourally
+invisible, which is the only acceptable outcome for a level the kids have
+already played.
+
+### Step 3 — the WorldState system (built before the geometry that needs it)
+`defineRestoration(region, milestones)` declares a region's milestones in
+order; `WS.stage(region)` counts how many are done from the front of the list;
+`WS.complete()` records one and returns true only the first time. The vault's
+three are `spark → drained → handDown`.
+
+Every piece of hub geometry, lighting and door layout is a **function of
+`WS.stage('vault')`**. Nothing is toggled by what happened earlier in the
+session, which is what makes "quit after the water drains, come back tomorrow"
+correct by construction rather than by remembering to handle it. The state
+lives under `state.flags.world`, which the save file already round-trips, so
+an old profile reads stage 0 and the additive-forever law holds.
+
+**The save now fails loudly.** Every localStorage write in save.js used to end
+`catch (e) {}`. Fine for a read — a corrupt profile should start fresh. It is
+indefensible for a write: quota exceeded or private browsing, and a child
+plays a whole evening and loses it while the game says nothing. Writes now
+report through the error overlay, and `persist()` reads the value back before
+believing the write succeeded.
+
+### Step 5 — dressed from GREEN packs, zero new download
+Kenney Nature 2.1, Kenney Castle 2.0, Quaternius LowPoly Modular Dungeon,
+KayKit Adventurers — all four already vendored for Level 1 or the shipping
+Stoneroot rooms, all four with a verified CC0 licence file in
+`assets/LICENSES/MANIFEST.json`. **Level 2 adds no bytes to the download.**
+Five districts come out of the same geometry by material-name recolouring.
+
+The Stone Titan is KayKit's barbarian at 3.4×, granite grey, slumped — a real
+pack model, not code geometry, because a titan is a *being*
+(no-code-built-creatures law).
+
+### Design deviation, flagged
+**The Rattle is on Spoke B's critical path, not in an optional pocket.** The
+bubble diagram draws it dotted. Two rules collided: "the four-step teach is
+laid out in order" and "the critical path is completable without any optional
+content" cannot both hold if the twist sits in a pocket — a child could reach
+the Warden having been taught three quarters of an ability, never finding out
+that the stomp is a *sound*. It is also now the spoke's terminus: ringing the
+chamber cracks the dam, and the dam draining is hub change 2. One room, one
+idea, one consequence. Spoke B keeps an optional pocket (The Chalk Seam) so
+the branch count is unchanged. `LEVEL-MAP.md` records the deviation.

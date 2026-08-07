@@ -23,7 +23,9 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
-import { loadGLB, prepareModel, instancePlacements, SHARED } from './assets.js';
+import { loadGLB, prepareModel } from './assets.js';
+import { makeBuilders, tintedModel, gap, DOOR_HALF } from './levelkit.js';
+import { zooHubModule } from './level2.js';
 import { flattenStatic } from './batch.js';
 import { brazier } from './gates.js';
 
@@ -139,164 +141,19 @@ export async function loadEmberKit() {
   return emberKit;
 }
 
-// Scorched rock. The Kenney nature pieces are green-and-grey out of the box;
-// Ember Hollow is a burnt-out volcanic hollow, so every kit material gets the
-// district's tint. This is the asset-multiplication law: one rock, five
-// districts, no new downloads.
-const tintCache = new Map();
-function tinted(gltf, key, tint, darken = 1) {
-  const root = prepareModel(gltf.scene.clone());
-  root.traverse((n) => {
-    if (!n.isMesh) return;
-    const ck = `${key}|${n.material.name}|${tint}|${darken}`;
-    if (!tintCache.has(ck)) {
-      const m = n.material.clone();
-      m.name = `ember_${ck}`;
-      m.color.setHex(tint).multiplyScalar(darken);
-      // this cache outlives the room, so the room teardown must not free it —
-      // the identity registry is what stops World.dispose() reclaiming it
-      SHARED.add(m);
-      tintCache.set(ck, m);
-    }
-    n.material = tintCache.get(ck);
+// ---------------------------------------------------------------------------
+// The shared build vocabulary (js/levelkit.js). Level 1 used to own private
+// copies of the shell, the door, the wall run and the scatter; Level 2 needs
+// exactly the same ones, and two copies of "greybox and dressed must agree"
+// is a guarantee that they eventually will not. Call signatures are unchanged.
+// ---------------------------------------------------------------------------
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
+  darkZone: protoDarkZone, breadcrumbs: sparks } = makeBuilders({
+    kit: () => emberKit,
+    isGrey: () => GREY(),
   });
-  return root;
-}
 
-// ---------------------------------------------------------------------------
-// Greybox shell: floor + walls with door gaps, on the grid.
-// ---------------------------------------------------------------------------
-const DOOR_HALF = 1.2;      // 2.4u standard door — METRICS.md
-const WALL_T = 1.0;
-
-function protoShell(world, w, d, gaps, tint) {
-  const halfW = w / 2, halfD = d / 2;
-  world.deckY = 0;
-  // +6 in both axes: three units of ground outside the wall, so the camera
-  // never sees the void past a 1.9u wall (see dressShell's APRON)
-  protoFloor(world, w + 6, d + 6, tint);
-
-  const segments = (side, lo, hi) => {
-    const cuts = gaps.filter((g) => g.side === side).sort((a, b) => a.from - b.from);
-    let start = lo; const out = [];
-    for (const c of cuts) { if (c.from > start) out.push([start, c.from]); start = c.to; }
-    if (start < hi) out.push([start, hi]);
-    return out;
-  };
-  const H = 1.6;
-  for (const [a, b] of segments('n', -halfW, halfW)) protoWall(world, a, -halfD - WALL_T / 2, b, -halfD + WALL_T / 2, { height: H, tint });
-  for (const [a, b] of segments('s', -halfW, halfW)) protoWall(world, a, halfD - WALL_T / 2, b, halfD + WALL_T / 2, { height: H, tint });
-  for (const [a, b] of segments('w', -halfD, halfD)) protoWall(world, -halfW - WALL_T / 2, a, -halfW + WALL_T / 2, b, { height: H, tint });
-  for (const [a, b] of segments('e', -halfD, halfD)) protoWall(world, halfW - WALL_T / 2, a, halfW + WALL_T / 2, b, { height: H, tint });
-
-  // BLIND-STRIP LAW made visible in the greybox: the 2.5u band along the south
-  // wall that the camera cannot see over. Nothing interactive may live here,
-  // and painting it means the rule is checked by eye while walking.
-  protoDecal(world, 0, halfD - 1.25, w, 2.5, 0xff3a3a, 0.13);
-  return { halfW, halfD };
-}
-
-// ---------------------------------------------------------------------------
-// DRESSED shell: the same rectangle, the same door gaps, the same colliders —
-// built from Kenney floor tiles and cliff blocks instead of checkered boxes.
-// The geometry contract is identical, which is the whole point of greyboxing
-// first: approving the box approves the room.
-// ---------------------------------------------------------------------------
-function dressShell(world, w, d, gaps, D) {
-  const halfW = w / 2, halfD = d / 2;
-  world.deckY = 0;
-
-  const APRON = 3;   // tiles of ground OUTSIDE the wall — see note above
-  const floors = [];
-  for (let tx = -APRON; tx < w + APRON; tx++) {
-    for (let tz = -APRON; tz < d + APRON; tz++) {
-      floors.push({ x: tx - halfW + 0.5, z: tz - halfD + 0.5, ry: ((tx * 7 + tz * 13) % 4) * Math.PI / 2 });
-    }
-  }
-  // one InstancedMesh for the whole floor — 832 tiles, one draw call, and
-  // deliberately left OUT of the static merge (see batch.js EXPAND_TRI_LIMIT)
-  world.add(instancePlacements(emberKit.floor.scene, floors,
-    { castShadow: false, materialTints: floorTint(D) }));
-
-  const inGap = (side, c) => gaps.some((g) => g.side === side && c > g.from && c < g.to);
-  const walls = [];
-  const cell = (tx, tz, side, coord) => {
-    if (inGap(side, coord)) return;
-    walls.push({
-      x: tx - halfW + 0.5, z: tz - halfD + 0.5,
-      ry: (Math.abs(tx * 11 + tz * 5) % 4) * Math.PI / 2,
-      sy: 1.9 + (Math.abs(tx * 31 + tz * 17) % 3) * 0.18,
-    });
-  };
-  for (let tx = -1; tx <= w; tx++) { cell(tx, -1, 'n', tx - halfW + 0.5); cell(tx, d, 's', tx - halfW + 0.5); }
-  for (let tz = 0; tz < d; tz++) { cell(-1, tz, 'w', tz - halfD + 0.5); cell(w, tz, 'e', tz - halfD + 0.5); }
-  world.add(instancePlacements(emberKit.cliff.scene, walls, { materialTints: wallTint(D) }));
-
-  const segments = (side, lo, hi) => {
-    const cuts = gaps.filter((g) => g.side === side).sort((a, b) => a.from - b.from);
-    let start = lo; const out = [];
-    for (const c of cuts) { if (c.from > start) out.push([start, c.from]); start = c.to; }
-    if (start < hi) out.push([start, hi]);
-    return out;
-  };
-  // colliders sit at the SAME coordinates the greybox used, so every distance
-  // measured while walking the box still holds
-  for (const [a, b] of segments('n', -halfW, halfW)) world.addBox(a, b, -halfD - WALL_T / 2, -halfD + WALL_T / 2);
-  for (const [a, b] of segments('s', -halfW, halfW)) world.addBox(a, b, halfD - WALL_T / 2, halfD + WALL_T / 2);
-  for (const [a, b] of segments('w', -halfD, halfD)) world.addBox(-halfW - WALL_T / 2, -halfW + WALL_T / 2, a, b);
-  for (const [a, b] of segments('e', -halfD, halfD)) world.addBox(halfW - WALL_T / 2, halfW + WALL_T / 2, a, b);
-
-  return { halfW, halfD };
-}
-
-// Kenney's nature materials are named per surface — floor-tile.glb is `grass`,
-// cliff-block.glb is `grass` + `dirt`, the rocks are `dirt` + `grass`. Naming
-// every one is how one green kit becomes five volcanic districts with no new
-// downloads (asset-multiplication law). A name that is not in the map keeps
-// its original colour, so a missed name shows up as a green patch rather than
-// a silent failure.
-const floorTint = (D) => ({ grass: D.floorTint, dirt: D.wallTint, colormap: D.floorTint });
-const wallTint = (D) => ({ grass: D.wallTint, dirt: D.wallTint, stone: D.wallTint,
-  stoneDark: D.wallTint, colormap: D.wallTint });
-
-// ONE entry point, TWO costumes. Every builder calls this and never decides
-// for itself which mode it is in — that is what keeps the greybox and the
-// dressed room provably the same layout.
-function shell(world, spec, gaps, D) {
-  return GREY()
-    ? protoShell(world, spec.w, spec.d, gaps, D.tint)
-    : dressShell(world, spec.w, spec.d, gaps, D);
-}
-
-// Scorched scatter along the walls: silhouette variety without eating the
-// playfield. Everything sits in the outer 4u ring, never in the middle where
-// the fighting happens, and never in a doorway.
-function scatter(world, halfW, halfD, D, seed = 1, count = 14) {
-  if (GREY()) return;
-  const kinds = ['rockLA', 'rockLB', 'rockLC', 'rockSA', 'rockSB'];
-  let s = seed * 9301;
-  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-  for (let i = 0; i < count; i++) {
-    const edge = i % 4;
-    const along = (rnd() - 0.5) * 2;
-    const inset = 1.2 + rnd() * 2.6;
-    let x, z;
-    if (edge === 0) { x = along * (halfW - 2); z = -halfD + inset; }
-    else if (edge === 1) { x = along * (halfW - 2); z = halfD - inset; }
-    else if (edge === 2) { x = -halfW + inset; z = along * (halfD - 2); }
-    else { x = halfW - inset; z = along * (halfD - 2); }
-    if (Math.abs(x) < DOOR_HALF + 1.2 && edge < 2) continue;   // keep n/s doorways clear
-    if (Math.abs(z) < DOOR_HALF + 1.2 && edge >= 2) continue;  // keep e/w doorways clear
-    const kind = kinds[Math.floor(rnd() * kinds.length)];
-    const big = kind.startsWith('rockL');
-    const rock = tinted(emberKit[kind], kind, D.wallTint, 0.9 + rnd() * 0.2);
-    rock.position.set(x, 0, z);
-    rock.rotation.y = rnd() * Math.PI * 2;
-    rock.scale.setScalar(big ? 0.8 + rnd() * 0.5 : 0.6 + rnd() * 0.4);
-    world.add(rock);
-    if (big) world.addCircle(x, z, 0.75);
-  }
-}
+const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
 // The lava you can SEE. In greybox the channel is a red decal so its footprint
 // can be judged; dressed, it is an emissive surface with a pulsing light, and
@@ -338,138 +195,6 @@ function slab(world, x, z, w, d, D) {
 function teachBraziers(world, spots, prefix, onLit) {
   if (GREY()) return;
   spots.forEach((sp, i) => brazier(world, prepareModel, emberKit.torch, `${prefix}${i + 1}`, sp.x, sp.z, onLit));
-}
-
-// An INTERIOR wall run — the thing that makes a room a shape instead of a box.
-// Greybox: a checkered slab. Dressed: a row of cliff blocks, same footprint,
-// same collider. These were the one piece still wearing the greybox costume in
-// a dressed room, which is exactly the kind of drift greyboxing is meant to
-// prevent, so it dispatches like everything else now.
-function wallRun(world, x0, z0, x1, z1, D, height = 1.6) {
-  if (GREY()) return protoWall(world, x0, z0, x1, z1, { height, tint: D.tint });
-  const dx = x1 - x0, dz = z1 - z0;
-  const count = Math.max(1, Math.round(Math.hypot(dx, dz)));
-  const places = [];
-  for (let i = 0; i < count; i++) {
-    const f = count === 1 ? 0.5 : i / (count - 1);
-    places.push({ x: x0 + dx * f, z: z0 + dz * f, ry: ((i * 3) % 4) * Math.PI / 2,
-      sy: height + (i % 3) * 0.12 });
-  }
-  world.add(instancePlacements(emberKit.cliff.scene, places, { materialTints: wallTint(D) }));
-  const pad = 0.5;
-  world.addBox(Math.min(x0, x1) - pad, Math.max(x0, x1) + pad,
-    Math.min(z0, z1) - pad, Math.max(z0, z1) + pad);
-}
-
-// A door on a wall side, with its gap already cut in the shell.
-function sideDoor(world, side, halfW, halfD, to, entry) {
-  const T = 1.35;
-  if (side === 'n') world.addDoor(-DOOR_HALF, DOOR_HALF, -halfD - T, -halfD + 0.15, to, entry);
-  if (side === 's') world.addDoor(-DOOR_HALF, DOOR_HALF, halfD - 0.15, halfD + T, to, entry);
-  if (side === 'w') world.addDoor(-halfW - T, -halfW + 0.15, -DOOR_HALF, DOOR_HALF, to, entry);
-  if (side === 'e') world.addDoor(halfW - 0.15, halfW + T, -DOOR_HALF, DOOR_HALF, to, entry);
-}
-const gap = (side) => ({ side, from: -DOOR_HALF, to: DOOR_HALF });
-
-// Spine breadcrumbs: the Sparks. Twelve per level, ON the critical path, drifting
-// just above the floor. In greybox they are plain glowing dots — their JOB is
-// wayfinding, and that job has to be evaluable before any art exists.
-function sparks(world, pts) {
-  if (!pts.length) return;
-  const geo = new THREE.SphereGeometry(0.13, 8, 6);
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0x000000, emissive: 0xffb45a, emissiveIntensity: 2.2, roughness: 1,
-  });
-  const inst = new THREE.InstancedMesh(geo, mat, pts.length);   // one draw call
-  const dummy = new THREE.Object3D();
-  pts.forEach((p, i) => {
-    dummy.position.set(p[0], 0.9, p[1]);
-    dummy.updateMatrix();
-    inst.setMatrixAt(i, dummy.matrix);
-  });
-  world.add(inst);
-  world.onAnimate((t) => { inst.position.y = Math.sin(t * 1.6) * 0.12; });
-  world.markers.sparkSpots = pts.map((p) => ({ x: p[0], z: p[1] }));
-}
-
-// A "come back later" gate. It must read as LATER, never as broken: a shaped,
-// coloured obstacle with the reward VISIBLE on the far side (design/LEVEL-MAP.md).
-// In greybox it is a coloured slab plus a gold reward marker behind it — enough
-// to test whether a child reads it as a promise.
-function promiseGate(world, x, z, w, d, color, label, kind = 'crack') {
-  if (GREY()) {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(w, 1.5, d),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.9, emissive: color, emissiveIntensity: 0.18 })
-    );
-    m.position.set(x, 0.75, z);
-    world.add(m);
-    world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
-    protoLabel(world, x, z, label, { color: '#ffd54a', y: 2.4, size: 1.2 });
-    return m;
-  }
-  // DRESSED: the obstacle has to say "later" by its own shape and colour, so
-  // it is a real object of the kind the future tool destroys — a fissured
-  // boulder for the Earth Wolf, a charred log jam for the Fire Wolf. Nothing
-  // is described that is not modelled (NO FAKE FICTION).
-  const g = new THREE.Group();
-  const span = Math.max(w, d);
-  const n = Math.max(2, Math.round(span / 1.6));
-  for (let i = 0; i < n; i++) {
-    const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
-    const piece = kind === 'fire'
-      ? tinted(emberKit.logStack, 'gateLog', 0x2e211c, 1)
-      : tinted(emberKit.rockLB, 'gateRock', color, 1);
-    piece.position.set(x + (w > d ? f * w : 0), 0, z + (d >= w ? f * d : 0));
-    piece.rotation.y = i * 1.31;
-    piece.scale.setScalar(kind === 'fire' ? 1.25 : 1.05);
-    g.add(piece);
-  }
-  world.add(g);
-  world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
-  // the "later" tell: a cold glow in the tool's own colour, at ankle height
-  const hint = new THREE.Mesh(
-    new THREE.RingGeometry(span * 0.42, span * 0.55, 20),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32,
-      side: THREE.DoubleSide, depthWrite: false })
-  );
-  hint.rotation.x = -Math.PI / 2;
-  hint.position.set(x, world.deckY + 0.04, z);
-  world.add(hint);
-  return g;
-}
-
-// The reward you can SEE but not reach yet — the other half of a promise gate.
-function visibleReward(world, x, z, id = 'l1_reward', loot = { shards: 14 }) {
-  if (GREY()) {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.7, 0.7),
-      new THREE.MeshStandardMaterial({ color: 0xffd54a, emissive: 0xffd54a, emissiveIntensity: 0.5, roughness: 0.7 })
-    );
-    m.position.set(x, 0.35, z);
-    world.add(m);
-    return m;
-  }
-  // DRESSED: an actual openable chest, not a gold cube pretending to be one.
-  // main.js spawnChests() builds these from world.markers.chestDefs.
-  (world.markers.chestDefs || (world.markers.chestDefs = []))
-    .push({ id, tier: 'wood', x, z, ry: 0.4, loot });
-  return null;
-}
-
-// A dark zone, greybox flavour. The room's own copy rather than rooms.js's —
-// importing it back the other way would make rooms.js and level1.js a cycle.
-// main.js writes `zone.veilMat.opacity` every frame, so the material is not
-// optional: a zone without one crashes the render loop.
-function protoDarkZone(world, minX, maxX, minZ, maxZ) {
-  const veilMat = new THREE.MeshBasicMaterial({
-    color: 0x0a0714, transparent: true, opacity: 0.62, depthWrite: false,
-  });
-  const veil = new THREE.Mesh(new THREE.PlaneGeometry(maxX - minX, maxZ - minZ), veilMat);
-  veil.rotation.x = -Math.PI / 2;
-  veil.position.set((minX + maxX) / 2, 1.65, (minZ + maxZ) / 2);
-  world.add(veil);
-  world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
 }
 
 // A hero prop: the district's memory anchor. Greybox form is a bold blocky
@@ -887,7 +612,10 @@ function buildZooInner(scene) {
   doorPair(12, 0.64, 'ABSOLUTE MIN 0.64u');
   say(12, 4.2, '(fits, but a child cannot steer it)', '#ff9d9d');
 
-  // 3 — the island footprint, with the camera's actual view drawn inside it
+  // 3 — the island footprint, with the camera's actual view drawn inside it,
+  //     and Level 2's ONE new module drawn around it so the difference between
+  //     "an island" and "a hub" is a thing you stand in, not a number
+  zooHubModule(world, protoDecal, say);
   protoDecal(world, 0, -8, 32, 26, 0xffffff, 0.10);
   say(0, -21.5, 'ISLAND FOOTPRINT 32 x 26u');
   protoDecal(world, 0, -8, 16.1, 17.4, 0x6fe3a0, 0.16);

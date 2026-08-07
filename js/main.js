@@ -14,7 +14,7 @@ import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
 import { audio } from './audio.js';
 import { Narration } from './narration.js';
-import { applySave, persist } from './save.js';
+import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
@@ -114,6 +114,15 @@ function showError(text) {
   document.getElementById('error').style.display = 'flex';
 }
 manager.onError = (url) => showError('Failed to load: ' + url);
+
+// A SAVE THAT CANNOT WRITE MUST SAY SO. Quota exceeded, private browsing, a
+// full disk — the child otherwise plays a whole evening and loses it silently.
+// Loud but not fatal: the run keeps going, because throwing away an hour of
+// play to punish the browser would be the worse bug.
+setSaveErrorHandler((msg) => {
+  showError(msg + '\n\nYour game is still playable, but it is NOT being saved.\n' +
+    'Tell a grown-up: the browser may be out of space, or in private mode.');
+});
 
 const fadeEl = document.getElementById('fade');
 function fadeTo(opacity, ms = 300) {
@@ -297,6 +306,14 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
     {
       id: 'la', label: '🎨 Level 1 REBUILD (dressed)',
       forms: ['fire_wolf'], noSave: true, greybox: false,
+    },
+    {
+      id: 'vh', label: '🪨 Level 2 REBUILD (greybox)',
+      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: true,
+    },
+    {
+      id: 'vh', label: '💎 Level 2 REBUILD (dressed)',
+      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: false,
     },
   ];
   const pad = document.getElementById('cheat-pad');
@@ -723,6 +740,39 @@ function narrationTriggers(dt, t) {
   }
   if (state.room === 'kb' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
 
+  // -------------------------------------------------------------------------
+  // LEVEL 2 — THE VAULT CHANGES. Each spoke ends by doing something to the
+  // titan; recording it here is the ONLY place a milestone is ever set, and
+  // the hub reads WS.stage('vault') when it rebuilds. Nothing about the vault
+  // is toggled directly, which is what makes "quit halfway and come back"
+  // correct by construction rather than by remembering to handle it.
+  // -------------------------------------------------------------------------
+  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4) && !state.formsUnlocked.includes('earth_wolf')) {
+    state.formsUnlocked.push('earth_wolf');
+    effects.warmFlood();
+    ui.refreshBadge();
+    if (WS.complete('vault', 'spark')) bigToast('🪨 The Earth Wolf awakens!');
+    persist();
+  }
+  // THE RATTLE: the stomp is not a hammer, it is a SOUND. Standing on the
+  // resonant plate and stomping rings the chamber — the bell-stone answers and
+  // the dam gives way, which is hub change 2.
+  if (m.rattlePlate && !WS.get('vault', 'drained') && nearSpot(m.rattlePlate, 1.9)) {
+    narration.say('rattle_hint');
+    if (player.stompedAt && performance.now() - player.stompedAt < 400) {
+      player.stompedAt = 0;
+      juice.shake(0.5, 0.5);
+      audio.play('slam', { volume: 1, rate: 0.7 });
+      if (WS.complete('vault', 'drained')) bigToast('🔔 Something far away answers…');
+      persist();
+    }
+  }
+  // THE SHOULDER PIN: the last thing holding the titan's arm up.
+  if (m.pinSpot && !WS.get('vault', 'handDown') && state.flags.cracked.l2_vc3_pin) {
+    if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
+    persist();
+  }
+
   // "not yet" gates: log the promise + Pip acknowledges it
   if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {
     if (logMystery('boulder_ember', '🪨', 'A huge boulder — Ember Causeway')) bigToast('🗺️ Added to the map: ???');
@@ -1017,7 +1067,7 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -1071,7 +1121,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1486,7 +1536,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
