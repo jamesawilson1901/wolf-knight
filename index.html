@@ -626,7 +626,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.21.3</div>
+  <div id="badge">Wolf Knight &middot; v3.21.4</div>
 
   <script>
     window.addEventListener('error', (e) => {
@@ -640,19 +640,53 @@
         // Was an old version already in control? Then a controllerchange
         // means AN UPDATE just took over (not a first install).
         const hadController = !!navigator.serviceWorker.controller;
-        let reloaded = false;
+        let pendingReload = false;
+
+        // Reload as soon as it is SAFE — not just at the instant the new
+        // worker takes over. v3.21.4 bug: this used to mark itself done
+        // before checking whether a game was in progress, so an update that
+        // landed mid-play was swallowed for the whole session and the kid
+        // kept running old code against new files.
+        const reloadWhenSafe = () => {
+          if (!pendingReload) return;
+          if (window.__game && window.__game.world) return; // still playing — wait
+          pendingReload = false;
+          location.reload();
+        };
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!hadController || reloaded) return;
-          reloaded = true;
-          // Only reload while still on the title — never mid-game. This
-          // kills the "close it fully and reopen" ritual: the first launch
-          // after a deploy self-updates before play begins.
-          const inGame = window.__game && window.__game.world;
-          if (!inGame) location.reload();
+          if (!hadController) return;   // first install, nothing to replace
+          pendingReload = true;
+          reloadWhenSafe();
         });
-        navigator.serviceWorker.register('./sw.js').catch((err) => {
-          console.warn('Service worker registration failed:', err);
+        // ...and try again whenever they come back to the title or re-open
+        // the app, so a deferred update lands at the next natural pause.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reloadWhenSafe();
         });
+        setInterval(reloadWhenSafe, 5000);
+
+        // updateViaCache:'none' — GitHub Pages serves sw.js with max-age=600,
+        // so with the default the browser compares a new deploy against a
+        // TEN-MINUTE-OLD cached copy of this very file and concludes nothing
+        // changed. Never let the update-checker read from the HTTP cache.
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+          .then((reg) => {
+            // An installed app resumed from the background performs no
+            // navigation, so the browser never checks for a new worker on its
+            // own — it can sit on an old build forever. Ask explicitly: once
+            // now, and again each time the app comes back to the foreground.
+            reg.update().catch(() => {});
+            let lastCheck = Date.now();
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState !== 'visible') return;
+              if (Date.now() - lastCheck < 60000) return; // at most once a minute
+              lastCheck = Date.now();
+              reg.update().catch(() => {});
+            });
+          })
+          .catch((err) => {
+            console.warn('Service worker registration failed:', err);
+          });
       });
     }
   </script>

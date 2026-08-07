@@ -2017,3 +2017,55 @@ case you'd get wrong is worse than no check.
 Verified: no 404s, all five cues decode, both pairs measurably different, the
 pitch ranges provably disjoint, and the service worker still precaches
 cleanly (233 files, offline intact).
+
+## v3.21.4 — Making the update actually arrive (2026-08-07)
+
+Dad: "how do I get the update working."
+
+Checked the deploy first: GitHub Pages built and published `2b3ac1a` (v3.21.3)
+successfully. The build was live; it was the installed app that would not go
+looking for it. Three separate reasons, all in `index.html`.
+
+**1. The update-checker was reading from the HTTP cache.** `register()` was
+called with default options, so `updateViaCache` was `'imports'` — meaning
+`sw.js` *itself* is subject to normal HTTP caching. GitHub Pages serves it
+with `max-age=600`, so for ten minutes after a deploy the browser compares the
+new build against a cached copy of the very file it is trying to update and
+concludes nothing changed. Now registered with `updateViaCache: 'none'`.
+
+**2. Nothing ever asked.** Browsers check for a new worker on *navigation*. An
+installed PWA resumed from the background performs no navigation, so if the
+kids never fully close the app, no check ever happens and it can sit on an old
+build indefinitely. Now it calls `reg.update()` explicitly on load, and again
+whenever the app returns to the foreground (throttled to once a minute).
+
+**3. A mid-game update was swallowed for the whole session.** The
+`controllerchange` handler set its `reloaded` flag *before* checking whether a
+game was in progress. `controllerchange` fires once, so an update landing
+mid-play marked itself handled and never reloaded — leaving the kid running
+old JavaScript against new files until they closed the app. The flag is now
+set only when a reload actually happens, and a deferred reload retries when
+they return to the title, when the app regains focus, and on a 5s tick.
+
+### Proved it, rather than reasoned about it
+
+`scratchpad/verify-update.mjs` installs the app, then rewrites `sw.js` on disk
+exactly as a deploy would, and watches what the running page does:
+
+- an update found on the title screen installs and takes over ✓
+- the old cache is deleted, so no stale file can be served ✓
+- an update landing **mid-game does not yank the floor out** — play continues ✓
+- and the deferred reload lands the moment play stops ✓
+
+One red on the first run was my own fixed 3-second wait: `activate` (which
+prunes old caches) only runs after `install` has fetched all 233 precache
+entries, which under SwiftShader takes longer than that. Changed to poll for
+the condition — the same lesson this project keeps relearning: wait on state,
+never on the clock.
+
+### The catch
+
+This fix can only help from the *next* update onward — getting v3.21.4 itself
+onto the phone still depends on the old path. Manual steps went to dad, with
+the warning that Android's "Clear storage" wipes localStorage and would delete
+the kids' save files; "Clear cache" is the safe one, and usually unnecessary.
