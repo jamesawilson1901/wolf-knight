@@ -7,7 +7,17 @@
 > slime, Ember Moth = tinted bat, Shadowgrip = tinted Dragon). Wolf tint
 > list updated to the canon addendum forms. Pack list unchanged.
 
-All packs below are **CC0** (public domain) and **verified to exist with the creatures we need**.
+All packs below are **verified to exist with the creatures we need**.
+
+> **Licence caveat (v3.21).** This table used to also assert that everything
+> here is CC0. That was one claim too many: it mixed packs whose own licence
+> file says CC0 with packs where nobody had ever looked. The evidence now lives
+> in [`assets/LICENSES/`](../assets/LICENSES/) — one licence file per pack,
+> verbatim as downloaded — and `node tools/check-licences.mjs` reports which
+> packs are still unproven. As of v3.21 four are: **Quaternius Ultimate
+> Animated Animals**, **Quaternius Animated Monster Pack**, **Kenney Holiday
+> Kit** and the three **OpenGameArt** music tracks (OGA licences vary per
+> track). Treat any "CC0" written below as a claim to check, not a finding.
 Style family: chunky soft-shaded low-poly (Quaternius / KayKit / Kenney 3D — deliberately matching).
 
 > **HARD RULE (learned the hard way):** the human downloads these packs manually in a browser and
@@ -94,5 +104,7 @@ distinct STYLES via arc/stun/element fields in items.js. Prefer a new
 variant over a new model whenever the silhouette still reads.
 
 ## Licence notes
-Everything above is CC0 → CREDITS.md still lists sources as courtesy. three.js is MIT — include
+Most of the above is CC0 with a licence file to prove it (`assets/LICENSES/`); four packs
+are still unproven — see that folder's README. CREDITS.md lists sources as courtesy and
+marks the unproven ones. three.js is MIT — include
 its licence line in CREDITS.md.
