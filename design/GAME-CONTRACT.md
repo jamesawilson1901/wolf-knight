@@ -87,6 +87,26 @@
   Beware two false positives the measurement exposes — an object's own
   scenery (a villager's tent, a bramble gate's bushes) occludes its own
   centre, and a deliberate SECRET is allowed to be hidden.
+  MEASURE FROM THE WALL, NOT THE GROUND (v3.21.1): the audit derived the
+  room's south edge from its largest flat mesh — which is the ground
+  plane, and every shell builds that as (w+8, d+8). So ground-plane
+  rooms (Wild Woods, Frostpeak) were tested against an edge 4 units too
+  generous and passed things they should have caught. The edge is now
+  taken from the southernmost box collider (interior walls are all north
+  of it by construction). A verification tool with a broken ruler is
+  worse than no tool: it reports "clean" and is believed.
+- A LOCK MUST ACTUALLY LOCK (v3.21.1). The Ash Warrens' burnable was
+  commented as "walls off the treasure nook" and geometrically did no
+  such thing — the whole south band was open from the west, so the
+  "secret" was decoration. Comments are not colliders. Reachability is
+  now flood-filled from the spawn through the real collider solver
+  (scratchpad verify-reach.mjs): every gated thing is checked twice —
+  sealed before, reachable after opening it through its own system.
+- NOTHING LIVES INSIDE A BOULDER (v3.21.1): the same flood found a
+  Frozen Lake chest whose centre sat 0.72u inside a rock of radius
+  0.95 — placed by hand, invisible to the eye in a screenshot, and
+  impossible to open. Props with colliders need a clearance check, not
+  a glance.
 - A FLYING BOSS MUST STAY IN FRAME (v3.21, measured). The chase camera
   sits ~7u SOUTH of Kael and 8.4u up; a flyer that wheels around the
   ARENA centre sails off the top corner of a phone screen, and a wheel

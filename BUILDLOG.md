@@ -1831,3 +1831,74 @@ Pups 10–12 (HUD/menu totals and the 9th heart at twelve), fast travel and
 the cheat menu both gain Frostpeak, `design/VOICE-RECORDING-SCRIPT.md` is
 now **generated from `js/narration.js`** rather than hand-kept (125 lines,
 10 voices — the hand-kept version had drifted to 104).
+
+## v3.21.1 — Paying the blind-strip debt, with a ruler that works (2026-08-07)
+
+Dad: "leave the flags, lets get back to the game."
+
+The outstanding debt from v3.20 was six interactives in **room one** sitting
+in the strip of floor the camera can never see over the south wall —
+including both pups and the tutorial burnable that Pip points at in minute
+one. A teaching moment the camera hides teaches nothing.
+
+### First: the audit tool was lying
+
+Before fixing anything I re-read the tool and found it derived each room's
+south edge from *the largest flat mesh* — which is the ground plane, and
+every shell builds that as `(w + 8, d + 8)`. So for ground-plane rooms
+(Wild Woods, Frostpeak) the blind-strip test used an edge **4 units too
+generous**. The Frostpeak "0 blind-strip items" result reported one commit
+earlier was measured with a broken ruler.
+
+The edge now comes from the southernmost box collider — interior walls are
+all north of it by construction. Re-run honestly: **16 blind-strip items**,
+three of them mine in Frostpeak (`cp_f2`, its potion, `cp_f3`).
+
+### Then: fix all sixteen
+
+- **r1** — pup1 moved into the north half of the dark nook (still hidden by
+  darkness, which the Dark Wolf solves; no longer hidden by the camera,
+  which nothing solves). The burnable cubby was rebuilt ~1.6u north with its
+  mouth re-cut, taking the burnable, pup3 and the reward chest with it.
+- **r1b** — the secret nook now has a real east wall and sits 2u north.
+- **r2 / ka / e1** — hound spawn, the combat brazier, and Old Bram's whole
+  camp (fire, crate, Bram) pulled north.
+- **e2** — the bramble alcove was the SE *corner*, which put a promise meant
+  to be remembered for a whole region, and its visible reward, where they
+  could never be seen. It is now built from two short walls further north,
+  with the pre-boss rest moved west out of its way.
+- **f2 / f3** — my own two checkpoints.
+
+Result: **0 blind-strip items across all 28 rooms**, measured properly. The
+6 remaining "dark puzzles" are all deliberate (the Gloomwood lanterns wear
+gold waiting rings; the Warrens and the Echo Chasm are dark by design).
+
+### Moving walls needs a different kind of proof
+
+Nudging a coordinate is safe; moving a wall can orphan a chest or seal a
+door. So reachability is now flood-filled from the spawn point through the
+real `resolveCircle` solver, asking whether Kael can physically walk to
+every interactive and every door — and for gated things, twice: sealed
+before, reachable after opening it through its own system.
+
+It found two things a screenshot never would:
+
+- **The Ash Warrens' "secret" was not a secret.** The comment said the
+  burnable clump "walls off the treasure nook". Geometrically it never did —
+  the whole south band was open from the west, so the clump was decoration
+  and the chest was free. The lower run now spans wall-to-gap and the clump
+  is genuinely the only way through. Comments are not colliders.
+- **A Frozen Lake chest was inside a boulder** — centre 0.72u into a rock of
+  radius 0.95, placed by me last commit, invisible in a screenshot, and
+  impossible to open. The rock moved.
+
+It also cried wolf three times before it earned its keep: a 1.25u tolerance
+fails props whose own collider is wider than that (a bramble tangle is
+~1.15u across), and it flagged `ka` as soft-locked when that room's bars are
+*supposed* to be shut until each guard pack is cleared. Both were fixed in
+the tool, not papered over in the game — and the legacy `verify-region1`
+script was given the retry loop the newer suites already had.
+
+Re-verified after all of it: the Frostpeak suite, the Wild Woods suite, the
+28-room audit, and a direct r3 health check (boss spawns, doors right, no
+page errors) all clean.
