@@ -28,6 +28,7 @@ const pending = [];
 
 // ---- 1. every licence file the manifest names must exist and say something
 for (const p of manifest.packs) {
+  // a real LICENCE file must exist and must actually read like one
   const files = [p.licence, ...(p.alsoLicence || [])].filter((f) => f && f !== 'SELF');
   for (const f of files) {
     const path = join(LIC_DIR, f);
@@ -37,7 +38,16 @@ for (const p of manifest.packs) {
       fail.push(`${p.pack}: assets/LICENSES/${f} does not read like a licence`);
     }
   }
-  if (p.licence === null) pending.push(p);
+  // an EVIDENCE file records permission in plain words without granting a named
+  // licence. It must exist, but it is deliberately NOT held to the licence test —
+  // and it does not clear the pack. This tier exists because the music pack that
+  // supplies 8 of the game's 10 tracks says only "feel free to use it in any way
+  // you want", which is neither nothing nor a licence.
+  if (p.evidence) {
+    const path = join(LIC_DIR, p.evidence);
+    if (!existsSync(path)) fail.push(`${p.pack}: evidence file missing — assets/LICENSES/${p.evidence}`);
+  }
+  if (!p.licence) pending.push(p);
 }
 
 // ---- 2. every directory under assets/ must be claimed by some pack
@@ -76,6 +86,7 @@ if (pending.length) {
   console.log(`\n  ${pending.length} pack(s) PENDING — shipping, but no licence file on disk:`);
   for (const p of pending) {
     console.log(`    ⚠ ${p.pack}`);
+    if (p.evidence) console.log(`        on file: ${p.evidence} (author's permission, but not a licence)`);
     console.log(`        covers : ${(p.covers || []).join(', ')}`);
     console.log(`        get it : ${p.source}`);
   }

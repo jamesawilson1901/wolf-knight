@@ -433,11 +433,59 @@ vendored asset was traced back to its source pack by filename against
 download from a machine with normal internet — roughly two minutes of work,
 described step by step in `assets/LICENSES/README.md`.
 
-**Newly noticed while doing this:** the OpenGameArt music is arguably a sharper
-risk than the Quaternius pair. OGA hosts CC0, CC-BY and GPL side by side, and
-its licences are per-submission — a CC-BY track needs visible credit in-game
-and a GPL track could not be used at all. Quaternius, by contrast, ships CC0
-with everything anyone has ever checked. Worth doing that one first.
+### Second pass, same day — the game-assets repo was still attached
+
+Rather than send dad off to download things, I searched his own asset repo
+(`jamesawilson1901/my-games`, already cloned at `/workspace/my-games`) for the
+four missing licences. Two useful results:
+
+**1. The Kenney Holiday Kit is now CLEARED.** `Kenny/kenney_holiday-kit.zip`
+contains `License.txt` — *"Holiday Kit (2.0) … License: (Creative Commons Zero,
+CC0) … You can use this content for personal, educational, and commercial
+purposes."* Its timestamp (11-12-2024 14:31) matches the vendored snow GLBs
+exactly, so it is provably the same download. Extracted to
+`assets/LICENSES/kenney-holiday-kit.txt`. Three pending, not four.
+
+The Quaternius Monster Pack zip is in the same folder and confirms the original
+finding: 20 files, `Blend/ FBX/ OBJ/ Preview.jpg`, no licence. The Ultimate
+Animated Animals pack is not in that repo at all — no wolf, fox or husky file
+anywhere in it — so those models were fetched directly in an earlier session and
+their licence has never existed on any disk here.
+
+**2. The music credits were backwards, and this is the bigger finding.**
+`CREDITS.md` listed three OpenGameArt tracks as the game's music and HydroGene as
+an unused bonus "for the expansion". Md5-matching every file in
+`assets/audio/music` against the packs on disk shows the reverse:
+
+| game file | actually is |
+|---|---|
+| `boss-intro.ogg`, `boss-loop.ogg` | HydroGene *09. Battle Theme II* |
+| `causeway.mp3`, `kiln.mp3` | HydroGene *15. Volcanic Crater* |
+| `den.ogg`, `ember-calm.ogg` | HydroGene *04. Peaceful Village* |
+| `region-stone.ogg` | HydroGene *06. Hidden Cavern* |
+| `stone-deep.ogg` | HydroGene *10. Dwarven Mine* (also Frostpeak) |
+| `region-ember.ogg` | Brandon Morris, *Cave Theme* (OGA) |
+| `victory.ogg` | cynicmusic, *Victory Fanfare Short* (OGA) |
+
+So **8 of 10 tracks are HydroGene**, and *Boss Battle Music* by **Juhani Junkala
+— credited for a year — is not in the build at all.** That row has been removed
+rather than credit someone whose work the game does not use.
+
+This makes HydroGene the single largest licence exposure in the project, ahead of
+the Quaternius pair. Its readme is now on file
+(`assets/LICENSES/hydrogene-16bit-rpg-music-README.txt`) and says, verbatim:
+
+> *"As explained in the itch.io page, credits are not mandatory, so feel free to
+> use it in any way you want."*
+
+That is a genuine permission from the author, but it is not a named licence, no
+public-domain dedication, and it defers to a page this environment cannot read.
+The manifest therefore gained a third tier — `evidence`, distinct from `licence`
+— for exactly this shape of thing: better than nothing, not good enough to clear.
+
+**Also worth a look sometime:** `den.ogg`/`ember-calm.ogg` and
+`causeway.mp3`/`kiln.mp3` are byte-identical pairs. That is ~6.7 MB of the
+service-worker precache spent twice, which a phone on a slow connection pays for.
 
 ---
 

@@ -29,14 +29,15 @@ that looks like a commercial release. `--strict` currently fails, on purpose.
 
 ## Still pending (4 packs)
 
-These ship in the build **now** and are not cleared:
+These ship in the build **now** and are not cleared. Ordered by how much it
+would actually hurt to be wrong.
 
 | Pack | What it is in the game | How to clear it |
 |---|---|---|
+| **HydroGene — 16-bit RPG Music** | **8 of the game's 10 tracks** — boss, den, causeway, kiln, Stoneroot, Frostpeak | The pack's readme is on file (`hydrogene-16bit-rpg-music-README.txt`) and says *"credits are not mandatory, so feel free to use it in any way you want"* — a real permission, but not a named licence, and it defers to the itch.io page. Open [the page](https://hydrogene.itch.io/high-quality-16-bit-music), read its licence statement, record it in `MANIFEST.json`. |
+| OpenGameArt — Cave Theme, Victory Fanfare | the Ember region loop and the victory sting | OGA licences vary **per submission**. Open each page, record the licence in `MANIFEST.json`, save any licence text here. |
 | Quaternius — Ultimate Animated Animals | Kael's four wolf forms, every hound, both giant-wolf bosses, Pip, Biscuit | download from [quaternius.com](https://quaternius.com/packs/ultimateanimatedanimals.html) → save its `License.txt` here as `quaternius-ultimate-animated-animals.txt` |
-| Quaternius — Animated Monster Pack | Slimes, bats, and the Dragon that is Boreal | download from [quaternius.com](https://quaternius.com) → save as `quaternius-animated-monsters.txt` |
-| Kenney — Holiday Kit | Frostpeak's snow, firs and rocks | download from [kenney.nl](https://kenney.nl/assets/holiday-kit) → save as `kenney-holiday-kit.txt` |
-| OpenGameArt music (3 tracks) | Ember theme, boss theme, victory sting | OGA licences vary **per track** — open each submission page, record the licence in `MANIFEST.json`, and save any licence text here |
+| Quaternius — Animated Monster Pack | slimes, bats, and the Dragon that is Boreal | download from [quaternius.com](https://quaternius.com) → save as `quaternius-animated-monsters.txt` |
 
 Then add the filename to that pack's `licence` field in `MANIFEST.json` and
 re-run the checker.
@@ -47,7 +48,11 @@ refuses `quaternius.com`, `*.itch.io`, `opengameart.org` and `kenney.nl`
 downloads have to happen from a machine with normal internet, or the hosts
 have to be added to the environment's allowlist.
 
-The OpenGameArt row is the one that could actually bite: OGA hosts CC0,
-CC-BY and GPL side by side, and a CC-BY track needs visible credit in the
-game while a GPL track would not be usable at all. The other three are very
-likely CC0 — but "very likely" is exactly what this folder exists to stop.
+**Why the music sits at the top.** It was assumed to be three OpenGameArt
+tracks with HydroGene held back as an unused bonus. Md5-matching every file
+in `assets/audio/music` against the packs on disk showed the opposite: eight
+tracks are HydroGene, and the Juhani Junkala track credited for a year is not
+in the build at all. So the largest single licence exposure in the game is a
+pack whose strongest written permission is a friendly sentence in a readme.
+The two Quaternius packs are very likely CC0 — but "very likely" is exactly
+what this folder exists to stop.
