@@ -213,12 +213,10 @@
         "assets/audio/music/boss-loop.ogg",
         "assets/audio/music/causeway.mp3",
         "assets/audio/music/den.ogg",
-        "assets/audio/music/ember-calm.ogg",
-        "assets/audio/music/kiln.mp3",
         "assets/audio/music/region-stone.ogg",
         "assets/audio/music/stone-deep.ogg"
       ],
-      "note": "EIGHT OF THE TEN TRACKS IN THE SHIPPING GAME. Established 2026-08-07 by md5-matching every file in assets/audio/music against the pack in the game-assets repo: boss-intro/loop = '09. Battle Theme II', causeway+kiln = '15. Volcanic Crater', den+ember-calm = '04. Peaceful Village', region-stone = '06. Hidden Cavern', stone-deep = '10. Dwarven Mine'. CREDITS.md had described this pack as an unused bonus for future regions.",
+      "note": "EIGHT OF THE TEN TRACKS IN THE SHIPPING GAME. Established 2026-08-07 by md5-matching every file in assets/audio/music against the pack in the game-assets repo: boss-intro/loop = '09. Battle Theme II', causeway+kiln = '15. Volcanic Crater', den+ember-calm = '04. Peaceful Village', region-stone = '06. Hidden Cavern', stone-deep = '10. Dwarven Mine'. CREDITS.md had described this pack as an unused bonus for future regions. (v3.21.2: ember-calm.ogg and kiln.mp3 were byte-identical duplicates of den.ogg and causeway.mp3 and were deleted — those two names are now aliases in js/audio.js, so the same eight HydroGene tracks still cover ten music cues.)",
       "evidence": "hydrogene-16bit-rpg-music-README.txt",
       "licence": null
     },
