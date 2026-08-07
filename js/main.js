@@ -315,6 +315,16 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       id: 'vh', label: '💎 Level 2 REBUILD (dressed)',
       forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: false,
     },
+    {
+      id: 't1a', label: '🌲 Level 3 REBUILD (greybox)',
+      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
+      noSave: true, greybox: true,
+    },
+    {
+      id: 't1a', label: '🍃 Level 3 REBUILD (dressed)',
+      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
+      noSave: true, greybox: false,
+    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');

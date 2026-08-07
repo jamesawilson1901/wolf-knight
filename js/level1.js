@@ -26,6 +26,7 @@ import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './
 import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, DOOR_HALF } from './levelkit.js';
 import { zooHubModule } from './level2.js';
+import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
 import { brazier } from './gates.js';
 
@@ -616,6 +617,7 @@ function buildZooInner(scene) {
   //     and Level 2's ONE new module drawn around it so the difference between
   //     "an island" and "a hub" is a thing you stand in, not a number
   zooHubModule(world, protoDecal, say);
+  zooRingModule(world, protoDecal, say);
   protoDecal(world, 0, -8, 32, 26, 0xffffff, 0.10);
   say(0, -21.5, 'ISLAND FOOTPRINT 32 x 26u');
   protoDecal(world, 0, -8, 16.1, 17.4, 0x6fe3a0, 0.16);
