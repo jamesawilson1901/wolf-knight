@@ -23,7 +23,11 @@ const SFX_FILES = {
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
   bones: './assets/audio/sfx/bones.ogg',
-  bite: './assets/audio/sfx/bite.ogg',
+  // ALIAS (v3.21.2): bite.ogg was byte-identical to hit.ogg — the same file
+  // vendored twice under two names. One file, two names; `_buffer` caches by
+  // URL, so this is one fetch and one decode.
+  // (These two events SOUNDING alike is a separate question — see BUILDLOG.)
+  bite: './assets/audio/sfx/hit.ogg',
   'step-stone-0': './assets/audio/sfx/step-stone-0.ogg',
   'step-stone-1': './assets/audio/sfx/step-stone-1.ogg',
   'step-stone-2': './assets/audio/sfx/step-stone-2.ogg',
@@ -33,7 +37,7 @@ const SFX_FILES = {
   'chest-open': './assets/audio/sfx/chest-open.ogg',
   coin: './assets/audio/sfx/coin.ogg',
   'gate-creak': './assets/audio/sfx/gate-creak.ogg',
-  whoosh: './assets/audio/sfx/whoosh.ogg',
+  whoosh: './assets/audio/sfx/puff.ogg', // ALIAS: was a byte-identical copy of puff.ogg
 };
 
 const MUSIC_FILES = {
@@ -45,8 +49,12 @@ const MUSIC_FILES = {
   victory: './assets/audio/music/victory.ogg',
   'region-stone': './assets/audio/music/region-stone.ogg',
   'stone-deep': './assets/audio/music/stone-deep.ogg',
-  kiln: './assets/audio/music/kiln.mp3',
-  'ember-calm': './assets/audio/music/ember-calm.ogg',
+  // ALIASES (v3.21.2). kiln.mp3 was byte-identical to causeway.mp3, and
+  // ember-calm.ogg to den.ogg — 6.6 MB of the game's download was the same two
+  // tracks shipped twice, which every kid's phone paid for on a slow
+  // connection. Two names, one file each.
+  kiln: './assets/audio/music/causeway.mp3',
+  'ember-calm': './assets/audio/music/den.ogg',
 };
 
 class AudioSystem {
@@ -58,6 +66,7 @@ class AudioSystem {
     this.duckGain = null;
     this._musicSource = null;
     this._musicName = null;
+    this._musicUrl = null;
     this._wantMusic = null;
     this._unlocked = false;
 
@@ -183,9 +192,14 @@ class AudioSystem {
   async playMusic(name, opts = {}) {
     this._wantMusic = { name, opts };
     if (!this.ctx) return;
-    if (this._musicName === name && opts.loop !== false) return;
     const url = MUSIC_FILES[name];
     if (!url) return;
+    // Compare the resolved FILE, not the name: two names can share one track
+    // (kiln/causeway, ember-calm/den). Without this, walking from the Den into
+    // the healed Hollow would fade out a track and fade the identical track
+    // back in — an audible stutter for no reason. The name is still recorded
+    // so `then:` chaining reasons about what was actually asked for.
+    if (this._musicUrl === url && opts.loop !== false) { this._musicName = name; return; }
     let buf, introBuf = null;
     try {
       buf = await this._buffer(url);
@@ -232,6 +246,7 @@ class AudioSystem {
     this._musicSource = src;
     this._musicFade = fade;
     this._musicName = name;
+    this._musicUrl = url;
 
     if (opts.loop === false && opts.then) {
       src.onended = () => {

@@ -102,6 +102,20 @@
   now flood-filled from the spawn through the real collider solver
   (scratchpad verify-reach.mjs): every gated thing is checked twice —
   sealed before, reachable after opening it through its own system.
+- NO ASSET SHIPS TWICE (v3.21.2). Two names may share one file; two
+  files may not share one content. 6.6 MB of the download — about 11% —
+  was two music tracks and two sound effects vendored under two names
+  each, and nobody noticed because both copies worked perfectly. The fix
+  is never "delete one and hope": point the second NAME at the first
+  FILE (`MUSIC_FILES` / `SFX_FILES` in js/audio.js), so the game keeps
+  its vocabulary and the wire carries one copy. Two consequences that
+  bite: a `sw.js` PRECACHE line pointing at a deleted file makes
+  `cache.addAll` reject and silently kills offline play, and the
+  "already playing this track" test must compare the resolved URL, not
+  the name, or two names for one track fade it out and back in.
+  `node tools/check-duplicates.mjs` enforces it; genuinely unavoidable
+  duplicates (a glTF resolves its texture relative to its own folder)
+  are listed there with their reason.
 - NOTHING LIVES INSIDE A BOULDER (v3.21.1): the same flood found a
   Frozen Lake chest whose centre sat 0.72u inside a rock of radius
   0.95 — placed by hand, invisible to the eye in a screenshot, and

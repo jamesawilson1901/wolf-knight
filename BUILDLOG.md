@@ -1902,3 +1902,64 @@ script was given the retry loop the newer suites already had.
 Re-verified after all of it: the Frostpeak suite, the Wild Woods suite, the
 28-room audit, and a direct r3 health check (boss spawns, doors right, no
 page errors) all clean.
+
+## v3.21.2 — 6.6 MB the phones were downloading twice (2026-08-07)
+
+Dad: "fix the duplicate music files."
+
+Scanned every asset by content hash rather than trusting the two pairs I had
+already spotted, and found **five** duplicate groups, not two:
+
+| files | size |
+|---|---|
+| `den.ogg` = `ember-calm.ogg` | 3.4 MB each |
+| `causeway.mp3` = `kiln.mp3` | 3.3 MB each |
+| `puff.ogg` = `whoosh.ogg` | 13 KB |
+| `hit.ogg` = `bite.ogg` | 9 KB |
+| the Kenney survival atlas, in two folders | 7 KB |
+
+**6.6 MB — about 11% of the whole download** — was the same two music tracks
+and two sound effects shipped under two names each. Nobody noticed because
+both copies worked perfectly.
+
+### The fix is aliasing, not deleting
+
+The game's vocabulary is worth keeping: rooms ask for `kiln` and
+`ember-calm`, and those names carry meaning even when the audio behind them
+is shared today. So the second name now points at the first file in
+`MUSIC_FILES` / `SFX_FILES`, and the duplicate is gone from disk. `_buffer`
+already caches by URL, so this is one fetch and one decode with no other
+change.
+
+Two things had to move with it:
+
+- **`sw.js` PRECACHE.** `cache.addAll` rejects *entirely* if any single URL
+  404s, so deleting an asset without removing its precache line would have
+  silently killed offline play — the exact failure a kid on a train would
+  hit and nobody would reproduce. Verified by installing the real service
+  worker headlessly: 231 files cached, zero failed requests.
+- **The "already playing" test.** It compared the track NAME, so with two
+  names for one file, walking from the Den into the healed Hollow would fade
+  a track out and fade the identical track back in. It now compares the
+  resolved URL — the music simply continues — while still recording the
+  requested name so `then:` chaining is unaffected.
+
+The Kenney atlas pair stays: a glTF resolves `"uri":"Textures/colormap.png"`
+relative to its own folder, so two model folders genuinely need a copy each.
+Checked in the binaries rather than assumed. 7 KB, and the alternative is
+rewriting GLB files.
+
+### Made unrepeatable
+
+`tools/check-duplicates.mjs` hashes every asset and fails on any avoidable
+duplicate, with the unavoidable one listed and reasoned. Proved it works by
+planting a copied file (caught, exit 1) and removing it again (clean) —
+a checker nobody has watched fail is not yet a checker.
+
+### Noted, not fixed
+
+`hit` and `bite` now share a file, as do `puff` and `whoosh` — which means a
+sword landing and a wolf biting make the *identical* sound, and so do a dust
+puff and a whoosh. That is a design smell rather than a bug, and the Kenney
+RPG Audio pack already on disk has plenty of alternatives. Left alone
+because it changes how the game sounds, which is dad's call, not mine.
