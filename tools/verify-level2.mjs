@@ -156,7 +156,7 @@ check('no door leads to a room that does not exist', dangling.length === 0, { da
 console.log('\n── 4. the four-step teach, in order ─────────────────────');
 const TEACH = [
   ['introduce', 'va3', 'teachCrack'],
-  ['develop', 'va2', 'developCracks'],
+  ['develop', 'vb1', 'developCracks'],
   ['twist', 'vb3', 'rattlePlate'],
   ['conclude', 'vz', 'stompStagger'],
 ];

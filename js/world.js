@@ -121,7 +121,21 @@ export class World {
     this.root.traverse((n) => {
       // An InstancedMesh reuses SHARED geometry and material but owns its own
       // instance buffers — dispose() frees exactly those and nothing else.
-      if (n.isInstancedMesh || n.isBatchedMesh) { n.dispose(); return; }
+      // INSTANCED MESHES. `InstancedMesh.dispose()` frees the instance matrix
+      // and colour buffers and NOTHING ELSE — not the geometry, not the
+      // material. This used to `return` straight after it, which was invisible
+      // for kit props (their geometry comes from the GLB cache and is SHARED,
+      // so it must not be freed anyway) but leaked one geometry per room for
+      // anything that builds its own: the breadcrumb trails do exactly that,
+      // and Level 2's hub is entered six times a playthrough. Measured at
+      // exactly +1 geometry per build over 40 hub entries before this.
+      if (n.isInstancedMesh || n.isBatchedMesh) {
+        n.dispose();
+        if (n.geometry && !isShared(n.geometry)) { n.geometry.dispose(); freed.geometries++; }
+        if (n.material && !Array.isArray(n.material)) killMaterial(n.material);
+        else if (Array.isArray(n.material)) n.material.forEach(killMaterial);
+        return;
+      }
       // SKINNED CHARACTERS: every SkeletonUtils.clone() builds a fresh Skeleton,
       // and three uploads a DataTexture of the bone matrices for GPU skinning.
       // That texture hangs off the skeleton, NOT off a material or geometry, so

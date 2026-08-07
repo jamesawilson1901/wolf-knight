@@ -122,8 +122,14 @@ export const SPINE = [
 export const TEACH = [
   { step: 'introduce', room: 'va3', marker: 'teachCrack',
     what: 'the shrine — one cracked pile, no enemies, no timer' },
-  { step: 'develop', room: 'va2', marker: 'developCracks',
-    what: 'the return leg — cracked piles with skeletons standing over them' },
+  // DEVELOP lives in vb1, not on Spoke A's return leg as the docs suggested.
+  // The shrine has a walked shortcut straight back to the hub, so a child who
+  // takes it would never re-cross va2 and would be taught three quarters of an
+  // ability. vb1 is on the spine after the shrine and cannot be skipped — and
+  // "cracked piles with skeletons standing over them" belongs in the Bone
+  // Quarry far more naturally than in a crystal gallery anyway.
+  { step: 'develop', room: 'vb1', marker: 'developCracks',
+    what: 'the Bone Quarry — cracked piles with skeletons standing over them' },
   { step: 'twist', room: 'vb3', marker: 'rattlePlate',
     what: 'THE RATTLE — the stomp is not a hammer, it is a SOUND' },
   { step: 'conclude', room: 'vz', marker: 'stompStagger',
@@ -538,13 +544,12 @@ export async function buildVa2(scene) {
   world.markers.heroSpot = { x: -9, z: -8 };
   world.markers.batSpots = [{ x: 4, z: -6 }, { x: -3, z: 3 }];
 
-  // TEACH 2 — DEVELOP. On the way back OUT of the shrine these piles have
-  // skeletons standing over them: now you have to pick your moment.
-  world.markers.developCracks = [{ x: 6, z: 5 }, { x: -2, z: 7 }, { x: 10, z: -2 }];
-  for (const [i, p] of world.markers.developCracks.entries()) crackedPile(world, `l2_va2_${i}`, p.x, p.z);
-  if (state.formsUnlocked.includes('earth_wolf')) {
-    world.markers.minionSpots = [{ x: 7.5, z: 3.4 }, { x: -0.5, z: 5.4 }];
-  }
+  // Optional practice, NOT the teach step (that is vb1, which cannot be
+  // skipped). A child who walks back out through here instead of taking the
+  // shrine's shortcut gets paid for it: three piles they watched go by on the
+  // way in, now breakable.
+  world.markers.practiceCracks = [{ x: 6, z: 5 }, { x: -2, z: 7 }, { x: 10, z: -2 }];
+  for (const [i, p] of world.markers.practiceCracks.entries()) crackedPile(world, `l2_va2_${i}`, p.x, p.z);
   breadcrumbs(world, [[13, 0], [6, 0], [0, 0], [-6, 0], [-13, 0]], 0x9fe8f4);
   scatter(world, halfW, halfD, D, 82, 22, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
   return finish(world, spec, D);
@@ -610,8 +615,14 @@ export async function buildVb1(scene) {
   // quarried steps: two terraces instead of one flat field
   wallRun(world, -4, 4, 10, 4, D, 1.2);
   wallRun(world, -4, -6, -4, 4, D, 1.2);
-  world.markers.minionSpots = [{ x: 2, z: -3 }, { x: 8, z: 6 }];
-  crackedPile(world, 'l2_vb1_a', -9, 6);
+  // TEACH 2 — DEVELOP. The same cracked pile, but now a skeleton is standing
+  // over it: the verb is known, the timing is not. Enemies only appear once
+  // the tool exists, so a first pass through here is not an ambush.
+  world.markers.developCracks = [{ x: -9, z: 6 }, { x: 4, z: -6 }];
+  for (const [i, p] of world.markers.developCracks.entries()) crackedPile(world, `l2_vb1_${i}`, p.x, p.z);
+  world.markers.minionSpots = state.formsUnlocked.includes('earth_wolf')
+    ? [{ x: 2, z: -3 }, { x: 8, z: 6 }, { x: -7, z: 5 }]
+    : [{ x: 2, z: -3 }, { x: 8, z: 6 }];
   breadcrumbs(world, [[-13, 0], [-6, -2], [1, -2], [8, 0], [13, 0]], 0xf0e2b8);
   scatter(world, halfW, halfD, D, 91, 20, { spin: 0, kinds: ['brick', 'rockLB', 'rockSA', 'skull'] });
   return finish(world, spec, D);
@@ -740,7 +751,13 @@ export async function buildVc1(scene) {
   wallRun(world, -14, 3, 3, 3, D, 1.2);
   wallRun(world, 7, 3, 14, 3, D, 1.2);
   wallRun(world, -14, -4, 6, -4, D, 1.2);
-  world.markers.shieldSpots = [{ x: 5, z: 6 }, { x: -6, z: -1 }];
+  // ONE shield-bearer, not two. Measured: a SkeletonShield is ~16 draw calls
+  // (body, shield and blade, each redrawn for the shadow map), and two of them
+  // plus a slime put this room at 106 of a 100-call ceiling. It is also the
+  // better fight — two raised shields at once is a wall for a five-year-old,
+  // where a shield plus a minion teaches "deal with the one you can hurt".
+  world.markers.shieldSpots = [{ x: 5, z: 6 }];
+  world.markers.minionSpots = [{ x: -6, z: -1 }];
   world.markers.slimeSpots = [{ x: 9, z: -7 }];
   breadcrumbs(world, [[0, 10], [5, 5], [5, 0], [-2, -6], [0, -11]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 101, 18, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
