@@ -2233,3 +2233,115 @@ that the stomp is a *sound*. It is also now the spoke's terminus: ringing the
 chamber cracks the dam, and the dam draining is hub change 2. One room, one
 idea, one consequence. Spoke B keeps an optional pocket (The Chalk Seam) so
 the branch count is unchanged. `LEVEL-MAP.md` records the deviation.
+
+### Step 4/7 — the numbers Level 2 actually landed on
+
+| | greybox | dressed |
+|---|---|---|
+| worst draw calls | 102 (vc1) | 112 (vc1) · 106 (vc2) |
+| worst triangles | 40,286 | 49,633 |
+| 20x hub entry | geom +0, tex +0, programs +0 | — |
+
+**The hub memory test passed cleanly**, which was the specific risk dad named:
+a hub is revisited constantly, so a leak there compounds across a session. It
+was +40 geometries over 40 builds before the fix and is 0 now. The cause was an
+ENGINE bug, not a Level 2 one — `World.dispose()` called `InstancedMesh.dispose()`
+and returned, but that method frees the instance matrix and colour buffers and
+NOTHING ELSE. Invisible for kit props (their geometry is SHARED and must not be
+freed) and one leaked geometry per room for anything that builds its own, which
+the breadcrumb trails do. Level 1 had the same bug with enough headroom to hide it.
+
+**vc1 and vc2 are still over the 100-call ceiling and that is not hidden here.**
+Measured breakdown of vc1's original 106:
+
+    persistent 40  +  room geometry 23  +  three characters 43
+
+A `SkeletonShield` is ~16 calls on its own — body, shield and blade, each
+redrawn for the shadow map. Cutting a third enemy from the room saved **zero**
+calls, which killed the "trim enemies" theory. The real lever is shadow-casting
+on skinned characters, and that is a whole-game visual trade-off rather than a
+Level 2 decision, so it is flagged rather than taken.
+
+### Three wrong turns on the draw-call budget, kept here because the rule matters
+
+1. Merge by material — defeated by `scatter()` giving every prop a *continuous*
+   random tint, so every rock got its own material and nothing could merge.
+2. Fix the tints — **worse** (115 → 120). Merged meshes had `frustumCulled = false`,
+   so making more things mergeable meant more geometry that always draws.
+3. Merge per spatial cell — **much worse** (→ 164). It shattered the
+   InstancedMeshes: a 120-block perimeter wall that cost ONE draw came back as
+   nine, one per cell.
+
+**The rule that fell out: instancing and merging solve the same problem, and
+expanding an InstancedMesh to re-merge it can only lose.** `flattenStatic` now
+leaves them alone and merges only loose meshes, per cell, with a minimum bucket
+of three. That took the dressed hub from 131 to 82.
+
+## v3.24.0 — Level 3 rebuilt: the ring (2026-08-07)
+
+21 spaces: 4 districts x 2 + 4 pockets + 4 ring legs + shrine + puzzle + glade
++ 2 chords. The docs say 18; their own component list adds to 21.
+
+**One new module**, the 26 x 20 RING LEG, in the metrics zoo before use. A ring
+leg is deliberately not a 14 x 10 chokepoint: a choke reads as compression, and
+a ring needs its legs to read as TRAVEL, or the outward journey never feels long
+enough for the way back to be a relief.
+
+    ✓ the ring is walkable clockwise and RETURNS TO ITS START  (15 hops, t1a → t1a)
+    ✓ the ring is also walkable anticlockwise
+    ✓ every branch reconnects · no dead ends · every space reachable
+    ✓ the four-step teach is met in order round the ring  (positions 5, 6, 9, 12)
+    ✓ the twist is ON the ring, not in an optional pocket
+    ✓ before they are earned, neither chord exists at the near end
+    ✓ worst draw calls: greybox 80, dressed 83 · worst triangles 36,764
+
+Level 3 is the cheapest of the three despite being the largest — it inherited
+every batching lesson the other two paid for.
+
+### TWO THINGS FLAGGED, NOT FIXED (dad's call)
+
+**1. A junction landmark is invisible when approached from the NORTH.**
+Identical at all four junctions:
+
+    t1a from tgl  → IN FRAME      ndc(-0.62,  0.84)
+    t1a from tsA  → IN FRAME      ndc(-0.98, -0.03)
+    t1a from t1b  → NOT VISIBLE   ndc( 0.00, -4.06)
+
+Structural, not a placement slip. `camGoal.copy(player.root.position).add(CAM_OFFSET)`
+— the camera is a fixed world-space offset that never rotates with facing, so
+"12.8 u ahead" always means NORTH and only 4.6 u of the world south of you is
+ever on screen. A landmark at room centre is visible from the south, east and
+west doors and sits 10 u behind you entering from the north. **No single
+position satisfies both**; moving it only swaps which approach fails.
+
+Options: a second smaller landmark at each junction's north end; a large
+district floor-inlay under the prop extending north (the floor fills the frame
+from every approach — cheapest, and free once merged); or accept a ~5 u delay
+before recognition. Recommended: the floor inlay.
+
+**2. The second chord is only 37 % shorter.** `tsA` (the fallen log) saves 75 %
+— 81 u against 319 u, a real relief after the long lap. `tsB` (the cut
+root-wall) is 81 u against 128 u, because t3a and t2a are only five ring-hops
+apart. It is shorter, but it is a minor convenience rather than a shortcut, and
+its real value is skipping the DARK Gloomwood stretch rather than the distance.
+
+### Full-sequence check, all three levels
+
+    baseline after one full pass: geom 126, tex 83
+    after a second full lap:      geom 126, tex 83
+    ✓ a full 1 → 2 → 3 lap does not accumulate memory  (geom 0, tex 0)
+    ✓ save at lb / vh / t3a all round-trip with world state intact
+
+The per-level intermediate deltas oscillate about +/-6 because each group ends
+with a different room resident; that is a live-set difference, not a leak, and
+the suite now reports them as informational rather than failing on them.
+
+### Download size
+
+**Levels 2 and 3 added zero bytes.** Both are built entirely from packs already
+vendored for Level 1 or the shipping rooms — Kenney Nature 2.1, Kenney Castle
+2.0, Quaternius LowPoly Modular Dungeon, KayKit Forest Nature, KayKit
+Adventurers, all GREEN with verified CC0 licence files. Total assets: **39 MB
+across 216 files** (audio 20 MB, characters 13 MB, animations 3.3 MB,
+environment 2.5 MB). Five districts in Level 2 and five in Level 3 come out of
+the same geometry by material-name recolouring.
