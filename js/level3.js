@@ -202,6 +202,11 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // `regrows` is the DEVELOP twist: it closes again if you dawdle.
 function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false) {
   if (state.flags.cut && state.flags.cut[id] && !regrows) return null;
+  // gates.js creates world.cuttables lazily, so a room that grows its own
+  // brambles without going through brambleGate() has to make sure it exists —
+  // getting this wrong threw inside the first build and left the room loader
+  // wedged, which failed all twenty rooms after it, not just this one.
+  if (!world.cuttables) world.cuttables = [];
   const colour = 0x4f8f3a;
   if (GREY()) {
     const m = new THREE.Mesh(
@@ -368,10 +373,17 @@ function finish(world, spec, D) {
   return world;
 }
 
-// A junction's hero prop sits at the room's CENTRE, not against a wall. In a
-// ring the same space is entered from three or four different doors, and a
-// landmark tucked into a corner is only a landmark from one of them.
-const JUNCTION_HERO = { x: 0, z: -2 };
+// A junction's hero prop sits at the room's DEAD CENTRE, not against a wall.
+// In a ring the same space is entered from three or four different doors, and
+// a landmark tucked into a corner is only a landmark from one of them.
+//
+// Measured: at z = -2 the Leaning Shrine projected to ndcY 1.08 from the
+// entrance — just off the top of the screen, because the camera only shows
+// 12.8 u ahead and the entry sits 11 u away. Dead centre puts every junction
+// landmark ~9-10 u from every one of its doors, inside the frame from all of
+// them. It also stands in the middle of the floor, which breaks the square
+// and gives the fight something to circle.
+const JUNCTION_HERO = { x: 0, z: 0 };
 
 // ===========================================================================
 // 1 · THORNEDGE — the entry, and the ring's closing junction
