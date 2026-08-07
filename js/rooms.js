@@ -950,7 +950,7 @@ async function buildR2(scene) {
 
   // Checkpoint CP2 just before the boss door, potion by the stump
   checkpoint(world, 'cp2', 8.6, -3.6);
-  potionPickup(world, -4.2, 4.6);
+  potionPickup(world, -4.2, 3.2);
 
   // The optional branch (SE): rock-flanked pocket, Shadow Hound + Pup #2 later
   placeRocks(world, [
@@ -958,7 +958,7 @@ async function buildR2(scene) {
     { kind: 'lc', x: 8.9, z: 1.8, s: 2.2, ry: 4.2, cr: 0.95 },
     { kind: 'sb', x: 5.4, z: 2.2, s: 1.5, ry: 3.3, cr: 0.32 },
   ]);
-  world.markers.pup2Spot = { x: 7.2, z: 4.4 };
+  world.markers.pup2Spot = { x: 7.2, z: 3.0 };
   world.markers.houndSpot = { x: 6.0, z: 3.6 };
   world.markers.branchMouth = { x: 4.6, z: 3.2 };
 
@@ -1091,7 +1091,7 @@ async function buildR2b(scene) {
     { x: -5.6, z: 3.6, kind: 'crate', shards: 2 },
     { x: -5.9, z: -3.4, kind: 'barrel', shards: 2 },
   ];
-  potionPickup(world, 6.2, 3.9);
+  potionPickup(world, 5.4, 2.4);
 
   placeRocks(world, [
     { kind: 'sa', x: -4.6, z: -2.0, s: 1.5, ry: 1.1, cr: 0.32 },
@@ -1377,7 +1377,7 @@ async function buildKb(scene) {
     }
   });
   world.markers.chestDefs = [
-    { id: 'c_kb_key', tier: 'gold', x: 5.4, z: 3.0, ry: -0.6,
+    { id: 'c_kb_key', tier: 'gold', x: 5.4, z: 1.8, ry: -0.6,
       loot: { shards: 10, key: 'kiln', keyName: 'Kiln Key' } },
   ];
 
@@ -1577,6 +1577,7 @@ async function loadDungeonKit() {
 // Collider layout matches buildShell so doors/entries behave identically.
 function buildStoneShell(world, w, d, gaps = []) {
   const halfW = w / 2, halfD = d / 2;
+  world.deckY = 0.185; // measured top of the modular dungeon floor tiles
 
   const floorPlacements = [];
   for (let tx = 0; tx < w / 2; tx++) {
@@ -1684,7 +1685,9 @@ function stoneDoorway(world, x, z, axis) {
     })
   );
   strip.rotation.x = -Math.PI / 2;
-  strip.position.set(x, 0.1, z);
+  // v3.20: was 0.1 — BELOW the 0.185 stone floor, so every doorway's
+  // "this is the way out" glow was invisible in all five Stoneroot rooms
+  strip.position.set(x, world.deckY + 0.015, z);
   world.add(strip);
   world.onAnimate((t) => {
     strip.material.emissiveIntensity = 0.55 + 0.3 * Math.sin(t * 2.1 + x);
@@ -1749,7 +1752,7 @@ function boulder(world, x, z) {
     new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.22; // above the stone floor tiles (height law, v3.18)
+  ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
   group.add(ring);
   world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
   const b = { x, z, r: 0.62, group, mesh: rock, collider };
@@ -1762,17 +1765,19 @@ function boulder(world, x, z) {
 // disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
 // ring, so "roll THIS onto THAT" reads at a glance.
 function pressurePlate(world, id, x, z, onPressed) {
-  // HEIGHT LAW (v3.18, learned the hard way): Stoneroot's modular floor
-  // tiles sit at y 0.06 + tile thickness — any decal below ~y 0.17 is BURIED
-  // inside the floor and invisible. This is why "there is no pressure plate":
-  // the plate existed, under the tiles, since the room shipped.
+  // HEIGHT LAW (v3.18, generalised in v3.20): a decal below the room's floor
+  // top is BURIED and invisible — that is why "there is no pressure plate".
+  // Heights now key off world.deckY, so the same plate reads correctly on
+  // Stoneroot's raised stone tiles AND on the Wild Woods' bare ground
+  // (where the old hard-coded stone offsets left it floating in mid-air).
+  const deck = world.deckY;
   // a round stone plate (NOT the dungeon-kit trap grid — that reads as
   // "danger, keep off", the exact opposite of an act-here target)
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
     new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
   );
-  base.position.set(x, 0.17, z);
+  base.position.set(x, deck - 0.015, z);
   world.add(base);
   const glow = new THREE.Mesh(
     new THREE.CircleGeometry(0.62, 24),
@@ -1782,7 +1787,7 @@ function pressurePlate(world, id, x, z, onPressed) {
     })
   );
   glow.rotation.x = -Math.PI / 2;
-  glow.position.set(x, 0.235, z);
+  glow.position.set(x, deck + 0.05, z);
   world.add(glow);
   // the GOLD "act here" ring — same grammar (and same gold) as the boulder
   const ring = new THREE.Mesh(
@@ -1790,7 +1795,7 @@ function pressurePlate(world, id, x, z, onPressed) {
     new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, 0.225, z);
+  ring.position.set(x, deck + 0.04, z);
   world.add(ring);
   if (!world.plates) world.plates = [];
   const pressed = !!state.flags.plates[id];
@@ -2308,7 +2313,7 @@ async function buildE2(scene) {
       new THREE.MeshStandardMaterial({ color: 0x14101c, roughness: 1 })
     );
     scar.rotation.x = -Math.PI / 2;
-    scar.position.set(3.0, 0.17, 3.6); // above the stone tiles (height law)
+    scar.position.set(3.0, world.deckY + 0.015, 3.6); // height law
     world.add(scar);
     world.markers.scarSpot = { x: 3.0, z: 3.6 };
     world.markers.healed = true;
@@ -2475,8 +2480,8 @@ async function buildE3(scene) {
     { x: 5.9, z: 5.6, kind: 'barrel', shards: 2 },
   ];
 
-  checkpoint(world, 'cp_e3', -3.2, 5.2);
-  potionPickup(world, 3.2, 5.2);
+  checkpoint(world, 'cp_e3', -3.2, 3.9);
+  potionPickup(world, 3.2, 3.9);
 
   // the third cavern pup cowers in the crypt corner, freed with the Warden
   world.markers.pup6Spot = { x: -5.6, z: -5.6 };

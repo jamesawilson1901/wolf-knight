@@ -180,7 +180,22 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
   light.position.set(x, 1.9, z);
   world.add(light);
 
-  const b = { id, x, z, lit: false, gutterT: 0, flame, light, onLit };
+  // ACT-HERE ring while COLD (v3.20): an unlit brazier in a dark room is
+  // invisible — the same failure that hid the Deep Hall's pressure plate.
+  // A pulsing gold ring says "this one is waiting for you"; it fades out the
+  // moment the brazier catches, so lit and unlit never read the same.
+  const waiting = new THREE.Mesh(
+    new THREE.RingGeometry(0.5, 0.68, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xffd76a, transparent: true, opacity: 0.5,
+      side: THREE.DoubleSide, depthWrite: false,
+    })
+  );
+  waiting.rotation.x = -Math.PI / 2;
+  waiting.position.set(x, world.deckY + 0.03, z);
+  world.add(waiting);
+
+  const b = { id, x, z, lit: false, gutterT: 0, flame, light, waiting, onLit };
   if (!world.braziers) {
     world.braziers = [];
     // the Fire Wolf's slam calls this (hooked from player.tryGroundSlam)
@@ -193,6 +208,7 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
         br.lit = true;
         br.flame.visible = true;
         br.light.intensity = 5;
+        if (br.waiting) br.waiting.visible = false; // it's lit: stop asking
         audio.play('burn', { volume: 0.7 });
         if (br.onLit) br.onLit(br);
         n++;
@@ -201,6 +217,14 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
     };
     world.onAnimate((t, dt) => {
       for (const br of world.braziers) {
+        if (br.waiting) {
+          br.waiting.visible = !br.lit;
+          if (!br.lit) {
+            br.waiting.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4 + br.x);
+            const s = 1 + 0.07 * Math.sin(t * 2.4 + br.x);
+            br.waiting.scale.set(s, s, 1);
+          }
+        }
         if (!br.lit) continue;
         br.flame.scale.setScalar(1 + 0.15 * Math.sin(t * 9 + br.x));
         br.light.intensity = 4.5 + Math.sin(t * 11 + br.z);

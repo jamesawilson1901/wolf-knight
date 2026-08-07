@@ -71,12 +71,22 @@
 - ONE PUZZLE ROOM PER LEVEL (v3.18, dad's law). Puzzles are never hidden
   in darkness, and rooms only reference things the player can SEE (the
   "Mill/machinery" fiction with no machinery on screen is banned).
-- HEIGHT LAW (v3.18, learned the hard way): Stoneroot's modular floor
-  tiles top out around y≈0.17 — floor decals (plates, rings, scars) must
-  sit ABOVE that or they are invisible inside the floor. BLIND-STRIP LAW:
-  the camera looks north over the tall south wall, which hides a ~2u
-  strip of floor in front of it — interactives never live at z within
-  ~2.5u of a room's south shell.
+- HEIGHT LAW (v3.18, generalised v3.20): a ground decal below the room's
+  floor top is drawn INSIDE the floor and is invisible. Every room now
+  publishes `world.deckY` (its measured floor top: 0 for Ember/Wild Woods
+  ground, 0.185 for Stoneroot's modular tiles) and every decal — plates,
+  act-here rings, doorway glows, scars, boss telegraph rings — offsets
+  from it. Never hard-code a decal height again: it hid the Deep Hall's
+  plate for two regions, and the same constants left the Wild Woods'
+  plates hovering in mid-air.
+- BLIND-STRIP LAW (v3.18, measured v3.20): the camera looks north over
+  the tall south wall, which hides a ~2u strip of floor in front of it —
+  interactives never live at z within ~2.5u of a room's south shell.
+  This is now MEASURED, not eyeballed: raycast the real camera transform
+  (CAM_PITCH 50°, CAM_DIST 11) at the item and see if a wall blocks it.
+  Beware two false positives the measurement exposes — an object's own
+  scenery (a villager's tent, a bramble gate's bushes) occludes its own
+  centre, and a deliberate SECRET is allowed to be hidden.
 
 ## Progression targets (tune toward, verify per region)
 ## Elements & armor (law, v3.7)

@@ -1698,3 +1698,48 @@ building on the skills previously learned."
 - Verified: 6-check headless suite (guard raised while walking, dropped
   mid-swing, dropped when stunned, both enemies, front-block/back-hurt
   rule intact) + crypt screenshots. SW cache wolfknight-v3.19.1.
+
+## v3.20.0 — Retrofitting the earlier regions with the new laws (2026-08-07)
+
+Dad asked whether the previous sections had been brought up to date with
+everything learned in v3.18/v3.19. They had not. Built a data-driven audit
+that walks all 21 rooms and checks the laws mechanically, then fixed what
+it found — evidence first, no guessing.
+
+**The audit** (`audit-rooms.mjs`): per room, measures the true floor top,
+lists every ground decal, and flags decals below the floor, interactives in
+the south camera blind strip, and puzzle pieces inside dark zones. A second
+pass (`verify-blind.mjs`) converts the blind-strip heuristic into a
+MEASUREMENT — rebuilding the real camera transform and raycasting at each
+item. A third (`try-moves.mjs`) proves every proposed new position is free
+of colliders, not a hazard, and genuinely visible before anything moved.
+
+**Fixed:**
+- **Buried decals 31 → 0.** Root cause generalised: `world.deckY` now
+  carries each room's measured floor top and every decal offsets from it.
+  Biggest catch: `stoneDoorway`'s glowing threshold sat at y 0.1 under
+  Stoneroot's 0.185 floor — **every doorway's "way out" cue was invisible
+  in all five Stoneroot rooms** since the region shipped. Same fix stops
+  the Wild Woods' plates and boulder rings hovering above the grass, which
+  the v3.18.1 stone-specific constants had caused.
+- **Blind strip:** 7 measured-hidden items moved and re-proved — the Kiln
+  Key chest (progression-critical), the e3 pre-boss checkpoint AND potion
+  (contract law: rest before a boss), r2's potion + pup, r2b's potion, and
+  Wren + Bram in the den, who both stood behind the south wall.
+- **Dark puzzle:** the Gloomwood's three cold lanterns are the region's main
+  door but sat unlit in a dark room — the same failure mode as the buried
+  plate. Unlit braziers now wear a pulsing gold act-here ring that vanishes
+  the moment they catch, so lit and unlit never read alike.
+- The Bone Warden's telegraph rings are deckY-aware too.
+
+**Deliberately not moved** (measured, reported, left alone): r1's cubby
+burnable and two pups sit in a congested south strip where every candidate
+position was inside geometry or still occluded — moving them means
+redesigning a room the kids know. r1b's secret burnable and e1b's cracked
+rock are hidden ON PURPOSE (wolf-senses reveal them). e1's camp and e2's
+bramble gate "occlude" only themselves — a false positive of the method.
+
+Verified: audit re-run clean on buried decals across all 21 rooms, no page
+errors, plus screenshots of the doorway glow, a forest plate resting flush
+on grass, and a cold lantern's ring readable in the dark. SW cache
+wolfknight-v3.20.0, badge v3.20.

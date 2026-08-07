@@ -1217,7 +1217,7 @@ export class BoneWarden extends SkeletonBase {
       new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
     );
     this.dangerRing.rotation.x = -Math.PI / 2;
-    this.dangerRing.position.y = 0.19;
+    this.dangerRing.position.y = world.deckY + 0.02; // height law (v3.20)
     world.add(this.dangerRing);
   }
 
@@ -1298,7 +1298,7 @@ export class BoneWarden extends SkeletonBase {
     } else if (this.state === 'chop_tele') {
       // 0.9s: the danger arc fades in where the axe will land
       const f = Math.min(1, this.stateT / 0.9);
-      this.dangerRing.position.set(this.x, 0.19, this.z);
+      this.dangerRing.position.set(this.x, this.world.deckY + 0.02, this.z);
       this.dangerRing.rotation.z = -this.root.rotation.y + Math.PI / 2 + Math.PI * 0.45;
       this.dangerRing.material.opacity = f * 0.55;
       if (this.stateT >= 0.9) {
@@ -1318,7 +1318,7 @@ export class BoneWarden extends SkeletonBase {
     } else if (this.state === 'spin_tele') {
       // 1.0s: full-circle warning ring
       const f = Math.min(1, this.stateT / 1.0);
-      this.dangerRing.position.set(this.x, 0.19, this.z);
+      this.dangerRing.position.set(this.x, this.world.deckY + 0.02, this.z);
       this.dangerRing.material.opacity = f * 0.55;
       this.dangerRing.scale.setScalar(1.3);
       if (this.stateT >= 1.0) {

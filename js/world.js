@@ -31,6 +31,12 @@ export class World {
     this.boss = null;
     this.bossDarkness = false; // boss phase 3 blacks out the whole room
     this.spawn = { x: 0, z: 0, angle: Math.PI };
+    // HEIGHT LAW (v3.20): the top surface of THIS room's floor. Ground decals
+    // (plates, act-here rings, doorway glows, scars) must sit above it or they
+    // are drawn INSIDE the floor and become invisible — which is exactly how
+    // the Deep Hall's pressure plate hid itself for two regions. Each shell
+    // builder sets its own value; 0 is a bare ground plane.
+    this.deckY = 0;
     this._animateHooks = [];
   }
 

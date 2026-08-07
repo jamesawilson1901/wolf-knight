@@ -17,12 +17,16 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { WS } from './worldstate.js';
 
+// BLIND-STRIP LAW (v3.20): the camera looks north over the den's south wall,
+// which hides a ~2u band of floor in front of it. Wren (z 3.2) and Bram
+// (z 3.6) both stood inside that band — measured, not guessed — so a kid
+// walking up to them saw a wall. Both pulled north into open ground.
 const VILLAGERS = [
-  { id: 'wren', file: './assets/chars/rogue_hooded.glb', x: -5.0, z: 3.2, ry: 0.7,
+  { id: 'wren', file: './assets/chars/rogue_hooded.glb', x: -3.8, z: 2.4, ry: 0.7,
     when: () => true },
   { id: 'rook', file: './assets/chars/ranger.glb', x: 5.3, z: -1.4, ry: -2.2,
     when: () => WS.get('ember', 'restored') },
-  { id: 'bram', file: './assets/chars/barbarian.glb', x: 3.9, z: 3.6, ry: -2.7,
+  { id: 'bram', file: './assets/chars/barbarian.glb', x: 3.9, z: 2.4, ry: -2.7,
     when: () => WS.get('stone', 'restored') },
 ];
 
