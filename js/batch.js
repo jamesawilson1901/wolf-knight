@@ -80,8 +80,20 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   const buckets = new Map();
   let looseSeen = 0, instancedSeen = 0, instanceCopies = 0;
 
-  const put = (mat, cast, recv, geo, owner) => {
-    const key = `${mat.uuid}|${cast ? 1 : 0}|${recv ? 1 : 0}`;
+  // MERGE PER SPATIAL CELL, NOT PER ROOM.
+  //
+  // Merging by material alone was a net LOSS, measured: Level 2's vc1 went
+  // 115 -> 120 draw calls when a tint fix made more props mergeable. A merged
+  // mesh spanning a whole 32 x 26 room can never be frustum-culled, and the
+  // camera only shows about 16 u across — so room-wide merging trades "half
+  // these props were off-screen and cost nothing" for "one mesh that always
+  // draws". Bucketing by cell too keeps both wins: neighbours still collapse
+  // into one draw, and a cell the camera is not looking at is skipped whole.
+  // This is the spatial chunking the performance brief asks for.
+  const CELL = 12;
+  const cellOf = (v) => Math.floor(v / CELL);
+  const put = (mat, cast, recv, geo, owner, cx, cz) => {
+    const key = `${mat.uuid}|${cast ? 1 : 0}|${recv ? 1 : 0}|${cx}|${cz}`;
     if (!buckets.has(key)) buckets.set(key, { mat, cast, recv, geos: [], owners: new Set() });
     const b = buckets.get(key);
     b.geos.push(geo);
@@ -107,8 +119,9 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
       const world4 = new THREE.Matrix4();
       for (let i = 0; i < o.count; i++) {
         o.getMatrixAt(i, local);
-        put(mat, o.castShadow, o.receiveShadow,
-          bakeGeometry(o.geometry, world4.multiplyMatrices(o.matrixWorld, local)), o);
+        const m4 = world4.multiplyMatrices(o.matrixWorld, local);
+        put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, m4), o,
+          cellOf(m4.elements[12]), cellOf(m4.elements[14]));
         instanceCopies++;
       }
       instancedSeen++;
@@ -116,15 +129,18 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     }
 
     o.updateWorldMatrix(true, false);
-    put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, o.matrixWorld), o);
+    put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, o.matrixWorld), o,
+      cellOf(o.matrixWorld.elements[12]), cellOf(o.matrixWorld.elements[14]));
     looseSeen++;
   });
 
   let draws = 0, failed = 0;
   for (const bucket of buckets.values()) {
     // a bucket of one saves nothing: one merged draw replaces one draw
+    // A bucket of two saves one call but permanently costs that pair its
+    // culling. Three is where merging starts paying for itself.
     let merged = null;
-    if (bucket.geos.length >= 2) {
+    if (bucket.geos.length >= 3) {
       try { merged = mergeGeometries(bucket.geos, false); } catch { merged = null; }
     }
     // the baked clones are scratch either way — merge copies out of them
@@ -139,9 +155,9 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     const mesh = new THREE.Mesh(merged, bucket.mat);
     mesh.castShadow = bucket.cast;
     mesh.receiveShadow = bucket.recv;
-    // one mesh now spans the whole room; per-object culling is meaningless —
-    // the bounding-sphere test would only ever answer "yes"
-    mesh.frustumCulled = false;
+    // a merged mesh now spans ONE CELL, not the room, so the bounding-sphere
+    // test is meaningful again and an off-screen cell is skipped whole
+    mesh.frustumCulled = true;
     mesh.name = 'batched';
     root.add(mesh);
     draws++;
