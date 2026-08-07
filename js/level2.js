@@ -758,7 +758,10 @@ export async function buildVc1(scene) {
   // where a shield plus a minion teaches "deal with the one you can hurt".
   world.markers.shieldSpots = [{ x: 5, z: 6 }];
   world.markers.minionSpots = [{ x: -6, z: -1 }];
-  world.markers.slimeSpots = [{ x: 9, z: -7 }];
+  // and no third body. Dropping one shield-bearer took this room 106 -> 102,
+  // still over; a character costs far more than the room's own geometry here
+  // (43 of the original 106 was three of them). Two enemies on a three-terrace
+  // stair is the right fight anyway — the stair IS the difficulty.
   breadcrumbs(world, [[0, 10], [5, 5], [5, 0], [-2, -6], [0, -11]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 101, 18, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
   return finish(world, spec, D);
