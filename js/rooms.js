@@ -507,14 +507,23 @@ async function buildR1(scene) {
   blockRow(world, 3.5, 2.5, 3.5, 2.9, 1.5);          // west edge, above gap
   blockRow(world, 3.5, 5.0, 3.5, 5.4, 1.5);          // west edge, below gap
   darkZone(world, 3.9, 8, 2.0, 6);
-  world.markers.pup1Spot = { x: 6.4, z: 4.2 };
+  // BLIND-STRIP LAW (v3.21.1): the pup used to sit at z 4.2 — deep in the
+  // ~2.5u strip of floor the camera can never see over the south wall. It is
+  // now in the NORTH half of the same nook: still hidden by darkness (which
+  // the Dark Wolf's eyes solve), no longer hidden by the camera (which
+  // nothing solves).
+  world.markers.pup1Spot = { x: 6.4, z: 2.6 };
   world.markers.darkNookMouth = { x: 3.0, z: 4.0 };
 
   // Burnable cubby (SW corner): pocket walled off, mouth plugged by vines.
-  blockRow(world, -4.0, 2.6, -4.0, 3.0, 1.5);        // east edge, above gap
-  blockRow(world, -7.5, 2.5, -4.5, 2.5, 1.5);        // north edge of cubby
-  burnable(world, 'r1_cubby', -3.95, 4.4);
-  world.markers.pup3Spot = { x: -6.4, z: 4.6 };
+  // Pulled ~1.6u north of where it started, for the same reason — this is
+  // the game's FIRST taught obstacle (Pip points at it in minute one), and
+  // a teaching moment the camera hides teaches nothing.
+  blockRow(world, -7.5, 1.6, -4.5, 1.6, 1.5);        // north edge of cubby
+  blockRow(world, -4.0, 1.7, -4.0, 2.1, 1.5);        // east edge, above the mouth
+  blockRow(world, -4.0, 3.9, -4.0, 5.4, 1.5);        // east edge, below the mouth
+  burnable(world, 'r1_cubby', -3.95, 3.0);
+  world.markers.pup3Spot = { x: -6.4, z: 2.8 };
 
   // Checkpoint CP1 at the exit, with a potion beside the fire
   checkpoint(world, 'cp1', 5.9, -4.4);
@@ -566,7 +575,7 @@ async function buildR1(scene) {
   ];
   world.markers.chestDefs = [
     { id: 'c_r1_rocks', tier: 'wood', x: -6.9, z: -2.6, ry: 1.2, loot: { shards: 8 } },
-    { id: 'c_r1_cubby', tier: 'wood', x: -7.0, z: 3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
+    { id: 'c_r1_cubby', tier: 'wood', x: -7.0, z: 2.8, ry: 0.8, loot: { shards: 12, potion: 1 } },
     // this one stands ON the big pool — only reachable once the lava cools
     ...(state.flags.keys.ember
       ? [{ id: 'c_r1_basalt', tier: 'gold', x: -5.2, z: -4.6, ry: 0.4, loot: { shards: 15, heartPiece: 1 } }]
@@ -593,7 +602,7 @@ async function buildR1b(scene) {
   // shaped rooms). Corridors ~2 wide; the route snakes N → E → S → E.
   blockRow(world, -3.2, -3.4, 3.4, -3.4, 1.5);   // upper run
   blockRow(world, -1.2, -0.6, 5.0, -0.6, 1.5);   // middle run (offset mouth)
-  blockRow(world, -3.2, 2.2, 2.2, 2.2, 1.5);     // lower run
+  blockRow(world, -5.9, 2.2, 1.8, 2.2, 1.5);     // lower run (now wall-to-gap)
   blockRow(world, -3.2, -0.6, -3.2, 2.2, 1.5);   // west spine between runs
   world.markers.breakables = [
     { x: -4.6, z: -4.6, kind: 'crate', shards: 2 },
@@ -605,13 +614,20 @@ async function buildR1b(scene) {
   // through, not a nicety (user rule: darkness = the whole room)
   darkZone(world, -5.9, 5.9, -5.9, 5.9);
   world.markers.shadeSpots = [
-    { x: 3.4, z: -4.8 }, { x: 4.8, z: -2.2 }, { x: -3.8, z: 4.4 },
+    { x: 3.4, z: -4.8 }, { x: 4.8, z: -2.2 }, { x: -3.8, z: 0.8 },
   ];
 
-  // the secret: a burnable clump walls off the treasure nook (rule 6)
-  burnable(world, 'r1b_secret', 3.6, 3.6, 0.6);
+  // the secret: a burnable clump walls off the treasure nook (rule 6).
+  // v3.21.1 — the nook now has a real east wall and sits a full 2u further
+  // north. A SECRET is allowed to be hidden by darkness; it is not allowed to
+  // be hidden by the camera, because then finding it is luck, not searching.
+  blockRow(world, 4.2, 2.2, 5.9, 2.2, 1.5);      // east half of the lower run
+  // ...and now the clump is the ONLY way through. The old comment claimed it
+  // "walls off the treasure nook"; geometrically it never did — the whole south
+  // band was open from the west, so the secret was decoration, not a lock.
+  burnable(world, 'r1b_secret', 3.0, 2.4, 0.6);  // the plug in the 1.4u mouth
   world.markers.chestDefs = [
-    { id: 'c_r1b_maze', tier: 'wood', x: 5.0, z: 4.8, ry: 2.4, loot: { shards: 14, potion: 1 } },
+    { id: 'c_r1b_maze', tier: 'wood', x: 5.0, z: 3.2, ry: 2.4, loot: { shards: 14, potion: 1 } },
   ];
   potionPickup(world, -5.0, -4.8);
 
@@ -959,7 +975,7 @@ async function buildR2(scene) {
     { kind: 'sb', x: 5.4, z: 2.2, s: 1.5, ry: 3.3, cr: 0.32 },
   ]);
   world.markers.pup2Spot = { x: 7.2, z: 3.0 };
-  world.markers.houndSpot = { x: 6.0, z: 3.6 };
+  world.markers.houndSpot = { x: 6.0, z: 1.9 }; // out of the camera's blind strip
   world.markers.branchMouth = { x: 4.6, z: 3.2 };
 
   // "NOT YET" GATE (Earth Wolf): one huge gold-veined boulder plugs a pocket
@@ -1296,7 +1312,9 @@ async function buildKa(scene) {
   }
   // COMBINE: shades haunt the last brazier — slam does both jobs at once
   world.markers.shadeSpots.push({ x: 6.4, z: 2.2 }, { x: 7.8, z: 1.0 });
-  brazier(world, prepareModel, dkit.torch, 'ka_combat', 7.0, 2.8, () => {
+  // (z 1.6, not 2.8 — a brazier the kid has to LIGHT may never sit in the
+  // strip of floor the camera cannot see over the south wall)
+  brazier(world, prepareModel, dkit.torch, 'ka_combat', 7.0, 1.6, () => {
     WS.set('ember', 'kiln_A_done');
   });
   // one-way glowing drop back to the hub once the pair puzzle is done
@@ -1942,22 +1960,22 @@ async function buildE1(scene) {
       loadGLB('./assets/anims/rig-medium-general.glb'),
     ]);
     const fire = prepareModel(dkit.woodfire.scene.clone());
-    fire.position.set(-4.2, 0, 4.6);
+    fire.position.set(-4.2, 0, 3.2);
     fire.scale.setScalar(1.1);
     world.add(fire);
-    world.addCircle(-4.2, 4.6, 0.4);
+    world.addCircle(-4.2, 3.2, 0.4);
     const fl = new THREE.PointLight(0xffa54a, 3.0, 7, 1.8);
-    fl.position.set(-4.2, 0.8, 4.6);
+    fl.position.set(-4.2, 0.8, 3.2);
     world.add(fl);
     const crate = prepareModel(dkit.crate.scene.clone());
-    crate.position.set(-5.4, 0, 5.0);
+    crate.position.set(-5.4, 0, 3.6);
     crate.rotation.y = 0.5;
     world.add(crate);
-    world.addCircle(-5.4, 5.0, 0.4);
+    world.addCircle(-5.4, 3.6, 0.4);
     // Bram = the mage model in earth-brown work clothes (tinted clone)
     const bram = prepareCharacter(SkeletonUtils.clone(mageGltf.scene));
     bram.scale.setScalar(0.5);
-    bram.position.set(-4.8, 0, 3.8);
+    bram.position.set(-4.8, 0, 2.4);
     bram.rotation.y = 0.9; // faces the fire + the entrance
     bram.traverse((n) => {
       if (!n.isMesh) return;
@@ -1970,7 +1988,7 @@ async function buildE1(scene) {
       if (n.material.length === 1) n.material = n.material[0];
     });
     world.add(bram);
-    world.addCircle(-4.8, 3.8, 0.35);
+    world.addCircle(-4.8, 2.4, 0.35);
     const bramMixer = new THREE.AnimationMixer(bram);
     const idleClip = generalAnims.animations.find((c) => c.name === 'Idle_A');
     if (idleClip) bramMixer.clipAction(idleClip).play();
@@ -1978,7 +1996,10 @@ async function buildE1(scene) {
       bramMixer.update(dt);
       fl.intensity = 2.7 + Math.sin(t * 7.3) * 0.5;
     });
-    world.markers.campSpot = { x: -4.6, z: 4.2 };
+    // v3.21.1: the whole camp shifted 1.4u north — a campfire's glow reaches
+    // across a dark cavern, but Bram himself was standing in the strip of floor
+    // the camera never shows, so a kid could hear him and never find him.
+    world.markers.campSpot = { x: -4.6, z: 2.8 };
   }
 
   // The NE treasure alcove — open to any curious explorer. (v3.18: the old
@@ -2298,11 +2319,18 @@ async function buildE2(scene) {
   // showed no real machinery. The plate simply opens the crypt gate.)
 
   // Region 3's LOCK, shown a region early (machine-checked in regions.js):
-  // a thorny bramble tangle chokes the SE treasure corner. Only the
-  // Verdant Wolf's vine-lash will cut it — for now it is a promise.
+  // a thorny bramble tangle chokes an east alcove. Only the Verdant Wolf's
+  // vine-lash will cut it — for now it is a promise.
+  // v3.21.1: it used to choke the SE *corner* (z 4.7), which put the promise
+  // AND its visible reward inside the camera's blind strip — a lock you are
+  // meant to remember for a whole region, that you can never actually see.
+  // The alcove is now built out of two short walls further north, so the
+  // corner geometry is no longer what makes the pocket.
+  blockRow(world, 7.8, 1.9, 10.2, 1.9, 1.4);   // alcove roof
+  blockRow(world, 7.8, 4.4, 10.2, 4.4, 1.4);   // alcove floor
   await (async () => {
     const bush = await loadGLB('./assets/env/bush-large.glb');
-    brambleGate(world, prepareModel, bush, 'e2_bramble', 8.2, 4.7);
+    brambleGate(world, prepareModel, bush, 'e2_bramble', 7.4, 3.1);
   })();
 
   // Post-restore dressing: glow-moss — and ONE crack that never mends
@@ -2343,16 +2371,18 @@ async function buildE2(scene) {
   // ...and a second pup shivers in the far corner past the spikes
   world.markers.pup5Spot = { x: 9.2, z: -5.2 };
 
-  checkpoint(world, 'cp_e2', 7.6, 3.0);
+  // the pre-boss rest moved west: the bramble alcove now occupies the east
+  // band, and a rest point must never share space with a locked promise
+  checkpoint(world, 'cp_e2', 6.0, 3.0);
   potionPickup(world, -8.6, -4.2);
-  potionPickup(world, 8.4, 3.2); // campfire + potion directly before the boss door (contract law)
+  potionPickup(world, 6.8, 2.6); // campfire + potion directly before the boss door (contract law)
   await mushroomPatches(world, [
-    [-7.8, 3.2], [-1.2, -2.2, 1.3], [2.2, 4.6], [7.0, 0.8, 2.0], [-4.6, -4.8], [8.6, 4.6],
+    [-7.8, 3.2], [-1.2, -2.2, 1.3], [2.2, 4.6], [7.0, 0.8, 2.0], [-4.6, -4.8], [8.6, 5.4],
   ]);
   world.markers.chestDefs = [
     { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
     // visible through the brambles — region 3's promise reward
-    { id: 'c_e2_bramble', tier: 'gold', x: 9.2, z: 5.3, ry: -2.4, loot: { shards: 18, powerup: 'feather' } },
+    { id: 'c_e2_bramble', tier: 'gold', x: 9.3, z: 3.1, ry: -2.4, loot: { shards: 18, powerup: 'feather' } },
   ];
   world.markers.breakables = [
     { x: -8.6, z: 1.8, kind: 'barrel', shards: 2 },
@@ -3529,8 +3559,8 @@ async function buildF2(scene) {
   // one lone flyer, parked away from the braziers — flavour, not interference
   world.markers.mothSpots = [{ x: 6.6, z: 3.4, variant: 'frostmoth' }];
   world.markers.houndSpots = [{ x: -6.2, z: 3.2, variant: 'rime' }];
-  checkpoint(world, 'cp_f2', -7.4, 5.2);
-  potionPickup(world, 7.4, 5.2);
+  checkpoint(world, 'cp_f2', -7.4, 3.6);
+  potionPickup(world, 7.4, 3.6);
   world.markers.chestDefs = [
     { id: 'c_f2_hall', tier: 'wood', x: -8.0, z: -5.8, ry: 1.3, loot: { shards: 16, potion: 1 } },
   ];
@@ -3616,13 +3646,13 @@ async function buildF3(scene) {
   };
 
   drift(world, [
-    ['rockL', -7.6, -5.4, 1.3, 0.8, 0.95], ['rockL', 7.6, -5.6, 1.3, 2.0, 0.9],
+    ['rockL', -6.6, -5.0, 1.3, 0.8, 0.95], ['rockL', 7.6, -5.6, 1.3, 2.0, 0.9],
     ['pile', -7.8, 5.0, 1.6, 0.6, 0], ['pile', 7.8, 5.0, 1.5, 1.6, 0],
   ]);
   world.markers.slimeSpots = [
     { x: -5.6, z: 3.2, variant: 'snowblob' }, { x: 5.8, z: 3.4, variant: 'snowblob' },
   ];
-  checkpoint(world, 'cp_f3', -7.6, 5.6);
+  checkpoint(world, 'cp_f3', -7.6, 3.8);
   world.markers.chestDefs = [
     { id: 'c_f3_lake', tier: 'wood', x: -8.0, z: -6.0, ry: 1.2, loot: { shards: 16 } },
   ];
