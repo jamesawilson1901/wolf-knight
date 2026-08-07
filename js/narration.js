@@ -16,6 +16,7 @@ const VOICES = {
   wren: { rate: 0.95, pitch: 1.05, label: 'Wren' },
   rook: { rate: 0.9, pitch: 0.9, label: 'Rook' },
   sylva: { rate: 0.92, pitch: 1.15, label: 'Sylva' },
+  boreal: { rate: 0.8, pitch: 0.75, label: 'Boreal' }, // slow, vast, wintry
 };
 
 export const LINES = {
@@ -136,6 +137,29 @@ export const LINES = {
   wild_complete: { voice: 'pip', text: 'The Wild Woods breathe again. Three lights found, Kael… four to go.' },
   all_pups_wild: { voice: 'pip', text: 'NINE pups safe! The den is bursting with happy howls. Your heart grows stronger!' },
   luna_dream_3: { voice: 'luna', text: 'Three lights burn beside you now, brave one. Rest. Far to the north, the frost peaks glitter… and wait.' },
+
+  // --- FROSTPEAK (region 4, v3.21)
+  frostpeak_open: { voice: 'pip', text: 'The trees stop up there, Kael. That white line above them? That’s Frostpeak. Wrap up warm — well, you’ve got fur.' },
+  frost_enter: { voice: 'pip', text: 'Frostpeak! Brrr. Everything up here is frozen SOLID… and I don’t think it froze on its own.' },
+  rimehound_intro: { voice: 'pip', text: 'A rime hound! Ice for a coat — and ice HATES fire. You know exactly which wolf to be.' },
+  icebrazier_hint: { voice: 'pip', text: 'Three fire bowls, all sealed in ice! BREATHE fire to melt the ice, then SLAM to light the bowl. Melt, then light!' },
+  icebrazier_thaw: { voice: 'pip', text: 'Quick, Kael — melted ice freezes back over if you leave the bowl unlit. Finish what you start!' },
+  icebrazier_open: { voice: 'pip', text: 'All three burning! The frost gate cracks apart. Well done!' },
+  slide_hint: { voice: 'pip', text: 'Careful — the lake is SLIPPERY. Push a boulder and it slides until something stops it. Bump it sideways into a rock FIRST, then send it north!' },
+  slide_open: { voice: 'pip', text: 'Both circles held! You planned that, Kael. That was proper clever.' },
+  frost_boss_door: { voice: 'pip', text: 'Something huge is circling up there. Wings, Kael. Great big frozen wings. Keep your feet moving.' },
+  boreal_intro: { voice: 'grimm', text: 'The sky-serpent of the peak, little knight. My frost sits deep in her bones. She will not even see you fall.' },
+  boreal_duel: { voice: 'pip', text: 'She’s too high to bite! THROW at her — flying things take the worst of it. Then run when she lines up!' },
+  boreal_dive_tell: { voice: 'pip', text: 'The red stripe! That’s where she’s coming down — get OUT of it!' },
+  boreal_grounded: { voice: 'pip', text: 'She’s crashed! Gold ring — that’s your moment. HIT HER!' },
+  boreal_defeat: { voice: 'boreal', text: 'The cold… lets go of me. I am Boreal, who was the storm. You struck me kindly, little knight.' },
+  frost_grant: { voice: 'boreal', text: 'Take the winter in my heart — the Frost Wolf. Breathe, and even stone must let you pass.' },
+  frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!' },
+  shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
+  frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },
+  frost_complete: { voice: 'pip', text: 'Frostpeak is still and safe. Four lights found, Kael… three to go.' },
+  all_pups_frost: { voice: 'pip', text: 'TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!' },
+  luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now listen for water — something calls beneath the waves.' },
 };
 
 export class Narration {

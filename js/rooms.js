@@ -10,10 +10,10 @@ import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './a
 import { World } from './world.js';
 import { state } from './state.js';
 import { spawnEnemies } from './enemies.js';
-import { Shadowgrip } from './boss.js';
+import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier, brambleGate, iceGate } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 
@@ -3069,11 +3069,19 @@ async function buildW4(scene) {
 async function buildW5(scene) {
   const world = new World(scene);
   await loadForestKit();
+  // Once Sylva is free the thorns part in the north and the WAY UP opens:
+  // the treeline gives out and Frostpeak begins (region 4).
+  const onward = !!state.flags.sylvaDefeated;
   buildForestShell(world, 16, 16, [
     { side: 's', from: -1.3, to: 1.3 }, // back to the Bramble Heart
+    ...(onward ? [{ side: 'n', from: -1.3, to: 1.3 }] : []), // up to the Rime Gate
   ]);
   world.spawn = { x: 0, z: 6.2, angle: Math.PI };
   world.addDoor(-1.3, 1.3, 7.85, 9.2, 'w4', { x: 0, z: -4.9, angle: 0 });
+  if (onward) {
+    world.addDoor(-1.3, 1.3, -9.2, -7.85, 'f1', { x: 0, z: 4.2, angle: Math.PI });
+    world.markers.frostWaySpot = { x: 0, z: -6.6 };
+  }
 
   // scattered cover — the duel weaves between old stones
   grove(world, [
@@ -3154,19 +3162,585 @@ function blockRowRocks(world, x0, z0, x1, z1) {
   world.addBox(Math.min(x0, x1) - pad, Math.max(x0, x1) + pad, Math.min(z0, z1) - pad, Math.max(z0, z1) + pad);
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
+// ---------------------------------------------------------------------------
+// FROSTPEAK (region 4, v3.21) — the mountain above the woods. Seven rooms and
+// two puzzle DOORS that braid every verb the kids already own:
+//   • the Icebound Hall — braziers sealed in ice. FIRE BREATH melts the shell,
+//     the FIRE SLAM lights the bowl. Two fire verbs, one door; and the cold
+//     creeps back over anything melted but left unlit.
+//   • the Frozen Lake — the Stoneroot boulders on ICE. A push no longer takes
+//     one polite step; the stone SKIDS until a rock stops it. Line the lane
+//     up first, then send it. (Kael never slides. That is on purpose.)
+// Boreal, the Rimebound, circles the summit — the first boss that FLIES, so
+// the region-1 law "bolts hit flyers for full damage" finally pays out.
+// The Frost Wolf is her gift, which makes every ice block back down the
+// mountain — including the Mossy Dell's frozen spring — a reason to return.
+// ---------------------------------------------------------------------------
+
+let skit = null;
+async function loadSnowKit() {
+  if (skit) return skit;
+  const base = './assets/env/snow/';
+  const names = {
+    treeA: 'tree-snow-a.glb', treeB: 'tree-snow-b.glb', treeC: 'tree-snow-c.glb',
+    rockL: 'rocks-large.glb', rockM: 'rocks-medium.glb', rockS: 'rocks-small.glb',
+    pile: 'snow-pile.glb', bunker: 'snow-bunker.glb',
+    flat: 'snow-flat.glb', flatL: 'snow-flat-large.glb',
+  };
+  const entries = await Promise.all(
+    Object.entries(names).map(async ([k, f]) => [k, await loadGLB(base + f)])
+  );
+  skit = Object.fromEntries(entries);
+  // The Holiday Kit's rocks sample a DIRT-BROWN cell of the shared colormap —
+  // on snow they read as mud, not mountain. Drop the atlas on those three and
+  // give them flat frost-slate (asset-multiplication law: recolour what we
+  // already have rather than fetch another pack).
+  // NOTE: every piece in this pack names its material "colormap", and
+  // assets.js caches prepared materials BY NAME — so a recoloured rock must
+  // also be RENAMED, or prepareModel hands it straight back the shared
+  // texture-atlas material and the tint silently vanishes.
+  // The drift pieces sample a dark cell of the same atlas — a snow ridge came
+  // out looking like a wall of coal. They get flat SNOW instead. (Only the
+  // firs keep the atlas: their two-tone bark/snow reads correctly.)
+  for (const [k, hex] of [
+    ['rockL', 0x9aabbd], ['rockM', 0xa6b6c6], ['rockS', 0xb2c0ce],
+    ['pile', 0xf2f8ff], ['bunker', 0xe8f2fb], ['flat', 0xe4eef8], ['flatL', 0xe4eef8],
+  ]) {
+    skit[k].scene.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      n.material.name = 'snowrock_' + k;
+      n.material.map = null;
+      n.material.color.setHex(hex);
+      n.material.roughness = 0.95;
+      n.material.needsUpdate = true;
+    });
+  }
+  return skit;
+}
+
+// Snow shell: a pale ground plane, a border of snow-laden firs (n/w/e) and —
+// per the BLIND-STRIP LAW — nothing on the south edge taller than a snow
+// drift, because the camera looks north straight over it.
+function buildSnowShell(world, w, d, gaps = []) {
+  const halfW = w / 2, halfD = d / 2;
+  world.deckY = 0; // bare ground plane (height law)
+  world.bgColor = 0x1b2735;
+  // COLD LIGHT: the global rig is firelit (warm key, brown bounce) and it
+  // turned the snow pink. Frostpeak asks for its own hues — a pale blue sky
+  // bounce and a white-blue sun. Nothing else in the game changes.
+  world.lightTint = { sky: 0xbcd4ea, ground: 0x6c7f96, key: 0xeaf4ff };
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(w + 8, d + 8),
+    new THREE.MeshStandardMaterial({ color: 0xeaf2fa, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  world.add(ground);
+
+  const inGap = (side, coord) =>
+    gaps.some((g) => g.side === side && coord > g.from && coord < g.to);
+
+  // fir border (n/w/e) — three shapes interleaved, deterministic jitter
+  const treeP = { treeA: [], treeB: [], treeC: [] };
+  const keys = ['treeA', 'treeB', 'treeA', 'treeC', 'treeB'];
+  let ti = 0;
+  const addTree = (x, z, side, coord) => {
+    if (inGap(side, coord)) return;
+    const k = keys[ti++ % keys.length];
+    treeP[k].push({
+      x: x + ((ti * 13) % 5 - 2) * 0.11, z: z + ((ti * 7) % 5 - 2) * 0.11,
+      ry: (ti % 8) * 0.8, s: 1.15 + (ti % 3) * 0.18,
+    });
+  };
+  for (let tx = 0; tx <= w; tx += 1.5) addTree(tx - halfW, -halfD - 0.6, 'n', tx - halfW);
+  for (let tz = 0; tz <= d; tz += 1.5) {
+    addTree(-halfW - 0.6, tz - halfD, 'w', tz - halfD);
+    addTree(halfW + 0.6, tz - halfD, 'e', tz - halfD);
+  }
+  for (const [k, ps] of Object.entries(treeP)) {
+    if (ps.length) world.add(instancePlacements(skit[k].scene, ps));
+  }
+  // low south border: drifts + small rocks, never taller than Kael's knee
+  const pileP = [], rockP = [];
+  for (let tx = 0; tx <= w; tx += 1.2) {
+    const coord = tx - halfW;
+    if (inGap('s', coord)) continue;
+    (tx % 2.4 < 1.2 ? pileP : rockP).push({
+      x: coord, z: halfD + 0.5, ry: tx * 1.7, s: 1.3 + (tx % 2) * 0.3,
+    });
+  }
+  if (pileP.length) world.add(instancePlacements(skit.pile.scene, pileP));
+  if (rockP.length) world.add(instancePlacements(skit.rockS.scene, rockP));
+
+  // colliders, split around the gaps (the same segment logic every shell uses)
+  const segments = (side, lo, hi) => {
+    const cuts = gaps.filter((g) => g.side === side).sort((a, b) => a.from - b.from);
+    let start = lo;
+    const out = [];
+    for (const c of cuts) {
+      if (c.from > start) out.push([start, c.from]);
+      start = c.to;
+    }
+    if (start < hi) out.push([start, hi]);
+    return out;
+  };
+  for (const [a, b] of segments('n', -halfW - 1, halfW + 1)) world.addBox(a, b, -halfD - 1.3, -halfD + 0.1);
+  for (const [a, b] of segments('s', -halfW - 1, halfW + 1)) world.addBox(a, b, halfD - 0.1, halfD + 1.3);
+  for (const [a, b] of segments('w', -halfD - 1, halfD + 1)) world.addBox(-halfW - 1.3, -halfW + 0.1, a, b);
+  for (const [a, b] of segments('e', -halfD - 1, halfD + 1)) world.addBox(halfW - 0.1, halfW + 1.3, a, b);
+
+  // wind-scoured drifts underfoot — flat snow patches, one instanced draw.
+  // They are 0.1 tall, so they are kept OUT of the middle where plates live.
+  const flats = [];
+  for (let i = 0; i < 10; i++) {
+    const fx = ((i * 41) % (w - 3)) - halfW + 1.5;
+    const fz = ((i * 27) % (d - 3)) - halfD + 1.5;
+    if (Math.abs(fx) < 2.2 && Math.abs(fz) < 5) continue; // keep the lanes clean
+    flats.push({ x: fx, z: fz, ry: i * 1.4, s: 0.9 + (i % 3) * 0.2 });
+  }
+  if (flats.length) world.add(instancePlacements(skit.flat.scene, flats, { castShadow: false }));
+
+  // FALLING SNOW: one Points cloud, ~90 flakes, recycled forever. Cheap on a
+  // phone and it is the single thing that says "you are up the mountain".
+  const N = 90;
+  const pos = new Float32Array(N * 3);
+  const vel = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    pos[i * 3] = (Math.random() * 2 - 1) * (halfW + 2);
+    pos[i * 3 + 1] = Math.random() * 6;
+    pos[i * 3 + 2] = (Math.random() * 2 - 1) * (halfD + 2);
+    vel[i] = 0.5 + Math.random() * 0.7;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const snow = new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.09, transparent: true, opacity: 0.8, depthWrite: false,
+  }));
+  world.add(snow);
+  world.onAnimate((t, dt) => {
+    const p = geo.attributes.position.array;
+    for (let i = 0; i < N; i++) {
+      p[i * 3 + 1] -= vel[i] * dt;
+      p[i * 3] += Math.sin(t * 0.7 + i) * dt * 0.25; // the wind nudges them
+      if (p[i * 3 + 1] < 0) {
+        p[i * 3 + 1] = 6;
+        p[i * 3] = (Math.random() * 2 - 1) * (halfW + 2);
+        p[i * 3 + 2] = (Math.random() * 2 - 1) * (halfD + 2);
+      }
+    }
+    geo.attributes.position.needsUpdate = true;
+  });
+  return { halfW, halfD };
+}
+
+// Snow rocks / drifts with colliders — Frostpeak's version of `grove`.
+function drift(world, spots) {
+  for (const [kind, x, z, s, ry, cr] of spots) {
+    const m = prepareModel(skit[kind].scene.clone());
+    m.position.set(x, 0, z);
+    m.rotation.y = ry || 0;
+    m.scale.setScalar(s || 1.2);
+    world.add(m);
+    if (cr) world.addCircle(x, z, cr);
+  }
+}
+
+// A low snow ridge with a real collider — the wall that shapes the ice lanes.
+function snowRidge(world, x0, z0, x1, z1) {
+  const dx = x1 - x0, dz = z1 - z0;
+  const len = Math.hypot(dx, dz);
+  const count = Math.max(1, Math.round(len / 1.15));
+  const ps = [];
+  for (let i = 0; i <= count; i++) {
+    const f = i / count;
+    ps.push({ x: x0 + dx * f, z: z0 + dz * f, ry: i * 2.3, s: 1.35 + (i % 2) * 0.2 });
+  }
+  world.add(instancePlacements(skit.bunker.scene, ps));
+  const pad = 0.5;
+  world.addBox(Math.min(x0, x1) - pad, Math.max(x0, x1) + pad, Math.min(z0, z1) - pad, Math.max(z0, z1) + pad);
+}
+
+// A frost gate across a doorway: three ice spurs that burst when open() runs.
+// (The Wild Woods had thorns; the mountain has rime. Same grammar.)
+function frostGate(world, x, z, span = 2.8) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.4,
+    transparent: true, opacity: 0.88, roughness: 0.25,
+  });
+  for (const [ox, h, ry] of [[-span * 0.33, 1.7, 0.4], [0, 2.0, 2.2], [span * 0.33, 1.6, 4.0]]) {
+    const spur = new THREE.Mesh(new THREE.ConeGeometry(0.42, h, 6), mat);
+    spur.position.set(x + ox, h / 2, z);
+    spur.rotation.y = ry;
+    group.add(spur);
+  }
+  world.add(group);
+  world.onAnimate((t) => { mat.emissiveIntensity = 0.35 + 0.15 * Math.sin(t * 1.7 + x); });
+  const collider = { minX: x - span / 2 - 0.4, maxX: x + span / 2 + 0.4, minZ: z - 0.8, maxZ: z + 0.8 };
+  world.boxColliders.push(collider);
+  return {
+    open: (silent = false) => {
+      world.root.remove(group);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      if (!silent) {
+        audio.play('parry', { volume: 0.8, rate: 1.7 });  // the crack
+        audio.play('puff', { volume: 0.85, rate: 1.2 });
+      }
+    },
+  };
+}
+
+// The frozen lake surface: a pale sheet laid just above the ground, and the
+// flag that makes pushed boulders SKID (world.slickFloor).
+function iceSheet(world, minX, maxX, minZ, maxZ) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xa8d8f0, emissive: 0x5f9fd0, emissiveIntensity: 0.25,
+    transparent: true, opacity: 0.7, roughness: 0.12, metalness: 0.1,
+  });
+  const sheet = new THREE.Mesh(new THREE.PlaneGeometry(maxX - minX, maxZ - minZ), mat);
+  sheet.rotation.x = -Math.PI / 2;
+  // HEIGHT LAW: the sheet sits at deck + 0.02, BELOW every plate decal
+  // (base -0.015, glow +0.05, ring +0.04) so the plates still read.
+  sheet.position.set((minX + maxX) / 2, world.deckY + 0.02, (minZ + maxZ) / 2);
+  world.add(sheet);
+  world.onAnimate((t) => { mat.emissiveIntensity = 0.2 + 0.08 * Math.sin(t * 1.1); });
+  world.slickFloor = true;
+  return sheet;
+}
+
+// --- f1 — The Rime Gate (entry: the air bites; the first rime hounds)
+async function buildF1(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 18, 12, [
+    { side: 's', from: -1.3, to: 1.3 }, // back down to Sylva's Glade
+    { side: 'n', from: -1.3, to: 1.3 }, // deeper: the Icebound Hall
+    { side: 'e', from: -1.2, to: 1.2 }, // the Frozen Cairn (branch)
+  ]);
+  world.spawn = { x: 0, z: 4.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 5.85, 7.2, 'w5', { x: 0, z: -6.4, angle: 0 });
+  world.addDoor(-1.3, 1.3, -7.2, -5.85, 'f2', { x: 0, z: 5.6, angle: Math.PI });
+  world.addDoor(8.85, 10.2, -1.2, 1.2, 'f1b', { x: -5.6, z: 0, angle: Math.PI / 2 });
+
+  drift(world, [
+    ['rockL', -6.0, -3.4, 1.3, 0.7, 0.95], ['rockL', 6.0, -3.8, 1.25, 2.3, 0.9],
+    ['rockM', -3.2, -0.6, 1.3, 1.2, 0.6], ['rockM', 3.6, 1.8, 1.25, 0.4, 0.6],
+    ['pile', -7.0, 1.2, 1.6, 2.8, 0], ['pile', 7.0, 2.4, 1.5, 3.4, 0],
+  ]);
+  world.markers.houndSpots = [
+    { x: -4.0, z: -1.4, variant: 'rime' }, { x: 4.4, z: 0.4, variant: 'rime' },
+  ];
+  world.markers.slimeSpots = [{ x: -1.4, z: -3.4, variant: 'snowblob' }];
+  checkpoint(world, 'cp_f1', -6.8, 3.2);
+  potionPickup(world, 6.6, 3.4);
+  world.markers.chestDefs = [
+    { id: 'c_f1_gate', tier: 'wood', x: -7.8, z: -4.6, ry: 1.1, loot: { shards: 14 } },
+  ];
+  world.markers.breakables = [
+    { x: 7.4, z: -4.8, kind: 'crate', shards: 3 },
+    { x: -2.4, z: 3.4, kind: 'crate', shards: 2 },
+  ];
+  return world;
+}
+
+// --- f1b — The Frozen Cairn (branch: a pup, and a chest sealed behind ice.
+// The Frost Wolf is still up the mountain, so this is a PROMISE: come back.)
+async function buildF1b(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 14, 10, [
+    { side: 'w', from: -1.2, to: 1.2 }, // back to the Rime Gate
+  ]);
+  world.spawn = { x: -5.6, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-8.2, -6.85, -1.2, 1.2, 'f1', { x: 8.2, z: 0, angle: -Math.PI / 2 });
+
+  drift(world, [
+    ['rockL', -2.6, -3.2, 1.35, 0.9, 0.95], ['rockM', 2.4, 2.4, 1.3, 1.7, 0.6],
+    ['pile', 0.2, -1.2, 1.6, 2.2, 0], ['rockM', -4.4, 2.6, 1.25, 0.8, 0.6],
+  ]);
+  // the cairn nook: a rock spur walls it, the ice seals the only way in
+  snowRidge(world, 4.4, -1.6, 6.9, -1.6);
+  iceGate(world, 5.0, -3.2, 'f_cairn', 'frost');
+  world.markers.chestDefs = [
+    { id: 'c_f1b_ice', tier: 'gold', x: 6.3, z: -3.2, ry: -1.6, loot: { shards: 22, heartPiece: 1 } },
+    { id: 'c_f1b_cairn', tier: 'wood', x: -6.2, z: -3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
+  ];
+  world.markers.slimeSpots = [
+    { x: -1.6, z: 2.6, variant: 'snowblob' }, { x: 2.6, z: -2.6, variant: 'snowblob' },
+  ];
+  world.markers.pup10Spot = { x: -2.2, z: -3.4 };
+  world.markers.breakables = [{ x: 6.4, z: 2.6, kind: 'barrel', shards: 3 }];
+  return world;
+}
+
+// --- f2 — The Icebound Hall (PUZZLE DOOR 1: three braziers under ice.
+// BREATHE to melt the shell, SLAM to light the bowl — two fire verbs
+// chained. Anything melted and left unlit seals over again, so the kids
+// learn to finish what they start. Kept BRIGHT on purpose: a timer and a
+// dark room together is cruelty, not difficulty.)
+async function buildF2(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 18, 14, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Rime Gate
+    { side: 'n', from: -1.3, to: 1.3 }, // the Frozen Lake (frost-sealed)
+    { side: 'e', from: -1.2, to: 1.2 }, // the Glacier Nook (branch)
+  ]);
+  world.spawn = { x: 0, z: 5.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 6.85, 8.2, 'f1', { x: 0, z: -4.9, angle: 0 });
+  world.addDoor(-1.3, 1.3, -8.2, -6.85, 'f3', { x: 0, z: 5.6, angle: Math.PI });
+  world.addDoor(8.85, 10.2, -1.2, 1.2, 'f2b', { x: -5.0, z: 0, angle: Math.PI / 2 });
+
+  const done = () => !!WS.get('frost', 'braziers');
+  const gate = frostGate(world, 0, -7.05, 2.8);
+  if (done()) gate.open(true);
+  let litCount = 0;
+  const onLit = () => {
+    litCount++;
+    audio.play('pup-chime', { volume: 0.7, rate: 1.1 + litCount * 0.15 }); // rising
+    if (litCount >= 3 && !done()) {
+      WS.set('frost', 'braziers');
+      gate.open();
+      audio.play('checkpoint', { volume: 0.9, rate: 1.2 });
+    }
+  };
+  // gentle mode gets a far longer thaw before the cold wins back
+  const REFREEZE = state.settings.easy ? 45 : 26;
+  const B = [
+    brazier(world, prepareModel, dkit.torch, 'f2_b1', -5.4, -1.2, onLit),
+    brazier(world, prepareModel, dkit.torch, 'f2_b2', 0, -4.2, onLit),
+    brazier(world, prepareModel, dkit.torch, 'f2_b3', 5.4, -1.2, onLit),
+  ];
+  if (done()) {
+    for (const b of B) { b.lit = true; b.flame.visible = true; b.light.intensity = 5; }
+  } else {
+    for (const b of B) freezeBrazier(world, b, REFREEZE);
+  }
+  world.markers.brazierSpots = B.map((b) => ({ x: b.x, z: b.z }));
+
+  drift(world, [
+    ['rockL', -7.2, -4.6, 1.35, 1.1, 0.95], ['rockL', 7.2, -4.8, 1.3, 2.6, 0.9],
+    ['rockM', -3.0, 2.6, 1.3, 0.5, 0.6], ['rockM', 3.2, 2.8, 1.25, 1.9, 0.6],
+    ['pile', -7.6, 1.6, 1.6, 0.4, 0],
+  ]);
+  // one lone flyer, parked away from the braziers — flavour, not interference
+  world.markers.mothSpots = [{ x: 6.6, z: 3.4, variant: 'frostmoth' }];
+  world.markers.houndSpots = [{ x: -6.2, z: 3.2, variant: 'rime' }];
+  checkpoint(world, 'cp_f2', -7.4, 5.2);
+  potionPickup(world, 7.4, 5.2);
+  world.markers.chestDefs = [
+    { id: 'c_f2_hall', tier: 'wood', x: -8.0, z: -5.8, ry: 1.3, loot: { shards: 16, potion: 1 } },
+  ];
+  world.markers.breakables = [{ x: 7.8, z: 4.4, kind: 'crate', shards: 3 }];
+  return world;
+}
+
+// --- f2b — The Glacier Nook (branch: an Elder Rime Hound stands over a pup)
+async function buildF2b(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 12, 10, [
+    { side: 'w', from: -1.2, to: 1.2 },
+  ]);
+  world.spawn = { x: -5.0, z: 0, angle: Math.PI / 2 };
+  world.addDoor(-7.2, -5.85, -1.2, 1.2, 'f2', { x: 8.2, z: 0, angle: -Math.PI / 2 });
+
+  drift(world, [
+    ['rockL', -1.8, -2.0, 1.7, 0.8, 1.15],
+    ['pile', 1.8, 2.2, 1.6, 1.2, 0], ['rockM', 4.0, -0.8, 1.3, 2.2, 0.6],
+  ]);
+  world.markers.houndSpots = [{ x: 1.6, z: -0.4, variant: 'elderrime' }];
+  world.markers.pup11Spot = { x: 4.4, z: -3.2 };
+  crackedRocks(world, 'f2b_alcove', -4.2, -3.0);
+  world.markers.crackSpot = { x: -4.2, z: -3.0 };
+  world.markers.chestDefs = [
+    ...(state.flags.cracked.f2b_alcove
+      ? [{ id: 'c_f2b_nook', tier: 'gold', x: -5.2, z: -3.6, ry: 0.9, loot: { shards: 20, gear: 'hammer_a' } }]
+      : []),
+  ];
+  world.markers.breakables = [{ x: 4.8, z: 2.8, kind: 'barrel', shards: 3 }];
+  return world;
+}
+
+// --- f3 — The Frozen Lake (PUZZLE DOOR 2: the Stoneroot boulders, but the
+// lake is SLICK. One push and the stone skids until something stops it, so
+// the plan comes first: send each boulder EAST/WEST into the rock that stops
+// it dead in a lane, then NORTH up that lane onto its plate. A low snow
+// ridge closes every other route, which is what makes the lanes readable.)
+async function buildF3(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 18, 14, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Icebound Hall
+    { side: 'n', from: -1.3, to: 1.3 }, // the Windscour (frost-sealed)
+  ]);
+  world.spawn = { x: 0, z: 5.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 6.85, 8.2, 'f2', { x: 0, z: -6.4, angle: 0 });
+  world.addDoor(-1.3, 1.3, -8.2, -6.85, 'f4', { x: 0, z: 5.6, angle: Math.PI });
+
+  // the lake itself — everything inside it slides (Kael excepted, always)
+  iceSheet(world, -8.6, 8.6, -6.6, 4.2);
+
+  // THE RIDGE: no way north except the two lanes at x = ±3
+  snowRidge(world, -8.6, -1.5, -4.0, -1.5);
+  snowRidge(world, -2.0, -1.5, 2.0, -1.5);
+  snowRidge(world, 4.0, -1.5, 8.6, -1.5);
+
+  // the STOPPERS: the rocks that catch a skidding boulder exactly in a lane
+  // (boulder r 0.62 + rock r 0.75 → it comes to rest 1.37u short of centre,
+  // which is x = ∓3.0 — dead in front of the gap. That is the whole trick.)
+  // (scale 0.8 ≈ collider 0.75 — a stopper must LOOK exactly as wide as it
+  // blocks, or the boulder appears to sink into it when it lands)
+  drift(world, [
+    ['rockM', -1.6, 1.6, 0.8, 0.6, 0.75],
+    ['rockM', 1.6, 1.6, 0.8, 2.4, 0.75],
+  ]);
+
+  boulder(world, -7.0, 1.6);
+  boulder(world, 7.0, 1.6);
+  pressurePlate(world, 'f3_p1', -3.0, -4.6, () => { if (world.checkLake) world.checkLake(); });
+  pressurePlate(world, 'f3_p2', 3.0, -4.6, () => { if (world.checkLake) world.checkLake(); });
+  world.markers.boulderSpot = { x: -7.0, z: 1.6 };
+
+  const gate = frostGate(world, 0, -7.05, 2.8);
+  const solved = () => !!state.flags.plates.f3_p1 && !!state.flags.plates.f3_p2;
+  if (solved()) gate.open(true);
+  world.checkLake = () => {
+    if (!solved()) return;
+    gate.open();
+    audio.play('checkpoint', { volume: 0.9, rate: 1.15 });
+    world.checkLake = null;
+  };
+
+  drift(world, [
+    ['rockL', -7.6, -5.4, 1.3, 0.8, 0.95], ['rockL', 7.6, -5.6, 1.3, 2.0, 0.9],
+    ['pile', -7.8, 5.0, 1.6, 0.6, 0], ['pile', 7.8, 5.0, 1.5, 1.6, 0],
+  ]);
+  world.markers.slimeSpots = [
+    { x: -5.6, z: 3.2, variant: 'snowblob' }, { x: 5.8, z: 3.4, variant: 'snowblob' },
+  ];
+  checkpoint(world, 'cp_f3', -7.6, 5.6);
+  world.markers.chestDefs = [
+    { id: 'c_f3_lake', tier: 'wood', x: -8.0, z: -6.0, ry: 1.2, loot: { shards: 16 } },
+  ];
+  world.markers.breakables = [{ x: 8.0, z: 5.6, kind: 'crate', shards: 2 }];
+  return world;
+}
+
+// --- f4 — The Windscour (the gauntlet; and the rest before the summit — law)
+async function buildF4(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 16, 12, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Frozen Lake
+    { side: 'n', from: -1.3, to: 1.3 }, // Boreal's Eyrie
+  ]);
+  world.spawn = { x: 0, z: 4.6, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 5.85, 7.2, 'f3', { x: 0, z: -6.4, angle: 0 });
+  world.addDoor(-1.3, 1.3, -7.2, -5.85, 'f5', { x: 0, z: 6.2, angle: Math.PI });
+
+  drift(world, [
+    ['rockL', -4.8, -2.4, 1.35, 0.7, 0.95], ['rockL', 4.8, -1.8, 1.3, 2.3, 0.9],
+    ['rockM', -6.8, -4.2, 1.3, 1.1, 0.6], ['rockM', 6.8, -4.4, 1.3, 0.3, 0.6],
+    ['pile', -2.6, 0.8, 1.6, 1.8, 0], ['pile', 2.8, -3.2, 1.5, 3.9, 0],
+  ]);
+  // the rime pack — the mountain's last stand before the summit
+  world.markers.houndSpots = [
+    { x: -3.6, z: -3.0, variant: 'rime' }, { x: 3.8, z: -2.4, variant: 'rime' },
+    { x: 0.4, z: -0.8, variant: 'elderrime' },
+  ];
+  world.markers.slimeSpots = [{ x: -5.4, z: 1.8, variant: 'snowblob' }];
+  world.markers.mothSpots = [{ x: 5.6, z: 0.8, variant: 'frostmoth' }];
+  world.markers.pup12Spot = { x: -7.0, z: 2.6 };
+  // one more ice-sealed promise, in plain sight of the boss door
+  iceGate(world, 7.0, 1.6, 'f_scour', 'frost');
+  // rest before the door (contract law): flame + potion side by side
+  checkpoint(world, 'cp_f4', -1.9, -3.4);
+  potionPickup(world, 1.9, -3.4);
+  world.markers.bossDoorSpot = { x: 0, z: -5.6 };
+  world.markers.chestDefs = [
+    { id: 'c_f4_scour', tier: 'gold', x: 7.0, z: 3.0, ry: -1.4, loot: { shards: 24, heartPiece: 1 } },
+  ];
+  world.markers.breakables = [
+    { x: -7.2, z: 4.0, kind: 'crate', shards: 3 }, { x: 7.4, z: 4.2, kind: 'barrel', shards: 3 },
+  ];
+  return world;
+}
+
+// --- f5 — Boreal's Eyrie (the summit; the first boss that FLIES)
+async function buildF5(scene) {
+  const world = new World(scene);
+  await loadSnowKit();
+  buildSnowShell(world, 18, 18, [
+    { side: 's', from: -1.3, to: 1.3 }, // back to the Windscour
+  ]);
+  world.spawn = { x: 0, z: 7.2, angle: Math.PI };
+  world.addDoor(-1.3, 1.3, 8.85, 10.2, 'f4', { x: 0, z: -4.9, angle: 0 });
+
+  // Standing stones round the RIM only — cover to break a dive line, never a
+  // maze. They are pushed right out to the edges on purpose: a dive that ends
+  // on top of a boulder buries the gold punish ring, and that ring is the
+  // whole fight. The middle stays clear ground for her to crash onto.
+  drift(world, [
+    ['rockL', -7.4, -4.4, 1.35, 0.8, 0.95], ['rockL', 7.4, -4.2, 1.3, 2.2, 0.9],
+    ['rockL', -7.2, 4.4, 1.3, 1.2, 0.9], ['rockL', 7.2, 4.6, 1.3, 3.1, 0.9],
+    ['rockM', -7.9, -7.4, 1.3, 0.5, 0.6], ['rockM', 7.9, -7.6, 1.3, 1.9, 0.6],
+  ]);
+
+  if (!state.flags.borealDefeated) {
+    world.markers.bossSpot = { x: 0, z: -1.0, kind: 'boreal' };
+  } else {
+    // THE CALMED SUMMIT: the storm lifts, her rime-light rests on the stones
+    world.bgColor = 0x2c4560;
+    const heart = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.24, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x9be3ff, emissiveIntensity: 2.2, roughness: 1 })
+    );
+    heart.position.set(0, 1.4, -2.5);
+    world.add(heart);
+    const hl = new THREE.PointLight(0x9be3ff, 5, 12, 1.8);
+    hl.position.set(0, 1.7, -2.5);
+    world.add(hl);
+    world.onAnimate((t) => { heart.position.y = 1.4 + Math.sin(t * 1.5) * 0.14; heart.rotation.y = t * 0.8; });
+    world.markers.borealShrine = { x: 0, z: -2.5 };
+    world.markers.healed = true;
+  }
+  // GRANT + 30s law: the instant the Frost Wolf is earned there is ice RIGHT
+  // HERE to shatter with it — the new verb pays out before the kid leaves
+  iceGate(world, 6.4, -6.0, 'f_eyrie', 'frost');
+  world.markers.chestDefs = [
+    ...(state.flags.borealDefeated
+      ? [{ id: 'c_f5_summit', tier: 'gold', x: -3.0, z: -3.6, ry: 0.7, loot: { shards: 32, powerup: 'star' } }]
+      : []),
+    { id: 'c_f5_ice', tier: 'gold', x: 7.6, z: -6.4, ry: -2.2, loot: { shards: 26, heartPiece: 1 } },
+  ];
+  checkpoint(world, 'cp_f5', -7.4, 6.4);
+  return world;
+}
+
+export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(id, scene) {
   await loadKit();
-  if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w') await loadDungeonKit();
+  if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot) {
-    // Giant-wolf duels wear the same class: the Shadowgrip in Ember, Sylva
-    // the Thornbound in the Wild Woods (bosses fight like their family).
     const bs = world.markers.bossSpot;
-    const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-    new Shadowgrip(world, bs.x, bs.z, wolfGltf, bs.skin || 'shadowgrip');
+    if (bs.kind === 'boreal') {
+      // Frostpeak's guardian is no wolf — she FLIES, which is why bolts
+      // (full damage to flyers, since region 1) finally decide a fight.
+      const dragonGltf = await loadGLB('./assets/chars/monsters/Dragon.glb');
+      new Boreal(world, bs.x, bs.z, dragonGltf);
+    } else {
+      // Giant-wolf duels wear the same class: the Shadowgrip in Ember, Sylva
+      // the Thornbound in the Wild Woods (bosses fight like their family).
+      const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+      new Shadowgrip(world, bs.x, bs.z, wolfGltf, bs.skin || 'shadowgrip');
+    }
   }
   return world;
 }

@@ -87,6 +87,25 @@
   Beware two false positives the measurement exposes — an object's own
   scenery (a villager's tent, a bramble gate's bushes) occludes its own
   centre, and a deliberate SECRET is allowed to be hidden.
+- A FLYING BOSS MUST STAY IN FRAME (v3.21, measured). The chase camera
+  sits ~7u SOUTH of Kael and 8.4u up; a flyer that wheels around the
+  ARENA centre sails off the top corner of a phone screen, and a wheel
+  that swings south passes the camera entirely. Boreal therefore circles
+  KAEL (centre eases to him at 1.1/s, biased 0.9u north, radius 2.5,
+  height 1.9) and her dive is bounded to ±6.6 so she never crashes
+  half-inside the treeline. Verified by PROJECTING her world position to
+  NDC every frame at phone-landscape 740×360 from four player positions:
+  130/130 samples on screen, |x| ≤ 0.26, |y| ≤ 0.95. Screenshots lie about
+  this; the projection does not.
+- A CRASH WINDOW NEEDS CLEAR GROUND (v3.21): the gold act-here ring is
+  the whole fight, so a boss arena's cover lives on the RIM. Boreal
+  landing on top of a standing stone buried her own punish ring.
+- SHARED-ATLAS PACKS NEED RENAMED MATERIALS (v3.21, assets law): every
+  piece in a Kenney kit names its material "colormap", and assets.js
+  caches prepared materials BY NAME. Recolouring one piece silently
+  recolours nothing — the cache hands back the shared atlas material.
+  Rename the clone (`snowrock_rockL`) before tinting, or the change
+  vanishes with no error.
 
 ## Progression targets (tune toward, verify per region)
 ## Elements & armor (law, v3.7)
@@ -104,6 +123,18 @@
 - Grounded enemies obey lava exactly like Kael; flyers cross freely.
 
 <!-- PLAYTEST VERDICTS (the reference; newest first)
+  2026-08-07 — dad: "do frostpeak next" → v3.21 FROSTPEAK: 7 rooms, the
+  Icebound Hall (breath melts the shell, slam lights the bowl — two fire
+  verbs chained), the Frozen Lake (Stoneroot's boulders on SLICK ice:
+  bump each sideways into a stopper to line up its lane, then send it
+  north), Boreal the Rimebound — THE FIRST FLYING BOSS — and the Frost
+  Wolf + shatter breath. DESIGN CALL: Dragon.glb has no walk cycle at
+  all (only Flying/Attack/Attack2/Hit/Death), so a third giant-wolf duel
+  was the wrong shape for it; the flyer instead makes the region-1 law
+  "bolts hit flyers for full damage" finally decide a fight. The Frost
+  Wolf arriving at the END of the region turns every ice block down the
+  mountain — and the w1b spring from region 3 — into a return trip.
+  AWAITING dad's region approval pass.
   2026-08-02 (late) — dad's region-3 go-word: "more rooms, slightly more
   difficult puzzles, lantern lighting for one door, boulder pressure
   points for the second, building on skills previously learned" →

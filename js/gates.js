@@ -84,31 +84,117 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
   return { id, collider };
 }
 
-// Ice-sealed spring — the Frost Wolf (region 4) will thaw it. Pure promise:
-// a pale crystal mound with a cold glow, guarding a visible reward.
-export function iceGate(world, x, z, id = 'w_ice') {
-  const ice = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.95, 1),
-    new THREE.MeshStandardMaterial({
-      color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.35,
-      transparent: true, opacity: 0.85, roughness: 0.25,
-    })
-  );
+// Ice block — a pale crystal mound the Frost Wolf's breath SHATTERS (v3.21).
+// Until that form is earned it is a promise: a cold glow guarding a reward.
+// `region` scopes the cleared flag so each region remembers its own ice.
+export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
+  if (WS.get(region, 'ice_' + id)) return null;
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.35,
+    transparent: true, opacity: 0.85, roughness: 0.25,
+  });
+  const ice = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), mat);
   ice.position.set(x, 0.5, z);
   ice.scale.y = 0.75;
-  world.add(ice);
-  const shard = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.9, 5),
-    ice.material
-  );
+  group.add(ice);
+  const shard = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 5), mat);
   shard.position.set(x - 0.5, 0.4, z + 0.4);
   shard.rotation.z = 0.4;
-  world.add(shard);
+  group.add(shard);
+  world.add(group);
   world.onAnimate((t) => {
-    ice.material.emissiveIntensity = 0.3 + 0.12 * Math.sin(t * 1.6 + x);
+    mat.emissiveIntensity = 0.3 + 0.12 * Math.sin(t * 1.6 + x);
   });
-  world.circleColliders.push({ x, z, r: 1.0 });
+  const collider = { x, z, r: 1.0 };
+  world.circleColliders.push(collider);
   world.markers.iceSpot = { x, z, id };
+
+  // register for the frost breath: world.shatterAt(x, z, r) breaks any ice
+  // in reach — a burst of shards, a crack, the collider gone for good
+  if (!world.shatterables) world.shatterables = [];
+  world.shatterables.push({
+    id, x, z, broken: false,
+    clear: () => {
+      world.root.remove(group);
+      const i = world.circleColliders.indexOf(collider);
+      if (i >= 0) world.circleColliders.splice(i, 1);
+      WS.set(region, 'ice_' + id);
+      audio.play('parry', { volume: 0.7, rate: 1.8 });   // the crack
+      audio.play('puff', { volume: 0.8, rate: 1.3 });
+    },
+  });
+  if (!world.shatterAt) {
+    world.shatterAt = (cx, cz, r) => {
+      let n = 0;
+      for (const c of world.shatterables) {
+        if (c.broken) continue;
+        const dx = c.x - cx, dz = c.z - cz;
+        if (dx * dx + dz * dz > r * r) continue;
+        c.broken = true;
+        c.clear();
+        n++;
+      }
+      return n;
+    };
+  }
+  return { id, collider };
+}
+
+// FROZEN BRAZIER (v3.21, Frostpeak's puzzle verb): a brazier sealed under a
+// shell of ice. The Fire Wolf's slam MELTS the shell, and only then can the
+// brazier be lit — two learned verbs chained. The cold re-forms the shell on
+// an unlit brazier after `refreeze` seconds, so all of them must be done in
+// one push: the Kiln's order puzzle plus the gutter timing, grown up.
+export function freezeBrazier(world, br, refreeze = 22) {
+  const shell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.62, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.4,
+      transparent: true, opacity: 0.78, roughness: 0.25,
+    })
+  );
+  shell.position.set(br.x, 1.15, br.z);
+  world.add(shell);
+  br.iced = true;
+  br.refreeze = refreeze;
+  br.shell = shell;
+  world.onAnimate((t, dt) => {
+    shell.visible = br.iced;
+    if (br.iced) {
+      shell.material.emissiveIntensity = 0.35 + 0.15 * Math.sin(t * 2 + br.x);
+      shell.scale.setScalar(1 + 0.03 * Math.sin(t * 1.7 + br.z));
+      return;
+    }
+    // thawed but still unlit — the cold is creeping back
+    if (!br.lit) {
+      br._thawT = (br._thawT || 0) + dt;
+      if (br._thawT > br.refreeze) {
+        br._thawT = 0;
+        br.iced = true;
+        audio.play('puff', { volume: 0.5, rate: 0.8 }); // it seals over again
+      }
+    } else {
+      br._thawT = 0;
+    }
+  });
+  // melting rides the existing burn system (Fire Wolf slam → world.burnAt)
+  if (!world.meltAt) {
+    world.meltAt = (mx, mz, r) => {
+      let n = 0;
+      for (const b of (world.braziers || [])) {
+        if (!b.iced) continue;
+        const dx = b.x - mx, dz = b.z - mz;
+        if (dx * dx + dz * dz > r * r) continue;
+        b.iced = false;
+        b._thawT = 0;
+        audio.play('burn', { volume: 0.6, rate: 1.2 });
+        n++;
+      }
+      return n;
+    };
+  }
+  return br;
 }
 
 // Big single boulder — visually distinct from cracked-rock piles (one huge
@@ -202,7 +288,7 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
     world.igniteAt = (ix, iz, r) => {
       let n = 0;
       for (const br of world.braziers) {
-        if (br.lit) continue;
+        if (br.lit || br.iced) continue; // sealed in ice: melt it first (v3.21)
         const dx = br.x - ix, dz = br.z - iz;
         if (dx * dx + dz * dz > r * r) continue;
         br.lit = true;

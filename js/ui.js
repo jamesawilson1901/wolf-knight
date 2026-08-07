@@ -10,8 +10,9 @@ const FORM_META = {
   fire_wolf: { icon: '🔥', label: 'Fire Wolf', color: '#ff5a2b' },
   earth_wolf: { icon: '🪨', label: 'Earth Wolf', color: '#d8b06a' },
   verdant_wolf: { icon: '🌿', label: 'Verdant Wolf', color: '#6fae4a' },
+  frost_wolf: { icon: '❄️', label: 'Frost Wolf', color: '#9be3ff' },
 };
-const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf'];
+const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
@@ -66,7 +67,7 @@ export class UI {
       const meta = FORM_META[id];
       const locked = !state.formsUnlocked.includes(id);
       // five forms fan a little tighter so the ring stays on-screen
-      const spread = FORM_ORDER.length >= 5 ? 0.74 : 0.92;
+      const spread = FORM_ORDER.length >= 6 ? 0.62 : FORM_ORDER.length >= 5 ? 0.74 : 0.92;
       const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * spread;
       const ox = cx + Math.cos(angle) * PICK_RADIUS;
       const oy = cy + Math.sin(angle) * PICK_RADIUS;
@@ -132,7 +133,7 @@ export class UI {
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
-      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿' }[state.form] || '🌙';
+      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿', frost_wolf: '❄️' }[state.form] || '🌙';
     // The moon gauge is the DARK WOLF's power — no other form shows the
     // button (v3.18 playtest law; the gauge still fills quietly underneath)
     this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');

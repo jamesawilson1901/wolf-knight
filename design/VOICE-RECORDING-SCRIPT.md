@@ -1,4 +1,4 @@
-# Wolf Knight — Voice Recording Script (v3.19)
+# Wolf Knight — Voice Recording Script (v3.21)
 
 Every spoken line in the game, grouped by character. Recorded lines will
 replace the robot text-to-speech voice.
@@ -18,12 +18,9 @@ replace the robot text-to-speech voice.
   back to the robot voice for anything missing.
 
 
-## Pip — 85 lines
+## Pip — 102 lines
 
 *Pip the fox — the kids’ cheerful guide. Bright, warm, encouraging, a little quick. He does nearly all the coaching.*
-
-
-**Part A — story beats (fire once, in order along the critical path)**
 
 - `intro_arrival`
   “This is Ember Hollow, Kael. The shadows crept in here… I feel it. Stay close.”
@@ -97,9 +94,6 @@ replace the robot text-to-speech voice.
   “That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!”
 - `moonstone_intro`
   “Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.”
-
-**Teaching lines — each one reveals its button when it first fires**
-
 - `learn_thrust`
   “Nice hit! Tap again right after a swing to POKE — the thrust reaches farther!”
 - `learn_shield`
@@ -110,9 +104,6 @@ replace the robot text-to-speech voice.
   “You can jump! Tap the arrow — and tap again in the air to jump higher. Jump over danger!”
 - `parry_praise`
   “Perfect block! Hit them now while they’re dizzy!”
-
-**Part B — contextual (repeatable)**
-
 - `checkpoint` *(repeats)*
   “We can rest here. You’re safe.”
 - `pup_found` *(repeats)*
@@ -133,9 +124,6 @@ replace the robot text-to-speech voice.
   “It’s okay. Let’s try again — together.”
 - `form_locked` *(repeats)*
   “We can’t be the Fire Wolf yet. First we free the fire spirit.”
-
-**Stoneroot Caverns (region 2)**
-
 - `stone_enter`
   “The Stoneroot Caverns… the stone here used to sing. Careful, Kael — something rattles in the dark.”
 - `skeleton_intro`
@@ -160,9 +148,6 @@ replace the robot text-to-speech voice.
   “Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!”
 - `stone_complete`
   “The caverns hum with life again. Two lights found, Kael… five to go.”
-
-**Den villagers (v3.12: the den grows faces as regions heal)**
-
 - `den_dog`
   “That’s Biscuit! She guards the den. Well… mostly she guards her dinner.”
 - `stone_restore_1`
@@ -181,9 +166,6 @@ replace the robot text-to-speech voice.
   “The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!”
 - `quarry_clear`
   “You cleared the quarry! Hear that? The treasure gate is open!”
-
-**The Wild Woods (region 3)**
-
 - `wildwoods_open`
   “The vine grew into a doorway! The Wild Woods are open, Kael — the trees are calling us.”
 - `wild_enter`
@@ -210,45 +192,79 @@ replace the robot text-to-speech voice.
   “The Wild Woods breathe again. Three lights found, Kael… four to go.”
 - `all_pups_wild`
   “NINE pups safe! The den is bursting with happy howls. Your heart grows stronger!”
+- `frostpeak_open`
+  “The trees stop up there, Kael. That white line above them? That’s Frostpeak. Wrap up warm — well, you’ve got fur.”
+- `frost_enter`
+  “Frostpeak! Brrr. Everything up here is frozen SOLID… and I don’t think it froze on its own.”
+- `rimehound_intro`
+  “A rime hound! Ice for a coat — and ice HATES fire. You know exactly which wolf to be.”
+- `icebrazier_hint`
+  “Three fire bowls, all sealed in ice! BREATHE fire to melt the ice, then SLAM to light the bowl. Melt, then light!”
+- `icebrazier_thaw`
+  “Quick, Kael — melted ice freezes back over if you leave the bowl unlit. Finish what you start!”
+- `icebrazier_open`
+  “All three burning! The frost gate cracks apart. Well done!”
+- `slide_hint`
+  “Careful — the lake is SLIPPERY. Push a boulder and it slides until something stops it. Bump it sideways into a rock FIRST, then send it north!”
+- `slide_open`
+  “Both circles held! You planned that, Kael. That was proper clever.”
+- `frost_boss_door`
+  “Something huge is circling up there. Wings, Kael. Great big frozen wings. Keep your feet moving.”
+- `boreal_duel`
+  “She’s too high to bite! THROW at her — flying things take the worst of it. Then run when she lines up!”
+- `boreal_dive_tell`
+  “The red stripe! That’s where she’s coming down — get OUT of it!”
+- `boreal_grounded`
+  “She’s crashed! Gold ring — that’s your moment. HIT HER!”
+- `frost_howto`
+  “You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!”
+- `shatter_prompt`
+  “Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.”
+- `frost_restore_1`
+  “The storm is lifting! Look — you can see the whole world from up here.”
+- `frost_complete`
+  “Frostpeak is still and safe. Four lights found, Kael… three to go.”
+- `all_pups_frost`
+  “TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!”
+
+## Luna — 4 lines
+
+*Luna — the great white wolf, Kael’s mother-figure. Calm, slow, dreamlike; she speaks in his sleep.*
+
+- `luna_dream_1`
+  “You did well, Kael. One light returned… six to go. Follow the path to the stone caves. I am with you, always.”
+- `luna_dream_2`
+  “Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.”
+- `luna_dream_3`
+  “Three lights burn beside you now, brave one. Rest. Far to the north, the frost peaks glitter… and wait.”
+- `luna_dream_4`
+  “Four lights, brave one. The frost has forgiven you. Now listen for water — something calls beneath the waves.”
+
+## Grimm — 4 lines
+
+*Grimm — the villain. Low, unhurried, amused. Never shouty; the menace is in how relaxed he is.*
+
+- `grimm_taunt_1`
+  “So… the little knight saved one spark. You cannot save them all. The shadow always returns.”
+- `warden_intro`
+  “My warden of bone guards the stone spirit, little knight. It will grind you to dust.”
+- `sylva_intro`
+  “Behold the forest’s precious guardian, little knight — wrapped in my thorns, wild with pain. She will tear you apart for me.”
+- `boreal_intro`
+  “The sky-serpent of the peak, little knight. My frost sits deep in her bones. She will not even see you fall.”
 
 ## Cinder — 2 lines
 
-*Cinder — the fire spirit freed from the first boss. Warm, gentle, grateful. Slow and glowing.*
-
-
-**Part A — story beats (fire once, in order along the critical path)**
+*Cinder — the fire spirit of Ember Hollow. Crackly, grateful, warm.*
 
 - `boss_defeat`
   “You broke the shadow’s hold, kind knight. I am Cinder, keeper of the flame.”
 - `firewolf_grant`
   “Take this gift — the heart of the Fire Wolf.”
 
-## Luna — 3 lines
-
-*Luna — the moon spirit. Calm, kind, a lullaby voice.*
-
-
-**Part C — bridge to the next region**
-
-- `luna_dream_1`
-  “You did well, Kael. One light returned… six to go. Follow the path to the stone caves. I am with you, always.”
-
-**Den villagers (v3.12: the den grows faces as regions heal)**
-
-- `luna_dream_2`
-  “Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.”
-
-**The Wild Woods (region 3)**
-
-- `luna_dream_3`
-  “Three lights burn beside you now, brave one. Rest. Far to the north, the frost peaks glitter… and wait.”
-
 ## Petra — 2 lines
 
-*Petra — the stone spirit. Steady, deep-ish, motherly; like a mountain talking softly.*
-
-
-**Stoneroot Caverns (region 2)**
+*Petra — the stone spirit of Stoneroot. Deep, slow, patient as rock.*
 
 - `warden_defeat`
   “The bones fall still… Thank you, kind knight. I am Petra, keeper of the stone.”
@@ -257,48 +273,28 @@ replace the robot text-to-speech voice.
 
 ## Sylva — 2 lines
 
-*Sylva — the forest spirit (region 3). Windy, light, a rustle-of-leaves warmth; fierce joy once freed.*
-
-
-**The Wild Woods (region 3)**
+*Sylva — the forest spirit of the Wild Woods. Green and gentle, a little wild.*
 
 - `sylva_defeat`
   “The thorns… are gone. You fought me to free me, little knight. I am Sylva, keeper of the green.”
 - `verdant_grant`
   “Run with my gift — the heart of the Verdant Wolf. The forest runs with you now.”
 
-## Grimm — 3 lines
+## Boreal — 2 lines
 
-*Grimm — the shadow villain. Low, slow, theatrical menace (scary-fun, never terrifying).*
+*Boreal — the sky-serpent of Frostpeak. Vast, slow, wintry; a long-held cold that finally lets go.*
 
+- `boreal_defeat`
+  “The cold… lets go of me. I am Boreal, who was the storm. You struck me kindly, little knight.”
+- `frost_grant`
+  “Take the winter in my heart — the Frost Wolf. Breathe, and even stone must let you pass.”
 
-**Part C — bridge to the next region**
+## Bram — 3 lines
 
-- `grimm_taunt_1`
-  “So… the little knight saved one spark. You cannot save them all. The shadow always returns.”
-
-**Stoneroot Caverns (region 2)**
-
-- `warden_intro`
-  “My warden of bone guards the stone spirit, little knight. It will grind you to dust.”
-
-**The Wild Woods (region 3)**
-
-- `sylva_intro`
-  “Behold the forest’s precious guardian, little knight — wrapped in my thorns, wild with pain. She will tear you apart for me.”
-
-## Old Bram — 3 lines
-
-*Old Bram — a gruff old miner with a big heart. Gravelly, jolly.*
-
-
-**Stoneroot Caverns (region 2)**
+*Old Bram — a prospector at the Stoneroot camp. Gruff, kindly, weather-beaten.*
 
 - `camp_rumour`
   “Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.”
-
-**Den villagers (v3.12: the den grows faces as regions heal)**
-
 - `bram_den`
   “Ha! Thought I’d see this famous fire of yours. The caverns sing so sweet now, my pick near swings itself. You’ve a fine den, knight.”
 - `camp_healed`
@@ -306,10 +302,7 @@ replace the robot text-to-speech voice.
 
 ## Wren — 2 lines
 
-*Wren — a well-travelled wanderer. Light, sly, storyteller energy.*
-
-
-**Den villagers (v3.12: the den grows faces as regions heal)**
+*Wren — a traveller full of rumours. Quick, curious, gossipy.*
 
 - `wren_intro`
   “A knight who turns into wolves… I walk every road, and I’ve never seen THAT. Call me Wren. I hear things — come find me when you want a rumour.”
@@ -320,9 +313,6 @@ replace the robot text-to-speech voice.
 
 *Rook — a ranger. Even, watchful, reassuring.*
 
-
-**Den villagers (v3.12: the den grows faces as regions heal)**
-
 - `rook_intro`
   “So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.”
 - `rook_chat` *(repeats)*
@@ -330,4 +320,4 @@ replace the robot text-to-speech voice.
 
 ---
 
-**Total: 104 lines.** Pip is the big role — record him first; every other character is a handful of lines.
+**Total: 125 lines.** Pip is the big role — record him first; every other character is a handful of lines.

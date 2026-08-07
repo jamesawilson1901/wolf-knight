@@ -30,6 +30,11 @@ const VINE_COOLDOWN = 7;        // Verdant Wolf vine-lash (forward line + cuts b
 const VINE_RANGE = 3.8;         // how far the whip reaches
 const VINE_HALFWIDTH = 0.9;     // corridor half-width the lash sweeps
 const VINE_DMG = 1.5;
+const FROST_COOLDOWN = 7;       // Frost Wolf breath (cone: shatters ice, freezes foes)
+const FROST_RANGE = 3.6;
+const FROST_CONE_DEG = 40;
+const FROST_DMG = 1;
+const FROST_FREEZE = 2.2;       // seconds a frozen enemy stands helpless
 
 export const MAX_HEARTS = 5;
 const WOLF_SCALE = 0.56; // wolf forms loom larger than the knight — the beast is the power form
@@ -40,6 +45,7 @@ export const WOLF_TINTS = {
   fire_wolf: { main: 0xff5a2b, eyes: 0xffd27a },
   earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
   verdant_wolf: { main: 0x6fae4a, eyes: 0xd8ffb0 }, // Sylva's gift (region 3)
+  frost_wolf: { main: 0x9be3ff, eyes: 0xeaffff },   // Boreal's gift (region 4)
 };
 
 // FORM IDENTITY fields (data-driven so the seven later wolves slot in):
@@ -107,11 +113,21 @@ const FORM_DEFS = {
     attack: { lock: 0.42, hitAt: 0.22, range: 1.7, dmg: 1 },
     boltColor: 0x8fdc6a, rangedKind: 'thorn',   // thrown thorn: chips + ROOTS
   },
+  frost_wolf: {
+    // sure-footed on the ice where everything else slides
+    speed: 5.0,
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.44, hitAt: 0.23, range: 1.7, dmg: 1.2 },
+    boltColor: 0xbfefff, rangedKind: 'shard',   // ice shard: chips + slows
+  },
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant' };
-const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant' };
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost' };
+const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant', shard: 'frost' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
 // Thrust (2nd tap of the combo): narrow and long — a poke, not a sweep
@@ -236,7 +252,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
@@ -310,6 +326,28 @@ export class Player {
       this.forms.earth_wolf.aura = aura;
       this.forms.earth_wolf.auraData = { kind: 'earth', chips };
     }
+    // FROST — slow crystalline motes hanging in the cold air
+    if (this.forms.frost_wolf) {
+      const aura = new THREE.Group();
+      const shardGeo = new THREE.OctahedronGeometry(0.07, 0);
+      const motes = [];
+      for (let i = 0; i < 6; i++) {
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x000000, emissive: i % 2 ? 0xeaffff : 0x9be3ff,
+          emissiveIntensity: 1.2, roughness: 1,
+        });
+        const m = new THREE.Mesh(shardGeo, mat);
+        aura.add(m);
+        motes.push({ m, phase: i / 6 });
+      }
+      const chill = new THREE.PointLight(0x9be3ff, 1.1, 4.2, 1.8);
+      chill.position.set(0, 0.8, 0);
+      aura.add(chill);
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.frost_wolf.aura = aura;
+      this.forms.frost_wolf.auraData = { kind: 'frost', motes, chill };
+    }
     // VERDANT — drifting leaves spiralling gently upward
     if (this.forms.verdant_wolf) {
       const aura = new THREE.Group();
@@ -380,6 +418,14 @@ export class Player {
         c.rotation.x = t * (1.1 + i * 0.2);
         c.rotation.y = t * 0.9 + i;
       });
+    } else if (d.kind === 'frost') {
+      for (const mo of d.motes) {
+        const a = t * 0.5 + mo.phase * Math.PI * 2;
+        mo.m.position.set(Math.cos(a) * 0.6, 0.4 + Math.sin(t * 1.3 + mo.phase * 6) * 0.28, Math.sin(a) * 0.6);
+        mo.m.rotation.x = t * 1.1 + mo.phase * 4;
+        mo.m.rotation.y = t * 0.8;
+      }
+      d.chill.intensity = 1.0 + Math.sin(t * 2.2) * 0.25;
     } else if (d.kind === 'verdant') {
       for (const lf of d.leaves) {
         const cyc = (t * 0.45 + lf.phase) % 1;              // slow rising spiral
@@ -455,7 +501,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -898,6 +944,14 @@ export class Player {
         }
         if (seared) this.gainMoon(CONFIG.MOON.PER_BOLT);
       }
+      // ...and the breath MELTS ice shells off frozen braziers (v3.21):
+      // breath to melt, slam to light — two learned fire verbs, one puzzle
+      if (world.meltAt) {
+        for (let i = 1; i <= 3; i++) {
+          const reach = (RANGE * i) / 3;
+          world.meltAt(this.root.position.x + bfx * reach, this.root.position.z + bfz * reach, 1.6);
+        }
+      }
       // rolling flame: three widening puffs down the cone
       for (let i = 0; i < 3; i++) {
         const reach = 0.9 + i * 0.95;
@@ -999,7 +1053,7 @@ export class Player {
         if (p._trailAcc > 0.4) {
           p._trailAcc = 0;
           const tc = p.kind === 'pierce' ? 0xb08aff : p.kind === 'ember' ? 0xff8a3a
-            : p.kind === 'thorn' ? 0x8fdc6a : 0xd8b06a;
+            : p.kind === 'thorn' ? 0x8fdc6a : p.kind === 'shard' ? 0xbfefff : 0xd8b06a;
           juice.burst(px, p.mesh.position.y, pz, tc, 2);
         }
       }
@@ -1044,6 +1098,13 @@ export class Player {
               if (e.takeStun && !e.flying) e.takeStun(0.9);
               juice.burst(px, 0.85, pz, 0xd8b06a, 8);
               audio.play('hit', { volume: 0.9, rate: 0.75 });
+              gone = true;
+            } else if (p.kind === 'shard') {
+              // the ice shard bites cold: light damage, a lingering chill
+              e.takeDamage(this.boltDamage(e), elem, 'bolt');
+              if (e.takeStun && !e.flying) e.takeStun(0.8);
+              juice.burst(px, 0.85, pz, 0xbfefff, 8);
+              audio.play('hit', { volume: 0.8, rate: 1.35 });
               gone = true;
             } else if (p.kind === 'thorn') {
               // the thrown thorn ROOTS its target: light damage, long tangle
@@ -1159,6 +1220,7 @@ export class Player {
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
     if (state.form === 'verdant_wolf') return this.tryVineLash(effects, world);
+    if (state.form === 'frost_wolf') return this.tryFrostBreath(effects, world);
     return false;
   }
 
@@ -1199,6 +1261,59 @@ export class Player {
       juice.burst(px + fx * VINE_RANGE * f, 0.5 + 0.25 * Math.sin(f * Math.PI), pz + fz * VINE_RANGE * f, 0x8fdc6a, 5);
     }
     if (effects) effects.groundSlam({ x: px + fx * 1.6, z: pz + fz * 1.6 }, 0x6fae4a);
+    this.specialCooldown = this.specialMax;
+    return true;
+  }
+
+  // Frost Wolf FROST BREATH: a cone of rime that SHATTERS ice (the region-4
+  // verb — it opens the ice-sealed spring promised back in the Wild Woods)
+  // and freezes anything caught in it solid. A frozen enemy is helpless AND
+  // brittle: the next hit shatters it for bonus damage, so the breath is a
+  // set-up, not a kill — the same "combo your tools" lesson as the elements.
+  tryFrostBreath(effects, world) {
+    if (state.form !== 'frost_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('attack');
+    this.lockTime = 0.5;
+    this._softLock = false;
+    const px = this.root.position.x, pz = this.root.position.z;
+    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+    const CONE = Math.cos(THREE.MathUtils.degToRad(FROST_CONE_DEG));
+    audio.play('whoosh', { volume: 0.9, rate: 1.5 });
+    audio.play('puff', { volume: 0.6, rate: 0.7 });
+    if (world.enemies) {
+      for (const e of world.enemies) {
+        if (e.dead) continue;
+        const dx = e.x - px, dz = e.z - pz;
+        const d = Math.hypot(dx, dz);
+        if (d > FROST_RANGE + e.radius) continue;
+        if (d > 0.2 && (dx * fx + dz * fz) / d < CONE) continue;
+        e.takeDamage(FROST_DMG, 'frost', 'aoe');
+        // FROZEN: held in place and brittle until it thaws
+        if (!e.dead && e.takeStun) e.takeStun(FROST_FREEZE);
+        if (!e.dead) e.frozen = Math.max(e.frozen || 0, FROST_FREEZE);
+      }
+    }
+    // ...and SHATTER any ice in the cone (gates.js registers shatterables)
+    if (world.shatterAt) {
+      for (let i = 1; i <= 3; i++) {
+        const r = (FROST_RANGE * i) / 3;
+        if (world.shatterAt(px + fx * r, pz + fz * r, 1.9) > 0) {
+          if (effects && effects.punch) effects.punch(0.2, 0.22);
+          break;
+        }
+      }
+    }
+    // the breath itself: three widening puffs of pale rime down the cone
+    for (let i = 0; i < 3; i++) {
+      const reach = 0.9 + i * 0.95;
+      const spread = 0.3 * (i + 1);
+      juice.burst(
+        px + fx * reach + (Math.random() * 2 - 1) * spread, 0.7,
+        pz + fz * reach + (Math.random() * 2 - 1) * spread,
+        i === 2 ? 0xeaffff : 0xbfefff, 9);
+    }
+    if (effects) effects.groundSlam({ x: px + fx * 1.5, z: pz + fz * 1.5 }, 0x9be3ff);
     this.specialCooldown = this.specialMax;
     return true;
   }

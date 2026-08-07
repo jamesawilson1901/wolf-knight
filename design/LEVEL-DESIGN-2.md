@@ -56,14 +56,45 @@ E1 Cavern Gate ── E1b Echo Chasm  [BUILT: Pokémon fall-hole maze in full
    E1/E2/E2b, the E1 grate grinds open.  [BUILT v3.6]
 ```
 
-### S3 Wild Woods (design-ahead)
-Concept: a living forest that physically GROWS as you free it.
+### Wild Woods  [BUILT v3.19 — seven rooms; supersedes the old "S3" sketch
+###                below, which planned tier-drops and a climb the engine
+###                never grew. Shipped shape, not the wish-list:]
 ```
-W1 Bramble Edge (tutorial verb: cuttable brambles)
+W1 Thorn Gate ── W1b Mossy Dell  [pup7 + the ICE-SEALED SPRING: region 4's
+   │               lock, shown a whole region before its key]
+   W2 Gloomwood ── W2b Hollow Oak  [PUZZLE DOOR 1: three cold wisp-lanterns
+   │               woken by Fire slams; one walled behind cracked rock, so
+   │               the kids chain Earth stomp → Fire slam]
+   W3 Rootbound Door  [PUZZLE DOOR 2: twin boulders, twin plates, routed
+   │               through a two-gap hedge]
+   W4 Bramble Heart (gauntlet + the pre-boss rest)
+   W5 Sylva's Glade (boss; the Verdant Wolf + the grant-payout bramble)
+```
+
+### Frostpeak  [BUILT v3.21 — seven rooms; the first FLYING boss]
+```
+F1 Rime Gate ── F1b Frozen Cairn  [pup10 + ice-sealed chest: the Frost Wolf
+   │               arrives at the END of this region, so every ice block on
+   │               the mountain is a return trip, not a wall]
+   F2 Icebound Hall ── F2b Glacier Nook  [PUZZLE DOOR 1: three braziers
+   │               sealed in ice. Fire BREATH melts the shell, the fire
+   │               SLAM lights the bowl — two verbs of one wolf, chained.
+   │               Melted-and-left-unlit seals over again (26s, 45s gentle).]
+   F3 Frozen Lake  [PUZZLE DOOR 2: the Stoneroot boulders on SLICK ice. A
+   │               push skids until something stops it, so each stone is
+   │               bumped sideways into a stopper rock to line up its lane,
+   │               then sent north onto its plate. A low snow ridge closes
+   │               every other route, which is what makes the lanes read.
+   │               Kael himself never slides — deliberate kindness.]
+   F4 Windscour (gauntlet + the pre-boss rest + one more ice promise)
+   F5 Boreal's Eyrie (boss; the Frost Wolf + the grant-payout ice block)
+```
+
+### S3 Wild Woods (superseded design-ahead sketch, kept for its ideas)
+```
 W2 Hollow Oak (interior climb — tier drops, grub enemies)
 W3 Deeproot Warren (maze + Wisp Key branch W3b Firefly Glade)
 W4 Canopy Crossing (one-way drops, wind gusts push on bridges)
-TWIST at W3: freeing the wisps lights lantern-fruit across W1-W2 dark spots.
 W5 Heartwood (boss: unique verb = the arena itself grows/changes cover).
 ```
 

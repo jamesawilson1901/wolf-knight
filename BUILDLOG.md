@@ -1743,3 +1743,91 @@ Verified: audit re-run clean on buried decals across all 21 rooms, no page
 errors, plus screenshots of the doorway glow, a forest plate resting flush
 on grass, and a cold lantern's ring readable in the dark. SW cache
 wolfknight-v3.20.0, badge v3.20.
+
+## v3.21.0 — FROSTPEAK (region 4) + the Frost Wolf + the first flying boss (2026-08-07)
+
+Dad: "do frostpeak next."
+
+### The design call: Boreal FLIES
+
+Before designing the boss I read what the model can actually do.
+`Dragon.glb` ships five clips — `Dragon_Flying`, `_Attack`, `_Attack2`,
+`_Hit`, `_Death`. **There is no walk cycle at all.** A third giant-wolf
+duel would have meant a dragon sliding around the floor in a flying pose,
+which breaks THE POSE NEVER LIES. So Frostpeak's guardian is the first
+boss that stays airborne — and that finally makes a law from region 1 pay
+out: bolts do full damage to flyers, half to everything on the ground.
+Kids who never bothered throwing suddenly need to.
+
+The fight: she wheels overhead, picks a lane (0.9 s on-body rear-up plus a
+RED ground lane), dives once, then **crashes** for a 2.6 s grounded window
+under the gold act-here ring — where she counts as a ground target and a
+sword does its worst. Below half health she chains two dives before
+landing. 22 hp, 1.5-heart hits, wounds remembered across deaths
+(`flags.borealHp`).
+
+### The two puzzle doors (each builds on a learned verb)
+
+- **f2 The Icebound Hall** — three braziers sealed in ice shells. The Fire
+  Wolf's *breath* melts a shell; the Fire *slam* lights the bowl. Two
+  verbs of one wolf, chained, and the game proves the chain by refusing a
+  slam on an iced brazier. Anything melted and left unlit seals over again
+  after 26 s (45 s in gentle mode). Deliberately a BRIGHT room: a timer
+  plus darkness is cruelty, not difficulty.
+- **f3 The Frozen Lake** — Stoneroot's boulders on slick ice. A push no
+  longer takes one polite 1.2 u step; the stone **skids** at 5.5 u/s until
+  a wall, a rock or a plate stops it. Each boulder must be bumped sideways
+  into a stopper rock — which parks it at exactly x = ∓3.0, dead in front
+  of a gap — then sent north up that lane onto its plate. A low snow ridge
+  closes every other route, which is what makes the lanes readable at a
+  glance. **Kael himself never slides**: a kid must never lose control of
+  their own wolf.
+
+### The Frost Wolf arrives LAST — on purpose
+
+Boreal grants it at the summit, so every ice block down the mountain
+(f1b, f4, the eyrie itself) is a return trip rather than a wall — and the
+ice-sealed spring planted back in w1b a whole region earlier finally
+opens. New verb: a frost-breath cone that shatters ice and FREEZES foes;
+a frozen foe's next hit does **double** and prints `SHATTER!`.
+
+### What the measurements changed
+
+- **A flying boss must stay in frame.** A wheel around the *arena* centre
+  at height 2.6 / radius 4.2 sailed off the top corner of a phone screen —
+  the screenshot showed a shadow and a cropped wing. Fixed by projecting
+  her world position to NDC every frame at 740×360 from four player
+  positions: she now circles **Kael** (centre eases at 1.1/s, biased 0.9 u
+  north of him, radius 2.5, height 1.9) and her dive is bounded to ±6.6.
+  Result: 130/130 samples on screen, |x| ≤ 0.26, |y| ≤ 0.95.
+- **A crash window needs clear ground.** She landed on top of a standing
+  stone and buried her own gold punish ring. The eyrie's cover moved to
+  the rim.
+- **Shared-atlas packs need renamed materials.** Every piece in the Kenney
+  Holiday Kit names its material `colormap`, and `assets.js` caches
+  prepared materials *by name* — so recolouring the snow rocks did
+  nothing at all, silently, until the clone was renamed first. The rocks
+  were dirt-brown on snow and the snow ridge rendered as a wall of coal.
+- **The warm light rig made the snow pink.** Rooms can now publish
+  `world.lightTint`; Frostpeak asks for a pale-blue bounce and a
+  white-blue sun. Nothing else in the game changes.
+
+### Verified headlessly (all through real input paths)
+
+Region manifest validation · Level-4 cheat skip grants the whole journey ·
+w5's treeline opens north · both puzzle doors solved by calling
+`tryRanged`/`trySpecial` and by leaning on boulders · the skid measured
+(4.03 u travelled, stops at x = −2.97 against a lane at −3.0) · Kael's
+drift on ice = 0 · Boreal flies, dives, crashes and becomes a ground
+target · bolt damage 1.0 vs 0.5 · the grant-payout ice shatters · the
+region-3 spring backtrack pays out · BRITTLE doubles damage and spends the
+freeze · **a save with no `boreal*` keys loads as a fresh mountain.**
+Room-law audit over all seven rooms: 0 buried decals, 0 blind-strip items,
+0 dark puzzles.
+
+### Also
+
+Pups 10–12 (HUD/menu totals and the 9th heart at twelve), fast travel and
+the cheat menu both gain Frostpeak, `design/VOICE-RECORDING-SCRIPT.md` is
+now **generated from `js/narration.js`** rather than hand-kept (125 lines,
+10 voices — the hand-kept version had drifted to 104).

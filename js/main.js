@@ -28,7 +28,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -152,7 +152,8 @@ function renderPotions(player) {
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
   // each opened region adds three pups to the count the HUD promises
-  const total = state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3;
+  const total = state.spoken.wild_complete ? 12
+    : state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3;
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -177,12 +178,14 @@ const _dmgV = new THREE.Vector3();
 function spawnDmgNum(x, y, z, v) {
   const el = document.createElement('div');
   const superHit = v === 'SUPER!'; // weakness landed — gold and loud
-  const block = typeof v === 'string' && !superHit;
+  const shatter = v === 'SHATTER!'; // frozen solid, then struck — icy and loud
+  const block = typeof v === 'string' && !superHit && !shatter;
   const big = typeof v === 'number' && v >= 2;
-  el.className = 'dmg-num' + (big ? ' big' : '') + (block ? ' block' : '') + (superHit ? ' super' : '');
+  el.className = 'dmg-num' + (big ? ' big' : '') + (block ? ' block' : '')
+    + (superHit ? ' super' : '') + (shatter ? ' shatter' : '');
   el.textContent = typeof v === 'string' ? v : (v % 1 ? v.toFixed(1) : String(v));
   document.body.appendChild(el);
-  dmgNums.push({ el, x, y, z, life: superHit ? 1.1 : 0.9 });
+  dmgNums.push({ el, x, y, z, life: (superHit || shatter) ? 1.1 : 0.9 });
 }
 function updateDmgNums(realDt) {
   for (let i = dmgNums.length - 1; i >= 0; i--) {
@@ -276,6 +279,11 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       forms: ['fire_wolf', 'earth_wolf'],
       emberDone: true, stoneDone: true, // both earlier levels count as complete
     },
+    {
+      id: 'f1', label: '🏔️ Level 4 — Frostpeak',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true,
+    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');
@@ -360,6 +368,13 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
         state.flags.wardenDefeated = true;
         state.flags.plates.e2_gate = true;
         WS.set('stone', 'restored');
+      }
+      if (lvl.wildDone) {
+        state.flags.sylvaDefeated = true;
+        WS.set('wild', 'lanterns');
+        WS.set('wild', 'restored');
+        state.flags.plates.w3_p1 = true;
+        state.flags.plates.w3_p2 = true;
       }
       // the save follows the jump: Continue and respawns use the level start
       state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
@@ -461,7 +476,14 @@ function guideTarget() {
     case 'w2b': return { x: 4.4, z: -3.4 };
     case 'w3': return (f.plates.w3_p1 && f.plates.w3_p2) ? { x: 0, z: -6.4 } : { x: -5.8, z: 2.2 };
     case 'w4': return { x: 0, z: -5.6 };    // the boss door
-    case 'w5': return { x: 0, z: -0.5 };
+    case 'w5': return f.sylvaDefeated ? { x: 0, z: -6.6 } : { x: 0, z: -0.5 }; // then: the way up
+    case 'f1': return { x: 0, z: -5.6 };    // deeper: the Icebound Hall
+    case 'f1b': return { x: -2.2, z: -3.4 }; // the pup by the cairn
+    case 'f2': return WS.get('frost', 'braziers') ? { x: 0, z: -6.4 } : { x: 0, z: -4.2 }; // the middle brazier
+    case 'f2b': return { x: 4.4, z: -3.2 };
+    case 'f3': return (f.plates.f3_p1 && f.plates.f3_p2) ? { x: 0, z: -6.4 } : { x: -7.0, z: 1.6 };
+    case 'f4': return { x: 0, z: -5.6 };    // the summit door
+    case 'f5': return f.borealDefeated ? { x: 6.4, z: -6.0 } : { x: 0, z: -1.0 };
     default: return null;
   }
 }
@@ -611,6 +633,45 @@ function narrationTriggers(dt, t) {
         m.sylvaShrine && nearSpot(m.sylvaShrine, 2.8)) {
       if (narration.say('wild_complete')) persist();
     }
+    if (m.frostWaySpot && nearSpot(m.frostWaySpot, 3.4)) narration.say('frostpeak_open');
+  }
+
+  // Frostpeak (region 4)
+  if (state.room[0] === 'f') {
+    narration.say('frost_enter');
+    if (state.room === 'f1') {
+      const rh = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
+      if (rh && nearXZ(rh.x, rh.z, 6)) narration.say('rimehound_intro');
+    }
+    if (state.room === 'f2') {
+      const bs = m.brazierSpots || [];
+      if (!WS.get('frost', 'braziers')) {
+        if (bs.some((b) => nearXZ(b.x, b.z, 4.2))) narration.say('icebrazier_hint');
+        // the cold creeping back is the one thing a kid must be TOLD about
+        if ((world.braziers || []).some((b) => !b.lit && !b.iced)) {
+          sayThrottled('icebrazier_thaw', t, 30);
+        }
+      } else {
+        narration.say('icebrazier_open');
+      }
+    }
+    if (state.room === 'f3') {
+      if (m.boulderSpot && nearSpot(m.boulderSpot, 4.6)) narration.say('slide_hint');
+      if (state.flags.plates.f3_p1 && state.flags.plates.f3_p2) narration.say('slide_open');
+    }
+    if (state.room === 'f4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('frost_boss_door');
+    if (state.room === 'f5' && state.flags.borealDefeated &&
+        m.borealShrine && nearSpot(m.borealShrine, 2.8)) {
+      if (narration.say('frost_complete')) persist();
+    }
+    // every ice block on the mountain is a promise until Boreal falls
+    if (m.iceSpot && !state.formsUnlocked.includes('frost_wolf') && nearSpot(m.iceSpot, 3.2)) {
+      if (logMystery('frost_ice_' + state.room, '❄️', 'Ice sealing a way — Frostpeak')) bigToast('🗺️ Added to the map: ???');
+      narration.say('gate_promise');
+    }
+    if (state.formsUnlocked.includes('frost_wolf') && m.iceSpot && nearSpot(m.iceSpot, 3.2)) {
+      narration.say('shatter_prompt');
+    }
   }
   // the first shield-bearer: teach the three ways past a raised shield
   if (state.region === 'stoneroot') {
@@ -654,10 +715,18 @@ function narrationTriggers(dt, t) {
 
   const boss = world.boss;
   if (boss && !boss.defeated) {
-    narration.say('boss_duel'); // it fights like the little wolves — same reads
-    if (boss.action === 'crouch') narration.say('boss_charge_tell');
-    if (boss.action === 'windup') narration.say('boss_swipe_tell');
-    if (boss.action === 'tired') narration.say('boss_tired'); // the collapse
+    if (state.room === 'f5') {
+      // Boreal reads NOTHING like the wolves: she is overhead, so the teach
+      // is "throw at her, and hit her hard when she crashes"
+      narration.say('boreal_duel');
+      if (boss.action === 'windup') narration.say('boreal_dive_tell');
+      if (boss.action === 'grounded') narration.say('boreal_grounded');
+    } else {
+      narration.say('boss_duel'); // it fights like the little wolves — same reads
+      if (boss.action === 'crouch') narration.say('boss_charge_tell');
+      if (boss.action === 'windup') narration.say('boss_swipe_tell');
+      if (boss.action === 'tired') narration.say('boss_tired'); // the collapse
+    }
     // the Blood Moon belongs to the Dark Wolf — only nag when it applies
     if (state.form === 'dark_wolf' && state.moonGauge >= 1) {
       narration.say('boss_bloodmoon');
@@ -694,9 +763,10 @@ function narrationTriggers(dt, t) {
 
 function updateMusic() {
   if (state.room === 'den') audio.playMusic('den');
-  else if ((state.room === 'r3' || state.room === 'w5') && world.boss && !world.boss.defeated) {
+  else if ((state.room === 'r3' || state.room === 'w5' || state.room === 'f5') && world.boss && !world.boss.defeated) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
-  } else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
+  } else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
+  else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
   else if (state.room[0] === 'k') audio.playMusic('kiln');
   else if (state.room === 'e3') audio.playMusic('stone-deep');
   else if (state.room[0] === 'e') audio.playMusic('region-stone');
@@ -843,6 +913,13 @@ function onPupCollected() {
     player.healFull();
     effects.warmFlood();
     narration.say('all_pups_wild');
+  } else if (found >= 12 && state.maxHearts === 8) {
+    // all Frostpeak pups → the den's warmest night yet
+    state.maxHearts = 9;
+    player.maxHearts = 9;
+    player.healFull();
+    effects.warmFlood();
+    narration.say('all_pups_frost');
   } else {
     narration.say('pup_found');
   }
@@ -902,7 +979,8 @@ async function loadRoom(id, entry) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
-  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods' : 'ember_hollow';
+  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods'
+    : id[0] === 'f' ? 'frostpeak' : 'ember_hollow';
   applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
@@ -917,7 +995,8 @@ async function loadRoom(id, entry) {
   if (id === 'r2') narration.say('r2_enter');
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG }; // debug/testing hook
+  if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -928,6 +1007,12 @@ function applyRoomMood() {
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
   scene.background.setHex(bg);
   scene.fog.color.setHex(bg);
+  // a room may recolour the light itself (Frostpeak runs cold; everywhere
+  // else keeps the warm ember rig the earlier regions were tuned against)
+  const lt = world.lightTint;
+  hemi.color.setHex(lt ? lt.sky : 0xa393b8);
+  hemi.groundColor.setHex(lt ? lt.ground : 0x5c4030);
+  key.color.setHex(lt ? lt.key : 0xffd2a0);
 }
 
 function snapCamera() {
@@ -965,7 +1050,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1231,7 +1316,17 @@ async function start() {
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
             spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
-            if (state.room === 'w5') {
+            if (state.room === 'f5') {
+              // BOREAL FALLS — the storm lifts off Frostpeak and the Frost
+              // Wolf is earned (boss.js set the flags; here is the party)
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('boreal_defeat');
+              narration.say('frost_grant');
+              narration.say('frost_howto');
+              WS.set('frost', 'restored');
+              narration.say('frost_restore_1');
+              setTimeout(() => narration.say('luna_dream_4'), 9000);
+            } else if (state.room === 'w5') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
               // Wolf is earned (boss.js set the flags; here is the party)
               audio.playMusic('victory', { loop: false, then: 'den' });
@@ -1366,7 +1461,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
