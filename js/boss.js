@@ -389,7 +389,7 @@ export class Shadowgrip {
           this.action = 'windup';
           this.actionT = 0.9;
           this._setAnim('idle');
-          audio.play('bite', { volume: 0.6, rate: 0.42, vary: 0.05 }); // GROWL
+          audio.play('growl', { volume: 0.6, rate: 0.42, vary: 0.05 }); // GROWL
         } else if (Math.random() < 0.4) {
           // trot in for the swipe
           this.action = 'stalk';
@@ -400,7 +400,7 @@ export class Shadowgrip {
           this.actionT = 1.0;
           this._scrapeAcc = 0;
           facePlayer();
-          audio.play('bite', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
+          audio.play('growl', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
         }
       }
     } else if (A === 'stalk') {
@@ -411,7 +411,7 @@ export class Shadowgrip {
         this.action = 'windup';
         this.actionT = 0.9;
         this._setAnim('idle');
-        audio.play('bite', { volume: 0.6, rate: 0.42, vary: 0.05 });
+        audio.play('growl', { volume: 0.6, rate: 0.42, vary: 0.05 });
       }
     } else if (A === 'windup') {
       // snarl + coil: the paw is coming — raise the shield NOW (or roll)
@@ -469,7 +469,7 @@ export class Shadowgrip {
         if (this.runAction) this.runAction.reset().play();
         if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
         audio.play('whoosh', { volume: 0.9, rate: 0.7 });
-        audio.play('bite', { volume: 0.8, rate: 0.55 });
+        audio.play('growl', { volume: 0.8, rate: 0.55 });
       }
     } else if (A === 'charge') {
       this.core.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);

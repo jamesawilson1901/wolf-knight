@@ -466,7 +466,7 @@ export class Hound extends Enemy {
         const dd = Math.max(d, 0.01);
         this.chargeDir = { x: dx / dd, z: dz / dd };
         this.root.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
-        audio.play('bite', { volume: 0.5, rate: 0.42, vary: 0.05 }); // low GROWL
+        audio.play('growl', { volume: 0.5, rate: 0.42, vary: 0.05 }); // low GROWL
       }
     } else if (this.state === 'crouch') {
       // ~1s telegraph, ALL on the wolf's body (the floor decal is gone —

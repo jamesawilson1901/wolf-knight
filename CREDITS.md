@@ -66,9 +66,9 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 | ⚠ **HydroGene — High Quality 16-bit RPG Music** | HydroGene | **Eight of the game's ten tracks**: `boss-intro`+`boss-loop` (Battle Theme II), `causeway`+`kiln` (Volcanic Crater), `den`+`ember-calm` (Peaceful Village), `region-stone` (Hidden Cavern), `stone-deep` (Dwarven Mine — also Frostpeak) | https://hydrogene.itch.io/high-quality-16-bit-music |
 | ⚠ Cave Theme (`region-ember`) | Brandon Morris | Ember Hollow region music | https://opengameart.org/content/cave-theme |
 | ⚠ Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
-| ✓ RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits (`chop`), puffs/whooshes (`cloth*`) | https://kenney.nl/assets/rpg-audio |
+| ✓ RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits + growls (`chop`), dust puffs and air-whooshes (`cloth3`/`cloth1`) | https://kenney.nl/assets/rpg-audio |
 | ✓ UI Audio | Kenney | UI clicks, checkpoint tick (`click*`) | https://kenney.nl/assets/ui-audio |
-| ✓ Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`) | https://kenney.nl/assets/impact-sounds |
+| ✓ Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`), and the wolf's bite (`impactSoft_medium`) | https://kenney.nl/assets/impact-sounds |
 
 ## Other
 

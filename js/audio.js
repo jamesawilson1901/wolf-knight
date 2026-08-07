@@ -23,11 +23,20 @@ const SFX_FILES = {
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
   bones: './assets/audio/sfx/bones.ogg',
-  // ALIAS (v3.21.2): bite.ogg was byte-identical to hit.ogg — the same file
-  // vendored twice under two names. One file, two names; `_buffer` caches by
-  // URL, so this is one fetch and one decode.
-  // (These two events SOUNDING alike is a separate question — see BUILDLOG.)
-  bite: './assets/audio/sfx/hit.ogg',
+  // v3.21.3: `bite` used to be a second copy of hit.ogg (a chop), so a wolf's
+  // jaws and a sword landing made the identical sound. It now has its own —
+  // Kenney impactSoft_medium_001, measured as the darkest and most front-loaded
+  // candidate available (brightness 0.1 vs the chop's 3.5, half its energy in
+  // the first 7ms): a snap, not a blade.
+  bite: './assets/audio/sfx/bite.ogg',
+  // GROWL is the chop pitched right down (rate 0.42-0.6 at every call site) —
+  // that IS how the game has always made its growls, and there is no animal
+  // sound in any pack on disk. One file, two names, and the PITCH does the
+  // differentiating, which is the honest kind of alias: `hit` never plays below
+  // 0.75, `growl` never plays above 0.6, so they never sound alike.
+  // Before v3.21.3 the growls rode on `bite`, which is why `bite` could not be
+  // given a real bite sound without breaking them.
+  growl: './assets/audio/sfx/hit.ogg',
   'step-stone-0': './assets/audio/sfx/step-stone-0.ogg',
   'step-stone-1': './assets/audio/sfx/step-stone-1.ogg',
   'step-stone-2': './assets/audio/sfx/step-stone-2.ogg',
@@ -37,7 +46,10 @@ const SFX_FILES = {
   'chest-open': './assets/audio/sfx/chest-open.ogg',
   coin: './assets/audio/sfx/coin.ogg',
   'gate-creak': './assets/audio/sfx/gate-creak.ogg',
-  whoosh: './assets/audio/sfx/puff.ogg', // ALIAS: was a byte-identical copy of puff.ogg
+  // v3.21.3: whoosh was a second copy of puff.ogg. It now has its own —
+  // Kenney cloth1: longer (0.68s vs 0.50), brighter and louder, so a dive or a
+  // vine-lash moves real air while `puff` stays the small dust sound.
+  whoosh: './assets/audio/sfx/whoosh.ogg',
 };
 
 const MUSIC_FILES = {

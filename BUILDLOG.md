@@ -1963,3 +1963,57 @@ sword landing and a wolf biting make the *identical* sound, and so do a dust
 puff and a whoosh. That is a design smell rather than a bug, and the Kenney
 RPG Audio pack already on disk has plenty of alternatives. Left alone
 because it changes how the game sounds, which is dad's call, not mine.
+
+## v3.21.3 — A bite that isn't a sword (2026-08-07)
+
+Dad: "yes change it."
+
+Deduping the audio in v3.21.2 exposed that a sword landing and a wolf's jaws
+made the *identical* sound, as did a dust puff and an air-whoosh. Fixed —
+but the interesting part is why `bite` couldn't simply be swapped.
+
+### `bite` was doing two jobs
+
+Reading the call sites before touching anything: `bite` plays at **rate
+0.42–0.6** in the boss, the hounds and the Fire Wolf's breath — those are
+**growls**, made by pitching the chop right down — and at **rate 0.72–1.2**
+for actual jaws. One name, two events. Giving `bite` a real bite sound would
+have wrecked every growl in the game.
+
+So the growls moved to their own name. `growl` still points at the chop file,
+because that IS how this game has always made a growl and no pack on disk has
+an animal sound — but that alias is honest in a way the old one wasn't: the
+**pitch ranges never overlap** (growl tops out at 0.6, hit starts at 0.75),
+so they cannot sound alike. Six call sites moved.
+
+### Chosen by measurement, not by filename
+
+Decoded every candidate and compared duration, loudness, brightness
+(zero-crossing rate) and where the energy sits:
+
+| cue | file | secs | rms | brightness |
+|---|---|---|---|---|
+| hit (unchanged) | Kenney `chop` | 0.26 | 0.116 | **3.5** |
+| **bite (new)** | Kenney `impactSoft_medium_001` | 0.20 | 0.171 | **0.1** |
+| puff (unchanged) | Kenney `cloth3` | 0.50 | 0.034 | 0.9 |
+| **whoosh (new)** | Kenney `cloth1` | 0.68 | 0.065 | 1.9 |
+
+The bite is the darkest and most front-loaded thing in the packs — half its
+energy inside the first 7 ms, brightness 0.1 against the chop's 3.5. That is
+a snap, not a blade. The whoosh is longer, louder and brighter than the dust
+puff, so a dragon's dive moves real air while `puff` stays small.
+
+Both come from Kenney packs whose licences are already in `assets/LICENSES/`,
+so this adds no new licence gap — checked before choosing.
+
+### The test had a blind spot, and said so
+
+The first version of the pitch-overlap check only read *literal* rates and
+therefore missed the per-form bite table, where the Earth Wolf chomps at a
+heavier 0.72. Widened to parse the table too — 0.72 still clears the growl
+ceiling of 0.6, so the separation holds. A check that quietly skips the one
+case you'd get wrong is worse than no check.
+
+Verified: no 404s, all five cues decode, both pairs measurably different, the
+pitch ranges provably disjoint, and the service worker still precaches
+cleanly (233 files, offline intact).
