@@ -948,21 +948,36 @@ export class Player {
         if (seared) this.gainMoon(CONFIG.MOON.PER_BOLT);
       }
       // ...and the breath MELTS ice shells off frozen braziers (v3.21):
-      // breath to melt, slam to light — two learned fire verbs, one puzzle
+      // breath to melt, slam to light — two learned fire verbs, one puzzle.
+      // The probe radius is clamped to its own reach so the first sample cannot
+      // melt a brazier BEHIND Kael, which a flat 1.6 at 1.13u did (-0.47u).
       if (world.meltAt) {
         for (let i = 1; i <= 3; i++) {
           const reach = (RANGE * i) / 3;
-          world.meltAt(this.root.position.x + bfx * reach, this.root.position.z + bfz * reach, 1.6);
+          world.meltAt(this.root.position.x + bfx * reach, this.root.position.z + bfz * reach,
+            Math.min(1.6, reach * 0.9));
         }
       }
-      // rolling flame: three widening puffs down the cone
-      for (let i = 0; i < 3; i++) {
-        const reach = 0.9 + i * 0.95;
-        const spread = 0.3 * (i + 1);
+      // C1 — the fire breath is the frost breath's twin (both a 38-40 degree
+      // cone) and it was the only ability in the game with NO ground mark at
+      // all. Same cone, same constants the hit test uses.
+      // tryRanged() takes no `effects` — juice holds the reference (juice.init),
+      // which is the same handle js/boss.js reaches for.
+      if (juice.effects) {
+        juice.effects.groundSlam({ x: this.root.position.x, z: this.root.position.z }, 0xff8a3a,
+          RANGE, { deg: 38, fx: bfx, fz: bfz });
+      }
+      // rolling flame: three widening puffs down the cone. The spread is the
+      // cone's ACTUAL half-width at each step — it used to be 0.3/0.6/0.9,
+      // which drew the fan 2.4x too narrow and stopped 0.6u short of the reach.
+      const TAN38 = Math.tan(THREE.MathUtils.degToRad(38));
+      for (let i = 1; i <= 3; i++) {
+        const reach = (RANGE * i) / 3;
+        const spread = reach * TAN38;
         juice.burst(
           this.root.position.x + bfx * reach + (Math.random() * 2 - 1) * spread, 0.7,
           this.root.position.z + bfz * reach + (Math.random() * 2 - 1) * spread,
-          i === 2 ? 0xffd76a : 0xff8a3a, 9);
+          i === 3 ? 0xffd76a : 0xff8a3a, 9);
       }
       return true;
     }

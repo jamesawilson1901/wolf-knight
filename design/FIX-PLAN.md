@@ -561,6 +561,27 @@ Boreal's lane was 1.3u wide against a 3.2u-wide hit.
 `tools/verify-telegraphs.mjs` measures the arc's world bearing against the
 warden's forward at seven facings.
 
+### One more, caught by the verification pass after the fact (v3.31.1)
+
+The **fire breath** is the frost breath's twin — both a 38-40 degree cone — and
+the first C1 pass gave the frost one an honest wedge while leaving fire as **the
+only ability in the game with no ground mark at all**. Its three flame puffs were
+drawn at ±0.3/±0.6/±0.9 against a real half-width of ±2.19u at the far step:
+**2.4x too narrow and 0.96u short**. And its `meltAt` probes used a flat 1.6u
+radius from 1.13u out, so the breath could melt a frozen brazier **0.47u BEHIND
+Kael** — the Frostpeak gate verb, firing backwards.
+
+It now draws the same cone from the same constants the hit test uses, the puffs
+spread to the cone's true half-width at each step, and the probe radius is
+clamped to its own reach so nothing behind can be melted. Verified at runtime:
+76 degrees drawn, 3.4u reach, no page errors.
+
+Worth recording how it was nearly shipped broken: the first version called
+`effects.groundSlam(...)`, but `tryRanged(world)` takes no `effects` parameter.
+`node --check` passes that happily — it is a ReferenceError at runtime, on the
+first breath a child ever fires. It uses `juice.effects` now, the same handle
+`js/boss.js` reaches for.
+
 Original finding below.
 
 Asked directly: **yes, it needs retuning.** The effects were built against
@@ -579,6 +600,42 @@ The honest summary: hit feedback still *fires* correctly everywhere — it has n
 broken — but it has quietly become less legible as the spaces grew. Worth one
 focused pass sizing the ring to the ability radius and scaling shake with
 visible-area rather than leaving both constant.
+
+## C4 · The pose lies about TIME, not distance — i-frames and windows
+**MEDIUM/HIGH · affects all · one session · independent**
+**Found by the C1 audit (v3.31.x), deliberately NOT fixed there.**
+
+C1 fixed every flourish that lied about *where* an ability reaches. An
+adversarial verification pass over the same audit confirmed three that lie about
+*when* — the visual and the rule disagree in time rather than in space. These are
+combat-feel changes rather than feedback fixes, so they want their own session
+and a playtest: each one alters what a child can survive.
+
+- **The jump.** `JUMP_V 6.8 / GRAVITY 21` puts Kael visibly airborne for 0.648s
+  and 1.10u up, but `get airborne()` is `airY > AIRBORNE_DODGE_Y` with
+  AIRBORNE_DODGE_Y 0.35. Solving the arc, the dodge is live only from t=0.056 to
+  t=0.591 — **17.4% of the jump, at each end, reads as airborne and takes the
+  hit**, up to a third of the character's height off the floor. Worse than a rare
+  mistime: `contact()` in `js/enemies.js` defaults to `{ground: true}` and
+  re-tests every frame of overlap, so the landing window is sampled continuously.
+  The fix has to be the `airY > 0 || airV > 0` variant rather than just lowering
+  the constant — 0.35 is also what stops the roll's 0.28u hop and the lunge's
+  0.18u hop from being free dodges.
+- **The Dark Wolf lunge.** `LUNGE_DUR` 0.26 against `LUNGE_IFRAMES` 0.15: **42%
+  of the dash has no i-frames and looks identical to the half that does**, and
+  the 0.18u hop is below AIRBORNE_DODGE_Y so it dodges nothing either. The code
+  calls the lunge "an attack AND an escape"; the form that most needs the dodge
+  to be legible is also the one taking +30% damage (`DARK_HURT_MULT` 1.3).
+- **The knight parry.** One `block` pose, crossfaded over 0.12s, pixel-identical
+  during the 0.3s parry window and for the whole hold afterwards. `defendStart`
+  is stamped when the button registers, so **40% of the window elapses while the
+  shield is still crossfading up**, and when it closes the same pose silently
+  downgrades to a 0.5-heart blunt block. Nothing marks the difference.
+
+Also live and cheap, same family: `js/items.js` gives weapons an `arc` from 36 to
+82 degrees — a **2.3x** difference in swing width — while every knight weapon
+plays the same `Melee_1H_Attack_Slice_Diagonal` clip. The pose is identical; the
+hitbox is not.
 
 ## C2 · The second ring chord is barely a shortcut
 **LOW · affects L3 · part of a session · design call, not a bug**

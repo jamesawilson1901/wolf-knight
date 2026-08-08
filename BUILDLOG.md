@@ -2778,3 +2778,46 @@ One caught mistake worth recording: the first pose run reported the cone as 40
 degrees and the wedge as 13, and failed. The game was right — my verifier
 converted radians to degrees with 90/PI instead of 180/PI and reported half the
 angle. The measurement was wrong, not the thing measured.
+
+## v3.31.1 — The fire breath, and what the verifier caught (2026-08-08)
+
+The adversarial pass over the C1 audit rejected six of its own claims as stale —
+they described the code before the C1 fixes, which landed while the audit was
+running — and independently re-derived the Bone Warden mirror bug in node against
+the vendored three.js, reaching the same numbers measured in the browser. It also
+confirmed one thing C1 had missed, in C1's own subject.
+
+**The fire breath was the frost breath's twin and got none of the treatment.**
+Both are a 38-40 degree cone; C1 gave the frost one an honest wedge and left fire
+as the only ability in the game with no ground mark at all. Its three flame puffs
+spread ±0.3/±0.6/±0.9 against a real cone half-width of ±2.19u at the far step —
+2.4x too narrow, and stopping 0.96u short of the reach. And its `meltAt` probes
+used a flat 1.6u radius starting 1.13u out, so the breath could melt a frozen
+brazier 0.47u BEHIND Kael. That is the Frostpeak gate verb — breath to melt, slam
+to light — firing backwards.
+
+It now draws the same cone from the same constants the hit test uses, the puffs
+spread to the cone's true half-width at each step, and the probe radius is
+clamped to its own reach. Measured at runtime: 76 degrees drawn, 3.4u reach.
+
+### Nearly shipped broken
+
+The first version called `effects.groundSlam(...)`. `tryRanged(world)` takes no
+`effects` parameter — it would have been a ReferenceError the first time a child
+breathed fire, and `node --check` passes it without complaint because it is a
+scope error, not a syntax one. Caught by checking the enclosing signature rather
+than trusting the syntax check, and fixed to `juice.effects`, which is the handle
+`js/boss.js` already uses. The runtime probe now asserts "no page errors" as well
+as the geometry, so the next one cannot pass silently.
+
+### Logged, not fixed: C4
+
+Three confirmed defects where the pose lies about TIME rather than distance —
+the jump is visibly airborne for 0.648s but dodges for 0.535s; the Dark Wolf
+lunge has i-frames for 58% of an unchanging dash; the parry window has no visible
+state at all and 40% of it elapses during the shield's crossfade. Plus weapon
+`arc` varying 2.3x with one shared animation clip.
+
+These are combat-feel changes, not feedback fixes: each alters what a child can
+survive, so each needs a playtest rather than a measurement. Written up as C4
+with the derivations rather than folded into C1.
