@@ -492,7 +492,34 @@ Worth checking the other hand-built shipping rooms in the same pass; they are
 all unbatched, and only the Den has been measured.
 
 ## B2 · No LOD anywhere
-**LOW · affects all · one session**
+**✅ CLOSED (v3.34.0) — not needed, on measurement.**
+
+LOD exists to buy back draw calls and triangles. After B1 (one shadow caster per
+character) and B3 (the Den batched), **every room in the game is under the
+ceiling**, swept across standing positions rather than sampled at the spawn:
+
+| | worst room | calls |
+|---|---|---|
+| Level 1 (14 rooms) | `lb2` | 96 |
+| Level 2 (17 rooms) | `vb2` | 92 |
+| Level 3 (21 rooms) | `t3a` | 92 |
+| Frostpeak (7 rooms) | `f2` | 99 |
+| the Den | — | 95–99 |
+
+Worst triangle count anywhere is ~50k against a 500,000 budget — two orders of
+magnitude of headroom, because this is a low-poly kit game. LOD would add a
+system, a per-model authoring step and a pop-in artefact to solve a problem the
+measurements say does not exist.
+
+**What IS worth doing instead**, if more headroom is ever wanted: the remaining
+hand-built shipping rooms (Frostpeak's `f2` 99, `f4` 97, `f3` 96) still never
+call `flattenStatic()`, exactly as the Den did not before B3. That is a one-line
+change per room plus the same keepLoose audit `tools/verify-den.mjs` was written
+for, and it is worth roughly 15-18 calls each — far more than LOD would buy, for
+far less machinery. Logged here rather than opened as its own item because
+nothing is over budget today.
+
+Original finding below.
 
 The performance brief asks for "LOD plus fog to hide pop-in". Fog exists
 (`26 → 52 u`, METRICS.md). There is no `THREE.LOD` in the codebase. Not currently
@@ -686,7 +713,18 @@ plays the same `Melee_1H_Attack_Slice_Diagonal` clip. The pose is identical; the
 hitbox is not.
 
 ## C2 · The second ring chord is barely a shortcut
-**LOW · affects L3 · part of a session · design call, not a bug**
+**✅ CLOSED (v3.34.0) — dad's call: 37% is fine, keep it.**
+
+Asked directly and answered: "37% is fine. I'll let you know if it isn't after
+first playthrough." Nothing to build. `tools/verify-level3.mjs` still asserts the
+saving, against a bar set to the accepted figure with a little room (0.7) rather
+than the unmeasured 0.5 guess it was written with — so an edit that erodes it
+still trips.
+
+Its real value was always the one the finding names: skipping the *dark*
+Gloomwood stretch, not the distance.
+
+Original finding below.
 
 Measured: `tsA` (fallen log) saves **75 %** — 81 u against 319 u, a real relief
 after the long lap. `tsB` (cut root-wall) is 81 u against 128 u, a **37 %**
@@ -697,7 +735,35 @@ shortcut. Its genuine value is skipping the *dark* Gloomwood stretch, not the
 distance. Keep, cut, or move its far end further round the ring.
 
 ## C3 · Spec drift — docs vs implementation
-**LOW · affects docs · part of a session**
+**✅ DONE (v3.34.0) — and it found a load-bearing measurement error.**
+
+The listed drift was mostly annotated-in-place already. Two real corrections, and
+one that mattered more than "LOW" suggested:
+
+**METRICS.md's camera framing table had the width row mislabelled**, and level
+sizing has been reasoned from it ever since. It read "Visible width at Kael's own
+depth: 16.1 u". Re-measured at the documented aspect: 16.1 u is the width at the
+**near edge** of the screen — the bottom, 4.5 u behind Kael, closest to the
+camera and therefore narrowest. The width at Kael is **22.2 u**. The doc's own
+"~39.6 u at the far edge" is right and matches, which is what gives it away:
+16.1 / 22.2 / 39.6 are the near, middle and far widths of one fan, and the table
+had labelled the near one as the middle.
+
+Corrected, with two things the table never said and every later session had to
+re-derive: **width scales with aspect ratio (21.1 u at 2.06, 22.2 u at 2.16) but
+ahead and behind do not** — 12.9 u and 4.5 u on every device — and **none of it
+changes with room size**, because the camera is a fixed offset. A 14 × 10 choke
+and the 36 × 28 hub frame identical ground, to the decimal. That last fact is the
+one C1 was written against, and it is now recorded where the next session will
+find it instead of measuring it again.
+
+**LEVEL-MAP's Level 3 space count** said 18; 21 are built, and the doc's own
+component list adds to 21. Corrected.
+
+The COMBAT-SPEC row ("the stomp stagger is not implemented") is stale — A4
+shipped it in v3.26.1.
+
+Original finding below.
 
 | Doc claim | Reality | Which is wrong |
 |---|---|---|

@@ -2907,3 +2907,50 @@ frames, and asserts each one changed — then sweeps standing positions for the
 worst frame. Villagers animating, Biscuit animating, stones bobbing, 95 calls.
 
 Every room in the game is now under the ceiling.
+
+## v3.34.0 — The docs catch up, and one of them was wrong (C3, C2, B2)
+
+### METRICS.md had the camera width mislabelled, and everything sized levels by it
+
+The framing table read "**Visible width at Kael's own depth: 16.1 u**". It is
+not. Re-measured at the documented aspect, 16.1 u is the width at the **near
+edge** of the screen — the bottom, 4.5 u behind Kael, closest to the camera and
+therefore the narrowest part of the fan. The width at Kael is **22.2 u**.
+
+The table's own "~39.6 u at the far edge" is what gives it away: 16.1 / 22.2 /
+39.6 are the near, middle and far widths of a single frustum fan, and the row had
+labelled the near one as the middle. Geometry agrees with the measurement
+exactly: 2 × 11 × tan(25°) × 2.16 = 22.2.
+
+Two things the table never said, both of which later sessions kept re-deriving,
+are now in it:
+
+- **Width scales with aspect ratio; ahead and behind do not.** 21.1 u at aspect
+  2.06, 22.2 u at 2.16 — but 12.9 u ahead and 4.5 u behind on every device.
+  Anything reasoning about what a child can see BEHIND them (the blind-strip law,
+  A6's junction landmarks, C1's flourishes) depends only on the stable pair.
+- **None of it changes with room size.** A 14 × 10 choke and the 36 × 28 hub
+  frame identical ground, to the decimal, because the camera is a fixed offset.
+  That is the fact C1 was written against, now recorded where it will be found.
+
+The header was also internally inconsistent — "740 × 360, aspect 2.16", when
+740/360 is 2.06.
+
+### The rest of C3
+
+LEVEL-MAP said Level 3 is 18 spaces; 21 are built, and the doc's own component
+list adds to 21. The COMBAT-SPEC row about the missing stomp stagger is stale —
+A4 shipped it in v3.26.1. The remaining drift was already annotated in place.
+
+### C2 and B2 closed on measurement
+
+**C2** — dad's call: 37% is fine, keep the chord. The verifier still asserts the
+saving, now against the accepted figure rather than the unmeasured 0.5 guess.
+
+**B2 (LOD)** — closed as not needed. Every room in the game is under the ceiling
+after B1 and B3, and the worst triangle count anywhere is ~50k against a 500,000
+budget: two orders of magnitude of headroom, because this is a low-poly kit game.
+LOD would add a system, an authoring step and pop-in to solve a measured
+non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
+rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
+15-18 calls, far more than LOD for far less machinery.

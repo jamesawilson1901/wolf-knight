@@ -582,7 +582,7 @@ seven. That is why the shortcuts open from the far side and not the near one.
 
 | | now | target |
 |---|---|---|
-| spaces | 7 | **18** (4 districts × 2 + glade + shrine + puzzle + 4 chokes + 4 pockets + 2 shortcut legs) |
+| spaces | 7 | **21** (4 districts × 2 = 8, + glade + shrine + puzzle + 4 ring legs + 4 pockets + 2 shortcut legs) |
 | area | 1,428 sq-u | **≈ 8,300 sq-u — 5.8×** |
 | district space | — | **32 × 26**, ring legs **26 × 20** |
 

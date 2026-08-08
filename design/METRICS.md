@@ -69,21 +69,36 @@ walls, doors, plates or anything with a collider.
 | Fog | linear, **26 → 52 u** |
 | `setPixelRatio` | capped at **2** ✅ already compliant |
 
-### Measured ground framing (phone landscape, 740 × 360, aspect 2.16)
+### Measured ground framing (phone landscape, aspect 2.16)
 
-Raycast through the four viewport corners onto the ground plane, camera settled:
+Projected onto the ground plane with the camera settled, re-measured in v3.34.0.
+The width row was previously **mislabelled** — 16.1 u is the width at the NEAR
+edge of the screen, not at Kael. The true figure at Kael is 22.2 u:
 
 | | |
 |---|---|
-| **Visible width at Kael's own depth** | **16.1 u** |
-| Visible distance **ahead** of Kael | **12.8 u** |
-| Visible distance **behind** Kael | **4.6 u** |
-| Width at the far edge of the frustum | ~39.6 u (it fans out with distance) |
+| Visible width at the **near edge** (bottom of screen) | 16.1 u |
+| **Visible width at Kael's own depth** | **22.2 u** |
+| Visible width at the **far edge** | ~39.6 u (it fans out with distance) |
+| Visible distance **ahead** of Kael | **12.9 u** |
+| Visible distance **behind** Kael | **4.5 u** |
 
-**This is why the current levels feel small.** A 16 × 12 room fits *entirely
-inside one screen* — there is nothing off-camera to walk toward, so there is
-nothing to explore. The moment a space exceeds ~16 u across, the far side is
-off-screen and the child has a reason to move.
+**Width scales with aspect ratio; ahead and behind do not.** At 740 × 360
+(aspect 2.06) the width at Kael is 21.1 u, at 2.16 it is 22.2 u, but the ground
+is 12.9 u ahead and 4.5 u behind on every device. Anything reasoning about what
+a child can see BEHIND them — the blind-strip law, junction landmarks (A6),
+whether a flourish reads (C1) — depends only on the two stable numbers.
+
+**None of it changes with room size.** The camera is a fixed world-space offset
+with a constant `CAM_DIST`, so a 14 × 10 choke and the 36 × 28 hub frame exactly
+the same amount of ground, measured identically to the decimal. A bigger room
+does not put more world on screen, and feedback tuned in one room reads the same
+in every other.
+
+**This is why the old levels felt small.** A 16 × 12 room fits *entirely inside
+one screen* — nothing off-camera to walk toward, so nothing to explore. The
+threshold is ~22 u across at the player (not the ~16 u this table used to imply),
+which is why the island module is 32 × 26.
 
 ### Sizes derived from the camera
 
@@ -150,8 +165,8 @@ Metrics Zoo**). It exhibits, at true scale and on the grid:
 
 - Kael beside a 1 u tile, a 2.4 u doorway, a 3.0 u chokepoint and a 2.0 u corridor
 - the practical-minimum (2.0 u) and absolute-minimum (0.64 u) gaps side by side
-- a 32 × 26 island footprint marked on the floor, with the 16.1 u camera width
-  drawn inside it
+- a 32 × 26 island footprint marked on the floor, with the 22.2 u camera width
+  at Kael's depth drawn inside it (and 16.1 u at the near edge, for the fan)
 - the 2.5 u blind strip painted along a south wall
 - one of every wall/floor module at deck height 0 and 0.185
 - a draw-call/triangle readout for the zoo itself
