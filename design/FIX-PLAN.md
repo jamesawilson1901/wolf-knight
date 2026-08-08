@@ -454,8 +454,23 @@ visual trade-off rather than a Level 2 decision — hence flagged, not taken.
 A cheaper partial: drop `castShadow` on held items (shield, blade) only.
 
 ## B3 · The Den is the last room over the ceiling
-**MEDIUM · affects the hub · part of a session · independent**
-**Found while doing B1 (v3.30.0).**
+**✅ DONE (v3.33.0)** — 113 → **95** worst-case, and the room is still alive.
+
+`flattenStatic(world)` at the end of `buildDen`. The whole fix was that the
+hand-built shipping rooms never called it while all three rebuilt levels do from
+`finish()`.
+
+Batching is precisely the change that can silently freeze a room — anything
+merged keeps its build-time transform forever — so the safety was checked rather
+than assumed. Skinned meshes are skipped outright (the villagers, Biscuit, the
+shopkeeper, the wolf pup), the checkpoint flame rides a protected gameplay list,
+`world.npcs` went into the protected keys during B1, and the three animated props
+— Petra's heart, Cinder's ember, the moonstone orb — are marked `keepLoose`
+where they are built. `tools/verify-den.mjs` samples every animated object over
+90 frames and asserts it actually moved, then sweeps standing positions for the
+worst frame.
+
+Original finding below.
 
 With B1 in, the Den is the only room in the game over 100 draw calls:
 **113 worst-case**, standing at (-5, 8). It was far worse before B1 — it holds

@@ -2877,3 +2877,33 @@ One more measurement lesson: the i-frame assertion first failed at 0.204 against
 0.26. The game was right — the test had waited two frames before reading, and
 under SwiftShader one frame is long enough to eat 20% of the window. A decaying
 counter has to be sampled in the tick it is set.
+
+## v3.33.0 — The Den joins the budget (B3) (2026-08-08)
+
+After B1 the Den was the only room in the game over the 100 draw-call ceiling —
+113 worst-case — and characters were no longer why. Its own static geometry cast
+18 calls of shadow, because the hand-built shipping rooms never call
+`flattenStatic()` while all three rebuilt levels do from `finish()`.
+
+One line at the end of `buildDen`, and 113 → **95**.
+
+The care went into not freezing the room. Batching bakes world transforms, so
+anything merged keeps the pose it had at build time forever. Four categories had
+to be safe:
+
+- **Skinned meshes** — the three villagers, Biscuit, the shopkeeper, the wolf pup.
+  `flattenStatic` skips these outright.
+- **The checkpoint flame** — `checkpoints` is already a protected gameplay key.
+- **`world.npcs`** — added to the protected keys during B1, specifically so this
+  change could be made later without merging the villagers into the scenery.
+- **The three floating spirit-stones** — Petra's heart, Cinder's ember and the
+  moonstone orb are moved by `onAnimate` hooks and are not skinned, so they are
+  the ones that would actually have frozen. Marked `keepLoose` where they are
+  built.
+
+`tools/verify-den.mjs` is the check that matters: it turns on both spirit homes
+so the Den holds the most it ever holds, samples every animated object across 90
+frames, and asserts each one changed — then sweeps standing positions for the
+worst frame. Villagers animating, Biscuit animating, stones bobbing, 95 calls.
+
+Every room in the game is now under the ceiling.

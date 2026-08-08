@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
+import { flattenStatic } from './batch.js';
 import { state, resolveRoom } from './state.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
@@ -767,6 +768,7 @@ async function buildDen(scene) {
     );
     heart.position.set(-2.9, 0.85, -2.3);
     world.add(heart);
+    world.keepLoose(heart);     // it bobs and turns (onAnimate below)
     const hGlow = new THREE.PointLight(0xd8b06a, 4, 7, 1.9);
     hGlow.position.set(-2.9, 1.0, -2.3);
     world.add(hGlow);
@@ -787,6 +789,7 @@ async function buildDen(scene) {
     );
     homeEmber.position.set(1.4, 0.9, -0.9);
     world.add(homeEmber);
+    world.keepLoose(homeEmber); // it floats (onAnimate below)
     const homeGlow = new THREE.PointLight(0xffc27a, 5, 8, 1.9);
     homeGlow.position.set(1.4, 1.1, -0.9);
     world.add(homeGlow);
@@ -818,6 +821,7 @@ async function buildDen(scene) {
     );
     orb.position.set(-4.6, 1.0, -3.4);
     world.add(orb);
+    world.keepLoose(orb);       // it bobs and turns (onAnimate below)
     const moonGlow = new THREE.PointLight(0xa8bcff, 4, 7, 1.9);
     moonGlow.position.set(-4.6, 1.3, -3.4);
     world.add(moonGlow);
@@ -880,6 +884,19 @@ async function buildDen(scene) {
   // DEN GAMES: each villager hosts a minigame (gold act-here rings —
   // js/minigames.js). Rook's targets appear with Rook himself.
   await setupDenGames(world);
+
+  // B3 — BATCH THE DEN. It was the last room in the game over the 100 draw-call
+  // ceiling (113 worst-case, standing at (-5, 8)), and after B1 characters were
+  // no longer why: its own static geometry cast 18 calls of shadow. The cause
+  // was simply that the hand-built shipping rooms never called this, while all
+  // three rebuilt levels do from their finish().
+  //
+  // Safe here because everything that MOVES is already excluded: skinned meshes
+  // are skipped outright (the villagers, Biscuit, the shopkeeper, the pup), the
+  // checkpoint flame is a protected gameplay list, `world.npcs` is in the
+  // protected keys, and the three animated props — Petra's heart, Cinder's
+  // ember and the moonstone orb — are marked keepLoose where they are built.
+  flattenStatic(world);
 
   // soft daylight mood handled by main (den has no lava rumble)
   return world;
