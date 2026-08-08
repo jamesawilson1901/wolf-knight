@@ -782,7 +782,10 @@ export async function buildVc2(scene) {
 
   // FORESHADOWED GATE — Level 3's tool, a whole level early. Green and alive
   // in a wet cave: obviously wrong, obviously later, reward plainly visible.
-  promiseGate(world, 11, -3, 2.4, 6, 0x5fae4a, 'THORNS — later', 'rockSB');
+  wallRun(world, 11, -6, 16, -6, D);
+  wallRun(world, 11, 0, 16, 0, D);
+  promiseGate(world, 11, -3, 2.4, 6, 0x5fae4a, 'THORNS — later', 'rockSB',
+              { system: 'cut', id: 'l2_bramble_gate', region: REGION });
   visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24 });
   world.markers.bramblePromise = { x: 11, z: -3 };
   breadcrumbs(world, [[0, 10], [-3, 4], [-3, -2], [0, -10]], 0x8fe0d4);

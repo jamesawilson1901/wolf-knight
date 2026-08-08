@@ -188,10 +188,39 @@ checkerboard. Fine while these are dev-only; a hazard the moment A1 lands.
 Should flip to `false` with the cheat menu keeping an explicit greybox toggle.
 
 ## A8 · Promise gates in the rebuilt levels are absent from the map
-**🔶 PARTLY DONE (v3.26.0)** — Level 3's root-wall and great log now register
-with `logMystery`/`resolveMystery` like the shipping rooms. Level 1's crack and
-fire promises and Level 2's underwater door still do not. Original finding
-below.
+**✅ DONE (v3.27.0) — and the audit had understated it. Twice.**
+
+Wiring the map entries turned up two much worse faults behind them, both now
+fixed and both covered by `tools/verify-promises.mjs`, which flood-fills each
+room's real colliders from its real spawn and then drives the real verb:
+
+1. **The gates could never be opened.** `promiseGate()` in `js/levelkit.js`
+   drew the obstacle, dropped a box collider and registered with **no gate
+   system at all** — not `crackables`, not `burnables`, not `cuttables`, not
+   `shatterables`. Level 1's cracked wall, Level 1's scorched barricade, Level
+   2's thorn tangle and Level 3's ice-sealed spring were permanent walls. A
+   child coming back with the exact form the gate advertises found the stomp,
+   the slam, the lash and the breath all did nothing. `promiseGate` now takes a
+   required `{system, id, region}` and rides the SAME system the shipping rooms
+   use, including the "already opened" check on re-entry.
+2. **...and it did not matter, because you could walk round them.** All five
+   promise obstacles sat loose in the middle of a 32×26 island or a 20×16
+   pocket with the reward beside them and open floor on every side. The flood
+   fill reached every chest with the gate standing. Each one now has an alcove:
+   two wall runs, with the gate as the only mouth. Measured nearest-approach
+   with the gate shut is now 3.2–5.2u; after the verb, 0.8u.
+
+Two supporting changes fell out of it: `world.shatterAt` is a World method
+rather than something `iceGate()` defined lazily (the same bug class already
+fixed once for `cuttables`), and every gate entry may carry a `hitR` so a blow
+landing anywhere ALONG a wall catches it — without that, an 8u-deep gate only
+answered to a slam within 2.6u of its exact centre point.
+
+One knock-on: Level 1's pup #3 sat inside the scorched alcove, so walling the
+alcove properly would have locked a collectible behind a form two levels away.
+The pup moved to `(-6, -6)`, outside the gate.
+
+Original finding below.
 
 The shipping rooms register every "come back later" obstacle in the mystery log
 (`js/main.js:624, 642, 663, 717, 788, 793` — six `logMystery` calls). The

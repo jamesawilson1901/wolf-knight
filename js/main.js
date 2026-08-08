@@ -30,6 +30,37 @@ import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
+
+// A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
+// rebuilt levels: the marker the room drops, the map entry it earns, and the
+// condition that closes it. `done` reads the same flag the gate is built from,
+// so the map can never claim a wall is open while the wall is still standing.
+const PROMISES = [
+  { marker: 'crackPromise', id: 'l1_crack', icon: '🪨', r: 4,
+    label: 'A cracked wall — the Ashfall',
+    done: () => !!state.flags.cracked.l1_crack_gate },
+  { marker: 'firePromise', id: 'l1_scorched', icon: '🔥', r: 4.5,
+    label: 'A scorched barricade — the Scorched Cubby',
+    done: () => !!state.flags.burned.l1_scorched_gate },
+  { marker: 'underwaterPromise', id: 'l2_sunken', icon: '💧', r: 4,
+    label: 'A chest under the water — the Great Vault',
+    done: () => WS.get('vault', 'drained') },
+  { marker: 'bramblePromise', id: 'l2_bramble', icon: '🌿', r: 4,
+    label: 'A thorny tangle — the Drowned Door',
+    done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+  { marker: 'thornPromise', id: 'l3_thorn', icon: '🌿', r: 4,
+    label: 'A thorn wall — Thornedge',
+    done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+  { marker: 'icePromise', id: 'l3_spring', icon: '❄️', r: 4,
+    label: 'A spring sealed in ice — Thornedge',
+    done: () => WS.get('wild3', 'ice_l3_spring_ice') },
+  { marker: 'rootWallPromise', id: 'l3_rootwall', icon: '🌿', r: 4,
+    label: 'A wall of roots — the Rootbound Deep', say: 'rootwall_hint',
+    done: () => WS.get('wild3', 'rootCut') },
+  { marker: 'logPromise', id: 'l3_greatlog', icon: '🪵', r: 4.5,
+    label: 'A great log, tangled — the Bloomfall', say: 'greatlog_hint',
+    done: () => WS.get('wild3', 'logDown') },
+];
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -831,19 +862,27 @@ function narrationTriggers(dt, t) {
   }
   if (m.knotSnare && nearSpot(m.knotSnare, 5)) narration.say('knot_snare');
 
-  // A2c — the two chords and the great knot. Prompts + the map promise, so the
-  // rebuilt levels signpost "later" the same way the shipping rooms always did.
-  if (m.rootWallPromise && nearSpot(m.rootWallPromise, 4)) {
-    if (logMystery('l3_rootwall', '🌿', 'A wall of roots — the Rootbound Deep')) bigToast('🗺️ Added to the map: ???');
-    narration.say('rootwall_hint');
-  }
-  if (m.logPromise && nearSpot(m.logPromise, 4.5)) {
-    if (logMystery('l3_greatlog', '🪵', 'A great log, tangled — the Bloomfall')) bigToast('🗺️ Added to the map: ???');
-    narration.say('greatlog_hint');
+  // A8 — EVERY "come back later" gate in the rebuilt levels, as one table.
+  //
+  // Six of the eight used to be silent: a child walked up to a wall with a
+  // chest plainly visible behind it and got no line from Pip and no ??? on the
+  // map, so it read as a dead end rather than as a place to return to. Written
+  // as a table rather than six near-identical `if` blocks because that is
+  // exactly how the shipping rooms and the rebuilt levels drifted apart in the
+  // first place — a new gate now adds one row, and gets the prompt, the map
+  // entry and the resolve for free.
+  //
+  // `done` is the SAME condition the gate itself is built from (js/levelkit.js
+  // promiseGate), so a resolved mystery and an opened gate can never disagree.
+  for (const p of PROMISES) {
+    const spot = m[p.marker];
+    if (spot && !p.done() && nearSpot(spot, p.r || 4)) {
+      if (logMystery(p.id, p.icon, p.label)) bigToast('🗺️ Added to the map: ???');
+      narration.say(p.say || 'gate_promise');
+    }
+    if (p.done()) resolveMystery(p.id);
   }
   if (m.thornKnot && nearSpot(m.thornKnot, 5)) narration.say('thornknot_hint');
-  if (WS.get('wild3', 'rootCut')) resolveMystery('l3_rootwall');
-  if (WS.get('wild3', 'logDown')) resolveMystery('l3_greatlog');
   if (WS.get('wild3', 'knotCut') && state.room === 'tc4') narration.say('woods_bloom');
 
   // "not yet" gates: log the promise + Pip acknowledges it

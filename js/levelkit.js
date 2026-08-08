@@ -19,6 +19,10 @@
 import * as THREE from 'three';
 import { prepareModel, instancePlacements, SHARED } from './assets.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
+import { state } from './state.js';
+import { audio } from './audio.js';
+import { WS } from './worldstate.js';
+import { registerCuttable, alreadyCut } from './gates.js';
 
 // METRICS.md — locked, inherited unchanged by every level built on this kit.
 export const DOOR_HALF = 1.2;      // 2.4 u standard door
@@ -257,43 +261,100 @@ export function makeBuilders({ kit, isGrey }) {
 
   // A "come back later" gate. It must read as LATER, never as broken: a
   // shaped, coloured obstacle with the reward VISIBLE beyond it.
-  function promiseGate(world, x, z, w, d, color, label, kindModel) {
+  //
+  // A8 — AND IT MUST ACTUALLY OPEN. Until v3.27 this function drew the gate,
+  // dropped a box collider in front of it and stopped. It registered with no
+  // gate system at all, so Level 1's cracked wall, Level 1's scorched
+  // barricade, Level 2's thorn tangle and Level 3's ice-sealed spring were
+  // permanent walls with a visible chest behind them. The promise was a lie:
+  // a child who came back with the very form the gate advertises found the
+  // stomp, the slam, the lash and the breath all did nothing.
+  //
+  // `gate` is now REQUIRED and says which tool opens it:
+  //   {system: 'crack'|'burn'|'cut'|'shatter', id, region}
+  // Each system is the SAME one the shipping rooms use, so a promise gate
+  // breaks with the same verb, the same feel and the same permanence as every
+  // other obstacle of its kind — no second, subtly-different code path.
+  function promiseGate(world, x, z, w, d, color, label, kindModel, gate) {
+    if (!gate || !gate.system) throw new Error('promiseGate needs a gate system — see A8');
+    const { system, id, region } = gate;
+    // Already opened on an earlier visit? Then there is nothing here at all —
+    // no geometry, and crucially no collider.
+    const opened =
+      system === 'crack'   ? !!state.flags.cracked[id]
+      : system === 'burn'  ? !!state.flags.burned[id]
+      : system === 'cut'   ? alreadyCut(region, id)
+      : /* shatter */        WS.get(region, 'ice_' + id);
+    if (opened) return null;
+
+    // The group is positioned at the gate and its pieces sit RELATIVE to it,
+    // so when a crack or a burn scatters the chunks they fly apart from the
+    // gate rather than from the room's origin.
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    const span = Math.max(w, d);
     if (GREY()) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(w, 1.5, d),
         new THREE.MeshStandardMaterial({ color, roughness: 0.9, emissive: color, emissiveIntensity: 0.18 })
       );
-      m.position.set(x, 0.75, z);
-      world.add(m);
-      world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
+      m.position.set(0, 0.75, 0);
+      g.add(m);
       protoLabel(world, x, z, label, { color: '#ffd54a', y: 2.4, size: 1.2 });
-      return m;
-    }
-    const kit0 = K();
-    const src = kit0[kindModel] || kit0.rockLB;
-    const g = new THREE.Group();
-    const span = Math.max(w, d);
-    const n = Math.max(2, Math.round(span / 1.6));
-    for (let i = 0; i < n; i++) {
-      const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
-      const piece = tintedModel(src, 'gate_' + kindModel, color);
-      piece.position.set(x + (w > d ? f * w : 0), 0, z + (d >= w ? f * d : 0));
-      piece.rotation.y = i * 1.31;
-      piece.scale.setScalar(1.05);
-      g.add(piece);
+    } else {
+      const kit0 = K();
+      const src = kit0[kindModel] || kit0.rockLB;
+      const n = Math.max(2, Math.round(span / 1.6));
+      for (let i = 0; i < n; i++) {
+        const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
+        const piece = tintedModel(src, 'gate_' + kindModel, color);
+        piece.position.set(w > d ? f * w : 0, 0, d >= w ? f * d : 0);
+        piece.rotation.y = i * 1.31;
+        piece.scale.setScalar(1.05);
+        g.add(piece);
+      }
+      // the "later" tell: a cold glow in the future tool's own colour, at ankle
+      // height, so it reads as a promise rather than as a wall
+      const hint = new THREE.Mesh(
+        new THREE.RingGeometry(span * 0.42, span * 0.55, 20),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32,
+          side: THREE.DoubleSide, depthWrite: false })
+      );
+      hint.rotation.x = -Math.PI / 2;
+      hint.position.set(0, world.deckY + 0.04, 0);
+      g.add(hint);
     }
     world.add(g);
-    world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
-    // the "later" tell: a cold glow in the future tool's own colour, at ankle
-    // height, so it reads as a promise rather than as a wall
-    const hint = new THREE.Mesh(
-      new THREE.RingGeometry(span * 0.42, span * 0.55, 20),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32,
-        side: THREE.DoubleSide, depthWrite: false })
-    );
-    hint.rotation.x = -Math.PI / 2;
-    hint.position.set(x, world.deckY + 0.04, z);
-    world.add(hint);
+
+    // A gate across a doorway blocks with a BOX, not the circle a rock clump
+    // uses, so it hands its own collider-removal to whichever system takes it.
+    const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+    world.boxColliders.push(collider);
+    const dropCollider = () => {
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+    };
+
+    if (system === 'cut') {
+      // the lash owns the whole clear (group + collider + flag + sound)
+      registerCuttable(world, { id, x, z, region, group: g, collider, hitR: span / 2 });
+    } else if (system === 'shatter') {
+      world.shatterables.push({
+        id, x, z, broken: false, hitR: span / 2, group: g,
+        clear: () => {
+          world.root.remove(g);
+          dropCollider();
+          WS.set(region, 'ice_' + id);
+          audio.play('parry', { volume: 0.7, rate: 1.8 });   // the crack
+          audio.play('puff', { volume: 0.8, rate: 1.3 });
+        },
+      });
+    } else {
+      // crack + burn ride World._shatter, which does the break-apart itself
+      // and writes the permanent flag; `clear` only takes the box away.
+      const list = system === 'crack' ? world.crackables : world.burnables;
+      list.push({ id, x, z, group: g, collider: null, hitR: span / 2, clear: dropCollider });
+    }
     return g;
   }
 

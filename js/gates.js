@@ -66,9 +66,9 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
 // Splitting this out is what stops Level 3 inventing a second, subtly
 // different cut system — it did exactly that, keying off a `state.flags.cut`
 // that was never declared anywhere, so its brambles could never be cut at all.
-export function registerCuttable(world, { id, x, z, region, group, collider, onCut, regrows }) {
+export function registerCuttable(world, { id, x, z, region, group, collider, onCut, regrows, hitR = 0 }) {
   const entry = {
-    id, x, z, cut: false, regrows: !!regrows, group, collider, region,
+    id, x, z, cut: false, regrows: !!regrows, group, collider, region, hitR,
     clear: () => {
       if (group) world.root.remove(group);
       if (collider) {
@@ -118,9 +118,12 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
 
   // register for the frost breath: world.shatterAt(x, z, r) breaks any ice
   // in reach — a burst of shards, a crack, the collider gone for good
-  if (!world.shatterables) world.shatterables = [];
+  // `group` is not decoration on this entry: flattenStatic() protects every
+  // Object3D it can find on a gate entry, and an entry that names none has its
+  // geometry merged into the static batch — after which removing the group on
+  // clear() takes nothing off the screen and the ice shatters invisibly.
   world.shatterables.push({
-    id, x, z, broken: false,
+    id, x, z, broken: false, group,
     clear: () => {
       world.root.remove(group);
       const i = world.circleColliders.indexOf(collider);
@@ -130,21 +133,7 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
       audio.play('puff', { volume: 0.8, rate: 1.3 });
     },
   });
-  if (!world.shatterAt) {
-    world.shatterAt = (cx, cz, r) => {
-      let n = 0;
-      for (const c of world.shatterables) {
-        if (c.broken) continue;
-        const dx = c.x - cx, dz = c.z - cz;
-        if (dx * dx + dz * dz > r * r) continue;
-        c.broken = true;
-        c.clear();
-        n++;
-      }
-      return n;
-    };
-  }
-  return { id, collider };
+  return { id, collider };   // world.shatterAt is a World method (js/world.js)
 }
 
 // FROZEN BRAZIER (v3.21, Frostpeak's puzzle verb): a brazier sealed under a

@@ -343,8 +343,15 @@ export async function buildLa(scene) {
   world.markers.heroSpot = { x: 0, z: -6 };
   world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
   scatter(world, halfW, halfD, D, 11, 16);
-  // FORESHADOWED GATE — Level 2's tool, seeded a whole level early
-  promiseGate(world, -11, -4, 3, 3, 0x9a8c6a, 'CRACKED — later', 'crack');
+  // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
+  // The two wall runs are the point: without them the "gate" sat alone in the
+  // middle of a 32u island and a child simply walked round it to the chest,
+  // so the promise resolved itself and the mystery never closed. A promise
+  // gate has to be the ONLY way in or it is decoration.
+  wallRun(world, -16, -6, -11, -6, D);
+  wallRun(world, -16, -2, -11, -2, D);
+  promiseGate(world, -11, -4, 3, 4, 0x9a8c6a, 'CRACKED — later', 'crack',
+              { system: 'crack', id: 'l1_crack_gate' });
   visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18 });
   world.markers.crackPromise = { x: -11, z: -4 };
   sparks(world, [[0, 7], [0, 3], [0, -1]]);
@@ -419,10 +426,15 @@ export async function buildLb2(scene) {
   sideDoor(world, 'e', halfW, halfD, 'lb', { x: -13.5, z: 0, angle: Math.PI / 2 });   // LOOPS BACK
   // THE FIRE GATE — foreshadowed long before the Fire Wolf exists.
   // Charred, orange, reward plainly visible behind it: reads "later", not "never".
-  promiseGate(world, 1, 0, 2, 8, 0xc0682d, 'SCORCHED — needs fire', 'fire');
+  wallRun(world, -10, -4, 1, -4, D);
+  wallRun(world, -10, 4, 1, 4, D);
+  promiseGate(world, 1, 0, 2, 8, 0xc0682d, 'SCORCHED — needs fire', 'fire',
+              { system: 'burn', id: 'l1_scorched_gate' });
   visibleReward(world, -4, 0, 'l1_scorched', { shards: 20 });
   world.markers.firePromise = { x: 1, z: 0 };
-  world.markers.pup3Spot = { x: -6, z: 0 };
+  // the pup moved OUT of the scorched alcove — walling the alcove properly
+  // would otherwise have locked a collectible behind a form two levels away
+  world.markers.pup3Spot = { x: -6, z: -6 };
   scatter(world, halfW, halfD, D, 23, 10);
   return finish(world, spec, D);
 }

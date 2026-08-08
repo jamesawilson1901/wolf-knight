@@ -2345,3 +2345,80 @@ Adventurers, all GREEN with verified CC0 licence files. Total assets: **39 MB
 across 216 files** (audio 20 MB, characters 13 MB, animations 3.3 MB,
 environment 2.5 MB). Five districts in Level 2 and five in Level 3 come out of
 the same geometry by material-name recolouring.
+
+## v3.27.0 — The promises the game could not keep (A8) (2026-08-08)
+
+The fix plan's A8 was scoped as signposting: the rebuilt levels place eight
+"come back later" gates and register none of them in the mystery log, where the
+shipping rooms register six. Wiring the log turned up two faults underneath it,
+both worse than the item as written.
+
+### The gates could never be opened
+
+`promiseGate()` in `js/levelkit.js` drew the obstacle, called `world.addBox()`
+and stopped. It registered with **no gate system at all** — not `crackables`,
+not `burnables`, not `cuttables`, not `shatterables`. Four gates were therefore
+permanent walls with a chest plainly visible behind them:
+
+| gate | room | advertises | actually opened by |
+|---|---|---|---|
+| the cracked wall | `la` (L1) | Earth Wolf's stomp | nothing |
+| the scorched barricade | `lb2` (L1) | Fire Wolf's slam | nothing |
+| the thorn tangle | `vc2` (L2) | Verdant Wolf's lash | nothing |
+| the ice-sealed spring | `t1b` (L3) | Frost Wolf's breath | nothing |
+
+This is the failure the promise-gate idea exists to prevent. A gate that reads
+as "later" and then never opens is worse than a plain wall, because the child
+who remembered it comes back with the right form and is told, wordlessly, that
+they were wrong.
+
+`promiseGate` now takes a required `{system, id, region}` and rides the same
+system the shipping rooms use — including the "already opened on an earlier
+visit" check, so a broken gate stays broken across a save.
+
+### ...and it did not matter, because you could walk round them
+
+The flood fill written to verify the fix immediately failed its FIRST
+assertion, not its second: with every gate still standing, the reward was
+already reachable. All five promise obstacles (the four above plus Thornedge's
+bramble wall) sat loose in the middle of a 32×26 island or a 20×16 pocket, with
+open floor on every side. `visibleReward()` — "the reward you can SEE but not
+reach yet" — was reachable in all five.
+
+Each now has an alcove: two `wallRun`s with the gate as the only mouth.
+Measured nearest-approach with the gate shut is 3.2–5.2u; after the verb, 0.8u.
+
+One knock-on. Level 1's pup #3 sat at `(-6, 0)`, inside the scorched alcove, so
+walling it properly would have locked a collectible behind a form two levels
+away. The pup moved to `(-6, -6)`, outside the gate. Worth stating plainly
+because it is the shape of mistake this whole exercise is about: the fix for a
+fiction problem quietly created a progression problem.
+
+### Two supporting changes
+
+- **`world.shatterAt` is a World method** rather than something `iceGate()`
+  defined lazily on first use. Exactly the bug class already fixed once for
+  `cuttables` in v3.24 — a room with ice built any other way had no shatter
+  verb at all. `world.shatterables` is a constructor field now, like every
+  other gate list.
+- **`hitR` on a gate entry.** `burnAt`/`crackAt`/`cutAt`/`shatterAt` all
+  measured from a single registered point, so the 8u-deep scorched barricade
+  only answered to a slam within 2.6u of its exact centre. A gate now carries
+  half its own span as extra catch radius: a blow landing anywhere ALONG a wall
+  breaks it, which is how a child expects a wall to work.
+
+### The map
+
+`js/main.js` gained a `PROMISES` table — one row per gate, carrying the marker,
+the map entry and the condition that closes it — replacing what was becoming
+six near-identical `if` blocks. `done` reads the same flag the gate is built
+from, so the map cannot claim a wall is open while the wall is standing. All
+eight promises now land as ??? and resolve when opened.
+
+### Verification
+
+`tools/verify-promises.mjs` — flood-fills each room's real `boxColliders` and
+`circleColliders` from its real `world.spawn`, asserts the chest is
+**unreachable**, drives the real `player.trySpecial()` in the advertised form,
+asserts it is **reachable**, then leaves and returns and asserts it is still
+open. Nothing in it removes a collider by hand. 25 assertions, all green.

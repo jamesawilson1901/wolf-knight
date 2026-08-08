@@ -31,6 +31,10 @@ export class World {
     // lazily and world.cutAt existed in some rooms and not others — anything
     // reading world.cuttables in a room with no brambles hit undefined.
     this.cuttables = [];       // {id, x, z, clear, cut} — Verdant Wolf lash
+    // ...and the same for ice. world.shatterAt used to be defined lazily by
+    // iceGate(), so a room with ice-sealed geometry built any other way had
+    // no shatter verb at all and its ice could never be broken.
+    this.shatterables = [];    // {id, x, z, clear, broken} — Frost Wolf breath
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
@@ -189,12 +193,17 @@ export class World {
   // crackAt this does not shatter a group itself — a cuttable owns its own
   // `clear()`, because a bramble across a doorway and a rope holding a log up
   // need to do very different things when they part.
+  // `hitR` (optional, on the entry) widens the catch: a tangle that spans a
+  // whole doorway is caught by a blow landing anywhere ALONG it, not only
+  // within reach of its centre point. Without it a long gate reads as broken
+  // the moment a child squares up to one end of it.
   cutAt(x, z, r) {
     let n = 0;
     for (const c of this.cuttables) {
       if (c.cut) continue;
+      const rr = r + (c.hitR || 0);
       const dx = c.x - x, dz = c.z - z;
-      if (dx * dx + dz * dz > r * r) continue;
+      if (dx * dx + dz * dz > rr * rr) continue;
       c.cut = true;
       c.clear();
       n++;
@@ -230,6 +239,23 @@ export class World {
     return n;
   }
 
+  // Frost Wolf breath: shatter every unbroken ice mass in range. Like a
+  // cuttable, an ice mass owns its own `clear()` — a frozen mound and an
+  // ice-sealed spring want different things to happen when they break.
+  shatterAt(x, z, r) {
+    let n = 0;
+    for (const c of this.shatterables) {
+      if (c.broken) continue;
+      const rr = r + (c.hitR || 0);
+      const dx = c.x - x, dz = c.z - z;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      c.broken = true;
+      c.clear();
+      n++;
+    }
+    return n;
+  }
+
   // Fire Wolf ground-slam: burn every unburned obstacle in range. The clump
   // breaks apart — chunks scatter, shrink and fade — and its collider goes.
   burnAt(x, z, r) {
@@ -245,13 +271,22 @@ export class World {
     let burned = 0;
     for (const b of list) {
       if (b[doneKey]) continue;
+      const rr = r + (b.hitR || 0);
       const dx = b.x - x, dz = b.z - z;
-      if (dx * dx + dz * dz > r * r) continue;
+      if (dx * dx + dz * dz > rr * rr) continue;
       b[doneKey] = true;
       flagMap[b.id] = true;
       burned++;
-      const i = this.circleColliders.indexOf(b.collider);
-      if (i >= 0) this.circleColliders.splice(i, 1);
+      // Most burnables and crackables are rock CLUMPS with a circle collider,
+      // so the default is to drop that circle. A gate that spans a doorway is
+      // a wall, not a clump: it blocks with a box, and it supplies its own
+      // `clear()` to take that box (and anything else it drew) away.
+      if (b.clear) {
+        b.clear();
+      } else {
+        const i = this.circleColliders.indexOf(b.collider);
+        if (i >= 0) this.circleColliders.splice(i, 1);
+      }
       const chunks = [...b.group.children];
       for (const c of chunks) {
         const a = Math.atan2(c.position.x + 0.01, c.position.z + 0.01);

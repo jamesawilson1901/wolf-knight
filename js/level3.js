@@ -523,11 +523,16 @@ export async function buildT1b(scene) {
   world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' }];
   // GATE — bramble walls, before the shrine. Same tangle, same look as the one
   // seeded back in Stoneroot a whole level ago.
+  wallRun(world, -16, -8.5, -11, -8.5, D);
+  wallRun(world, -16, -3.5, -11, -3.5, D);
   bramble(world, 'w3_thorn_wall', -11, -6, 2.0, 5.0);
   visibleReward(world, -13.5, -6, 'l3_t1b_bramble', { shards: 20 });
-  world.markers.bramblePromise = { x: -11, z: -6 };
+  world.markers.thornPromise = { x: -11, z: -6 };
   // GATE — the ICE-SEALED SPRING. Level 4's tool, a whole level early.
-  promiseGate(world, 11, 4, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'rockSB');
+  wallRun(world, 11, 2, 16, 2, D);
+  wallRun(world, 11, 6, 16, 6, D);
+  promiseGate(world, 11, 4, 3.0, 4.0, 0x9be3ff, 'FROZEN — later', 'rockSB',
+              { system: 'shatter', id: 'l3_spring_ice', region: REGION });
   visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };
   breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xc8e88a);
