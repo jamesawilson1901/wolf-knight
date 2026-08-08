@@ -16,6 +16,48 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 
 ---
 
+## STATUS — every item closed (v3.34.0, 2026-08-08)
+
+| | item | shipped |
+|---|---|---|
+| A1 | rebuilt levels unreachable | v3.25.0 |
+| A2 | Level 3 has no gameplay | v3.26.0 |
+| A3 | spark shrine grants the wrong wolf | v3.25.1 |
+| A4 | Level 2's fourth teach step | v3.26.1 |
+| A5 | cut brambles do not survive a save | v3.25.1 |
+| A6 | junction landmark invisible from the north | v3.28.0 |
+| A7 | greybox is the shipping default | v3.25.0 |
+| A8 | promise gates absent from the map | v3.27.0 |
+| A9 | difficulty goes DOWN at Level 3 | v3.29.0 |
+| B1 | two Level 2 rooms over the draw-call ceiling | v3.30.0 |
+| B2 | no LOD anywhere | closed — not needed, on measurement |
+| B3 | the Den is the last room over the ceiling | v3.33.0 |
+| C1 | juice tuned for corridors, not islands | v3.31.0 / v3.31.1 |
+| C2 | the second ring chord is barely a shortcut | closed — dad's call, keep |
+| C3 | spec drift, docs vs implementation | v3.34.0 |
+| C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
+
+**Four of them were not the thing the audit described**, which is the most useful
+record this file holds:
+
+- **A8** was scoped as missing map entries. Underneath, four promise gates could
+  never be opened at all, and every one could be walked around.
+- **A9** was scoped as enemy density. The cause was `applyVariant` overwriting
+  the difficulty-scaled hp, which pinned every Level 3 enemy at its level-1
+  value — the corrupted forest creature was the weakest thing in the game.
+- **B1** was flagged as a whole-game visual trade-off. It was one line
+  (`prepareCharacter` casting shadows from every mesh of every character) and
+  cost nothing to look at: measured inside the pixel-noise floor.
+- **C1** was premised on rooms having got bigger. Measured, the camera frames
+  identical ground in a 14 × 10 choke and the 36 × 28 hub. What was actually
+  wrong is that every flourish lied about its ability's reach and shape — and
+  two boss telegraphs pointed the wrong way, one by up to 162 degrees.
+
+The habit that found all four: measure the thing before fixing the thing the
+plan named.
+
+---
+
 # A · BREAKS OR FRUSTRATES A CHILD
 
 ## A1 · The rebuilt levels are unreachable in normal play
