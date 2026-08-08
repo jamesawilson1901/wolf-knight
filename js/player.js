@@ -22,7 +22,6 @@ const SPIN_DMG_MULT = 1.2;
 const SPIN_TIMESCALE = 1.7;     // clip playback speed — a whip-fast blur (playtest)
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
-const SLAM_BURN_RADIUS = 2.6;
 const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
 const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
@@ -808,7 +807,10 @@ export class Player {
     if (c.t >= C.CEREMONY) {
       // SHOCKWAVE: no damage — a knockback + stagger that clears space
       const px = this.root.position.x, pz = this.root.position.z;
-      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a);
+      // ceremony, not an attack: no hitbox to be honest about, so it keeps
+      // the full-size ring. Boss death rings do the same, which is why those
+      // are now visibly the biggest thing in the game.
+      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a, 4.0);
       c.effects.shake(0.4, 0.5);
       if (c.world && c.world.enemies) {
         for (const e of c.world.enemies) {
@@ -1275,7 +1277,10 @@ export class Player {
       const f = i / 4;
       juice.burst(px + fx * VINE_RANGE * f, 0.5 + 0.25 * Math.sin(f * Math.PI), pz + fz * VINE_RANGE * f, 0x8fdc6a, 5);
     }
-    if (effects) effects.groundSlam({ x: px + fx * 1.6, z: pz + fz * 1.6 }, 0x6fae4a);
+    // the lash is a 3.8 x 0.9 CORRIDOR, so it is drawn as a narrow wedge from
+    // Kael's feet — atan(0.9 / 3.8) is 13 degrees — not as a disc thrown ahead
+    if (effects) effects.groundSlam({ x: px, z: pz }, 0x6fae4a, VINE_RANGE,
+      { deg: 13, fx, fz });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1328,7 +1333,10 @@ export class Player {
         pz + fz * reach + (Math.random() * 2 - 1) * spread,
         i === 2 ? 0xeaffff : 0xbfefff, 9);
     }
-    if (effects) effects.groundSlam({ x: px + fx * 1.5, z: pz + fz * 1.5 }, 0x9be3ff);
+    // the breath is a CONE, so draw the cone: same half-angle and same reach
+    // the hit test uses, from Kael's feet
+    if (effects) effects.groundSlam({ x: px, z: pz }, 0x9be3ff, FROST_RANGE,
+      { deg: FROST_CONE_DEG, fx, fz });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1360,7 +1368,7 @@ export class Player {
     // reach + a spark ring + a camera punch (playtest: it must never
     // read as "nothing happened")
     if (effects) {
-      effects.groundSlam(this.root.position.clone(), 0xbfe3ff);
+      effects.groundSlam(this.root.position.clone(), 0xbfe3ff, SPIN_RANGE);
       if (effects.punch) effects.punch(0.22, 0.22);
     }
     for (let i = 0; i < 6; i++) {
@@ -1384,7 +1392,7 @@ export class Player {
     // what a room is — the Rattle (Level 2) listens for one on its plate
     this.stompedAt = performance.now();
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
-    effects.groundSlam(this.root.position.clone(), 0xd8b06a);
+    effects.groundSlam(this.root.position.clone(), 0xd8b06a, STOMP_RADIUS);
     effects.shake(0.3, 0.35);
     audio.play('slam', { rate: 0.75 });
     if (world.enemies) {
@@ -1408,7 +1416,11 @@ export class Player {
         }
       }
     }
-    if (world.crackAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });
+    // STOMP_RADIUS, not SLAM_BURN_RADIUS. This cracked rock at 2.6u — the FIRE
+    // wolf's constant, leaked into the earth wolf's move — while the ring and
+    // the damage both said 3.2. A child stomping a cracked rock 3u away saw it
+    // swept by the ring and nothing happened.
+    if (world.crackAt(x, z, STOMP_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1422,11 +1434,14 @@ export class Player {
     this.lockTime = 0.5;
     this._softLock = false;
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
-    effects.groundSlam(this.root.position.clone());
+    effects.groundSlam(this.root.position.clone(), 0xff7a2a, SLAM_RADIUS);
     audio.play('slam');
     if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2, 'fire');
-    if (world.burnAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('burn');
-    if (world.igniteAt) world.igniteAt(x, z, SLAM_BURN_RADIUS);
+    // one ring, one number: burn and ignite now reach exactly as far as the
+    // damage and the ring do. A brazier at 2.8u used to sit inside the orange
+    // ring and refuse to light.
+    if (world.burnAt(x, z, SLAM_RADIUS) > 0) audio.play('burn');
+    if (world.igniteAt) world.igniteAt(x, z, SLAM_RADIUS);
     this.specialCooldown = this.specialMax;
     return true;
   }

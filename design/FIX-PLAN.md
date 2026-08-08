@@ -492,7 +492,76 @@ accumulates **0 geometries, 0 textures**; 20 hub entries accumulate 0.
 # C · POLISH
 
 ## C1 · The juice layer is tuned for corridors, not islands — RETUNE
-**MEDIUM · affects all · one session · independent**
+**✅ DONE (v3.31.0) — but the premise was wrong, and what was underneath is worse.**
+
+**The room-scale premise is false, measured.** The camera is a fixed world-space
+offset with a constant CAM_DIST, so the visible ground is **21.2u wide, 12.9u
+ahead and 4.5u behind in every room** — identical in a 14x10 choke and the 36x28
+hub, to the decimal. Bigger rooms do not put more world on screen, so screen
+shake does not read weaker in them and nothing needed scaling with room size. The
+shake magnitudes are unchanged; the only edit there was moving juice.js's two
+hardcoded numbers into `CONFIG.JUICE` where the rest live.
+
+**What was actually wrong is that the flourishes lied about reach and shape.**
+`effects.groundSlam()` took no radius, so every caller drew the same ~4u circle:
+
+| flourish | drew | ability truly is |
+|---|---|---|
+| knight spin | 4.0u | **2.3u** (its own comment said the ring "sweeps out to the spin's reach") |
+| fire slam | 4.0u | 3.0u |
+| stone stomp | 4.0u | 3.2u |
+| vine lash | 4.0u circle | a 3.8 x 0.9 **corridor** |
+| frost breath | 4.0u circle | a 40-degree **cone** |
+| Blood Moon crash | 4.0u | 2.6u |
+
+`groundSlam` now takes the ability's real reach, and an optional cone `{deg, fx,
+fz}` that draws a wedge from the same primitive (RingGeometry has thetaStart /
+thetaLength, so a cone costs no extra draw call). The growth eases out so the
+ring arrives at its true extent and lingers while it fades, instead of still
+expanding as it disappears — that is what makes an honest radius legible.
+Ceremony (transformations, boss deaths) keeps the full 4u, having no hitbox to be
+honest about; those are now visibly the biggest rings in the game, which reads
+right.
+
+**One ability, one number.** Two secondary radii disagreed with their own rings:
+the stone stomp cracked rock at `SLAM_BURN_RADIUS` — the *fire* wolf's constant,
+leaked into the earth wolf's move — 2.6u against a 3.2u ring, and the fire slam
+burned at 2.6u against a 3.0u ring. Both now use their own ability's radius, so
+a brazier inside the orange ring lights and a cracked rock inside the brown ring
+breaks. `SLAM_BURN_RADIUS` is deleted; it had no other users.
+
+`tools/verify-pose.mjs` fires each ability through the real input path, finds the
+ring in the scene and measures its world radius and wedge angle: all five match
+to within 0.02u.
+
+### And then the boss telegraphs, which is where it actually mattered
+
+An audit of every flourish against its hitbox turned up two direction bugs of the
+same shape, both verified by measurement, both **high severity because a child
+dodges by these**:
+
+- **The Bone Warden's chop arc pointed the wrong way.** `rotation.z =
+  -rotation.y + ...` on a mesh laid flat by `rotation.x = -PI/2` MIRRORS the
+  heading instead of rotating it. Measured across seven facings, the red "the axe
+  lands here" arc was correct at **exactly one** (171 degrees) and **up to 162
+  degrees wrong** elsewhere — pointing almost directly away from the swing. Now
+  0 degrees of error at every facing.
+- **Boreal's dive lane had the same sign error**, lying perpendicular to the dive
+  at diagonals — and worse, she **re-aimed at the child the instant the dive
+  began**, discarding the direction she had just spent 0.9s advertising. The one
+  floor decal a boss charge is allowed to draw was decoration. She now dives
+  where the lane said.
+
+Three more of the same family, all fixed: the Warden's chop arc stopped 0.9u
+short of the axe (2.0u drawn, 2.9u hit); his spin — the attack you cannot step
+out of sideways — was signposted with a 162-degree wedge that implied a safe
+side, and is now a full ring; and both marks faded out *before* the damage frame.
+Boreal's lane was 1.3u wide against a 3.2u-wide hit.
+
+`tools/verify-telegraphs.mjs` measures the arc's world bearing against the
+warden's forward at seven facings.
+
+Original finding below.
 
 Asked directly: **yes, it needs retuning.** The effects were built against
 16 × 12 rooms; the rebuilt spaces are 32 × 26 and the hub is 36 × 28.

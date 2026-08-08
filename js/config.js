@@ -123,5 +123,12 @@ export const CONFIG = {
     medium: { stop: 0.07, shake: 0.14, shakeT: 0.20, parts: 10, buzz: 20 },
     heavy:  { stop: 0.12, shake: 0.28, shakeT: 0.35, parts: 16, buzz: 45 },
     hurtBuzz: 60,        // haptic ms when KAEL takes a hit
+    // Kael TAKING a hit: gentler on screen than dealing one, stronger in the
+    // hand. These were hardcoded in juice.js — the only two feedback numbers in
+    // the game that did not live here. The magnitude is deliberately unchanged:
+    // the camera is a fixed offset, so 21.2u of ground is visible in EVERY room
+    // whatever its size, and a shake that read correctly in a 14x10 choke reads
+    // identically in the 36x28 hub. Measured, not assumed.
+    hurtShake: 0.12, hurtShakeT: 0.18,
   },
 };

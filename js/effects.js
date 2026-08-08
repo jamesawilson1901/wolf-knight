@@ -68,10 +68,48 @@ export class Effects {
     }
   }
 
-  // Fire Wolf ground-slam: radial shockwave ring + emissive flash.
-  groundSlam(pos, color = 0xff7a2a) {
+  // Radial shockwave ring + emissive flash. Used by every ability that hits in
+  // a circle, and by the boss death ceremonies.
+  //
+  // C1 — `radius` IS THE ABILITY'S TRUE REACH, and the ring stops there.
+  //
+  // This used to grow to a fixed scale 4.2, so whatever called it drew the same
+  // ~4u circle. The abilities it represents are not 4u and are not all the same
+  // size, so the flourish was telling a child the wrong thing about every one of
+  // them — worst on the knight's spin, whose own comment in player.js says the
+  // ring "sweeps out to the spin's reach" while SPIN_RANGE is 2.3, a 74%
+  // overstatement. THE POSE NEVER LIES applies to a shockwave as much as to a
+  // shield: these children learn range by watching, not by reading numbers.
+  //
+  // NOT a room-scale problem, whatever the fix plan said. The camera is a fixed
+  // world-space offset and never changes distance, so the visible ground is
+  // 21.2u wide, 12.9u ahead and 4.5u behind in EVERY room — measured identically
+  // in a 14x10 choke and the 36x28 hub. A ring that reads correctly in one room
+  // reads correctly in all of them. Do not "scale this with room size" later.
+  //
+  // The growth eases OUT so the ring arrives at its true extent early and
+  // lingers there while it fades, instead of still expanding as it disappears.
+  // That is what makes the honest radius legible rather than merely correct.
+  // `cone` makes the flourish the ability's SHAPE as well as its reach:
+  // {deg, fx, fz} draws a wedge of half-angle `deg` centred on the facing
+  // (fx, fz) instead of a full disc. Two abilities needed it — the frost breath
+  // is a 40-degree cone and the vine-lash is a 3.8 x 0.9 corridor, and drawing
+  // either as a circle told a child it reached 0.6u BEHIND them, which is the
+  // one direction the fixed camera barely shows.
+  //
+  // Same primitive: RingGeometry takes thetaStart/thetaLength, so a wedge costs
+  // no new geometry type and no extra draw call. After the -90-degree X
+  // rotation that lays the ring flat, local theta 0 points at world +x and
+  // theta grows toward world -z, so the facing maps to atan2(-fz, fx).
+  groundSlam(pos, color = 0xff7a2a, radius = 4.0, cone = null) {
+    const OUTER = 0.95;                                  // ring outer radius at scale 1
+    const grow = Math.max(0.25, radius / OUTER - 1);
+    const half = cone ? THREE.MathUtils.degToRad(cone.deg) : 0;
+    const mid = cone ? Math.atan2(-cone.fz, cone.fx) : 0;
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 0.95, 36),
+      cone
+        ? new THREE.RingGeometry(0.5, 0.95, 24, 1, mid - half, half * 2)
+        : new THREE.RingGeometry(0.5, 0.95, 36),
       new THREE.MeshBasicMaterial({
         color, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false,
       })
@@ -88,7 +126,8 @@ export class Effects {
     this._active.push((dt) => {
       elapsed += dt;
       const f = Math.min(1, elapsed / DURATION);
-      const s = 1 + f * 3.2;
+      const e = 1 - (1 - f) * (1 - f);                    // ease out: arrive, then linger
+      const s = 1 + e * grow;
       ring.scale.set(s, s, 1);
       ring.material.opacity = 0.95 * (1 - f);
       flash.intensity = 18 * (1 - f);
@@ -190,7 +229,11 @@ export class Effects {
           // IMPACT — the moon buries itself in the target
           impacted = true;
           const ix = diveTo ? diveTo.x : pos.x, iz = diveTo ? diveTo.z : pos.z;
-          this.groundSlam({ x: ix, z: iz }, 0xff3a4a);
+          // 2.6 is the moon's real reach — damageEnemiesAt uses 2.4 and the
+          // stun sweep 2.6 (player.js onImpact). It used to take the 4.0
+          // default, so the biggest, most dramatic ring in the game was also
+          // the most dishonest: it claimed two thirds more reach than it had.
+          this.groundSlam({ x: ix, z: iz }, 0xff3a4a, 2.6);
           this.shake(0.55, 0.5);
           this.hitStop(0.09);
           for (let i = 0; i < 3; i++) {

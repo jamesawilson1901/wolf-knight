@@ -2679,3 +2679,102 @@ positions:
 Every one is under the ceiling, and the three rooms the agents flagged came down
 to 87, 83 and 90. But the true headroom in the worst rooms is 3-4 calls, not 14
 — worth knowing before anything else is added to `vb2`, `lb2` or `vb1`.
+
+## v3.31.0 — The pose never lies, including on the floor (C1) (2026-08-08)
+
+The fix plan asked for the juice layer to be retuned because the rooms got
+bigger. It did not need that, and the reason is worth recording: **the camera is
+a fixed world-space offset with a constant CAM_DIST, so the visible ground is
+21.2u wide, 12.9u ahead and 4.5u behind in EVERY room** — measured identically in
+a 14x10 choke and the 36x28 hub, to the decimal. Bigger rooms do not put more
+world on screen. Screen shake does not read weaker in them, and nothing in the
+feedback layer needed to scale with room size. The shake numbers are unchanged.
+
+What was wrong was different, and it was everywhere.
+
+### Every flourish drew the same circle
+
+`effects.groundSlam()` took no radius, so all six callers got a ~4u ring:
+
+    knight spin      drew 4.0u   really 2.3u   (its own comment claimed the ring
+                                                "sweeps out to the spin's reach")
+    fire slam        drew 4.0u   really 3.0u
+    stone stomp      drew 4.0u   really 3.2u
+    Blood Moon       drew 4.0u   really 2.6u
+    vine lash        drew a 4.0u CIRCLE for a 3.8 x 0.9 corridor
+    frost breath     drew a 4.0u CIRCLE for a 40-degree cone
+
+The two shape cases were the worst of it: a disc told a child the breath reached
+0.6u BEHIND them, which is the one direction the fixed camera barely shows.
+
+`groundSlam` now takes the true reach, and an optional cone that draws a wedge
+out of the same primitive — RingGeometry has thetaStart/thetaLength, so a cone
+costs no new geometry type and no extra draw call. The growth eases OUT so the
+ring arrives at its extent and lingers while it fades, rather than still
+expanding as it vanishes; that is what makes an honest radius legible instead of
+merely correct. Ceremony keeps the full 4u, having no hitbox to lie about, so
+transformations and boss deaths are now visibly the biggest rings in the game.
+
+### One ability, one number
+
+Two secondary radii disagreed with their own rings. The stone stomp cracked rock
+at `SLAM_BURN_RADIUS` — **the fire wolf's constant, in the earth wolf's move** —
+2.6u against a 3.2u ring and 3.2u of damage. The fire slam burned and ignited at
+2.6u against a 3.0u ring. So a brazier at 2.8u sat inside the orange ring and
+refused to light, and a cracked rock at 3u was swept by the brown ring and did
+nothing. Both now use their own ability's radius. `SLAM_BURN_RADIUS` is deleted.
+
+### The part that actually mattered
+
+Auditing every flourish against its hitbox turned up two bugs of the same shape
+in the place where the law matters most — a child standing in a boss arena,
+dodging by a red mark on the floor.
+
+**The Bone Warden's chop arc pointed the wrong way.** The mark is laid flat with
+`rotation.x = -PI/2` and then steered with `rotation.z = -rotation.y + ...`,
+which MIRRORS the heading instead of rotating it: three.js Euler XYZ applies Rz
+in the ring's own plane first, so a local vertex at angle a ends up at world
+(cos(a+z), -sin(a+z)) and the sign has to follow the facing. Measured across
+seven facings before the fix:
+
+    warden faces    red arc points at    error
+        0 deg            -18 deg          -18
+       45 deg            -63 deg         -108
+       90 deg           -108 deg          162
+      135 deg           -153 deg           72
+      171 deg            171 deg            0
+      270 deg             72 deg          162
+
+Correct at exactly one facing, and up to 162 degrees wrong — the arc pointing
+almost directly away from the swing. A child dodging by it was being sent into
+the axe. Now zero error at every facing.
+
+**Boreal's dive lane had the identical sign error**, lying perpendicular to the
+dive at diagonals. And worse: at the end of the 0.9s windup she threw `diveDir`
+away and re-aimed at the child, so the one floor decal a boss charge is allowed
+to draw was decoration and stepping off it did nothing. A telegraph you cannot
+act on is worse than no telegraph. She now dives where the lane said.
+
+Three more of the same family: the Warden's chop arc stopped 0.9u short of the
+axe (2.0 drawn, 2.9 hit); his spin — the attack you cannot step out of sideways —
+was signposted with a 162-degree wedge implying a safe side, and is now a full
+ring at its real 2.6u; and both marks faded to nothing BEFORE the damage frame
+(chop invisible 3 frames early, spin 6). The chop arc and the hit test now read
+one shared `CHOP_ARC` constant so they cannot drift apart again.
+
+### Verification
+
+- `tools/verify-pose.mjs` — fires each ability through the real input path, finds
+  the ring in the scene, measures its world radius and wedge angle. All five
+  match within 0.02u; the cone and corridor draw 80 and 26 degrees as intended.
+  It also intercepts `burnAt`/`crackAt` to assert one ability really is one
+  number.
+- `tools/verify-telegraphs.mjs` — transforms the Warden's arc centre vertex by
+  its real matrixWorld and compares the bearing with his forward, at seven
+  facings including non-cardinals.
+- `verify-l2-warden.mjs` and `verify-l3-lash.mjs` both still ALL CLEAN.
+
+One caught mistake worth recording: the first pose run reported the cone as 40
+degrees and the wedge as 13, and failed. The game was right — my verifier
+converted radians to degrees with 90/PI instead of 180/PI and reported half the
+angle. The measurement was wrong, not the thing measured.
