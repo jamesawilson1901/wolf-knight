@@ -8,7 +8,7 @@ import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { Player } from './player.js';
-import { state } from './state.js';
+import { state, resolveRoom } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
@@ -279,14 +279,14 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   // (forms, keys, boss flags), so the level is playable from its first step.
   const LEVELS = [
     { id: 'den', label: '🏡 Moonlit Den' },
-    { id: 'r1', label: '🌋 Level 1 — Ember Hollow' },
+    { id: 'la', label: '🌋 Level 1 — Ember Hollow' },
     {
-      id: 'e1', label: '⛰️ Level 2 — Stoneroot Caverns',
+      id: 'vh', label: '⛰️ Level 2 — Stoneroot Caverns',
       forms: ['fire_wolf'], // earned by finishing Level 1...
       emberDone: true,      // ...so Level 1 counts as complete
     },
     {
-      id: 'w1', label: '🌲 Level 3 — Wild Woods',
+      id: 't1a', label: '🌲 Level 3 — Wild Woods',
       forms: ['fire_wolf', 'earth_wolf'],
       emberDone: true, stoneDone: true, // both earlier levels count as complete
     },
@@ -424,7 +424,7 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       // Greybox spaces deliberately do NOT — a kid who tapped the wrong thing
       // must not find their save parked in an untextured prototype.
       if (!lvl.noSave) {
-        state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
+        state.checkpoint = { room: resolveRoom(lvl.id), x: 0, z: 0, id: 'spawn' };
         persist();
       }
       closeAll();
@@ -1060,8 +1060,7 @@ async function loadRoom(id, entry) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
-  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods'
-    : id[0] === 'f' ? 'frostpeak' : 'ember_hollow';
+  state.region = regionOf(id);
   applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
@@ -1077,13 +1076,30 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
 
 // Per-room mood: the caverns run darker (torches carry the light) with a
 // deeper background/fog color.
+// Which region a room belongs to. The rebuilt levels use their own prefixes
+// (l = Level 1, v = Level 2, t = Level 3) alongside the retired ones, and this
+// is the single place that knows the mapping — it used to be duplicated as two
+// slightly different inline ternaries, one of which had never learned about
+// Wild Woods or Frostpeak at all.
+function regionOf(id) {
+  const r = resolveRoom(id);
+  if (r[0] === 'v') return 'stoneroot';
+  if (r[0] === 't') return 'wildwoods';
+  if (r[0] === 'f') return 'frostpeak';
+  if (r[0] === 'l') return 'ember_hollow';
+  // retired ids that somehow reach here keep their original mapping
+  if (r[0] === 'e') return 'stoneroot';
+  if (r[0] === 'w') return 'wildwoods';
+  return 'ember_hollow';
+}
+
 function applyRoomMood() {
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
   scene.background.setHex(bg);
@@ -1119,7 +1135,7 @@ async function respawnAtCheckpoint() {
   player.clearProjectiles();
   if (world) world.dispose();
   world = await buildRoom(room, scene);
-  state.region = room[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  state.region = regionOf(room);
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   player.healFull();
@@ -1131,7 +1147,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1546,7 +1562,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

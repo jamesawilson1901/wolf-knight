@@ -823,9 +823,13 @@ export async function buildVc3(scene) {
 export async function buildVz(scene) {
   const { world, spec, D } = base(scene, 'vz');
   const beaten = !!state.flags.wardenDefeated;
-  const { halfW, halfD } = shell(world, spec, [gap('s', BOSS_DOOR_HALF)], D);
+  // ONWARD to the Wild Woods once the Warden is down (fix plan A1). Before
+  // that the crypt is a dead end on purpose — it is the boss room.
+  const gaps = [gap('s', BOSS_DOOR_HALF), ...(beaten ? [gap('n')] : [])];
+  const { halfW, halfD } = shell(world, spec, gaps, D);
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -11.5, angle: 0 }, { half: BOSS_DOOR_HALF });
+  if (beaten) sideDoor(world, 'n', halfW, halfD, 't1a', { x: 0, z: 9, angle: Math.PI });
 
   heroProp(world, 0, -9, 'throne', D);           // ▲ THE WARDEN'S THRONE
   world.markers.heroSpot = { x: 0, z: -9 };

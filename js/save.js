@@ -10,7 +10,7 @@
 // (`flags` + `spoken` + `form` extend the documented v1 shape additively so a
 // run restores exactly; `checkpoint` stores the full {room,x,z,id} object.)
 
-import { state } from './state.js';
+import { state, resolveRoom } from './state.js';
 
 const PROFILES_KEY = 'wolfknight:profiles';
 const SAVE_PREFIX = 'wolfknight:save:';
@@ -152,8 +152,12 @@ export function applySave(profileId, profileName, data) {
   if (!data) return;
   state.region = data.region || 'ember_hollow';
   if (data.checkpoint && data.checkpoint.room) {
-    state.checkpoint = data.checkpoint;
-    state.room = data.checkpoint.room;
+    // A profile saved before the level rebuild points at a retired room.
+    // Resolve it HERE rather than only at build time, so state.room and the
+    // room actually built are the same string — main.js compares room ids in
+    // a dozen places and a mismatch would silently disable those checks.
+    state.checkpoint = { ...data.checkpoint, room: resolveRoom(data.checkpoint.room) };
+    state.room = state.checkpoint.room;
   }
   state.maxHearts = data.maxHearts || 5;
   state.potions = data.potions !== undefined ? data.potions : 2;
@@ -198,5 +202,11 @@ export function applySave(profileId, profileName, data) {
     if (state.flags.mysteries.stone_mill) state.flags.mysteries.stone_mill.found = true;
   }
   state.spoken = data.spoken || {};
-  if (data.settings) Object.assign(state.settings, data.settings);
+  if (data.settings) {
+    // `greybox` is a build-order tool, not a child's preference. An old
+    // profile saved while the rebuilt levels were still dev-only carries
+    // greybox:true, and restoring it would hand a child a checkerboard.
+    const { greybox, ...prefs } = data.settings;
+    Object.assign(state.settings, prefs);
+  }
 }

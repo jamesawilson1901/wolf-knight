@@ -754,10 +754,15 @@ export async function buildTgl(scene) {
   const beaten = !!state.flags.sylvaDefeated;
   // The ring closes here: west back to Thornedge. It is walked, always open,
   // and it is what turns a very long branch into a loop.
-  const { halfW, halfD } = shell(world, spec, [gap('s', BOSS_DOOR_HALF), gap('w')], D);
+  // The ring closes west to Thornedge, always. North opens ONWARD to Frostpeak
+  // once Sylva is freed (fix plan A1) — Frostpeak was never rebuilt and is
+  // reached exactly as it always was.
+  const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), ...(beaten ? [gap('n')] : [])];
+  const { halfW, halfD } = shell(world, spec, gaps, D);
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc4', { x: 0, z: -7, angle: 0 }, { half: BOSS_DOOR_HALF });
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10, z: 9, angle: -Math.PI / 2 });
+  if (beaten) sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 4.2, angle: Math.PI });
 
   heroProp(world, 0, -2, 'standingStones', D);
   world.markers.heroSpot = { x: 0, z: -2 };

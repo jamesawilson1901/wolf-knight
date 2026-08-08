@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
-import { state } from './state.js';
+import { state, resolveRoom } from './state.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
@@ -702,7 +702,7 @@ async function buildDen(scene) {
   world.addBox(-8, 8, 5, 6);
   world.addBox(-8, -7, -6, 6); world.addBox(7, 8, -6, 6);
   world.spawn = { x: 0, z: -3.2, angle: 0 };
-  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'r1', { x: 2, z: 4.6, angle: Math.PI });
+  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, -4.4, 'x');
 
   // warm heart campfire + tents + trees + flowers
@@ -3761,7 +3761,8 @@ async function buildF5(scene) {
 // and approved. Nothing existing was rescaled (dad's law).
 export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
-export async function buildRoom(id, scene) {
+export async function buildRoom(rawId, scene) {
+  const id = resolveRoom(rawId);
   // Greybox spaces are plain geometry by definition — loading a 40-piece art
   // kit for them would both waste the load and hide the real cost of the box.
   if (id === 'zoo') {

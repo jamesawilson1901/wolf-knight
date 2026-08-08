@@ -550,12 +550,16 @@ export async function buildLg4(scene) {
 export async function buildLe(scene) {
   const { world, spec, D } = base(scene, 'le');
   const onward = !!state.flags.bossDefeated;
-  const gaps = [gap('s'), ...(onward ? [gap('w')] : [])];
+  const gaps = [gap('s'), ...(onward ? [gap('w'), gap('n')] : [])];
   const { halfW, halfD } = shell(world, spec, gaps, D);
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg4', { x: 0, z: -3.2, angle: 0 });
   // THE LOOP-BACK: a one-way walked door home, opened by the boss (rule 4).
   if (onward) sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
+  // ...and ONWARD to Stoneroot. Level 1 is now the game's first level rather
+  // than a demo reachable only from the cheat menu (fix plan A1), so beating
+  // the Shadowgrip has to actually lead somewhere.
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: 10, angle: Math.PI });
 
   heroProp(world, 0, -2, 'cage', D.tint, D);               // ▲ CINDER'S CAGE
   world.markers.heroSpot = { x: 0, z: -2 };
