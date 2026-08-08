@@ -84,10 +84,26 @@ const ROOMS = [
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
 ];
-// minimum things IN THE ARRIVAL FRAME
-const MIN_IN_FRAME = { island: 12, pocket: 8, choke: 6, puzzle: 3, arena: 3 };
-// minimum distinct kit models used anywhere in the room
-const MIN_MODELS = { island: 8, pocket: 6, choke: 5, puzzle: 3, arena: 4 };
+// THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
+// that wrong. It shipped with an island minimum of 12 while the dressed islands
+// measure 69-75, which means it would have passed a room stripped back to a
+// sixth of its content and reported success. A floor nothing can fail is not a
+// floor.
+//
+// Measured on the dressed Ember rooms (2026-08-09):
+//     islands  la 62  lb 66  lc 69  ld 75
+//     pockets  la1 44  lb1 41  lb2 46  lc1 40
+//     chokes   lg1 51  lg2 55  lg3 47  lg4 43
+//     puzzle   ld1 31        arena  le 29
+//
+// Set at roughly HALF the measured value. That is deliberately loose: the job
+// of this check is to catch a room being gutted, not to dictate exactly how
+// many barrels belong in it. Taste is dad's; emptiness is arithmetic.
+const MIN_IN_FRAME = { island: 32, pocket: 20, choke: 21, puzzle: 15, arena: 14 };
+// minimum distinct kit models used anywhere in the room. Level 1 shipped using
+// THREE of the twenty-five dungeon props it had, which is the failure this
+// number exists to make impossible to repeat.
+const MIN_MODELS = { island: 14, pocket: 10, choke: 7, puzzle: 7, arena: 10 };
 
 console.log(`Arrival frame: ${HALF_W * 2}u wide, ${AHEAD}u ahead of spawn, ${BEHIND}u behind.\n`);
 console.log('room   inFrame  models  colliders  breakables  chests  floorσ  calls');
