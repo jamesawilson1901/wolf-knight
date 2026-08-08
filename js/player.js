@@ -1392,8 +1392,20 @@ export class Player {
         if (e.dead || e.flying) continue;
         const dx = e.x - x, dz = e.z - z;
         if (dx * dx + dz * dz > STOMP_RADIUS * STOMP_RADIUS) continue;
+        // GUARD BREAK. A stomp at the feet of anything hiding behind a raised
+        // shield knocks it off balance — the Bone Warden's answer, and the
+        // same lesson taught earlier on the shieldlings. The mechanic already
+        // fell out of "stun drops the guard"; what was missing was any way for
+        // a child to LEARN it, so the break now announces itself.
+        const wasGuarding = !!e.shieldUp;
         e.takeDamage(2, 'earth', 'aoe');
         if (e.takeStun) e.takeStun(STOMP_STUN);
+        if (wasGuarding && !e.dead) {
+          if (world.onDmgNum) world.onDmgNum(e.x, 1.6, e.z, 'GUARD BROKEN!');
+          audio.play('parry', { volume: 0.8, rate: 1.5 });
+          if (effects) effects.punch(0.3, 0.28);
+          this.brokeGuardAt = performance.now();   // rooms may react (Level 2)
+        }
       }
     }
     if (world.crackAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });

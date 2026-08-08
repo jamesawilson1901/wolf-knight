@@ -98,6 +98,10 @@ export const LINES = {
   earthwolf_grant: { voice: 'petra', text: 'Take my gift — the heart of the Earth Wolf. The mountain walks with you now.' },
   earthwolf_howto: { voice: 'pip', text: 'You can be the Earth Wolf now! Hold the screen to change. Your stomp can smash cracked rock!' },
   crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
+  // A4 — the Warden's answer. Name the IDEA (his feet, not his shield), never
+  // the button, and only once the child is actually facing a raised shield.
+  warden_stagger: { voice: 'pip', text: "That shield is too big to hit through! Be the Earth Wolf and STOMP at his feet — he'll wobble right off his guard." },
+  guard_broken: { voice: 'pip', text: 'His guard is down — GET HIM!' },
   // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.

@@ -109,7 +109,27 @@ advances the **vault** (Level 2) state. The handler should read `grants` and the
 room's region from the marker instead of hardcoding one level's answer.
 
 ## A4 · Level 2's fourth teach step is not implemented
-**HIGH · affects L2 · part of a session**
+**✅ DONE (v3.26.1) — but not the job the audit described.**
+
+I probed before building, and the MECHANIC already worked: a stomp stuns every
+grounded enemy, and `shieldUp` returns false while stunned, so the Warden's
+guard already dropped with no Warden-specific code at all.
+
+    {"guardBefore": true, "stunned": 2.34, "guardAfter": false, "punishLands": true}
+
+"`stompStagger` has 0 handlers" was true but misleading. The behaviour existed;
+the TEACHING did not, and a child had no way to discover it. So the fix is
+smaller and different: `GUARD BROKEN!` now appears over any guarding enemy a
+stomp staggers (with the parry ring and a punch), Pip teaches it only when the
+child is facing a RAISED shield while holding the Earth Wolf, and the same rule
+is asserted on the shieldlings so the Warden is the exam, not a special case.
+
+**My first probe lied to me.** It reported `blockedFrontal: false` — apparently
+a broken shield. The cause was in the test: `takeDamage` reads `this._pp`, the
+player position cached during `update()`, and the probe set the position
+directly without stepping the world, so the block check never ran. The verifier
+now steps `w.update()` first, and asserts the WHOLE chain rather than the one
+link the fix touched. Original finding below.
 
 `stompStagger` (`level2.js` `buildVz`) has **0** handlers. The docs' conclude
 step — "his tower shield front-blocks everything, but a stomp at his feet

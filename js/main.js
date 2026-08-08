@@ -727,6 +727,21 @@ function narrationTriggers(dt, t) {
     if (sh && nearXZ(sh.x, sh.z, 5.5)) narration.say('shield_foe');
   }
 
+  // A4 — THE CONCLUDE STEP. The gift is the answer to the boss: a stomp at the
+  // Warden's feet drops his guard. The MECHANIC already worked (a stomp stuns,
+  // and shieldUp is false while stunned) — what was missing was any way for a
+  // child to find that out. So this teaches it, at the moment it applies:
+  // standing in front of a raised shield, holding the wolf that answers it.
+  if (m.stompStagger && world.warden && !world.warden.dead) {
+    if (world.warden.shieldUp && nearSpot(m.stompStagger, 6) &&
+        state.formsUnlocked.includes('earth_wolf')) {
+      narration.say('warden_stagger');
+    }
+    if (player.brokeGuardAt && performance.now() - player.brokeGuardAt < 900) {
+      narration.say('guard_broken');
+    }
+  }
+
   // Earth Wolf verb prompts (both regions carry cracked rocks)
   if (state.formsUnlocked.includes('earth_wolf') && m.crackSpot &&
       !state.flags.cracked.e1_alcove && nearSpot(m.crackSpot, 3.4)) {
