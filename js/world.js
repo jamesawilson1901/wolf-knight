@@ -27,6 +27,10 @@ export class World {
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
     this.burnables = [];       // {id, x, z, group, collider, burned}
     this.crackables = [];      // {id, x, z, group, collider, cracked} — Earth Wolf
+    // Cuttables were the ONE gate list not created here, so gates.js built it
+    // lazily and world.cutAt existed in some rooms and not others — anything
+    // reading world.cuttables in a room with no brambles hit undefined.
+    this.cuttables = [];       // {id, x, z, clear, cut} — Verdant Wolf lash
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
@@ -179,6 +183,23 @@ export class World {
       if (dx * dx + dz * dz < g.r * g.r) return true;
     }
     return false;
+  }
+
+  // Verdant Wolf vine-lash: cut every uncut tangle in range. Unlike burnAt and
+  // crackAt this does not shatter a group itself — a cuttable owns its own
+  // `clear()`, because a bramble across a doorway and a rope holding a log up
+  // need to do very different things when they part.
+  cutAt(x, z, r) {
+    let n = 0;
+    for (const c of this.cuttables) {
+      if (c.cut) continue;
+      const dx = c.x - x, dz = c.z - z;
+      if (dx * dx + dz * dz > r * r) continue;
+      c.cut = true;
+      c.clear();
+      n++;
+    }
+    return n;
   }
 
   // Fire Wolf ground-slam: burn every unburned obstacle in range. The clump

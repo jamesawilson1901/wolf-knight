@@ -67,7 +67,6 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
 // different cut system — it did exactly that, keying off a `state.flags.cut`
 // that was never declared anywhere, so its brambles could never be cut at all.
 export function registerCuttable(world, { id, x, z, region, group, collider, onCut, regrows }) {
-  if (!world.cuttables) world.cuttables = [];
   const entry = {
     id, x, z, cut: false, regrows: !!regrows, group, collider, region,
     clear: () => {
@@ -84,21 +83,7 @@ export function registerCuttable(world, { id, x, z, region, group, collider, onC
       if (onCut) onCut(entry);
     },
   };
-  world.cuttables.push(entry);
-  if (!world.cutAt) {
-    world.cutAt = (cx, cz, r) => {
-      let n = 0;
-      for (const c of world.cuttables) {
-        if (c.cut) continue;
-        const dx = c.x - cx, dz = c.z - cz;
-        if (dx * dx + dz * dz > r * r) continue;
-        c.cut = true;
-        c.clear();
-        n++;
-      }
-      return n;
-    };
-  }
+  world.cuttables.push(entry);   // world.cutAt is a World method (js/world.js)
   return entry;
 }
 

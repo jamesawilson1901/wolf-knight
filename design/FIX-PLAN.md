@@ -39,7 +39,15 @@ plan is cosmetic until this is fixed.
 or sit alongside them? Replacement is cleaner but retires rooms the kids know.
 
 ## A2 · Level 3 has no gameplay — it is geometry only
-**BLOCKER · affects L3 · NEEDS SPLITTING (2-3 sessions)**
+**🔶 IN PROGRESS — split into three. A2a DONE (v3.25.1).**
+
+| | scope | state |
+|---|---|---|
+| **A2a** | the lash CUTS — introduce, develop, the log bridge | ✅ done |
+| **A2b** | THE KNOT — the lash HOLDS: tether a boulder, snare a hound | pending |
+| **A2c** | the great thorn-knot, the two chord milestones, Sylva's thorns | pending |
+
+Original finding below.
 
 Every Level 3 teach marker has zero handlers. Measured by grepping `js/main.js`,
 `js/gates.js` and `js/player.js`:
@@ -60,7 +68,9 @@ snare — a genuinely new verb, the lash as a *rope*, (c) the thorn-knot and the
 chord-opening state.
 
 ## A3 · The spark shrine grants the wrong wolf in Level 3
-**HIGH · affects L3 · part of a session · blocked by A2**
+**✅ DONE (v3.25.1)** — the handler reads `grants` off the marker. Verified:
+Level 2's shrine gives the Earth Wolf and advances the vault; Level 3's gives
+the Verdant Wolf. Original finding below.
 
 `js/main.js:760` hardcodes the reward:
 
@@ -87,7 +97,11 @@ no use of the gift the level just taught. The marker is placed; only the
 behaviour is missing.
 
 ## A5 · Cut brambles do not survive a save
-**HIGH · affects L3 · part of a session · blocked by A2**
+**✅ DONE (v3.25.1)** — resolved WITHOUT adding `state.flags.cut`. The real
+machinery already existed and persisted through WorldState; Level 3 had
+invented an incompatible second one. `registerCuttable()` is now shared, so a
+cut bramble is recorded exactly the way every other gate is. Original finding
+below.
 
 `js/level3.js:204` reads `state.flags.cut[id]`, but `cut` is **never declared**
 in `js/state.js` and **never written** by `js/save.js`. Brambles a child cut

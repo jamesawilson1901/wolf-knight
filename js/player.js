@@ -1252,7 +1252,7 @@ export class Player {
     }
     // ...and CUT any bramble tangle in reach (gates.js registers cuttables)
     const tip = { x: px + fx * VINE_RANGE * 0.75, z: pz + fz * VINE_RANGE * 0.75 };
-    if (world.cutAt && world.cutAt(tip.x, tip.z, 2.2) + (world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) || 0) > 0) {
+    if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
       if (effects && effects.punch) effects.punch(0.18, 0.2);
     }
     // the whip itself: a green arc of leaf-bursts down the line
