@@ -24,24 +24,28 @@ import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
-import { WS, defineRestoration } from './worldstate.js';
+import { WS } from './worldstate.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
 
 let forceGrey = false;
 let woodKit = null;
 const GREY = () => forceGrey || !woodKit || state.settings.greybox !== false;
 
+// Rooms announce their own milestones. main.js owns bigToast, and importing it
+// here would make main and level3 a cycle, so the room asks the window for it
+// and simply stays quiet if it is not there (headless builds, tests).
+function bigToastSafe(msg) {
+  const t = typeof window !== 'undefined' && window.__game && window.__game.bigToast;
+  if (t) t(msg);
+}
+
 export const REGION = 'wild3';
 
 // The two shortcuts are world state, not session state: a child who pushes the
 // log over, quits, and comes back tomorrow must still find it lying there.
 // Same mechanism Level 2's vault uses (js/worldstate.js).
-defineRestoration(REGION, [
-  { key: 'rootCut', title: 'the root-wall is cut open',
-    opens: 'a chord from the Rootbound Deep back to the Gloomwood' },
-  { key: 'logDown', title: 'the great log is pushed over',
-    opens: 'a chord from the Bloomfall back to Thornedge' },
-]);
+// The restoration itself is declared in js/worldstate.js, with the vault's, so
+// there is one registry rather than one per level.
 
 // ---------------------------------------------------------------------------
 // DISTRICTS. The palette IS the story: sick yellow → dark blue → brown → and
@@ -207,7 +211,7 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // step solve itself on the next visit.
 const REGROW_AFTER = 6.5;      // seconds of standing about before it closes
 
-function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false) {
+function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = null) {
   if (!regrows && alreadyCut(REGION, id)) return null;
   const colour = 0x4f8f3a;
   const g = new THREE.Group();
@@ -235,7 +239,7 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false) {
   const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
   world.boxColliders.push(collider);
 
-  const entry = registerCuttable(world, { id, x, z, region: REGION, group: g, collider, regrows });
+  const entry = registerCuttable(world, { id, x, z, region: REGION, group: g, collider, regrows, onCut });
 
   if (regrows) {
     // THE CLOCK. Cut it and it is gone; stand around and it comes back, in the
@@ -672,7 +676,14 @@ export async function buildT3a(scene) {
   // THE ROOT-WALL: a chord you can SEE the Gloomwood through, before you can
   // cut it. It is the shortcut, and it reads as later, not as broken.
   if (!rootCut) {
-    bramble(world, 'l3_rootwall', -13, 0, 2.0, 6.0);
+    // CUT IT AND THE CHORD OPENS. This is a shortcut that unlocks from the FAR
+    // side: a child arriving here has already walked the long way round, so
+    // the root-wall is a reward for the distance rather than a way to skip it.
+    bramble(world, 'l3_rootwall', -13, 0, 2.0, 6.0, false, () => {
+      if (WS.complete(REGION, 'rootCut')) {
+        bigToastSafe('🌿 A way back opens through the roots!');
+      }
+    });
     world.markers.rootWallPromise = { x: -13, z: 0 };
   }
   world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }];
@@ -803,21 +814,32 @@ export async function buildT4a(scene) {
   // THE GREAT LOG — push it over and it becomes the chord home. Visible from
   // the moment you arrive; it reads as "that goes somewhere", not as scenery.
   if (!logDown) {
+    // THE GREAT LOG. Lash the vines holding it and it comes down across the
+    // gully, opening the long chord home to Thornedge. Same verb the level has
+    // taught all the way round — nothing new after the twist.
     world.markers.logPromise = { x: 12, z: 0 };
-    if (GREY()) {
-      const lg = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 6.0, 1.8),
-        new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 })
-      );
-      lg.position.set(12, 3, 0);
-      world.add(lg);
-    } else {
-      const lg = tinted(woodKit.treeB, 'greatLog', 0x7a5a34);
-      lg.position.set(12, 0, 0);
-      lg.scale.setScalar(3.4);
-      world.add(lg);
-    }
+    const lg = GREY()
+      ? new THREE.Mesh(new THREE.BoxGeometry(1.8, 6.0, 1.8),
+          new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 }))
+      : tinted(woodKit.treeB, 'greatLog', 0x7a5a34);
+    lg.position.set(12, GREY() ? 3 : 0, 0);
+    if (!GREY()) lg.scale.setScalar(3.4);
+    world.add(lg);
     world.addCircle(12, 0, 1.2);
+    bramble(world, 'l3_greatlog', 10.4, 0, 1.2, 3.0, false, () => {
+      // it falls: a second of movement, then it is the road home
+      let k = 0;
+      world.onAnimate((t, dt) => {
+        if (k >= 1) return;
+        k = Math.min(1, k + dt * 1.2);
+        const e = 1 - Math.pow(1 - k, 3);
+        lg.rotation.z = -e * Math.PI / 2;
+        lg.position.y = (GREY() ? 3 : 0) * (1 - e) + 0.6 * e;
+      });
+      if (WS.complete(REGION, 'logDown')) {
+        bigToastSafe('🪵 The great log crashes down — a way home!');
+      }
+    });
   }
   world.markers.houndSpots = [{ x: -6, z: -5, variant: 'elderthorn' },
     { x: 6, z: -6, variant: 'thorn' }];
@@ -836,8 +858,14 @@ export async function buildT4b(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tc4', { x: 0, z: 7, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 't4p', { x: 7.5, z: 0, angle: -Math.PI / 2 });
 
+  // TEACH 4 — CONCLUDE. The same cut, at a scale that changes a district:
+  // parting the great knot blooms the Bloomfall and opens the way to the glade.
   world.markers.thornKnot = { x: 0, z: -7 };
-  bramble(world, 'l3_thornknot', 0, -7, 7.0, 2.0);
+  bramble(world, 'l3_thornknot', 0, -7, 7.0, 2.0, false, () => {
+    if (WS.complete(REGION, 'knotCut')) {
+      bigToastSafe('🌸 The Bloomfall opens — the glade is ahead!');
+    }
+  });
   world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' }];
   breadcrumbs(world, [[0, 8], [0, 0], [0, -5]], 0xffd0e0);
   scatter(world, halfW, halfD, D, 152, 24, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
@@ -859,8 +887,9 @@ export async function buildTc4(scene) {
   const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n', BOSS_DOOR_HALF)], D);
   world.spawn = { x: 0, z: 7, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't4b', { x: 0, z: -10, angle: 0 });
+  // the glade waits on the great thorn-knot: the conclude step IS the door
   sideDoor(world, 'n', halfW, halfD, 'tgl', { x: 0, z: 9.5, angle: Math.PI },
-    { half: BOSS_DOOR_HALF });
+    { half: BOSS_DOOR_HALF, when: () => WS.get(REGION, 'knotCut') });
   world.markers.restSpot = { x: -3, z: 0 };
   world.markers.potionSpot = { x: 3, z: 0 };
   breadcrumbs(world, [[0, 5], [0, -5]], 0xffd0e0);

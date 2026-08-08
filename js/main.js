@@ -816,6 +816,21 @@ function narrationTriggers(dt, t) {
   }
   if (m.knotSnare && nearSpot(m.knotSnare, 5)) narration.say('knot_snare');
 
+  // A2c — the two chords and the great knot. Prompts + the map promise, so the
+  // rebuilt levels signpost "later" the same way the shipping rooms always did.
+  if (m.rootWallPromise && nearSpot(m.rootWallPromise, 4)) {
+    if (logMystery('l3_rootwall', '🌿', 'A wall of roots — the Rootbound Deep')) bigToast('🗺️ Added to the map: ???');
+    narration.say('rootwall_hint');
+  }
+  if (m.logPromise && nearSpot(m.logPromise, 4.5)) {
+    if (logMystery('l3_greatlog', '🪵', 'A great log, tangled — the Bloomfall')) bigToast('🗺️ Added to the map: ???');
+    narration.say('greatlog_hint');
+  }
+  if (m.thornKnot && nearSpot(m.thornKnot, 5)) narration.say('thornknot_hint');
+  if (WS.get('wild3', 'rootCut')) resolveMystery('l3_rootwall');
+  if (WS.get('wild3', 'logDown')) resolveMystery('l3_greatlog');
+  if (WS.get('wild3', 'knotCut') && state.room === 'tc4') narration.say('woods_bloom');
+
   // "not yet" gates: log the promise + Pip acknowledges it
   if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {
     if (logMystery('boulder_ember', '🪨', 'A huge boulder — Ember Causeway')) bigToast('🗺️ Added to the map: ???');
@@ -1109,7 +1124,7 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
@@ -1180,7 +1195,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1595,7 +1610,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

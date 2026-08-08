@@ -70,9 +70,10 @@ const solved = await page.evaluate(async () => {
   const s = () => new Promise((r)=>requestAnimationFrame(r));
   const bo = g.world.boulders[0];
   const plate = g.world.plates[0];
-  // keep lashing from the far side of the plate until it lands
-  for (let n = 0; n < 14 && !plate.pressed; n++) {
-    g.player.root.position.set(plate.x + 2.6, g.player.root.position.y, plate.z);
+  // Follow it. The vine only reaches 3.8u, so a child pulls, steps back, and
+  // pulls again — standing at the plate and lashing from there reaches nothing.
+  for (let n = 0; n < 20 && !plate.pressed; n++) {
+    g.player.root.position.set(bo.x + 2.6, g.player.root.position.y, bo.z);
     g.player.root.rotation.y = -Math.PI / 2;
     g.player.specialCooldown = 0; g.player.lockTime = 0;
     g.player.trySpecial(g.effects, g.world);

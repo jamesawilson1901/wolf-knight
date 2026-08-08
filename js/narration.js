@@ -108,6 +108,12 @@ export const LINES = {
   // solution: "it pulls" is the idea; working out what to pull is the puzzle.
   knot_tether: { voice: 'pip', text: 'You cannot get behind it to push… but your vine can PULL, Kael. Lash the rock!' },
   knot_snare: { voice: 'pip', text: 'Lash the hound straight on — the vine will hold it still for you!' },
+  // A2c — the conclude step and the two chords. Each names what a child can
+  // SEE, never what to press.
+  rootwall_hint: { voice: 'pip', text: 'Look — light through the roots! Cut them and we can get back that way.' },
+  greatlog_hint: { voice: 'pip', text: 'That huge log is all tangled up. Cut it loose and down it comes!' },
+  thornknot_hint: { voice: 'pip', text: "The big knot! That's what's choking the woods, Kael. Cut it!" },
+  woods_bloom: { voice: 'pip', text: 'Look at it all growing back… you did that. Sylva must be just ahead.' },
   vault_changed: { voice: 'pip', text: 'Kael, look! The big room is different. It changed because of YOU.' },
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },

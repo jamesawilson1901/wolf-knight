@@ -106,6 +106,20 @@ defineRestoration('vault', [
     opens: "the Warden's Crypt" },
 ]);
 
+// LEVEL 3 — THE WILD WOODS. Two shortcuts and the great thorn-knot. Unlike the
+// vault's three, these are not a strict sequence: the chords open in whatever
+// order a child finds them, and `stage()` is not used for the woods — each key
+// is read on its own. Declaring them here still keeps them in one registry, and
+// gives the debug list something truthful to print.
+defineRestoration('wild3', [
+  { key: 'rootCut', title: 'the root-wall is cut open',
+    opens: 'a chord from the Rootbound Deep back to the Gloomwood' },
+  { key: 'logDown', title: 'the great log is hauled down',
+    opens: 'a chord from the Bloomfall back to Thornedge' },
+  { key: 'knotCut', title: 'the great thorn-knot is parted',
+    opens: "Sylva's Glade" },
+]);
+
 // Mystery log — "come back later" promises shown as ??? on the map screen.
 // Registered the first time the player SEES the obstacle.
 export function logMystery(id, icon, label) {
