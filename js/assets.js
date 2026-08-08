@@ -8,10 +8,36 @@ const gltfLoader = new GLTFLoader(manager);
 
 const gltfCache = new Map();
 
+// Everything a loaded GLB owns is SHARED across every room that uses it, so it
+// must survive room teardown. Marking it here is what lets World.dispose()
+// safely free everything a room actually created (v3.22): the rule becomes
+// "dispose what is not marked shared" instead of "dispose nothing", which is
+// what left the game leaking a geometry and a cloned material per room build.
+// A Set of the actual OBJECTS, not a flag on them. `Material.clone()` deep-
+// copies userData, so a per-room clone of a shared material would inherit
+// `shared: true` and never be freed — the identity registry cannot be forged
+// that way, because a clone is a different object.
+export const SHARED = new Set();
+export const isShared = (o) => !!o && SHARED.has(o);
+
+function markShared(gltf) {
+  gltf.scene.traverse((n) => {
+    if (n.geometry) SHARED.add(n.geometry);
+    const mats = Array.isArray(n.material) ? n.material : (n.material ? [n.material] : []);
+    for (const m of mats) {
+      SHARED.add(m);
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap']) {
+        if (m[k]) SHARED.add(m[k]);
+      }
+    }
+  });
+  return gltf;
+}
+
 export function loadGLB(url) {
   if (!gltfCache.has(url)) {
     gltfCache.set(url, new Promise((resolve, reject) => {
-      gltfLoader.load(url, resolve, undefined, reject);
+      gltfLoader.load(url, (g) => resolve(markShared(g)), undefined, reject);
     }));
   }
   return gltfCache.get(url);
@@ -37,6 +63,7 @@ function volcanicMaterial(material) {
     fixed.roughness = 1;
     const tint = VOLCANIC_TINTS[material.name];
     if (tint !== undefined) fixed.color.setHex(tint);
+    SHARED.add(fixed);   // cached for the session — never room-owned
     tintCache.set(material.name, fixed);
   }
   return tintCache.get(material.name);
@@ -56,14 +83,47 @@ export function prepareModel(root, { castShadow = true, receiveShadow = true } =
 
 // Characters keep their own materials (KayKit/Quaternius export sane PBR),
 // only shadow flags + a safety metalness clamp are applied.
+// B1 — ONE CHARACTER, ONE SHADOW CASTER.
+//
+// This used to set `castShadow = true` on every mesh of every character, and
+// that one line was the single most expensive thing in the renderer. A cast
+// mesh is submitted TWICE — once to the shadow depth pass, once to the beauty
+// pass — and a character is not one mesh: the knight is nine skinned parts
+// (body, head, two arms, two legs, helmet, visor, cape) plus a sword and a
+// shield, and every skeleton is nine more. Skinned meshes are also the one
+// thing js/batch.js can never merge, so the cost is permanent.
+//
+// Measured in vc1, the worst room in the game: of 112 draw calls, 32 were
+// characters entering the shadow map. Casting from only the LARGEST skinned
+// mesh — the body, which is what the silhouette is made of — takes the room to
+// 83. Turning character shadows off entirely gets 78, so this recovers all but
+// five calls of the maximum possible saving.
+//
+// And it is invisible. Screenshots of the Bloomfall with five hounds, animation
+// frozen so only the shadow policy differs, diffed against a control pair of
+// identical renders:
+//
+//   control (same policy, two shots)   2.40% of pixels differ
+//   body-only casting                  2.49%   <- inside the noise
+//   no character shadows at all        3.26%   <- visibly different
+//
+// Held items (sword, shield, blade) come through here as their own root with no
+// skinned mesh in it, so they stop casting too — which is what the fix plan
+// suggested as a partial, and is worth 4 calls of the 29 on its own.
 export function prepareCharacter(root) {
+  let biggest = null, biggestVerts = -1;
   root.traverse((node) => {
     if (!node.isMesh) return;
-    node.castShadow = true;
+    node.castShadow = false;
     node.receiveShadow = false;
     const mats = Array.isArray(node.material) ? node.material : [node.material];
     for (const m of mats) { if (m.metalness === 1) m.metalness = 0; }
+    if (!node.isSkinnedMesh) return;
+    const pos = node.geometry && node.geometry.attributes && node.geometry.attributes.position;
+    const verts = pos ? pos.count : 0;
+    if (verts > biggestVerts) { biggestVerts = verts; biggest = node; }
   });
+  if (biggest) biggest.castShadow = true;
   return root;
 }
 

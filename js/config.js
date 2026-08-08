@@ -41,7 +41,9 @@ export const CONFIG = {
     DARK_HURT_MULT: 1.3,   // +30% damage taken — fast but fragile
     LUNGE_DIST: 2.5,       // u, tap attack while the stick is pushed
     LUNGE_DUR: 0.26,       // s, dash-bite travel time
-    LUNGE_IFRAMES: 0.15,   // s of dodge frames inside the lunge
+    // LUNGE_IFRAMES removed in C4: the dodge now reads LUNGE_DUR directly, so
+    // the invulnerable window is exactly the dash a child can see. A separate
+    // number here meant 42% of the blur was hittable and looked identical.
     LUNGE_COOLDOWN: 1.1,   // s between lunges (0 while surging)
     SENSE_RANGE: 7,        // u, hidden things shimmer for wolf senses
   },
@@ -123,5 +125,12 @@ export const CONFIG = {
     medium: { stop: 0.07, shake: 0.14, shakeT: 0.20, parts: 10, buzz: 20 },
     heavy:  { stop: 0.12, shake: 0.28, shakeT: 0.35, parts: 16, buzz: 45 },
     hurtBuzz: 60,        // haptic ms when KAEL takes a hit
+    // Kael TAKING a hit: gentler on screen than dealing one, stronger in the
+    // hand. These were hardcoded in juice.js — the only two feedback numbers in
+    // the game that did not live here. The magnitude is deliberately unchanged:
+    // the camera is a fixed offset, so 21.2u of ground is visible in EVERY room
+    // whatever its size, and a shake that read correctly in a 14x10 choke reads
+    // identically in the 36x28 hub. Measured, not assumed.
+    hurtShake: 0.12, hurtShakeT: 0.18,
   },
 };

@@ -22,7 +22,6 @@ const SPIN_DMG_MULT = 1.2;
 const SPIN_TIMESCALE = 1.7;     // clip playback speed — a whip-fast blur (playtest)
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const SLAM_RADIUS = 3.0;
-const SLAM_BURN_RADIUS = 2.6;
 const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
 const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
@@ -30,6 +29,7 @@ const VINE_COOLDOWN = 7;        // Verdant Wolf vine-lash (forward line + cuts b
 const VINE_RANGE = 3.8;         // how far the whip reaches
 const VINE_HALFWIDTH = 0.9;     // corridor half-width the lash sweeps
 const VINE_DMG = 1.5;
+const VINE_SNARE = 2.6;       // a square-on lash HOLDS, it does not just tangle
 const FROST_COOLDOWN = 7;       // Frost Wolf breath (cone: shatters ice, freezes foes)
 const FROST_RANGE = 3.6;
 const FROST_CONE_DEG = 40;
@@ -146,7 +146,10 @@ const DEFEND_SPEED_MULT = 0.35;
 const JUMP_V = 6.8;
 const DOUBLE_JUMP_V = 8.2;  // second press mid-air jumps higher
 const GRAVITY = 21;
-const AIRBORNE_DODGE_Y = 0.35; // above this, ground attacks miss
+const AIRBORNE_DODGE_Y = 0.35; // above this, a HOP dodges ground attacks
+// A weapon narrower than this thrusts instead of slashing (C4). cos() grows as
+// the arc shrinks, so "narrower than 50 degrees" is "arcCos above cos(50)".
+const NARROW_ARC_COS = Math.cos(THREE.MathUtils.degToRad(50));
 export const MAX_POTIONS = 3;
 const POTION_HEAL = 3;
 
@@ -465,7 +468,46 @@ export class Player {
     this._handR.clear();
     this._handL.clear();
     this._handR.add(prepareCharacter(w.scene.clone()));
-    this._handL.add(prepareCharacter(s.scene.clone()));
+    const shield = prepareCharacter(s.scene.clone());
+    // C4 — the parry window needs somewhere to SHOW itself, and the shield is
+    // the honest place. Its materials come out of the shared loader cache, so
+    // they are cloned here: tinting the cache would light up every shield in
+    // the game, including the skeletons'.
+    this._parryMats = [];
+    shield.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      const cloned = mats.map((m) => {
+        const c = m.clone();
+        if (!c.emissive) c.emissive = new THREE.Color(0x000000);
+        c.userData.baseEmissive = c.emissive.getHex();
+        this._parryMats.push(c);
+        return c;
+      });
+      n.material = Array.isArray(n.material) ? cloned : cloned[0];
+    });
+    this._handL.add(shield);
+  }
+
+  // The parry window, made visible. PARRY_WINDOW is 0.3s from the frame the
+  // button registers, but the block pose crossfades in over 0.12s — so 40% of
+  // the window elapsed while the shield was still coming up, and once it closed
+  // the identical pose silently downgraded to a half-heart blunt block. One
+  // pose, two rules, nothing to tell them apart. The glint starts the instant
+  // defendStart is stamped, not when the animation lands.
+  _parryGlint() {
+    if (!this._parryMats || !this._parryMats.length) return;
+    const open = this.defending &&
+      (this._time - this.defendStart) <= PARRY_WINDOW + (shieldDef().parryBonus || 0);
+    const want = open ? 1 : 0;
+    this._parryLit = this._parryLit === undefined ? 0 : this._parryLit;
+    // snap ON so the window's start is unmissable, ease OFF so it reads as a
+    // window closing rather than a flicker
+    this._parryLit = want > this._parryLit ? 1 : Math.max(0, this._parryLit - 0.12);
+    for (const m of this._parryMats) {
+      m.emissive.setHex(0x8fd8ff).multiplyScalar(this._parryLit);
+      m.emissiveIntensity = 0.2 + this._parryLit * 1.6;
+    }
   }
 
   // Potions live in run state so they persist with the save.
@@ -617,7 +659,11 @@ export class Player {
       if (Math.hypot(mv.x, mv.z) > 0.5) {
         const dx = Math.sin(this.root.rotation.y), dz = Math.cos(this.root.rotation.y);
         this._dash = { t: 0, dur: F.LUNGE_DUR, dx, dz, speed: F.LUNGE_DIST / F.LUNGE_DUR, hop: 0.18 };
-        this.iframes = Math.max(this.iframes, F.LUNGE_IFRAMES);
+        // C4 — the dodge lasts exactly as long as the dash a child can see.
+        // LUNGE_IFRAMES was a separate 0.15 against a 0.26 dash, so 42% of an
+        // unchanging blur was not invulnerable, on the one form that also takes
+        // +30% damage. Reading LUNGE_DUR here means the two can never drift.
+        this.iframes = Math.max(this.iframes, F.LUNGE_DUR);
         this.lungeCooldown = this._surge ? 0 : F.LUNGE_COOLDOWN; // free while surging
         this.lockTime = F.LUNGE_DUR + 0.1;
         this._playOnce('attack');
@@ -644,7 +690,14 @@ export class Player {
       this._comboUntil = 0; // slash again to re-open the combo
       audio.play('sword-swing2', { volume: 0.85, rate: 1.25 });
     } else {
-      this._playOnce('attack');
+      // C4 — A NARROW WEAPON STABS. js/items.js gives weapons an `arc` from 36
+      // to 82 degrees — a 2.3x difference in how wide the swing truly is — and
+      // every one of them played the same wide diagonal slice, so the pose said
+      // nothing about the hitbox. A child swinging the Long Spear at something
+      // off to the side watched a broad sweep miss. The stab clip is already
+      // loaded (it is the combo follow-up), so a spear now looks like a spear.
+      const narrow = cfg.arcCos !== undefined && cfg.arcCos > NARROW_ARC_COS;
+      this._playOnce(narrow && this.form.actions.attack2 ? 'attack2' : 'attack');
       this.lockTime = cfg.lock;
       this._pendingHit = {
         timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg,
@@ -807,7 +860,10 @@ export class Player {
     if (c.t >= C.CEREMONY) {
       // SHOCKWAVE: no damage — a knockback + stagger that clears space
       const px = this.root.position.x, pz = this.root.position.z;
-      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a);
+      // ceremony, not an attack: no hitbox to be honest about, so it keeps
+      // the full-size ring. Boss death rings do the same, which is why those
+      // are now visibly the biggest thing in the game.
+      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a, 4.0);
       c.effects.shake(0.4, 0.5);
       if (c.world && c.world.enemies) {
         for (const e of c.world.enemies) {
@@ -945,21 +1001,36 @@ export class Player {
         if (seared) this.gainMoon(CONFIG.MOON.PER_BOLT);
       }
       // ...and the breath MELTS ice shells off frozen braziers (v3.21):
-      // breath to melt, slam to light — two learned fire verbs, one puzzle
+      // breath to melt, slam to light — two learned fire verbs, one puzzle.
+      // The probe radius is clamped to its own reach so the first sample cannot
+      // melt a brazier BEHIND Kael, which a flat 1.6 at 1.13u did (-0.47u).
       if (world.meltAt) {
         for (let i = 1; i <= 3; i++) {
           const reach = (RANGE * i) / 3;
-          world.meltAt(this.root.position.x + bfx * reach, this.root.position.z + bfz * reach, 1.6);
+          world.meltAt(this.root.position.x + bfx * reach, this.root.position.z + bfz * reach,
+            Math.min(1.6, reach * 0.9));
         }
       }
-      // rolling flame: three widening puffs down the cone
-      for (let i = 0; i < 3; i++) {
-        const reach = 0.9 + i * 0.95;
-        const spread = 0.3 * (i + 1);
+      // C1 — the fire breath is the frost breath's twin (both a 38-40 degree
+      // cone) and it was the only ability in the game with NO ground mark at
+      // all. Same cone, same constants the hit test uses.
+      // tryRanged() takes no `effects` — juice holds the reference (juice.init),
+      // which is the same handle js/boss.js reaches for.
+      if (juice.effects) {
+        juice.effects.groundSlam({ x: this.root.position.x, z: this.root.position.z }, 0xff8a3a,
+          RANGE, { deg: 38, fx: bfx, fz: bfz });
+      }
+      // rolling flame: three widening puffs down the cone. The spread is the
+      // cone's ACTUAL half-width at each step — it used to be 0.3/0.6/0.9,
+      // which drew the fan 2.4x too narrow and stopped 0.6u short of the reach.
+      const TAN38 = Math.tan(THREE.MathUtils.degToRad(38));
+      for (let i = 1; i <= 3; i++) {
+        const reach = (RANGE * i) / 3;
+        const spread = reach * TAN38;
         juice.burst(
           this.root.position.x + bfx * reach + (Math.random() * 2 - 1) * spread, 0.7,
           this.root.position.z + bfz * reach + (Math.random() * 2 - 1) * spread,
-          i === 2 ? 0xffd76a : 0xff8a3a, 9);
+          i === 3 ? 0xffd76a : 0xff8a3a, 9);
       }
       return true;
     }
@@ -1152,7 +1223,26 @@ export class Player {
     return false;
   }
 
-  get airborne() { return this.airY > AIRBORNE_DODGE_Y; }
+  // C4 — A JUMP DODGES FOR AS LONG AS THE CHILD CAN SEE KAEL OFF THE GROUND.
+  //
+  // This was `airY > AIRBORNE_DODGE_Y` for everything. With JUMP_V 6.8 against
+  // GRAVITY 21 the jump is visibly airborne for 0.648s and peaks at 1.10u, but
+  // 0.35u of that arc is crossed twice — so the first 56ms and the last 56ms,
+  // 17.4% of the jump and up to a third of Kael's own height off the floor,
+  // read as airborne and took the hit anyway. Not a rare mistiming either:
+  // enemy contact() defaults to {ground: true} and re-tests every frame of
+  // overlap, so the landing window is sampled continuously. A child who cannot
+  // read has exactly one cue for "jump the sweep" — the wolf leaves the ground
+  // — and being hit there teaches that jumping does not work.
+  //
+  // The threshold still applies to HOPS. The roll's 0.28u and the lunge's 0.18u
+  // arcs are not jumps, they carry their own i-frames, and making them free
+  // dodges of every ground attack would be a different game. `jumpsUsed` is set
+  // only by tryJump and cleared on landing, so it is exactly "this is a jump".
+  get airborne() {
+    if (this.jumpsUsed > 0) return this.airY > 0 || this.airV > 0;
+    return this.airY > AIRBORNE_DODGE_Y;
+  }
 
   // Drink a potion (tap the HUD flask or press H).
   tryPotion() {
@@ -1247,20 +1337,37 @@ export class Player {
         const side = Math.abs(dx * fz - dz * fx);    // distance off the line
         if (side > VINE_HALFWIDTH + e.radius) continue;
         e.takeDamage(VINE_DMG, 'verdant', 'melee');
-        if (!e.dead && e.takeStun && !e.flying) e.takeStun(0.6); // tangled
+        // SNARE. A graze tangles briefly; a rope around it HOLDS. The long
+        // hold is the other half of the twist — the same discovery as the
+        // boulder, taught on something that fights back.
+        if (!e.dead && e.takeStun && !e.flying) {
+          const squareOn = side < VINE_HALFWIDTH * 0.6;
+          e.takeStun(squareOn ? VINE_SNARE : 0.6);
+          if (squareOn) e.snaredUntil = performance.now() + VINE_SNARE * 1000;
+        }
       }
     }
     // ...and CUT any bramble tangle in reach (gates.js registers cuttables)
     const tip = { x: px + fx * VINE_RANGE * 0.75, z: pz + fz * VINE_RANGE * 0.75 };
-    if (world.cutAt && world.cutAt(tip.x, tip.z, 2.2) + (world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) || 0) > 0) {
+    if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
       if (effects && effects.punch) effects.punch(0.18, 0.2);
+    }
+    // ...and TETHER a boulder: the lash is a rope, so it PULLS. This is the
+    // Level 3 twist, and it is a permanent part of the tool once discovered —
+    // not a trick that only works in the room that taught it.
+    if (world.tetherAt(tip.x, tip.z, 1.9, px, pz) > 0) {
+      audio.play('gate-creak', { volume: 0.6, rate: 0.7 });
+      if (effects && effects.punch) effects.punch(0.22, 0.24);
     }
     // the whip itself: a green arc of leaf-bursts down the line
     for (let i = 1; i <= 4; i++) {
       const f = i / 4;
       juice.burst(px + fx * VINE_RANGE * f, 0.5 + 0.25 * Math.sin(f * Math.PI), pz + fz * VINE_RANGE * f, 0x8fdc6a, 5);
     }
-    if (effects) effects.groundSlam({ x: px + fx * 1.6, z: pz + fz * 1.6 }, 0x6fae4a);
+    // the lash is a 3.8 x 0.9 CORRIDOR, so it is drawn as a narrow wedge from
+    // Kael's feet — atan(0.9 / 3.8) is 13 degrees — not as a disc thrown ahead
+    if (effects) effects.groundSlam({ x: px, z: pz }, 0x6fae4a, VINE_RANGE,
+      { deg: 13, fx, fz });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1313,7 +1420,10 @@ export class Player {
         pz + fz * reach + (Math.random() * 2 - 1) * spread,
         i === 2 ? 0xeaffff : 0xbfefff, 9);
     }
-    if (effects) effects.groundSlam({ x: px + fx * 1.5, z: pz + fz * 1.5 }, 0x9be3ff);
+    // the breath is a CONE, so draw the cone: same half-angle and same reach
+    // the hit test uses, from Kael's feet
+    if (effects) effects.groundSlam({ x: px, z: pz }, 0x9be3ff, FROST_RANGE,
+      { deg: FROST_CONE_DEG, fx, fz });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1345,7 +1455,7 @@ export class Player {
     // reach + a spark ring + a camera punch (playtest: it must never
     // read as "nothing happened")
     if (effects) {
-      effects.groundSlam(this.root.position.clone(), 0xbfe3ff);
+      effects.groundSlam(this.root.position.clone(), 0xbfe3ff, SPIN_RANGE);
       if (effects.punch) effects.punch(0.22, 0.22);
     }
     for (let i = 0; i < 6; i++) {
@@ -1365,8 +1475,11 @@ export class Player {
     this._playOnce('attack');
     this.lockTime = 0.5;
     this._softLock = false;
+    // stamped so a ROOM can react to a stomp without the player having to know
+    // what a room is — the Rattle (Level 2) listens for one on its plate
+    this.stompedAt = performance.now();
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
-    effects.groundSlam(this.root.position.clone(), 0xd8b06a);
+    effects.groundSlam(this.root.position.clone(), 0xd8b06a, STOMP_RADIUS);
     effects.shake(0.3, 0.35);
     audio.play('slam', { rate: 0.75 });
     if (world.enemies) {
@@ -1374,11 +1487,27 @@ export class Player {
         if (e.dead || e.flying) continue;
         const dx = e.x - x, dz = e.z - z;
         if (dx * dx + dz * dz > STOMP_RADIUS * STOMP_RADIUS) continue;
+        // GUARD BREAK. A stomp at the feet of anything hiding behind a raised
+        // shield knocks it off balance — the Bone Warden's answer, and the
+        // same lesson taught earlier on the shieldlings. The mechanic already
+        // fell out of "stun drops the guard"; what was missing was any way for
+        // a child to LEARN it, so the break now announces itself.
+        const wasGuarding = !!e.shieldUp;
         e.takeDamage(2, 'earth', 'aoe');
         if (e.takeStun) e.takeStun(STOMP_STUN);
+        if (wasGuarding && !e.dead) {
+          if (world.onDmgNum) world.onDmgNum(e.x, 1.6, e.z, 'GUARD BROKEN!');
+          audio.play('parry', { volume: 0.8, rate: 1.5 });
+          if (effects) effects.punch(0.3, 0.28);
+          this.brokeGuardAt = performance.now();   // rooms may react (Level 2)
+        }
       }
     }
-    if (world.crackAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });
+    // STOMP_RADIUS, not SLAM_BURN_RADIUS. This cracked rock at 2.6u — the FIRE
+    // wolf's constant, leaked into the earth wolf's move — while the ring and
+    // the damage both said 3.2. A child stomping a cracked rock 3u away saw it
+    // swept by the ring and nothing happened.
+    if (world.crackAt(x, z, STOMP_RADIUS) > 0) audio.play('slam', { volume: 0.9, rate: 1.3 });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1392,11 +1521,14 @@ export class Player {
     this.lockTime = 0.5;
     this._softLock = false;
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
-    effects.groundSlam(this.root.position.clone());
+    effects.groundSlam(this.root.position.clone(), 0xff7a2a, SLAM_RADIUS);
     audio.play('slam');
     if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2, 'fire');
-    if (world.burnAt(x, z, SLAM_BURN_RADIUS) > 0) audio.play('burn');
-    if (world.igniteAt) world.igniteAt(x, z, SLAM_BURN_RADIUS);
+    // one ring, one number: burn and ignite now reach exactly as far as the
+    // damage and the ring do. A brazier at 2.8u used to sit inside the orange
+    // ring and refuse to light.
+    if (world.burnAt(x, z, SLAM_RADIUS) > 0) audio.play('burn');
+    if (world.igniteAt) world.igniteAt(x, z, SLAM_RADIUS);
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1644,6 +1776,7 @@ export class Player {
     else if (this.defending) this._play('block', 0.12);
     else if (vmag > 0.1) this._play(vmag / Math.max(0.01, f.def.speed * speedMult) > RUN_THRESHOLD ? 'run' : 'walk');
     else this._play('idle');
+    this._parryGlint();   // C4 — the window has to be visible while it is open
 
     if (locked) {
       f.mixer.update(dt);

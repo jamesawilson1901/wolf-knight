@@ -3,6 +3,9 @@ asset-raw/
 
 .DS_Store
 node_modules/
+# ...and as a bare name: the headless verifiers need a `node_modules` SYMLINK to
+# the global install, and a trailing-slash pattern does not match a symlink.
+node_modules
 
 # Mermaid Reef (mermaid/)
 mermaid/node_modules/

@@ -604,7 +604,10 @@ export class Boreal {
 
     // the DIVE lane — red marks danger (contract grammar)
     this.lane = new THREE.Mesh(
-      new THREE.PlaneGeometry(8.5, 1.3),
+      // 3.2 wide, because the dive hits anything within 1.6u of the flight
+      // line. It was 1.3 — less than half — so a child who stepped just off
+      // the red stripe was still squarely in the dragon's path.
+      new THREE.PlaneGeometry(8.5, 3.2),
       new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0, depthWrite: false })
     );
     this.lane.rotation.x = -Math.PI / 2;
@@ -788,11 +791,19 @@ export class Boreal {
       this.core.scale.setScalar(1 + 0.06 * f);
       this.lane.material.opacity = 0.2 + 0.35 * f;
       this.lane.position.set(wx + this.diveDir.x * 4, this.world.deckY + 0.05, wz + this.diveDir.z * 4);
-      this.lane.rotation.z = -Math.atan2(this.diveDir.x, this.diveDir.z) + Math.PI / 2;
+      // Same mirror-instead-of-rotate error the Bone Warden's chop arc had:
+      // the plane is laid flat by rotation.x = -PI/2, so its long axis ends up
+      // along world (cos z, -sin z) and the heading must be atan2(-dz, dx).
+      // The old form was only right on the cardinals — at a diagonal the red
+      // stripe lay PERPENDICULAR to the dive it was warning about.
+      this.lane.rotation.z = Math.atan2(-this.diveDir.z, this.diveDir.x);
       if (this.actionT <= 0) {
         this.core.scale.setScalar(1);
-        const dd = Math.hypot(px - wx, pz - wz) || 0.01;
-        this.diveDir = { x: (px - wx) / dd, z: (pz - wz) / dd };
+        // SHE DIVES WHERE THE LANE SAID. This used to re-aim at the child at
+        // the instant the dive began, throwing away the direction it had just
+        // spent 0.9s advertising — so the one floor decal a boss charge is
+        // allowed to draw was decoration, and stepping off it did nothing.
+        // A telegraph you cannot act on is worse than no telegraph.
         this.action = 'dive';
         this.actionT = 0.85;
         this._diveHit = false;

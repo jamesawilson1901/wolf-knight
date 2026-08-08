@@ -69,6 +69,10 @@ const TRAITS = {
 // counterpart lesson to SUPER!). One model, many monsters.
 // ---------------------------------------------------------------------------
 
+// The Warden's chop covers 130 degrees (see _swingDamage below) — the telegraph
+// arc and the hit test read the same constant so they can never drift apart.
+const CHOP_ARC = THREE.MathUtils.degToRad(130);
+
 export const VARIANTS = {
   // Kiln elite: a shade baked in the kiln's own fire — FIRE bounces off it
   // (the Fire Wolf's home advantage disappears; moon still shreds it)
@@ -174,7 +178,29 @@ export const VARIANTS = {
 function applyVariant(e, name) {
   const v = VARIANTS[name];
   if (!v) return e;
-  if (v.hp) { e.hp = v.hp; e.maxHp = v.hp; }
+  // A9 — A VARIANT'S hp IS A BASE, NOT A VERDICT.
+  //
+  // This used to be `e.hp = v.hp` — a flat overwrite of the number the Enemy
+  // constructor had just computed, which meant a varianted enemy opted out of
+  // BOTH difficulty levers the rest of the game runs on: the level scaling
+  // (`enemyScale()`) and the Gentle-mode hp relief. It went unnoticed because
+  // Levels 1 and 2 barely use variants. Level 3 is made of nothing else, so
+  // every enemy in the Wild Woods was pinned at its level-1 value:
+  //
+  //   player level        1     4     8    12    16
+  //   L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
+  //   plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
+  //   THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
+  //
+  // A child reaches the Wild Woods at about level 8-12, so the corrupted,
+  // supposedly-tougher forest creature was the WEAKEST thing in the game by a
+  // wide margin. That — not the room-by-room head count — is the main reason
+  // difficulty fell off a cliff at Level 3. The variant now feeds the same
+  // formula every other enemy uses, so Gentle mode reaches the woods too.
+  if (v.hp) {
+    const bonus = state.settings.easy ? 0 : CONFIG.DIFFICULTY.ENEMY_HP_BONUS;
+    e.hp = e.maxHp = Math.round((v.hp + bonus) * enemyScale() * 2) / 2;
+  }
   if (v.scale && e.model) {
     e.model.scale.multiplyScalar(v.scale);
     e.radius = e.radius * (1 + (v.scale - 1) * 0.6);
@@ -1258,17 +1284,27 @@ export class BoneWarden extends SkeletonBase {
 
     // telegraph ring shows the chop's danger zone (boss-sized) — and it sits
     // ABOVE the crypt's stone floor tiles (height law: y<~0.17 is buried)
-    this.dangerRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.7, 2.0, 28, 1, 0, Math.PI * 0.9),
-      new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
-    );
-    this.dangerRing.rotation.x = -Math.PI / 2;
-    this.dangerRing.position.y = world.deckY + 0.02; // height law (v3.20)
-    world.add(this.dangerRing);
+    // TWO marks, because the Warden has two attacks and they are different
+    // SHAPES. The chop is a 130-degree cone reaching 2.9u; the spin is the whole
+    // circle at 2.6u. One 162-degree wedge was being drawn for both, which meant
+    // the spin — the attack you cannot step out of sideways — was signposted as
+    // if it had a safe side. Radii are the real reach: RingGeometry's outer edge
+    // IS where the axe lands.
+    const mark = (geo) => {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        color: 0xff4a3a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = world.deckY + 0.02;           // height law (v3.20)
+      world.add(m);
+      return m;
+    };
+    this.dangerRing = mark(new THREE.RingGeometry(1.0, 2.9, 28, 1, 0, CHOP_ARC));
+    this.spinRing = mark(new THREE.RingGeometry(1.0, 2.6, 32));
   }
 
   die() {
     this.world.root.remove(this.dangerRing);
+    this.world.root.remove(this.spinRing);
     if (this.world.onWardenDefeated) this.world.onWardenDefeated(this);
     super.die();
   }
@@ -1312,7 +1348,13 @@ export class BoneWarden extends SkeletonBase {
   update(dt, t, player) {
     if (this.dead) return;
     this._guard(this.shieldUp, dt);
-    if (this.stunUpdate(dt)) { this.mixer.update(dt); this.dangerRing.material.opacity = 0; return; }
+    // a stunned giant is not about to hit anyone: BOTH marks go out
+    if (this.stunUpdate(dt)) {
+      this.mixer.update(dt);
+      this.dangerRing.material.opacity = 0;
+      this.spinRing.material.opacity = 0;
+      return;
+    }
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
@@ -1345,7 +1387,15 @@ export class BoneWarden extends SkeletonBase {
       // 0.9s: the danger arc fades in where the axe will land
       const f = Math.min(1, this.stateT / 0.9);
       this.dangerRing.position.set(this.x, this.world.deckY + 0.02, this.z);
-      this.dangerRing.rotation.z = -this.root.rotation.y + Math.PI / 2 + Math.PI * 0.45;
+      // THE ARC POINTS WHERE THE AXE GOES. This was `-rotation.y + ...`, which
+      // MIRRORS the heading instead of rotating it: the mesh is laid flat by
+      // rotation.x = -PI/2 and three.js Euler XYZ applies Rz first, so a local
+      // vertex at angle a ends up at world (cos(a+z), -sin(a+z)) — the sign has
+      // to follow the facing, not oppose it. Measured before the fix, the red
+      // "the axe lands here" arc was correct at exactly one facing (171 deg) and
+      // up to 162 deg wrong everywhere else, i.e. pointing almost directly away
+      // from the swing. A child dodging by it was being sent INTO the axe.
+      this.dangerRing.rotation.z = this.root.rotation.y - Math.PI / 2 - CHOP_ARC / 2;
       this.dangerRing.material.opacity = f * 0.55;
       if (this.stateT >= 0.9) {
         this.state = 'chop';
@@ -1354,7 +1404,9 @@ export class BoneWarden extends SkeletonBase {
         audio.play('sword-swing', { volume: 0.9, rate: 0.7 });
       }
     } else if (this.state === 'chop') {
-      this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 2);
+      // fade to nothing at 0.45s, AFTER the 0.32s damage frame. It used to hit
+      // zero at 0.275s, so the mark vanished three frames before the axe landed.
+      this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 1.2);
       if (this.stateT > 0.32 && !this._chopHit) {
         this._chopHit = true;
         this._swingDamage(player, 130, 2.9, 1.5); // giant's axe reach
@@ -1364,9 +1416,8 @@ export class BoneWarden extends SkeletonBase {
     } else if (this.state === 'spin_tele') {
       // 1.0s: full-circle warning ring
       const f = Math.min(1, this.stateT / 1.0);
-      this.dangerRing.position.set(this.x, this.world.deckY + 0.02, this.z);
-      this.dangerRing.material.opacity = f * 0.55;
-      this.dangerRing.scale.setScalar(1.3);
+      this.spinRing.position.set(this.x, this.world.deckY + 0.02, this.z);
+      this.spinRing.material.opacity = f * 0.55;
       if (this.stateT >= 1.0) {
         this.state = 'spin';
         this.stateT = 0;
@@ -1374,13 +1425,14 @@ export class BoneWarden extends SkeletonBase {
         audio.play('sword-swing2', { volume: 0.9, rate: 0.6 });
       }
     } else if (this.state === 'spin') {
-      this.dangerRing.material.opacity = Math.max(0, 0.55 - this.stateT * 1.6);
+      // ...and stays up past the 0.45s damage frame, as the chop mark now does
+      this.spinRing.material.opacity = Math.max(0, 0.55 - this.stateT * 0.9);
       if (this.stateT > 0.45 && !this._spinHit) {
         this._spinHit = true;
         this._swingDamage(player, 360, 2.6, 1.5); // giant's full-circle sweep
       }
       if (this.stateT > 1.1) {
-        this.state = 'chase'; this._spinHit = false; this.dangerRing.scale.setScalar(1);
+        this.state = 'chase'; this._spinHit = false; this.spinRing.material.opacity = 0;
         this.swings++; this.attackTimer = 1.3;
       }
     } else if (this.state === 'tired') {

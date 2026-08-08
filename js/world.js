@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { isShared } from './assets.js';
 
 const _rollAxis = new THREE.Vector3();
 
@@ -24,8 +25,21 @@ export class World {
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
+    // Where this room ANNOUNCES ITSELF: every landmark instance that says
+    // "you are at the Thornedge crossroads". Not part of `markers`, because
+    // these are scenery a child reads, not spots gameplay acts on — and the
+    // blind-strip law is a census of the latter.
+    this.heroMarks = [];       // [{x, z}]
     this.burnables = [];       // {id, x, z, group, collider, burned}
     this.crackables = [];      // {id, x, z, group, collider, cracked} — Earth Wolf
+    // Cuttables were the ONE gate list not created here, so gates.js built it
+    // lazily and world.cutAt existed in some rooms and not others — anything
+    // reading world.cuttables in a room with no brambles hit undefined.
+    this.cuttables = [];       // {id, x, z, clear, cut} — Verdant Wolf lash
+    // ...and the same for ice. world.shatterAt used to be defined lazily by
+    // iceGate(), so a room with ice-sealed geometry built any other way had
+    // no shatter verb at all and its ice could never be broken.
+    this.shatterables = [];    // {id, x, z, clear, broken} — Frost Wolf breath
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
@@ -76,14 +90,91 @@ export class World {
 
   onAnimate(fn) { this._animateHooks.push(fn); }
 
+  // "Do not fold this into the static batch." A builder marks anything it will
+  // move, animate or hand to gameplay later; flattenStatic() leaves it and
+  // everything under it exactly as placed. (js/batch.js)
+  keepLoose(obj) { (this._keepLoose || (this._keepLoose = [])).push(obj); return obj; }
+
   animate(t, dt) {
     for (const fn of this._animateHooks) fn(t, dt);
   }
 
+  // ROOM TEARDOWN (rewritten v3.22). This used to remove the scene graph and
+  // nothing else, on the reasoning that "geometries/materials are shared via
+  // the asset cache". Half true: GLB geometry and the tint cache ARE shared —
+  // but every room also builds its own PlaneGeometry floors, RingGeometry
+  // decals, BoxGeometry walls, CanvasTextures and dozens of `.clone()`d
+  // materials, and none of those were ever freed. Undisposed GPU resources are
+  // the standard three.js leak, and it matters here because the kids play for
+  // an hour and cross fifty rooms doing it.
+  //
+  // The rule is now: dispose everything this room OWNS, keep everything in the
+  // SHARED identity registry (assets.js). A registry rather than a flag,
+  // because Material.clone() deep-copies userData — a per-room clone of a
+  // shared material would inherit the flag and never be freed.
   dispose() {
     this.scene.remove(this.root);
-    // Geometries/materials are shared via the asset cache — do not dispose
-    // them; just drop the scene graph.
+    const freed = { geometries: 0, materials: 0, textures: 0 };
+
+    const killTexture = (t) => {
+      if (!t || isShared(t)) return;
+      t.dispose();
+      freed.textures++;
+    };
+    const killMaterial = (m) => {
+      if (!m || isShared(m)) return;
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap',
+                       'emissiveMap', 'aoMap', 'alphaMap', 'lightMap']) {
+        killTexture(m[k]);
+      }
+      m.dispose();
+      freed.materials++;
+    };
+
+    this.root.traverse((n) => {
+      // An InstancedMesh reuses SHARED geometry and material but owns its own
+      // instance buffers — dispose() frees exactly those and nothing else.
+      // INSTANCED MESHES. `InstancedMesh.dispose()` frees the instance matrix
+      // and colour buffers and NOTHING ELSE — not the geometry, not the
+      // material. This used to `return` straight after it, which was invisible
+      // for kit props (their geometry comes from the GLB cache and is SHARED,
+      // so it must not be freed anyway) but leaked one geometry per room for
+      // anything that builds its own: the breadcrumb trails do exactly that,
+      // and Level 2's hub is entered six times a playthrough. Measured at
+      // exactly +1 geometry per build over 40 hub entries before this.
+      if (n.isInstancedMesh || n.isBatchedMesh) {
+        n.dispose();
+        if (n.geometry && !isShared(n.geometry)) { n.geometry.dispose(); freed.geometries++; }
+        if (n.material && !Array.isArray(n.material)) killMaterial(n.material);
+        else if (Array.isArray(n.material)) n.material.forEach(killMaterial);
+        return;
+      }
+      // SKINNED CHARACTERS: every SkeletonUtils.clone() builds a fresh Skeleton,
+      // and three uploads a DataTexture of the bone matrices for GPU skinning.
+      // That texture hangs off the skeleton, NOT off a material or geometry, so
+      // it is invisible to any census that walks materials — which is exactly
+      // why this leak survived the first two attempts at fixing it. Measured at
+      // ~16 textures per room build: every enemy, pup and NPC in the room.
+      if (n.isSkinnedMesh && n.skeleton && !isShared(n.skeleton)) {
+        n.skeleton.dispose();
+        freed.textures++;
+      }
+      if (n.isLight && n.shadow && n.shadow.map) { n.shadow.map.dispose(); n.shadow.map = null; }
+      if (n.geometry && !isShared(n.geometry)) { n.geometry.dispose(); freed.geometries++; }
+      if (!n.material) return;
+      if (Array.isArray(n.material)) n.material.forEach(killMaterial);
+      else killMaterial(n.material);
+    });
+
+    this.root.clear();
+    this._animateHooks.length = 0;
+    // these arrays are populated by other modules (enemies.js sets world.enemies)
+    for (const k of ['enemies', 'boulders', 'burnables', 'crackables', 'pups',
+                     'plates', 'braziers', 'shatterables', 'cuttables', 'checkpoints']) {
+      if (Array.isArray(this[k])) this[k].length = 0;
+    }
+    this._lastFreed = freed;   // read by the headless leak test
+    return freed;
   }
 
   // True while standing somewhere that hurts (lava, erupting geyser).
@@ -103,6 +194,73 @@ export class World {
     return false;
   }
 
+  // Verdant Wolf vine-lash: cut every uncut tangle in range. Unlike burnAt and
+  // crackAt this does not shatter a group itself — a cuttable owns its own
+  // `clear()`, because a bramble across a doorway and a rope holding a log up
+  // need to do very different things when they part.
+  // `hitR` (optional, on the entry) widens the catch: a tangle that spans a
+  // whole doorway is caught by a blow landing anywhere ALONG it, not only
+  // within reach of its centre point. Without it a long gate reads as broken
+  // the moment a child squares up to one end of it.
+  cutAt(x, z, r) {
+    let n = 0;
+    for (const c of this.cuttables) {
+      if (c.cut) continue;
+      const rr = r + (c.hitR || 0);
+      const dx = c.x - x, dz = c.z - z;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      c.cut = true;
+      c.clear();
+      n++;
+    }
+    return n;
+  }
+
+  // Verdant Wolf TETHER — the Level 3 twist. The lash does not only cut: it
+  // HOLDS. Rope a boulder and it comes one clean step TOWARD you.
+  //
+  // Deliberately the exact inverse of the push above, and it reuses the same
+  // slide: cardinal-snapped, one 1.2u step, the same speed, the same click if
+  // it lands on a plate. The whole point of the twist is that the boulder a
+  // child already knows how to shove now answers to a rope, so it had better
+  // behave identically — a second movement rule would teach that boulders are
+  // unpredictable, which is the opposite of the v3.18 playtest law.
+  tetherAt(x, z, r, fromX, fromZ) {
+    let n = 0;
+    for (const b of this.boulders) {
+      if (b._locked || b._slide) continue;
+      const dx = b.x - x, dz = b.z - z;
+      if (dx * dx + dz * dz > r * r) continue;
+      // toward the LASHER, snapped to the dominant axis
+      const tx = fromX - b.x, tz = fromZ - b.z;
+      const dir = Math.abs(tx) > Math.abs(tz)
+        ? { dx: Math.sign(tx), dz: 0 }
+        : { dx: 0, dz: Math.sign(tz) };
+      b._slide = this.slickFloor
+        ? { ...dir, remaining: 26, speed: 5.5 }
+        : { ...dir, remaining: 1.2, speed: 2.4 };
+      n++;
+    }
+    return n;
+  }
+
+  // Frost Wolf breath: shatter every unbroken ice mass in range. Like a
+  // cuttable, an ice mass owns its own `clear()` — a frozen mound and an
+  // ice-sealed spring want different things to happen when they break.
+  shatterAt(x, z, r) {
+    let n = 0;
+    for (const c of this.shatterables) {
+      if (c.broken) continue;
+      const rr = r + (c.hitR || 0);
+      const dx = c.x - x, dz = c.z - z;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      c.broken = true;
+      c.clear();
+      n++;
+    }
+    return n;
+  }
+
   // Fire Wolf ground-slam: burn every unburned obstacle in range. The clump
   // breaks apart — chunks scatter, shrink and fade — and its collider goes.
   burnAt(x, z, r) {
@@ -118,13 +276,22 @@ export class World {
     let burned = 0;
     for (const b of list) {
       if (b[doneKey]) continue;
+      const rr = r + (b.hitR || 0);
       const dx = b.x - x, dz = b.z - z;
-      if (dx * dx + dz * dz > r * r) continue;
+      if (dx * dx + dz * dz > rr * rr) continue;
       b[doneKey] = true;
       flagMap[b.id] = true;
       burned++;
-      const i = this.circleColliders.indexOf(b.collider);
-      if (i >= 0) this.circleColliders.splice(i, 1);
+      // Most burnables and crackables are rock CLUMPS with a circle collider,
+      // so the default is to drop that circle. A gate that spans a doorway is
+      // a wall, not a clump: it blocks with a box, and it supplies its own
+      // `clear()` to take that box (and anything else it drew) away.
+      if (b.clear) {
+        b.clear();
+      } else {
+        const i = this.circleColliders.indexOf(b.collider);
+        if (i >= 0) this.circleColliders.splice(i, 1);
+      }
       const chunks = [...b.group.children];
       for (const c of chunks) {
         const a = Math.atan2(c.position.x + 0.01, c.position.z + 0.01);

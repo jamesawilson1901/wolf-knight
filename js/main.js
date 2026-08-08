@@ -8,13 +8,13 @@ import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { Player } from './player.js';
-import { state } from './state.js';
+import { state, resolveRoom } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
 import { audio } from './audio.js';
 import { Narration } from './narration.js';
-import { applySave, persist } from './save.js';
+import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
@@ -23,12 +23,44 @@ import { addGear } from './items.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
+import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
+
+// A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
+// rebuilt levels: the marker the room drops, the map entry it earns, and the
+// condition that closes it. `done` reads the same flag the gate is built from,
+// so the map can never claim a wall is open while the wall is still standing.
+const PROMISES = [
+  { marker: 'crackPromise', id: 'l1_crack', icon: '🪨', r: 4,
+    label: 'A cracked wall — the Ashfall',
+    done: () => !!state.flags.cracked.l1_crack_gate },
+  { marker: 'firePromise', id: 'l1_scorched', icon: '🔥', r: 4.5,
+    label: 'A scorched barricade — the Scorched Cubby',
+    done: () => !!state.flags.burned.l1_scorched_gate },
+  { marker: 'underwaterPromise', id: 'l2_sunken', icon: '💧', r: 4,
+    label: 'A chest under the water — the Great Vault',
+    done: () => WS.get('vault', 'drained') },
+  { marker: 'bramblePromise', id: 'l2_bramble', icon: '🌿', r: 4,
+    label: 'A thorny tangle — the Drowned Door',
+    done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+  { marker: 'thornPromise', id: 'l3_thorn', icon: '🌿', r: 4,
+    label: 'A thorn wall — Thornedge',
+    done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+  { marker: 'icePromise', id: 'l3_spring', icon: '❄️', r: 4,
+    label: 'A spring sealed in ice — Thornedge',
+    done: () => WS.get('wild3', 'ice_l3_spring_ice') },
+  { marker: 'rootWallPromise', id: 'l3_rootwall', icon: '🌿', r: 4,
+    label: 'A wall of roots — the Rootbound Deep', say: 'rootwall_hint',
+    done: () => WS.get('wild3', 'rootCut') },
+  { marker: 'logPromise', id: 'l3_greatlog', icon: '🪵', r: 4.5,
+    label: 'A great log, tangled — the Bloomfall', say: 'greatlog_hint',
+    done: () => WS.get('wild3', 'logDown') },
+];
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -46,7 +78,8 @@ const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a,
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // METRICS.md budget
+perf.attach(renderer);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -112,6 +145,15 @@ function showError(text) {
   document.getElementById('error').style.display = 'flex';
 }
 manager.onError = (url) => showError('Failed to load: ' + url);
+
+// A SAVE THAT CANNOT WRITE MUST SAY SO. Quota exceeded, private browsing, a
+// full disk — the child otherwise plays a whole evening and loses it silently.
+// Loud but not fatal: the run keeps going, because throwing away an hour of
+// play to punish the browser would be the worse bug.
+setSaveErrorHandler((msg) => {
+  showError(msg + '\n\nYour game is still playable, but it is NOT being saved.\n' +
+    'Tell a grown-up: the browser may be out of space, or in private mode.');
+});
 
 const fadeEl = document.getElementById('fade');
 function fadeTo(opacity, ms = 300) {
@@ -268,14 +310,14 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
   // (forms, keys, boss flags), so the level is playable from its first step.
   const LEVELS = [
     { id: 'den', label: '🏡 Moonlit Den' },
-    { id: 'r1', label: '🌋 Level 1 — Ember Hollow' },
+    { id: 'la', label: '🌋 Level 1 — Ember Hollow' },
     {
-      id: 'e1', label: '⛰️ Level 2 — Stoneroot Caverns',
+      id: 'vh', label: '⛰️ Level 2 — Stoneroot Caverns',
       forms: ['fire_wolf'], // earned by finishing Level 1...
       emberDone: true,      // ...so Level 1 counts as complete
     },
     {
-      id: 'w1', label: '🌲 Level 3 — Wild Woods',
+      id: 't1a', label: '🌲 Level 3 — Wild Woods',
       forms: ['fire_wolf', 'earth_wolf'],
       emberDone: true, stoneDone: true, // both earlier levels count as complete
     },
@@ -283,6 +325,36 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       id: 'f1', label: '🏔️ Level 4 — Frostpeak',
       forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf'],
       emberDone: true, stoneDone: true, wildDone: true,
+    },
+    // GREYBOX — not part of the played game. These two exist so a layout can
+    // be walked and judged before a single art asset is placed (build order
+    // law). They stay in the cheat menu, behind the code, until dressed.
+    { id: 'zoo', label: '📏 Metrics Zoo (greybox)', noSave: true, greybox: true },
+    {
+      id: 'la', label: '🧱 Level 1 REBUILD (greybox)',
+      forms: ['fire_wolf'], noSave: true, greybox: true,
+    },
+    {
+      id: 'la', label: '🎨 Level 1 REBUILD (dressed)',
+      forms: ['fire_wolf'], noSave: true, greybox: false,
+    },
+    {
+      id: 'vh', label: '🪨 Level 2 REBUILD (greybox)',
+      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: true,
+    },
+    {
+      id: 'vh', label: '💎 Level 2 REBUILD (dressed)',
+      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: false,
+    },
+    {
+      id: 't1a', label: '🌲 Level 3 REBUILD (greybox)',
+      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
+      noSave: true, greybox: true,
+    },
+    {
+      id: 't1a', label: '🍃 Level 3 REBUILD (dressed)',
+      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
+      noSave: true, greybox: false,
     },
   ];
   const pad = document.getElementById('cheat-pad');
@@ -351,6 +423,9 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       audio.play('form-switch', { volume: 0.8 });
+      // the same layout, either costume — greybox to judge the SPACE, dressed
+      // to judge the art. Switching is a jump, not a rebuild of anything else.
+      if (lvl.greybox !== undefined) state.settings.greybox = lvl.greybox;
       // grant the journey so far — the skip must never strand a kid
       // without the wolves/keys the level assumes they have
       for (const f of lvl.forms || []) {
@@ -376,9 +451,13 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
         state.flags.plates.w3_p1 = true;
         state.flags.plates.w3_p2 = true;
       }
-      // the save follows the jump: Continue and respawns use the level start
-      state.checkpoint = { room: lvl.id, x: 0, z: 0, id: 'spawn' };
-      persist();
+      // the save follows the jump: Continue and respawns use the level start.
+      // Greybox spaces deliberately do NOT — a kid who tapped the wrong thing
+      // must not find their save parked in an untextured prototype.
+      if (!lvl.noSave) {
+        state.checkpoint = { room: resolveRoom(lvl.id), x: 0, z: 0, id: 'spawn' };
+        persist();
+      }
       closeAll();
       setPaused(false);
       loadRoom(lvl.id);
@@ -679,6 +758,21 @@ function narrationTriggers(dt, t) {
     if (sh && nearXZ(sh.x, sh.z, 5.5)) narration.say('shield_foe');
   }
 
+  // A4 — THE CONCLUDE STEP. The gift is the answer to the boss: a stomp at the
+  // Warden's feet drops his guard. The MECHANIC already worked (a stomp stuns,
+  // and shieldUp is false while stunned) — what was missing was any way for a
+  // child to find that out. So this teaches it, at the moment it applies:
+  // standing in front of a raised shield, holding the wolf that answers it.
+  if (m.stompStagger && world.warden && !world.warden.dead) {
+    if (world.warden.shieldUp && nearSpot(m.stompStagger, 6) &&
+        state.formsUnlocked.includes('earth_wolf')) {
+      narration.say('warden_stagger');
+    }
+    if (player.brokeGuardAt && performance.now() - player.brokeGuardAt < 900) {
+      narration.say('guard_broken');
+    }
+  }
+
   // Earth Wolf verb prompts (both regions carry cracked rocks)
   if (state.formsUnlocked.includes('earth_wolf') && m.crackSpot &&
       !state.flags.cracked.e1_alcove && nearSpot(m.crackSpot, 3.4)) {
@@ -701,6 +795,95 @@ function narrationTriggers(dt, t) {
     if (state.formsUnlocked.includes('fire_wolf') && nearXZ(1.8, -2.6, 3)) narration.say('brazier_hint');
   }
   if (state.room === 'kb' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+
+  // -------------------------------------------------------------------------
+  // LEVEL 2 — THE VAULT CHANGES. Each spoke ends by doing something to the
+  // titan; recording it here is the ONLY place a milestone is ever set, and
+  // the hub reads WS.stage('vault') when it rebuilds. Nothing about the vault
+  // is toggled directly, which is what makes "quit halfway and come back"
+  // correct by construction rather than by remembering to handle it.
+  // -------------------------------------------------------------------------
+  // A spirit's spark grants whatever THAT spirit gives. This used to hardcode
+  // the Earth Wolf and the vault's milestone, so walking into Sylva's shrine in
+  // Level 3 handed the child the wrong wolf and advanced Level 2's state
+  // (fix plan A3). The marker has carried `grants` all along; now it is read.
+  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4)) {
+    const gift = m.sparkSpot.grants || 'earth_wolf';
+    if (!state.formsUnlocked.includes(gift)) {
+      state.formsUnlocked.push(gift);
+      effects.warmFlood();
+      ui.refreshBadge();
+      const SPARK = {
+        earth_wolf: { region: 'vault', key: 'spark', toast: '🪨 The Earth Wolf awakens!' },
+        verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
+      }[gift];
+      if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
+      narration.say(gift === 'verdant_wolf' ? 'verdant_grant' : 'earthwolf_grant');
+      persist();
+    }
+  }
+  // THE RATTLE: the stomp is not a hammer, it is a SOUND. Standing on the
+  // resonant plate and stomping rings the chamber — the bell-stone answers and
+  // the dam gives way, which is hub change 2.
+  if (m.rattlePlate && !WS.get('vault', 'drained') && nearSpot(m.rattlePlate, 1.9)) {
+    narration.say('rattle_hint');
+    if (player.stompedAt && performance.now() - player.stompedAt < 400) {
+      player.stompedAt = 0;
+      juice.shake(0.5, 0.5);
+      audio.play('slam', { volume: 1, rate: 0.7 });
+      if (WS.complete('vault', 'drained')) bigToast('🔔 Something far away answers…');
+      persist();
+    }
+  }
+  // THE SHOULDER PIN: the last thing holding the titan's arm up.
+  if (m.pinSpot && !WS.get('vault', 'handDown') && state.flags.cracked.l2_vc3_pin) {
+    if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
+    persist();
+  }
+
+  // -------------------------------------------------------------------------
+  // LEVEL 3 — THE LASH CUTS (fix plan A2a). Introduce, then develop.
+  // Prompts only: the cutting itself is world.cutAt, driven by the lash in
+  // player.js, so there is no second implementation of the verb here.
+  // -------------------------------------------------------------------------
+  if (m.teachBramble && nearSpot(m.teachBramble, 4) &&
+      state.formsUnlocked.includes('verdant_wolf')) {
+    narration.say('bramble_teach');
+  }
+  if ((m.developBrambles || []).some((b) => nearSpot(b, 4.5))) {
+    narration.say('bramble_regrow');
+  }
+  if (m.logBridge && nearSpot(m.logBridge, 4)) narration.say('log_rope');
+
+  // THE KNOT (A2b) — the lash HOLDS. Prompts only; tetherAt and the snare live
+  // in world.js and player.js, so the verb has exactly one implementation.
+  if (m.knotTether && nearSpot(m.knotTether, 5) && !state.flags.plates.l3_knot_p1) {
+    narration.say('knot_tether');
+  }
+  if (m.knotSnare && nearSpot(m.knotSnare, 5)) narration.say('knot_snare');
+
+  // A8 — EVERY "come back later" gate in the rebuilt levels, as one table.
+  //
+  // Six of the eight used to be silent: a child walked up to a wall with a
+  // chest plainly visible behind it and got no line from Pip and no ??? on the
+  // map, so it read as a dead end rather than as a place to return to. Written
+  // as a table rather than six near-identical `if` blocks because that is
+  // exactly how the shipping rooms and the rebuilt levels drifted apart in the
+  // first place — a new gate now adds one row, and gets the prompt, the map
+  // entry and the resolve for free.
+  //
+  // `done` is the SAME condition the gate itself is built from (js/levelkit.js
+  // promiseGate), so a resolved mystery and an opened gate can never disagree.
+  for (const p of PROMISES) {
+    const spot = m[p.marker];
+    if (spot && !p.done() && nearSpot(spot, p.r || 4)) {
+      if (logMystery(p.id, p.icon, p.label)) bigToast('🗺️ Added to the map: ???');
+      narration.say(p.say || 'gate_promise');
+    }
+    if (p.done()) resolveMystery(p.id);
+  }
+  if (m.thornKnot && nearSpot(m.thornKnot, 5)) narration.say('thornknot_hint');
+  if (WS.get('wild3', 'knotCut') && state.room === 'tc4') narration.say('woods_bloom');
 
   // "not yet" gates: log the promise + Pip acknowledges it
   if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {
@@ -979,8 +1162,7 @@ async function loadRoom(id, entry) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   state.room = id;
-  state.region = id[0] === 'e' ? 'stoneroot' : id[0] === 'w' ? 'wildwoods'
-    : id[0] === 'f' ? 'frostpeak' : 'ember_hollow';
+  state.region = regionOf(id);
   applyRoomMood();
   const at = entry || world.spawn;
   player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
@@ -996,13 +1178,30 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast }; // debug/testing hook
   await fadeTo(0, 260);
   transitioning = false;
 }
 
 // Per-room mood: the caverns run darker (torches carry the light) with a
 // deeper background/fog color.
+// Which region a room belongs to. The rebuilt levels use their own prefixes
+// (l = Level 1, v = Level 2, t = Level 3) alongside the retired ones, and this
+// is the single place that knows the mapping — it used to be duplicated as two
+// slightly different inline ternaries, one of which had never learned about
+// Wild Woods or Frostpeak at all.
+function regionOf(id) {
+  const r = resolveRoom(id);
+  if (r[0] === 'v') return 'stoneroot';
+  if (r[0] === 't') return 'wildwoods';
+  if (r[0] === 'f') return 'frostpeak';
+  if (r[0] === 'l') return 'ember_hollow';
+  // retired ids that somehow reach here keep their original mapping
+  if (r[0] === 'e') return 'stoneroot';
+  if (r[0] === 'w') return 'wildwoods';
+  return 'ember_hollow';
+}
+
 function applyRoomMood() {
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
   scene.background.setHex(bg);
@@ -1038,7 +1237,7 @@ async function respawnAtCheckpoint() {
   player.clearProjectiles();
   if (world) world.dispose();
   world = await buildRoom(room, scene);
-  state.region = room[0] === 'e' ? 'stoneroot' : 'ember_hollow';
+  state.region = regionOf(room);
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   player.healFull();
@@ -1050,7 +1249,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1245,12 +1444,14 @@ async function start() {
 
     if (paused || menuPaused) {
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
     // Story hints freeze the world while they play (tap the caption to skip)
     if (narration.blocking) {
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
@@ -1258,6 +1459,7 @@ async function start() {
     if (effects.hitStopTime > 0) {
       effects.hitStopTime -= realDt;
       renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 
@@ -1441,6 +1643,7 @@ async function start() {
     key.target.position.copy(player.root.position);
 
     renderer.render(scene, camera);
+    perf.sample(realDt !== undefined ? realDt : 0.016, state.room);
   });
 }
 
@@ -1461,7 +1664,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

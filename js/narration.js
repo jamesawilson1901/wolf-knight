@@ -98,6 +98,27 @@ export const LINES = {
   earthwolf_grant: { voice: 'petra', text: 'Take my gift — the heart of the Earth Wolf. The mountain walks with you now.' },
   earthwolf_howto: { voice: 'pip', text: 'You can be the Earth Wolf now! Hold the screen to change. Your stomp can smash cracked rock!' },
   crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
+  // A4 — the Warden's answer. Name the IDEA (his feet, not his shield), never
+  // the button, and only once the child is actually facing a raised shield.
+  warden_stagger: { voice: 'pip', text: "That shield is too big to hit through! Be the Earth Wolf and STOMP at his feet — he'll wobble right off his guard." },
+  guard_broken: { voice: 'pip', text: 'His guard is down — GET HIM!' },
+  // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
+  rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
+  // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
+  bramble_teach: { voice: 'pip', text: 'Thorns in the way! Be the Verdant Wolf and LASH them — they snap right open.' },
+  bramble_regrow: { voice: 'pip', text: 'Careful — these ones grow back! Cut and RUN, Kael.' },
+  log_rope: { voice: 'pip', text: 'That big log is tied up. Lash the rope and see what happens!' },
+  // THE KNOT — the twist. Name the DISCOVERY, never the button, and never the
+  // solution: "it pulls" is the idea; working out what to pull is the puzzle.
+  knot_tether: { voice: 'pip', text: 'You cannot get behind it to push… but your vine can PULL, Kael. Lash the rock!' },
+  knot_snare: { voice: 'pip', text: 'Lash the hound straight on — the vine will hold it still for you!' },
+  // A2c — the conclude step and the two chords. Each names what a child can
+  // SEE, never what to press.
+  rootwall_hint: { voice: 'pip', text: 'Look — light through the roots! Cut them and we can get back that way.' },
+  greatlog_hint: { voice: 'pip', text: 'That huge log is all tangled up. Cut it loose and down it comes!' },
+  thornknot_hint: { voice: 'pip', text: "The big knot! That's what's choking the woods, Kael. Cut it!" },
+  woods_bloom: { voice: 'pip', text: 'Look at it all growing back… you did that. Sylva must be just ahead.' },
+  vault_changed: { voice: 'pip', text: 'Kael, look! The big room is different. It changed because of YOU.' },
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
   camp_rumour: { voice: 'bram', text: 'Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.' },

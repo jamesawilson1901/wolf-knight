@@ -1,0 +1,184 @@
+// STATIC BATCHING — the guardrail that makes a dressed room affordable.
+//
+// Measured on the shipping rooms before this existed (740x360, SwiftShader,
+// renderer.info):
+//     r1  173 draw calls      r2  155      e1  265      w1  112
+// against a budget of 100. Every one of those rooms is over, and the cause is
+// not triangles (r1 draws 38k of a 500,000 budget) — it is that a kit-bashed
+// room is assembled from dozens of separate objects, and each object is a
+// draw call, then a SECOND draw call when the shadow map redraws it.
+//
+// Folding every static prop that shares a material into one geometry took r1
+// from 173 to 108, and culling shadow-casting on small clutter took it to 99.
+// That is the whole difference between "Level 1 can be dressed" and "Level 1
+// cannot be dressed", so it lives in the engine rather than in one room.
+//
+// WHAT IS SAFE TO FOLD: a mesh that never moves, never animates, is opaque,
+// and is not something gameplay holds a handle on. Everything else is left
+// exactly where it is:
+//   - skinned meshes (characters) — they deform every frame
+//   - anything registered in a world gameplay list (enemies, boulders,
+//     burnables, crackables, pups, plates, braziers, shatterables, cuttables,
+//     checkpoints) — gates need their own object to burn, crack or open
+//   - transparent and MeshBasicMaterial objects — draw order matters, and the
+//     decals/veils are positioned per-frame relative to the deck
+//   - sprites, points, lights
+//   - anything a builder explicitly protected with world.keepLoose(obj)
+//
+// Folding is done AFTER the room is fully built, so a builder writes ordinary
+// readable placement code and pays batched cost.
+
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { isShared } from './assets.js';
+
+// Merging needs every geometry to carry the SAME attribute set. Kit GLBs vary
+// (some have tangents, some have a second UV, some have none), so normalise to
+// position/normal/uv and bake the world transform in.
+function bakeGeometry(source, matrix) {
+  const g = source.clone();
+  for (const name of Object.keys(g.attributes)) {
+    if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+  }
+  if (!g.attributes.normal) g.computeVertexNormals();
+  if (!g.attributes.uv) {
+    const n = g.attributes.position.count;
+    g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+  }
+  g.applyMatrix4(matrix);
+  return g;
+}
+
+export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
+  const root = world.root;
+
+  // Things gameplay holds a handle on, and everything under them.
+  const held = new Set(world._keepLoose || []);
+  // `npcs` is in this list defensively: no room that has NPCs calls
+  // flattenStatic today, so it changes nothing now — but the Den is the worst
+  // room in the game for draw calls and batching it is the obvious next move,
+  // and without this the villagers would be merged into the scenery and stop
+  // moving. That is the exact failure mode the note below warns about.
+  for (const key of ['enemies', 'boulders', 'burnables', 'crackables', 'pups', 'plates',
+    'braziers', 'shatterables', 'cuttables', 'checkpoints', 'npcs']) {
+    for (const e of (world[key] || [])) {
+      if (!e || typeof e !== 'object') continue;
+      // don't guess the field name — a brazier keeps its flame on `.flame`, a
+      // boulder its model on `.mesh`, an enemy its rig on `.root`. Protect
+      // EVERY Object3D the entry holds; guessing wrong folds a flame into the
+      // wall and it can never be lit.
+      if (e.isObject3D) { held.add(e); continue; }
+      for (const v of Object.values(e)) if (v && v.isObject3D) held.add(v);
+    }
+  }
+  const isHeld = (o) => { for (let p = o; p; p = p.parent) if (held.has(p)) return true; return false; };
+
+  const buckets = new Map();
+  let looseSeen = 0;
+
+  // MERGE PER SPATIAL CELL, NOT PER ROOM.
+  //
+  // Merging by material alone was a net LOSS, measured: Level 2's vc1 went
+  // 115 -> 120 draw calls when a tint fix made more props mergeable. A merged
+  // mesh spanning a whole 32 x 26 room can never be frustum-culled, and the
+  // camera only shows about 16 u across — so room-wide merging trades "half
+  // these props were off-screen and cost nothing" for "one mesh that always
+  // draws". Bucketing by cell too keeps both wins: neighbours still collapse
+  // into one draw, and a cell the camera is not looking at is skipped whole.
+  // This is the spatial chunking the performance brief asks for.
+  const CELL = 12;
+  const cellOf = (v) => Math.floor(v / CELL);
+  const put = (mat, cast, recv, geo, owner, cx, cz) => {
+    const key = `${mat.uuid}|${cast ? 1 : 0}|${recv ? 1 : 0}|${cx}|${cz}`;
+    if (!buckets.has(key)) buckets.set(key, { mat, cast, recv, geos: [], owners: new Set() });
+    const b = buckets.get(key);
+    b.geos.push(geo);
+    b.owners.add(owner);
+  };
+
+  root.traverse((o) => {
+    if (o.isSkinnedMesh || o.isBatchedMesh || o.isSprite || o.isPoints || o.isLine) return;
+    if (!o.isMesh) return;
+    // a hidden mesh is hidden for a reason (an unlit flame, a boss-defeated
+    // variant); merging it would either make it permanently visible or
+    // permanently gone, and both are worse than one extra draw call
+    if (!o.visible) return;
+    const mat = o.material;
+    if (!mat || Array.isArray(mat) || mat.transparent || mat.isMeshBasicMaterial) return;
+    if (isHeld(o)) return;
+    if (!o.geometry || !o.geometry.attributes.position) return;
+
+    // NEVER EXPAND AN InstancedMesh. It is already exactly one draw call, so
+    // pulling it apart can only ever break even — and once merging is done per
+    // spatial cell it strictly loses: a 120-block perimeter wall that cost ONE
+    // draw came back as nine, one per cell. Measured: doing this took vc1 from
+    // 115 to 164 calls. Instancing and merging solve the same problem, and the
+    // right move is to leave whichever one already has the geometry.
+    if (o.isInstancedMesh) return;
+
+    o.updateWorldMatrix(true, false);
+    put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, o.matrixWorld), o,
+      cellOf(o.matrixWorld.elements[12]), cellOf(o.matrixWorld.elements[14]));
+    looseSeen++;
+  });
+
+  let draws = 0, failed = 0;
+  for (const bucket of buckets.values()) {
+    // a bucket of one saves nothing: one merged draw replaces one draw
+    // A bucket of two saves one call but permanently costs that pair its
+    // culling. Three is where merging starts paying for itself.
+    let merged = null;
+    if (bucket.geos.length >= 3) {
+      try { merged = mergeGeometries(bucket.geos, false); } catch { merged = null; }
+    }
+    // the baked clones are scratch either way — merge copies out of them
+    for (const g of bucket.geos) g.dispose();
+    if (!merged) {
+      // FAILED (or not worth it): the originals STAY. A room that silently
+      // loses its floor because mergeGeometries threw is far worse than a
+      // room that costs a few more draw calls.
+      failed += bucket.geos.length;
+      continue;
+    }
+    const mesh = new THREE.Mesh(merged, bucket.mat);
+    mesh.castShadow = bucket.cast;
+    mesh.receiveShadow = bucket.recv;
+    // a merged mesh now spans ONE CELL, not the room, so the bounding-sphere
+    // test is meaningful again and an off-screen cell is skipped whole
+    mesh.frustumCulled = true;
+    mesh.name = 'batched';
+    root.add(mesh);
+    draws++;
+    // retire only THIS bucket's originals
+    for (const o of bucket.owners) {
+      if (!o.parent) continue;
+      o.parent.remove(o);
+      if (o.isInstancedMesh) { o.dispose(); continue; }
+      // geometry from the shared asset cache must NOT be disposed — other
+      // rooms still reference it (see World.dispose / assets.SHARED)
+      if (o.geometry && !isShared(o.geometry)) o.geometry.dispose();
+    }
+  }
+
+  // SHADOW CULL. The shadow map redraws every caster, so a caster is a second
+  // draw call. Ground clutter smaller than a wolf casts a shadow nobody will
+  // ever notice from a 50-degree camera — but pays full price for it.
+  let culled = 0;
+  if (shadowCullBelow > 0) {
+    const box = new THREE.Box3();
+    const size = new THREE.Vector3();
+    root.traverse((o) => {
+      if (!o.castShadow || o.isSkinnedMesh || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      box.copy(o.geometry.boundingBox);
+      o.updateWorldMatrix(true, false);
+      box.applyMatrix4(o.matrixWorld);
+      box.getSize(size);
+      if (Math.max(size.x, size.y, size.z) <= shadowCullBelow) { o.castShadow = false; culled++; }
+    });
+  }
+
+  const stats = { loose: looseSeen, draws, unmerged: failed, shadowCulled: culled };
+  world._batchStats = stats;
+  return stats;
+}

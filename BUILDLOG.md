@@ -2069,3 +2069,888 @@ This fix can only help from the *next* update onward — getting v3.21.4 itself
 onto the phone still depends on the old path. Manual steps went to dad, with
 the warning that Android's "Clear storage" wipes localStorage and would delete
 the kids' save files; "Clear cache" is the safe one, and usually unnecessary.
+
+## v3.22.0 — Level 1 rebuilt: greybox, guardrails, and 2cm thumbs (2026-08-07)
+
+Dad's brief: *"LEVEL-MAP.md now contains an approved larger, non-linear design
+for Level 1. Build it. Level 1 only."* Six steps, in his order.
+
+### Step 1 — the metrics, locked
+`design/METRICS.md` and the **Metrics Zoo** (🎮 → 📏), a walkable scene showing
+a 1u tile, Kael's 0.64u body, the 2.4u door / 3.0u choke / 2.0u corridor /
+0.64u absolute-minimum gaps side by side, the 32×26 island footprint with the
+camera's real 16.1u view drawn inside it, the 2.5u blind strip, and all five
+hero-prop silhouettes judged from directly above.
+
+### Step 2 — greybox, before a single art asset
+`js/proto.js` — a checkerboard where **one square is exactly one world unit**,
+hairline every square, bright line every four. Deliberately not flat colour: a
+flat surface gives the eye no scale reference, so a room greyboxed in flat grey
+looks the same size at any dimension.
+
+`js/level1.js` describes all 14 spaces **once, as data**, and renders them
+either as greybox or dressed. One description, two costumes — the greybox that
+gets walked and approved is provably the same layout that ships.
+
+`tools/verify-level1.mjs` walks the door graph **read out of the built world**,
+not out of the spec table that generated it, and asserts: the spine
+la→lg1→lb→lg2→lc→lg3→ld→lg4→le is traversable *both ways*, all five optional
+pockets loop back onto their island, no dead ends, no door to a room that does
+not exist, the four-step teach is laid out in order, and no interactive sits in
+the blind strip. Clean in both costumes.
+
+### Step 3 — performance guardrails, with the answer BEFORE dressing
+Dad: *"If the level cannot hit the draw call budget, tell me before dressing
+it, not after."* So it was measured first. The shipping rooms turned out to be
+**far over budget already**: r1 173 calls, r2 155, e1 265, w1 112, r3 105,
+against a ceiling of 100.
+
+Breaking the frame down (`tools/probe-drawcalls.mjs`):
+
+| | |
+|---|---|
+| flat overhead in EVERY room | **40 calls** — 23 the player rig, ~18 Pip + effects |
+| so a room's own budget is | **60 calls** |
+| shadow pass | doubles every caster |
+
+Merging loose static meshes alone took r1 173 → 135: not enough. Folding the
+InstancedMesh groups in as well took it to 108, and dropping shadow-casting on
+clutter under 1.4u took it to **99**. That is the whole difference between
+"Level 1 can be dressed" and "it cannot", so it became `js/batch.js` rather
+than a one-off. `flattenStatic()` runs at the end of a room build and protects
+skinned characters, anything on a gameplay list, transparent objects, sprites,
+hidden meshes, and anything a builder marked with the new `world.keepLoose()`.
+
+### Step 4 — dressed, GREEN packs only
+Kenney Nature Kit 2.1, Kenney Castle Kit 2.0 and the Quaternius LowPoly Modular
+Dungeon — all three carry a verified CC0 licence file in
+`assets/LICENSES/MANIFEST.json`. Nothing came from an UNKNOWN pack. One kit
+becomes five districts by material-name recolouring (asset-multiplication law).
+
+Three things the first dressed pass got wrong, all caught by looking at it:
+- **interior walls were still greybox slabs** in a dressed room — exactly the
+  drift greyboxing exists to prevent. Now `wallRun()` dispatches like the shell.
+- **floor and wall tints were within ~15 % luminance** and the Kiln read as one
+  flat brown field. Wall tints are now about half their floor's value.
+- **the camera saw the void past a 1.9u wall** — a third of the screen. Rooms
+  now build three tiles of ground *outside* the wall (same InstancedMesh, same
+  one draw call).
+
+**THE GREAT CHAIN → THE BROKEN SPAN.** Cinder Bridges' hero prop was written as
+a colossal chain. No chain model exists in any GREEN pack, and NO FAKE FICTION
+forbids naming a thing the game does not show, so it is a collapsed stone
+bridge built from real `bridge-stone.glb` sections. `LEVEL-MAP.md` updated.
+
+**Result: worst room 88 of 100 draw calls, 41k of 500,000 triangles.** Under
+budget dressed, with the guardrail doing the work.
+
+### Step 5 — 2cm thumbs
+`tools/verify-touch.mjs` pins "2cm" to a stated device instead of guessing:
+a 6.4" 1080×2340 Android at DPR 3 gives a 780×360 CSS landscape viewport over
+14.75cm, so **1 CSS px = 0.0189cm and 2cm = 105.8 CSS px**.
+
+Every control failed. Attack was 1.44cm, jump 1.06, form badge 1.10, pause
+0.91, inventory 0.87. All are now **108px = 2.04cm**, and the level badge and
+XP bar moved out of the left thumb zone. The honest cost is in METRICS.md: with
+every control revealed the HUD takes about half the screen, and the potion row
+alone is 6.4cm of a 14.75cm phone. Recommendation flagged, not taken: collapse
+it to one potion button with a count badge.
+
+### Not done, deliberately
+- **r1/r2/r3 are untouched.** They are what the kids are playing; a greybox is
+  not something you ship to a child, and the new Level 1 lives beside them
+  behind the cheat menu until dad walks it and says go.
+- **`flattenStatic` was not applied to the shipping rooms.** It would take r1
+  from 173 to 99, but that is a rendering change to a live game and belongs in
+  its own pass with its own playtest.
+- **Enemies still come from the two UNKNOWN-licence Quaternius packs** (wolf,
+  fox, monsters). They are the same models already shipping in every room, so
+  this adds no new exposure — but Level 1 cannot be enemy-free, and the rule
+  says stop and ask, so it is flagged here rather than silently accepted.
+
+## v3.23.0 — Level 2 rebuilt: a hub that changes (2026-08-07)
+
+Dad's brief: build the approved hub-and-spoke Level 2, Level 2 only. Seven
+steps, in his order.
+
+### Step 1 — metrics INHERITED, not derived
+Body radius 0.32u, grid snap 1.0u, door 2.4u, corridor minimums, camera
+framing: all read from the Level 1 lock and used unchanged. Level 2 adds
+exactly **one** new module — the **36 × 28 hub** — because the Great Vault is
+crossed six times and needs to hold five doorways with 18u between the two
+that share the north wall. Same grid, same even-integer rule, same door
+widths: a new *size*, not a new *system*. It is drawn concentric with the
+32 × 26 island in the metrics zoo, because the only honest way to judge how
+much bigger a module feels is to walk the border between them.
+
+### The shared kit — js/levelkit.js
+Level 1 owned private copies of the shell, the door, the wall run and the
+scatter. Two copies of "greybox and dressed must agree" is a guarantee they
+eventually will not, so the vocabulary moved into one module both levels
+import. Level 1's verifier was re-run after the extraction and reports the
+identical per-room draw calls it did before — the refactor is behaviourally
+invisible, which is the only acceptable outcome for a level the kids have
+already played.
+
+### Step 3 — the WorldState system (built before the geometry that needs it)
+`defineRestoration(region, milestones)` declares a region's milestones in
+order; `WS.stage(region)` counts how many are done from the front of the list;
+`WS.complete()` records one and returns true only the first time. The vault's
+three are `spark → drained → handDown`.
+
+Every piece of hub geometry, lighting and door layout is a **function of
+`WS.stage('vault')`**. Nothing is toggled by what happened earlier in the
+session, which is what makes "quit after the water drains, come back tomorrow"
+correct by construction rather than by remembering to handle it. The state
+lives under `state.flags.world`, which the save file already round-trips, so
+an old profile reads stage 0 and the additive-forever law holds.
+
+**The save now fails loudly.** Every localStorage write in save.js used to end
+`catch (e) {}`. Fine for a read — a corrupt profile should start fresh. It is
+indefensible for a write: quota exceeded or private browsing, and a child
+plays a whole evening and loses it while the game says nothing. Writes now
+report through the error overlay, and `persist()` reads the value back before
+believing the write succeeded.
+
+### Step 5 — dressed from GREEN packs, zero new download
+Kenney Nature 2.1, Kenney Castle 2.0, Quaternius LowPoly Modular Dungeon,
+KayKit Adventurers — all four already vendored for Level 1 or the shipping
+Stoneroot rooms, all four with a verified CC0 licence file in
+`assets/LICENSES/MANIFEST.json`. **Level 2 adds no bytes to the download.**
+Five districts come out of the same geometry by material-name recolouring.
+
+The Stone Titan is KayKit's barbarian at 3.4×, granite grey, slumped — a real
+pack model, not code geometry, because a titan is a *being*
+(no-code-built-creatures law).
+
+### Design deviation, flagged
+**The Rattle is on Spoke B's critical path, not in an optional pocket.** The
+bubble diagram draws it dotted. Two rules collided: "the four-step teach is
+laid out in order" and "the critical path is completable without any optional
+content" cannot both hold if the twist sits in a pocket — a child could reach
+the Warden having been taught three quarters of an ability, never finding out
+that the stomp is a *sound*. It is also now the spoke's terminus: ringing the
+chamber cracks the dam, and the dam draining is hub change 2. One room, one
+idea, one consequence. Spoke B keeps an optional pocket (The Chalk Seam) so
+the branch count is unchanged. `LEVEL-MAP.md` records the deviation.
+
+### Step 4/7 — the numbers Level 2 actually landed on
+
+| | greybox | dressed |
+|---|---|---|
+| worst draw calls | 102 (vc1) | 112 (vc1) · 106 (vc2) |
+| worst triangles | 40,286 | 49,633 |
+| 20x hub entry | geom +0, tex +0, programs +0 | — |
+
+**The hub memory test passed cleanly**, which was the specific risk dad named:
+a hub is revisited constantly, so a leak there compounds across a session. It
+was +40 geometries over 40 builds before the fix and is 0 now. The cause was an
+ENGINE bug, not a Level 2 one — `World.dispose()` called `InstancedMesh.dispose()`
+and returned, but that method frees the instance matrix and colour buffers and
+NOTHING ELSE. Invisible for kit props (their geometry is SHARED and must not be
+freed) and one leaked geometry per room for anything that builds its own, which
+the breadcrumb trails do. Level 1 had the same bug with enough headroom to hide it.
+
+**vc1 and vc2 are still over the 100-call ceiling and that is not hidden here.**
+Measured breakdown of vc1's original 106:
+
+    persistent 40  +  room geometry 23  +  three characters 43
+
+A `SkeletonShield` is ~16 calls on its own — body, shield and blade, each
+redrawn for the shadow map. Cutting a third enemy from the room saved **zero**
+calls, which killed the "trim enemies" theory. The real lever is shadow-casting
+on skinned characters, and that is a whole-game visual trade-off rather than a
+Level 2 decision, so it is flagged rather than taken.
+
+### Three wrong turns on the draw-call budget, kept here because the rule matters
+
+1. Merge by material — defeated by `scatter()` giving every prop a *continuous*
+   random tint, so every rock got its own material and nothing could merge.
+2. Fix the tints — **worse** (115 → 120). Merged meshes had `frustumCulled = false`,
+   so making more things mergeable meant more geometry that always draws.
+3. Merge per spatial cell — **much worse** (→ 164). It shattered the
+   InstancedMeshes: a 120-block perimeter wall that cost ONE draw came back as
+   nine, one per cell.
+
+**The rule that fell out: instancing and merging solve the same problem, and
+expanding an InstancedMesh to re-merge it can only lose.** `flattenStatic` now
+leaves them alone and merges only loose meshes, per cell, with a minimum bucket
+of three. That took the dressed hub from 131 to 82.
+
+## v3.24.0 — Level 3 rebuilt: the ring (2026-08-07)
+
+21 spaces: 4 districts x 2 + 4 pockets + 4 ring legs + shrine + puzzle + glade
++ 2 chords. The docs say 18; their own component list adds to 21.
+
+**One new module**, the 26 x 20 RING LEG, in the metrics zoo before use. A ring
+leg is deliberately not a 14 x 10 chokepoint: a choke reads as compression, and
+a ring needs its legs to read as TRAVEL, or the outward journey never feels long
+enough for the way back to be a relief.
+
+    ✓ the ring is walkable clockwise and RETURNS TO ITS START  (15 hops, t1a → t1a)
+    ✓ the ring is also walkable anticlockwise
+    ✓ every branch reconnects · no dead ends · every space reachable
+    ✓ the four-step teach is met in order round the ring  (positions 5, 6, 9, 12)
+    ✓ the twist is ON the ring, not in an optional pocket
+    ✓ before they are earned, neither chord exists at the near end
+    ✓ worst draw calls: greybox 80, dressed 83 · worst triangles 36,764
+
+Level 3 is the cheapest of the three despite being the largest — it inherited
+every batching lesson the other two paid for.
+
+### TWO THINGS FLAGGED, NOT FIXED (dad's call)
+
+**1. A junction landmark is invisible when approached from the NORTH.**
+Identical at all four junctions:
+
+    t1a from tgl  → IN FRAME      ndc(-0.62,  0.84)
+    t1a from tsA  → IN FRAME      ndc(-0.98, -0.03)
+    t1a from t1b  → NOT VISIBLE   ndc( 0.00, -4.06)
+
+Structural, not a placement slip. `camGoal.copy(player.root.position).add(CAM_OFFSET)`
+— the camera is a fixed world-space offset that never rotates with facing, so
+"12.8 u ahead" always means NORTH and only 4.6 u of the world south of you is
+ever on screen. A landmark at room centre is visible from the south, east and
+west doors and sits 10 u behind you entering from the north. **No single
+position satisfies both**; moving it only swaps which approach fails.
+
+Options: a second smaller landmark at each junction's north end; a large
+district floor-inlay under the prop extending north (the floor fills the frame
+from every approach — cheapest, and free once merged); or accept a ~5 u delay
+before recognition. Recommended: the floor inlay.
+
+**2. The second chord is only 37 % shorter.** `tsA` (the fallen log) saves 75 %
+— 81 u against 319 u, a real relief after the long lap. `tsB` (the cut
+root-wall) is 81 u against 128 u, because t3a and t2a are only five ring-hops
+apart. It is shorter, but it is a minor convenience rather than a shortcut, and
+its real value is skipping the DARK Gloomwood stretch rather than the distance.
+
+### Full-sequence check, all three levels
+
+    baseline after one full pass: geom 126, tex 83
+    after a second full lap:      geom 126, tex 83
+    ✓ a full 1 → 2 → 3 lap does not accumulate memory  (geom 0, tex 0)
+    ✓ save at lb / vh / t3a all round-trip with world state intact
+
+The per-level intermediate deltas oscillate about +/-6 because each group ends
+with a different room resident; that is a live-set difference, not a leak, and
+the suite now reports them as informational rather than failing on them.
+
+### Download size
+
+**Levels 2 and 3 added zero bytes.** Both are built entirely from packs already
+vendored for Level 1 or the shipping rooms — Kenney Nature 2.1, Kenney Castle
+2.0, Quaternius LowPoly Modular Dungeon, KayKit Forest Nature, KayKit
+Adventurers, all GREEN with verified CC0 licence files. Total assets: **39 MB
+across 216 files** (audio 20 MB, characters 13 MB, animations 3.3 MB,
+environment 2.5 MB). Five districts in Level 2 and five in Level 3 come out of
+the same geometry by material-name recolouring.
+
+## v3.27.0 — The promises the game could not keep (A8) (2026-08-08)
+
+The fix plan's A8 was scoped as signposting: the rebuilt levels place eight
+"come back later" gates and register none of them in the mystery log, where the
+shipping rooms register six. Wiring the log turned up two faults underneath it,
+both worse than the item as written.
+
+### The gates could never be opened
+
+`promiseGate()` in `js/levelkit.js` drew the obstacle, called `world.addBox()`
+and stopped. It registered with **no gate system at all** — not `crackables`,
+not `burnables`, not `cuttables`, not `shatterables`. Four gates were therefore
+permanent walls with a chest plainly visible behind them:
+
+| gate | room | advertises | actually opened by |
+|---|---|---|---|
+| the cracked wall | `la` (L1) | Earth Wolf's stomp | nothing |
+| the scorched barricade | `lb2` (L1) | Fire Wolf's slam | nothing |
+| the thorn tangle | `vc2` (L2) | Verdant Wolf's lash | nothing |
+| the ice-sealed spring | `t1b` (L3) | Frost Wolf's breath | nothing |
+
+This is the failure the promise-gate idea exists to prevent. A gate that reads
+as "later" and then never opens is worse than a plain wall, because the child
+who remembered it comes back with the right form and is told, wordlessly, that
+they were wrong.
+
+`promiseGate` now takes a required `{system, id, region}` and rides the same
+system the shipping rooms use — including the "already opened on an earlier
+visit" check, so a broken gate stays broken across a save.
+
+### ...and it did not matter, because you could walk round them
+
+The flood fill written to verify the fix immediately failed its FIRST
+assertion, not its second: with every gate still standing, the reward was
+already reachable. All five promise obstacles (the four above plus Thornedge's
+bramble wall) sat loose in the middle of a 32×26 island or a 20×16 pocket, with
+open floor on every side. `visibleReward()` — "the reward you can SEE but not
+reach yet" — was reachable in all five.
+
+Each now has an alcove: two `wallRun`s with the gate as the only mouth.
+Measured nearest-approach with the gate shut is 3.2–5.2u; after the verb, 0.8u.
+
+One knock-on. Level 1's pup #3 sat at `(-6, 0)`, inside the scorched alcove, so
+walling it properly would have locked a collectible behind a form two levels
+away. The pup moved to `(-6, -6)`, outside the gate. Worth stating plainly
+because it is the shape of mistake this whole exercise is about: the fix for a
+fiction problem quietly created a progression problem.
+
+### Two supporting changes
+
+- **`world.shatterAt` is a World method** rather than something `iceGate()`
+  defined lazily on first use. Exactly the bug class already fixed once for
+  `cuttables` in v3.24 — a room with ice built any other way had no shatter
+  verb at all. `world.shatterables` is a constructor field now, like every
+  other gate list.
+- **`hitR` on a gate entry.** `burnAt`/`crackAt`/`cutAt`/`shatterAt` all
+  measured from a single registered point, so the 8u-deep scorched barricade
+  only answered to a slam within 2.6u of its exact centre. A gate now carries
+  half its own span as extra catch radius: a blow landing anywhere ALONG a wall
+  breaks it, which is how a child expects a wall to work.
+
+### The map
+
+`js/main.js` gained a `PROMISES` table — one row per gate, carrying the marker,
+the map entry and the condition that closes it — replacing what was becoming
+six near-identical `if` blocks. `done` reads the same flag the gate is built
+from, so the map cannot claim a wall is open while the wall is standing. All
+eight promises now land as ??? and resolve when opened.
+
+### Verification
+
+`tools/verify-promises.mjs` — flood-fills each room's real `boxColliders` and
+`circleColliders` from its real `world.spawn`, asserts the chest is
+**unreachable**, drives the real `player.trySpecial()` in the advertised form,
+asserts it is **reachable**, then leaves and returns and asserts it is still
+open. Nothing in it removes a collider by hand. 25 assertions, all green.
+
+## v3.28.0 — Saying the junction's name twice (A6) (2026-08-08)
+
+Level 3 is a ring, and a ring is walked in both directions. The verifier's
+disorientation check projects each junction's landmark into the camera frustum
+from every door in turn, and all four junctions failed the same approach:
+
+    t1a from tgl  → IN FRAME      ndc(-0.62,  0.84)
+    t1a from tsA  → IN FRAME      ndc(-0.98, -0.03)
+    t1a from t1b  → NOT VISIBLE   ndc( 0.00, -4.06)
+
+### Why no placement fixes it
+
+The camera is a fixed world-space offset that never rotates with facing
+(`js/main.js` — `camGoal.copy(player.root.position).add(CAM_OFFSET)`), sitting
+7.07 u SOUTH of the player. Every ring leg returns to its junction through the
+junction's north door, arriving at `z = -10` facing south. The centre landmark
+at `z = 0` is not clipped and not small — it is **2.9 u behind the camera
+itself**. No height and no scale reaches it.
+
+Moving the landmark north only swaps which approach fails: an island is 26 u
+deep and the camera covers 17.4 u of ground in total (12.8 ahead, 4.6 behind),
+so no single point is visible from both ends of the room.
+
+### What was built
+
+A pair of half-size copies of the junction's own landmark, just inside its
+north door at `z = -11.2`, `x = ±3.6` — 1.2 u ahead of where a child lands, so
+the silhouette is at the top of the frame the instant they arrive. The big one
+at the centre is still the payoff when they turn round.
+
+Deliberately not the district floor-inlay the audit recommended. The inlay
+would have made the check pass by weakening what it asks: the question is "is
+the LANDMARK in frame", and a coloured floor is not a landmark. Repeating the
+silhouette answers it as asked, and reads as architecture rather than as a
+patch — the ring's north gates are marked gates. Dad had already ruled out a
+HUD marker, and he was right to.
+
+`heroProp()` gained a `scale`, which meant every collider it drops had to go
+through one helper, since colliders are placed in world space and do not come
+along when a group is scaled. The Watching Tree's glowing eyes moved inside the
+group so a half-size copy gets half-size eyes; the Bloomfall's 60 drifting
+petals are skipped on gate copies, because a gatepost needs the silhouette and
+60 more instances buy nothing a child can read.
+
+### Thornedge cost 40 draw calls to say twice
+
+`t1a` went from 79 dressed draw calls to **119**. The Leaning Shrine is a real
+knight model (`assets/chars/knight.glb`) — a character rig, and a character rig
+never merges into the static batch, so each copy costs ~20 calls on its own.
+
+Its gate markers are now smaller stones set at the same lean, in the same grey,
+on the same base. Cheaper, and the truer fiction: there was one wolf-knight
+before Kael, not three. `t1a` is 85 dressed and is the worst room in Level 3
+with it — the other three junctions use tree, arch and blossom props that merge
+normally and cost 2-4 calls for the pair.
+
+### The verifier was asking a slightly wrong question
+
+It projected one object. A junction may legitimately say its name more than
+once, and a child reads the silhouette, not the instance. It now projects every
+landmark instance recorded in `world.heroMarks` and reports which one was seen
+(`centre` or `gate`). `heroMarks` sits on the World rather than in `markers`,
+because the blind-strip law is a census of spots gameplay acts on and these are
+scenery a child reads.
+
+Also settled: the `tsB is shorter than walking round` assertion had been failing
+against a threshold of `0.5` that was an unmeasured guess when the verifier was
+written. Both legs measure `0.63` — 81 u against 128 u, a 37% saving — which
+dad accepted as plainly shorter on the walk. The bar is now the accepted figure
+with a little room (`0.7`), so a future edit that erodes the saving still trips.
+
+Level 3 verifies ALL CLEAN, dressed and greybox.
+
+## v3.29.0 — The weakest thing in the game (A9) (2026-08-08)
+
+The audit item said Level 3 has too few enemies per room and needs an encounter
+pass. It does, and it got one. But the head count was the smaller half.
+
+### Every enemy in the Wild Woods had opted out of difficulty
+
+`applyVariant()` in `js/enemies.js` did `e.hp = v.hp` — a flat overwrite of the
+number `Enemy`'s constructor had computed one line earlier. So a varianted enemy
+ignored both difficulty levers the rest of the game runs on: `enemyScale()`
+(+8% hp per player level) and the Gentle-mode hp relief.
+
+Levels 1 and 2 barely use variants, so nobody saw it. Level 3 is made of nothing
+else — every hound is `thorn` or `elderthorn`, every moth is `wisp`:
+
+    player level        1     4     8    12    16
+    L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
+    plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
+    THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
+
+A child reaches the woods at about level 5-7. The corrupted, supposedly tougher
+forest creature was **the weakest thing in the game**, by a wide margin, and no
+amount of adding more of them would have fixed that. A Thorn Hound now runs
+about 6.5 hp on arrival instead of 3.5, and Gentle mode reaches the woods for the
+first time.
+
+Frostpeak's rime family and Level 1's one Elder Hound were frozen the same way
+and start scaling too.
+
+### Level 2's shield-bearers were worth nothing
+
+`SkeletonShield` was missing from `XP_VALUES`. `die()` guards with `|| 0` so no
+save was ever corrupted — it just quietly starved the level curve, and a child
+walked into the woods under-levelled. After the fix above, that made Level 3
+*easier* still, since its enemies now scale off player level. Added at 12,
+matching the Rogue it sits between in toughness.
+
+### The pass itself
+
+Written against the LEVEL-MAP beat chart rather than against a target number.
+**25 placements over 21 rooms = 1.19 per room**, against Level 2's 1.18. Parity,
+deliberately — the step up in difficulty is carried by the hp fix, not by
+crowding rooms. Changing two difficulty levers hard at once would have made the
+playtest unreadable.
+
+- **`t1a` lost its only hound.** The chart's opening row is "the woods are wrong
+  (quiet dread, **no fight**)" at intensity 1, and `t1b` next door is labelled
+  "first Thorn Hounds". One placement contradicted both, and made the level open
+  on a fight instead of on the feeling that something is off.
+- **Every rest beat stays empty** — `tc1`, `tc3`, `tc4`, the shrine, both
+  shortcut legs, and the two teach rooms that are not the twist. The shortcuts
+  especially: they are the reward for the long walk round, and a fight on the
+  way home would spend the relief they exist to create.
+- **The Bramble Blob is back.** `bramble` was written for this region in v3.19,
+  and every live placement of it vanished when the `w*` rooms retired into `t*`
+  rooms. Reviving it cost **zero lines** in `enemies.js` — the purest form of
+  the asset-multiplication law — and gives Level 3 a third body shape. It had
+  two, and three of its four districts threw the same thing at you.
+- **`t4a` is a pack again**: two elders and three of the pack, per the chart's
+  intensity-4 "the pack — Elder Thorn Hounds". It reads as a pack rather than a
+  pile-on because `CONFIG.ENGAGE` only ever hands out two attack tokens (one on
+  Gentle, three on Brave) — everyone else prowls a waiting ring, so a child
+  meets one pattern at a time however many are in the room. That cap is what
+  makes density a safe lever at all.
+
+### A room is not busiest when you walk into it
+
+`tools/probe-encounters.mjs` measures each room with and without its cast — one
+enemy costs about 5.7 draw calls, and character rigs never merge into the static
+batch, so that cost is permanent. Under that model every room came in under the
+100-call budget and the pass looked finished.
+
+It wasn't. `tools/probe-peak-calls.mjs` kills everything through the real damage
+path and watches every frame, and **`t3b` arrived at 86 and peaked at 102**. A
+Bramble Blob costs ~17 calls at its peak, not 5: it splits into two minis when it
+dies and their drops land on top of the room's existing drops. Ordinary drops
+turn out to be nearly free — `t4a`'s peak equals its arrival — but splitting is
+not. The blob moved to `t2p`, which arrives at 54 and peaks at 74.
+
+Worst frame anywhere in Level 3 is now **94**, measured through the fight rather
+than on arrival. Level 3 verifies ALL CLEAN.
+
+### The audit's own numbers were wrong
+
+Recounted from source, confirmed against a live probe: Level 1 has 8 placements
+(not 13), Level 2 has 20, Level 3 had 16 (not 13). Only the Level 2 row was
+right — the earlier count missed multi-line arrays and double-counted a
+conditional. The finding held anyway, and the gap it described was real.
+
+## v3.30.0 — One character, one shadow (B1) (2026-08-08)
+
+`vc1` and `vc2` were the last two rooms over the 100 draw-call ceiling. The audit
+had already established that the cause is characters rather than geometry, and
+that the lever is shadow-casting — and had flagged it as a whole-game visual
+trade-off rather than a Level 2 decision, so it went unfixed.
+
+It is a whole-game change. It is not a trade-off.
+
+### The line
+
+`prepareCharacter()` in `js/assets.js` set `castShadow = true` on **every mesh of
+every character**. A cast mesh is submitted twice — once to the shadow depth
+pass, once to the beauty pass — and a character is not one mesh:
+
+    knight    9 skinned parts (body, head, 2 arms, 2 legs, helmet, visor, cape)
+              + sword + shield
+    skeleton  9 skinned parts, + shield + blade on a shield-bearer
+
+Skinned meshes are also the one thing `js/batch.js` can never merge, so that
+cost is permanent, and it is paid in every room in the game by the player alone,
+whether or not there is an enemy in it. Measured in `vc1`: **32 of 112 draw
+calls were characters entering the shadow map.**
+
+A character now casts from its LARGEST skinned mesh only — the body, which is
+what the silhouette is made of. Held items come through the same function as
+their own root with no skinned mesh in them, so they stop casting too.
+
+### Proving it is invisible rather than asserting it
+
+The first diff was useless: two renders of the Bloomfall differed by 3.5% of
+pixels whether the shadow policy changed or not, because the characters are
+animating between shots. With the animation mixers frozen and a control pair of
+identical renders to establish the noise floor:
+
+    control (same policy, two shots)   2.40% of pixels differ >8/255
+    body-only casting                  2.49%   <- inside the noise
+    no character shadows at all        3.26%   <- visibly different
+
+Body-only is indistinguishable from full per-mesh shadows. Turning character
+shadows off entirely buys only 5 more calls and is measurably visible, so it was
+not taken. Without the control shot the first number would have looked like
+evidence of a regression that was not there.
+
+### What it did to the whole game
+
+Worst-case, sweeping a grid of standing positions per room rather than sampling
+once at the spawn — the frustum decides what gets submitted, and the Den varies
+between 89 and 113 depending on where you stand:
+
+    vc1                              110  ->  82
+    vc2                              105  ->  83
+    vh                                88  ->  82
+    vb2 / vb3                         90  ->  58 / 60
+    Level 3 worst frame IN A FIGHT    94  ->  77
+
+Every room in the three rebuilt levels is now at or under 86. Level 2 verifies
+ALL CLEAN — that assertion has been red since the audit. Triangles fell with the
+calls, since shadow-pass triangles count too.
+
+### The Den is now the last room over the ceiling
+
+113 worst-case, and characters are no longer why. Its static geometry casts 18
+calls' worth of shadow, and it is hand-built in `js/rooms.js` — **the shipping
+rooms never call `flattenStatic()`**; only the three rebuilt levels do. Logged
+as B3 rather than fixed here: batching a room with villagers in it is a
+different job from a shadow policy.
+
+One prerequisite went in now, because it is a trap otherwise: `world.npcs` is in
+`flattenStatic`'s protected-key list. It changes nothing today — no room with
+NPCs calls the function — but without it the villagers would be merged into the
+scenery and stop moving, which is precisely the failure that function's own
+comment warns about.
+
+### Correction, same day: the sweep was not wide enough the first time
+
+The paragraph above originally claimed "every room at or under 86". That came
+from sweeping nine rooms, and it understated the worst case. Two of the three
+design agents run for A9 independently pointed out the same methodological hole
+in `tools/probe-encounters.mjs` — it samples only the spawn point, and moving the
+camera around a room finds up to +19 calls in the same space. They measured
+`t1b` 105, `t2a` 107 and `t3a` 106 dressed, at the worst camera position, before
+this fix.
+
+All 52 rebuilt-level rooms have now been swept over a grid of standing
+positions:
+
+    Level 1 (14 rooms)   worst  lb2   96
+    Level 2 (17 rooms)   worst  vb2   97
+    Level 3 (21 rooms)   worst  t3a   90
+
+Every one is under the ceiling, and the three rooms the agents flagged came down
+to 87, 83 and 90. But the true headroom in the worst rooms is 3-4 calls, not 14
+— worth knowing before anything else is added to `vb2`, `lb2` or `vb1`.
+
+## v3.31.0 — The pose never lies, including on the floor (C1) (2026-08-08)
+
+The fix plan asked for the juice layer to be retuned because the rooms got
+bigger. It did not need that, and the reason is worth recording: **the camera is
+a fixed world-space offset with a constant CAM_DIST, so the visible ground is
+21.2u wide, 12.9u ahead and 4.5u behind in EVERY room** — measured identically in
+a 14x10 choke and the 36x28 hub, to the decimal. Bigger rooms do not put more
+world on screen. Screen shake does not read weaker in them, and nothing in the
+feedback layer needed to scale with room size. The shake numbers are unchanged.
+
+What was wrong was different, and it was everywhere.
+
+### Every flourish drew the same circle
+
+`effects.groundSlam()` took no radius, so all six callers got a ~4u ring:
+
+    knight spin      drew 4.0u   really 2.3u   (its own comment claimed the ring
+                                                "sweeps out to the spin's reach")
+    fire slam        drew 4.0u   really 3.0u
+    stone stomp      drew 4.0u   really 3.2u
+    Blood Moon       drew 4.0u   really 2.6u
+    vine lash        drew a 4.0u CIRCLE for a 3.8 x 0.9 corridor
+    frost breath     drew a 4.0u CIRCLE for a 40-degree cone
+
+The two shape cases were the worst of it: a disc told a child the breath reached
+0.6u BEHIND them, which is the one direction the fixed camera barely shows.
+
+`groundSlam` now takes the true reach, and an optional cone that draws a wedge
+out of the same primitive — RingGeometry has thetaStart/thetaLength, so a cone
+costs no new geometry type and no extra draw call. The growth eases OUT so the
+ring arrives at its extent and lingers while it fades, rather than still
+expanding as it vanishes; that is what makes an honest radius legible instead of
+merely correct. Ceremony keeps the full 4u, having no hitbox to lie about, so
+transformations and boss deaths are now visibly the biggest rings in the game.
+
+### One ability, one number
+
+Two secondary radii disagreed with their own rings. The stone stomp cracked rock
+at `SLAM_BURN_RADIUS` — **the fire wolf's constant, in the earth wolf's move** —
+2.6u against a 3.2u ring and 3.2u of damage. The fire slam burned and ignited at
+2.6u against a 3.0u ring. So a brazier at 2.8u sat inside the orange ring and
+refused to light, and a cracked rock at 3u was swept by the brown ring and did
+nothing. Both now use their own ability's radius. `SLAM_BURN_RADIUS` is deleted.
+
+### The part that actually mattered
+
+Auditing every flourish against its hitbox turned up two bugs of the same shape
+in the place where the law matters most — a child standing in a boss arena,
+dodging by a red mark on the floor.
+
+**The Bone Warden's chop arc pointed the wrong way.** The mark is laid flat with
+`rotation.x = -PI/2` and then steered with `rotation.z = -rotation.y + ...`,
+which MIRRORS the heading instead of rotating it: three.js Euler XYZ applies Rz
+in the ring's own plane first, so a local vertex at angle a ends up at world
+(cos(a+z), -sin(a+z)) and the sign has to follow the facing. Measured across
+seven facings before the fix:
+
+    warden faces    red arc points at    error
+        0 deg            -18 deg          -18
+       45 deg            -63 deg         -108
+       90 deg           -108 deg          162
+      135 deg           -153 deg           72
+      171 deg            171 deg            0
+      270 deg             72 deg          162
+
+Correct at exactly one facing, and up to 162 degrees wrong — the arc pointing
+almost directly away from the swing. A child dodging by it was being sent into
+the axe. Now zero error at every facing.
+
+**Boreal's dive lane had the identical sign error**, lying perpendicular to the
+dive at diagonals. And worse: at the end of the 0.9s windup she threw `diveDir`
+away and re-aimed at the child, so the one floor decal a boss charge is allowed
+to draw was decoration and stepping off it did nothing. A telegraph you cannot
+act on is worse than no telegraph. She now dives where the lane said.
+
+Three more of the same family: the Warden's chop arc stopped 0.9u short of the
+axe (2.0 drawn, 2.9 hit); his spin — the attack you cannot step out of sideways —
+was signposted with a 162-degree wedge implying a safe side, and is now a full
+ring at its real 2.6u; and both marks faded to nothing BEFORE the damage frame
+(chop invisible 3 frames early, spin 6). The chop arc and the hit test now read
+one shared `CHOP_ARC` constant so they cannot drift apart again.
+
+### Verification
+
+- `tools/verify-pose.mjs` — fires each ability through the real input path, finds
+  the ring in the scene, measures its world radius and wedge angle. All five
+  match within 0.02u; the cone and corridor draw 80 and 26 degrees as intended.
+  It also intercepts `burnAt`/`crackAt` to assert one ability really is one
+  number.
+- `tools/verify-telegraphs.mjs` — transforms the Warden's arc centre vertex by
+  its real matrixWorld and compares the bearing with his forward, at seven
+  facings including non-cardinals.
+- `verify-l2-warden.mjs` and `verify-l3-lash.mjs` both still ALL CLEAN.
+
+One caught mistake worth recording: the first pose run reported the cone as 40
+degrees and the wedge as 13, and failed. The game was right — my verifier
+converted radians to degrees with 90/PI instead of 180/PI and reported half the
+angle. The measurement was wrong, not the thing measured.
+
+## v3.31.1 — The fire breath, and what the verifier caught (2026-08-08)
+
+The adversarial pass over the C1 audit rejected six of its own claims as stale —
+they described the code before the C1 fixes, which landed while the audit was
+running — and independently re-derived the Bone Warden mirror bug in node against
+the vendored three.js, reaching the same numbers measured in the browser. It also
+confirmed one thing C1 had missed, in C1's own subject.
+
+**The fire breath was the frost breath's twin and got none of the treatment.**
+Both are a 38-40 degree cone; C1 gave the frost one an honest wedge and left fire
+as the only ability in the game with no ground mark at all. Its three flame puffs
+spread ±0.3/±0.6/±0.9 against a real cone half-width of ±2.19u at the far step —
+2.4x too narrow, and stopping 0.96u short of the reach. And its `meltAt` probes
+used a flat 1.6u radius starting 1.13u out, so the breath could melt a frozen
+brazier 0.47u BEHIND Kael. That is the Frostpeak gate verb — breath to melt, slam
+to light — firing backwards.
+
+It now draws the same cone from the same constants the hit test uses, the puffs
+spread to the cone's true half-width at each step, and the probe radius is
+clamped to its own reach. Measured at runtime: 76 degrees drawn, 3.4u reach.
+
+### Nearly shipped broken
+
+The first version called `effects.groundSlam(...)`. `tryRanged(world)` takes no
+`effects` parameter — it would have been a ReferenceError the first time a child
+breathed fire, and `node --check` passes it without complaint because it is a
+scope error, not a syntax one. Caught by checking the enclosing signature rather
+than trusting the syntax check, and fixed to `juice.effects`, which is the handle
+`js/boss.js` already uses. The runtime probe now asserts "no page errors" as well
+as the geometry, so the next one cannot pass silently.
+
+### Logged, not fixed: C4
+
+Three confirmed defects where the pose lies about TIME rather than distance —
+the jump is visibly airborne for 0.648s but dodges for 0.535s; the Dark Wolf
+lunge has i-frames for 58% of an unchanging dash; the parry window has no visible
+state at all and 40% of it elapses during the shield's crossfade. Plus weapon
+`arc` varying 2.3x with one shared animation clip.
+
+These are combat-feel changes, not feedback fixes: each alters what a child can
+survive, so each needs a playtest rather than a measurement. Written up as C4
+with the derivations rather than folded into C1.
+
+## v3.32.0 — When the dodge works (C4) (2026-08-08)
+
+C1 fixed the flourishes that lied about WHERE an ability reaches. These are the
+ones that lied about WHEN. For a child who cannot read it is the same defect:
+they act on what they see, and what they saw was wrong.
+
+**The jump.** Visibly airborne for 0.648s, dodging for 0.535s. The 0.35u
+`AIRBORNE_DODGE_Y` threshold is crossed twice, so 56ms at each end — 17.4% of
+the jump, up to a third of Kael's own height off the floor — read as airborne
+and took the hit. And not as a rare mistime: enemy `contact()` defaults to
+`{ground: true}` and re-tests every frame of overlap, so the landing window is
+sampled continuously. A child has exactly one cue for "jump the sweep", and
+being hit there teaches that jumping does not work.
+
+`airborne` now returns true for the whole arc when the arc is a JUMP —
+`jumpsUsed` is set only by `tryJump` and cleared on landing, so it is precisely
+"this is a jump" — while hops keep the threshold. The roll's 0.28u and the
+lunge's 0.18u are not jumps, they carry their own i-frames, and making them free
+dodges of every ground attack would be a different game. Measured after: 0.658s
+visible, 0.658s dodging.
+
+**The lunge.** `LUNGE_DUR` 0.26 against `LUNGE_IFRAMES` 0.15 — 42% of an
+unchanging blur was hittable, on the one form that also takes +30% damage and
+whose whole design is "an attack AND an escape". The separate constant is
+deleted; the dodge reads `LUNGE_DUR`, so they cannot drift apart again.
+
+**The parry.** One `block` pose, crossfaded over 0.12s, pixel-identical during
+the 0.3s window and for the whole hold after it — and `defendStart` is stamped
+when the button registers, so 40% of the window elapsed while the shield was
+still coming up. The shield now glints pale blue for exactly the window, snapping
+on at `defendStart` and easing off as it closes. The materials are cloned on
+mount: tinting the shared loader cache would have lit up every shield in the
+game, including the skeletons'.
+
+**The weapon arc.** `js/items.js` gives weapons an arc from 36 to 82 degrees — a
+2.3x difference in swing width — and every one played the same wide diagonal
+slice. A narrow weapon now plays the stab clip, which was already loaded as the
+combo follow-up. The Long Spear looks like what it hits.
+
+### `node --check` is not a syntax check for this codebase
+
+It exits 0 on `js/player.js` containing a broken if/else chain, because a `.js`
+file parses as CommonJS, hits the `import` on line 5 and stops. It gave a false
+pass twice in one session: once on the fire breath's ReferenceError, and once
+here on a real syntax error — I had inserted `this._parryGlint()` between an
+`else if` and its `else`, and the game did not boot at all.
+
+`tools/verify-boot.mjs` now does the cheap real check: load the page, start a
+game, report any page error or console error. It runs in about twenty seconds
+and should go first, before any of the long verifiers.
+
+One more measurement lesson: the i-frame assertion first failed at 0.204 against
+0.26. The game was right — the test had waited two frames before reading, and
+under SwiftShader one frame is long enough to eat 20% of the window. A decaying
+counter has to be sampled in the tick it is set.
+
+## v3.33.0 — The Den joins the budget (B3) (2026-08-08)
+
+After B1 the Den was the only room in the game over the 100 draw-call ceiling —
+113 worst-case — and characters were no longer why. Its own static geometry cast
+18 calls of shadow, because the hand-built shipping rooms never call
+`flattenStatic()` while all three rebuilt levels do from `finish()`.
+
+One line at the end of `buildDen`, and 113 → **95**.
+
+The care went into not freezing the room. Batching bakes world transforms, so
+anything merged keeps the pose it had at build time forever. Four categories had
+to be safe:
+
+- **Skinned meshes** — the three villagers, Biscuit, the shopkeeper, the wolf pup.
+  `flattenStatic` skips these outright.
+- **The checkpoint flame** — `checkpoints` is already a protected gameplay key.
+- **`world.npcs`** — added to the protected keys during B1, specifically so this
+  change could be made later without merging the villagers into the scenery.
+- **The three floating spirit-stones** — Petra's heart, Cinder's ember and the
+  moonstone orb are moved by `onAnimate` hooks and are not skinned, so they are
+  the ones that would actually have frozen. Marked `keepLoose` where they are
+  built.
+
+`tools/verify-den.mjs` is the check that matters: it turns on both spirit homes
+so the Den holds the most it ever holds, samples every animated object across 90
+frames, and asserts each one changed — then sweeps standing positions for the
+worst frame. Villagers animating, Biscuit animating, stones bobbing, 95 calls.
+
+Every room in the game is now under the ceiling.
+
+## v3.34.0 — The docs catch up, and one of them was wrong (C3, C2, B2)
+
+### METRICS.md had the camera width mislabelled, and everything sized levels by it
+
+The framing table read "**Visible width at Kael's own depth: 16.1 u**". It is
+not. Re-measured at the documented aspect, 16.1 u is the width at the **near
+edge** of the screen — the bottom, 4.5 u behind Kael, closest to the camera and
+therefore the narrowest part of the fan. The width at Kael is **22.2 u**.
+
+The table's own "~39.6 u at the far edge" is what gives it away: 16.1 / 22.2 /
+39.6 are the near, middle and far widths of a single frustum fan, and the row had
+labelled the near one as the middle. Geometry agrees with the measurement
+exactly: 2 × 11 × tan(25°) × 2.16 = 22.2.
+
+Two things the table never said, both of which later sessions kept re-deriving,
+are now in it:
+
+- **Width scales with aspect ratio; ahead and behind do not.** 21.1 u at aspect
+  2.06, 22.2 u at 2.16 — but 12.9 u ahead and 4.5 u behind on every device.
+  Anything reasoning about what a child can see BEHIND them (the blind-strip law,
+  A6's junction landmarks, C1's flourishes) depends only on the stable pair.
+- **None of it changes with room size.** A 14 × 10 choke and the 36 × 28 hub
+  frame identical ground, to the decimal, because the camera is a fixed offset.
+  That is the fact C1 was written against, now recorded where it will be found.
+
+The header was also internally inconsistent — "740 × 360, aspect 2.16", when
+740/360 is 2.06.
+
+### The rest of C3
+
+LEVEL-MAP said Level 3 is 18 spaces; 21 are built, and the doc's own component
+list adds to 21. The COMBAT-SPEC row about the missing stomp stagger is stale —
+A4 shipped it in v3.26.1. The remaining drift was already annotated in place.
+
+### C2 and B2 closed on measurement
+
+**C2** — dad's call: 37% is fine, keep the chord. The verifier still asserts the
+saving, now against the accepted figure rather than the unmeasured 0.5 guess.
+
+**B2 (LOD)** — closed as not needed. Every room in the game is under the ceiling
+after B1 and B3, and the worst triangle count anywhere is ~50k against a 500,000
+budget: two orders of magnitude of headroom, because this is a low-poly kit game.
+LOD would add a system, an authoring step and pop-in to solve a measured
+non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
+rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
+15-18 calls, far more than LOD for far less machinery.

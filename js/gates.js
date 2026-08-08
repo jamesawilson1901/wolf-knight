@@ -53,36 +53,42 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
 
-  // register for the vine-lash: world.cutAt(x, z, r) clears any tangle in
-  // reach — leaf-burst, creak, collider gone, WS flag set forever
-  if (!world.cuttables) world.cuttables = [];
-  world.cuttables.push({
-    id, x, z, cut: false,
-    clear: () => {
-      world.root.remove(group);
-      const i = world.boxColliders.indexOf(collider);
-      if (i >= 0) world.boxColliders.splice(i, 1);
-      WS.set(region, 'cut_' + id);
-      audio.play('gate-creak', { volume: 0.7, rate: 0.9 });
-      audio.play('puff', { volume: 0.8, rate: 1.2 });
-    },
-  });
-  if (!world.cutAt) {
-    world.cutAt = (cx, cz, r) => {
-      let n = 0;
-      for (const c of world.cuttables) {
-        if (c.cut) continue;
-        const dx = c.x - cx, dz = c.z - cz;
-        if (dx * dx + dz * dz > r * r) continue;
-        c.cut = true;
-        c.clear();
-        n++;
-      }
-      return n;
-    };
-  }
+  registerCuttable(world, { id, x, z, region, group, collider });
   return { id, collider };
 }
+
+// REGISTER A CUTTABLE — the one place a bramble becomes something the vine-lash
+// can clear. Level 3 grows its own brambles rather than going through
+// brambleGate(), and it needs the SAME contract: the same `cut` bookkeeping,
+// the same permanence (a WorldState flag, not a new namespace), and the same
+// lazily-defined world.cutAt, which the lash in player.js calls directly.
+//
+// Splitting this out is what stops Level 3 inventing a second, subtly
+// different cut system — it did exactly that, keying off a `state.flags.cut`
+// that was never declared anywhere, so its brambles could never be cut at all.
+export function registerCuttable(world, { id, x, z, region, group, collider, onCut, regrows, hitR = 0 }) {
+  const entry = {
+    id, x, z, cut: false, regrows: !!regrows, group, collider, region, hitR,
+    clear: () => {
+      if (group) world.root.remove(group);
+      if (collider) {
+        const i = world.boxColliders.indexOf(collider);
+        if (i >= 0) world.boxColliders.splice(i, 1);
+      }
+      // a regrowing bramble is a TIMER, not a permanent change — flagging it
+      // would make the level's develop step solve itself on the next visit
+      if (!regrows) WS.set(region, 'cut_' + id);
+      audio.play('gate-creak', { volume: 0.7, rate: 0.9 });
+      audio.play('puff', { volume: 0.8, rate: 1.2 });
+      if (onCut) onCut(entry);
+    },
+  };
+  world.cuttables.push(entry);   // world.cutAt is a World method (js/world.js)
+  return entry;
+}
+
+// Has this bramble already been cut, for good, in a previous visit?
+export function alreadyCut(region, id) { return WS.get(region, 'cut_' + id); }
 
 // Ice block — a pale crystal mound the Frost Wolf's breath SHATTERS (v3.21).
 // Until that form is earned it is a promise: a cold glow guarding a reward.
@@ -112,9 +118,12 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
 
   // register for the frost breath: world.shatterAt(x, z, r) breaks any ice
   // in reach — a burst of shards, a crack, the collider gone for good
-  if (!world.shatterables) world.shatterables = [];
+  // `group` is not decoration on this entry: flattenStatic() protects every
+  // Object3D it can find on a gate entry, and an entry that names none has its
+  // geometry merged into the static batch — after which removing the group on
+  // clear() takes nothing off the screen and the ice shatters invisibly.
   world.shatterables.push({
-    id, x, z, broken: false,
+    id, x, z, broken: false, group,
     clear: () => {
       world.root.remove(group);
       const i = world.circleColliders.indexOf(collider);
@@ -124,21 +133,7 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
       audio.play('puff', { volume: 0.8, rate: 1.3 });
     },
   });
-  if (!world.shatterAt) {
-    world.shatterAt = (cx, cz, r) => {
-      let n = 0;
-      for (const c of world.shatterables) {
-        if (c.broken) continue;
-        const dx = c.x - cx, dz = c.z - cz;
-        if (dx * dx + dz * dz > r * r) continue;
-        c.broken = true;
-        c.clear();
-        n++;
-      }
-      return n;
-    };
-  }
-  return { id, collider };
+  return { id, collider };   // world.shatterAt is a World method (js/world.js)
 }
 
 // FROZEN BRAZIER (v3.21, Frostpeak's puzzle verb): a brazier sealed under a
@@ -327,4 +322,101 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
   }
   world.braziers.push(b);
   return b;
+}
+
+
+// ---------------------------------------------------------------------------
+// Shared puzzle furniture, lifted out of rooms.js so every level uses the SAME
+// boulder and the SAME plate. Both were private to rooms.js, which is how
+// Level 3 ended up with its own incompatible copy of the cut system.
+// ---------------------------------------------------------------------------
+// Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
+export function pushableBoulder(world, prepareModel, rockGltf, x, z) {
+  const rock = prepareModel(rockGltf.scene.clone());
+  rock.traverse((n) => {
+    if (!n.isMesh) return;
+    n.material = n.material.clone();
+    n.material.color.setHex(0x8a8d95);
+  });
+  rock.scale.setScalar(2.0);
+  const group = new THREE.Group();
+  group.add(rock);
+  group.position.set(x, 0, z);
+  world.add(group);
+  const collider = { x, z, r: 0.62 };
+  world.circleColliders.push(collider);
+  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 0.88, 26),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
+  group.add(ring);
+  world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
+  const b = { x, z, r: 0.62, group, mesh: rock, collider };
+  world.boulders.push(b);
+  return b;
+}
+
+// Pressure plate: a floor switch a boulder holds down. v3.18 readability
+// pass — it is now a big, IN-THE-FLOOR target: recessed stone base, glowing
+// disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
+// ring, so "roll THIS onto THAT" reads at a glance.
+export function plateSwitch(world, id, x, z, onPressed) {
+  // HEIGHT LAW (v3.18, generalised in v3.20): a decal below the room's floor
+  // top is BURIED and invisible — that is why "there is no pressure plate".
+  // Heights now key off world.deckY, so the same plate reads correctly on
+  // Stoneroot's raised stone tiles AND on the Wild Woods' bare ground
+  // (where the old hard-coded stone offsets left it floating in mid-air).
+  const deck = world.deckY;
+  // a round stone plate (NOT the dungeon-kit trap grid — that reads as
+  // "danger, keep off", the exact opposite of an act-here target)
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
+    new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
+  );
+  base.position.set(x, deck - 0.015, z);
+  world.add(base);
+  const glow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.62, 24),
+    new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.9,
+      transparent: true, opacity: 0.75, roughness: 1, depthWrite: false,
+    })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(x, deck + 0.05, z);
+  world.add(glow);
+  // the GOLD "act here" ring — same grammar (and same gold) as the boulder
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 0.92, 28),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, deck + 0.04, z);
+  world.add(ring);
+  if (!world.plates) world.plates = [];
+  const pressed = !!state.flags.plates[id];
+  const p = {
+    id, x, z, pressed,
+    onPressed: () => {
+      glow.material.emissive.setHex(0x7aff8a);
+      ring.material.color.setHex(0x7aff8a); // the ring agrees: DONE
+      audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
+      if (onPressed) onPressed();
+    },
+  };
+  if (pressed) {
+    glow.material.emissive.setHex(0x7aff8a);
+    ring.material.color.setHex(0x7aff8a);
+  }
+  world.plates.push(p);
+  world.onAnimate((t) => {
+    glow.material.emissiveIntensity = p.pressed ? 1.4 : 0.7 + 0.35 * Math.sin(t * 2.6 + x);
+    ring.material.opacity = p.pressed ? 0.4 : 0.4 + 0.3 * Math.sin(t * 2.4 + x);
+    const s = p.pressed ? 1 : 1 + 0.06 * Math.sin(t * 2.4 + x);
+    ring.scale.set(s, s, 1);
+  });
+  return p;
 }

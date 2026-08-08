@@ -8,14 +8,19 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
-import { state } from './state.js';
+import { flattenStatic } from './batch.js';
+import { state, resolveRoom } from './state.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
+  pushableBoulder, plateSwitch } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
+import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
+import { LEVEL2_ROOMS, loadCaveKit } from './level2.js';
+import { LEVEL3_ROOMS, loadWoodKit } from './level3.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -699,7 +704,7 @@ async function buildDen(scene) {
   world.addBox(-8, 8, 5, 6);
   world.addBox(-8, -7, -6, 6); world.addBox(7, 8, -6, 6);
   world.spawn = { x: 0, z: -3.2, angle: 0 };
-  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'r1', { x: 2, z: 4.6, angle: Math.PI });
+  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, -4.4, 'x');
 
   // warm heart campfire + tents + trees + flowers
@@ -763,6 +768,7 @@ async function buildDen(scene) {
     );
     heart.position.set(-2.9, 0.85, -2.3);
     world.add(heart);
+    world.keepLoose(heart);     // it bobs and turns (onAnimate below)
     const hGlow = new THREE.PointLight(0xd8b06a, 4, 7, 1.9);
     hGlow.position.set(-2.9, 1.0, -2.3);
     world.add(hGlow);
@@ -783,6 +789,7 @@ async function buildDen(scene) {
     );
     homeEmber.position.set(1.4, 0.9, -0.9);
     world.add(homeEmber);
+    world.keepLoose(homeEmber); // it floats (onAnimate below)
     const homeGlow = new THREE.PointLight(0xffc27a, 5, 8, 1.9);
     homeGlow.position.set(1.4, 1.1, -0.9);
     world.add(homeGlow);
@@ -814,6 +821,7 @@ async function buildDen(scene) {
     );
     orb.position.set(-4.6, 1.0, -3.4);
     world.add(orb);
+    world.keepLoose(orb);       // it bobs and turns (onAnimate below)
     const moonGlow = new THREE.PointLight(0xa8bcff, 4, 7, 1.9);
     moonGlow.position.set(-4.6, 1.3, -3.4);
     world.add(moonGlow);
@@ -876,6 +884,19 @@ async function buildDen(scene) {
   // DEN GAMES: each villager hosts a minigame (gold act-here rings —
   // js/minigames.js). Rook's targets appear with Rook himself.
   await setupDenGames(world);
+
+  // B3 — BATCH THE DEN. It was the last room in the game over the 100 draw-call
+  // ceiling (113 worst-case, standing at (-5, 8)), and after B1 characters were
+  // no longer why: its own static geometry cast 18 calls of shadow. The cause
+  // was simply that the hand-built shipping rooms never called this, while all
+  // three rebuilt levels do from their finish().
+  //
+  // Safe here because everything that MOVES is already excluded: skinned meshes
+  // are skipped outright (the villagers, Biscuit, the shopkeeper, the pup), the
+  // checkpoint flame is a protected gameplay list, `world.npcs` is in the
+  // protected keys, and the three animated props — Petra's heart, Cinder's
+  // ember and the moonstone orb — are marked keepLoose where they are built.
+  flattenStatic(world);
 
   // soft daylight mood handled by main (den has no lava rumble)
   return world;
@@ -1749,96 +1770,13 @@ function spikeTrap(world, x, z, offset = 0) {
   });
 }
 
-// Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
-function boulder(world, x, z) {
-  const rock = prepareModel(kit.rockLB.scene.clone());
-  rock.traverse((n) => {
-    if (!n.isMesh) return;
-    n.material = n.material.clone();
-    n.material.color.setHex(0x8a8d95);
-  });
-  rock.scale.setScalar(2.0);
-  const group = new THREE.Group();
-  group.add(rock);
-  group.position.set(x, 0, z);
-  world.add(group);
-  const collider = { x, z, r: 0.62 };
-  world.circleColliders.push(collider);
-  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.88, 26),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
-  group.add(ring);
-  world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
-  const b = { x, z, r: 0.62, group, mesh: rock, collider };
-  world.boulders.push(b);
-  return b;
-}
-
-// Pressure plate: a floor switch a boulder holds down. v3.18 readability
-// pass — it is now a big, IN-THE-FLOOR target: recessed stone base, glowing
-// disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
-// ring, so "roll THIS onto THAT" reads at a glance.
-function pressurePlate(world, id, x, z, onPressed) {
-  // HEIGHT LAW (v3.18, generalised in v3.20): a decal below the room's floor
-  // top is BURIED and invisible — that is why "there is no pressure plate".
-  // Heights now key off world.deckY, so the same plate reads correctly on
-  // Stoneroot's raised stone tiles AND on the Wild Woods' bare ground
-  // (where the old hard-coded stone offsets left it floating in mid-air).
-  const deck = world.deckY;
-  // a round stone plate (NOT the dungeon-kit trap grid — that reads as
-  // "danger, keep off", the exact opposite of an act-here target)
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
-    new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
-  );
-  base.position.set(x, deck - 0.015, z);
-  world.add(base);
-  const glow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.62, 24),
-    new THREE.MeshStandardMaterial({
-      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.9,
-      transparent: true, opacity: 0.75, roughness: 1, depthWrite: false,
-    })
-  );
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.set(x, deck + 0.05, z);
-  world.add(glow);
-  // the GOLD "act here" ring — same grammar (and same gold) as the boulder
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.92, 28),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, deck + 0.04, z);
-  world.add(ring);
-  if (!world.plates) world.plates = [];
-  const pressed = !!state.flags.plates[id];
-  const p = {
-    id, x, z, pressed,
-    onPressed: () => {
-      glow.material.emissive.setHex(0x7aff8a);
-      ring.material.color.setHex(0x7aff8a); // the ring agrees: DONE
-      audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
-      if (onPressed) onPressed();
-    },
-  };
-  if (pressed) {
-    glow.material.emissive.setHex(0x7aff8a);
-    ring.material.color.setHex(0x7aff8a);
-  }
-  world.plates.push(p);
-  world.onAnimate((t) => {
-    glow.material.emissiveIntensity = p.pressed ? 1.4 : 0.7 + 0.35 * Math.sin(t * 2.6 + x);
-    ring.material.opacity = p.pressed ? 0.4 : 0.4 + 0.3 * Math.sin(t * 2.4 + x);
-    const s = p.pressed ? 1 : 1 + 0.06 * Math.sin(t * 2.4 + x);
-    ring.scale.set(s, s, 1);
-  });
-  return p;
-}
+// Pushable boulder + pressure plate now live in js/gates.js so Level 3 can use
+// the SAME ones rather than growing its own. Level 3 duplicating the cut
+// system — and getting it subtly wrong, so its brambles could never be cut at
+// all — is exactly what sharing these prevents. Thin wrappers keep every
+// existing call site in this file unchanged.
+function boulder(world, x, z) { return pushableBoulder(world, prepareModel, kit.rockLB, x, z); }
+function pressurePlate(world, id, x, z, onPressed) { return plateSwitch(world, id, x, z, onPressed); }
 
 // (v3.18: the drop-hole/climb-spot teleport pair is GONE — dad's law:
 // nothing moves the player without a door they walked through.)
@@ -3751,11 +3689,29 @@ async function buildF5(scene) {
   return world;
 }
 
-export const ROOMS = { r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+// LEVEL 1 REBUILD (design/LEVEL-MAP.md). The `l*` rooms are the expanded,
+// non-linear Ember Hollow. They live ALONGSIDE r1/r2/r3 rather than replacing
+// them: r1/r2/r3 are what kids are playing right now, and a greybox is not
+// something you ship to a child. Reached from the cheat menu until dressed
+// and approved. Nothing existing was rescaled (dad's law).
+export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
-export async function buildRoom(id, scene) {
-  await loadKit();
-  if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
+export async function buildRoom(rawId, scene) {
+  const id = resolveRoom(rawId);
+  // Greybox spaces are plain geometry by definition — loading a 40-piece art
+  // kit for them would both waste the load and hide the real cost of the box.
+  if (id === 'zoo') {
+    // the metrics zoo is greybox forever; it exists to measure, not to dress
+  } else if (id[0] === 'l') {
+    if (state.settings.greybox === false) await loadEmberKit();
+  } else if (id[0] === 'v') {
+    if (state.settings.greybox === false) await loadCaveKit();
+  } else if (id[0] === 't') {
+    if (state.settings.greybox === false) await loadWoodKit();
+  } else {
+    await loadKit();
+    if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
+  }
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot) {

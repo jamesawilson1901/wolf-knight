@@ -56,7 +56,7 @@ class Juice {
   // Kael TOOK a hit — gentler on screen, stronger in the hand.
   onHurt(x, y, z) {
     if (!this.effects) return;
-    this.effects.shake(0.12, 0.18);
+    this.effects.shake(CONFIG.JUICE.hurtShake, CONFIG.JUICE.hurtShakeT);
     this.burst(x, y, z, 0xff5a5a, 8);
     this.buzz(CONFIG.JUICE.hurtBuzz);
   }
