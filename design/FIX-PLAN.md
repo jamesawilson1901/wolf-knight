@@ -602,8 +602,41 @@ focused pass sizing the ring to the ability radius and scaling shake with
 visible-area rather than leaving both constant.
 
 ## C4 · The pose lies about TIME, not distance — i-frames and windows
-**MEDIUM/HIGH · affects all · one session · independent**
-**Found by the C1 audit (v3.31.x), deliberately NOT fixed there.**
+**✅ DONE (v3.32.0)** — all four, verified by `tools/verify-timing.mjs`.
+
+- **The jump.** `airborne` now returns true for the whole visible arc when the
+  arc is a JUMP (`jumpsUsed > 0`), and keeps the 0.35u threshold for hops — the
+  roll's 0.28u and the lunge's 0.18u are not jumps, carry their own i-frames,
+  and must not become free dodges of every ground attack. Measured: 0.658s
+  visible, 0.658s dodging, 0 lies.
+- **The lunge.** `LUNGE_IFRAMES` is deleted; the dodge reads `LUNGE_DUR`, so the
+  invulnerable window IS the visible dash and the two cannot drift apart again.
+  0.15 → 0.26.
+- **The parry.** The shield now glints pale blue for exactly the window, snapping
+  on the frame `defendStart` is stamped (not when the crossfade lands, which is
+  what wasted 40% of it) and easing off when it closes. Its materials are cloned
+  on mount — tinting the loader cache would have lit up every shield in the
+  game, including the skeletons'.
+- **The weapon arc.** A weapon narrower than 50 degrees now plays the STAB clip
+  instead of the wide diagonal slice. Already-loaded animation, no new asset;
+  the Long Spear (36 degrees) finally looks like what it hits.
+
+Two things worth keeping from how it went:
+
+**`node --check` is not a syntax check for this codebase.** It exits 0 on
+`js/player.js` with a broken if/else chain, because a `.js` file parses as
+CommonJS, hits the `import` on line 5 and never reads the body. It gave a false
+pass twice in one session — once on a ReferenceError in the fire breath, once on
+a genuine syntax error that stopped the game booting at all.
+`tools/verify-boot.mjs` is the cheap real check: load the page, start a game,
+report any page error. Run it first, always.
+
+**A decaying counter must be sampled in the tick it is set.** The i-frame
+assertion failed at 0.204 against 0.26 — the game was right and the test had
+waited two frames, which under SwiftShader is long enough to eat 20% of the
+window.
+
+Original finding below.
 
 C1 fixed every flourish that lied about *where* an ability reaches. An
 adversarial verification pass over the same audit confirmed three that lie about

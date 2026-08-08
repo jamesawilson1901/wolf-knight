@@ -146,7 +146,10 @@ const DEFEND_SPEED_MULT = 0.35;
 const JUMP_V = 6.8;
 const DOUBLE_JUMP_V = 8.2;  // second press mid-air jumps higher
 const GRAVITY = 21;
-const AIRBORNE_DODGE_Y = 0.35; // above this, ground attacks miss
+const AIRBORNE_DODGE_Y = 0.35; // above this, a HOP dodges ground attacks
+// A weapon narrower than this thrusts instead of slashing (C4). cos() grows as
+// the arc shrinks, so "narrower than 50 degrees" is "arcCos above cos(50)".
+const NARROW_ARC_COS = Math.cos(THREE.MathUtils.degToRad(50));
 export const MAX_POTIONS = 3;
 const POTION_HEAL = 3;
 
@@ -465,7 +468,46 @@ export class Player {
     this._handR.clear();
     this._handL.clear();
     this._handR.add(prepareCharacter(w.scene.clone()));
-    this._handL.add(prepareCharacter(s.scene.clone()));
+    const shield = prepareCharacter(s.scene.clone());
+    // C4 — the parry window needs somewhere to SHOW itself, and the shield is
+    // the honest place. Its materials come out of the shared loader cache, so
+    // they are cloned here: tinting the cache would light up every shield in
+    // the game, including the skeletons'.
+    this._parryMats = [];
+    shield.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      const cloned = mats.map((m) => {
+        const c = m.clone();
+        if (!c.emissive) c.emissive = new THREE.Color(0x000000);
+        c.userData.baseEmissive = c.emissive.getHex();
+        this._parryMats.push(c);
+        return c;
+      });
+      n.material = Array.isArray(n.material) ? cloned : cloned[0];
+    });
+    this._handL.add(shield);
+  }
+
+  // The parry window, made visible. PARRY_WINDOW is 0.3s from the frame the
+  // button registers, but the block pose crossfades in over 0.12s — so 40% of
+  // the window elapsed while the shield was still coming up, and once it closed
+  // the identical pose silently downgraded to a half-heart blunt block. One
+  // pose, two rules, nothing to tell them apart. The glint starts the instant
+  // defendStart is stamped, not when the animation lands.
+  _parryGlint() {
+    if (!this._parryMats || !this._parryMats.length) return;
+    const open = this.defending &&
+      (this._time - this.defendStart) <= PARRY_WINDOW + (shieldDef().parryBonus || 0);
+    const want = open ? 1 : 0;
+    this._parryLit = this._parryLit === undefined ? 0 : this._parryLit;
+    // snap ON so the window's start is unmissable, ease OFF so it reads as a
+    // window closing rather than a flicker
+    this._parryLit = want > this._parryLit ? 1 : Math.max(0, this._parryLit - 0.12);
+    for (const m of this._parryMats) {
+      m.emissive.setHex(0x8fd8ff).multiplyScalar(this._parryLit);
+      m.emissiveIntensity = 0.2 + this._parryLit * 1.6;
+    }
   }
 
   // Potions live in run state so they persist with the save.
@@ -617,7 +659,11 @@ export class Player {
       if (Math.hypot(mv.x, mv.z) > 0.5) {
         const dx = Math.sin(this.root.rotation.y), dz = Math.cos(this.root.rotation.y);
         this._dash = { t: 0, dur: F.LUNGE_DUR, dx, dz, speed: F.LUNGE_DIST / F.LUNGE_DUR, hop: 0.18 };
-        this.iframes = Math.max(this.iframes, F.LUNGE_IFRAMES);
+        // C4 — the dodge lasts exactly as long as the dash a child can see.
+        // LUNGE_IFRAMES was a separate 0.15 against a 0.26 dash, so 42% of an
+        // unchanging blur was not invulnerable, on the one form that also takes
+        // +30% damage. Reading LUNGE_DUR here means the two can never drift.
+        this.iframes = Math.max(this.iframes, F.LUNGE_DUR);
         this.lungeCooldown = this._surge ? 0 : F.LUNGE_COOLDOWN; // free while surging
         this.lockTime = F.LUNGE_DUR + 0.1;
         this._playOnce('attack');
@@ -644,7 +690,14 @@ export class Player {
       this._comboUntil = 0; // slash again to re-open the combo
       audio.play('sword-swing2', { volume: 0.85, rate: 1.25 });
     } else {
-      this._playOnce('attack');
+      // C4 — A NARROW WEAPON STABS. js/items.js gives weapons an `arc` from 36
+      // to 82 degrees — a 2.3x difference in how wide the swing truly is — and
+      // every one of them played the same wide diagonal slice, so the pose said
+      // nothing about the hitbox. A child swinging the Long Spear at something
+      // off to the side watched a broad sweep miss. The stab clip is already
+      // loaded (it is the combo follow-up), so a spear now looks like a spear.
+      const narrow = cfg.arcCos !== undefined && cfg.arcCos > NARROW_ARC_COS;
+      this._playOnce(narrow && this.form.actions.attack2 ? 'attack2' : 'attack');
       this.lockTime = cfg.lock;
       this._pendingHit = {
         timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg,
@@ -1170,7 +1223,26 @@ export class Player {
     return false;
   }
 
-  get airborne() { return this.airY > AIRBORNE_DODGE_Y; }
+  // C4 — A JUMP DODGES FOR AS LONG AS THE CHILD CAN SEE KAEL OFF THE GROUND.
+  //
+  // This was `airY > AIRBORNE_DODGE_Y` for everything. With JUMP_V 6.8 against
+  // GRAVITY 21 the jump is visibly airborne for 0.648s and peaks at 1.10u, but
+  // 0.35u of that arc is crossed twice — so the first 56ms and the last 56ms,
+  // 17.4% of the jump and up to a third of Kael's own height off the floor,
+  // read as airborne and took the hit anyway. Not a rare mistiming either:
+  // enemy contact() defaults to {ground: true} and re-tests every frame of
+  // overlap, so the landing window is sampled continuously. A child who cannot
+  // read has exactly one cue for "jump the sweep" — the wolf leaves the ground
+  // — and being hit there teaches that jumping does not work.
+  //
+  // The threshold still applies to HOPS. The roll's 0.28u and the lunge's 0.18u
+  // arcs are not jumps, they carry their own i-frames, and making them free
+  // dodges of every ground attack would be a different game. `jumpsUsed` is set
+  // only by tryJump and cleared on landing, so it is exactly "this is a jump".
+  get airborne() {
+    if (this.jumpsUsed > 0) return this.airY > 0 || this.airV > 0;
+    return this.airY > AIRBORNE_DODGE_Y;
+  }
 
   // Drink a potion (tap the HUD flask or press H).
   tryPotion() {
@@ -1704,6 +1776,7 @@ export class Player {
     else if (this.defending) this._play('block', 0.12);
     else if (vmag > 0.1) this._play(vmag / Math.max(0.01, f.def.speed * speedMult) > RUN_THRESHOLD ? 'run' : 'walk');
     else this._play('idle');
+    this._parryGlint();   // C4 — the window has to be visible while it is open
 
     if (locked) {
       f.mixer.update(dt);

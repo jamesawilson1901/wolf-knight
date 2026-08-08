@@ -2821,3 +2821,59 @@ state at all and 40% of it elapses during the shield's crossfade. Plus weapon
 These are combat-feel changes, not feedback fixes: each alters what a child can
 survive, so each needs a playtest rather than a measurement. Written up as C4
 with the derivations rather than folded into C1.
+
+## v3.32.0 — When the dodge works (C4) (2026-08-08)
+
+C1 fixed the flourishes that lied about WHERE an ability reaches. These are the
+ones that lied about WHEN. For a child who cannot read it is the same defect:
+they act on what they see, and what they saw was wrong.
+
+**The jump.** Visibly airborne for 0.648s, dodging for 0.535s. The 0.35u
+`AIRBORNE_DODGE_Y` threshold is crossed twice, so 56ms at each end — 17.4% of
+the jump, up to a third of Kael's own height off the floor — read as airborne
+and took the hit. And not as a rare mistime: enemy `contact()` defaults to
+`{ground: true}` and re-tests every frame of overlap, so the landing window is
+sampled continuously. A child has exactly one cue for "jump the sweep", and
+being hit there teaches that jumping does not work.
+
+`airborne` now returns true for the whole arc when the arc is a JUMP —
+`jumpsUsed` is set only by `tryJump` and cleared on landing, so it is precisely
+"this is a jump" — while hops keep the threshold. The roll's 0.28u and the
+lunge's 0.18u are not jumps, they carry their own i-frames, and making them free
+dodges of every ground attack would be a different game. Measured after: 0.658s
+visible, 0.658s dodging.
+
+**The lunge.** `LUNGE_DUR` 0.26 against `LUNGE_IFRAMES` 0.15 — 42% of an
+unchanging blur was hittable, on the one form that also takes +30% damage and
+whose whole design is "an attack AND an escape". The separate constant is
+deleted; the dodge reads `LUNGE_DUR`, so they cannot drift apart again.
+
+**The parry.** One `block` pose, crossfaded over 0.12s, pixel-identical during
+the 0.3s window and for the whole hold after it — and `defendStart` is stamped
+when the button registers, so 40% of the window elapsed while the shield was
+still coming up. The shield now glints pale blue for exactly the window, snapping
+on at `defendStart` and easing off as it closes. The materials are cloned on
+mount: tinting the shared loader cache would have lit up every shield in the
+game, including the skeletons'.
+
+**The weapon arc.** `js/items.js` gives weapons an arc from 36 to 82 degrees — a
+2.3x difference in swing width — and every one played the same wide diagonal
+slice. A narrow weapon now plays the stab clip, which was already loaded as the
+combo follow-up. The Long Spear looks like what it hits.
+
+### `node --check` is not a syntax check for this codebase
+
+It exits 0 on `js/player.js` containing a broken if/else chain, because a `.js`
+file parses as CommonJS, hits the `import` on line 5 and stops. It gave a false
+pass twice in one session: once on the fire breath's ReferenceError, and once
+here on a real syntax error — I had inserted `this._parryGlint()` between an
+`else if` and its `else`, and the game did not boot at all.
+
+`tools/verify-boot.mjs` now does the cheap real check: load the page, start a
+game, report any page error or console error. It runs in about twenty seconds
+and should go first, before any of the long verifiers.
+
+One more measurement lesson: the i-frame assertion first failed at 0.204 against
+0.26. The game was right — the test had waited two frames before reading, and
+under SwiftShader one frame is long enough to eat 20% of the window. A decaying
+counter has to be sampled in the tick it is set.

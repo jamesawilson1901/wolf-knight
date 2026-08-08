@@ -41,7 +41,9 @@ export const CONFIG = {
     DARK_HURT_MULT: 1.3,   // +30% damage taken — fast but fragile
     LUNGE_DIST: 2.5,       // u, tap attack while the stick is pushed
     LUNGE_DUR: 0.26,       // s, dash-bite travel time
-    LUNGE_IFRAMES: 0.15,   // s of dodge frames inside the lunge
+    // LUNGE_IFRAMES removed in C4: the dodge now reads LUNGE_DUR directly, so
+    // the invulnerable window is exactly the dash a child can see. A separate
+    // number here meant 42% of the blur was hittable and looked identical.
     LUNGE_COOLDOWN: 1.1,   // s between lunges (0 while surging)
     SENSE_RANGE: 7,        // u, hidden things shimmer for wolf senses
   },
