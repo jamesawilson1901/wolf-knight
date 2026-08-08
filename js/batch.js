@@ -86,7 +86,7 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   // draws". Bucketing by cell too keeps both wins: neighbours still collapse
   // into one draw, and a cell the camera is not looking at is skipped whole.
   // This is the spatial chunking the performance brief asks for.
-  const CELL = 12;
+  const CELL = 16;
   const cellOf = (v) => Math.floor(v / CELL);
   const put = (mat, cast, recv, geo, owner, cx, cz) => {
     const key = `${mat.uuid}|${cast ? 1 : 0}|${recv ? 1 : 0}|${cx}|${cz}`;
@@ -124,11 +124,14 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
 
   let draws = 0, failed = 0;
   for (const bucket of buckets.values()) {
-    // a bucket of one saves nothing: one merged draw replaces one draw
-    // A bucket of two saves one call but permanently costs that pair its
-    // culling. Three is where merging starts paying for itself.
+    // A bucket of one saves nothing: one merged draw replaces one draw. Two
+    // saves a call at the price of that pair's independent culling — which the
+    // original threshold of three judged a bad trade, and on the sparse rooms
+    // it was. On a room dressed to ROOM-STANDARD it is not: `la` stranded 107
+    // meshes in buckets of one and two, and 107 draw calls dwarfs anything
+    // culling a pair of bricks could ever win back.
     let merged = null;
-    if (bucket.geos.length >= 3) {
+    if (bucket.geos.length >= 2) {
       try { merged = mergeGeometries(bucket.geos, false); } catch { merged = null; }
     }
     // the baked clones are scratch either way — merge copies out of them

@@ -52,15 +52,27 @@ const GREY = () => forceGrey || !emberKit || state.settings.greybox !== false;
 // flat brown field with no depth at all — from a 50-degree camera the only
 // thing separating a wall from the ground it stands on is its value.
 export const DISTRICTS = {
-  ashfall:  { tint: 0x8d8b86, floorTint: 0x8b8580, wallTint: 0x3b3835,
+  // `propTint` is the THIRD value, and it exists because the first dressed pass
+  // of the settlement used the other two and looked wrong in both directions:
+  // wallTint is deliberately about half the floor's luminance (it was picked so
+  // a cliff face separates from the ground it stands on) and renders a barrel
+  // as a black slab, while floorTint renders one as bleached bone. A thing you
+  // walk PAST needs to sit between the ground and the wall, and warmer than
+  // either — ash greys everything it lands on, but not to neutral.
+  //
+  // One prop tint per district is also what makes the density affordable:
+  // tintedModel keys its cache on class+tint, so every prop in a district
+  // shares three materials (dark/mid/light) and flattenStatic folds each
+  // cell's worth into a single draw.
+  ashfall:  { tint: 0x8d8b86, floorTint: 0x8b8580, wallTint: 0x3b3835, propTint: 0x8a7a6c,
               name: 'THE ASHFALL',         hero: 'THE FALLEN GATE' },
-  causeway: { tint: 0xb5702f, floorTint: 0xa2632f, wallTint: 0x40241a,
+  causeway: { tint: 0xb5702f, floorTint: 0xa2632f, wallTint: 0x40241a, propTint: 0x8f6440,
               name: 'EMBER CAUSEWAY',      hero: 'THE KILN' },
-  bridges:  { tint: 0x9c3a2a, floorTint: 0x8a4436, wallTint: 0x33191a,
+  bridges:  { tint: 0x9c3a2a, floorTint: 0x8a4436, wallTint: 0x33191a, propTint: 0x7d4a3a,
               name: 'CINDER BRIDGES',      hero: 'THE BROKEN SPAN' },
-  kiln:     { tint: 0xc99a3a, floorTint: 0xb98d3c, wallTint: 0x453317,
+  kiln:     { tint: 0xc99a3a, floorTint: 0xb98d3c, wallTint: 0x453317, propTint: 0x9c7a44,
               name: 'THE KILN',            hero: 'THE FORGE HEART' },
-  heart:    { tint: 0x6a5a8a, floorTint: 0x5d5078, wallTint: 0x241d33,
+  heart:    { tint: 0x6a5a8a, floorTint: 0x5d5078, wallTint: 0x241d33, propTint: 0x5f5470,
               name: 'HEART OF THE HOLLOW', hero: "CINDER'S CAGE" },
 };
 
@@ -136,6 +148,29 @@ export async function loadEmberKit() {
     torch:   './assets/env/dungeon/Torch.glb',   // Quaternius Dungeon 🟢
     bars:    './assets/env/dungeon/Arch_bars.glb',
     column:  './assets/env/dungeon/Column.glb',
+    // --- THE SETTLEMENT ----------------------------------------------------
+    // Ember Hollow is RUINED AND SAD: somewhere people LIVED before it burned.
+    // Every model below was already vendored and licence-cleared, and every one
+    // was used ZERO times — Level 1 shipped using three of the twenty-five
+    // dungeon props. These are the ones that say a family lived here.
+    column2: './assets/env/dungeon/Column2.glb',        // Quaternius Dungeon 🟢
+    arch:    './assets/env/dungeon/Arch.glb',
+    archDoor:'./assets/env/dungeon/Arch_Door.glb',
+    wallMod: './assets/env/dungeon/Wall_Modular.glb',
+    wallCov: './assets/env/dungeon/WallCover_Modular.glb',
+    decorWall:'./assets/env/dungeon/Decorative_Wall.glb',
+    stairs:  './assets/env/dungeon/Stairs_Modular.glb',
+    pedestal:'./assets/env/dungeon/Pedestal.glb',
+    horse:   './assets/env/dungeon/Statue_Horse.glb',
+    banner:  './assets/env/dungeon/Banner_wall.glb',
+    woodfire:'./assets/env/dungeon/Woodfire.glb',
+    barrel:  './assets/env/dungeon/Barrel.glb',
+    crate:   './assets/env/dungeon/Crate.glb',
+    vase:    './assets/env/dungeon/Vase.glb',
+    brick:   './assets/env/dungeon/Brick.glb',
+    skull:   './assets/env/dungeon/Skull.glb',
+    coins:   './assets/env/dungeon/Coin_Pile.glb',
+    cobweb:  './assets/env/dungeon/Cobweb.glb',
   };
   const entries = await Promise.all(Object.entries(names).map(async ([k, u]) => [k, await loadGLB(u)]));
   emberKit = Object.fromEntries(entries);
@@ -340,10 +375,299 @@ function finish(world, spec, D) {
   return world;
 }
 
+// ---------------------------------------------------------------------------
+// THE RUIN VOCABULARY
+//
+// design/ROOM-STANDARD.md, written after dad's first playthrough: the rooms
+// "are largely filled with nothing… big but bare… they aren't like a Zelda game
+// or terranigma game or even a Pokemon game that uses space effectively."
+//
+// The reason the old rooms were bare is not that placing props is hard. It is
+// that the vocabulary was wrong. `scatter()` sprinkles rocks, and a room
+// sprinkled with rocks is decorated, not INHABITED. You do not dress Ember
+// Hollow by placing a barrel — you place the REMAINS OF A HOUSE, and the barrel
+// is one of the things left in it.
+//
+// So these are CLUSTERS. Each one is a sentence about what happened here.
+//
+// Two rules run through all of them, from ROOM-STANDARD §2:
+//   BIG THINGS BLOCK    — walls, columns, statues, hearths get colliders and
+//                         you navigate around them; this is what shapes a room
+//   SMALL THINGS DON'T  — bricks, skulls, coins, cobwebs, spilled belongings
+//                         have no collider at all, so a five-year-old running
+//                         at the screen never snags on scenery
+//
+// Draw calls are not the constraint they look like: tintedModel() keys its
+// cache on material identity, so every prop cut from the dungeon atlas at one
+// district tint shares ONE material, and flattenStatic() folds the lot into a
+// single merged draw. A thirty-prop cluster costs about one call.
+// ---------------------------------------------------------------------------
+
+// Small deterministic PRNG, so a ruin looks the same every time a child walks
+// back into the room. A room that reshuffles on re-entry tells them the world
+// is not real.
+function srnd(seed) {
+  let a = (seed >>> 0) || 1;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// One placement helper shared by every cluster below. Returns the mesh so a
+// caller can nudge it; adds nothing to any gameplay list, so flattenStatic
+// folds it away.
+function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true) {
+  if (!gltf) return null;
+  const m = tinted(gltf, key, colour);
+  m.position.set(x, y, z);
+  m.rotation.set(0, ry, rz);
+  m.scale.setScalar(s);
+  // THE SHADOW PASS IS A SECOND DRAW CALL, per caster, forever. flattenStatic
+  // culls casters under 1.4u AFTER merging — but a merged cell of forty bricks
+  // is sixteen units across and sails through that test, so the cull never sees
+  // the bricks it was written for. Small clutter therefore opts out HERE,
+  // before it is merged, and its shadowless batch buckets separately.
+  if (!shadow) m.traverse((n) => { if (n.isMesh) n.castShadow = false; });
+  g.add(m);
+  return m;
+}
+
+// --- THE REMAINS OF A HOUSE -------------------------------------------------
+// A footprint of wall, a doorway still standing because doorways always are,
+// and the things the family did not take with them. `ry` turns the whole house.
+//
+// The doorway is the point. A ruin without a doorway is a pile; a ruin WITH one
+// is a home, because a child knows what a door is for.
+function ruinedHome(world, x, z, ry, D, opts = {}) {
+  const r = srnd(Math.round(x * 73 + z * 31 + 17));
+  const g = new THREE.Group();
+  const P = D.propTint || D.floorTint;
+  const W = opts.w !== undefined ? opts.w : 6;      // footprint
+  const Dp = opts.d !== undefined ? opts.d : 5;
+  const hw = W / 2, hd = Dp / 2;
+
+  // --- the walls, broken down to different heights on each run --------------
+  // Modular wall pieces are ~2u wide. Dropping some below the floor is how a
+  // wall becomes a RUINED wall without a second model: the top is simply gone.
+  const runWall = (x0, z0, x1, z1, keep) => {
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    const n = Math.max(1, Math.round(len / 2));
+    const a = Math.atan2(x1 - x0, z1 - z0);
+    for (let i = 0; i < n; i++) {
+      if (r() > keep) continue;                     // this stretch has fallen
+      const t = (i + 0.5) / n;
+      const px = x0 + (x1 - x0) * t, pz = z0 + (z1 - z0) * t;
+      const sink = r() < 0.45 ? -(0.3 + r() * 0.8) : 0;   // slumped, not level
+      place(world, g, emberKit.wallMod, 'ruinWall', px, sink, pz,
+        1.0, a + Math.PI / 2, 0, P);
+      if (sink > -0.5) world.addBox(x + px - 0.5, x + px + 0.5, z + pz - 0.5, z + pz + 0.5);
+    }
+  };
+  runWall(-hw, -hd, hw, -hd, opts.keep || 0.72);        // back wall
+  runWall(-hw, -hd, -hw, hd, opts.keep || 0.6);         // left
+  runWall(hw, -hd, hw, hd, opts.keep || 0.55);          // right
+  // the front is open — you can see in, and walk in
+
+  // --- the doorway, still standing ------------------------------------------
+  if (opts.door !== false) {
+    place(world, g, emberKit.archDoor, 'ruinDoor', 0, 0, hd, 1.0, 0, 0, P);
+    world.addBox(x - 1.4, x - 0.7, z + hd - 0.4, z + hd + 0.4);
+    world.addBox(x + 0.7, x + 1.4, z + hd - 0.4, z + hd + 0.4);
+  }
+
+  // --- what they left ------------------------------------------------------
+  coldHearth(world, x + (r() - 0.5) * 1.5, z - hd + 1.2, D, g);
+  const spill = 3 + Math.round(r() * 3);
+  for (let i = 0; i < spill; i++) {
+    const px = (r() - 0.5) * (W - 1.2), pz = (r() - 0.5) * (Dp - 1.6);
+    const pick = r();
+    const gltf = pick < 0.4 ? emberKit.barrel : pick < 0.75 ? emberKit.crate : emberKit.vase;
+    const sc = gltf === emberKit.vase ? 1.6 : 1.0;
+    // knocked over: a barrel lying on its side says "left in a hurry" in a way
+    // an upright one never does
+    const down = r() < 0.5;
+    place(world, g, gltf, 'ruinGoods', px, down ? 0.28 : 0, pz,
+      sc, r() * 6.28, down ? Math.PI / 2 : 0, P, false);
+  }
+  // brick spill from the fallen courses — small, so you walk through it
+  for (let i = 0; i < 6 + r() * 6; i++) {
+    place(world, g, emberKit.brick, 'ruinBrick',
+      (r() - 0.5) * (W + 2.5), 0, (r() - 0.5) * (Dp + 2.5),
+      0.8 + r() * 0.5, r() * 6.28, 0, P, false);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  world.add(g);
+  return g;
+}
+
+// A hearth nobody has lit in a long time. The one thing in a burnt village that
+// is unmistakably domestic.
+function coldHearth(world, x, z, D, parent = null) {
+  const g = parent || new THREE.Group();
+  const px = parent ? x : 0, pz = parent ? z : 0;
+  place(world, g, emberKit.woodfire, 'hearth', px, 0, pz, 1.1, 0, 0, D.propTint || D.wallTint);
+  const r = srnd(Math.round(x * 41 + z * 97));
+  for (let i = 0; i < 7; i++) {                     // the stone ring around it
+    const a = (i / 7) * Math.PI * 2 + r();
+    place(world, g, i % 2 ? emberKit.rockSA : emberKit.rockSB, 'hearthRing',
+      px + Math.cos(a) * 1.1, 0, pz + Math.sin(a) * 1.1, 0.42 + r() * 0.18, a, 0, D.propTint || D.wallTint, false);
+  }
+  if (!parent) { g.position.set(0, 0, 0); world.add(g); }
+  return g;
+}
+
+// A column that came down, plus the drum sections that rolled. Reads as
+// COLLAPSE rather than as decoration, because the pieces are scattered along
+// the direction it fell.
+function fallenColumn(world, x, z, dir, D, len = 4) {
+  const g = new THREE.Group();
+  const r = srnd(Math.round(x * 13 + z * 57));
+  const dx = Math.sin(dir), dz = Math.cos(dir);
+  place(world, g, emberKit.column, 'fallCol', 0, 0, 0, 1.0, 0, 0, D.propTint || D.wallTint);
+  world.addCircle(x, z, 0.6);
+  for (let i = 1; i <= 3; i++) {                    // the drums, lying down
+    const t = i * (len / 3);
+    place(world, g, emberKit.column2, 'fallCol',
+      dx * t + (r() - 0.5) * 0.5, 0.42, dz * t + (r() - 0.5) * 0.5,
+      0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint);
+    world.addCircle(x + dx * t, z + dz * t, 0.5);
+  }
+  g.position.set(x, 0, z);
+  world.add(g);
+  return g;
+}
+
+// Rubble: bricks, chips and dust. NO colliders — this is the stuff that fills
+// the gaps between the things that matter, and a child must be able to run
+// straight through it.
+function rubbleField(world, x, z, rad, D, n = 14) {
+  const g = new THREE.Group();
+  const r = srnd(Math.round(x * 29 + z * 83 + n));
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+    const pick = r();
+    const gltf = pick < 0.55 ? emberKit.brick
+               : pick < 0.8 ? emberKit.rockSA : emberKit.rockSB;
+    place(world, g, gltf, 'rubble', Math.cos(a) * dd, 0, Math.sin(a) * dd,
+      0.6 + r() * 0.6, r() * 6.28, 0, D.propTint || D.wallTint, false);
+  }
+  g.position.set(x, 0, z);
+  world.add(g);
+  return g;
+}
+
+// A wayside shrine: pedestal, arch, a banner that did not burn all the way.
+// Somewhere people STOPPED — the strongest signal a space was lived in.
+function wayshrine(world, x, z, ry, D) {
+  const g = new THREE.Group();
+  place(world, g, emberKit.arch, 'shrine', 0, 0, 0, 1.1, 0, 0, D.propTint || D.wallTint);
+  place(world, g, emberKit.pedestal, 'shrine', 0, 0, -0.2, 1.0, 0, 0, D.propTint || D.wallTint);
+  place(world, g, emberKit.banner, 'shrine', 0, 0, -1.0, 1.0, 0, 0, D.propTint || D.floorTint);
+  world.addCircle(x, z, 0.9);
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  world.add(g);
+  return g;
+}
+
+// A cart that did not make it out. Timbers, a wheel-less axle, and whatever
+// was being carried spilled around it. This is the clearest single image of
+// "people were LEAVING" that the kit can make, and it is small enough to sit
+// mid-room without taking the fighting floor away.
+function cartWreck(world, x, z, ry, D) {
+  const g = new THREE.Group();
+  const r = srnd(Math.round(x * 51 + z * 23));
+  const P = D.propTint || D.floorTint;
+  place(world, g, emberKit.logStack, 'cart', 0, 0, 0, 1.0, 0, 0, P);
+  place(world, g, emberKit.logStack, 'cart', 0.9, 0.35, -0.6, 0.8, 0.7, 0.5, P);
+  for (let i = 0; i < 4; i++) {
+    const gl = r() < 0.5 ? emberKit.barrel : emberKit.crate;
+    place(world, g, gl, 'cart', (r() - 0.5) * 3.4, r() < 0.6 ? 0.28 : 0, (r() - 0.5) * 2.8,
+      1.0, r() * 6.28, r() < 0.6 ? Math.PI / 2 : 0, P, false);
+  }
+  world.addCircle(x, z, 1.0);        // the wreck itself blocks; the spill does not
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  world.add(g);
+  return g;
+}
+
+// A stub of wall left standing chest-high. THIS IS COVER, and it is the one
+// piece of the vocabulary placed INSIDE the fighting floor on purpose:
+// ROOM-STANDARD §1 asks for open ground where fights happen and §2 asks that
+// you navigate around things, and the way both are true at once is a few
+// discrete pieces with clear space between them — which is how a Zelda arena
+// with pillars in it works.
+function lowWall(world, x, z, ry, D, len = 3) {
+  const g = new THREE.Group();
+  const n = Math.max(1, Math.round(len / 2));
+  const r = srnd(Math.round(x * 67 + z * 11));
+  const P = D.propTint || D.floorTint;
+  for (let i = 0; i < n; i++) {
+    const t = (i - (n - 1) / 2) * 2;
+    place(world, g, emberKit.wallMod, 'lowWall', t, -(0.55 + r() * 0.5), 0, 1.0, Math.PI / 2, 0, P);
+  }
+  for (let i = 0; i < 5; i++) {
+    place(world, g, emberKit.brick, 'lowWall', (r() - 0.5) * (len + 2), 0, (r() - 0.5) * 2.4,
+      0.75 + r() * 0.4, r() * 6.28, 0, P, false);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  world.add(g);
+  // the collider follows the run, in world space
+  const dx = Math.sin(ry) * len / 2, dz = Math.cos(ry) * len / 2;
+  const steps = Math.max(2, Math.round(len / 1.2));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps * 2 - 1;
+    world.addCircle(x + dx * t, z + dz * t, 0.62);
+  }
+  return g;
+}
+
+// The things the fire left behind, scattered where they fell. Skulls and coins
+// are SMALL — no colliders, and deliberately sparse: one skull is a story, six
+// is a haunted house, and this is a sad place rather than a spooky one.
+function aftermath(world, x, z, rad, D, seed = 1) {
+  const g = new THREE.Group();
+  const r = srnd(Math.round(x * 19 + z * 61 + seed));
+  const n = 2 + Math.round(r() * 2);
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+    const gltf = r() < 0.6 ? emberKit.skull : emberKit.coins;
+    place(world, g, gltf, 'aftermath', Math.cos(a) * dd, 0, Math.sin(a) * dd,
+      gltf === emberKit.coins ? 1.0 : 0.9, r() * 6.28, 0, D.propTint || D.floorTint, false);
+  }
+  g.position.set(x, 0, z);
+  world.add(g);
+  return g;
+}
+
 // --- ISLAND A — THE ASHFALL (arrival) ---------------------------------------
 export async function buildLa(scene) {
   const { world, spec, D } = base(scene, 'la');
-  const { halfW, halfD } = shell(world, spec, [gap('n'), gap('s'), gap('e')], D);
+  // THE FLOOR TELLS THE STORY FIRST. Scorch where each house burned, ash
+  // drifted against the west wall, rubble under the fallen gate — and a worn
+  // route from the Den door, past the gate, to the way onward. The path is the
+  // honest replacement for the guide-orbs: a track people made with their feet.
+  const { halfW, halfD } = shell(world, spec, [gap('n'), gap('s'), gap('e')], D, {
+    patches: [
+      { x: -11, z: 7, r: 4.5, kind: 'scorch' },
+      { x: -9, z: -10, r: 4.2, kind: 'scorch' },
+      { x: 12, z: -7, r: 3.8, kind: 'scorch' },
+      { x: -14, z: 1, r: 5.5, kind: 'ash' },
+      { x: 6, z: 10, r: 4.5, kind: 'ash' },
+      { x: 0, z: -6, r: 4.5, kind: 'rubble' },
+      { x: 11, z: 4, r: 3.0, kind: 'gravel' },
+    ],
+    paths: [
+      [[0, 13], [0, 6], [-1.5, -1], [0, -7], [0, -13]],   // Den → gate → onward
+      [[1, 0.5], [8, 1.5], [16, 0]],                       // the spur to the warrens
+    ],
+  });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lg1', { x: 0, z: 3.2, angle: Math.PI });
@@ -351,8 +675,71 @@ export async function buildLa(scene) {
 
   heroProp(world, 0, -6, 'gate', D.tint, D);               // ▲ THE FALLEN GATE
   world.markers.heroSpot = { x: 0, z: -6 };
+
+  // --- THE SETTLEMENT -------------------------------------------------------
+  // Ember Hollow is RUINED AND SAD (design/ROOM-STANDARD.md §7): somewhere
+  // people LIVED before it burned. Three homes, a wayside shrine and the two
+  // columns that came down when the roof went. This is the first room of the
+  // game and it now says all of that before Pip opens his mouth.
+  //
+  // Everything sits OUTSIDE the box x -8..8, z -4..6 — that is the fighting
+  // floor, where the two Shades come at you, and ROOM-STANDARD §1 is explicit
+  // that open ground is kept where fights happen. Dense at the edges, clear in
+  // the middle, which is how a Zelda screen is actually built.
+  ruinedHome(world, -11.5, 7, 0.28, D, { w: 6, d: 5 });
+  ruinedHome(world, -9.5, -10, -0.5, D, { w: 6.5, d: 4.5, keep: 0.5 });
+  ruinedHome(world, 12, -7.5, 0.9, D, { w: 5.5, d: 5, keep: 0.62 });
+  wayshrine(world, 11.5, 5, Math.PI - 0.3, D);
+  fallenColumn(world, 6.5, -10.5, 0.7, D);
+  fallenColumn(world, -4.5, -11.5, -0.9, D, 3.4);
+
+  // the gaps between the things that matter — no colliders, run straight through
+  rubbleField(world, -14.5, 2.5, 3.0, D, 16);
+  rubbleField(world, 13.5, 10, 3.2, D, 14);
+  rubbleField(world, -5, -12, 2.6, D, 12);
+  rubbleField(world, 8.5, -2.5, 2.4, D, 10);
+  rubbleField(world, 2.5, 11.5, 2.6, D, 10);
+
+  // --- WHAT YOU SEE THE MOMENT YOU ARRIVE -----------------------------------
+  // Kael spawns at (0, 9) facing north, and the camera shows roughly z 13.5
+  // down to -4. The first dressed pass put every cluster on the perimeter and
+  // that band came out EMPTY — dad's exact complaint, reproduced faithfully in
+  // the one frame that matters most. These sit in it: a cart that did not get
+  // out, and the stumps of the trees that lined the road.
+  cartWreck(world, -4.5, 6.5, 0.5, D);
+  cartWreck(world, 6, 9.5, -0.8, D);
+  for (const [sx, sz, ss] of [[5.5, 6.5, 1.0], [8, 3.5, 0.8], [-7.5, 10.5, 0.9], [3, 12, 0.75]]) {
+    const st = tinted(emberKit.stump, 'deadStump', D.propTint);
+    st.position.set(sx, 0, sz); st.scale.setScalar(ss);
+    st.rotation.y = sx * 1.7;
+    world.add(st); world.addCircle(sx, sz, 0.55 * ss);
+  }
+
+  // COVER TO FIGHT AROUND. Two stubs, well apart, inside the fighting floor —
+  // the Shades come at (-6, 2) and (6, -1) and now there is something to break
+  // line of sight on instead of a bare plate.
+  lowWall(world, -3, 1.5, 0.35, D, 3.4);
+  lowWall(world, 5.5, -1.5, -1.15, D, 3.0);
+  aftermath(world, -11.5, 5.5, 2.2, D, 1);
+  aftermath(world, 12, -6, 2.0, D, 2);
+
+  // --- THINGS TO DO (ROOM-STANDARD §4) --------------------------------------
+  // 1. BREAK THINGS OPEN. Pots and crates at each house, where a family's
+  //    belongings would actually be. main.js spawns these from the marker.
+  world.markers.breakables = [
+    { x: -9.5, z: 5.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
+    { x: -12.5, z: 4.5, kind: 'vase' },
+    { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'vase' },
+    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'barrel' },
+    { x: 9.5, z: 6.5, kind: 'vase' },
+  ];
+  // 2. AN ALCOVE FOUND BY EXPLORING OFF-PATH. Behind the east house, screened
+  //    from the worn route, a nook you only see if you go and look.
+  wallRun(world, 14.5, -11.5, 14.5, -3.5, D);
+  visibleReward(world, 15.2, -7.5, 'l1_ash_nook', { shards: 12 });
+
   world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
-  scatter(world, halfW, halfD, D, 11, 16);
+  scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
   // The two wall runs are the point: without them the "gate" sat alone in the
   // middle of a 32u island and a child simply walked round it to the chest,
@@ -366,7 +753,6 @@ export async function buildLa(scene) {
   world.markers.crackPromise = { x: -11, z: -4 };
   return finish(world, spec, D);
 }
-
 export async function buildLa1(scene) {
   const { world, spec, D } = base(scene, 'la1');
   const { halfW, halfD } = shell(world, spec, [gap('w')], D);

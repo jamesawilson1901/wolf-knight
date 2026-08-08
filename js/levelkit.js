@@ -56,24 +56,52 @@ export const gap = (side, half = DOOR_HALF, centre = 0) =>
 // is still pointing at, and the room after that renders black.
 // ---------------------------------------------------------------------------
 const tintCache = new Map();
+// SURFACE CLASSES.
+//
+// A Quaternius dungeon piece is not one material. Wall_Modular alone carries
+// Wall_Dark, Wall_Medium, Wall_Highlights and Grey_Floor — so eleven wall
+// fragments arrive as forty-four meshes in four material buckets, and
+// flattenStatic() buckets PER SPATIAL CELL as well, which splits each of those
+// again. Measured on the rebuilt `la`: 309 loose meshes, 36 merged draws, and
+// 107 stranded in buckets of one or two that merging will not touch.
+//
+// The materials are all flat colours with no map, so the only thing those four
+// names carry is a VALUE step. Collapsing them to three shared classes keeps
+// the light-and-shade and triples every bucket size.
+const SURFACE = {
+  // darkest step
+  Wall_Dark: 'dark', StoneDark: 'dark', Stone_Dark: 'dark', DarkWood: 'dark',
+  DarkMetal: 'dark', dirt: 'dark',
+  // the body of the surface
+  Wall_Medium: 'mid', Stone: 'mid', Grey_Floor: 'mid', Grey: 'mid', Main: 'mid',
+  colormap: 'mid', grass: 'mid', Ceramic: 'mid', Wood: 'mid', stone: 'mid',
+  stoneDark: 'dark',
+  // catch the light
+  Wall_Highlights: 'light', Metal: 'light',
+};
+// what each class does to the tint it is given
+const SURFACE_VALUE = { dark: 0.66, mid: 1.0, light: 1.26 };
+
 export function tintedModel(gltf, key, tint, darken = 1) {
   const root = prepareModel(gltf.scene.clone());
   root.traverse((n) => {
     if (!n.isMesh) return;
-    // THE CACHE KEY IS THE MATERIAL'S IDENTITY, NOT THE CALLER'S LABEL.
-    // It used to start with `key` — the caller's name for the prop — so a
-    // rock and a stump cut from the SAME atlas material at the same tint got
-    // two different materials, and flattenStatic() could not merge them
-    // because it buckets by material. Keying on what actually determines
-    // appearance (material name + texture + tint) means every prop in a
-    // district that shares a surface shares one material, and the whole
-    // scatter collapses into a single merged draw.
+    // THE CACHE KEY IS THE MATERIAL'S SURFACE CLASS, NOT ITS NAME.
+    //
+    // It started as the caller's label, which meant a rock and a stump cut from
+    // the same atlas at the same tint got two materials and could never merge.
+    // Keying on the material NAME fixed that. Keying on the CLASS fixes the
+    // next order of the same problem: four names that differ only in brightness
+    // become one material at three values, so a house's wall fragments land in
+    // one bucket instead of four.
     const tex = n.material.map ? n.material.map.uuid : 'nomap';
-    const ck = `${n.material.name}|${tex}|${tint}|${darken}`;
+    const cls = SURFACE[n.material.name] || n.material.name;
+    const v = SURFACE_VALUE[cls] !== undefined ? SURFACE_VALUE[cls] : 1;
+    const ck = `${cls}|${tex}|${tint}|${darken}`;
     if (!tintCache.has(ck)) {
       const m = n.material.clone();
       m.name = `kit_${ck}`;
-      m.color.setHex(tint).multiplyScalar(darken);
+      m.color.setHex(tint).multiplyScalar(darken * v);
       SHARED.add(m);
       tintCache.set(ck, m);
     }
