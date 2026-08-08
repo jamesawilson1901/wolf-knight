@@ -367,7 +367,61 @@ three. Needs an encounter pass, not a redesign.
 # B · PERFORMANCE
 
 ## B1 · Two Level 2 rooms are over the draw-call ceiling
-**MEDIUM · affects L2 · one session · independent**
+**✅ DONE (v3.30.0) — and it was never really a Level 2 problem.**
+
+The audit was right that the cause is characters rather than geometry, and right
+that the lever is shadow-casting. It was wrong that this is a whole-game visual
+trade-off: there is a version that costs nothing to look at.
+
+`prepareCharacter()` in `js/assets.js` set `castShadow = true` on **every mesh of
+every character**. A cast mesh is submitted twice — once to the shadow depth
+pass, once to the beauty pass — and a character is not one mesh. The knight is
+nine skinned parts plus a sword and a shield; every skeleton is nine more. Skinned
+meshes are also the one thing `js/batch.js` can never merge, so the cost is
+permanent and it is paid in every room, by the player, whether or not any enemy
+is present.
+
+Measured in `vc1`, then the worst room in the game: **32 of 112 draw calls were
+characters entering the shadow map.**
+
+**One character now casts one shadow** — from its largest skinned mesh, which is
+the body, which is what the silhouette is made of. Held items (sword, shield,
+blade) arrive through the same function as their own root with no skinned mesh,
+so they stop casting too; that alone was the partial the audit suggested, worth 4
+of the 29.
+
+It is invisible. Screenshots of the Bloomfall with five hounds, animation frozen
+so the shadow policy is the *only* difference, diffed against a control pair of
+identical renders:
+
+| | pixels differing >8/255 | >32/255 |
+|---|---|---|
+| control (same policy, two shots) | 2.40% | 1.62% |
+| **body-only casting** | **2.49%** | **1.64%** |
+| no character shadows at all | 3.26% | 2.22% |
+
+Body-only sits inside the noise floor. Switching character shadows off entirely
+saves only 5 more calls and *is* visible, so it was not taken.
+
+### What it did to the whole game
+
+Worst-case draw calls, sweeping a grid of standing positions per room (the
+frustum decides what is submitted, so a single sample at the spawn understates
+it — `tools/probe-drawcall-attrib.mjs` and the sweep in the same family):
+
+| room | before | after |
+|---|---|---|
+| `vc1` | 110 | **82** |
+| `vc2` | 105 | **83** |
+| `vh` | 88 | 82 |
+| `vb2` / `vb3` | 90 | 58 / 60 |
+| Level 3 worst frame *through a fight* | 94 | **77** |
+
+Every room in all three rebuilt levels is now at or under 86, with 14+ calls of
+headroom, and Level 2 verifies ALL CLEAN. Triangle counts fell with the calls,
+since shadow-pass triangles count too.
+
+Original finding below.
 
 Dressed, measured: `vc1` **112**, `vc2` **106**, against a ceiling of 100.
 Everything else fits (hub 82, worst Level 3 room 83).
@@ -383,6 +437,29 @@ calls, which disproves the obvious fix.
 The real lever is shadow-casting on skinned characters, which is a whole-game
 visual trade-off rather than a Level 2 decision — hence flagged, not taken.
 A cheaper partial: drop `castShadow` on held items (shield, blade) only.
+
+## B3 · The Den is the last room over the ceiling
+**MEDIUM · affects the hub · part of a session · independent**
+**Found while doing B1 (v3.30.0).**
+
+With B1 in, the Den is the only room in the game over 100 draw calls:
+**113 worst-case**, standing at (-5, 8). It was far worse before B1 — it holds
+more characters than any other room — but characters are no longer its problem.
+
+Attribution (`tools/probe-drawcall-attrib.mjs den`): turning off static-mesh
+shadow casting saves **18**, character shadows now save only 5. The Den's cost
+is its own static geometry, and the reason is simple: it is hand-built in
+`js/rooms.js`, and **the shipping rooms never call `flattenStatic()`**. Only the
+three rebuilt levels do, from `finish()`.
+
+The fix is to batch it like a rebuilt level. One prerequisite is already in
+place: `world.npcs` has been added to `flattenStatic`'s protected-key list
+(`js/batch.js`), because without it the villagers would be merged into the
+scenery and stop moving — the exact failure the function's own comment warns
+about. It changes nothing today, since no room with NPCs calls it yet.
+
+Worth checking the other hand-built shipping rooms in the same pass; they are
+all unbatched, and only the Den has been measured.
 
 ## B2 · No LOD anywhere
 **LOW · affects all · one session**

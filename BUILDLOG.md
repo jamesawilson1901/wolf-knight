@@ -2584,3 +2584,77 @@ Recounted from source, confirmed against a live probe: Level 1 has 8 placements
 (not 13), Level 2 has 20, Level 3 had 16 (not 13). Only the Level 2 row was
 right — the earlier count missed multi-line arrays and double-counted a
 conditional. The finding held anyway, and the gap it described was real.
+
+## v3.30.0 — One character, one shadow (B1) (2026-08-08)
+
+`vc1` and `vc2` were the last two rooms over the 100 draw-call ceiling. The audit
+had already established that the cause is characters rather than geometry, and
+that the lever is shadow-casting — and had flagged it as a whole-game visual
+trade-off rather than a Level 2 decision, so it went unfixed.
+
+It is a whole-game change. It is not a trade-off.
+
+### The line
+
+`prepareCharacter()` in `js/assets.js` set `castShadow = true` on **every mesh of
+every character**. A cast mesh is submitted twice — once to the shadow depth
+pass, once to the beauty pass — and a character is not one mesh:
+
+    knight    9 skinned parts (body, head, 2 arms, 2 legs, helmet, visor, cape)
+              + sword + shield
+    skeleton  9 skinned parts, + shield + blade on a shield-bearer
+
+Skinned meshes are also the one thing `js/batch.js` can never merge, so that
+cost is permanent, and it is paid in every room in the game by the player alone,
+whether or not there is an enemy in it. Measured in `vc1`: **32 of 112 draw
+calls were characters entering the shadow map.**
+
+A character now casts from its LARGEST skinned mesh only — the body, which is
+what the silhouette is made of. Held items come through the same function as
+their own root with no skinned mesh in them, so they stop casting too.
+
+### Proving it is invisible rather than asserting it
+
+The first diff was useless: two renders of the Bloomfall differed by 3.5% of
+pixels whether the shadow policy changed or not, because the characters are
+animating between shots. With the animation mixers frozen and a control pair of
+identical renders to establish the noise floor:
+
+    control (same policy, two shots)   2.40% of pixels differ >8/255
+    body-only casting                  2.49%   <- inside the noise
+    no character shadows at all        3.26%   <- visibly different
+
+Body-only is indistinguishable from full per-mesh shadows. Turning character
+shadows off entirely buys only 5 more calls and is measurably visible, so it was
+not taken. Without the control shot the first number would have looked like
+evidence of a regression that was not there.
+
+### What it did to the whole game
+
+Worst-case, sweeping a grid of standing positions per room rather than sampling
+once at the spawn — the frustum decides what gets submitted, and the Den varies
+between 89 and 113 depending on where you stand:
+
+    vc1                              110  ->  82
+    vc2                              105  ->  83
+    vh                                88  ->  82
+    vb2 / vb3                         90  ->  58 / 60
+    Level 3 worst frame IN A FIGHT    94  ->  77
+
+Every room in the three rebuilt levels is now at or under 86. Level 2 verifies
+ALL CLEAN — that assertion has been red since the audit. Triangles fell with the
+calls, since shadow-pass triangles count too.
+
+### The Den is now the last room over the ceiling
+
+113 worst-case, and characters are no longer why. Its static geometry casts 18
+calls' worth of shadow, and it is hand-built in `js/rooms.js` — **the shipping
+rooms never call `flattenStatic()`**; only the three rebuilt levels do. Logged
+as B3 rather than fixed here: batching a room with villagers in it is a
+different job from a shadow policy.
+
+One prerequisite went in now, because it is a trap otherwise: `world.npcs` is in
+`flattenStatic`'s protected-key list. It changes nothing today — no room with
+NPCs calls the function — but without it the villagers would be merged into the
+scenery and stop moving, which is precisely the failure that function's own
+comment warns about.

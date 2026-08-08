@@ -54,8 +54,13 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
 
   // Things gameplay holds a handle on, and everything under them.
   const held = new Set(world._keepLoose || []);
+  // `npcs` is in this list defensively: no room that has NPCs calls
+  // flattenStatic today, so it changes nothing now — but the Den is the worst
+  // room in the game for draw calls and batching it is the obvious next move,
+  // and without this the villagers would be merged into the scenery and stop
+  // moving. That is the exact failure mode the note below warns about.
   for (const key of ['enemies', 'boulders', 'burnables', 'crackables', 'pups', 'plates',
-    'braziers', 'shatterables', 'cuttables', 'checkpoints']) {
+    'braziers', 'shatterables', 'cuttables', 'checkpoints', 'npcs']) {
     for (const e of (world[key] || [])) {
       if (!e || typeof e !== 'object') continue;
       // don't guess the field name — a brazier keeps its flame on `.flame`, a
