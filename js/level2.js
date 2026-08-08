@@ -178,7 +178,7 @@ export async function loadCaveKit() {
 }
 
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
-  darkZone, breadcrumbs } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
+  darkZone } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
@@ -494,7 +494,6 @@ export async function buildVh(scene) {
 
   world.markers.restSpot = { x: -8, z: 8 };     // Old Bram's camp
   world.markers.hubStage = stage;               // for the headless verifier
-  breadcrumbs(world, [[0, 8], [-6, 4], [-11, 0]], 0xffd18a);
   scatter(world, halfW, halfD, D, 71, 18, { spin: 0 });   // fitted masonry: no free rotation
   return finish(world, spec, D);
 }
@@ -509,7 +508,6 @@ export async function buildVga(scene) {
   sideDoor(world, 'e', halfW, halfD, 'vh', { x: -15.4, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[3, 0], [-3, 0]], 0x9fe8f4);
   return finish(world, spec, D);
 }
 
@@ -527,7 +525,6 @@ export async function buildVa1(scene) {
   // a cracked pile you meet BEFORE you have the tool — the promise, in situ
   crackedPile(world, 'l2_va1_a', -11, -7);
   visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16 });
-  breadcrumbs(world, [[13, 0], [7, 2], [0, 4], [-7, 2], [-13, 0]], 0x9fe8f4);
   scatter(world, halfW, halfD, D, 81, 16, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLB', 'column'] });
   return finish(world, spec, D);
 }
@@ -550,7 +547,6 @@ export async function buildVa2(scene) {
   // way in, now breakable.
   world.markers.practiceCracks = [{ x: 6, z: 5 }, { x: -2, z: 7 }, { x: 10, z: -2 }];
   for (const [i, p] of world.markers.practiceCracks.entries()) crackedPile(world, `l2_va2_${i}`, p.x, p.z);
-  breadcrumbs(world, [[13, 0], [6, 0], [0, 0], [-6, 0], [-13, 0]], 0x9fe8f4);
   scatter(world, halfW, halfD, D, 82, 22, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
   return finish(world, spec, D);
 }
@@ -601,7 +597,6 @@ export async function buildVgb(scene) {
   sideDoor(world, 'w', halfW, halfD, 'vh', { x: 15.4, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb1', { x: -13.5, z: 0, angle: Math.PI / 2 });
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[-3, 0], [3, 0]], 0xf0e2b8);
   return finish(world, spec, D);
 }
 
@@ -623,7 +618,6 @@ export async function buildVb1(scene) {
   world.markers.minionSpots = state.formsUnlocked.includes('earth_wolf')
     ? [{ x: 2, z: -3 }, { x: 8, z: 6 }, { x: -7, z: 5 }]
     : [{ x: 2, z: -3 }, { x: 8, z: 6 }];
-  breadcrumbs(world, [[-13, 0], [-6, -2], [1, -2], [8, 0], [13, 0]], 0xf0e2b8);
   scatter(world, halfW, halfD, D, 91, 20, { spin: 0, kinds: ['brick', 'rockLB', 'rockSA', 'skull'] });
   return finish(world, spec, D);
 }
@@ -641,7 +635,6 @@ export async function buildVb2(scene) {
   world.markers.shieldSpots = [{ x: -2, z: 2 }];
   world.markers.minionSpots = [{ x: 9, z: 4 }, { x: -7, z: -4 }];
   crackedPile(world, 'l2_vb2_a', 11, 6);
-  breadcrumbs(world, [[-13, 0], [-6, 2], [0, 2], [7, 0], [13, 0]], 0xf0e2b8);
   scatter(world, halfW, halfD, D, 92, 26, { spin: 0, kinds: ['brick', 'skull', 'rockSB', 'column'] });
   return finish(world, spec, D);
 }
@@ -736,7 +729,6 @@ export async function buildVgc(scene) {
   sideDoor(world, 's', halfW, halfD, 'vh', { x: -9, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc1', { x: 0, z: 10.5, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[0, 3], [0, -3]], 0x8fe0d4);
   return finish(world, spec, D);
 }
 
@@ -762,7 +754,6 @@ export async function buildVc1(scene) {
   // still over; a character costs far more than the room's own geometry here
   // (43 of the original 106 was three of them). Two enemies on a three-terrace
   // stair is the right fight anyway — the stair IS the difficulty.
-  breadcrumbs(world, [[0, 10], [5, 5], [5, 0], [-2, -6], [0, -11]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 101, 18, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
   return finish(world, spec, D);
 }
@@ -788,7 +779,6 @@ export async function buildVc2(scene) {
               { system: 'cut', id: 'l2_bramble_gate', region: REGION });
   visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24 });
   world.markers.bramblePromise = { x: 11, z: -3 };
-  breadcrumbs(world, [[0, 10], [-3, 4], [-3, -2], [0, -10]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 102, 24, { spin: 1, kinds: ['rockSB', 'rockLC', 'column', 'brick'] });
   return finish(world, spec, D);
 }

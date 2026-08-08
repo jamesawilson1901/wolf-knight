@@ -109,7 +109,7 @@
     }
     #pause-btn {
       position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
-      width: 108px; height: 108px; border-radius: 22px;
+      width: 60px; height: 60px; border-radius: 16px;
       background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
       display: flex; align-items: center; justify-content: center;
       font-size: 42px; color: #e8ddd0; touch-action: none;
@@ -122,7 +122,7 @@
       padding: calc(14px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
     }
     #cheat-btn {
-      margin-top: 8px; width: 108px; height: 108px; border-radius: 22px;
+      margin-top: 8px; width: 60px; height: 60px; border-radius: 16px;
       display: flex; align-items: center; justify-content: center;
       font-size: 42px; opacity: .35;
     }
@@ -282,12 +282,12 @@
       border-radius: 50%; transform: translate(-50%, -50%);
     }
     #joy-base {
-      width: 150px; height: 150px;
+      width: 104px; height: 104px;
       border: 2px solid rgba(232, 221, 208, .35);
       background: rgba(232, 221, 208, .07);
     }
     #joy-knob {
-      width: 58px; height: 58px;
+      width: 42px; height: 42px;
       background: rgba(232, 221, 208, .45);
       box-shadow: 0 2px 10px rgba(0,0,0,.35);
     }
@@ -295,7 +295,7 @@
       position: fixed; display: none; z-index: 6; pointer-events: none;
       left: calc(104px + env(safe-area-inset-left));
       bottom: calc(56px + env(safe-area-inset-bottom));
-      width: 110px; height: 110px; border-radius: 50%;
+      width: 76px; height: 76px; border-radius: 50%;
       border: 2px dashed rgba(232, 221, 208, .8);
       opacity: .22; transition: opacity .3s ease;
     }
@@ -326,14 +326,27 @@
     .pick-option.hot { transform: translate(-50%, -50%) scale(1.22); border-color: #fff; }
     .pick-option.current { outline: 3px solid rgba(255,255,255,.8); outline-offset: 2px; }
     .pick-option.locked { filter: grayscale(.75) brightness(.65); }
-    /* TOUCH TARGET LAW (v3.22): every control a child has to hit is at least
-       2cm x 2cm on the target phone. On a 6.4" 1080x2340 Android in landscape
-       the CSS viewport is 780x360 and one CSS pixel is 0.0189cm, so 2cm is
-       105.8 CSS px. Everything below is 108. The buttons ARE large — that is
-       the point; a five-year-old's aim is the constraint, not screen area. */
+    /* CONTROL SIZES (v3.35) — the 2cm law is GONE, on dad's call after the
+       first real playthrough: "the buttons are way too big and take up too
+       much of the screen."
+
+       The old rule set every control to exactly 108 px, because 2cm on the
+       target phone is 105.8 CSS px. It was applied to everything equally, so a
+       six-button cluster plus the joystick ate roughly 41% x 60% of a 780x360
+       screen — and the note here used to argue that was the point. Played, it
+       is not: it is a rule followed past the point where it helped.
+
+       What replaces it is not a smaller number, it is TWO ideas:
+         · CONTEXTUAL — jump, defend and ranged only exist while they can
+           actually be used, so the usual case is two buttons, not six.
+         · SIZED BY ROLE — the buttons hit in a panic stay biggest; the ones
+           tapped calmly (pause, bag, potions, form badge) are small, because a
+           mis-tap there costs nothing.
+       Sizes are judged by eye against the screen and tested on the kids, which
+       is the only measurement that was ever going to settle it. */
     #btn-attack {
-      position: fixed; right: calc(126px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
-      z-index: 7; width: 108px; height: 108px; border-radius: 50%;
+      position: fixed; right: calc(110px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
+      z-index: 7; width: 92px; height: 92px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       background: rgba(168, 90, 74, .85);
       border: 3px solid rgba(255,255,255,.45);
@@ -342,7 +355,7 @@
     }
     #special-btn {
       position: fixed; right: calc(10px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 7;
-      width: 108px; height: 108px; border-radius: 50%;
+      width: 92px; height: 92px; border-radius: 50%;
       display: none; align-items: center; justify-content: center;
       background: rgba(107, 86, 168, .8);
       border: 3px solid rgba(255,255,255,.4);
@@ -353,8 +366,8 @@
     #special-ring { position: absolute; inset: -3px; border-radius: 50%; z-index: -1; }
     #special-icon { font-size: 46px; }
     #form-badge {
-      position: fixed; right: calc(242px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 7;
-      width: 108px; height: 108px; border-radius: 50%;
+      position: fixed; right: calc(212px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 7;
+      width: 60px; height: 60px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 40px; border: 2px solid rgba(255,255,255,.5);
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
@@ -367,10 +380,10 @@
       touch-action: none; font-size: 44px;
       box-shadow: 0 3px 10px rgba(0,0,0,.4);
     }
-    #btn-ranged { right: calc(10px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; display: none; }
-    #btn-defend { right: calc(126px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; background: rgba(52, 74, 96, .75); display: none; }
+    #btn-ranged { right: calc(10px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); width: 68px; height: 68px; display: none; }
+    #btn-defend { right: calc(86px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); width: 68px; height: 68px; background: rgba(52, 74, 96, .75); display: none; }
     #btn-defend:active { background: rgba(96, 140, 180, .9); border-color: #fff; }
-    #btn-jump { right: calc(242px + env(safe-area-inset-right)); bottom: calc(126px + env(safe-area-inset-bottom)); width: 108px; height: 108px; background: rgba(72, 84, 52, .75); display: none; }
+    #btn-jump { right: calc(162px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); width: 68px; height: 68px; background: rgba(72, 84, 52, .75); display: none; }
     #form-badge { display: none; }
     #btn-ranged.revealed, #btn-defend.revealed, #btn-jump.revealed,
     #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
@@ -384,9 +397,9 @@
       display: flex; gap: 8px;
     }
     .potion-slot {
-      width: 108px; height: 108px; border-radius: 22px;
+      width: 60px; height: 60px; border-radius: 16px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 52px; background: rgba(80, 30, 40, .55);
+      font-size: 30px; background: rgba(80, 30, 40, .55);
       border: 2px solid rgba(255,160,140,.5); touch-action: none;
     }
     .potion-slot.empty { filter: grayscale(1) brightness(.5); border-style: dashed; }
@@ -409,8 +422,8 @@
       background: rgba(40,28,60,.8); border: 2px solid rgba(255,255,255,.5);
     }
     #inv-btn {
-      position: fixed; right: calc(126px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
-      width: 108px; height: 108px; border-radius: 22px;
+      position: fixed; right: calc(78px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
+      width: 60px; height: 60px; border-radius: 16px;
       background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
       display: flex; align-items: center; justify-content: center;
       font-size: 42px; touch-action: none;
@@ -631,7 +644,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.34.0</div>
+  <div id="badge">Wolf Knight &middot; v3.35.0</div>
 
   <script>
     window.addEventListener('error', (e) => {

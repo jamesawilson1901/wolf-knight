@@ -198,11 +198,36 @@ export class Narration {
     if (!state.spoken) state.spoken = {};
     this._voice = null;
     if ('speechSynthesis' in window) {
+      // CHOOSE THE VOICE DELIBERATELY.
+      //
+      // This used to prefer `localService` voices, which sounds sensible and is
+      // exactly backwards on the device the kids play on: on Android the local
+      // voices are the old low-quality eSpeak-style ones, while the good
+      // natural-sounding engines are the NETWORK ones. That preference is why
+      // the narration has sounded like a robot on every playtest.
+      //
+      // Prefer, in order: a voice whose name we recognise as one of the good
+      // modern engines; any non-local (network) English voice; then anything
+      // English. A named-quality match beats locality every time.
+      const GOOD = /natural|neural|enhanced|premium|siri|google|samsung|aria|guy|jenny|libby|ryan|sonia/i;
+      const AVOID = /espeak|compact|robot|pico/i;
+      const score = (v) => {
+        if (!v.lang || !v.lang.startsWith('en')) return -1;
+        let n = 0;
+        if (GOOD.test(v.name)) n += 4;
+        if (!v.localService) n += 2;          // network voices are the good ones
+        if (AVOID.test(v.name)) n -= 5;
+        if (/en-GB/i.test(v.lang)) n += 1;    // the kids' own accent
+        return n;
+      };
       const pick = () => {
         const vs = speechSynthesis.getVoices();
-        this._voice =
-          vs.find((v) => v.lang && v.lang.startsWith('en') && v.localService) ||
-          vs.find((v) => v.lang && v.lang.startsWith('en')) || vs[0] || null;
+        let best = null, bestScore = -1;
+        for (const v of vs) {
+          const n = score(v);
+          if (n > bestScore) { bestScore = n; best = v; }
+        }
+        this._voice = best || vs[0] || null;
       };
       pick();
       speechSynthesis.addEventListener('voiceschanged', pick);

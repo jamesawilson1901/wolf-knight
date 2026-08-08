@@ -387,26 +387,6 @@ export function makeBuilders({ kit, isGrey }) {
     world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
   }
 
-  // Breadcrumbs along the critical path. One InstancedMesh, one draw call.
-  function breadcrumbs(world, pts, colour = 0xffb45a) {
-    if (!pts.length) return;
-    const geo = new THREE.SphereGeometry(0.13, 8, 6);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x000000, emissive: colour, emissiveIntensity: 2.2, roughness: 1,
-    });
-    const inst = new THREE.InstancedMesh(geo, mat, pts.length);
-    const dummy = new THREE.Object3D();
-    pts.forEach((p, i) => {
-      dummy.position.set(p[0], 0.9, p[1]);
-      dummy.updateMatrix();
-      inst.setMatrixAt(i, dummy.matrix);
-    });
-    world.add(inst);
-    world.keepLoose(inst);
-    world.onAnimate((t) => { inst.position.y = Math.sin(t * 1.6) * 0.12; });
-    world.markers.sparkSpots = pts.map((p) => ({ x: p[0], z: p[1] }));
-  }
-
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
-    promiseGate, visibleReward, darkZone, breadcrumbs, protoMaterial };
+    promiseGate, visibleReward, darkZone, protoMaterial };
 }

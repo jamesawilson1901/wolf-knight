@@ -1413,7 +1413,9 @@ async function start() {
   renderShards();
   renderLevel();
   checkStickers();
-  player.onFormChanged = () => ui.refreshBadge();
+  // CONTEXTUAL BUTTONS: the throw belongs to the form, so the button that
+  // fires it has to appear and disappear WITH the form, not just at load.
+  player.onFormChanged = () => { ui.refreshBadge(); refreshControlReveal(); };
   input.onHold = (x, y, pointerId) => {
     if (transitioning) return false;
     ui.openPicker(x, y, pointerId);

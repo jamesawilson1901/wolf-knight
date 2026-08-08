@@ -195,7 +195,7 @@ export async function loadWoodKit() {
 }
 
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
-  darkZone, breadcrumbs } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
+  darkZone } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
@@ -560,7 +560,6 @@ export async function buildT1a(scene) {
   // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
   // labelled "first Thorn Hounds" — a hound here contradicted both, and made
   // the level open on a fight instead of on the feeling that something is off.
-  breadcrumbs(world, [[0, 7], [0, 3], [0, -6]], 0xc8e88a);
   scatter(world, halfW, halfD, D, 121, 18, { spin: 1, kinds: ['treeA', 'stump', 'rockSA', 'bush'] });
   return finish(world, spec, D);
 }
@@ -589,7 +588,6 @@ export async function buildT1b(scene) {
               { system: 'shatter', id: 'l3_spring_ice', region: REGION });
   visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };
-  breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xc8e88a);
   scatter(world, halfW, halfD, D, 122, 20, { spin: 1, kinds: ['treeA', 'treeB', 'stump', 'rockSB'] });
   return finish(world, spec, D);
 }
@@ -612,7 +610,6 @@ export async function buildTc1(scene) {
   sideDoor(world, 's', halfW, halfD, 't1b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't2a', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[0, 5], [0, 0], [0, -5]], 0xc8e88a);
   scatter(world, halfW, halfD, D, 124, 12, { spin: 1, kinds: ['treeA', 'stump'] });
   return finish(world, spec, D);
 }
@@ -642,7 +639,6 @@ export async function buildT2a(scene) {
   // 1.2 u/s, which is the only kind of thing that is fair to put where a child
   // cannot see without the Dark Wolf's eyes.
   world.markers.slimeSpots = [{ x: -7, z: -1, variant: 'bramble' }];
-  breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 131, 20, { spin: 1, kinds: ['treeB', 'mushT', 'mushG', 'rockSA'] });
   return finish(world, spec, D);
 }
@@ -660,7 +656,6 @@ export async function buildT2b(scene) {
     { x: -7, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: 7, z: 5, variant: 'bramble' }];
   wallRun(world, 4, -4, 4, 6, D);
-  breadcrumbs(world, [[0, 8], [-3, 2], [-3, -5], [0, -9]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 132, 22, { spin: 1, kinds: ['treeB', 'mushT', 'stump'] });
   return finish(world, spec, D);
 }
@@ -722,7 +717,6 @@ export async function buildTc2(scene) {
   }
   // ...and then the same verb used on something that is NOT a tangle at all.
   logBridge(world, 'l3_tc2_bridge', 0, -6);
-  breadcrumbs(world, [[0, 5], [0, 0], [0, -6]], 0x8fe0d4);
   return finish(world, spec, D);
 }
 
@@ -758,7 +752,6 @@ export async function buildT3a(scene) {
     world.markers.rootWallPromise = { x: -13, z: 0 };
   }
   world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }, { x: -6, z: 4, variant: 'thorn' }];
-  breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 141, 20, { spin: 1, kinds: ['logStack', 'stump', 'rockLB', 'treeA'] });
   return finish(world, spec, D);
 }
@@ -775,7 +768,6 @@ export async function buildT3b(scene) {
     bramble(world, `l3_t3b_${i}`, p[0], p[1], 3.0, 1.2, true);
   }
   world.markers.houndSpots = [{ x: 8, z: 4, variant: 'thorn' }, { x: -8, z: -4, variant: 'thorn' }];
-  breadcrumbs(world, [[0, 8], [0, 0], [0, -8]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 142, 22, { spin: 1, kinds: ['logStack', 'rockLC', 'stump'] });
   return finish(world, spec, D);
 }
@@ -849,7 +841,6 @@ export async function buildTkn(scene) {
   });
   world.markers.plateSpots = [{ x: 6, z: 2, id: 'l3_knot_p1' }];
 
-  breadcrumbs(world, [[0, 8], [-6, 6], [0, -8]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 144, 16, { spin: 1, kinds: ['logStack', 'rockLA'] });
   return finish(world, spec, D);
 }
@@ -861,7 +852,6 @@ export async function buildTc3(scene) {
   sideDoor(world, 's', halfW, halfD, 'tkn', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't4a', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[0, 5], [0, 0], [0, -5]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 145, 12, { spin: 1, kinds: ['stump', 'rockSA'] });
   return finish(world, spec, D);
 }
@@ -923,7 +913,6 @@ export async function buildT4a(scene) {
     { x: 6, z: -6, variant: 'elderthorn' },
     { x: -10, z: 2, variant: 'thorn' }, { x: 7, z: 5, variant: 'thorn' },
     { x: 3, z: 8, variant: 'thorn' }];
-  breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xffd0e0);
   scatter(world, halfW, halfD, D, 151, 20, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB', 'bush'] });
   return finish(world, spec, D);
 }
@@ -948,7 +937,6 @@ export async function buildT4b(scene) {
   });
   world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' },
     { x: 7, z: 5, variant: 'thorn' }];
-  breadcrumbs(world, [[0, 8], [0, 0], [0, -5]], 0xffd0e0);
   scatter(world, halfW, halfD, D, 152, 24, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
   return finish(world, spec, D);
 }
@@ -973,7 +961,6 @@ export async function buildTc4(scene) {
     { half: BOSS_DOOR_HALF, when: () => WS.get(REGION, 'knotCut') });
   world.markers.restSpot = { x: -3, z: 0 };
   world.markers.potionSpot = { x: 3, z: 0 };
-  breadcrumbs(world, [[0, 5], [0, -5]], 0xffd0e0);
   return finish(world, spec, D);
 }
 
@@ -1022,7 +1009,6 @@ export async function buildTsA(scene) {
     log.scale.set(3.0, 2.0, 2.0);
     world.add(log);
   }
-  breadcrumbs(world, [[7, 0], [0, 0], [-7, 0]], 0xffd0e0);
   return finish(world, spec, D);
 }
 
@@ -1033,7 +1019,6 @@ export async function buildTsB(scene) {
   sideDoor(world, 'e', halfW, halfD, 't3a', { x: -10, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 't2a', { x: 10, z: 0, angle: -Math.PI / 2 });
   world.markers.shortcutSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[7, 0], [0, 0], [-7, 0]], 0x8fe0d4);
   return finish(world, spec, D);
 }
 

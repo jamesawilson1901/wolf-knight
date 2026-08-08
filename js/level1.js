@@ -149,7 +149,7 @@ export async function loadEmberKit() {
 // is a guarantee that they eventually will not. Call signatures are unchanged.
 // ---------------------------------------------------------------------------
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
-  darkZone: protoDarkZone, breadcrumbs: sparks } = makeBuilders({
+  darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
   });
@@ -247,11 +247,21 @@ function heroProp(world, x, z, kind, tint, D = null) {
   };
 
   if (kind === 'gate') {
-    // two standing castle pillars with the lintel fallen off one of them
+    // THE FALLEN GATE. Two pillars still standing; the lintel came down and now
+    // lies across the ground between them.
+    //
+    // It used to be placed at y = 4.9 lying on its side — resting on NOTHING.
+    // The uprights are at x = ±3.5 and a pillar on its side reaches x −1.8→3.0,
+    // so it touched neither of them and simply hovered at head height in the
+    // first room of the game. Dad spotted it on his first playthrough.
+    //
+    // A lintel that has FALLEN belongs on the floor, which also reads the story
+    // better: this gate is broken, not merely old.
     put(emberKit.pillar, 'heroPillar', -3.5, 0, 0, 2.4);
     put(emberKit.pillar, 'heroPillar', 3.5, 0, 0, 2.4);
-    put(emberKit.pillar, 'heroPillar', 0.6, 4.9, 0, 2.4, 0, Math.PI / 2);
+    put(emberKit.pillar, 'heroPillar', 0.4, 0.55, -0.7, 2.4, 0.18, Math.PI / 2);
     world.addCircle(x - 3.5, z, 1.2); world.addCircle(x + 3.5, z, 1.2);
+    world.addCircle(x + 0.4, z - 0.7, 1.0);   // you walk around the fallen piece
   } else if (kind === 'cone') {
     // the Kiln itself: a cone of stacked boulders, the landmark the whole
     // level is walking toward. Big enough to be read from two rooms away.
@@ -354,7 +364,6 @@ export async function buildLa(scene) {
               { system: 'crack', id: 'l1_crack_gate' });
   visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18 });
   world.markers.crackPromise = { x: -11, z: -4 };
-  sparks(world, [[0, 7], [0, 3], [0, -1]]);
   return finish(world, spec, D);
 }
 
@@ -381,7 +390,6 @@ export async function buildLg1(scene) {
   sideDoor(world, 's', halfW, halfD, 'la', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lb', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  sparks(world, [[0, 2], [0, -2]]);
   return finish(world, spec, D);
 }
 
@@ -403,7 +411,6 @@ export async function buildLb(scene) {
   world.markers.mothSpots = [{ x: -8, z: 4 }, { x: 4, z: 2 }];
   world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
   scatter(world, halfW, halfD, D, 21, 16);
-  sparks(world, [[0, 9], [0, 5], [0, 0], [0, -5], [0, -10]]);
   return finish(world, spec, D);
 }
 
@@ -447,7 +454,6 @@ export async function buildLg2(scene) {
   sideDoor(world, 's', halfW, halfD, 'lb', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lc', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  sparks(world, [[0, 2], [0, -2]]);
   return finish(world, spec, D);
 }
 
@@ -472,7 +478,6 @@ export async function buildLc(scene) {
   slab(world, -5, -1, 4, 4, D); slab(world, 5, -1, 4, 4, D);
   world.markers.houndSpot = { x: 8, z: -8, variant: 'elder' };
   scatter(world, halfW, halfD, D, 31, 14);
-  sparks(world, [[0, 9], [-5, 3], [-5, -5], [0, -10]]);
   return finish(world, spec, D);
 }
 
@@ -498,7 +503,6 @@ export async function buildLg3(scene) {
   sideDoor(world, 'n', halfW, halfD, 'ld', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.sealSpot = { x: 0, z: -2 };
-  sparks(world, [[0, 2], [0, -2]]);
   return finish(world, spec, D);
 }
 
@@ -523,7 +527,6 @@ export async function buildLd(scene) {
   teachBraziers(world, [world.markers.teachBrazier], 'ld_teach');
   teachBraziers(world, world.markers.gutterSpots, 'ld_gutter');
   scatter(world, halfW, halfD, D, 41, 14);
-  sparks(world, [[0, 9], [0, 4], [0, 0]]);
   return finish(world, spec, D);
 }
 
