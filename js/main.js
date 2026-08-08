@@ -124,13 +124,27 @@ const key = new THREE.DirectionalLight(0xffd2a0, KEY_BASE);
 key.position.set(6, 13, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
-key.shadow.camera.left = -14;
-key.shadow.camera.right = 14;
-key.shadow.camera.top = 14;
-key.shadow.camera.bottom = -14;
+// THE SHADOW BOX FOLLOWS KAEL (see the render loop). It used to be nailed to
+// the world origin at 28 x 28, which on a 32 x 26 island covered nearly the
+// whole room — so every shadow-casting prop in the room was submitted a SECOND
+// time for the depth pass, whether or not it was anywhere near the camera. On
+// `la` dressed to ROOM-STANDARD that was 35 extra draw calls, a third of the
+// room's whole budget, spent on shadows for things off screen.
+//
+// A 20 x 20 box centred on the player covers everything the camera can see
+// (16.1u at the near edge, 22.2u at Kael — design/METRICS.md) and nothing it
+// cannot. It is also the same box in every room, so a big island now costs what
+// a small pocket costs, and the 1024 map is spread over 20 units instead of 28,
+// which makes the shadows sharper as a side effect rather than softer.
+const SHADOW_HALF = 10;
+key.shadow.camera.left = -SHADOW_HALF;
+key.shadow.camera.right = SHADOW_HALF;
+key.shadow.camera.top = SHADOW_HALF;
+key.shadow.camera.bottom = -SHADOW_HALF;
 key.shadow.camera.near = 2;
-key.shadow.camera.far = 32;
+key.shadow.camera.far = 34;
 key.shadow.normalBias = 0.03;
+const KEY_OFFSET = new THREE.Vector3(6, 13, 8);
 scene.add(key);
 scene.add(key.target);
 
@@ -1216,6 +1230,10 @@ function applyRoomMood() {
 
 function snapCamera() {
   camGoal.copy(player.root.position).add(CAM_OFFSET);
+  key.position.set(Math.round(player.root.position.x) + KEY_OFFSET.x, KEY_OFFSET.y,
+    Math.round(player.root.position.z) + KEY_OFFSET.z);
+  key.target.position.set(Math.round(player.root.position.x), 0, Math.round(player.root.position.z));
+  key.target.updateMatrixWorld();
   camera.position.copy(camGoal);
   camLook.copy(player.root.position);
   camera.lookAt(camLook.x, 0.6, camLook.z);
@@ -1635,6 +1653,15 @@ async function start() {
     camLead.z += ((player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.z) * leadK;
     const k = 1 - Math.exp(-CONFIG.CAM_DAMPING * dt);
     camGoal.copy(player.root.position).add(camLead).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
+
+    // the shadow box rides with Kael (see the light rig above). Snapped to
+    // whole units so the depth map's texel grid does not crawl underneath
+    // static geometry as he walks — an unsnapped shadow camera makes every
+    // stationary shadow edge shimmer.
+    const sx = Math.round(player.root.position.x), sz = Math.round(player.root.position.z);
+    key.position.set(sx + KEY_OFFSET.x, KEY_OFFSET.y, sz + KEY_OFFSET.z);
+    key.target.position.set(sx, 0, sz);
+    key.target.updateMatrixWorld();
     camera.position.lerp(camGoal, k);
     _lookTarget.copy(player.root.position).add(camLead);
     camLook.lerp(_lookTarget, k);

@@ -10,7 +10,7 @@
 //   3  every optional pocket loops back onto the space it hangs off
 //   4  no dead ends — every space has a way out
 //   5  the four-step teach is laid out, in order, along the walk
-//   6  per-room draw calls and triangles vs the budget (<100 / <500k)
+//   6  per-room draw calls and triangles vs the budget (<125 / <500k)
 //   7  no interactive marker sits in the blind strip
 //   Run:  (nohup python3 -m http.server 8901 &) ; node tools/verify-level1.mjs
 //   Add:  --dressed   to check the art costume instead of the greybox
@@ -158,7 +158,24 @@ console.log('\n── 6. draw call + triangle budget ─────────
 const worst = SPACES.map((id) => S[id]).filter(Boolean)
   .reduce((a, s) => (s.calls > a.calls ? s : a), { calls: 0, tris: 0 });
 const worstId = SPACES.find((id) => S[id] && S[id].calls === worst.calls);
-check('worst-case draw calls under 100', worst.calls < 100, { room: worstId, calls: worst.calls });
+// THE CEILING MOVED, and it is worth writing down why rather than just
+// editing the number. 100 was set in the performance pass against rooms that
+// dad has since played and called "big but bare". A budget that can only be
+// met by an empty room is measuring the wrong thing — it was, in effect,
+// enforcing the emptiness.
+//
+// A room dressed to design/ROOM-STANDARD.md costs about 110. What paid for the
+// difference: surface-class material collapsing, a merge threshold of two, one
+// propTint per district, small clutter opting out of the shadow pass, and a
+// shadow box that follows Kael instead of sitting at the world origin. Without
+// those five, `la` was 163.
+//
+// 125 is NOT a measured device limit and must not be treated as one — it is
+// 110 plus a working margin. The real constraint is frame time on a mid-range
+// Android, which cannot be measured from here: SwiftShader is a CPU
+// rasteriser, so its timings say nothing about a phone GPU. If the kids report
+// jank, this number is the first thing to come back down.
+check('worst-case draw calls under 125', worst.calls < 125, { room: worstId, calls: worst.calls });
 check('worst-case triangles under 500,000', worst.tris < 500000, { room: worstId, tris: worst.tris });
 console.log('  per-room cost:');
 for (const id of SPACES) if (S[id]) console.log(`    ${id.padEnd(4)} ${String(S[id].calls).padStart(3)} calls  ${String(S[id].tris).padStart(6)} tris`);
