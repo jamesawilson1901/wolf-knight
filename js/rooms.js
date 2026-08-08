@@ -10,6 +10,7 @@ import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './a
 import { World } from './world.js';
 import { flattenStatic } from './batch.js';
 import { state, resolveRoom } from './state.js';
+import { setRoomSeed } from './ground.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
@@ -3712,6 +3713,7 @@ export async function buildRoom(rawId, scene) {
     await loadKit();
     if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
   }
+  setRoomSeed(id);          // the ground painter seeds off the room id
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
   if (world.markers.bossSpot) {

@@ -1,0 +1,53 @@
+<!-- Ground painter preview. Not part of the game — loaded only by
+     tools/preview-ground.mjs so a human (or a screenshot) can judge the floor
+     without walking a room. A verifier cannot tell you a floor is ugly. -->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #14100e; color: #ddd; font: 13px system-ui; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; }
+  figure { margin: 0; }
+  figcaption { padding: 3px 0; font-size: 12px; color: #b9b2a8; }
+  canvas { display: block; width: 300px; height: 300px; image-rendering: auto; border: 1px solid #333; }
+</style>
+<div class="row" id="out"></div>
+<script type="importmap">{ "imports": { "three": "../vendor/three.module.min.js" } }</script>
+<script type="module">
+  import { paintGround, pathsThroughDoors } from '../js/ground.js';
+
+  // one district per level, plus the two the eye judges hardest
+  const CASES = [
+    { name: 'la · ashfall (Ember)', D: { floorTint: 0x8b8580, ground: 'ashfall' }, seed: 'la',
+      patches: [{ x: -7, z: -5, r: 5, kind: 'scorch' }, { x: 8, z: 6, r: 4, kind: 'rubble' },
+                { x: 10, z: -7, r: 3.2, kind: 'ash' }] },
+    { name: 'lb · causeway (Ember)', D: { floorTint: 0xa2632f, ground: 'causeway' }, seed: 'lb',
+      patches: [{ x: -6, z: 4, r: 4, kind: 'scorch' }, { x: 7, z: -6, r: 3.5, kind: 'gravel' }] },
+    { name: 'kiln (Ember)', D: { floorTint: 0xb98d3c, ground: 'kiln' }, seed: 'ka',
+      patches: [{ x: 0, z: -6, r: 5, kind: 'scorch' }] },
+    { name: 'vaultDark (Stoneroot)', D: { floorTint: 0x555c68, ground: 'vaultDark' }, seed: 'vh',
+      patches: [{ x: -8, z: 5, r: 5, kind: 'water' }, { x: 6, z: -6, r: 4, kind: 'gravel' }] },
+    { name: 'quarry (Stoneroot)', D: { floorTint: 0xcabf9d, ground: 'quarry' }, seed: 'va1',
+      patches: [{ x: 5, z: 5, r: 4.5, kind: 'rubble' }] },
+    { name: 'glimmer (Stoneroot)', D: { floorTint: 0xa9c6cf, ground: 'glimmer' }, seed: 'vc1',
+      patches: [{ x: -6, z: -5, r: 4, kind: 'water' }] },
+    { name: 'thorn (Wild Woods)', D: { floorTint: 0x9a9c55, ground: 'thorn' }, seed: 't1a',
+      patches: [{ x: -7, z: 5, r: 5, kind: 'moss' }, { x: 8, z: -5, r: 4, kind: 'mud' }] },
+    { name: 'gloom (Wild Woods)', D: { floorTint: 0x35595c, ground: 'gloom' }, seed: 't2a',
+      patches: [{ x: 0, z: 0, r: 6, kind: 'corruption' }] },
+    { name: 'NO style named (fallback)', D: { floorTint: 0x7a746c }, seed: 'zz', patches: [] },
+  ];
+
+  const GAPS = [{ side: 'n', from: -2.4, to: 2.4 }, { side: 's', from: -2.4, to: 2.4 }];
+  const out = document.getElementById('out');
+  for (const c of CASES) {
+    const cv = paintGround(30, 24, c.D, {
+      seed: c.seed, patches: c.patches,
+      paths: pathsThroughDoors(GAPS, 15, 12),
+    });
+    const fig = document.createElement('figure');
+    const cap = document.createElement('figcaption');
+    cap.textContent = c.name;
+    fig.appendChild(cv); fig.appendChild(cap);
+    out.appendChild(fig);
+  }
+  window.__ready = true;
+</script>

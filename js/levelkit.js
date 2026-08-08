@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { prepareModel, instancePlacements, SHARED } from './assets.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
+import { ground, pathsThroughDoors, roomSeed } from './ground.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
@@ -135,22 +136,28 @@ export function makeBuilders({ kit, isGrey }) {
   }
 
   // --- DRESSED shell: same rectangle, same gaps, same colliders ------------
-  function dressShell(world, w, d, gaps, D) {
+  function dressShell(world, w, d, gaps, D, opts = {}) {
     const halfW = w / 2, halfD = d / 2;
     world.deckY = 0;
     const kit0 = K();
 
+    // THE FLOOR. Until v3.36 this instanced Kenney's floor-tile.glb across the
+    // rectangle under one district tint — one tile, one colour, every room,
+    // which is exactly what dad saw: "the floor is just a generic colour
+    // everywhere". js/ground.js paints it instead: a district PATTERN, several
+    // materials meeting inside the room via `patches`, and a worn path along
+    // the route that replaces the guide-orbs v3.35 deleted. Still one call.
+    //
+    // +6 on both axes for the same reason protoFloor uses an apron: three units
+    // of ground outside the wall so the camera never sees the void past it.
     const APRON = 3;
-    const floors = [];
-    for (let tx = -APRON; tx < w + APRON; tx++) {
-      for (let tz = -APRON; tz < d + APRON; tz++) {
-        floors.push({ x: tx - halfW + 0.5, z: tz - halfD + 0.5, ry: ((tx * 7 + tz * 13) % 4) * Math.PI / 2 });
-      }
-    }
-    // one InstancedMesh for the whole floor — one draw call however big the
-    // room is, and deliberately left OUT of the static merge (batch.js)
-    world.add(instancePlacements(kit0.floor.scene, floors,
-      { castShadow: false, materialTints: floorTintMap(D) }));
+    ground(world, w + APRON * 2, d + APRON * 2, D, {
+      seed: opts.seed || roomSeed(),
+      style: opts.groundStyle,
+      patches: opts.patches || [],
+      pathWidth: opts.pathWidth,
+      paths: opts.paths || pathsThroughDoors(gaps, halfW, halfD, { hub: opts.hub }),
+    });
 
     const inGap = (side, c) => gaps.some((g) => g.side === side && c > g.from && c < g.to);
     const walls = [];
@@ -178,10 +185,13 @@ export function makeBuilders({ kit, isGrey }) {
 
   // ONE entry point, TWO costumes. A builder never decides for itself which
   // mode it is in — that is what keeps the two provably the same layout.
-  function shell(world, spec, gaps, D) {
+  // `opts` reaches the ground painter: { seed, groundStyle, patches, paths,
+  // pathWidth, hub }. A room that passes nothing still gets a textured,
+  // patterned floor with a worn route between its doors.
+  function shell(world, spec, gaps, D, opts = {}) {
     return GREY()
       ? protoShell(world, spec.w, spec.d, gaps, D.tint)
-      : dressShell(world, spec.w, spec.d, gaps, D);
+      : dressShell(world, spec.w, spec.d, gaps, D, opts);
   }
 
   // A door on a wall side, in the gap the shell already cut.
