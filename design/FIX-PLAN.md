@@ -39,13 +39,34 @@ plan is cosmetic until this is fixed.
 or sit alongside them? Replacement is cleaner but retires rooms the kids know.
 
 ## A2 · Level 3 has no gameplay — it is geometry only
-**🔶 IN PROGRESS — split into three. A2a DONE (v3.25.1).**
+**✅ DONE (v3.26.0)** — split into three sessions, all verified.
 
 | | scope | state |
 |---|---|---|
-| **A2a** | the lash CUTS — introduce, develop, the log bridge | ✅ done |
-| **A2b** | THE KNOT — the lash HOLDS: tether a boulder, snare a hound | pending |
-| **A2c** | the great thorn-knot, the two chord milestones, Sylva's thorns | pending |
+| **A2a** | the lash CUTS — introduce, develop, the log bridge | ✅ v3.25.1 |
+| **A2b** | THE KNOT — the lash HOLDS: tether a boulder, snare a hound | ✅ v3.26.0 |
+| **A2c** | the great thorn-knot, the two chords, Sylva | ✅ v3.26.0 |
+
+The four-step teach is real end to end, and all three world milestones hang off
+one verb (`world.cutAt`) through a single `onCut` hook — one implementation,
+three consequences. Verified by `tools/verify-l3-lash.mjs`,
+`verify-l3-knot.mjs` and `verify-l3-chords.mjs`.
+
+Two things this work turned up that the audit had not seen:
+
+- **Level 3 had grown a second, broken copy of the cut system** — its own
+  object shape, no `clear()`, and a `state.flags.cut` that was never declared.
+  Its brambles could never have been cut. Fixed by SHARING `registerCuttable()`
+  rather than adding the new flag namespace A5 proposed.
+- **`cuttables` was the only gate list not created in the `World` constructor**,
+  so `world.cutAt` existed in some rooms and not others — which is what the
+  `if (world.cutAt && …)` guard in player.js was quietly covering for. `cutAt`
+  is now a `World` method beside `burnAt` and `crackAt`.
+
+**Design deviation, flagged:** the docs call the great log "a log you push
+over"; it is CUT LOOSE with the lash. Pushing would mean a new verb after the
+twist, or the boulder push used on something that is not a boulder. Awaiting
+dad's call — if the doc stands, the code should change.
 
 Original finding below.
 
@@ -147,7 +168,10 @@ checkerboard. Fine while these are dev-only; a hazard the moment A1 lands.
 Should flip to `false` with the cheat menu keeping an explicit greybox toggle.
 
 ## A8 · Promise gates in the rebuilt levels are absent from the map
-**MEDIUM · affects L1, L2, L3 · part of a session**
+**🔶 PARTLY DONE (v3.26.0)** — Level 3's root-wall and great log now register
+with `logMystery`/`resolveMystery` like the shipping rooms. Level 1's crack and
+fire promises and Level 2's underwater door still do not. Original finding
+below.
 
 The shipping rooms register every "come back later" obstacle in the mystery log
 (`js/main.js:624, 642, 663, 717, 788, 793` — six `logMystery` calls). The
