@@ -268,7 +268,86 @@ Pip line, where the same obstacle in Frostpeak gets both. Inconsistent
 signposting across levels built in different sessions — exactly the drift risk.
 
 ## A9 · Difficulty goes DOWN at Level 3
-**MEDIUM · affects L3 · part of a session**
+**✅ DONE (v3.29.0) — and the density was the smaller half of it.**
+
+The audit blamed the head count. The head count was a contributor; the cause was
+`applyVariant` in `js/enemies.js`, which set `e.hp = v.hp` — a flat overwrite of
+the number the `Enemy` constructor had just computed. That made a varianted
+enemy opt out of BOTH difficulty levers the rest of the game runs on: the level
+scaling in `enemyScale()` and the Gentle-mode hp relief.
+
+Levels 1 and 2 barely use variants, so it never showed. **Level 3 is made of
+nothing else** — every hound is `thorn`/`elderthorn`, every moth is `wisp`:
+
+    player level        1     4     8    12    16
+    L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
+    plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
+    THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
+
+A child reaches the Wild Woods at about level 5-7, so the corrupted, supposedly
+tougher forest creature was the **weakest thing in the game**. Variant hp now
+feeds the same formula as everything else, which also means Gentle mode reaches
+the woods for the first time.
+
+Two knock-ons, both intended: Frostpeak's rime family and Level 1's one Elder
+Hound start scaling too, having been frozen the same way.
+
+**`SkeletonShield` was missing from `XP_VALUES`**, so Level 2's four
+shield-bearers — the toughest ordinary enemy in the game — awarded nothing.
+`die()` guards with `|| 0`, so no save was ever corrupted; it just starved the
+level curve and landed a child in the woods under-levelled, which after the fix
+above made Level 3 easier still. Added at 12, matching the Rogue.
+
+### The encounter pass
+
+Rewritten against the LEVEL-MAP beat chart rather than against a target number.
+**25 placements / 21 rooms = 1.19 per room**, against Level 2's 1.18 — parity,
+with the difficulty step-up carried by the hp fix rather than by crowding.
+
+- `t1a` lost its only hound. The chart's first row is "the woods are wrong
+  (quiet dread, **no fight**)" and `t1b` next door is labelled "first Thorn
+  Hounds" — the placement contradicted both.
+- Every rest beat stays empty: `tc1`, `tc3`, `tc4`, both shortcut legs, the
+  shrine, and the two teach rooms that are not the twist.
+- **The Bramble Blob is back.** `bramble` was written for this region in v3.19
+  and every live placement went away when the `w*` rooms retired. Reviving it
+  cost zero lines in `enemies.js` and gives Level 3 a third body shape — it had
+  two, and three of its four districts threw the same thing at you.
+- `t4a` is a pack again: two elders and three of the pack, per the chart's
+  intensity-4 "the pack — Elder Thorn Hounds".
+
+### What the measurement changed
+
+`tools/probe-encounters.mjs` and `tools/probe-peak-calls.mjs` were written for
+this. The first measures a room with and without its cast; the second kills
+everything through the real damage path and reports the WORST frame, because a
+room is not busiest when you walk into it.
+
+That caught a real overrun: **`t3b` arrived at 86 calls and peaked at 102.** A
+Bramble Blob costs ~17 draw calls at its peak, not 5 — it splits into two minis
+on death and their drops land on top of the room's existing drops. Ordinary
+drops are nearly free (`t4a`'s peak equals its arrival); splitting is not. The
+blob moved to `t2p`, which arrives at 54. Worst frame anywhere in Level 3 is now
+94, through the fight and not merely on arrival.
+
+Also worth recording: **`CONFIG.ENGAGE` caps simultaneous attackers at 2** (1 on
+Gentle, 3 on Brave) no matter how many bodies a room holds — the rest prowl a
+waiting ring. That is what makes a density lever safe for a five-year-old, and
+it is why `t4a` can hold five hounds without becoming a pile-on.
+
+### The audit's own numbers were wrong
+
+Recounted from source and confirmed against a live probe:
+
+| | audit said | actually | rooms | per room |
+|---|---|---|---|---|
+| Level 1 | 13 | **8** | 14 | 0.57 |
+| Level 2 | 20 | **20** | 17 | 1.18 |
+| Level 3 | 13 | **16** | 21 | 0.76 |
+
+Only the Level 2 row was right. The finding held regardless.
+
+Original finding below.
 
 Enemy placements per room, counted from the level modules:
 

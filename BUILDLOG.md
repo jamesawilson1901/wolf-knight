@@ -2495,3 +2495,92 @@ dad accepted as plainly shorter on the walk. The bar is now the accepted figure
 with a little room (`0.7`), so a future edit that erodes the saving still trips.
 
 Level 3 verifies ALL CLEAN, dressed and greybox.
+
+## v3.29.0 — The weakest thing in the game (A9) (2026-08-08)
+
+The audit item said Level 3 has too few enemies per room and needs an encounter
+pass. It does, and it got one. But the head count was the smaller half.
+
+### Every enemy in the Wild Woods had opted out of difficulty
+
+`applyVariant()` in `js/enemies.js` did `e.hp = v.hp` — a flat overwrite of the
+number `Enemy`'s constructor had computed one line earlier. So a varianted enemy
+ignored both difficulty levers the rest of the game runs on: `enemyScale()`
+(+8% hp per player level) and the Gentle-mode hp relief.
+
+Levels 1 and 2 barely use variants, so nobody saw it. Level 3 is made of nothing
+else — every hound is `thorn` or `elderthorn`, every moth is `wisp`:
+
+    player level        1     4     8    12    16
+    L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
+    plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
+    THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
+
+A child reaches the woods at about level 5-7. The corrupted, supposedly tougher
+forest creature was **the weakest thing in the game**, by a wide margin, and no
+amount of adding more of them would have fixed that. A Thorn Hound now runs
+about 6.5 hp on arrival instead of 3.5, and Gentle mode reaches the woods for the
+first time.
+
+Frostpeak's rime family and Level 1's one Elder Hound were frozen the same way
+and start scaling too.
+
+### Level 2's shield-bearers were worth nothing
+
+`SkeletonShield` was missing from `XP_VALUES`. `die()` guards with `|| 0` so no
+save was ever corrupted — it just quietly starved the level curve, and a child
+walked into the woods under-levelled. After the fix above, that made Level 3
+*easier* still, since its enemies now scale off player level. Added at 12,
+matching the Rogue it sits between in toughness.
+
+### The pass itself
+
+Written against the LEVEL-MAP beat chart rather than against a target number.
+**25 placements over 21 rooms = 1.19 per room**, against Level 2's 1.18. Parity,
+deliberately — the step up in difficulty is carried by the hp fix, not by
+crowding rooms. Changing two difficulty levers hard at once would have made the
+playtest unreadable.
+
+- **`t1a` lost its only hound.** The chart's opening row is "the woods are wrong
+  (quiet dread, **no fight**)" at intensity 1, and `t1b` next door is labelled
+  "first Thorn Hounds". One placement contradicted both, and made the level open
+  on a fight instead of on the feeling that something is off.
+- **Every rest beat stays empty** — `tc1`, `tc3`, `tc4`, the shrine, both
+  shortcut legs, and the two teach rooms that are not the twist. The shortcuts
+  especially: they are the reward for the long walk round, and a fight on the
+  way home would spend the relief they exist to create.
+- **The Bramble Blob is back.** `bramble` was written for this region in v3.19,
+  and every live placement of it vanished when the `w*` rooms retired into `t*`
+  rooms. Reviving it cost **zero lines** in `enemies.js` — the purest form of
+  the asset-multiplication law — and gives Level 3 a third body shape. It had
+  two, and three of its four districts threw the same thing at you.
+- **`t4a` is a pack again**: two elders and three of the pack, per the chart's
+  intensity-4 "the pack — Elder Thorn Hounds". It reads as a pack rather than a
+  pile-on because `CONFIG.ENGAGE` only ever hands out two attack tokens (one on
+  Gentle, three on Brave) — everyone else prowls a waiting ring, so a child
+  meets one pattern at a time however many are in the room. That cap is what
+  makes density a safe lever at all.
+
+### A room is not busiest when you walk into it
+
+`tools/probe-encounters.mjs` measures each room with and without its cast — one
+enemy costs about 5.7 draw calls, and character rigs never merge into the static
+batch, so that cost is permanent. Under that model every room came in under the
+100-call budget and the pass looked finished.
+
+It wasn't. `tools/probe-peak-calls.mjs` kills everything through the real damage
+path and watches every frame, and **`t3b` arrived at 86 and peaked at 102**. A
+Bramble Blob costs ~17 calls at its peak, not 5: it splits into two minis when it
+dies and their drops land on top of the room's existing drops. Ordinary drops
+turn out to be nearly free — `t4a`'s peak equals its arrival — but splitting is
+not. The blob moved to `t2p`, which arrives at 54 and peaks at 74.
+
+Worst frame anywhere in Level 3 is now **94**, measured through the fight rather
+than on arrival. Level 3 verifies ALL CLEAN.
+
+### The audit's own numbers were wrong
+
+Recounted from source, confirmed against a live probe: Level 1 has 8 placements
+(not 13), Level 2 has 20, Level 3 had 16 (not 13). Only the Level 2 row was
+right — the earlier count missed multi-line arrays and double-counted a
+conditional. The finding held anyway, and the gap it described was real.

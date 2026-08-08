@@ -556,7 +556,10 @@ export async function buildT1a(scene) {
   northGate(world, 'leaningShrine', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -7, z: 4 };
-  world.markers.houndSpots = [{ x: 8, z: 3, variant: 'thorn' }];
+  // NO ENEMIES, deliberately. The beat chart's first row is "the woods are
+  // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
+  // labelled "first Thorn Hounds" — a hound here contradicted both, and made
+  // the level open on a fight instead of on the feeling that something is off.
   breadcrumbs(world, [[0, 7], [0, 3], [0, -6]], 0xc8e88a);
   scatter(world, halfW, halfD, D, 121, 18, { spin: 1, kinds: ['treeA', 'stump', 'rockSA', 'bush'] });
   return finish(world, spec, D);
@@ -570,7 +573,8 @@ export async function buildT1b(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tc1', { x: 0, z: 7, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 't1p', { x: -7.5, z: 0, angle: Math.PI / 2 });
 
-  world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' }];
+  world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' },
+    { x: 5, z: 6, variant: 'thorn' }];
   // GATE — bramble walls, before the shrine. Same tangle, same look as the one
   // seeded back in Stoneroot a whole level ago.
   wallRun(world, -16, -8.5, -11, -8.5, D);
@@ -634,6 +638,10 @@ export async function buildT2a(scene) {
   // the dark: the Dark Wolf's eyes are the way through, as in Ember
   darkZone(world, -halfW, halfW, -halfD, 4);
   world.markers.mothSpots = [{ x: -5, z: -6, variant: 'wisp' }, { x: 6, z: -4, variant: 'wisp' }];
+  // A ground shape in the dark. Moths dive and wheel; a Bramble Blob crawls at
+  // 1.2 u/s, which is the only kind of thing that is fair to put where a child
+  // cannot see without the Dark Wolf's eyes.
+  world.markers.slimeSpots = [{ x: -7, z: -1, variant: 'bramble' }];
   breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 131, 20, { spin: 1, kinds: ['treeB', 'mushT', 'mushG', 'rockSA'] });
   return finish(world, spec, D);
@@ -650,6 +658,7 @@ export async function buildT2b(scene) {
   darkZone(world, -halfW, halfW, -halfD, 2);
   world.markers.mothSpots = [{ x: -4, z: 4, variant: 'wisp' }, { x: 5, z: -2, variant: 'wisp' },
     { x: -7, z: -6, variant: 'wisp' }];
+  world.markers.slimeSpots = [{ x: 7, z: 5, variant: 'bramble' }];
   wallRun(world, 4, -4, 4, 6, D);
   breadcrumbs(world, [[0, 8], [-3, 2], [-3, -5], [0, -9]], 0x8fe0d4);
   scatter(world, halfW, halfD, D, 132, 22, { spin: 1, kinds: ['treeB', 'mushT', 'stump'] });
@@ -663,6 +672,11 @@ export async function buildT2p(scene) {
   sideDoor(world, 'e', halfW, halfD, 't2b', { x: -13.5, z: 0, angle: Math.PI / 2 });
   visibleReward(world, -6, -3, 'l3_t2p_chest', { shards: 24 });
   world.markers.mothSpots = [{ x: -3, z: 4, variant: 'wisp' }];
+  // The splitting blob lives HERE rather than in t3b. Measured: a Bramble Blob
+  // costs ~17 draw calls at its peak, not 5 — it dies into two minis and their
+  // drops land on top of whatever else the room has already dropped. t3b
+  // arrives at 86 and went to 102 with one in it; this pocket arrives at 54.
+  world.markers.slimeSpots = [{ x: 4, z: -4, variant: 'bramble' }];
   scatter(world, halfW, halfD, D, 133, 10, { spin: 1, kinds: ['mushG', 'mushT'] });
   return finish(world, spec, D);
 }
@@ -743,7 +757,7 @@ export async function buildT3a(scene) {
     });
     world.markers.rootWallPromise = { x: -13, z: 0 };
   }
-  world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }];
+  world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }, { x: -6, z: 4, variant: 'thorn' }];
   breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 141, 20, { spin: 1, kinds: ['logStack', 'stump', 'rockLB', 'treeA'] });
   return finish(world, spec, D);
@@ -773,6 +787,7 @@ export async function buildT3p(scene) {
   sideDoor(world, 'w', halfW, halfD, 't3b', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   wallRun(world, 0, -4, 0, 3, D);
   world.markers.pup8Spot = { x: 6, z: -3 };
+  world.markers.slimeSpots = [{ x: 5, z: 3, variant: 'bramble' }];
   scatter(world, halfW, halfD, D, 143, 10, { spin: 1, kinds: ['logStack', 'stump'] });
   return finish(world, spec, D);
 }
@@ -899,8 +914,15 @@ export async function buildT4a(scene) {
       }
     });
   }
+  // THE PACK — the beat chart's "the pack, Elder Thorn Hounds" at intensity 4,
+  // and the last fight before the glade. Two elders and three of the pack.
+  // It reads as a pack rather than a pile-on because CONFIG.ENGAGE only ever
+  // hands out 2 attack tokens (1 on Gentle, 3 on Brave) — the rest prowl a
+  // waiting ring, so a child meets one pattern at a time however many are here.
   world.markers.houndSpots = [{ x: -6, z: -5, variant: 'elderthorn' },
-    { x: 6, z: -6, variant: 'thorn' }];
+    { x: 6, z: -6, variant: 'elderthorn' },
+    { x: -10, z: 2, variant: 'thorn' }, { x: 7, z: 5, variant: 'thorn' },
+    { x: 3, z: 8, variant: 'thorn' }];
   breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xffd0e0);
   scatter(world, halfW, halfD, D, 151, 20, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB', 'bush'] });
   return finish(world, spec, D);
@@ -924,7 +946,8 @@ export async function buildT4b(scene) {
       bigToastSafe('🌸 The Bloomfall opens — the glade is ahead!');
     }
   });
-  world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' }];
+  world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' },
+    { x: 7, z: 5, variant: 'thorn' }];
   breadcrumbs(world, [[0, 8], [0, 0], [0, -5]], 0xffd0e0);
   scatter(world, halfW, halfD, D, 152, 24, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
   return finish(world, spec, D);

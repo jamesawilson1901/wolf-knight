@@ -5,7 +5,13 @@
 import { state } from './state.js';
 import { audio } from './audio.js';
 
-export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonMinion: 8, SkeletonRogue: 12, SkeletonWarrior: 12, SkeletonMage: 14, BoneWarden: 60 };
+// A9: SkeletonShield was missing, so Level 2's four shield-bearers — the
+// toughest ordinary enemy in the game, armored and guarding — awarded NOTHING.
+// `die()` guards with `|| 0` so it never corrupted a save, it just quietly
+// starved the level curve, and a child arrived in the Wild Woods under-levelled.
+// That matters more than it looks: since v3.29 enemy hp scales with player
+// level, so the missing XP was making LEVEL 3 easier too.
+export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonMinion: 8, SkeletonRogue: 12, SkeletonShield: 12, SkeletonWarrior: 12, SkeletonMage: 14, BoneWarden: 60 };
 
 export const progressEvents = { onLevelUp: null, onXp: null, onSticker: null };
 

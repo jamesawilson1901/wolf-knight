@@ -174,7 +174,29 @@ export const VARIANTS = {
 function applyVariant(e, name) {
   const v = VARIANTS[name];
   if (!v) return e;
-  if (v.hp) { e.hp = v.hp; e.maxHp = v.hp; }
+  // A9 — A VARIANT'S hp IS A BASE, NOT A VERDICT.
+  //
+  // This used to be `e.hp = v.hp` — a flat overwrite of the number the Enemy
+  // constructor had just computed, which meant a varianted enemy opted out of
+  // BOTH difficulty levers the rest of the game runs on: the level scaling
+  // (`enemyScale()`) and the Gentle-mode hp relief. It went unnoticed because
+  // Levels 1 and 2 barely use variants. Level 3 is made of nothing else, so
+  // every enemy in the Wild Woods was pinned at its level-1 value:
+  //
+  //   player level        1     4     8    12    16
+  //   L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
+  //   plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
+  //   THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
+  //
+  // A child reaches the Wild Woods at about level 8-12, so the corrupted,
+  // supposedly-tougher forest creature was the WEAKEST thing in the game by a
+  // wide margin. That — not the room-by-room head count — is the main reason
+  // difficulty fell off a cliff at Level 3. The variant now feeds the same
+  // formula every other enemy uses, so Gentle mode reaches the woods too.
+  if (v.hp) {
+    const bonus = state.settings.easy ? 0 : CONFIG.DIFFICULTY.ENEMY_HP_BONUS;
+    e.hp = e.maxHp = Math.round((v.hp + bonus) * enemyScale() * 2) / 2;
+  }
   if (v.scale && e.model) {
     e.model.scale.multiplyScalar(v.scale);
     e.radius = e.radius * (1 + (v.scale - 1) * 0.6);
