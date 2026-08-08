@@ -19,7 +19,11 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 # A · BREAKS OR FRUSTRATES A CHILD
 
 ## A1 · The rebuilt levels are unreachable in normal play
-**BLOCKER · affects L1, L2, L3 · one session · nothing depends on it first**
+**✅ DONE (v3.25.0)** — dad chose REPLACE. The den now opens into `la`; beating
+each boss opens the way onward (`le → vh`, `vz → t1a`, `tgl → f1`); the retired
+rooms are redirected rather than deleted so old saves still load, mapped by
+position in the level. Verified by `tools/verify-progression.mjs` — 24 checks,
+all green. Original finding below for the record.
 
 Nothing in the game links to `la`, `vh` or `t1a`. Grepping every module outside
 `js/level*.js` finds references only in the cheat-menu table
@@ -118,7 +122,10 @@ approach — cheapest, free once merged); or accept ~5 u of walking before
 recognition. **Recommended: the floor inlay.**
 
 ## A7 · Greybox is the shipping default
-**HIGH · affects L1, L2, L3 · part of a session**
+**✅ DONE (v3.25.0)** — default flipped to `false`, and `applySave` now STRIPS a
+persisted `greybox` value so an old profile saved during dev cannot restore a
+child into a checkerboard while keeping their real settings. Original finding
+below.
 
 `js/state.js:37` sets `greybox: true`. Any child who reached a rebuilt level
 without going through the cheat menu's "dressed" entry would be playing a
@@ -257,3 +264,7 @@ arithmetic error worth correcting.
 
 Suggested first session: **A1 + A7** together — that is the smallest change that
 turns this from a demo into a game.
+
+> **A1 + A7 shipped in v3.25.0.** Next by severity: **A2** (Level 3 gameplay —
+> needs splitting), then **A3/A5** which depend on it, then **A4** (Level 2's
+> conclude step), then **A6** (junction landmarks) and **A8/A9**.
