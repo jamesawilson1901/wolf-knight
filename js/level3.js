@@ -25,6 +25,7 @@ import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, defineRestoration } from './worldstate.js';
+import { registerCuttable, alreadyCut } from './gates.js';
 
 let forceGrey = false;
 let woodKit = null;
@@ -199,41 +200,137 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // ---------------------------------------------------------------------------
 
 // A bramble — the Verdant Wolf's verb, and before you have it, a promise.
-// `regrows` is the DEVELOP twist: it closes again if you dawdle.
+//
+// `regrows` is the DEVELOP twist: it closes again if you dawdle, so the lesson
+// is not "cut the thing" but "cut it and GO". A regrowing bramble is
+// deliberately NOT recorded in WorldState — flagging it would make the develop
+// step solve itself on the next visit.
+const REGROW_AFTER = 6.5;      // seconds of standing about before it closes
+
 function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false) {
-  if (state.flags.cut && state.flags.cut[id] && !regrows) return null;
-  // gates.js creates world.cuttables lazily, so a room that grows its own
-  // brambles without going through brambleGate() has to make sure it exists —
-  // getting this wrong threw inside the first build and left the room loader
-  // wedged, which failed all twenty rooms after it, not just this one.
-  if (!world.cuttables) world.cuttables = [];
+  if (!regrows && alreadyCut(REGION, id)) return null;
   const colour = 0x4f8f3a;
+  const g = new THREE.Group();
+
   if (GREY()) {
     const m = new THREE.Mesh(
       new THREE.BoxGeometry(w, 1.6, d),
       new THREE.MeshStandardMaterial({ color: colour, roughness: 0.9,
-        emissive: colour, emissiveIntensity: 0.16 })
+        emissive: colour, emissiveIntensity: regrows ? 0.3 : 0.16 })
     );
     m.position.set(x, 0.8, z);
-    world.add(m);
-    world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
-    world.cuttables.push({ id, x, z, r: Math.max(w, d) / 2, mesh: m, regrows });
-    return m;
-  }
-  const g = new THREE.Group();
-  const n = Math.max(2, Math.round(Math.max(w, d) / 1.1));
-  for (let i = 0; i < n; i++) {
-    const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
-    const piece = tinted(woodKit.bush, 'bramble', colour, 0.85 + (i % 3) * 0.1);
-    piece.position.set(x + (w > d ? f * w : 0), 0, z + (d >= w ? f * d : 0));
-    piece.rotation.y = i * 1.9;
-    piece.scale.setScalar(1.1);
-    g.add(piece);
+    g.add(m);
+  } else {
+    const n = Math.max(2, Math.round(Math.max(w, d) / 1.1));
+    for (let i = 0; i < n; i++) {
+      const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
+      const piece = tinted(woodKit.bush, 'bramble', colour, 0.85 + (i % 3) * 0.1);
+      piece.position.set(x + (w > d ? f * w : 0), 0, z + (d >= w ? f * d : 0));
+      piece.rotation.y = i * 1.9;
+      piece.scale.setScalar(1.1);
+      g.add(piece);
+    }
   }
   world.add(g);
-  world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
-  world.cuttables.push({ id, x, z, r: Math.max(w, d) / 2, mesh: g, regrows });
+  const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+  world.boxColliders.push(collider);
+
+  const entry = registerCuttable(world, { id, x, z, region: REGION, group: g, collider, regrows });
+
+  if (regrows) {
+    // THE CLOCK. Cut it and it is gone; stand around and it comes back, in the
+    // same place, cuttable again. The bramble is put back into the scene and
+    // its collider restored, and `cut` is cleared so world.cutAt sees it again.
+    let since = 0;
+    world.onAnimate((t, dt) => {
+      if (!entry.cut) return;
+      since += dt;
+      if (since < REGROW_AFTER) return;
+      since = 0;
+      entry.cut = false;
+      world.add(g);
+      world.boxColliders.push(collider);
+    });
+  }
   return g;
+}
+
+// THE LOG BRIDGE — the other half of DEVELOP. A gap you cannot walk, a log
+// lying beside it, and a bramble rope holding the log back. Lash the rope and
+// the log swings down into place and becomes the crossing.
+//
+// It is the same verb as cutting a tangle, used on something that is not a
+// tangle — which is the bridge (sorry) between "the lash cuts" and the Knot's
+// "the lash also HOLDS".
+function logBridge(world, id, x, z) {
+  const done = alreadyCut(REGION, id);
+  const GAP_W = 14, GAP_D = 3.2;
+
+  // the gap itself: impassable until the log lands
+  if (!done) {
+    world.addBox(x - GAP_W / 2, x + GAP_W / 2, z - GAP_D / 2, z + GAP_D / 2);
+  } else {
+    world.addSafe(x - GAP_W / 2, x + GAP_W / 2, z - GAP_D / 2, z + GAP_D / 2);
+  }
+
+  const log = GREY()
+    ? new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.2, 1.2),
+        protoMaterial(0x8a6a3a, 3, 1))
+    : tinted(woodKit.logStack, 'bridgeLog', 0x6b4d2c);
+  if (!GREY()) log.scale.setScalar(2.2);
+
+  if (done) {
+    // already swung: it IS the bridge
+    log.position.set(x, 0.1, z);
+    log.rotation.set(0, Math.PI / 2, 0);
+    if (!GREY()) log.scale.set(2.2, 1.4, 5.2);
+    world.add(log);
+    return null;
+  }
+
+  // upright, off to the side, obviously not yet a bridge
+  log.position.set(x + GAP_W / 2 - 2, 1.4, z - 2.4);
+  log.rotation.set(0, 0.3, 0.5);
+  world.add(log);
+
+  // the rope: a cuttable, standing where the lash can reach it from the safe side
+  const ropeZ = z - GAP_D / 2 - 1.6;
+  const rope = GREY()
+    ? new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5),
+        new THREE.MeshStandardMaterial({ color: 0x6fae4a, emissive: 0x6fae4a, emissiveIntensity: 0.4 }))
+    : tinted(woodKit.bush, 'rope', 0x6fae4a);
+  rope.position.set(x + GAP_W / 2 - 2, GREY() ? 0.9 : 0, ropeZ);
+  world.add(rope);
+
+  const collider = { minX: rope.position.x - 0.6, maxX: rope.position.x + 0.6,
+    minZ: ropeZ - 0.6, maxZ: ropeZ + 0.6 };
+  world.boxColliders.push(collider);
+
+  registerCuttable(world, {
+    id, x: rope.position.x, z: ropeZ, region: REGION, group: rope, collider,
+    onCut: () => {
+      // the log SWINGS — a second of movement, then it is the road
+      const from = { y: log.position.y, rz: log.rotation.z, ry: log.rotation.y };
+      let k = 0;
+      world.onAnimate((t, dt) => {
+        if (k >= 1) return;
+        k = Math.min(1, k + dt * 1.4);
+        const e = 1 - Math.pow(1 - k, 3);
+        log.position.set(x + (GAP_W / 2 - 2) * (1 - e), from.y * (1 - e) + 0.1 * e, z - 2.4 * (1 - e));
+        log.rotation.set(0, from.ry + (Math.PI / 2 - from.ry) * e, from.rz * (1 - e));
+        if (k >= 1) {
+          if (!GREY()) log.scale.set(2.2, 1.4, 5.2);
+          // the gap becomes walkable at the moment the log lands, not before
+          const i = world.boxColliders.findIndex((b) =>
+            b.minX === x - GAP_W / 2 && b.minZ === z - GAP_D / 2);
+          if (i >= 0) world.boxColliders.splice(i, 1);
+          world.addSafe(x - GAP_W / 2, x + GAP_W / 2, z - GAP_D / 2, z + GAP_D / 2);
+        }
+      });
+    },
+  });
+  world.markers.logBridge = { x: rope.position.x, z: ropeZ };
+  return log;
 }
 
 // The hero props. In a ring these carry more navigational load than in either
@@ -423,11 +520,11 @@ export async function buildT1b(scene) {
   // GATE — bramble walls, before the shrine. Same tangle, same look as the one
   // seeded back in Stoneroot a whole level ago.
   bramble(world, 'w3_thorn_wall', -11, -6, 2.0, 5.0);
-  visibleReward(world, -13.5, -6, 'l3_w1b_bramble', { shards: 20 });
+  visibleReward(world, -13.5, -6, 'l3_t1b_bramble', { shards: 20 });
   world.markers.bramblePromise = { x: -11, z: -6 };
   // GATE — the ICE-SEALED SPRING. Level 4's tool, a whole level early.
   promiseGate(world, 11, 4, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'rockSB');
-  visibleReward(world, 13.5, 4, 'l3_w1b_ice', { shards: 22 });
+  visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };
   breadcrumbs(world, [[0, 8], [0, 2], [0, -8]], 0xc8e88a);
   scatter(world, halfW, halfD, D, 122, 20, { spin: 1, kinds: ['treeA', 'treeB', 'stump', 'rockSB'] });
@@ -504,7 +601,7 @@ export async function buildT2p(scene) {
   const { halfW, halfD } = shell(world, spec, [gap('e')], D);
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't2b', { x: -13.5, z: 0, angle: Math.PI / 2 });
-  visibleReward(world, -6, -3, 'l3_w2p_chest', { shards: 24 });
+  visibleReward(world, -6, -3, 'l3_t2p_chest', { shards: 24 });
   world.markers.mothSpots = [{ x: -3, z: 4, variant: 'wisp' }];
   scatter(world, halfW, halfD, D, 133, 10, { spin: 1, kinds: ['mushG', 'mushT'] });
   return finish(world, spec, D);
@@ -523,7 +620,7 @@ export async function buildTsh(scene) {
   world.markers.sparkSpot = { x: 0, z: -2, spirit: 'sylva', grants: 'verdant_wolf' };
   // the one bramble, across the way OUT — so the first cut is also the exit
   world.markers.teachBramble = { x: 0, z: -5 };
-  bramble(world, 'l3_wsh_teach', 0, -5, 3.0, 1.2);
+  bramble(world, 'l3_tsh_teach', 0, -5, 3.0, 1.2);
   if (!GREY()) {
     const ped = tinted(woodKit.rockLC, 'shrine', 0x6f9e55);
     ped.position.set(0, 0, -2);
@@ -543,18 +640,14 @@ export async function buildTc2(scene) {
   sideDoor(world, 's', halfW, halfD, 'tsh', { x: 0, z: -5.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't3a', { x: 0, z: 10, angle: Math.PI });
 
-  world.markers.developBrambles = [{ x: -4, z: 2 }, { x: 4, z: -1 }, { x: 0, z: -5 }];
+  // Three tangles across the way out, each of which grows back if you dawdle.
+  // Cut, move, cut, move — the lesson is not the verb, it is the tempo.
+  world.markers.developBrambles = [{ x: -4, z: 4 }, { x: 4, z: 1 }, { x: 0, z: -1 }];
   for (const [i, p] of world.markers.developBrambles.entries()) {
-    bramble(world, `l3_wc2_${i}`, p.x, p.z, 3.0, 1.2, true);   // REGROWS
+    bramble(world, `l3_tc2_${i}`, p.x, p.z, 3.0, 1.2, true);   // REGROWS
   }
-  world.markers.logBridge = { x: 0, z: -7 };
-  if (!GREY()) {
-    const log = tinted(woodKit.logStack, 'bridgeLog', 0x6b4d2c);
-    log.position.set(0, 0, -7);
-    log.rotation.y = Math.PI / 2;
-    log.scale.setScalar(2.2);
-    world.add(log);
-  }
+  // ...and then the same verb used on something that is NOT a tangle at all.
+  logBridge(world, 'l3_tc2_bridge', 0, -6);
   breadcrumbs(world, [[0, 5], [0, 0], [0, -6]], 0x8fe0d4);
   return finish(world, spec, D);
 }
@@ -597,7 +690,7 @@ export async function buildT3b(scene) {
   sideDoor(world, 'e', halfW, halfD, 't3p', { x: -7.5, z: 0, angle: Math.PI / 2 });
 
   for (const [i, p] of [[-5, 3], [5, 0], [-2, -5]].entries()) {
-    bramble(world, `l3_w3b_${i}`, p[0], p[1], 3.0, 1.2, true);
+    bramble(world, `l3_t3b_${i}`, p[0], p[1], 3.0, 1.2, true);
   }
   world.markers.houndSpots = [{ x: 8, z: 4, variant: 'thorn' }, { x: -8, z: -4, variant: 'thorn' }];
   breadcrumbs(world, [[0, 8], [0, 0], [0, -8]], 0xe8c88a);
@@ -728,7 +821,7 @@ export async function buildT4p(scene) {
   const { halfW, halfD } = shell(world, spec, [gap('e')], D);
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't4b', { x: -13.5, z: 0, angle: Math.PI / 2 });
-  visibleReward(world, -6, -3, 'l3_w4p_chest', { shards: 26, heartPiece: 1 }, 'gold');
+  visibleReward(world, -6, -3, 'l3_t4p_chest', { shards: 26, heartPiece: 1 }, 'gold');
   scatter(world, halfW, halfD, D, 153, 12, { spin: 1, kinds: ['flowerA', 'flowerB', 'bush'] });
   return finish(world, spec, D);
 }

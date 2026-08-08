@@ -757,12 +757,24 @@ function narrationTriggers(dt, t) {
   // is toggled directly, which is what makes "quit halfway and come back"
   // correct by construction rather than by remembering to handle it.
   // -------------------------------------------------------------------------
-  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4) && !state.formsUnlocked.includes('earth_wolf')) {
-    state.formsUnlocked.push('earth_wolf');
-    effects.warmFlood();
-    ui.refreshBadge();
-    if (WS.complete('vault', 'spark')) bigToast('🪨 The Earth Wolf awakens!');
-    persist();
+  // A spirit's spark grants whatever THAT spirit gives. This used to hardcode
+  // the Earth Wolf and the vault's milestone, so walking into Sylva's shrine in
+  // Level 3 handed the child the wrong wolf and advanced Level 2's state
+  // (fix plan A3). The marker has carried `grants` all along; now it is read.
+  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4)) {
+    const gift = m.sparkSpot.grants || 'earth_wolf';
+    if (!state.formsUnlocked.includes(gift)) {
+      state.formsUnlocked.push(gift);
+      effects.warmFlood();
+      ui.refreshBadge();
+      const SPARK = {
+        earth_wolf: { region: 'vault', key: 'spark', toast: '🪨 The Earth Wolf awakens!' },
+        verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
+      }[gift];
+      if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
+      narration.say(gift === 'verdant_wolf' ? 'verdant_grant' : 'earthwolf_grant');
+      persist();
+    }
   }
   // THE RATTLE: the stomp is not a hammer, it is a SOUND. Standing on the
   // resonant plate and stomping rings the chamber — the bell-stone answers and
@@ -782,6 +794,20 @@ function narrationTriggers(dt, t) {
     if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
     persist();
   }
+
+  // -------------------------------------------------------------------------
+  // LEVEL 3 — THE LASH CUTS (fix plan A2a). Introduce, then develop.
+  // Prompts only: the cutting itself is world.cutAt, driven by the lash in
+  // player.js, so there is no second implementation of the verb here.
+  // -------------------------------------------------------------------------
+  if (m.teachBramble && nearSpot(m.teachBramble, 4) &&
+      state.formsUnlocked.includes('verdant_wolf')) {
+    narration.say('bramble_teach');
+  }
+  if ((m.developBrambles || []).some((b) => nearSpot(b, 4.5))) {
+    narration.say('bramble_regrow');
+  }
+  if (m.logBridge && nearSpot(m.logBridge, 4)) narration.say('log_rope');
 
   // "not yet" gates: log the promise + Pip acknowledges it
   if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {

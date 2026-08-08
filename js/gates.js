@@ -53,20 +53,38 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
 
-  // register for the vine-lash: world.cutAt(x, z, r) clears any tangle in
-  // reach — leaf-burst, creak, collider gone, WS flag set forever
+  registerCuttable(world, { id, x, z, region, group, collider });
+  return { id, collider };
+}
+
+// REGISTER A CUTTABLE — the one place a bramble becomes something the vine-lash
+// can clear. Level 3 grows its own brambles rather than going through
+// brambleGate(), and it needs the SAME contract: the same `cut` bookkeeping,
+// the same permanence (a WorldState flag, not a new namespace), and the same
+// lazily-defined world.cutAt, which the lash in player.js calls directly.
+//
+// Splitting this out is what stops Level 3 inventing a second, subtly
+// different cut system — it did exactly that, keying off a `state.flags.cut`
+// that was never declared anywhere, so its brambles could never be cut at all.
+export function registerCuttable(world, { id, x, z, region, group, collider, onCut, regrows }) {
   if (!world.cuttables) world.cuttables = [];
-  world.cuttables.push({
-    id, x, z, cut: false,
+  const entry = {
+    id, x, z, cut: false, regrows: !!regrows, group, collider, region,
     clear: () => {
-      world.root.remove(group);
-      const i = world.boxColliders.indexOf(collider);
-      if (i >= 0) world.boxColliders.splice(i, 1);
-      WS.set(region, 'cut_' + id);
+      if (group) world.root.remove(group);
+      if (collider) {
+        const i = world.boxColliders.indexOf(collider);
+        if (i >= 0) world.boxColliders.splice(i, 1);
+      }
+      // a regrowing bramble is a TIMER, not a permanent change — flagging it
+      // would make the level's develop step solve itself on the next visit
+      if (!regrows) WS.set(region, 'cut_' + id);
       audio.play('gate-creak', { volume: 0.7, rate: 0.9 });
       audio.play('puff', { volume: 0.8, rate: 1.2 });
+      if (onCut) onCut(entry);
     },
-  });
+  };
+  world.cuttables.push(entry);
   if (!world.cutAt) {
     world.cutAt = (cx, cz, r) => {
       let n = 0;
@@ -81,8 +99,11 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
       return n;
     };
   }
-  return { id, collider };
+  return entry;
 }
+
+// Has this bramble already been cut, for good, in a previous visit?
+export function alreadyCut(region, id) { return WS.get(region, 'cut_' + id); }
 
 // Ice block — a pale crystal mound the Frost Wolf's breath SHATTERS (v3.21).
 // Until that form is earned it is a promise: a cold glow guarding a reward.

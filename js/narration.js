@@ -100,6 +100,10 @@ export const LINES = {
   crack_prompt: { voice: 'pip', text: 'See those cracked rocks? Be the Earth Wolf and stomp them to bits!' },
   // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
+  // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
+  bramble_teach: { voice: 'pip', text: 'Thorns in the way! Be the Verdant Wolf and LASH them — they snap right open.' },
+  bramble_regrow: { voice: 'pip', text: 'Careful — these ones grow back! Cut and RUN, Kael.' },
+  log_rope: { voice: 'pip', text: 'That big log is tied up. Lash the rope and see what happens!' },
   vault_changed: { voice: 'pip', text: 'Kael, look! The big room is different. It changed because of YOU.' },
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },
