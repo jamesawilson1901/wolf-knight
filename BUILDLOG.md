@@ -2658,3 +2658,24 @@ One prerequisite went in now, because it is a trap otherwise: `world.npcs` is in
 NPCs calls the function — but without it the villagers would be merged into the
 scenery and stop moving, which is precisely the failure that function's own
 comment warns about.
+
+### Correction, same day: the sweep was not wide enough the first time
+
+The paragraph above originally claimed "every room at or under 86". That came
+from sweeping nine rooms, and it understated the worst case. Two of the three
+design agents run for A9 independently pointed out the same methodological hole
+in `tools/probe-encounters.mjs` — it samples only the spawn point, and moving the
+camera around a room finds up to +19 calls in the same space. They measured
+`t1b` 105, `t2a` 107 and `t3a` 106 dressed, at the worst camera position, before
+this fix.
+
+All 52 rebuilt-level rooms have now been swept over a grid of standing
+positions:
+
+    Level 1 (14 rooms)   worst  lb2   96
+    Level 2 (17 rooms)   worst  vb2   97
+    Level 3 (21 rooms)   worst  t3a   90
+
+Every one is under the ceiling, and the three rooms the agents flagged came down
+to 87, 83 and 90. But the true headroom in the worst rooms is 3-4 calls, not 14
+— worth knowing before anything else is added to `vb2`, `lb2` or `vb1`.

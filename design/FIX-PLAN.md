@@ -417,9 +417,24 @@ it — `tools/probe-drawcall-attrib.mjs` and the sweep in the same family):
 | `vb2` / `vb3` | 90 | 58 / 60 |
 | Level 3 worst frame *through a fight* | 94 | **77** |
 
-Every room in all three rebuilt levels is now at or under 86, with 14+ calls of
-headroom, and Level 2 verifies ALL CLEAN. Triangle counts fell with the calls,
-since shadow-pass triangles count too.
+Level 2 verifies ALL CLEAN. Triangle counts fell with the calls, since
+shadow-pass triangles count too.
+
+**All 52 rebuilt-level rooms swept, worst standing position each** — this is the
+honest number, and it is higher than a spawn-point sample suggests. Two of the
+three design agents run for A9 independently flagged that sweeping the camera
+finds up to +19 calls in the same room, and measured `t1b` 105, `t2a` 107 and
+`t3a` 106 *before* this fix. After it:
+
+| | worst room | calls |
+|---|---|---|
+| Level 1 (14 rooms) | `lb2` | 96 |
+| Level 2 (17 rooms) | `vb2` | 97 |
+| Level 3 (21 rooms) | `t3a` | 90 |
+
+Every one is under the ceiling; the three rooms the agents flagged came down to
+87, 83 and 90. Nothing in the three rebuilt levels is over 100 from any standing
+position.
 
 Original finding below.
 
