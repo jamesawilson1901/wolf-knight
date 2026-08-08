@@ -154,7 +154,33 @@ and round-tripped. This is a one-line-per-file omission with a real
 "where did my progress go" consequence.
 
 ## A6 · A junction landmark is invisible approached from the north
-**HIGH · affects L3 · one session · independent**
+**✅ DONE (v3.28.0)** — every junction now says its name twice. A pair of
+half-size copies of the junction's OWN landmark stand just inside its north
+door, 1.2 u ahead of where a child lands, so the silhouette is at the top of
+the frame the instant they arrive; the big one at the centre is still the
+payoff when they turn round. All 16 approaches across the four junctions now
+show a landmark (`tools/verify-level3.mjs` section 6), dressed and greybox.
+
+Not the floor inlay this entry recommended. The inlay would have made the
+verifier pass by weakening what it asks — the check is "is the LANDMARK in
+frame", and a coloured floor is not a landmark. Repeating the silhouette
+answers the question as asked, and reads as architecture: the ring's north
+gates are marked gates.
+
+Two things fell out of it:
+
+- **The verifier was asking a slightly wrong question.** It projected one
+  object; a junction may legitimately say its name more than once, and a child
+  reads the silhouette, not the instance. It now projects every landmark
+  instance and reports which one was seen (`centre` or `gate`).
+- **Thornedge's shrine is a character model** (`assets/chars/knight.glb`), and
+  a character rig never merges into the static batch. Two more copies took
+  `t1a` from 79 draw calls to **119**. The gate markers there are smaller
+  stones set at the same lean, in the same grey, on the same base — cheaper,
+  and the truer fiction: there was one wolf-knight before Kael, not three.
+  `t1a` is now 85 dressed, and the worst room in Level 3 with it.
+
+Original finding below.
 
 Measured identically at all four ring junctions
 (`tools/verify-level3.mjs` section 6):
@@ -175,6 +201,15 @@ Options: a second smaller landmark at each junction's north end; a district
 floor-inlay under the prop extending north (the floor fills the frame from every
 approach — cheapest, free once merged); or accept ~5 u of walking before
 recognition. **Recommended: the floor inlay.**
+
+### Also settled this session
+
+`tsB is shorter than walking round` had been failing against a threshold of
+`0.5` that was an unmeasured guess when the verifier was written. Both shortcut
+legs measure `0.63` — 81 u against 128 u, a 37% saving — and dad accepted that
+as plainly shorter on the walk. The bar is now the accepted figure with a
+little room (`0.7`), so it stays an assertion and a future edit that erodes the
+saving still trips it.
 
 ## A7 · Greybox is the shipping default
 **✅ DONE (v3.25.0)** — default flipped to `false`, and `applySave` now STRIPS a

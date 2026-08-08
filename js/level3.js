@@ -341,8 +341,11 @@ function logBridge(world, id, x, z) {
 // earlier level: they are not decoration, they are the answer to "have I been
 // here before?" asked from a door the child has never used. Greybox form is a
 // bold blocky silhouette at TRUE SCALE, because that is the question.
-function heroProp(world, x, z, kind, D) {
+function heroProp(world, x, z, kind, D, scale = 1) {
   const g = new THREE.Group();
+  // colliders are placed in world space, so they do not come along for free
+  // when the group is scaled — every one goes through here instead
+  const circle = (ox, oz, r) => world.addCircle(x + ox * scale, z + oz * scale, r * scale);
 
   if (GREY()) {
     const mat = protoMaterial(D.tint, 3, 3);
@@ -354,20 +357,20 @@ function heroProp(world, x, z, kind, D) {
     if (kind === 'leaningShrine') {        // a toppled statue, half-swallowed
       add(2.2, 6.0, 2.2, 0, 2.6, 0, 0, 0.5);
       add(4.4, 1.0, 4.4, 0, 0.5, 0);
-      world.addCircle(x, z, 2.0);
+      circle(0, 0, 2.0);
     } else if (kind === 'watchingTree') {  // a vast hollow trunk with a face
       add(5.0, 9.0, 5.0, 0, 4.5, 0);
       add(2.2, 2.6, 1.0, 0, 5.6, 2.4);     // the hollow — the "face"
-      world.addCircle(x, z, 2.5);
+      circle(0, 0, 2.5);
     } else if (kind === 'rootArch') {      // roots grown into a doorway
       add(1.8, 7.0, 1.8, -3.4, 3.5, 0, 0, 0.22);
       add(1.8, 7.0, 1.8, 3.4, 3.5, 0, 0, -0.22);
       add(8.0, 1.6, 2.0, 0, 7.0, 0);
-      world.addCircle(x - 3.4, z, 1.0); world.addCircle(x + 3.4, z, 1.0);
+      circle(-3.4, 0, 1.0); circle(3.4, 0, 1.0);
     } else if (kind === 'blossomFall') {   // a permanent cascade of petals
       add(3.0, 8.5, 3.0, 0, 4.25, 0);
       add(7.5, 1.2, 7.5, 0, 8.6, 0);
-      world.addCircle(x, z, 1.6);
+      circle(0, 0, 1.6);
     } else if (kind === 'standingStones') {
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
@@ -375,6 +378,7 @@ function heroProp(world, x, z, kind, D) {
       }
     }
     g.position.set(x, 0, z);
+    g.scale.setScalar(scale);
     world.add(g);
     return g;
   }
@@ -389,15 +393,25 @@ function heroProp(world, x, z, kind, D) {
   };
 
   if (kind === 'leaningShrine') {
-    // a real knight model, stone grey, toppled and sinking — the wolf-knight
-    // who came before, which is the whole reason Thornedge feels like a warning
-    const st = tinted(woodKit.statue, 'shrineStatue', 0x8f9186);
-    st.scale.setScalar(2.6);
-    st.rotation.set(0, 0.6, 0.5);
-    st.position.set(0, 1.2, 0);
-    g.add(st);
+    if (scale === 1) {
+      // a real knight model, stone grey, toppled and sinking — the wolf-knight
+      // who came before, which is the whole reason Thornedge feels like a warning
+      const st = tinted(woodKit.statue, 'shrineStatue', 0x8f9186);
+      st.scale.setScalar(2.6);
+      st.rotation.set(0, 0.6, 0.5);
+      st.position.set(0, 1.2, 0);
+      g.add(st);
+    } else {
+      // ...and the gate markers are NOT more knights. That model is a character
+      // rig: it never merges into the static batch, and two more copies took
+      // t1a from 79 draw calls to 119. They are what a shrine's waymarkers
+      // would actually be — smaller stones set at the same lean, the same grey,
+      // on the same base — which is also the truer fiction. There was one
+      // wolf-knight before Kael, not three.
+      put(woodKit.pillar, 'shrineMark', 0, 0.4, 0, 2.9, 0.6, 0.5, 0x8f9186);
+    }
     put(woodKit.rockLA, 'shrineBase', 0, 0, 0, 2.2, 0.3, 0, 0x6e6f66);
-    world.addCircle(x, z, 2.0);
+    circle(0, 0, 2.0);
   } else if (kind === 'watchingTree') {
     put(woodKit.treeA, 'watchTree', 0, 0, 0, 4.2, 0.4, 0, 0x1d3a34);
     put(woodKit.stump, 'watchTree', 0, 0, 2.2, 3.0, 0, 0, 0x14262b);
@@ -408,42 +422,47 @@ function heroProp(world, x, z, kind, D) {
         side: THREE.DoubleSide, depthWrite: false })
     );
     eyes.rotation.x = -Math.PI / 2;
-    eyes.position.set(x, world.deckY + 0.05, z);
-    world.add(eyes);
-    world.addCircle(x, z, 2.5);
+    // INSIDE the group, so a half-size copy at a gate gets half-size eyes
+    eyes.position.set(0, world.deckY + 0.05, 0);
+    g.add(eyes);
+    circle(0, 0, 2.5);
   } else if (kind === 'rootArch') {
     put(woodKit.arch, 'rootArch', 0, 0, 0, 3.4, 0, 0, 0x4a3320);
     put(woodKit.logStack, 'rootArch', -3.6, 0, 0.6, 1.8, 0.4);
     put(woodKit.logStack, 'rootArch', 3.6, 0, -0.4, 1.8, -0.4);
-    world.addCircle(x - 3.4, z, 1.0); world.addCircle(x + 3.4, z, 1.0);
+    circle(-3.4, 0, 1.0); circle(3.4, 0, 1.0);
   } else if (kind === 'blossomFall') {
     put(woodKit.treeB, 'blossom', 0, 0, 0, 4.4, 0, 0, 0xe8a8c0);
-    // the fall itself: petals drifting down, one InstancedMesh, one draw call
-    const petals = new THREE.InstancedMesh(
-      new THREE.PlaneGeometry(0.22, 0.22),
-      new THREE.MeshBasicMaterial({ color: 0xffd9e8, transparent: true, opacity: 0.85,
-        side: THREE.DoubleSide, depthWrite: false }),
-      60
-    );
-    const dm = new THREE.Object3D();
-    const seed = [];
-    for (let i = 0; i < 60; i++) {
-      seed.push({ a: i * 2.39, r: 0.6 + (i % 7) * 0.55, y: (i % 11) * 0.75 });
-    }
-    world.add(petals);
-    world.keepLoose(petals);
-    world.onAnimate((t) => {
+    // the fall itself: petals drifting down, one InstancedMesh, one draw call.
+    // Only the full-size Bloomfall gets them: a gate copy needs the SILHOUETTE,
+    // and 60 more instances per gatepost buys nothing a child can read.
+    if (scale === 1) {
+      const petals = new THREE.InstancedMesh(
+        new THREE.PlaneGeometry(0.22, 0.22),
+        new THREE.MeshBasicMaterial({ color: 0xffd9e8, transparent: true, opacity: 0.85,
+          side: THREE.DoubleSide, depthWrite: false }),
+        60
+      );
+      const dm = new THREE.Object3D();
+      const seed = [];
       for (let i = 0; i < 60; i++) {
-        const s = seed[i];
-        const yy = 8.2 - ((s.y + t * 1.1) % 8.2);
-        dm.position.set(x + Math.cos(s.a + t * 0.2) * s.r, yy, z + Math.sin(s.a + t * 0.2) * s.r);
-        dm.rotation.set(t * 0.8 + i, s.a, 0);
-        dm.updateMatrix();
-        petals.setMatrixAt(i, dm.matrix);
+        seed.push({ a: i * 2.39, r: 0.6 + (i % 7) * 0.55, y: (i % 11) * 0.75 });
       }
-      petals.instanceMatrix.needsUpdate = true;
-    });
-    world.addCircle(x, z, 1.6);
+      world.add(petals);
+      world.keepLoose(petals);
+      world.onAnimate((t) => {
+        for (let i = 0; i < 60; i++) {
+          const s = seed[i];
+          const yy = 8.2 - ((s.y + t * 1.1) % 8.2);
+          dm.position.set(x + Math.cos(s.a + t * 0.2) * s.r, yy, z + Math.sin(s.a + t * 0.2) * s.r);
+          dm.rotation.set(t * 0.8 + i, s.a, 0);
+          dm.updateMatrix();
+          petals.setMatrixAt(i, dm.matrix);
+        }
+        petals.instanceMatrix.needsUpdate = true;
+      });
+    }
+    circle(0, 0, 1.6);
   } else if (kind === 'standingStones') {
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
@@ -451,8 +470,38 @@ function heroProp(world, x, z, kind, D) {
     }
   }
   g.position.set(x, 0, z);
+  g.scale.setScalar(scale);
   world.add(g);
   return g;
+}
+
+// THE NORTH GATE (A6) — how a junction announces itself to someone walking
+// SOUTH into it.
+//
+// The camera is a fixed world-space offset: it sits 7.07 u south of the player
+// and never rotates, so the frame shows 12.8 u of ground AHEAD (north) and only
+// 4.6 u behind. Every ring leg returns to its junction through the junction's
+// north door, arriving at z = -10 facing south — which puts the centre
+// landmark at z = 0 a full 2.9 u BEHIND THE CAMERA ITSELF. Not clipped, not
+// small: behind. No amount of height or scale reaches it, and moving the
+// landmark north only breaks the three approaches that currently work, because
+// an island is 26 u deep and the camera covers 17.4 u of ground in total.
+//
+// So the junction says its name twice. A pair of half-size copies of its OWN
+// landmark stand just inside the north door, 1.2 u ahead of where a child lands
+// — the same silhouette, at the top of the frame, the instant they arrive. The
+// big one at the centre is still the payoff when they turn round.
+//
+// Deliberately not a HUD marker: dad ruled that out, and he was right. This is
+// architecture a child can walk up to, and it makes the ring's north gates read
+// as gates.
+const GATE = { x: 3.6, z: -11.2, scale: 0.45 };
+function northGate(world, kind, D) {
+  for (const side of [-1, 1]) {
+    const gx = side * GATE.x;
+    heroProp(world, gx, GATE.z, kind, D, GATE.scale);
+    world.heroMarks.push({ x: gx, z: GATE.z });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -504,6 +553,7 @@ export async function buildT1a(scene) {
   if (logDown) sideDoor(world, 'w', halfW, halfD, 'tsA', { x: 10, z: 0, angle: -Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'leaningShrine', D);
+  northGate(world, 'leaningShrine', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -7, z: 4 };
   world.markers.houndSpots = [{ x: 8, z: 3, variant: 'thorn' }];
@@ -578,6 +628,7 @@ export async function buildT2a(scene) {
   if (rootCut) sideDoor(world, 'e', halfW, halfD, 'tsB', { x: -10, z: 0, angle: Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'watchingTree', D);
+  northGate(world, 'watchingTree', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -8, z: 5 };
   // the dark: the Dark Wolf's eyes are the way through, as in Ember
@@ -676,6 +727,7 @@ export async function buildT3a(scene) {
   if (rootCut) sideDoor(world, 'w', halfW, halfD, 'tsB', { x: 10, z: 0, angle: -Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'rootArch', D);
+  northGate(world, 'rootArch', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: 8, z: 6 };
   // THE ROOT-WALL: a chord you can SEE the Gloomwood through, before you can
@@ -814,6 +866,7 @@ export async function buildT4a(scene) {
   if (logDown) sideDoor(world, 'e', halfW, halfD, 'tsA', { x: -10, z: 0, angle: Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'blossomFall', D);
+  northGate(world, 'blossomFall', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -8, z: 6 };
   // THE GREAT LOG — push it over and it becomes the chord home. Visible from

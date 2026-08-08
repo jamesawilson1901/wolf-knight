@@ -80,6 +80,7 @@ const snap = () => page.evaluate(() => {
     spawn: { ...w.spawn },
     markers: Object.keys(w.markers),
     hero: w.markers.heroSpot || null,
+    heroMarks: w.heroMarks || [],
     interactive, southEdge,
     calls: i.render.calls, tris: i.render.triangles,
   };
@@ -147,8 +148,13 @@ for (const [leg, from, to] of [['tsA', 't4a', 't1a'], ['tsB', 't3a', 't2a']]) {
     : RING_PATH.slice(idx('t2a'), idx('t3a') + 1);         // t2a … t3a
   const shortcut = [from, leg, to];
   const aroundLen = lengthOf(around), shortLen = lengthOf(shortcut);
+  // Threshold was 0.5 when this was written — an unmeasured guess. Both legs
+  // came in at 0.63 (81 u vs 128 u, a 37% saving) and dad accepted that as
+  // plainly shorter on the walk, so the bar is the accepted figure with a
+  // little room, not the guess. It stays an assertion so a future edit that
+  // erodes the saving still trips it.
   check(`${leg} is shorter than walking round (${Math.round(shortLen)}u vs ${Math.round(aroundLen)}u)`,
-    shortLen < aroundLen * 0.5,
+    shortLen < aroundLen * 0.7,
     { shortcutRooms: shortcut.length, aroundRooms: around.length,
       shortcutUnits: Math.round(shortLen), aroundUnits: Math.round(aroundLen),
       ratio: +(shortLen / aroundLen).toFixed(2) });
@@ -218,29 +224,42 @@ for (const j of JUNCTIONS) {
   }
   entries.push({ from: '(spawn)', ...S[j].spawn });
   for (const e of entries) {
-    const r = await page.evaluate(async ({ room, x, z, angle, hero }) => {
+    const r = await page.evaluate(async ({ room, x, z, angle, marks }) => {
       const g = window.__game;
       const s = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
       g.player.root.position.set(x, g.player.root.position.y, z);
       g.player.root.rotation.y = angle;
       // let the camera damping settle at the new position
       for (let i = 0; i < 40; i++) await s();
-      // sample the prop at three heights — a 6-9 u landmark counts as "in
-      // frame" if any of its body is, not only the one point we happened to
-      // pick. Reporting the LOWEST sample keeps the number meaningful.
+      // The question is "does the junction's IDENTITY reach the screen", not
+      // "does this one object" — a junction may say its name more than once
+      // (see northGate in js/level3.js), and a child reads the silhouette, not
+      // the instance. So every landmark instance is projected and the nearest
+      // hit wins. Each is sampled at three heights, because a 6-9 u prop counts
+      // as in frame if any of its body is, not only the point we happened to
+      // pick; the reported ndc is that instance's base.
       const V = Object.getPrototypeOf(g.camera.position).constructor;
-      const pts = [0.4, 2.5, 5.0].map((y) => {
-        const v = new V(hero.x, y, hero.z);
-        v.project(g.camera);
-        return v;
-      });
-      const onAny = pts.some((v) => Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && v.z > 0 && v.z < 1);
-      const base = pts[0];
-      return { ndcX: +base.x.toFixed(2), ndcY: +base.y.toFixed(2), z: +base.z.toFixed(3), onAny };
-    }, { room: j, x: e.x, z: e.z, angle: e.angle || Math.PI, hero: S[j].hero });
+      let best = null;
+      for (let mi = 0; mi < marks.length; mi++) {
+        const m = marks[mi];
+        const pts = [0.4, 2.5, 5.0].map((y) => {
+          const v = new V(m.x, y, m.z);
+          v.project(g.camera);
+          return v;
+        });
+        const onAny = pts.some((v) => Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && v.z > 0 && v.z < 1);
+        const rec = { which: mi === 0 ? 'centre' : 'gate', onAny,
+          ndcX: +pts[0].x.toFixed(2), ndcY: +pts[0].y.toFixed(2) };
+        if (!best || (onAny && !best.onAny)) best = rec;
+        if (best.onAny) break;
+      }
+      return best || { onAny: false, ndcX: 0, ndcY: 0, which: 'none' };
+    }, { room: j, x: e.x, z: e.z, angle: e.angle || Math.PI,
+         marks: [S[j].hero, ...(S[j].heroMarks || [])] });
     const onScreen = r.onAny;
     seenFrom.push({ junction: j, from: e.from, onScreen, ndc: [r.ndcX, r.ndcY] });
-    console.log(`  ${j} from ${String(e.from).padEnd(9)} → ${onScreen ? 'LANDMARK IN FRAME' : 'NOT VISIBLE'}  ndc(${r.ndcX}, ${r.ndcY})`);
+    console.log(`  ${j} from ${String(e.from).padEnd(9)} → ` +
+      `${onScreen ? 'LANDMARK IN FRAME (' + r.which + ')' : 'NOT VISIBLE'}  ndc(${r.ndcX}, ${r.ndcY})`);
   }
   await go(j);   // rebuild before the next junction
 }

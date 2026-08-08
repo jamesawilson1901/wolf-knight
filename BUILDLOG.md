@@ -2422,3 +2422,76 @@ eight promises now land as ??? and resolve when opened.
 **unreachable**, drives the real `player.trySpecial()` in the advertised form,
 asserts it is **reachable**, then leaves and returns and asserts it is still
 open. Nothing in it removes a collider by hand. 25 assertions, all green.
+
+## v3.28.0 — Saying the junction's name twice (A6) (2026-08-08)
+
+Level 3 is a ring, and a ring is walked in both directions. The verifier's
+disorientation check projects each junction's landmark into the camera frustum
+from every door in turn, and all four junctions failed the same approach:
+
+    t1a from tgl  → IN FRAME      ndc(-0.62,  0.84)
+    t1a from tsA  → IN FRAME      ndc(-0.98, -0.03)
+    t1a from t1b  → NOT VISIBLE   ndc( 0.00, -4.06)
+
+### Why no placement fixes it
+
+The camera is a fixed world-space offset that never rotates with facing
+(`js/main.js` — `camGoal.copy(player.root.position).add(CAM_OFFSET)`), sitting
+7.07 u SOUTH of the player. Every ring leg returns to its junction through the
+junction's north door, arriving at `z = -10` facing south. The centre landmark
+at `z = 0` is not clipped and not small — it is **2.9 u behind the camera
+itself**. No height and no scale reaches it.
+
+Moving the landmark north only swaps which approach fails: an island is 26 u
+deep and the camera covers 17.4 u of ground in total (12.8 ahead, 4.6 behind),
+so no single point is visible from both ends of the room.
+
+### What was built
+
+A pair of half-size copies of the junction's own landmark, just inside its
+north door at `z = -11.2`, `x = ±3.6` — 1.2 u ahead of where a child lands, so
+the silhouette is at the top of the frame the instant they arrive. The big one
+at the centre is still the payoff when they turn round.
+
+Deliberately not the district floor-inlay the audit recommended. The inlay
+would have made the check pass by weakening what it asks: the question is "is
+the LANDMARK in frame", and a coloured floor is not a landmark. Repeating the
+silhouette answers it as asked, and reads as architecture rather than as a
+patch — the ring's north gates are marked gates. Dad had already ruled out a
+HUD marker, and he was right to.
+
+`heroProp()` gained a `scale`, which meant every collider it drops had to go
+through one helper, since colliders are placed in world space and do not come
+along when a group is scaled. The Watching Tree's glowing eyes moved inside the
+group so a half-size copy gets half-size eyes; the Bloomfall's 60 drifting
+petals are skipped on gate copies, because a gatepost needs the silhouette and
+60 more instances buy nothing a child can read.
+
+### Thornedge cost 40 draw calls to say twice
+
+`t1a` went from 79 dressed draw calls to **119**. The Leaning Shrine is a real
+knight model (`assets/chars/knight.glb`) — a character rig, and a character rig
+never merges into the static batch, so each copy costs ~20 calls on its own.
+
+Its gate markers are now smaller stones set at the same lean, in the same grey,
+on the same base. Cheaper, and the truer fiction: there was one wolf-knight
+before Kael, not three. `t1a` is 85 dressed and is the worst room in Level 3
+with it — the other three junctions use tree, arch and blossom props that merge
+normally and cost 2-4 calls for the pair.
+
+### The verifier was asking a slightly wrong question
+
+It projected one object. A junction may legitimately say its name more than
+once, and a child reads the silhouette, not the instance. It now projects every
+landmark instance recorded in `world.heroMarks` and reports which one was seen
+(`centre` or `gate`). `heroMarks` sits on the World rather than in `markers`,
+because the blind-strip law is a census of spots gameplay acts on and these are
+scenery a child reads.
+
+Also settled: the `tsB is shorter than walking round` assertion had been failing
+against a threshold of `0.5` that was an unmeasured guess when the verifier was
+written. Both legs measure `0.63` — 81 u against 128 u, a 37% saving — which
+dad accepted as plainly shorter on the walk. The bar is now the accepted figure
+with a little room (`0.7`), so a future edit that erodes the saving still trips.
+
+Level 3 verifies ALL CLEAN, dressed and greybox.

@@ -25,6 +25,11 @@ export class World {
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
+    // Where this room ANNOUNCES ITSELF: every landmark instance that says
+    // "you are at the Thornedge crossroads". Not part of `markers`, because
+    // these are scenery a child reads, not spots gameplay acts on — and the
+    // blind-strip law is a census of the latter.
+    this.heroMarks = [];       // [{x, z}]
     this.burnables = [];       // {id, x, z, group, collider, burned}
     this.crackables = [];      // {id, x, z, group, collider, cracked} — Earth Wolf
     // Cuttables were the ONE gate list not created here, so gates.js built it
