@@ -104,6 +104,10 @@ export const LINES = {
   bramble_teach: { voice: 'pip', text: 'Thorns in the way! Be the Verdant Wolf and LASH them — they snap right open.' },
   bramble_regrow: { voice: 'pip', text: 'Careful — these ones grow back! Cut and RUN, Kael.' },
   log_rope: { voice: 'pip', text: 'That big log is tied up. Lash the rope and see what happens!' },
+  // THE KNOT — the twist. Name the DISCOVERY, never the button, and never the
+  // solution: "it pulls" is the idea; working out what to pull is the puzzle.
+  knot_tether: { voice: 'pip', text: 'You cannot get behind it to push… but your vine can PULL, Kael. Lash the rock!' },
+  knot_snare: { voice: 'pip', text: 'Lash the hound straight on — the vine will hold it still for you!' },
   vault_changed: { voice: 'pip', text: 'Kael, look! The big room is different. It changed because of YOU.' },
   all_pups_stone: { voice: 'pip', text: 'Six pups safe and sound! The whole den will be full of happy howls. Your heart grows stronger!' },
   stone_complete: { voice: 'pip', text: 'The caverns hum with life again. Two lights found, Kael… five to go.' },

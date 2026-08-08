@@ -13,7 +13,8 @@ import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
+  pushableBoulder, plateSwitch } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
@@ -1752,96 +1753,13 @@ function spikeTrap(world, x, z, offset = 0) {
   });
 }
 
-// Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
-function boulder(world, x, z) {
-  const rock = prepareModel(kit.rockLB.scene.clone());
-  rock.traverse((n) => {
-    if (!n.isMesh) return;
-    n.material = n.material.clone();
-    n.material.color.setHex(0x8a8d95);
-  });
-  rock.scale.setScalar(2.0);
-  const group = new THREE.Group();
-  group.add(rock);
-  group.position.set(x, 0, z);
-  world.add(group);
-  const collider = { x, z, r: 0.62 };
-  world.circleColliders.push(collider);
-  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.88, 26),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
-  group.add(ring);
-  world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
-  const b = { x, z, r: 0.62, group, mesh: rock, collider };
-  world.boulders.push(b);
-  return b;
-}
-
-// Pressure plate: a floor switch a boulder holds down. v3.18 readability
-// pass — it is now a big, IN-THE-FLOOR target: recessed stone base, glowing
-// disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
-// ring, so "roll THIS onto THAT" reads at a glance.
-function pressurePlate(world, id, x, z, onPressed) {
-  // HEIGHT LAW (v3.18, generalised in v3.20): a decal below the room's floor
-  // top is BURIED and invisible — that is why "there is no pressure plate".
-  // Heights now key off world.deckY, so the same plate reads correctly on
-  // Stoneroot's raised stone tiles AND on the Wild Woods' bare ground
-  // (where the old hard-coded stone offsets left it floating in mid-air).
-  const deck = world.deckY;
-  // a round stone plate (NOT the dungeon-kit trap grid — that reads as
-  // "danger, keep off", the exact opposite of an act-here target)
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
-    new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
-  );
-  base.position.set(x, deck - 0.015, z);
-  world.add(base);
-  const glow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.62, 24),
-    new THREE.MeshStandardMaterial({
-      color: 0x000000, emissive: 0xffd98a, emissiveIntensity: 0.9,
-      transparent: true, opacity: 0.75, roughness: 1, depthWrite: false,
-    })
-  );
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.set(x, deck + 0.05, z);
-  world.add(glow);
-  // the GOLD "act here" ring — same grammar (and same gold) as the boulder
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.92, 28),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, deck + 0.04, z);
-  world.add(ring);
-  if (!world.plates) world.plates = [];
-  const pressed = !!state.flags.plates[id];
-  const p = {
-    id, x, z, pressed,
-    onPressed: () => {
-      glow.material.emissive.setHex(0x7aff8a);
-      ring.material.color.setHex(0x7aff8a); // the ring agrees: DONE
-      audio.play('checkpoint', { volume: 0.8, rate: 1.3 });
-      if (onPressed) onPressed();
-    },
-  };
-  if (pressed) {
-    glow.material.emissive.setHex(0x7aff8a);
-    ring.material.color.setHex(0x7aff8a);
-  }
-  world.plates.push(p);
-  world.onAnimate((t) => {
-    glow.material.emissiveIntensity = p.pressed ? 1.4 : 0.7 + 0.35 * Math.sin(t * 2.6 + x);
-    ring.material.opacity = p.pressed ? 0.4 : 0.4 + 0.3 * Math.sin(t * 2.4 + x);
-    const s = p.pressed ? 1 : 1 + 0.06 * Math.sin(t * 2.4 + x);
-    ring.scale.set(s, s, 1);
-  });
-  return p;
-}
+// Pushable boulder + pressure plate now live in js/gates.js so Level 3 can use
+// the SAME ones rather than growing its own. Level 3 duplicating the cut
+// system — and getting it subtly wrong, so its brambles could never be cut at
+// all — is exactly what sharing these prevents. Thin wrappers keep every
+// existing call site in this file unchanged.
+function boulder(world, x, z) { return pushableBoulder(world, prepareModel, kit.rockLB, x, z); }
+function pressurePlate(world, id, x, z, onPressed) { return plateSwitch(world, id, x, z, onPressed); }
 
 // (v3.18: the drop-hole/climb-spot teleport pair is GONE — dad's law:
 // nothing moves the player without a door they walked through.)

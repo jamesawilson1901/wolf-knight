@@ -30,6 +30,7 @@ const VINE_COOLDOWN = 7;        // Verdant Wolf vine-lash (forward line + cuts b
 const VINE_RANGE = 3.8;         // how far the whip reaches
 const VINE_HALFWIDTH = 0.9;     // corridor half-width the lash sweeps
 const VINE_DMG = 1.5;
+const VINE_SNARE = 2.6;       // a square-on lash HOLDS, it does not just tangle
 const FROST_COOLDOWN = 7;       // Frost Wolf breath (cone: shatters ice, freezes foes)
 const FROST_RANGE = 3.6;
 const FROST_CONE_DEG = 40;
@@ -1247,13 +1248,27 @@ export class Player {
         const side = Math.abs(dx * fz - dz * fx);    // distance off the line
         if (side > VINE_HALFWIDTH + e.radius) continue;
         e.takeDamage(VINE_DMG, 'verdant', 'melee');
-        if (!e.dead && e.takeStun && !e.flying) e.takeStun(0.6); // tangled
+        // SNARE. A graze tangles briefly; a rope around it HOLDS. The long
+        // hold is the other half of the twist — the same discovery as the
+        // boulder, taught on something that fights back.
+        if (!e.dead && e.takeStun && !e.flying) {
+          const squareOn = side < VINE_HALFWIDTH * 0.6;
+          e.takeStun(squareOn ? VINE_SNARE : 0.6);
+          if (squareOn) e.snaredUntil = performance.now() + VINE_SNARE * 1000;
+        }
       }
     }
     // ...and CUT any bramble tangle in reach (gates.js registers cuttables)
     const tip = { x: px + fx * VINE_RANGE * 0.75, z: pz + fz * VINE_RANGE * 0.75 };
     if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
       if (effects && effects.punch) effects.punch(0.18, 0.2);
+    }
+    // ...and TETHER a boulder: the lash is a rope, so it PULLS. This is the
+    // Level 3 twist, and it is a permanent part of the tool once discovered —
+    // not a trick that only works in the room that taught it.
+    if (world.tetherAt(tip.x, tip.z, 1.9, px, pz) > 0) {
+      audio.play('gate-creak', { volume: 0.6, rate: 0.7 });
+      if (effects && effects.punch) effects.punch(0.22, 0.24);
     }
     // the whip itself: a green arc of leaf-bursts down the line
     for (let i = 1; i <= 4; i++) {

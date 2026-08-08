@@ -25,7 +25,7 @@ import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, defineRestoration } from './worldstate.js';
-import { registerCuttable, alreadyCut } from './gates.js';
+import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
 
 let forceGrey = false;
 let woodKit = null;
@@ -716,29 +716,57 @@ export async function buildT3p(scene) {
 // twist teaches three quarters of an ability.
 export async function buildTkn(scene) {
   const { world, spec, D } = base(scene, 'tkn');
+  const solved = () => !!state.flags.plates.l3_knot_p1;
+  // the way onward opens when the plate is held down — the puzzle IS the door
   const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't3b', { x: 0, z: -10, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'tc3', { x: 0, z: 7, angle: Math.PI });
+  sideDoor(world, 'n', halfW, halfD, 'tc3', { x: 0, z: 7, angle: Math.PI },
+    { when: () => !!state.flags.plates.l3_knot_p1 });
 
-  // the boulder you TETHER and drag onto the plate
+  // ---------------------------------------------------------------------
+  // THE TWIST, in one room: the lash is a ROPE.
+  //
+  // The boulder sits on the FAR side of a channel from the plate, and the
+  // channel's mouth is where a Thorn Hound patrols. Pushing is useless —
+  // there is no floor behind the boulder to push from. The only way it moves
+  // is toward you, which means the answer is the tool they have been cutting
+  // with for two districts, used the other way round.
+  //
+  // The hound is the second half of the same idea: lash it square-on and it
+  // is HELD, long enough to work. A child who tries to fight it first still
+  // wins, slower — the snare is the elegant answer, never the only one.
+  // ---------------------------------------------------------------------
   world.markers.knotTether = { x: -8, z: 2 };
-  world.markers.boulderSpots = [{ x: -8, z: 2, id: 'l3_knot_a' }];
-  world.markers.plateSpots = [{ x: 8, z: -4, id: 'l3_knot_p1' }];
-  // the hound you SNARE and hold still while the boulder rolls
-  world.markers.knotSnare = { x: 4, z: 4 };
-  world.markers.houndSpots = [{ x: 4, z: 4, variant: 'thorn' }];
-  wallRun(world, -2, -8, -2, -1, D);
-  wallRun(world, 2, 6, 12, 6, D);
-  if (GREY()) {
-    const plate = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 1.4, 0.18, 18),
-      protoMaterial(0xffd54a, 3, 3)
-    );
-    plate.position.set(8, world.deckY + 0.09, -4);
-    world.add(plate);
+  world.markers.knotSnare = { x: 3, z: 3 };
+  world.markers.houndSpots = [{ x: 3, z: 3, variant: 'thorn' }];
+
+  // the channel walls: no standing room behind the boulder, so it cannot be
+  // pushed east — the room teaches by making the old verb physically impossible
+  wallRun(world, -13, -1, -4, -1, D, 1.2);
+  wallRun(world, -13, 5, -4, 5, D, 1.2);
+
+  if (!GREY()) {
+    pushableBoulder(world, prepareModel, woodKit.rockLB, -8, 2);
+  } else {
+    // greybox: the same collider and the same slide, in a plain box, so the
+    // puzzle can be walked and judged before any art exists
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), protoMaterial(0x8a8d95, 2, 2));
+    g.add(m);
+    g.position.set(-8, 0.65, 2);
+    world.add(g);
+    const collider = { x: -8, z: 2, r: 0.62 };
+    world.circleColliders.push(collider);
+    world.boulders.push({ x: -8, z: 2, r: 0.62, group: g, mesh: m, collider });
   }
-  breadcrumbs(world, [[0, 8], [-6, 3], [6, -2], [0, -8]], 0xe8c88a);
+
+  plateSwitch(world, 'l3_knot_p1', 6, 2, () => {
+    state.flags.plates.l3_knot_p1 = true;
+  });
+  world.markers.plateSpots = [{ x: 6, z: 2, id: 'l3_knot_p1' }];
+
+  breadcrumbs(world, [[0, 8], [-6, 6], [0, -8]], 0xe8c88a);
   scatter(world, halfW, halfD, D, 144, 16, { spin: 1, kinds: ['logStack', 'rockLA'] });
   return finish(world, spec, D);
 }

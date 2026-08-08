@@ -809,6 +809,13 @@ function narrationTriggers(dt, t) {
   }
   if (m.logBridge && nearSpot(m.logBridge, 4)) narration.say('log_rope');
 
+  // THE KNOT (A2b) — the lash HOLDS. Prompts only; tetherAt and the snare live
+  // in world.js and player.js, so the verb has exactly one implementation.
+  if (m.knotTether && nearSpot(m.knotTether, 5) && !state.flags.plates.l3_knot_p1) {
+    narration.say('knot_tether');
+  }
+  if (m.knotSnare && nearSpot(m.knotSnare, 5)) narration.say('knot_snare');
+
   // "not yet" gates: log the promise + Pip acknowledges it
   if (m.boulderGateSpot && nearSpot(m.boulderGateSpot, 3) && !state.flags.cracked.em_boulder) {
     if (logMystery('boulder_ember', '🪨', 'A huge boulder — Ember Causeway')) bigToast('🗺️ Added to the map: ???');
