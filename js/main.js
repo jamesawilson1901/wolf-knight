@@ -145,6 +145,8 @@ key.shadow.camera.near = 2;
 key.shadow.camera.far = 34;
 key.shadow.normalBias = 0.03;
 const KEY_OFFSET = new THREE.Vector3(6, 13, 8);
+const tmpCol = new THREE.Color();
+const tmpHSL = { h: 0, s: 0, l: 0 };
 scene.add(key);
 scene.add(key.target);
 
@@ -1223,9 +1225,28 @@ function applyRoomMood() {
   // a room may recolour the light itself (Frostpeak runs cold; everywhere
   // else keeps the warm ember rig the earlier regions were tuned against)
   const lt = world.lightTint;
-  hemi.color.setHex(lt ? lt.sky : 0xa393b8);
-  hemi.groundColor.setHex(lt ? lt.ground : 0x5c4030);
-  key.color.setHex(lt ? lt.key : 0xffd2a0);
+  // A LIGHT'S COLOUR IS A HUE, NOT A SWATCH.
+  //
+  // Each region hands the rig its own district tints for wayfinding — the room's
+  // colour temperature tells a child which part of the level they are in before
+  // they read a single prop, which is the right idea. But the values handed over
+  // are SURFACE colours, chosen to look right lit, and several are very dark:
+  // Stoneroot's vaultDark ships floorTint 0x555c68 and wallTint 0x22262e. Used
+  // raw as light colours those multiply the whole room down — the key light ran
+  // at about a third of its intensity and the hemisphere bounce at a tenth,
+  // which is why the Great Vault came out almost unreadable once it had props in
+  // it worth seeing.
+  //
+  // So the HUE is kept and the VALUE is normalised. Wayfinding by colour
+  // survives; the room stops being dark by accident. The ground bounce stays
+  // deliberately low — it is bounced light — but never black.
+  const lit = (hex, want, sat) => {
+    tmpCol.setHex(hex).getHSL(tmpHSL);
+    return tmpCol.setHSL(tmpHSL.h, Math.max(tmpHSL.s, sat), want);
+  };
+  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62, 0.18));
+  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30, 0.22));
+  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74, 0.22));
 }
 
 function snapCamera() {
