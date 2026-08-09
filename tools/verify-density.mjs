@@ -159,6 +159,9 @@ for (const R of ROOMS) {
         hasMesh = true;
         if (n.geometry) seenModels.add(n.geometry.uuid);
       });
+      // NOTE: this only sees what SURVIVED the merge. The rest is added below
+      // from the batcher's own record of what went in — counting the leftovers
+      // alone made a well-batched room look like a poorly-dressed one.
       if (!hasMesh) continue;
       things++;
       const p = child.position;
@@ -198,6 +201,8 @@ for (const R of ROOMS) {
       sigma = Math.sqrt(Math.max(0, sum2 / n - (sum / n) ** 2));
     }
 
+    // every geometry flattenStatic consumed, plus everything it left alone
+    for (const uuid of (w._batchSourceGeometries || [])) seenModels.add(uuid);
     return {
       things, inView, models: seenModels.size,
       colliders: (w.boxColliders || []).length + (w.circleColliders || []).length,

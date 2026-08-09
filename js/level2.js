@@ -551,6 +551,18 @@ export async function buildVh(scene) {
     { x: 11, z: 10, kind: 'vase' }, { x: 16, z: 5, kind: 'barrel' },
     { x: -3, z: 12, kind: 'crate' },
   ];
+  // WHAT YOU SEE ON ARRIVAL. vh spawns at (0,10) facing the whole 36x28 vault,
+  // and the first dressed pass put every cluster on the perimeter — so the band
+  // the camera actually shows came out under the density floor. These sit in
+  // it, off the central route, which stays clear because three spokes and the
+  // crypt all lead off this room.
+  cartWreck(world, -6.5, 6, 0.4, D);
+  cartWreck(world, 7, 8.5, -0.7, D);
+  fallenColumn(world, -9.5, 11, 0.9, D, 3.2);
+  fallenColumn(world, 9, 12, -0.5, D, 3.0);
+  rubbleField(world, -4, 9.5, 2.6, D, 11);
+  rubbleField(world, 5, 11.5, 2.4, D, 10);
+  aftermath(world, 3, 7, 1.8, D, 39);
   world.markers.hubStage = stage;               // for the headless verifier
   scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
   return finish(world, spec, D);
@@ -995,6 +1007,14 @@ export async function buildVc1(scene) {
     { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'crate' },
     { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'vase' },
   ];
+  // same fix as the vault: the arrival band was empty because the terraces
+  // pushed everything to the walls. Nothing here sits ON a terrace edge, which
+  // is what makes the three levels readable from a fixed camera.
+  cartWreck(world, -6, 9.5, 0.6, D);
+  fallenColumn(world, 6.5, 10.5, -0.8, D, 3.0);
+  rubbleField(world, -3, 7.5, 2.4, D, 10);
+  rubbleField(world, 4, 11.5, 2.4, D, 10);
+  aftermath(world, -7, 6, 1.8, D, 40);
   scatter(world, halfW, halfD, D, 101, 6, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
   return finish(world, spec, D);
 }

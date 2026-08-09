@@ -74,6 +74,7 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   const isHeld = (o) => { for (let p = o; p; p = p.parent) if (held.has(p)) return true; return false; };
 
   const buckets = new Map();
+  const sourceGeos = new Set();
   let looseSeen = 0;
 
   // MERGE PER SPATIAL CELL, NOT PER ROOM.
@@ -117,6 +118,7 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     if (o.isInstancedMesh) return;
 
     o.updateWorldMatrix(true, false);
+    sourceGeos.add(o.geometry.uuid);
     put(mat, o.castShadow, o.receiveShadow, bakeGeometry(o.geometry, o.matrixWorld), o,
       cellOf(o.matrixWorld.elements[12]), cellOf(o.matrixWorld.elements[14]));
     looseSeen++;
@@ -181,7 +183,14 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
     });
   }
 
-  const stats = { loose: looseSeen, draws, unmerged: failed, shadowCulled: culled };
+  // WHAT WENT IN, not what is left. verify-density counted distinct geometries
+  // on the surviving objects, which meant a room that BATCHED WELL scored as
+  // using fewer models than one that batched badly — the metric rewarded the
+  // opposite of what it was measuring. Recording the source set here is the
+  // only place that still knows it.
+  const stats = { loose: looseSeen, draws, unmerged: failed, shadowCulled: culled,
+    sourceGeometries: sourceGeos.size };
+  world._batchSourceGeometries = sourceGeos;
   world._batchStats = stats;
   return stats;
 }
