@@ -667,7 +667,29 @@ export async function buildDg2(scene) {
   waterZone(world, { x: -6.5, z: 0, w: 5.0, d: 13, deep: false });
   world.markers.slimeSpots = [{ x: 7, z: 4, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 615, 4, { spin: 1, kinds: ['rockSA', 'bush'] });
+  // rimSides walks the long walls, and here the deep channel runs right through
+  // them — two thirds of its slots were inside the water and got dropped, so the
+  // room measured eight things in frame. The dry ends get dressed properly.
   rimSides(world, halfW, halfD, D, 6151);
+  for (const [x, z, k] of [[8.5, -4.5, 0.2], [8.5, 4.5, 0.8], [-8.5, -4.5, 0.6], [-8.5, 4.5, 0.1]]) {
+    if (!world.blocked(x, z, 1.8)) rubbleField(world, x, z, 2.2, washed(D, k), 10);
+  }
+  lowWall(world, 9.5, 0, 1.57, washed(D, 0.4), 4.0);
+  lowWall(world, -9.5, 0, 1.57, washed(D, 0.9), 4.0);
+  coldHearth(world, 7.5, 0, washed(D, 0.6));
+  wayshrine(world, 9.0, -2.5, 1.2, washed(D, 0.25));
+  cartWreck(world, 6.5, 5.0, 0.6, washed(D, 0.75));
+  fallenColumn(world, 4.0, -5.2, 0, washed(D, 0.55), 4.0);
+  // the posts that marked the ford, still standing on the dry side
+  for (let i = 0; i < 6; i++) {
+    const x = 10.0 - i * 0.9, z = (i % 2 ? 1 : -1) * (3.2 + (i % 3) * 0.8);
+    if (world.blocked(x, z, 0.6)) continue;
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    place(world, g, valeKit.pillar, 'pillar', 0, 0, 0, 0.8 + (i % 3) * 0.1,
+      i * 0.9, 0.05, washed(D, (i % 3) / 2).propTint);
+    world.add(g);
+  }
   return finish(world, spec, D);
 }
 
@@ -946,6 +968,16 @@ export async function buildDdp(scene) {
     world.reserve(-4.5, -5.5, 2.6, 'chest');
   }
   scatter(world, halfW, halfD, D, 641, 4, { spin: 1, kinds: ['rockSA', 'brick'] });
+  // THE RIM ONLY. An arena's middle stays clear — a boss that lands on a
+  // boulder buries its own punish ring — but ten things in the arrival frame is
+  // a bare room, so what she drowned is piled round the edges where it belongs.
+  for (const [x, z, k] of [[-9.5, 7.5, 0.2], [9.5, 7.5, 0.7], [-10.5, -6.5, 0.9], [10.5, -6.5, 0.4]]) {
+    if (!world.blocked(x, z, 2.0)) rubbleField(world, x, z, 2.6, washed(D, k), 12);
+  }
+  fallenColumn(world, -11, 2, 1, washed(D, 0.5), 5);
+  fallenColumn(world, 11, 2, 1, washed(D, 0.15), 5);
+  cartWreck(world, -6, 9.5, 0.8, washed(D, 0.85));
+  lowWall(world, 6, 9.5, 0, washed(D, 0.3), 4.5);
   return finish(world, spec, D);
 }
 

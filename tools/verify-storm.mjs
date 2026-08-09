@@ -103,7 +103,16 @@ const dashed = await page.evaluate(async () => {
   g.player.setForm('storm_wolf', { silent: true });
   g.player.root.position.set(9, 0, -3.6);
   g.player.root.rotation.y = Math.PI;      // facing north (-z)
+  // START FROM A CLEAN PLAYER. The step before this one walks Kael into the
+  // gale for 1.6 seconds, and whatever that leaves on him — a movement lock, a
+  // half-finished drive — belongs to that test and not this one. Without this
+  // the dash fired and travelled a quarter of a unit, which read as "the dash
+  // no longer crosses a gale" when a direct probe showed it crossing fine.
   g.player.specialCooldown = 0;
+  g.player.lockTime = 0;
+  g.player._dash = null;
+  g.player._roll = null;
+  g.player._vel.x = 0; g.player._vel.z = 0;
   const z0 = g.player.root.position.z;
   const fired = g.player.trySpecial(g.effects, g.world);
   for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
@@ -120,6 +129,9 @@ const knightTry = await page.evaluate(async () => {
   g.player.root.position.set(9, 0, -3.6);
   g.player.root.rotation.y = Math.PI;
   g.player.specialCooldown = 0;
+  g.player.lockTime = 0;
+  g.player._dash = null;
+  g.player._vel.x = 0; g.player._vel.z = 0;
   const z0 = g.player.root.position.z;
   g.player.trySpecial(g.effects, g.world);
   for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
