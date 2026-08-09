@@ -8,6 +8,8 @@ import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { sameDistrict } from './districts.js';
+import { makeHarness } from './minigame.js';
+import { FETCH } from './mg-fetch.js';
 import { Player } from './player.js';
 import { state, resolveRoom } from './state.js';
 import { Effects } from './effects.js';
@@ -1230,6 +1232,7 @@ async function loadRoom(id, entry, handoff = null) {
   document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
   world = await buildRoom(id, scene);
+  world.harness = harness;   // den hosts open mini games through it
   state.room = id;
   state.region = regionOf(id);
   applyRoomMood();
@@ -1347,6 +1350,7 @@ async function respawnAtCheckpoint() {
   player.clearProjectiles();
   if (world) world.dispose();
   world = await buildRoom(room, scene);
+  world.harness = harness;
   state.region = regionOf(room);
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
@@ -1386,6 +1390,29 @@ function triggerSurge() {
 }
 let titleScene = null;
 let menuPaused = false;
+
+// THE MINI GAME HARNESS (js/minigame.js). One instance for the whole game: the
+// contract is that only one round can be live at a time, and a single owner is
+// the simplest way to make that true rather than merely intended.
+const harness = makeHarness();
+function wireHarness() {
+  const tap = document.getElementById('mg-tap');
+  tap.addEventListener('pointerdown', (e) => harness._onTap(e));
+  document.getElementById('mg-exit').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.exit();          // ONE TAP, no confirmation (§2)
+  });
+  document.getElementById('mg-replay').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.replay();        // replaying IS the loop (§2)
+  });
+  document.getElementById('mg-leave').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.exit(); persist();
+  });
+  for (const b of ['cub', 'wolf', 'alpha']) {
+    document.getElementById('mg-band-' + b).addEventListener('pointerdown', (e) => {
+      e.stopPropagation(); harness.chooseBand(b); persist();
+    });
+  }
+}
 let shopWasNear = false;
 let travelWasNear = false;
 
@@ -1490,6 +1517,7 @@ async function start() {
     }
   };
   wireSettings();
+  wireHarness();
 
   menus = new Menus({
     player,
@@ -1555,6 +1583,18 @@ async function start() {
     }
 
     if (paused || menuPaused) {
+      renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
+      return;
+    }
+
+    // A MINI GAME HOLDS THE WORLD STILL. Nothing can hurt a child mid-round —
+    // §2 is explicit that there is no death and no fail state — so the den's
+    // clock, its villagers and Kael himself all wait while the round plays.
+    // The game's own props still animate, because the harness ticks them here.
+    if (harness.active) {
+      harness.update(dt, t);
+      world.animate(t, dt);
       renderer.render(scene, camera);
       perf.sample(realDt, state.room);
       return;
@@ -1770,6 +1810,7 @@ async function start() {
 
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
+  world.harness = harness;
   applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;

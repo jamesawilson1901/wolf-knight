@@ -33,6 +33,7 @@ export const state = {
   level: 1,
   perks: { sword: 0, bolt: 0, cooldown: 0, speed: 0 },
   counters: {},                 // sticker-book tallies (kills, parries, ...)
+  minigames: {},                // id -> { best, plays, won[] } — per profile only
   stickers: {},                 // sticker id -> true
   settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95,
     // '' = let the ranked picker choose; a child's own choice from Settings

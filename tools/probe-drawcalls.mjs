@@ -1,127 +1,138 @@
-// Round 2. Merging loose meshes only got r1 from 173 to 135 — not enough.
-// Two more levers, measured one at a time so we learn which one actually pays:
-//   A  FLATTEN: fold the InstancedMeshes into the merge as well, so all static
-//      dressing sharing a material becomes ONE draw regardless of how it was
-//      authored. Kenney kits share a single atlas material, so in theory a
-//      whole room's scenery collapses to a handful of draws.
-//   B  SHADOWS: a shadow map redraws every caster. Small ground clutter does
-//      not need to cast. Measure what turning off small casters buys.
+// WHICH FOUR OBJECTS? verify-minigame reports the draw-call delta; this says
+// what is actually being drawn that was not there before. Same standing spot
+// both times, so the camera frustum is identical and the diff is real.
 import { chromium } from 'playwright';
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+    '--autoplay-policy=no-user-gesture-required'] });
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });
 await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
-await page.fill('#t-name', 'MERGE2');
+await page.fill('#t-name', 'DRAWCALLS');
 await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
-await page.evaluate(() => { const g = window.__game;
-  g.state.settings.captions=false; g.state.settings.voice=false; g.state.settings.sfxVol=0;
-  g.state.formsUnlocked=['knight','dark_wolf','fire_wolf','earth_wolf','verdant_wolf'];
-  g.state.flags.keys.ember=true; g.state.flags.keys.kiln=true; g.player.iframes=99999; });
-const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;
-  g.state.room=r; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true});}, room);
-  try { await page.waitForFunction((r)=>window.__game.state.room===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
+await page.evaluate(() => {
+  const g = window.__game;
+  g.state.settings.sfxVol = 0; g.state.flags.pups = { pup1: true }; g.player.iframes = 999999;
+});
+for (let a = 0; a < 8; a++) {
+  await page.evaluate(() => { const g = window.__game;
+    g.state.room = 'den'; g.player.iframes = 0; g.player.hearts = 0.5;
+    g.player.hurt(99, { pierceDefend: true }); });
+  try {
+    await page.waitForFunction(() => window.__game.state.room === 'den' && window.__game.player.hearts > 1,
+      null, { timeout: 45000 }); break;
+  } catch { /* retry */ }
+}
 
-await page.addScriptTag({ type: 'module', content: `
-  import * as THREE from '/vendor/three.module.min.js';
-  import { mergeGeometries } from '/vendor/addons/utils/BufferGeometryUtils.js';
-  const norm = (geo) => {
-    const g = geo.clone();
-    for (const n of Object.keys(g.attributes)) if (!['position','normal','uv'].includes(n)) g.deleteAttribute(n);
-    if (!g.attributes.normal) g.computeVertexNormals();
-    if (!g.attributes.uv) { const c = g.attributes.position.count; g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(c*2), 2)); }
-    return g;
+// Record what is ACTUALLY DRAWN, not what exists. renderer.info.render.calls
+// counts draw calls including the shadow pass, and an object can be present,
+// visible and still culled — so a diff of the scene graph can come back empty
+// while the number moves. This hooks renderBufferDirect (an instance method on
+// WebGLRenderer) and buckets every draw into the frame it belongs to.
+await page.evaluate(() => {
+  const r = window.__game.renderer;
+  window.__frames = [];
+  const render = r.render.bind(r);
+  r.render = (scene, cam) => { window.__cur = []; window.__frames.push(window.__cur); render(scene, cam); };
+  const draw = r.renderBufferDirect.bind(r);
+  r.renderBufferDirect = (cam, scene, geo, mat, obj, group) => {
+    if (window.__cur) window.__cur.push(
+      `${obj.type}:${obj.name || '(anon)'}:${mat && mat.type}${mat && mat.isMeshDepthMaterial ? ':SHADOW' : ''}`);
+    draw(cam, scene, geo, mat, obj, group);
   };
-  window.__flatten = (opts) => {
-    const g = window.__game, w = g.world, root = w.root;
-    const prot = new Set();
-    for (const k of ['enemies','boulders','burnables','crackables','pups','plates','braziers','shatterables','cuttables','checkpoints'])
-      for (const e of (w[k]||[])) { const r = e && (e.root||e.mesh||e.group||e.obj); if (r) prot.add(r); }
-    const isProt = (o) => { let p=o; while(p){ if(prot.has(p)) return true; p=p.parent; } return false; };
-    const buckets = new Map();
-    const hide = [];
-    const put = (mat, cast, recv, geo) => {
-      const key = mat.uuid + '|' + (cast?1:0) + '|' + (recv?1:0);
-      if (!buckets.has(key)) buckets.set(key, { mat, cast, recv, geos: [] });
-      buckets.get(key).geos.push(geo);
-    };
-    let looseN = 0, instN = 0, instCopies = 0;
-    root.traverse((o) => {
-      if (o.isSkinnedMesh || o.isBatchedMesh || o.isSprite || o.isPoints) return;
-      const m = o.material;
-      if (!m || Array.isArray(m) || m.transparent || m.isMeshBasicMaterial) return;
-      if (isProt(o)) return;
-      if (o.isInstancedMesh) {
-        if (!opts.instanced) return;
-        o.updateWorldMatrix(true, false);
-        const tmp = new THREE.Matrix4();
-        for (let i = 0; i < o.count; i++) {
-          o.getMatrixAt(i, tmp);
-          const gg = norm(o.geometry);
-          gg.applyMatrix4(new THREE.Matrix4().multiplyMatrices(o.matrixWorld, tmp));
-          put(m, o.castShadow, o.receiveShadow, gg);
-          instCopies++;
-        }
-        instN++; hide.push(o); return;
-      }
-      if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
-      o.updateWorldMatrix(true, false);
-      const gg = norm(o.geometry); gg.applyMatrix4(o.matrixWorld);
-      put(m, o.castShadow, o.receiveShadow, gg);
-      looseN++; hide.push(o);
-    });
-    let made = 0, failed = 0;
-    for (const [, bkt] of buckets) {
-      let merged = null;
-      try { merged = mergeGeometries(bkt.geos, false); } catch { merged = null; }
-      if (!merged) { failed += bkt.geos.length; continue; }
-      const mesh = new THREE.Mesh(merged, bkt.mat);
-      mesh.castShadow = bkt.cast; mesh.receiveShadow = bkt.recv;
-      mesh.frustumCulled = false;
-      root.add(mesh); made++;
-    }
-    if (made) for (const o of hide) o.visible = false;
-    return { loose: looseN, instanced: instN, instanceCopies: instCopies, draws: made, failed };
-  };
-  window.__cutShadows = (maxSize) => {
-    const g = window.__game; let cut = 0;
-    const box = new THREE.Box3(); const size = new THREE.Vector3();
-    g.world.root.traverse((o) => {
-      if (!o.visible || !o.castShadow || o.isSkinnedMesh) return;
-      if (!o.geometry) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      box.copy(o.geometry.boundingBox); box.applyMatrix4(o.matrixWorld); box.getSize(size);
-      if (Math.max(size.x, size.y, size.z) <= maxSize) { o.castShadow = false; cut++; }
-    });
-    return cut;
-  };
-`});
-await page.waitForFunction(() => !!window.__flatten, null, { timeout: 20000 });
+});
 
-const test = async (room) => {
-  if (!await go(room)) { console.log(room, 'FAILED'); return; }
-  const r = await page.evaluate(async () => {
-    const g = window.__game;
-    const s = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-    const now = () => ({ c: g.renderer.info.render.calls, t: g.renderer.info.render.triangles });
-    await s(); await s();
-    const a0 = now();
-    const info = window.__flatten({ instanced: true });
-    await s(); await s();
-    const a1 = now();
-    const cut = window.__cutShadows(1.4);
-    await s(); await s();
-    const a2 = now();
-    return { a0, a1, a2, info, cut };
+const snap = () => page.evaluate(async () => {
+  const g = window.__game;
+  g.player.root.position.set(-6, 0, 0);
+  for (let i = 0; i < 60; i++) await new Promise((r) => requestAnimationFrame(r));
+  const seen = [];
+  const scene = g.world.root.parent || g.world.root;
+  scene.traverse((n) => {
+    if (!(n.isMesh || n.isPoints || n.isLine || n.isSprite)) return;
+    let vis = n.visible, p = n.parent;
+    while (p) { if (!p.visible) vis = false; p = p.parent; }
+    seen.push({ u: n.uuid, k: `${n.type}:${n.name || '(anon)'}:${(n.material && n.material.type) || '-'}`, vis });
   });
-  console.log(`${room.padEnd(4)} ${String(r.a0.c).padStart(3)} → flatten ${String(r.a1.c).padStart(3)} → +shadow-cull ${String(r.a2.c).padStart(3)} calls   ` +
-    `tris ${r.a0.t} → ${r.a2.t}   [${r.info.loose} loose + ${r.info.instanced} instanced groups (${r.info.instanceCopies} copies) → ${r.info.draws} draws; ${r.cut} casters cut]` +
-    (r.info.failed ? `  {${r.info.failed} unmergeable}` : ''));
-};
+  const fr = window.__frames;
+  const drawn = fr.length > 1 ? fr[fr.length - 2] : [];
+  window.__frames = [];
+  return { calls: g.renderer.info.render.calls, seen, drawn };
+});
 
-console.log('\nFLATTEN + SHADOW-CULL EXPERIMENT   (budget: 100 calls / 500,000 tris)\n');
-for (const room of ['r1','r2','r3','e1','w1','f5','lb']) await test(room);
+const before = await snap();
+
+// one full round: walk in, tap through the demo, mash, run the clock out,
+// take the results screen, exit
+await page.evaluate(() => { window.__game.player.root.position.set(1.6, 0, 4.6); });
+await page.evaluate(async () => { for (let i = 0; i < 8; i++) await new Promise((r) => requestAnimationFrame(r)); });
+await page.locator('#mg-tap').dispatchEvent('pointerdown');
+await page.evaluate(async () => {
+  const tap = document.getElementById('mg-tap');
+  for (let i = 0; i < 120; i++) {
+    tap.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  const h = window.__game.world.harness;
+  for (let i = 0; i < 400 && h.phase === 'play'; i++) {
+    h.update(0.12, i * 0.12);
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+});
+// ...then the rest of what verify-minigame does: replay, exit, and ten
+// open/close cycles, so this probe walks the same road the check walks
+await page.locator('#mg-replay').dispatchEvent('pointerdown');
+await page.evaluate(async () => { for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r)); });
+await page.locator('#mg-exit').dispatchEvent('pointerdown');
+await page.evaluate(async () => {
+  const g = window.__game;
+  for (const d of [...(g.world.drops || [])]) {
+    if (d.mesh && d.mesh.parent) d.mesh.parent.remove(d.mesh);
+    if (d.root && d.root.parent) d.root.parent.remove(d.root);
+  }
+  g.world.drops = [];
+  g.player.root.position.set(-6, 0, 0);
+  for (let i = 0; i < 3; i++) await new Promise((r) => requestAnimationFrame(r));
+  for (let i = 0; i < 10; i++) {
+    g.player.root.position.set(1.6, 0, 4.6);
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    if (g.world.harness.active) g.world.harness.exit();
+    g.player.root.position.set(-6, 0, 0);
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+});
+await page.evaluate(async () => {
+  const g = window.__game;
+  for (const d of [...(g.world.drops || [])]) {
+    if (d.mesh && d.mesh.parent) d.mesh.parent.remove(d.mesh);
+    if (d.root && d.root.parent) d.root.parent.remove(d.root);
+  }
+  g.world.drops = [];
+  for (let i = 0; i < 8; i++) await new Promise((r) => requestAnimationFrame(r));
+});
+
+const after = await snap();
+console.log('calls', before.calls, '->', after.calls);
+const bu = new Map(before.seen.map((s) => [s.u, s]));
+const au = new Map(after.seen.map((s) => [s.u, s]));
+for (const [u, s] of au) if (!bu.has(u)) console.log('  ADDED   ', s.k, 'visible=' + s.vis);
+for (const [u, s] of bu) if (!au.has(u)) console.log('  REMOVED ', s.k, 'visible=' + s.vis);
+for (const [u, s] of au) {
+  const p = bu.get(u);
+  if (p && p.vis !== s.vis) console.log('  VIS ' + p.vis + '->' + s.vis, s.k);
+}
+// the real answer: a multiset diff of one settled frame's draw calls
+const tally = (a) => a.reduce((m, k) => m.set(k, (m.get(k) || 0) + 1), new Map());
+const tb = tally(before.drawn), ta = tally(after.drawn);
+console.log('drawn last frame', before.drawn.length, '->', after.drawn.length);
+for (const k of new Set([...tb.keys(), ...ta.keys()])) {
+  const x = tb.get(k) || 0, y = ta.get(k) || 0;
+  if (x !== y) console.log(`  ${x} -> ${y}  ${k}`);
+}
 await b.close();

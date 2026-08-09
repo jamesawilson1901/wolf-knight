@@ -140,7 +140,7 @@ const COMBO_WINDOW = 0.7;   // s after a slash ends in which a tap thrusts
 const RANGED_COOLDOWN = 1.1;
 const RANGED_SPEED = 11;
 const RANGED_RANGE = 7.5;
-const PARRY_WINDOW = 0.3;   // shield raised this recently = perfect parry
+export const PARRY_WINDOW = 0.3;   // shield raised this recently = perfect parry
 const PARRY_STUN = 2.2;     // seconds stunnable enemies stay dazed
 const DEFEND_SPEED_MULT = 0.35;
 const JUMP_V = 6.8;
