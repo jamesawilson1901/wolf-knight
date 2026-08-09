@@ -45,6 +45,12 @@ const DASH_R = 0.95;            // how wide the bolt is, for what it catches
 // is automatic (js/water.js explains why), so the button does the thing a button
 // should: it soaks what is near it and PUTS FIRES OUT. First time one gift has
 // ever undone another's work.
+// THE GHOST WALK (region 7). Not an attack and not a cooldown ability in the
+// usual sense — it is a state Kael holds, and the only one in the game with a
+// duration. Six seconds unseen, eight to recover it. Shadows that have not
+// noticed him carry on as if he is not there (js/enemies.js).
+const GHOST_DURATION = 6;
+const GHOST_COOLDOWN = 8;
 const SPLASH_COOLDOWN = 6;
 const SPLASH_RADIUS = 3.4;
 const SPLASH_DMG = 1;
@@ -67,6 +73,7 @@ export const WOLF_TINTS = {
   frost_wolf: { main: 0x9be3ff, eyes: 0xeaffff },   // Boreal's gift (region 4)
   storm_wolf: { main: 0xc9d4ff, eyes: 0xfff4b0 },   // Aria's gift (region 5)
   tide_wolf: { main: 0x3fb0c4, eyes: 0xd8fbff },    // Meri's gift (region 6)
+  ghost_wolf: { main: 0xe8e4ff, eyes: 0xffffff },   // Luna's own moonlight (region 7)
 };
 
 // FORM IDENTITY fields (data-driven so the seven later wolves slot in):
@@ -134,6 +141,17 @@ const FORM_DEFS = {
     attack: { lock: 0.42, hitAt: 0.22, range: 1.7, dmg: 1 },
     boltColor: 0x8fdc6a, rangedKind: 'thorn',   // thrown thorn: chips + ROOTS
   },
+  ghost_wolf: {
+    // Luna's own. Quick and slight — the lightest thing in the game, because
+    // what it does is not be there.
+    speed: 5.5, turnMult: 1.1, hurtMult: 1.15,   // fragile: it hides, it does not tank
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.40, hitAt: 0.21, range: 1.7, dmg: 1 },
+    boltColor: 0xe8e4ff, rangedKind: 'pierce',
+  },
   tide_wolf: {
     // heavy in the water and sure on it — the only form that never hurries
     speed: 5.0,
@@ -168,7 +186,7 @@ const FORM_DEFS = {
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide' };
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide', ghost_wolf: 'moon' };
 const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant', shard: 'frost' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -297,7 +315,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
@@ -670,7 +688,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN, storm_wolf: DASH_COOLDOWN, tide_wolf: SPLASH_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN, storm_wolf: DASH_COOLDOWN, tide_wolf: SPLASH_COOLDOWN, ghost_wolf: GHOST_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -1440,8 +1458,39 @@ export class Player {
     if (state.form === 'frost_wolf') return this.tryFrostBreath(effects, world);
     if (state.form === 'storm_wolf') return this.tryThunderDash(effects, world);
     if (state.form === 'tide_wolf') return this.trySplash(effects, world);
+    if (state.form === 'ghost_wolf') return this.tryGhost(effects, world);
     return false;
   }
+
+  // Ghost Wolf GHOST WALK: Kael fades, and shadows that have not noticed him
+  // carry on as if he is not there. Six seconds.
+  //
+  // It is the only ability in the game with a DURATION rather than an instant,
+  // and it is not a stealth-failure system: being seen costs nothing but the
+  // fight the child has been having for six regions. There is no alarm, no
+  // reset, and no way to lose a room by being spotted.
+  tryGhost(effects, world) {
+    if (state.form !== 'ghost_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this.ghostUntil = this._time + GHOST_DURATION;
+    audio.play('form-switch', { volume: 0.7, rate: 0.7 });
+    audio.play('pup-chime', { volume: 0.5, rate: 0.6 });
+    juice.burst(this.root.position.x, 0.9, this.root.position.z, 0xe8e4ff, 12);
+    if (effects && effects.punch) effects.punch(0.12, 0.3);
+    // every shadow already hunting him loses the trail — that is the POINT of
+    // pressing it mid-fight, and without it the ability would be useless in the
+    // only room that matters
+    if (world.enemies) {
+      for (const e of world.enemies) {
+        if (!e.dead && e._sleeps && e.alert === 'aware') { e.alert = 'unaware'; e._calmT = 0; }
+      }
+    }
+    this.specialCooldown = this.specialMax;
+    return true;
+  }
+
+  // Is he unseen right now? Read by every enemy, every frame.
+  get ghosted() { return state.form === 'ghost_wolf' && this._time < (this.ghostUntil || 0); }
 
   // Tide Wolf SPLASH: a ring of water thrown out from where Kael stands. It
   // soaks everything near him — light damage and, more to the point, they lose
@@ -2051,6 +2100,29 @@ export class Player {
 
     // See in the dark: the wolf lamp breathes on in dark zones (and in the
     // boss's phase-3 darkness).
+    // THE FADE. THE POSE NEVER LIES: if the shadows cannot see him, the child
+    // cannot quite see him either — he goes translucent and pale, and comes back
+    // solid the instant it lapses. No icon, no bar; the wolf IS the readout.
+    if (this.forms.ghost_wolf) {
+      const g = this.ghosted;
+      const want = g ? 0.34 : 1;
+      this._ghostFade = this._ghostFade === undefined ? 1 : this._ghostFade;
+      this._ghostFade += (want - this._ghostFade) * Math.min(1, dt * 7);
+      const f = this.forms[state.form];
+      if (f && f.model) {
+        f.model.traverse((n) => {
+          if (!n.isMesh || !n.material) return;
+          const ms = Array.isArray(n.material) ? n.material : [n.material];
+          for (const m of ms) {
+            if (this._ghostFade > 0.98) { if (m.transparent) { m.transparent = false; m.opacity = 1; } continue; }
+            m.transparent = true;
+            m.opacity = this._ghostFade;
+            m.depthWrite = this._ghostFade > 0.8;
+          }
+        });
+      }
+    }
+
     const dark = world.bossDarkness ? 1 : world.darknessAt(this.root.position.x, this.root.position.z);
     const want = state.form === 'dark_wolf' ? (dark ? 9 : 2.2) : 0;
     this.formLight.intensity += (want - this.formLight.intensity) * Math.min(1, dt * 6);

@@ -203,6 +203,36 @@ export const VARIANTS = {
       else if (m.color) { m.color.setHex(0xb9c4dc); m.emissive && m.emissive.setHex(0x8a9ad0); m.emissiveIntensity = 0.45; }
     },
   },
+  // --- THE SHADOW COURT (region 7). Grimm's own, and the only creatures in the
+  // game that can be UNAWARE — `_sleeps` is what opts a variant into that.
+  // Nothing else anywhere gets it, so six regions behave exactly as before.
+  shadewalker: {
+    label: 'Shadewalker',
+    hp: 5, weakness: 'moon', chargeSpeed: 10.5, puffTint: 0x2a1a3a, dropChance: 0.6,
+    sleeps: true,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xb9a8ff); m.emissiveIntensity = 1.8; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x1a1226); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x2e2140); }
+    },
+  },
+  courtwarden: {
+    label: 'Court Warden',
+    scale: 1.3, hp: 8, weakness: 'moon', chargeSpeed: 11.5, dropChance: 1, puffTint: 0x2a1a3a,
+    sleeps: true,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffd76a); m.emissiveIntensity = 2.2; }
+      else if (m.name === 'Main' || m.name === 'Main_Light') { m.color && m.color.setHex(0x140e1e); }
+    },
+  },
+  gloomblob: {
+    label: 'Gloom',
+    hp: 4, weakness: 'moon', puffTint: 0x2a1a3a, sleeps: true,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xb9a8ff); m.emissiveIntensity = 1.6; }
+      else if (m.color) { m.color.setHex(0x241a33); m.emissive && m.emissive.setHex(0x120c1c); m.emissiveIntensity = 0.4; }
+    },
+  },
   wisp: {
     label: 'Wisp Moth',
     hp: 1.5, weakness: 'fire', puffTint: 0xb8ffc8,
@@ -247,6 +277,10 @@ function applyVariant(e, name) {
   if (v.contactDmg !== undefined) e.contactDmg = v.contactDmg;
   if (v.resist) e.resist = v.resist;
   if (v.weakness) e.weakness = v.weakness;
+  // only a variant that says so can ever be unaware, and one that can starts
+  // that way — a court full of shadows already hunting you is not a court you
+  // can sneak through
+  if (v.sleeps) { e._sleeps = true; e.alert = 'unaware'; }
   if (v.dropChance !== undefined) e.dropChance = v.dropChance;
   if (v.puffTint !== undefined) e.puffTint = v.puffTint;
   if (v.tint && e.model) {
@@ -292,6 +326,56 @@ class Enemy {
     const tr = TRAITS[this.constructor.name] || {};
     this.weakness = tr.weakness || null;
     this.armored = !!tr.armored;
+    // AWARENESS (region 7). Everything in the game before the Shadow Court is
+    // born aware and nothing ever changes that, so six regions of behaviour are
+    // untouched. Only a shadow that is told to sleep starts unaware, and only
+    // the Ghost Wolf can keep it that way.
+    this.alert = 'aware';        // 'unaware' | 'suspicious' | 'aware'
+    this._calmT = 0;
+  }
+
+  // Snap this one awake. Called when Kael attacks, breaks something, or walks
+  // into it — contact works both ways, which is the rule that keeps ghosting
+  // honest: you cannot barge through a room and stay a rumour.
+  notice(why = 'contact') {
+    if (this.dead || this.alert === 'aware') return false;
+    this.alert = 'aware';
+    this._calmT = 0;
+    if (this.eyeMat) this.eyeMat.emissiveIntensity = 2.2;
+    audio.play('ui-click', { volume: 0.5, rate: 0.7 });
+    void why;
+    return true;
+  }
+
+  // ...and settle again once he has been gone a while. A child who makes one
+  // mistake should not have to leave the room and come back.
+  _calm(dt, player) {
+    if (this.alert !== 'aware' || !this._sleeps) return;
+    const d = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
+    const hidden = player.ghosted;
+    this._calmT = (hidden && d > 2.2) ? this._calmT + dt : 0;
+    if (this._calmT > 3.0) { this.alert = 'unaware'; this._calmT = 0; }
+  }
+
+  // Does this one act at all this frame? An unaware shadow carries on with
+  // whatever it was doing and does not know Kael is in the room.
+  _asleep(player) {
+    if (this.alert !== 'unaware') return false;
+    // ...unless he walks into it. Touch is the third way to be noticed.
+    const d = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
+    if (d < this.radius + 0.55) { this.notice('bump'); return false; }
+    return true;
+  }
+
+  // WHAT AN UNAWARE SHADOW DOES. Not nothing — nothing reads as broken. It
+  // paces the spot it was left on and looks the other way, which is the pose
+  // saying "has not seen you" without a meter anywhere on screen.
+  _drowse(dt, t) {
+    this._play && this._play('walk');
+    const a = (this._drowseA === undefined ? (this._drowseA = (this.x * 7 + this.z * 3) % 6.28) : this._drowseA);
+    this.root.rotation.y = a + Math.sin(t * 0.5 + a) * 0.9;
+    if (this.eyeMat) this.eyeMat.emissiveIntensity = 0.25;
+    void dt;
   }
 
   // Grounded enemies obey lava exactly like Kael — they cannot walk in.
@@ -326,6 +410,7 @@ class Enemy {
   // element: 'steel' (knight sword) | 'spark' | 'moon' | 'fire' | 'earth'.
   // kind: 'melee' | 'bolt' | 'aoe' — some enemies react per kind (dodges).
   takeDamage(n, element = 'steel', kind = 'melee') {
+    this.notice('hit');       // being hit is the loudest way to be noticed
     if (this.dead) return;
     let mult = 1;
     // BRITTLE (v3.21): frozen solid, then struck — the ice shatters and the
@@ -503,6 +588,8 @@ export class Hound extends Enemy {
   update(dt, t, player) {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    this._calm(dt, player);
+    if (this._asleep(player)) { this._drowse(dt, t); this.mixer.update(dt); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
@@ -775,6 +862,8 @@ export class Bat extends Enemy {
   update(dt, t, player) {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    this._calm(dt, player);
+    if (this._asleep(player)) { this._drowse(dt, t); this.mixer.update(dt); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;

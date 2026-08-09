@@ -23,6 +23,7 @@ export const GRANTED_IN = {
   storm_wolf: 'stormreach',
   tide_wolf: 'sunkenvale',
   moonlight: 'shadowcourt',
+  moonlight: 'shadowcourt',
 };
 
 export const REGIONS = {

@@ -32,7 +32,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 
 // A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
 // rebuilt levels: the marker the room drops, the map entry it earns, and the
@@ -837,11 +837,13 @@ function narrationTriggers(dt, t) {
         verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
         storm_wolf: { region: 'storm', key: 'spark', toast: '🌩️ The Storm Wolf awakens!' },
         tide_wolf: { region: 'vale', key: 'spark', toast: '🌊 The Tide Wolf awakens!' },
+        ghost_wolf: { region: 'court', key: 'spark', toast: '👻 The Ghost Wolf awakens!' },
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
-      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant' }[gift] || 'earthwolf_grant');
+      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant', ghost_wolf: 'ghost_grant' }[gift] || 'earthwolf_grant');
       if (gift === 'storm_wolf') narration.say('storm_howto');
       if (gift === 'tide_wolf') narration.say('tide_howto');
+      if (gift === 'ghost_wolf') narration.say('ghost_howto');
       persist();
     }
   }
@@ -1295,6 +1297,7 @@ function regionOf(id) {
   if (r[0] === 'f') return 'frostpeak';
   if (r[0] === 's') return 'stormreach';
   if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
+  if (r[0] === 'x') return 'shadowcourt';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
