@@ -51,22 +51,22 @@ opens from the top.
 
 | id | module | district | role |
 |---|---|---|---|
-| `s1a` | island | The Landing | arrival · junction · the wrecked winch |
+| `s1a` | island | The Landing | arrival · junction · the broken gatehouse |
 | `s1b` | island | The Landing | first Gale Hounds · the first weak gust |
 | `s1p` | pocket | The Landing | optional · pup |
 | `sc1` | stair | The Landing | **THE FIRST STAIR** · rest · travel |
-| `s2a` | island | The Gale Stair | junction · the sail-wrecks |
+| `s2a` | island | The Gale Stair | junction · the leaning colonnade |
 | `s2b` | island | The Gale Stair | storm bats · the gale lane you cannot cross |
 | `s2p` | pocket | The Gale Stair | optional · chest |
 | `ssh` | pocket | The Gale Stair | **ARIA'S SPARK** · STORM WOLF · *introduce* |
 | `sc2` | stair | The Gale Stair | *develop* · three lanes in a row |
-| `s3a` | island | The Thunderhead | junction · the lightning-struck mast |
+| `s3a` | island | The Thunderhead | junction · the struck pillar |
 | `s3b` | island | The Thunderhead | the pack · lanes that carry enemies |
 | `s3p` | pocket | The Thunderhead | optional · pup |
 | `svn` | island | The Thunderhead | **THE VANES** · the puzzle room · *twist* |
 | `sc3` | stair | The Thunderhead | rest · travel |
 | `s4a` | island | The Open Sky | junction · above the cloud |
-| `s4b` | island | The Open Sky | **the great sail-gate** · *conclude* |
+| `s4b` | island | The Open Sky | **the wind gate** · *conclude* |
 | `s4p` | pocket | The Open Sky | optional · chest |
 | `sc4` | stair | The Open Sky | rest · before the crown |
 | `scr` | arena | Aria's Crown | **ARIA, THE GALEBOUND** |
@@ -128,8 +128,23 @@ colliders exactly like walking.
 | **introduce** | `ssh` — Aria's Spark | The shrine grants the form. One short gale lane stands between the shrine and the door. Nothing else in the room. Dash. |
 | **grant + 30s** | `ssh` | A second lane, right there, with a visible gold chest behind it. The new verb pays out before the child leaves the room that gave it. |
 | **develop** | `sc2` — the second stair | Three lanes in a row with standing room between them, then one lane that runs ALONG the stair instead of across it — so the same tool answers "cross it" and "ride it". |
-| **twist** | `svn` — THE VANES | The dash does not only carry Kael, it PUSHES. Dashing into a great weathervane spins it, and the vane redirects the gale lane it stands in. Three vanes, three sails to open. The tool moves the world, not just you. |
-| **conclude** | `s4b` + `scr` | The great sail-gate needs two lanes redirected at once. Then Aria fights with gales of her own, and the only way to reach her is through them. |
+| **twist** | `svn` — THE VANES | The dash does not only carry Kael, it PUSHES. Dashing into a great weathervane spins it, and the vane redirects the gale lane it stands in. Three vanes, and a corridor that only opens when nothing blows across it. The tool moves the world, not just you. |
+| **conclude** | `s4b` + `scr` | The wind gate needs two lanes redirected at once. Then Aria raises gales of her own, and the only way out of her charge is through them. |
+
+> **Built differently from this draft, on purpose (2026-08-09).** The draft
+> called for sails, sail-wrecks and a great sail-gate. There is no sail, ship or
+> chain model in any vendored pack, and NO FAKE FICTION forbids naming a thing
+> the game does not show — the same call `LEVEL-MAP.md` already made when the
+> Cinder Bridges' GREAT CHAIN became THE BROKEN SPAN. What people built up this
+> cliff is a ROAD: walls, arches, shrines, hearths and carts, all of which the
+> ruin vocabulary in `js/dressing.js` already draws. The sail-gate is now THE
+> WIND GATE, two stone vanes standing in a doorway, and the "sails" the vanes
+> carry are `bridge-stone.glb` slabs — a real model doing a real job.
+>
+> The Vanes puzzle was also simplified from "three sails, each needing the right
+> lane pointed at it" to "a corridor that opens when nothing is blowing across
+> it". Three simultaneous conditions is a lot to hold in a five-year-old's head;
+> one condition, visible from anywhere in the room, is not.
 
 **One puzzle room per level** (dad's law) — `svn` is it. The introduce and develop steps are
 inline obstacles measured in seconds, and conclude happens inside the boss fight, exactly as
@@ -138,8 +153,7 @@ Level 3 did it.
 ### The Vanes, in detail
 
 Three vanes stand in three gale lanes. Each vane has four faces; dashing into one turns it
-90°, and its lane turns with it. Three sail-gates around the room open when the lane
-pointing at them blows the right way. Turning one vane changes the room, so the child has to
+90°, and its lane turns with it. The way east is a corridor that only opens when nothing is blowing across it. Turning one vane changes the room, so the child has to
 look, not just try — but nothing can be made unsolvable, nothing is timed, and dashing a
 vane again always keeps going round. There is no fail state and no reset button, because a
 reset button is an admission that a child can get stuck.
@@ -202,12 +216,26 @@ a region that only rewards its own gift teaches children to stop carrying the ot
 
 ## 8 · Build order
 
-1. The wind system + the Storm Wolf + the thunder-dash, provable in one room.
-2. All 20 rooms as **greybox** — shells, doors, markers, topology. Verified.
-3. Dressing and painted floors to ROOM-STANDARD.
-4. The Vanes.
-5. Aria.
-6. Wiring: the region entry, the door from Frostpeak's summit, narration, music, the map.
-7. Verifiers, the full suite, screenshots.
+1. ~~The wind system + the Storm Wolf + the thunder-dash~~ — **done**, `js/wind.js`.
+2. ~~All 20 rooms as greybox — shells, doors, markers, topology~~ — **done**, `tools/verify-level5.mjs`.
+3. ~~Dressing and painted floors to ROOM-STANDARD~~ — **done**, measured by `verify-density`.
+4. ~~The Vanes~~ — **done**, `tools/verify-storm.mjs` §4-5.
+5. ~~Aria~~ — **done**, a skin on the Shadowgrip class, `verify-storm` §6.
+6. ~~Wiring~~ — **done**: the region entry, the door from Frostpeak's summit, the
+   fast-travel stop, narration, the grant at the shrine, the boss-defeat beat.
+7. ~~Verifiers~~ — **done**: `verify-level5` (20 spaces, the climb, the teach) and
+   `verify-storm` (the wind, the dash, the vanes, the boss).
 
-**Greybox before art, without exception.**
+**Greybox before art, without exception** — held: every room was built and walked
+as a box before a single prop went into it.
+
+### What is NOT done in this region
+
+* **No music of its own.** Stormreach plays the shared region music. Picking a
+  track from the vendored set is a listening decision, not a build one.
+* **No survivors to rescue.** The region has pups in two pockets, same as every
+  other region, but the Life work (ROOM-STANDARD §5) is still not started
+  anywhere and Stormreach is no exception.
+* **The region is not on the story's tongue yet.** Grimm taunts once per region
+  and Pip counts the lights down; those lines exist for regions 1-4 and have not
+  been written for this one.

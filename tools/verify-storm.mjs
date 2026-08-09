@@ -169,7 +169,42 @@ const solved = await page.evaluate(async () => {
 });
 check('turning all three off the line opens the way', solved.solved === true, solved);
 
-console.log('\n── 6. the weather costs one draw call, not one each ───');
+console.log('\n── 6. Aria fights, and the arena narrows ─────────────');
+check("Aria's Crown builds", await go('scr'));
+const aria = await page.evaluate(async () => {
+  const g = window.__game;
+  const b = g.world.boss;
+  if (!b) return { spawned: false };
+  const lanesBefore = g.world.galeLanes.length;
+  // hit her the way the game hits her: through the Hittable the sword arcs and
+  // bolts actually find, not by reaching into her internals
+  const hit = (n) => b.coreHittable.takeDamage(n);
+  // beat her to half health, which is the moment the weather arrives
+  let guard = 0;
+  while (b.coreHp > b.maxHp / 2 + 0.01 && guard++ < 200) hit(1);
+  for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
+  const lanesAfter = g.world.galeLanes.length;
+  // ...and then all the way down
+  guard = 0;
+  while (!b.defeated && b.coreHp > 0 && guard++ < 200) hit(1);
+  for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r));
+  return {
+    spawned: true, name: b.name, maxHp: b.maxHp,
+    lanesBefore, lanesAfter,
+    defeated: b.defeated, flag: !!g.state.flags.ariaDefeated,
+    lanesEnd: g.world.galeLanes.length,
+  };
+});
+check('Aria stands at the crown', aria.spawned === true, { name: aria.name, hp: aria.maxHp });
+check('she is a Gale Hound, not a new machine — same class as the Shadowgrip',
+  aria.name === 'Aria, the Galebound');
+check('at half health the arena narrows with two gales',
+  aria.lanesAfter === aria.lanesBefore + 2, aria);
+check('beating her sets the region flag', aria.defeated === true && aria.flag === true, aria);
+check('...and the wind goes with her', aria.lanesEnd === aria.lanesBefore, aria);
+
+console.log('\n── 7. the weather costs one draw call, not one each ───');
+check('back to the Vanes for the draw-call reading', await go('svn'));
 const cost = await page.evaluate(async () => {
   const g = window.__game;
   const meshes = [];
