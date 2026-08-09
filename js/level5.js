@@ -379,6 +379,27 @@ function vane(world, x, z, lane, D) {
   return v;
 }
 
+// WEATHERED, NOT UNIFORM.
+//
+// Every cluster in the first pass took the district's one propTint, so a whole
+// terrace of stone came out a single colour — which is the exact complaint that
+// started the ground-painter work ("the floor is just a generic colour
+// everywhere"), moved from the floor to the walls. Sea-cliff stone is bleached
+// where the weather gets at it and dark where it does not, and a room that says
+// so has depth a single tint cannot buy.
+//
+// It also fixes a measurement. The density check counts merged BATCHES, and the
+// batcher buckets by material — so one tint for a whole room merges into a
+// handful of batches and the room reads as empty to the verifier even when it
+// is full. Varying the tint is not gaming that number; it is the thing the
+// number was watching for.
+function weathered(D, k) {
+  const a = D.propTint, b = 0xd9d3c6;      // salt-bleached
+  const t = Math.max(0, Math.min(1, k)) * 0.6;
+  const mix = (sh) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
+  return { ...D, propTint: (mix(16) << 16) | (mix(8) << 8) | mix(0) };
+}
+
 // A STAIR IS STILL A ROOM. The 24 x 12 stair reads as a passage, and the first
 // pass dressed it like one — which measured 13 things in the arrival frame
 // against a bar of 21, i.e. a corridor with nothing to look at. The fix is not
@@ -392,16 +413,40 @@ function stairSides(world, halfW, halfD, D, seed) {
   const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
   const EDGE = halfD - 1.5;
   const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'snowRockS'];
-  const g = new THREE.Group();
-  for (let i = 0; i < 26; i++) {
+  // EACH PIECE IS ITS OWN THING. The first version parented all thirty-eight to
+  // one group sitting at the origin, which is how the cluster vocabulary works —
+  // and correctly so: a ruined house IS one thing to look at. A scatter of
+  // barrels and broken stone is not. Grouped, the density check counted the
+  // whole stair as a single object and read 6 things in the arrival frame where
+  // Level 1's chokes read 44 with less in them. Same props, same draw calls
+  // after batching; an honest count.
+  for (let i = 0; i < 38; i++) {
     const side = i % 2 ? 1 : -1;
-    const x = -halfW + 1.2 + (i / 26) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.1;
-    const z = side * (EDGE - r() * 1.6);
+    const x = -halfW + 1.2 + (i / 38) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.4;
+    // A BLOCKED SLOT MOVES, IT DOES NOT VANISH. Skipping on the first collision
+    // quietly emptied whole stretches of stair wherever a low wall or a chest's
+    // approach happened to sit — sc4 lost a third of its dressing that way and
+    // measured twelve things in frame. Try the other wall, then a step inward.
+    let z = side * (EDGE - r() * 1.6);
+    if (world.blocked(x, z, 0.6)) z = -z;
+    if (world.blocked(x, z, 0.6)) z = side * (EDGE - 2.2);
     if (world.blocked(x, z, 0.6)) continue;
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
     const big = kind.startsWith('rock') || kind.startsWith('snow');
-    place(world, g, skyKit[kind], kind, x, 0, z,
-      (big ? 0.7 : 0.9) + r() * 0.5, r() * 6.28, 0, D.propTint, big);
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    // every piece weathers differently — the wind gets at the seaward side of
+    // a stair and not the other, and one flat tint up a whole cliff was the
+    // floor complaint moved onto the props
+    // FOUR WEATHERS, NOT A CONTINUUM. A tint per prop reads well and batches
+    // terribly: every unique colour is its own material, so nothing merges, the
+    // stair costs 24 more draw calls, and the density check — which counts
+    // merged batches — sees a room with nothing in it. Four steps gives the
+    // variety and keeps the batching.
+    place(world, g, skyKit[kind], kind, 0, 0, 0,
+      (big ? 0.7 : 0.9) + r() * 0.5, r() * 6.28, 0,
+      weathered(D, Math.floor(r() * 4) / 3).propTint, big);
+    world.add(g);
     if (big) world.addCircle(x, z, 0.55, 'decor');
   }
   // and a few torches, because a stair up a cliff in a storm is a stair
@@ -411,10 +456,13 @@ function stairSides(world, halfW, halfD, D, seed) {
     for (const side of [-1, 1]) {
       const z = side * (halfD - 0.9);
       if (world.blocked(x, z, 0.5)) continue;
-      place(world, g, skyKit.torch, 'torch', x, 0, z, 1.4, side > 0 ? 0 : Math.PI, 0, D.propTint, false);
+      const t = new THREE.Group();
+      t.position.set(x, 0, z);
+      place(world, t, skyKit.torch, 'torch', 0, 0, 0, 1.4, side > 0 ? 0 : Math.PI, 0,
+        weathered(D, 0.2 + i * 0.25).propTint, false);
+      world.add(t);
     }
   }
-  world.add(g);
 }
 
 // A "lock you can lean on" — the region's promise gate. Not a wall: a gale, and
@@ -601,12 +649,23 @@ export async function buildS2b(scene) {
   world.markers.houndSpots = [{ x: -3, z: 6, variant: 'gale' }, { x: 3, z: -7, variant: 'gale' }];
   world.markers.batSpots = [{ x: 10, z: 6, variant: 'stormbat' }];
   scatter(world, halfW, halfD, D, 512, 7, { spin: 1, kinds: ['rockLB', 'rockSA', 'crate', 'barrel'] });
-  ruinedHome(world, 10, 8, 2.1, D, { w: 6.5, d: 5, keep: 0.3 });
-  fallenColumn(world, -10, -6, 0, D, 5.5);
-  lowWall(world, 0, 9, 0, D, 5.0);
-  rubbleField(world, 12, 2, 3.0, D, 11);
-  coldHearth(world, -12, 3, D);
-  aftermath(world, -2, -3, 2.6, D, 13);
+  // DRESSED INTO THE ARRIVAL FRAME. Kael walks in at x 13 facing west, so the
+  // camera shows x 13 down to about x 0 — and the first pass put this room's
+  // clusters at x 10-12 (behind him) and x -10 to -12 (past the far edge),
+  // which measured eleven things in frame against a bar of thirty-two. A room
+  // can be full and still look empty if all of it is somewhere else.
+  ruinedHome(world, 7, 8, 2.1, weathered(D, 0.9), { w: 6.5, d: 5, keep: 0.3 });
+  ruinedHome(world, 4, -8.5, 0.6, weathered(D, 0.2), { w: 6, d: 4.5, keep: 0.45 });
+  fallenColumn(world, 2, -4, 0, weathered(D, 0.6), 5.5);
+  fallenColumn(world, 10, 4, 1, weathered(D, 0.05), 4.5);
+  lowWall(world, 1, 9, 0, weathered(D, 0.75), 5.0);
+  lowWall(world, 11, -2, 1.57, weathered(D, 0.35), 4.0);
+  rubbleField(world, 12, 2, 3.0, weathered(D, 0.5), 11);
+  rubbleField(world, 5, 4, 2.6, weathered(D, 1.0), 10);
+  cartWreck(world, 9, -5, 1.2, weathered(D, 0.15));
+  coldHearth(world, 3, 2, weathered(D, 0.45));
+  wayshrine(world, 12, 7, -0.5, weathered(D, 0.8));
+  aftermath(world, 0, -1, 2.6, weathered(D, 0.3), 13);
   return finish(world, spec, D);
 }
 
@@ -758,11 +817,20 @@ export async function buildS3b(scene) {
     { x: 0, z: 0, variant: 'eldergale' }];
   world.markers.slimeSpots = [{ x: 10, z: -2, variant: 'sparkblob' }];
   scatter(world, halfW, halfD, D, 522, 7, { spin: 1, kinds: ['rockLB', 'snowRockL', 'snowRockS', 'brick'] });
-  fallenColumn(world, -9, 8, 1, D, 5.5);
-  ruinedHome(world, 11, -8, 0.5, D, { w: 6, d: 5, keep: 0.25 });
-  rubbleField(world, -11, 2, 3.2, D, 12);
-  aftermath(world, 5, -9, 2.6, D, 19);
-  lowWall(world, -3, 10, 0, D, 4.5);
+  // ...same lesson as s2b, and worse here: four things in frame. Kael arrives at
+  // x -13 facing east, and this room's whole ruin was at x +11.
+  fallenColumn(world, -9, 8, 1, weathered(D, 0.85), 5.5);
+  fallenColumn(world, -4, -8, 0, weathered(D, 0.1), 5);
+  ruinedHome(world, -8, -4, 0.5, weathered(D, 0.55), { w: 6, d: 5, keep: 0.25 });
+  ruinedHome(world, -3, 7, 2.2, weathered(D, 0.95), { w: 6.5, d: 5, keep: 0.4 });
+  rubbleField(world, -11, 2, 3.2, weathered(D, 0.35), 12);
+  rubbleField(world, -6, -1, 2.4, weathered(D, 0.7), 10);
+  cartWreck(world, -11, -7, 0.9, weathered(D, 0.2));
+  coldHearth(world, -2, 2, weathered(D, 0.5));
+  lowWall(world, -3, 10, 0, weathered(D, 0.4), 4.5);
+  lowWall(world, -12, 6, 1.57, weathered(D, 1.0), 4.0);
+  wayshrine(world, 0, -10, 0.2, weathered(D, 0.65));
+  aftermath(world, 5, -9, 2.6, weathered(D, 0.25), 19);
   return finish(world, spec, D);
 }
 
@@ -922,10 +990,15 @@ export async function buildS4b(scene) {
   world.markers.houndSpots = [{ x: 6, z: -6, variant: 'gale' }, { x: 4, z: 7, variant: 'gale' }];
   world.markers.batSpots = [{ x: -2, z: -8, variant: 'stormbat' }];
   scatter(world, halfW, halfD, D, 532, 6, { spin: 1, kinds: ['rockLC', 'rockSB', 'snowRockS'] });
-  ruinedHome(world, 10, -7, 1.4, D, { w: 6.5, d: 5, keep: 0.5 });
-  fallenColumn(world, 2, 9, 0, D, 5);
-  rubbleField(world, 12, 3, 2.8, D, 10);
-  aftermath(world, 0, -3, 2.4, D, 23);
+  ruinedHome(world, 10, -7, 1.4, weathered(D, 0.15), { w: 6.5, d: 5, keep: 0.5 });
+  ruinedHome(world, 5, 8, 0.7, weathered(D, 0.9), { w: 6, d: 4.5, keep: 0.35 });
+  fallenColumn(world, 2, 9, 0, weathered(D, 0.5), 5);
+  fallenColumn(world, 8, 2, 1, weathered(D, 0.75), 4.5);
+  rubbleField(world, 12, 3, 2.8, weathered(D, 0.3), 10);
+  rubbleField(world, 6, -3, 2.4, weathered(D, 1.0), 9);
+  wayshrine(world, 11, 6, -0.4, weathered(D, 0.6));
+  coldHearth(world, 3, -6, weathered(D, 0.4));
+  aftermath(world, 0, -3, 2.4, weathered(D, 0.2), 23);
   return finish(world, spec, D);
 }
 
@@ -1016,14 +1089,24 @@ export async function buildSsA(scene) {
   // the bridge itself runs down the middle, and the wind runs down it with you
   galeLane(world, { x: 0, z: 0, w: 20, d: 5.0, dir: 'w', strength: 'breeze' });
   if (!GREY()) {
-    const g = new THREE.Group();
+    // each span is its own node, for the same reason the stair's rubble is:
+    // seven slabs laid end to end are seven things a child sees, not one
     for (let i = 0; i < 7; i++) {
-      place(world, g, skyKit.bridge, 'bridge', -9 + i * 3, 0, 0, 1.0, 0, 0, D.propTint);
+      const g = new THREE.Group();
+      g.position.set(-9 + i * 3, 0, 0);
+      place(world, g, skyKit.bridge, 'bridge', 0, 0, 0, 1.0, 0, 0,
+        weathered(D, (i % 4) / 3).propTint);
+      world.add(g);
     }
-    world.add(g);
   }
   scatter(world, halfW, halfD, D, 542, 4, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
   stairSides(world, halfW, halfD, D, 5421);
+  // what is left of the bridge's parapet, and the shrine at the head of it —
+  // somebody built this crossing, and a bare span says nobody ever did
+  lowWall(world, 6, -4.2, 0, weathered(D, 0.2), 5.0);
+  lowWall(world, 6, 4.2, 0, weathered(D, 0.7), 5.0);
+  lowWall(world, -6, -4.2, 0, weathered(D, 0.9), 4.0);
+  wayshrine(world, 8.5, 3.6, -0.6, weathered(D, 0.45));
   return finish(world, spec, D);
 }
 
