@@ -112,8 +112,48 @@ check('the HUD is up', opened.hud === true, opened);
 // ONE TAP ANYWHERE skips the demo and starts the round (§2: winnable by mashing)
 await page.locator('#mg-tap').dispatchEvent('pointerdown');
 await frames(4);
-check('a tap skips the demo into play',
-  (await page.evaluate(() => window.__game.world.harness.phase)) === 'play');
+// ...and the demo CARD goes with it. Checking the phase alone missed this:
+// the round started, the card stayed, and a child played the whole thirty
+// seconds behind a giant bone with Kael hidden underneath it.
+const skipped = await page.evaluate(() => ({
+  phase: window.__game.world.harness.phase,
+  demo: getComputedStyle(document.getElementById('mg-demo')).display !== 'none',
+}));
+check('a tap skips the demo into play', skipped.phase === 'play', skipped);
+check('and the demo card leaves the screen with it', skipped.demo === false, skipped);
+
+// §2: the world's own HUD stands down. Hearts, potions and the attack button
+// belong to a frozen world; three HUDs at once is not "no reading required".
+const hudDown = await page.evaluate(() => ['hearts', 'potions', 'btn-attack', 'mg-chip']
+  .map((id) => document.getElementById(id))
+  .filter((n) => n && getComputedStyle(n).display !== 'none')
+  .map((n) => n.id));
+check('the world HUD stands down for a round', hudDown.length === 0, { stillUp: hudDown });
+
+// A CONTROL IS ONLY REAL IF IT IS ON THE SCREEN AND BIG ENOUGH TO HIT. Each is
+// measured on the screen it belongs to: the exit lives on the play HUD, replay
+// and go-home live on the results screen, and an element on a hidden panel
+// measures 0x0 — which is how the first version of this check "found" a
+// missing exit button that was simply not that screen's business.
+const measure = async (ids) => {
+  const r = await page.evaluate((list) => {
+    const out = list.map((id) => {
+      const b = document.getElementById(id).getBoundingClientRect();
+      return { id, x: Math.round(b.x), y: Math.round(b.y),
+        w: Math.round(b.width), h: Math.round(b.height) };
+    });
+    return { out, vw: innerWidth, vh: innerHeight };
+  }, ids);
+  return {
+    view: [r.vw, r.vh],
+    offscreen: r.out.filter((b) => b.x < 0 || b.y < 0 || b.x + b.w > r.vw || b.y + b.h > r.vh),
+    tooSmall: r.out.filter((b) => /mg-(exit|replay|leave|band)/.test(b.id))
+      .filter((b) => b.w < 44 || b.h < 44),
+  };
+};
+const playBoxes = await measure(['mg-exit', 'mg-clock', 'mg-score']);
+check('the exit is on the screen and over the 44px floor during play',
+  playBoxes.offscreen.length === 0 && playBoxes.tooSmall.length === 0, playBoxes);
 
 // mash for a few seconds — the spec's own acceptance is that this works
 const scored = await page.evaluate(async () => {
@@ -151,6 +191,18 @@ check('the best is stored in THIS profile', (res.stored.fetch || {}).best > 0, r
 // nothing that reads as a reward which failed to arrive
 check('an empty reward pool still pays, and says so differently', res.bonus === true);
 
+// EVERY CONTROL IS ACTUALLY ON THE SCREEN. The first results screen was laid
+// out as one tall column: on a 740x360 phone held sideways the bone was cut off
+// the top and BOTH buttons — replay and go-home, the two a child needs most —
+// were half off the bottom. Every assertion above it passed. So this measures
+// the boxes, and also holds them to the v3.35 law: a 44px floor per control.
+const boxes = await measure(['mg-replay', 'mg-leave',
+  'mg-band-cub', 'mg-band-wolf', 'mg-band-alpha', 'mg-r-icon', 'mg-r-score']);
+check('every results control is fully on the screen', boxes.offscreen.length === 0,
+  { offscreen: boxes.offscreen, view: boxes.view });
+check('no results control is under the 44px floor', boxes.tooSmall.length === 0,
+  { tooSmall: boxes.tooSmall });
+
 // §2: restart is one tap from the results screen
 await page.locator('#mg-replay').dispatchEvent('pointerdown');
 await frames(6);
@@ -162,6 +214,13 @@ await page.locator('#mg-exit').dispatchEvent('pointerdown');
 await frames(6);
 check('exit is one tap and closes everything',
   (await page.evaluate(() => window.__game.world.harness.active)) === false);
+// and the world gets its HUD back — a child left holding no hearts and no
+// attack button has been locked out of their own game
+const hudBack = await page.evaluate(() => ['hearts', 'potions', 'btn-attack']
+  .map((id) => document.getElementById(id))
+  .filter((n) => n && getComputedStyle(n).display === 'none')
+  .map((n) => n.id));
+check('the world HUD comes back on the way out', hudBack.length === 0, { stillHidden: hudBack });
 
 // --- §3.4 TEARDOWN DISCIPLINE ---------------------------------------------
 // Ten rounds. A leak of a single object per round is invisible once.

@@ -532,7 +532,9 @@ function makeFetchHost(world) {
   g.update = (dt, t, player, busy) => {
     const h = world.harness;
     const on = nearRing(player, ring);
-    if (h && h.active) { g.chip = ''; ring.material.opacity = 0.12; return; }
+    // (this guard is belt and braces — the world freeze means it is not reached
+    // during a round; the work it used to do now happens at the moment of open)
+    if (h && h.active) { g.chip = ''; return; }
     if (!on) armed = true;                       // stepped off — it can invite again
     ring.material.opacity = armed
       ? 0.55 + Math.sin(t * 3) * 0.2
@@ -540,7 +542,11 @@ function makeFetchHost(world) {
     if (busy || !armed) { g.chip = ''; return; }
     if (on) {
       g.chip = '🦴 fetch!';
-      if (h && h.open(FETCH, world, player)) armed = false;
+      // dimmed AT THE MOMENT OF OPENING, for the same reason the latch is: the
+      // world freezes and this update does not run again until the round is
+      // over. Left bright, the host's gold ring pulses under Kael's feet all
+      // round and competes with the game's own gold "catch here" ring.
+      if (h && h.open(FETCH, world, player)) { armed = false; ring.material.opacity = 0.12; }
     } else {
       g.chip = '';
     }

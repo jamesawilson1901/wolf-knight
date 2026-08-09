@@ -57,17 +57,29 @@ class Fetch {
     this.area = area;
     this.speed = bands.speed;
 
-    // The thrower stands at the far edge of the frame, ahead of the child —
-    // "ahead" being -z, because the camera is a fixed offset looking that way.
-    this.from = { x: area.x, z: area.z - Math.min(area.ahead - 1.5, 7.0) };
+    // NO FAKE FICTION. The first version had the stick fly in from the far edge
+    // of the frame with nobody standing there to throw it — a stick coming out
+    // of empty grass. Kael throws it himself: out, off the ground, and back to
+    // his hands, which is one continuous arc a child can follow and which puts
+    // the catch where they are already looking.
+    this.hand = { x: area.x, z: area.z - 0.5 };
 
-    // the stick. A stick is a stick; the no-code-built-creatures law is about
-    // creatures, and this is a piece of wood.
+    // The stick. A stick is a stick; the no-code-built-creatures law is about
+    // creatures, and this is a piece of wood. (There is no bone or stick in the
+    // vendored packs — closest is a log stack — so nothing is being substituted
+    // silently here, there is simply nothing to substitute.)
+    //
+    // It is big and PALE on purpose. The first version was 0.72u of dark brown
+    // and read as a speck against the den's grass in a screenshot: the one
+    // object the entire game is about was the hardest thing on screen to see.
     const stick = new THREE.Mesh(
-      new THREE.BoxGeometry(0.72, 0.11, 0.11),
-      new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1 })
+      new THREE.BoxGeometry(1.15, 0.17, 0.17),
+      new THREE.MeshStandardMaterial({ color: 0xdcc08a, roughness: 1 })
     );
     stick.castShadow = true;
+    // start it in his hands, not at the world origin — otherwise the first
+    // frame of a round shows a stick lying in the middle of the den
+    stick.position.set(this.hand.x, 0.9, this.hand.z);
     this.stick = stick;
     this.group.add(stick);
 
@@ -89,26 +101,33 @@ class Fetch {
     world.keepLoose(this.group);
   }
 
-  // the landing spot, a little in front of the child so the catch happens
-  // where they are already looking
-  _target() {
+  // where the throw lands out in the meadow. `reach` is how far it goes, and
+  // that is what a perfect catch buys: more game, not a bigger number.
+  _far() {
     const a = this.area;
-    return { x: a.x + (this.throwN % 2 ? 0.9 : -0.9), z: a.z - 1.4 };
+    const lean = (this.throwN % 2 ? 1 : -1) * Math.min(2.2, this.reach * 0.3);
+    return { x: a.x + lean, z: a.z - Math.min(a.ahead - 1.0, this.reach) };
+  }
+
+  // where it comes back to: just in front of the child, so the moment that
+  // matters happens at arm's length and not across the room
+  _catchPoint() {
+    const a = this.area;
+    return { x: a.x + (this.throwN % 2 ? 0.5 : -0.5), z: a.z - 1.3 };
   }
 
   start() { this._throw(); }
 
   _throw() {
     this.throwN++;
-    this.state = 'flight';
+    this.state = 'out';
     this.t = 0;
-    const to = this._target();
-    this.a = { ...this.from };
-    this.b = to;
-    // further throws take longer, and the band scales the whole flight
-    const dist = Math.hypot(to.x - this.from.x, to.z - this.from.z);
-    this.flight = Math.max(0.62, (0.30 + dist * 0.11) / this.speed);
+    this.a = { ...this.hand };
+    this.b = this._far();
+    const dist = Math.hypot(this.b.x - this.a.x, this.b.z - this.a.z);
+    this.flight = Math.max(0.45, (0.20 + dist * 0.10) / this.speed);
     this.spin = 8 + this.reach;
+    this.ring.material.opacity = 0;
     audio.play('whoosh', { volume: 0.5, rate: 1.15, vary: 0.08 });
   }
 
@@ -128,25 +147,49 @@ class Fetch {
     return perfect ? 2 : 1;
   }
 
+  // one hop of the arc, shared by the way out and the way back
+  _arc(a, b, k, height) {
+    const s = this.stick;
+    s.position.x = a.x + (b.x - a.x) * k;
+    s.position.z = a.z + (b.z - a.z) * k;
+    s.position.y = 0.3 + Math.sin(k * Math.PI) * height;
+    s.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
+  }
+
   update(dt) {
     this.t += dt;
     const s = this.stick, r = this.ring;
+    s.rotation.z += this.spin * dt;
 
-    if (this.state === 'flight') {
+    // OUT — Kael throws. Nothing to do but watch it go.
+    if (this.state === 'out') {
       const k = Math.min(1, this.t / this.flight);
-      s.position.x = this.a.x + (this.b.x - this.a.x) * k;
-      s.position.z = this.a.z + (this.b.z - this.a.z) * k;
-      s.position.y = 0.25 + Math.sin(k * Math.PI) * (1.5 + this.reach * 0.12);
-      s.rotation.z += this.spin * dt;
-      s.rotation.y = Math.atan2(this.b.x - this.a.x, this.b.z - this.a.z);
-      // the ring closes as the stick arrives — smallest AT the catch, not before
+      this._arc(this.a, this.b, k, 1.4 + this.reach * 0.14);
+      if (k >= 1) {
+        this.state = 'back';
+        this.t = 0;
+        this.a = { ...this.b };
+        this.b = this._catchPoint();
+        const dist = Math.hypot(this.b.x - this.a.x, this.b.z - this.a.z);
+        this.flight = Math.max(0.45, (0.20 + dist * 0.10) / this.speed);
+        audio.play('whoosh', { volume: 0.35, rate: 0.95, vary: 0.08 });
+      }
+      return 0;
+    }
+
+    // BACK — it bounces off the grass and comes home. THE POSE NEVER LIES: the
+    // ring is at the catch point the whole way in and reaches its smallest
+    // exactly as the stick arrives, never before.
+    if (this.state === 'back') {
+      const k = Math.min(1, this.t / this.flight);
+      this._arc(this.a, this.b, k, 1.1);
       r.position.set(this.b.x, 0.045, this.b.z);
-      r.material.opacity = 0.25 + k * 0.5;
+      r.material.opacity = 0.3 + k * 0.5;
       r.scale.setScalar(1 + (1 - k) * 2.4);
       if (k >= 1) {
         this.state = 'catchable';
         this.t = 0;
-        // the window opens ON the bounce and lasts exactly a parry
+        // the window opens ON arrival and lasts exactly a parry
         this.perfectAt = CATCH_WINDOW * 0.5;
         audio.play('ui-click', { volume: 0.45, rate: 1.5 });
       }
@@ -154,16 +197,15 @@ class Fetch {
     }
 
     if (this.state === 'catchable') {
-      // the bounce itself: one small hop, and the window is its whole arc
+      // it hangs at the child's hands for one parry's worth of time
       const k = this.t / CATCH_WINDOW;
-      s.position.y = 0.25 + Math.sin(Math.min(1, k) * Math.PI) * 0.55;
-      s.rotation.z += this.spin * 0.5 * dt;
+      s.position.y = 0.3 + Math.sin(Math.min(1, k) * Math.PI) * 0.5;
       r.scale.setScalar(1 + Math.max(0, k) * 0.7);
       r.material.opacity = 0.85 * (1 - Math.min(1, k));
       if (this.t >= CATCH_WINDOW) {
-        // MISSED, and missing costs nothing but distance. The pup brings it
-        // back and the next throw is a little easier. No fail state (§2).
-        this.state = 'fetching';
+        // MISSED, and missing costs nothing but distance — the next throw is a
+        // little shorter, and it goes again. There is no fail state (§2).
+        this.state = 'dropped';
         this.t = 0;
         this.reach = Math.max(3.0, this.reach - 0.5);
         r.material.opacity = 0;
@@ -171,14 +213,15 @@ class Fetch {
       return 0;
     }
 
-    if (this.state === 'caught' || this.state === 'fetching') {
-      // the stick travels back to the thrower, then goes again
-      const back = this.state === 'caught' ? 0.42 : 0.62;
-      const k = Math.min(1, this.t / back);
-      s.position.x += (this.from.x - s.position.x) * Math.min(1, dt * 9);
-      s.position.z += (this.from.z - s.position.z) * Math.min(1, dt * 9);
-      s.position.y = 0.35 + Math.sin(k * Math.PI) * 0.9;
-      s.rotation.z += this.spin * 0.35 * dt;
+    // CAUGHT or DROPPED — either way the stick ends up back in his hands and
+    // goes out again. Caught is quick and clean; dropped takes a moment longer,
+    // which is the only thing missing costs.
+    if (this.state === 'caught' || this.state === 'dropped') {
+      const pause = this.state === 'caught' ? 0.3 : 0.55;
+      const k = Math.min(1, this.t / pause);
+      if (this.state === 'dropped') s.position.y = Math.max(0.14, s.position.y - dt * 3.4);
+      s.position.x += (this.hand.x - s.position.x) * Math.min(1, dt * 8);
+      s.position.z += (this.hand.z - s.position.z) * Math.min(1, dt * 8);
       if (k >= 1) this._throw();
       return 0;
     }

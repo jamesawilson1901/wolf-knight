@@ -137,8 +137,19 @@ export function makeHarness() {
   // ONE TAP, ANYWHERE. §2: every game is winnable by mashing, so the catch /
   // act input is the whole screen rather than a button a child has to find.
   // The exit sits above this layer and stops the event itself.
+  // starting the round is one thing, so it is written once and called from both
+  // places that can start it — the tap and the demo timing out. The first
+  // version skipped the demo on tap without taking the demo CARD down, so a
+  // child who tapped straight in played the whole round behind a giant bone.
+  const beginPlay = () => {
+    phase = 'play';
+    clock = def.seconds;
+    el('mg-demo').style.display = 'none';
+    if (live.start) live.start();
+  };
+
   const onTap = (e) => {
-    if (phase === 'demo') { phase = 'play'; clock = def.seconds; if (live.start) live.start(); return; }
+    if (phase === 'demo') { beginPlay(); return; }
     if (phase !== 'play' || !live || !live.tap) return;
     const gained = live.tap() || 0;
     if (gained) { score += gained; setHud(); }
@@ -190,6 +201,7 @@ export function makeHarness() {
     live = null; def = null; ctx = null;
     phase = 'off';
     show(hud, false); show(results, false); show(tapLayer, false);
+    document.body.classList.remove('mg');     // the world gets its HUD back
     audio.duck(false);
   };
 
@@ -221,12 +233,13 @@ export function makeHarness() {
       phase = seenIt ? 'play' : 'demo';
       if (phase === 'play' && live.start) live.start();
       show(hud, true); show(results, false); show(tapLayer, true);
-      // The den's "walk here to play" chip is cleared by the host's own update,
-      // which does not run while a round is live — the world is frozen. So the
-      // harness takes it down itself, or "🦴 fetch!" sits over the game telling
-      // a child to start something they are already playing.
-      const chip = el('mg-chip');
-      if (chip) chip.style.display = 'none';
+      // THE WORLD'S HUD STANDS DOWN (body.mg in index.html). Hearts, potions,
+      // the attack button and the joystick all belong to a world that is frozen
+      // for the duration; leaving them up gives a child three HUDs at once and
+      // controls that do nothing when pressed. It also takes down the den's
+      // "walk here to play" chip, which the host cannot clear itself — the host
+      // does not run while a round is live.
+      document.body.classList.add('mg');
       el('mg-demo').style.display = phase === 'demo' ? 'flex' : 'none';
       el('mg-demo-icon').textContent = d.icon;
       setHud();
@@ -240,7 +253,7 @@ export function makeHarness() {
         demoT += dt;
         if (live.demo) live.demo(dt, t, demoT);
         // 3.5s of showing, then it starts itself — a child who taps skips it
-        if (demoT > 3.5) { phase = 'play'; el('mg-demo').style.display = 'none'; if (live.start) live.start(); }
+        if (demoT > 3.5) beginPlay();
         return;
       }
       if (phase !== 'play') return;

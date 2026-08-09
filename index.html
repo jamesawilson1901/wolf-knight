@@ -236,6 +236,21 @@
     body.titling #btn-jump, body.titling #boss-bar, body.titling #inv-btn {
       display: none !important;
     }
+    /* THE WORLD'S HUD STANDS DOWN FOR A MINI GAME.
+       The world is frozen while a round runs, so hearts, potions, the attack
+       button and the joystick are all inert — leaving them on screen means a
+       child reads three competing HUDs at once and taps controls that do
+       nothing. During a round there are exactly four things on screen: the
+       clock, the score, the exit, and the game. */
+    body.mg #hearts, body.mg #pups, body.mg #pause-btn, body.mg #potions,
+    body.mg #shards, body.mg #level-badge, body.mg #xp-bar, body.mg #moon-gauge,
+    body.mg #surge-vignette, body.mg #joy-base, body.mg #joy-knob,
+    body.mg #joy-hint, body.mg #btn-attack, body.mg #special-btn,
+    body.mg #form-badge, body.mg #btn-ranged, body.mg #btn-defend,
+    body.mg #btn-jump, body.mg #boss-bar, body.mg #inv-btn, body.mg #mg-chip,
+    body.mg #caption, body.mg #toast {
+      display: none !important;
+    }
     /* once the 3D campfire diorama is running, the menu becomes a veil */
     #title.live {
       background:
@@ -540,39 +555,58 @@
       color: #fff; touch-action: none;
     }
     #mg-exit:active { background: rgba(150, 60, 60, .95); }
+    /* The demo card sits along the BOTTOM EDGE, not over the middle. The demo
+       is the real game running before the clock starts — §3.2 — so anything
+       parked over the centre of the screen hides the one thing it exists to
+       show. First draft covered Kael and the stick with a 92px bone. */
     #mg-demo {
-      position: fixed; inset: 0; z-index: 44; display: none;
-      flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-      background: rgba(10, 8, 14, .35); pointer-events: none;
+      position: fixed; inset: auto 0 0 0; z-index: 44; display: none;
+      flex-direction: row; align-items: center; justify-content: center; gap: 14px;
+      padding: 10px 0 calc(14px + env(safe-area-inset-bottom));
+      background: linear-gradient(rgba(10, 8, 14, 0), rgba(10, 8, 14, .6));
+      pointer-events: none;
     }
-    #mg-demo-icon { font-size: 92px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.6)); }
-    .mg-tapme { font-size: 46px; animation: mg-bob 1s ease-in-out infinite; }
+    #mg-demo-icon { font-size: 54px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.6)); }
+    .mg-tapme { font-size: 44px; animation: mg-bob 1s ease-in-out infinite; }
     @keyframes mg-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    /* WIDE, NOT TALL. The phone is held sideways: 740x360 CSS px. Stacked in
+       one column the results screen came to roughly 400px and the first draft
+       shipped with the bone cut off the top and BOTH buttons half off the
+       bottom — the two controls a child needs most. Score and badges sit in a
+       row, the band picker and the buttons share the row below. */
     #mg-results {
       position: fixed; inset: 0; z-index: 46; display: none;
-      flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+      padding: 8px; overflow: hidden;
       background: rgba(12, 10, 16, .82);
     }
-    #mg-r-icon { font-size: 74px; }
+    #mg-r-top { display: flex; align-items: center; justify-content: center; gap: 20px; }
+    #mg-r-icon { font-size: 62px; }
+    #mg-r-nums { display: flex; flex-direction: column; gap: 2px; }
+    #mg-r-badges {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      min-width: 92px;
+    }
     .mg-r-line {
       display: flex; align-items: center; gap: 10px; color: #fff;
-      font-size: 46px; font-weight: 800; font-variant-numeric: tabular-nums;
+      font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums;
     }
-    .mg-r-line.dim { font-size: 30px; color: #cbbfae; }
-    #mg-r-new, #mg-r-reward, #mg-r-bonus { display: none; font-size: 40px; }
+    .mg-r-line.dim { font-size: 26px; color: #cbbfae; }
+    #mg-r-new, #mg-r-reward, #mg-r-bonus { display: none; font-size: 34px; }
     #mg-r-new { animation: mg-bob .8s ease-in-out infinite; }
-    #mg-r-bonus { font-size: 30px; color: #ffd76a; font-weight: 800; }
-    #mg-bands { display: flex; gap: 12px; margin-top: 6px; }
+    #mg-r-bonus { font-size: 26px; color: #ffd76a; font-weight: 800; }
+    #mg-r-controls { display: flex; align-items: center; gap: 24px; }
+    #mg-bands { display: flex; gap: 10px; }
     .mg-band {
-      width: 60px; height: 60px; border-radius: 16px; font-size: 30px;
+      width: 52px; height: 52px; border-radius: 14px; font-size: 26px;
       display: flex; align-items: center; justify-content: center;
       background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.18);
       opacity: .5; touch-action: none;
     }
     .mg-band.on { opacity: 1; border-color: #ffd76a; background: rgba(255,200,90,.2); }
-    #mg-r-btns { display: flex; gap: 16px; margin-top: 10px; }
+    #mg-r-btns { display: flex; gap: 14px; }
     #mg-replay, #mg-leave {
-      width: 92px; height: 92px; border-radius: 24px; font-size: 42px;
+      width: 80px; height: 80px; border-radius: 22px; font-size: 38px;
       display: flex; align-items: center; justify-content: center;
       background: rgba(46, 62, 46, .85); border: 3px solid rgba(190,255,190,.5);
       touch-action: none;
@@ -718,20 +752,28 @@
     <div class="mg-tapme">👆</div>
   </div>
   <div id="mg-results">
-    <div id="mg-r-icon">🦴</div>
-    <div class="mg-r-line"><span class="mg-ic">⭐</span><span id="mg-r-score">0</span></div>
-    <div class="mg-r-line dim"><span class="mg-ic">🏅</span><span id="mg-r-best">0</span></div>
-    <div id="mg-r-new">🌟</div>
-    <div id="mg-r-reward">🎁</div>
-    <div id="mg-r-bonus">✨</div>
-    <div id="mg-bands">
-      <div class="mg-band" id="mg-band-cub">🐾</div>
-      <div class="mg-band" id="mg-band-wolf">🐺</div>
-      <div class="mg-band" id="mg-band-alpha">🌙</div>
+    <div id="mg-r-top">
+      <div id="mg-r-icon">🦴</div>
+      <div id="mg-r-nums">
+        <div class="mg-r-line"><span class="mg-ic">⭐</span><span id="mg-r-score">0</span></div>
+        <div class="mg-r-line dim"><span class="mg-ic">🏅</span><span id="mg-r-best">0</span></div>
+      </div>
+      <div id="mg-r-badges">
+        <div id="mg-r-new">🌟</div>
+        <div id="mg-r-reward">🎁</div>
+        <div id="mg-r-bonus">✨</div>
+      </div>
     </div>
-    <div id="mg-r-btns">
-      <div id="mg-replay">🔁</div>
-      <div id="mg-leave">🏡</div>
+    <div id="mg-r-controls">
+      <div id="mg-bands">
+        <div class="mg-band" id="mg-band-cub">🐾</div>
+        <div class="mg-band" id="mg-band-wolf">🐺</div>
+        <div class="mg-band" id="mg-band-alpha">🌙</div>
+      </div>
+      <div id="mg-r-btns">
+        <div id="mg-replay">🔁</div>
+        <div id="mg-leave">🏡</div>
+      </div>
     </div>
   </div>
   <div id="btn-ranged" class="action-btn ui">✨</div>
