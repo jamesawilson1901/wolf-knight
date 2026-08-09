@@ -2954,3 +2954,108 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 (unreleased) — Maren restocks as the world heals (2026-08-09)
+
+Overnight run. FIX-PLAN's status table is closed end to end, so the item came
+from the only QUEUED NEXT list left in this file (v2.2.6, line 681):
+*"economy/XP balance pass, **Maren tier-2 stock after Stoneroot**, hard
+landscape lock, then S3 Wild Woods"*. The first entry is a balance pass and the
+last shipped in v3.19, which leaves this one.
+
+### What was wrong
+
+GAME-CONTRACT: *"Shop ladder per region tier ≈ 60/90/150/250/400. A kid who
+explores buys one big thing per region; completionists afford two."* That is a
+LADDER, and a ladder only exists if the rungs arrive in order. Every one of
+Maren's eight lines was on the shelf from minute one, so the prices said ladder
+and the shop said catalogue.
+
+Measured against the contract's own income line (~120-160 shards per region):
+
+| finishing | had | could already buy | should have been |
+|---|---|---|---|
+| region 1 | ~160 | Long Spear 120 — a tier-2 rung | tier 1 (70-90) |
+| region 2 | ~320 | Boulder Hammer 300 — a tier-3 rung | tier 2 (120-180) |
+
+So a saver could skip the middle of the ladder entirely, and a child in Ember
+Hollow stood in front of a 300-shard hammer they could not afford for two whole
+regions with nothing to say why.
+
+### What changed
+
+`SHOP_TIERS` in `js/items.js`, and a `tier` on every stock line. A tier arrives
+with a region's restoration, keyed to the **same `WS.get(<region>, 'restored')`
+flags the Den villagers and the room dressing already read** — no new state, no
+new save key, so an old profile that had already freed Stoneroot opens straight
+at tier 2 (asserted).
+
+    tier 1  open          Round Guard 70 · Swift Fang 80 · Ember Blade 90
+    tier 2  stone         Long Spear 120 · Tower Shield 180
+    tier 3  wild          Moon Sword 200 · Boulder Hammer 300
+
+The measured bands are 70-90 / 120-180 / 200-300 against the contract's
+60/90/150/250/400 — the existing prices were already a ladder, they were just
+all on the shelf at once. The potion is untiered on purpose: it is a consumable,
+not a rung. Contract tiers 4 and 5 (~250 / ~400) have no stock written yet; the
+comment in `items.js` says where the frost/storm entries go.
+
+**Judgement call: locked stock stays visible.** It could have been hidden until
+it unlocked — smaller change, less on screen. But this game's whole language for
+"not yet" is a thing you can SEE and cannot have (the promise gates, the mystery
+cards), and an empty shelf is not a reason to come back. A locked card greys out
+(`.cant`, already in the CSS — no new styling), keeps the item's own icon so the
+hammer is still a hammer, and its price line reads `🔒 When Stoneroot sings
+again`. It carries no buy handler at all, which is the part that is verified
+rather than assumed.
+
+### Verification
+
+`tools/verify-shop.mjs` is new — nothing in `tools/` touched the shop, and every
+assertion here would have passed against the broken build. It walks a child up
+to Maren the way the game does (proximity edge in the Den; the loop stops while
+a menu is open, so a re-open means close → walk out of range → walk back), reads
+the cards that are actually RENDERED, and taps them.
+
+- fresh save: 4 for sale / 4 locked → after `stone`: 6 / 2 → after `wild`: 7 / 0.
+- **A LOCK MUST ACTUALLY LOCK** (the law the promise gates were caught by): hand
+  the child 9999 shards and hammer the locked Boulder Hammer ten times — shards
+  unchanged, gear unchanged. Then buy the Long Spear once it unlocks and assert
+  it lands in the inventory and auto-equips, so the test can tell "locked" from
+  "shop is broken".
+- the ladder is asserted from the SERVED module rather than re-typed here, so a
+  price edit in `items.js` is measured: no tier's max price may reach the tier
+  above it, and no tier-1 rung may cost more than one region's takings (160).
+
+`sh tools/verify-all.sh verify-shop.mjs verify-den.mjs` — boot, density, shop,
+den: **4 passed, 0 failed.**
+
+### AWAITING dad's call
+
+- **The economy/XP balance pass at the head of that queue was SKIPPED, not
+  done.** Shard income vs shop ladder and "perk tiers past level 12" are
+  difficulty-and-feel questions — how rich the game should feel — and the
+  overnight rules hand those to the kids. Worth knowing before that session: the
+  perk pool is **four perks with no cap** (`PERKS` in `js/progress.js`), picks
+  land on levels 3/6/9/12/15/18/21, so from level 15 on every pick is a repeat
+  of something already owned. The contract says the pool must hold ≥3 unmaxed
+  choices to level 21; with no maximum it satisfies that on a technicality.
+- **This tiering is a small economy change and it was made unattended.** It takes
+  nothing away that a child could reach on one region's takings, but a saver who
+  used to reach the hammer at the end of region 2 now waits for region 3. Say the
+  word and the tiers move; they are four lines of data.
+- **Branch:** this session's harness designated `claude/ecstatic-hawking-9efin8`
+  rather than `overnight`. Not main either way; flagged so the next run knows
+  where to look.
+
+### Also noticed, not touched
+
+**This log stops at v3.34.0 and the game ships v3.41.0.** Seven versions —
+Stormreach, the Sunken Vale and the Tide Wolf, the mini-game harness, the
+licence-rule override — are in the git history and in the design docs but have
+no entry here, and no QUEUED NEXT list. That is why an overnight run reaching
+for "the newest queue" landed on a list written at v2.2.6. Nothing was fixed
+here (one item per run), but the next session that finishes a feature should
+write its entry before it writes its code.
+
+`sw.js` CACHE_NAME stays at v3.41.0 — this is not a deploy.

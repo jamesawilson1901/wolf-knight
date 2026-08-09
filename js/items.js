@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -77,14 +78,43 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
+// MAREN'S LADDER (GAME-CONTRACT: "Shop ladder per region tier ≈ 60/90/150/250/
+// 400. A kid who explores buys one big thing per region"). Her whole shelf used
+// to be out on day one, so the ladder was a price list rather than a ladder: a
+// child in Ember Hollow stood in front of a 300-shard hammer they could not
+// afford for two regions, and a saver could skip the middle of the ladder
+// entirely. She RESTOCKS as the world heals — each tier arrives with a region's
+// restoration, keyed to the same `WS.get(<region>, 'restored')` flags the Den's
+// villagers and the room dressing already read.
+//
+// Locked stock stays ON the shelf, greyed with a lock (js/menus.js). That is the
+// same promise language as the ability gates: a thing you can see and cannot yet
+// have is a reason to come back, and an empty shelf is not.
+export const SHOP_TIERS = [
+  { tier: 1, flag: null, label: 'Open' },
+  { tier: 2, flag: 'stone', label: 'When Stoneroot sings again' },
+  { tier: 3, flag: 'wild', label: 'When the Wild Woods wake' },
+  // Tiers 4 and 5 of the contract ladder (~250 / ~400) have no stock written
+  // yet; add the entries here with the frost/storm flags when they do.
+];
+
+export function tierDef(tier) {
+  return SHOP_TIERS.find((t) => t.tier === (tier || 1)) || SHOP_TIERS[0];
+}
+
+export function tierUnlocked(tier) {
+  const d = tierDef(tier);
+  return !d.flag || WS.get(d.flag, 'restored');
+}
+
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.', tier: 1 },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 3 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 3 },
 ];

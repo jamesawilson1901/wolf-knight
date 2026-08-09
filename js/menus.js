@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear, tierDef, tierUnlocked } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -118,6 +118,19 @@ export class Menus {
     for (const s of SHOP_STOCK) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
+      // NOT YET IN STOCK. Maren's shelf is a ladder that fills as regions heal
+      // (items.js SHOP_TIERS). The card stays visible — the thing you can see
+      // and cannot yet have is the promise — but it carries no buy handler, so
+      // no amount of shards or tapping can take it early.
+      if (!tierUnlocked(s.tier)) {
+        const locked = document.createElement('div');
+        locked.className = 'item-card ui cant locked';
+        locked.innerHTML = `<div class="ic">${def.icon}</div><div class="nm">${def.name}</div>
+          <div>${def.blurb || statLine(s.id, def, s.kind)}</div>
+          <div class="price">🔒 ${tierDef(s.tier).label}</div>`;
+        grid.appendChild(locked);
+        continue;
+      }
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');
