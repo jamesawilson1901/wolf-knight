@@ -395,8 +395,11 @@ export async function buildXh(scene) {
   const gaps = [gap('s'), gap('w', undefined, -8), gap('w', undefined, 8),
     gap('e', undefined, -8), gap('e', undefined, 8)];
   if (open) gaps.push(gap('n'));
+  // `hub` is the POINT the worn paths bow through, not a flag — passing `true`
+  // here threw "boolean true is not iterable" and took every room past the
+  // shrine with it, because the hall is the door to all of them.
   const { halfW, halfD } = shell(world, spec, gaps, D, {
-    hub: true,
+    hub: [0, 0],
     patches: [{ x: -14, z: 9, r: 5.0, kind: 'corruption', alpha: 0.26 },
               { x: 14, z: -9, r: 4.6, kind: 'rubble' }],
   });
