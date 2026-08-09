@@ -83,6 +83,30 @@ const SKINS = {
       { x: 9.5, z: 0, w: 7.0, d: 24 },
     ],
   },
+  // SHADOW-GRIMM — the last fight (region 7).
+  //
+  // He was the FIRST guardian: the great wolf whose heart the shadow took
+  // before any of the others, and every form Kael carries is a piece of his
+  // stolen strength in a kinder bearer (STORY-BIBLE, "The reveal"). That is
+  // canon, and it decides the fight — he wears the SAME CLASS as the
+  // Shadowgrip, because the Shadowgrip WAS a piece of him. A child fights the
+  // region-one boss again, enormous, at the end of the game, and every single
+  // thing they learned on it still works.
+  //
+  // What is new is that he ARMOURS, and below a third he armours against
+  // whatever hit him last. That is the whole game in one mechanic: a child who
+  // only ever learned one wolf cannot finish it, and a child who has been
+  // switching all along will barely notice it is happening.
+  //
+  // He is FREED, not killed.
+  grimm: {
+    name: 'Shadow-Grimm',
+    body: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
+    maxHp: 32, dmg: 1.5, saveKey: 'grimmHp', legacyPhases: false,
+    cinder: 0xd8cfff,
+    speedMult: 1.1,
+    adapts: true,
+  },
 };
 
 class Hittable {
@@ -93,7 +117,12 @@ class Hittable {
     this.dead = false;
     this._onHit = onHit;
   }
-  takeDamage(n) { if (!this.dead) this._onHit(Math.min(n, HIT_CAP)); }
+  // The ELEMENT is passed through now. It used to be dropped on the floor here,
+  // which was fine while no boss cared what hit it — Shadow-Grimm cares very
+  // much, and a resistance that cannot see the element is not a resistance.
+  takeDamage(n, element = 'steel') {
+    if (!this.dead) this._onHit(Math.min(n, HIT_CAP), element);
+  }
   update() {}
 }
 
@@ -238,8 +267,30 @@ export class Shadowgrip {
 
   // ------------------------------------------------------------------
 
-  _hitCore(n) {
+  // WHAT HE IS ARMOURED AGAINST, right now. Nothing above half; steel and moon
+  // below it — the two things a child starts the game with; and below a third,
+  // whatever landed last, which is the fight asking them to keep changing.
+  //
+  // THE POSE NEVER LIES: a resisted hit says BLOCKED and throws no damage
+  // number, the same as every shielded enemy since region two, so a child is
+  // never left wondering whether they are doing anything.
+  _resists(element) {
+    if (!this.skin.adapts) return false;
+    if (this.coreHp <= this.maxHp / 3) return element === this._lastElement;
+    if (this.coreHp <= this.maxHp / 2) return element === 'steel' || element === 'moon';
+    return false;
+  }
+
+  _hitCore(n, element = 'steel') {
     if (this.defeated) return;
+    if (this._resists(element)) {
+      const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
+      if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.2, bz, 'BLOCKED');
+      audio.play('parry', { volume: 0.5, rate: 0.7 });
+      juice.burst(bx, 1.4, bz, 0x8f7fc0, 5);
+      return;
+    }
+    this._lastElement = element;
     this.coreHp -= n;
     state.flags[this.skin.saveKey] = Math.max(0, this.coreHp); // wounds are remembered
     const wx = this.x + this.core.position.x, wz = this.z + this.core.position.z;
@@ -378,6 +429,12 @@ export class Shadowgrip {
       // somehow reached the crown without it is not a save to strand
       if (!state.formsUnlocked.includes('storm_wolf')) state.formsUnlocked.push('storm_wolf');
       this._dropGales();
+    } else if (this.skin === SKINS.grimm) {
+      // HE IS FREED, NOT KILLED. The flag says so in its name, and the room
+      // rebuilds with him sitting on his own seat, old and tired and himself.
+      state.flags.grimmFreed = true;
+      state.flags.gameComplete = true;
+      if (!state.formsUnlocked.includes('ghost_wolf')) state.formsUnlocked.push('ghost_wolf');
     } else if (this.skin === SKINS.meri) {
       state.flags.meriDefeated = true;
       if (!state.formsUnlocked.includes('tide_wolf')) state.formsUnlocked.push('tide_wolf');

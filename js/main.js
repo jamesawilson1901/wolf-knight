@@ -1239,6 +1239,7 @@ async function loadRoom(id, entry, handoff = null) {
   if (world) world.dispose();
   world = await buildRoom(id, scene);
   world.harness = harness;   // den hosts open mini games through it
+  world.player = player;     // watchers and mirrors ask it whether Kael is ghosted
   state.room = id;
   state.region = regionOf(id);
   applyRoomMood();
@@ -1364,6 +1365,7 @@ async function respawnAtCheckpoint() {
   if (world) world.dispose();
   world = await buildRoom(room, scene);
   world.harness = harness;
+  world.player = player;
   state.region = regionOf(room);
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
@@ -1839,6 +1841,7 @@ async function start() {
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
   world.harness = harness;
+  world.player = player;
   applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;

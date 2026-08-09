@@ -937,11 +937,15 @@ export async function buildDlg(scene) {
 // ---------------------------------------------------------------------------
 export async function buildDdp(scene) {
   const { world, spec, D } = base(scene, 'ddp');
-  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+  // THE LAST DOOR. Once the vale drains, the way out of the deep opens north —
+  // and there is only one place left to go.
+  const onward = !!state.flags.meriDefeated;
+  const { halfW, halfD } = shell(world, spec, onward ? [gap('s'), gap('n')] : [gap('s')], D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI });
   heroProp(world, 0, 0, 'throne', D);
   // the arena floor is shallow — the fight is fought ankle-deep, and Meri's
   // slams are what make it deeper

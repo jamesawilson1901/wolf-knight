@@ -48,6 +48,10 @@ export class World {
     // see across until the Tide Wolf carries you over it — see js/water.js.
     this.waterZones = [];      // {minX,maxX,minZ,maxZ, deep, collider}
     this.quenchables = [];     // {x, z, id, out, quench} — the splash puts these out
+    // SHADOW COURT (region 7). A watcher is solid while it can see you.
+    this.watchers = [];        // {x, z, blind, collider}
+    this.player = null;        // set by main.js — watchers and mirrors ask it
+                               // whether Kael is ghosted, every frame
     this.vanes = [];           // {x, z, r, dir, lane, group} — dash to turn
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}

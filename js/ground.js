@@ -151,6 +151,13 @@ export const GROUND_STYLES = {
   salt:      { pattern: 'cobble',    wear: 0.88, joint: 0.42, path: 1.22, grain: 0.60, base: 0xa89f86 },
   lagoon:    { pattern: 'cavefloor', wear: 0.50, joint: 0.40, path: 1.10, grain: 0.85, base: 0x2a5a6e },
   deepvale:  { pattern: 'cavefloor', wear: 0.55, joint: 0.45, path: 1.12, grain: 0.80, base: 0x23485c },
+  // --- The Shadow Court: one palace, and the four wings it grew ------------
+  court:     { pattern: 'flagstone', wear: 0.45, joint: 0.62, path: 1.14, grain: 0.55, base: 0x2e2740 },
+  ashwing:   { pattern: 'flagstone', wear: 0.78, joint: 0.55, path: 1.20, grain: 0.70, base: 0x3d2a26 },
+  rootwing:  { pattern: 'earth',     wear: 0.66, joint: 0.38, path: 0.92, grain: 0.95, base: 0x2c3a26 },
+  galewing:  { pattern: 'cobble',    wear: 0.80, joint: 0.48, path: 1.18, grain: 0.65, base: 0x36404e },
+  mirrorwing:{ pattern: 'flagstone', wear: 0.35, joint: 0.66, path: 1.10, grain: 0.45, base: 0x353050 },
+  throne:    { pattern: 'flagstone', wear: 0.30, joint: 0.70, path: 1.08, grain: 0.40, base: 0x241d33 },
 };
 
 const DEFAULT_STYLE = { pattern: 'earth', wear: 0.55, joint: 0.45, path: 1.15, grain: 0.80 };
