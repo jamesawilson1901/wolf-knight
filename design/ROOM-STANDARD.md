@@ -145,3 +145,54 @@ than an omission — it is written beside each one in code:
 * **Stoneroot reads too dark.** The dressing is there and the measurements pass,
   but `vh` in particular is hard to see. That is a lighting problem, not a
   content one, and it wants a pass of its own.
+
+
+---
+
+## THE SEAM (v3.37.0)
+
+Dad, after the dressing pass: *"what are your thoughts... instead of going
+through 'doors' to the next room, just making it all flow on from one another
+except for boss areas and locked areas."*
+
+The answer taken was **yes to the feeling, no to the rewrite**. Zelda,
+Terranigma and Hollow Knight are all room-based underneath; rooms are what make
+this game authorable, and every system here (enemy budgets, draw calls,
+checkpoints, the map, WorldState, 52 build functions) assumes one room is one
+world. What needed fixing was the SEAM, not the topology.
+
+### The law a door now obeys
+
+| where it leads | what it costs |
+|---|---|
+| within a district | **90 ms** — barely a blink |
+| between districts | **170 ms** — a beat, because colour and music change |
+| into a boss arena | **300 ms** — the full ceremony |
+
+So a door means something again. Before this, all 52 doorways made the same
+promise and 48 of them broke it. The rule a five-year-old ends up learning is:
+**if the screen takes its time, something is about to happen.**
+
+### What crosses with the child
+
+Position along the doorway, heading, velocity and camera look-ahead. Leave three
+units left of the arch, arrive three units left of the arch. Their own heading
+is kept unless they scraped through sideways.
+
+### Seeing the next room
+
+Each doorway spills the destination district's colour — a fan on the floor and
+the opening standing lit in the wall (`thresholdGlow`, one draw call per room,
+colour on the vertices). It self-selects: a door between two rooms of the same
+district shows nothing, which is correct.
+
+### Still deliberately NOT done
+
+* **Enemies do not follow you through a door.** Retreating into the last room is
+  how a five-year-old survives a fight she is losing. Making the world flow must
+  not quietly delete that.
+* **The chokes are still rooms.** They are compression and rest between islands.
+  Removing the *interruption* is right; removing the *beat* is not.
+* **Zone merging** (islands + their choke built as one world) is the real
+  continuous option and is only worth doing if the above still feels chopped
+  once the kids have played it.
