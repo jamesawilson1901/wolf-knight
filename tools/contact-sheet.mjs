@@ -19,8 +19,10 @@ const out = process.argv[3] || '/tmp/rooms.html';
 // Walk order, with the story beat each room carries. The order matters more
 // than the grid: dad should be able to scroll it the way a child plays it.
 const SECTIONS = [
-  ['The Den', 'home base', [['den', 'the Den — home, and where rescued survivors turn up']]],
-  ['Ember Hollow — ruined and sad', 'Level 1 · somewhere people LIVED before it burned', [
+  ['The Den', 'Home, and where the survivors you free turn up afterwards.', [
+    ['den', 'home base'],
+  ], 'den'],
+  ['Ember Hollow — ruined and sad', 'Level 1 · somewhere people LIVED before it burned.', [
     ['la', 'A · THE ASHFALL — arrival, first Shades'],
     ['la1', 'Ash Warrens — optional, the switchback stores'],
     ['lg1', 'THE FALLEN GATE — rest'],
@@ -32,41 +34,43 @@ const SECTIONS = [
     ['lc1', 'The Drowned Forge — optional, heart piece'],
     ['lg3', 'THE EMBER SEAL — rest'],
     ['ld', 'D · THE KILN — the shrine, FIRE WOLF, the gutter run'],
-    ['ld1', 'THE ORDER HALL — the puzzle room (perimeter dressing only)'],
+    ['ld1', 'THE ORDER HALL — puzzle room, dressed at the perimeter only'],
     ['lg4', 'THE BOSS DOOR — the quietest room in Ember'],
-    ['le', 'E · HEART OF THE HOLLOW — the Shadowgrip (arena, edges only)'],
-  ]],
-  ['Stoneroot Caverns — buried and waiting', 'Level 2 · something enormous was carved here, and the dark has been sitting on it since', [
-    ['vh', 'THE GREAT VAULT — the hub; Old Bram’s fire is the only warm thing in it'],
+    ['le', 'E · HEART OF THE HOLLOW — the Shadowgrip. Arena: edges only'],
+  ], 'ember'],
+  ['Stoneroot Caverns — buried and waiting',
+   'Level 2 · something enormous was carved here, and the dark has been sitting on it since.', [
+    ['vh', 'THE GREAT VAULT — the hub. Old Bram’s fire is the only warm thing in it'],
     ['vga', 'THE CRYSTAL MOUTH — rest'],
     ['va1', 'A1 · THE GLIMMERWAY — slimes'],
     ['va2', 'A2 · THE GEODE — the practice cracks'],
     ['vap', 'Glitter Pocket — optional, pup'],
-    ['va3', 'PETRA’S SPARK — EARTH WOLF granted (empty middle: ceremony)'],
+    ['va3', 'PETRA’S SPARK — the EARTH WOLF is granted here. Empty middle: ceremony'],
     ['vgb', 'THE CHALK MOUTH — rest'],
     ['vb1', 'B1 · THE BONE QUARRY — terraces'],
     ['vb2', 'B2 · THE RIBCAGE — Bone Brutes'],
     ['vbp', 'The Chalk Seam — optional, chest'],
-    ['vb3', 'THE RATTLE — the puzzle room (perimeter dressing only)'],
-    ['vgc', 'THE WET MOUTH — rest; past here the workings flooded'],
+    ['vb3', 'THE RATTLE — puzzle room, dressed at the perimeter only'],
+    ['vgc', 'THE WET MOUTH — rest. Past here the workings flooded'],
     ['vc1', 'C1 · THE SUNKEN STAIR — shieldlings'],
     ['vc2', 'C2 — the THORN promise gate'],
     ['vcp', 'the last dry pocket — gold chest'],
     ['vc3', 'the pin'],
-    ['vz', 'THE WARDEN — arena, edges only'],
-  ]],
-  ['The Wild Woods — beautiful and sick', 'Level 3 · the loveliest place in the world, rotting from the inside. The rot rises room by room.', [
+    ['vz', 'THE WARDEN. Arena: edges only'],
+  ], 'stone'],
+  ['The Wild Woods — beautiful and sick',
+   'Level 3 · the loveliest place in the world, rotting from the inside. The rot rises room by room as you walk in — 10% at the edge, 90% at the heart.', [
     ['t1a', 'THORNEDGE — rot 10%'], ['t1b', 'rot 15%'], ['t1p', 'optional'],
     ['tc1', 'rest'],
     ['t2a', 'THE GLOOMWOOD — rot 30%'], ['t2b', 'rot 38%'], ['t2p', 'optional'],
     ['tsh', 'the shelter'], ['tc2', 'rest'],
     ['t3a', 'THE ROOTBOUND DEEP — rot 55%'], ['t3b', 'rot 62%'], ['t3p', 'optional'],
-    ['tkn', 'THE KNOT — the puzzle room (perimeter dressing only)'], ['tc3', 'rest'],
-    ['t4a', 'THE BLOOMFALL — rot 78%; blossom drifts on leaf litter'],
+    ['tkn', 'THE KNOT — puzzle room, dressed at the perimeter only'], ['tc3', 'rest'],
+    ['t4a', 'THE BLOOMFALL — rot 78%. Blossom drifts on leaf litter'],
     ['t4b', 'rot 85%'], ['t4p', 'optional'], ['tc4', 'rest'],
-    ['tgl', 'SYLVA’S GLADE — arena, edges only'],
-    ['tsA', 'secret'], ['tsB', 'secret'],
-  ]],
+    ['tgl', 'SYLVA’S GLADE. Arena: edges only'],
+    ['tsA', 'secret shortcut'], ['tsB', 'secret shortcut'],
+  ], 'woods'],
 ];
 
 const uri = (id) => {
@@ -80,64 +84,124 @@ const cards = (rooms) => rooms.map(([id, beat]) => {
   const u = uri(id);
   if (!u) { missing.push(id); return ''; }
   bytes += statSync(`${dir}/${id}.png`).size; shown++;
-  return `<figure><img loading="lazy" src="${u}" alt="${id}">
-      <figcaption><b>${id}</b> · ${beat}</figcaption></figure>`;
+  return `      <figure><img loading="lazy" src="${u}" alt="the arrival frame of room ${id}">
+        <figcaption><span class="id">${id}</span>${beat}</figcaption></figure>`;
 }).join('\n');
+
+// DESIGN NOTE. This is a review document, not a landing page, so the treatment
+// is utilitarian-polished: real hierarchy, considered spacing, no flourish.
+//
+// The one structural decision that carries information: each region's accent IS
+// that region's own district colour from the game — Ember's ember orange,
+// Stoneroot's cold blue, the Wild Woods' green. Scrolling the page therefore
+// runs through the same colour arc the game does, and a section's rail matches
+// the screenshots sitting under it. The neutral is an ash grey pulled toward
+// the same warmth rather than a pure grey.
+//
+// Serif headings against a humanist sans body, with a mono for room ids —
+// paired from stacks rather than webfonts, because the Artifact CSP blocks font
+// CDNs and a linked face would fall back silently.
+const ACCENTS = { ember: '#c2622a', stone: '#5f8bab', woods: '#74a049', den: '#a8863f' };
 
 const html = `<title>Wolf Knight — every room</title>
 <style>
   :root {
-    --bg: #f6f3ef; --card: #fff; --ink: #21201d; --dim: #6b665f; --line: #e2ddd5;
-    --accent: #b4571f;
+    --ground: #eceae5; --card: #fbfaf8; --ink: #1b1a17; --dim: #6d6860;
+    --line: #dcd7cf; --rail: #c8c2b8;
+    --ember: ${ACCENTS.ember}; --stone: ${ACCENTS.stone};
+    --woods: ${ACCENTS.woods}; --den: ${ACCENTS.den};
   }
-  :root:not([data-theme="light"]) { }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #14120f; --card: #1d1a16; --ink: #ece7df; --dim: #a09a90; --line: #2e2a24;
-      --accent: #ff9a4a;
+      --ground: #131210; --card: #1c1a16; --ink: #ece8e0; --dim: #9a948a;
+      --line: #2b2822; --rail: #3a352d;
+      --ember: #e8853f; --stone: #7fb0d2; --woods: #93c063; --den: #cfa855;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #14120f; --card: #1d1a16; --ink: #ece7df; --dim: #a09a90; --line: #2e2a24;
-    --accent: #ff9a4a;
+    --ground: #131210; --card: #1c1a16; --ink: #ece8e0; --dim: #9a948a;
+    --line: #2b2822; --rail: #3a352d;
+    --ember: #e8853f; --stone: #7fb0d2; --woods: #93c063; --den: #cfa855;
   }
-  body { background: var(--bg); color: var(--ink); margin: 0;
-    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 18px 80px; }
-  h1 { font-size: clamp(24px, 4.5vw, 38px); margin: 0 0 6px; letter-spacing: -0.02em; }
-  .sub { color: var(--dim); margin: 0 0 28px; }
-  h2 { font-size: clamp(18px, 3vw, 25px); margin: 40px 0 2px; letter-spacing: -0.01em; }
-  h2 .n { color: var(--accent); }
-  .lead { color: var(--dim); margin: 0 0 16px; font-size: 15px; }
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
-  figure { margin: 0; background: var(--card); border: 1px solid var(--line);
-    border-radius: 12px; overflow: hidden; }
-  img { display: block; width: 100%; height: auto; }
-  figcaption { padding: 9px 12px; font-size: 13px; color: var(--dim);
-    border-top: 1px solid var(--line); }
-  figcaption b { color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .note { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-    border-radius: 10px; padding: 14px 16px; margin: 22px 0 6px; font-size: 15px; }
-  .note p { margin: 0 0 8px; } .note p:last-child { margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font: 16px/1.6 "Segoe UI", Roboto, -apple-system, system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 20px 96px; }
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: clamp(28px, 5vw, 44px); font-weight: 600; letter-spacing: -0.015em;
+    margin: 0 0 8px; text-wrap: balance;
+  }
+  .sub { color: var(--dim); margin: 0 0 26px; max-width: 62ch; }
+  .note {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; margin: 0 0 12px; max-width: 78ch;
+  }
+  .note p { margin: 0 0 10px; } .note p:last-child { margin: 0; }
+  .note b { font-weight: 650; }
+  section { margin-top: 46px; }
+  .band { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding-left: 14px; border-left: 4px solid var(--accent); }
+  section.ember { --accent: var(--ember); }
+  section.stone { --accent: var(--stone); }
+  section.woods { --accent: var(--woods); }
+  section.den   { --accent: var(--den); }
+  h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: clamp(20px, 3.2vw, 28px); font-weight: 600; letter-spacing: -0.01em;
+    margin: 0; color: var(--accent);
+  }
+  .count { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums;
+    text-transform: uppercase; letter-spacing: 0.07em; }
+  .lead { color: var(--dim); margin: 8px 0 18px 18px; max-width: 66ch; font-size: 15px; }
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  figure {
+    margin: 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden;
+  }
+  figure img { display: block; width: 100%; height: auto; background: #000; }
+  figcaption {
+    padding: 10px 13px; font-size: 13.5px; color: var(--dim); line-height: 1.45;
+    border-top: 1px solid var(--line);
+  }
+  figcaption .id {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; color: var(--accent); letter-spacing: 0.02em;
+    margin-right: 7px; font-weight: 600;
+  }
+  a:focus-visible, figure:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 <div class="wrap">
-  <h1>Wolf Knight — every room</h1>
-  <p class="sub">The arrival frame of each space, in walk order: exactly what the
-  camera shows the moment you step in.</p>
+  <h1>Wolf Knight &mdash; every room</h1>
+  <p class="sub">The arrival frame of all 52 spaces, in walk order: exactly what
+  the camera shows the moment you step in.</p>
 
   <div class="note">
-    <p><b>What you are looking for.</b> You said the levels were “big but bare”,
-    that the floor was “just a generic colour everywhere”, and that of all the
-    art “there is only a handful used”. These are the same rooms after that.</p>
-    <p>Two kinds of room are <i>deliberately</i> sparse and are labelled as
-    such: <b>puzzle rooms</b>, where clutter would compete with the thing you
-    have to spot, and <b>boss arenas</b>, where anything you can snag on turns a
-    fair dodge into an unfair hit. Everywhere else, if it looks empty, tell me.</p>
+    <p><b>What you said.</b> The levels were &ldquo;big but bare&rdquo;, the
+    floor was &ldquo;just a generic colour everywhere&rdquo;, and of all the art
+    &ldquo;there is only a handful used&rdquo;. These are the same rooms after
+    that.</p>
+    <p><b>Two kinds of room are deliberately sparse</b>, and are labelled where
+    they appear: <b>puzzle rooms</b>, where clutter would compete with the thing
+    you have to spot, and <b>boss arenas</b>, where anything you can snag on
+    turns a fair dodge into an unfair hit. Everywhere else &mdash; if it still
+    looks empty to you, say so and I will fill it.</p>
   </div>
 
-${SECTIONS.map(([title, lead, rooms]) =>
-  `  <h2>${title}</h2>\n  <p class="lead">${lead}</p>\n  <div class="grid">\n${cards(rooms)}\n  </div>`
-).join('\n')}
+${SECTIONS.map(([title, lead, rooms, cls]) => {
+  const body = cards(rooms);
+  const n = rooms.filter(([id]) => existsSync(`${dir}/${id}.png`)).length;
+  return `  <section class="${cls}">
+    <div class="band"><h2>${title}</h2><span class="count">${n} ${n === 1 ? 'space' : 'spaces'}</span></div>
+    <p class="lead">${lead}</p>
+    <div class="grid">
+${body}
+    </div>
+  </section>`;
+}).join('\n')}
 </div>`;
 
 writeFileSync(out, html);
