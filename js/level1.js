@@ -430,6 +430,15 @@ export async function buildLa(scene) {
   // floor, where the two Shades come at you, and ROOM-STANDARD §1 is explicit
   // that open ground is kept where fights happen. Dense at the edges, clear in
   // the middle, which is how a Zelda screen is actually built.
+  world.markers.breakables = [
+    { x: -9.5, z: 5.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
+    { x: -12.5, z: 4.5, kind: 'vase' },
+    { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'vase' },
+    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'barrel' },
+    { x: 9.5, z: 6.5, kind: 'vase' },
+  ];
+  world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
+  world.markers.crackPromise = { x: -11, z: -4 };
   ruinedHome(world, -11.5, 7, 0.28, D, { w: 6, d: 5 });
   ruinedHome(world, -9.5, -10, -0.5, D, { w: 6.5, d: 4.5, keep: 0.5 });
   ruinedHome(world, 12, -7.5, 0.9, D, { w: 5.5, d: 5, keep: 0.62 });
@@ -470,19 +479,11 @@ export async function buildLa(scene) {
   // --- THINGS TO DO (ROOM-STANDARD §4) --------------------------------------
   // 1. BREAK THINGS OPEN. Pots and crates at each house, where a family's
   //    belongings would actually be. main.js spawns these from the marker.
-  world.markers.breakables = [
-    { x: -9.5, z: 5.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
-    { x: -12.5, z: 4.5, kind: 'vase' },
-    { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'vase' },
-    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'barrel' },
-    { x: 9.5, z: 6.5, kind: 'vase' },
-  ];
   // 2. AN ALCOVE FOUND BY EXPLORING OFF-PATH. Behind the east house, screened
   //    from the worn route, a nook you only see if you go and look.
   wallRun(world, 14.5, -11.5, 14.5, -3.5, D);
   visibleReward(world, 15.2, -7.5, 'l1_ash_nook', { shards: 12 });
 
-  world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
   scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
   // The two wall runs are the point: without them the "gate" sat alone in the
@@ -494,7 +495,6 @@ export async function buildLa(scene) {
   promiseGate(world, -11, -4, 3, 4, 0x9a8c6a, 'CRACKED — later', 'crack',
               { system: 'crack', id: 'l1_crack_gate' });
   visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18 });
-  world.markers.crackPromise = { x: -11, z: -4 };
   return finish(world, spec, D);
 }
 export async function buildLa1(scene) {
@@ -511,17 +511,17 @@ export async function buildLa1(scene) {
   wallRun(world, -6, 2, 4, 2, D);
   // the warrens are where the village kept its stores — the switchback is
   // lined with what was in them, and the chest at the end is the last of it
-  cartWreck(world, -7, 4.5, 1.1, D);
-  rubbleField(world, 2, -5.5, 3.0, D, 14);
-  rubbleField(world, -3, 5.5, 2.6, D, 12);
-  aftermath(world, 5.5, -5.5, 2.0, D, 3);
-  coldHearth(world, -7.5, -5.5, D);
   world.markers.breakables = [
     { x: -2, z: 5.5, kind: 'crate' }, { x: 3.5, z: 5.5, kind: 'barrel' },
     { x: 1, z: -5, kind: 'vase' }, { x: -8, z: 1.5, kind: 'crate' },
   ];
   world.markers.shadeSpots = [{ x: 5, z: -5 }];
   world.markers.pocketChest = { x: 7, z: 5 };
+  cartWreck(world, -7, 4.5, 1.1, D);
+  rubbleField(world, 2, -5.5, 3.0, D, 14);
+  rubbleField(world, -3, 5.5, 2.6, D, 12);
+  aftermath(world, 5.5, -5.5, 2.0, D, 3);
+  coldHearth(world, -7.5, -5.5, D);
   scatter(world, halfW, halfD, D, 12, 5);
   visibleReward(world, 7, 5, 'l1_warrens', { shards: 16 });
   return finish(world, spec, D);
@@ -542,14 +542,14 @@ export async function buildLg1(scene) {
   // the smallest rooms in the level, which makes them the cheapest to fill and
   // the most obviously bare when they are not. A hearth someone banked up, the
   // shrine they passed on the way, and the gateposts of the old road.
+  world.markers.breakables = [{ x: 3.4, z: 0.8, kind: 'barrel' }, { x: -2.2, z: -3.2, kind: 'vase' }];
+  world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, 0, 0.6, D);
   wayshrine(world, -4.6, -2.2, 0.5, D);
   fallenColumn(world, 4.4, -2.6, -0.4, D, 2.6);
   rubbleField(world, 4.8, 2.8, 2.2, D, 10);
   rubbleField(world, -4.8, 2.6, 2.0, D, 9);
   aftermath(world, -3, 1.5, 1.6, D, 4);
-  world.markers.breakables = [{ x: 3.4, z: 0.8, kind: 'barrel' }, { x: -2.2, z: -3.2, kind: 'vase' }];
-  world.markers.restSpot = { x: 0, z: 0 };
   return finish(world, spec, D);
 }
 
@@ -577,6 +577,13 @@ export async function buildLb(scene) {
   // THE CAUSEWAY IS THE ROAD IN. This is the edge of the settlement proper —
   // where the road widens, the stalls stood, and the gateposts still do. It is
   // busier than the Ashfall on purpose: you are walking INTO somewhere.
+  world.markers.breakables = [
+    { x: -9, z: 4.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
+    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'crate' },
+    { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'vase' },
+  ];
+  world.markers.mothSpots = [{ x: -8, z: 4 }, { x: 4, z: 2 }];
+  world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
   ruinedHome(world, -11, 6.5, -0.35, D, { w: 6.5, d: 5, keep: 0.68 });
   ruinedHome(world, -12.5, -7.5, 0.6, D, { w: 6, d: 4.5, keep: 0.5 });
   wayshrine(world, -6.5, 10.5, Math.PI + 0.2, D);
@@ -591,13 +598,6 @@ export async function buildLb(scene) {
   rubbleField(world, 2, -11, 2.8, D, 12);
   aftermath(world, -11, 5, 2.2, D, 5);
   aftermath(world, 4, -9, 2.0, D, 6);
-  world.markers.breakables = [
-    { x: -9, z: 4.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
-    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'crate' },
-    { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'vase' },
-  ];
-  world.markers.mothSpots = [{ x: -8, z: 4 }, { x: 4, z: 2 }];
-  world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
   scatter(world, halfW, halfD, D, 21, 7);
   return finish(world, spec, D);
 }
@@ -614,17 +614,17 @@ export async function buildLb1(scene) {
   wallRun(world, 1, -6, 1, 1, D);
   // Moth Hollow: a house whose roof went but whose hearth the moths still
   // gather at. The pup is behind the wall run, which is the whole point of it.
-  ruinedHome(world, -6, -4.5, 0.7, D, { w: 5.5, d: 4, keep: 0.55 });
-  cartWreck(world, 5.5, 5, -0.4, D);
-  rubbleField(world, -2, 6, 2.6, D, 12);
-  rubbleField(world, 7.5, -1, 2.4, D, 10);
-  aftermath(world, -5, -4, 1.8, D, 7);
   world.markers.breakables = [
     { x: -3.5, z: -5.5, kind: 'barrel' }, { x: 3, z: -5.5, kind: 'vase' },
     { x: -8, z: 4.5, kind: 'crate' },
   ];
   world.markers.pup1Spot = { x: 6, z: -4 };
   world.markers.mothSpots = [{ x: 4, z: 3 }];
+  ruinedHome(world, -6, -4.5, 0.7, D, { w: 5.5, d: 4, keep: 0.55 });
+  cartWreck(world, 5.5, 5, -0.4, D);
+  rubbleField(world, -2, 6, 2.6, D, 12);
+  rubbleField(world, 7.5, -1, 2.4, D, 10);
+  aftermath(world, -5, -4, 1.8, D, 7);
   scatter(world, halfW, halfD, D, 22, 5);
   return finish(world, spec, D);
 }
@@ -652,6 +652,10 @@ export async function buildLb2(scene) {
   // THE SCORCHED CUBBY. Whatever burned here burned hottest — this is where
   // the fire came through, and the props say so: everything on this side is
   // charred, collapsed, and the shrine did not survive it upright.
+  world.markers.breakables = [
+    { x: 3, z: 4.5, kind: 'crate' }, { x: 7.5, z: -3, kind: 'barrel' },
+    { x: -8.5, z: 2, kind: 'vase' },
+  ];
   ruinedHome(world, -6.5, 5.5, 0.4, D, { w: 6, d: 4.5, keep: 0.35 });
   fallenColumn(world, 6, 5, 1.3, D, 3.2);
   fallenColumn(world, 5, -5.5, -0.6, D, 2.8);
@@ -659,10 +663,6 @@ export async function buildLb2(scene) {
   rubbleField(world, 0, 6, 3.0, D, 14);
   rubbleField(world, -8, -4, 2.8, D, 12);
   aftermath(world, -5, -5.5, 2.2, D, 8);
-  world.markers.breakables = [
-    { x: 3, z: 4.5, kind: 'crate' }, { x: 7.5, z: -3, kind: 'barrel' },
-    { x: -8.5, z: 2, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 23, 5);
   return finish(world, spec, D);
 }
@@ -678,14 +678,14 @@ export async function buildLg2(scene) {
   sideDoor(world, 's', halfW, halfD, 'lb', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lc', { x: 0, z: 10, angle: Math.PI });
   // THE NARROWS: the road pinches between two collapsed frontages
+  world.markers.breakables = [{ x: -3.2, z: 1.4, kind: 'crate' }, { x: 3.4, z: 1.6, kind: 'barrel' }];
+  world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, -0.4, 1.2, D);
   ruinedHome(world, -5.4, -3.4, 0.9, D, { w: 4.5, d: 3.5, keep: 0.4, door: false });
   fallenColumn(world, 4.6, -1.4, -0.5, D, 2.4);
   rubbleField(world, -4.6, 3, 2.2, D, 10);
   rubbleField(world, 5, 2.6, 2.0, D, 9);
   aftermath(world, 3, -3, 1.6, D, 9);
-  world.markers.breakables = [{ x: -3.2, z: 1.4, kind: 'crate' }, { x: 3.4, z: 1.6, kind: 'barrel' }];
-  world.markers.restSpot = { x: 0, z: 0 };
   return finish(world, spec, D);
 }
 
@@ -720,6 +720,12 @@ export async function buildLc(scene) {
   // CINDER BRIDGES — the industrial edge. Not homes: the works. Columns that
   // carried the span, the stacks that fed it, and what the heat left. Nothing
   // is placed in the lava band z -3..1 or on the two safe slabs.
+  world.markers.breakables = [
+    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'crate' },
+    { x: 8.5, z: 9, kind: 'crate' }, { x: 13.5, z: 2, kind: 'barrel' },
+    { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'vase' },
+  ];
+  world.markers.houndSpot = { x: 8, z: -8, variant: 'elder' };
   ruinedHome(world, -12, 7.5, 0.5, D, { w: 6, d: 4.5, keep: 0.45 });
   fallenColumn(world, -13.5, -6.5, 0.3, D, 4.4);
   fallenColumn(world, 12.5, 6.5, -1.4, D, 4.0);
@@ -735,12 +741,6 @@ export async function buildLc(scene) {
   rubbleField(world, -3, 6.5, 2.4, D, 10);
   aftermath(world, -11, 6, 2.2, D, 10);
   aftermath(world, 10, -9, 2.0, D, 11);
-  world.markers.breakables = [
-    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'crate' },
-    { x: 8.5, z: 9, kind: 'crate' }, { x: 13.5, z: 2, kind: 'barrel' },
-    { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'vase' },
-  ];
-  world.markers.houndSpot = { x: 8, z: -8, variant: 'elder' };
   scatter(world, halfW, halfD, D, 31, 6);
   return finish(world, spec, D);
 }
@@ -758,19 +758,19 @@ export async function buildLc1(scene) {
   // THE DROWNED FORGE: the one place in the Hollow where the fire lost. Water
   // took the floor, the stacks went over, and the heart piece is at the back
   // of it — which is why this pocket is worth the detour.
+  world.markers.breakables = [
+    { x: -3, z: -3, kind: 'barrel' }, { x: 7.5, z: 5.5, kind: 'crate' },
+    { x: 1, z: 3.5, kind: 'vase' },
+  ];
+  world.markers.pocketChest = { x: 6, z: -2 };
+  world.markers.shadeSpots = [{ x: 2, z: 4 }];
   fallenColumn(world, -6.5, -1.5, 1.4, D, 3.4);
   fallenColumn(world, 2, 5.5, -0.3, D, 3.0);
   cartWreck(world, -7.5, 4.5, 0.9, D);
   rubbleField(world, 8, 3, 2.8, D, 13);
   rubbleField(world, -1, -6.5, 2.4, D, 10);
   aftermath(world, 5, 2, 2.0, D, 12);
-  world.markers.breakables = [
-    { x: -3, z: -3, kind: 'barrel' }, { x: 7.5, z: 5.5, kind: 'crate' },
-    { x: 1, z: 3.5, kind: 'vase' },
-  ];
-  world.markers.pocketChest = { x: 6, z: -2 };
   visibleReward(world, 6, -2, 'l1_drowned_forge', { shards: 22, heartPiece: 1 });
-  world.markers.shadeSpots = [{ x: 2, z: 4 }];
   scatter(world, halfW, halfD, D, 32, 5);
   return finish(world, spec, D);
 }
@@ -787,15 +787,15 @@ export async function buildLg3(scene) {
   sideDoor(world, 'n', halfW, halfD, 'ld', { x: 0, z: 10, angle: Math.PI });
   // THE EMBER SEAL: the last gate before the Kiln, and someone kept a watch
   // here. The shrine is the tell — this door mattered to whoever held it.
+  world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'crate' }];
+  world.markers.restSpot = { x: 0, z: 0 };
+  world.markers.sealSpot = { x: 0, z: -2 };
   wayshrine(world, -4.4, -2.4, 0.4, D);
   coldHearth(world, 4.2, 1.4, D);
   fallenColumn(world, 4.6, -2.8, -0.7, D, 2.4);
   rubbleField(world, -4.8, 2.8, 2.2, D, 10);
   rubbleField(world, 2, 3.2, 1.8, D, 8);
   aftermath(world, -2.5, -3, 1.5, D, 13);
-  world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'crate' }];
-  world.markers.restSpot = { x: 0, z: 0 };
-  world.markers.sealSpot = { x: 0, z: -2 };
   return finish(world, spec, D);
 }
 
@@ -830,6 +830,11 @@ export async function buildLd(scene) {
   // richest room in the level because it is the one the whole level walks
   // toward. Nothing sits in the gutter channel (x 6..13, z 2..10) or within
   // four units of the Forge Heart, which needs its approach clear.
+  world.markers.breakables = [
+    { x: -10, z: 4.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'crate' },
+    { x: -10.5, z: -5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
+    { x: 14, z: 4, kind: 'barrel' }, { x: -3.5, z: -10, kind: 'vase' },
+  ];
   wayshrine(world, -5, -4, 0.3, D);
   ruinedHome(world, -12, 6.5, -0.4, D, { w: 6, d: 5, keep: 0.66 });
   ruinedHome(world, -12.5, -6.5, 0.8, D, { w: 5.5, d: 4.5, keep: 0.5 });
@@ -843,11 +848,6 @@ export async function buildLd(scene) {
   rubbleField(world, 8, -11, 3.0, D, 13);
   aftermath(world, -11, 5, 2.2, D, 14);
   aftermath(world, 12, -7, 2.0, D, 15);
-  world.markers.breakables = [
-    { x: -10, z: 4.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'crate' },
-    { x: -10.5, z: -5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
-    { x: 14, z: 4, kind: 'barrel' }, { x: -3.5, z: -10, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 41, 6);
   return finish(world, spec, D);
 }
@@ -877,12 +877,12 @@ export async function buildLd1(scene) {
   world.markers.orderSpot = { x: 0, z: 0 };
   teachBraziers(world, world.markers.orderSpots, 'ld1_order');
   // perimeter only — see the note on the shell above
+  world.markers.breakables = [{ x: -8.5, z: 2, kind: 'vase' }, { x: 8.5, z: -2, kind: 'vase' }];
   fallenColumn(world, -8.5, -6, 0.5, D, 2.6);
   fallenColumn(world, 8.5, 6, -0.8, D, 2.6);
   rubbleField(world, 8.5, -6.5, 2.2, D, 9);
   rubbleField(world, -8.5, 6.5, 2.2, D, 9);
   aftermath(world, 0, -6.8, 1.6, D, 16);
-  world.markers.breakables = [{ x: -8.5, z: 2, kind: 'vase' }, { x: 8.5, z: -2, kind: 'vase' }];
   return finish(world, spec, D);
 }
 
@@ -899,14 +899,14 @@ export async function buildLg4(scene) {
   // THE LAST ROOM BEFORE THE BOSS. Someone waited here, and did not go in: a
   // hearth still ringed with stones, a shrine, and the belongings they left
   // when they finally turned back. It is the quietest room in Ember on purpose.
+  world.markers.restSpot = { x: -2, z: 0 };
+  world.markers.potionSpot = { x: 2, z: 0 };
+  world.markers.bossDoorSpot = { x: 0, z: -3 };
   wayshrine(world, -4.6, -2.6, 0.6, D);
   coldHearth(world, 3.8, 2.2, D);
   fallenColumn(world, 4.8, -2.4, -0.9, D, 2.2);
   rubbleField(world, -4.6, 3, 2.0, D, 9);
   aftermath(world, -2, -3.2, 1.5, D, 17);
-  world.markers.restSpot = { x: -2, z: 0 };
-  world.markers.potionSpot = { x: 2, z: 0 };
-  world.markers.bossDoorSpot = { x: 0, z: -3 };
   return finish(world, spec, D);
 }
 

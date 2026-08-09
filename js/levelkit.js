@@ -227,10 +227,14 @@ export function makeBuilders({ kit, isGrey }) {
     const T = DOOR_ZONE;
     // the mouth of the door, and room to walk out of it
     const rc = opts.centre || 0;
-    if (side === 'n') world.reserve(rc, -halfD + 1.6, 2.8);
-    else if (side === 's') world.reserve(rc, halfD - 1.6, 2.8);
-    else if (side === 'w') world.reserve(-halfW + 1.6, rc, 2.8);
-    else if (side === 'e') world.reserve(halfW - 1.6, rc, 2.8);
+    // 2.0, not 2.8: the opening is 2.4u wide (DOOR_HALF 1.2), so a reservation
+    // wider than that starts claiming the ground beside the door — which is
+    // exactly where gateposts belong, and they were losing their colliders.
+    const rtag = 'door→' + to;
+    if (side === 'n') world.reserve(rc, -halfD + 1.6, 2.0, rtag);
+    else if (side === 's') world.reserve(rc, halfD - 1.6, 2.0, rtag);
+    else if (side === 'w') world.reserve(-halfW + 1.6, rc, 2.0, rtag);
+    else if (side === 'e') world.reserve(halfW - 1.6, rc, 2.0, rtag);
     const half = opts.half || DOOR_HALF;
     const c = opts.centre || 0;          // offset ALONG the wall — see gap()
     const when = opts.when || null;
@@ -302,7 +306,7 @@ export function makeBuilders({ kit, isGrey }) {
       rock.rotation.y = spin ? rnd() * Math.PI * 2 : Math.floor(rnd() * 4) * Math.PI / 2;
       rock.scale.setScalar((big ? 0.8 + rnd() * 0.5 : 0.6 + rnd() * 0.4) * scale);
       world.add(rock);
-      if (big) world.addCircle(x, z, 0.75 * scale);
+      if (big) world.addCircle(x, z, 0.75 * scale, 'decor');
     }
   }
 
@@ -337,7 +341,7 @@ export function makeBuilders({ kit, isGrey }) {
     // The gate and the ground immediately behind it belong to the gate: the
     // whole promise is that THIS is the way through, and a prop dressed into
     // the gap turns a solved puzzle into a locked door.
-    world.reserve(x, z, Math.max(w, d) * 0.6 + 1.4);
+    world.reserve(x, z, Math.max(w, d) * 0.6 + 1.4, 'gate:' + id);
     // The group is positioned at the gate and its pieces sit RELATIVE to it,
     // so when a crack or a burn scatters the chunks they fly apart from the
     // gate rather than from the room's origin.
@@ -426,7 +430,7 @@ export function makeBuilders({ kit, isGrey }) {
     // puzzle solved, and the reward still 2.06u out of reach because a rock
     // had been scattered into the alcove afterwards. 2.6u is enough for a
     // child to walk up from any side.
-    world.reserve(x, z, 2.6);
+    world.reserve(x, z, 2.6, 'chest:' + id);
     return null;
   }
 

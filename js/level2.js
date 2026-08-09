@@ -540,6 +540,14 @@ export async function buildVh(scene) {
   // thing in the room and it needs cold to read against — so the vault gets the
   // diggers' abandoned workings: their stores, their fallen scaffold, and the
   // shrine they cut into the rock before the work stopped.
+  world.markers.breakables = [
+    { x: -10.5, z: 8.5, kind: 'barrel' }, { x: -14, z: 12, kind: 'crate' },
+    { x: 11, z: 10, kind: 'vase' }, { x: 16, z: 5, kind: 'barrel' },
+    { x: -3, z: 12, kind: 'crate' },
+  ];
+  world.markers.hubStage = stage;               // for the headless verifier
+  scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
+  return finish(world, spec, D);
   coldHearth(world, -8, 6.6, D);                          // Bram's own fire
   cartWreck(world, -12.5, 10, 0.7, D);
   wayshrine(world, 14.5, -4, -Math.PI / 2 + 0.2, D);
@@ -552,11 +560,6 @@ export async function buildVh(scene) {
   rubbleField(world, 16.5, -11, 3.0, D, 13);
   rubbleField(world, 4, 12.5, 2.8, D, 12);
   aftermath(world, -13, -8, 2.2, D, 21);
-  world.markers.breakables = [
-    { x: -10.5, z: 8.5, kind: 'barrel' }, { x: -14, z: 12, kind: 'crate' },
-    { x: 11, z: 10, kind: 'vase' }, { x: 16, z: 5, kind: 'barrel' },
-    { x: -3, z: 12, kind: 'crate' },
-  ];
   // WHAT YOU SEE ON ARRIVAL. vh spawns at (0,10) facing the whole 36x28 vault,
   // and the first dressed pass put every cluster on the perimeter — so the band
   // the camera actually shows came out under the density floor. These sit in
@@ -569,9 +572,6 @@ export async function buildVh(scene) {
   rubbleField(world, -4, 9.5, 2.6, D, 11);
   rubbleField(world, 5, 11.5, 2.4, D, 10);
   aftermath(world, 3, 7, 1.8, D, 39);
-  world.markers.hubStage = stage;               // for the headless verifier
-  scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
-  return finish(world, spec, D);
 }
 
 // ===========================================================================
@@ -588,13 +588,13 @@ export async function buildVga(scene) {
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE CRYSTAL MOUTH. The chokes shipped as bare 14x10 boxes with two doors
   // and nothing else. Down here they are where the diggers stopped for breath.
+  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'crate' }, { x: -2.4, z: 2.2, kind: 'vase' }];
+  world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, 0, 1.2, D);
   fallenColumn(world, -4.4, -2.4, 0.5, D, 2.4);
   rubbleField(world, 4.6, -2.6, 2.2, D, 11);
   rubbleField(world, -4.4, 2.8, 2.0, D, 9);
   aftermath(world, 3, 2.4, 1.6, D, 22);
-  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'crate' }, { x: -2.4, z: 2.2, kind: 'vase' }];
-  world.markers.restSpot = { x: 0, z: 0 };
   return finish(world, spec, D);
 }
 
@@ -619,6 +619,10 @@ export async function buildVa1(scene) {
   // THE GLIMMERWAY. The first cut, and the widest — the diggers worked this
   // seam long enough to build in it. Scaffold, stores, and the shrine at the
   // turn. The crystal light is cold, so everything it lands on is cold too.
+  world.markers.breakables = [
+    { x: -9, z: 5, kind: 'barrel' }, { x: -13, z: 9, kind: 'crate' },
+    { x: 8, z: 10, kind: 'vase' }, { x: 14, z: -3, kind: 'barrel' },
+  ];
   ruinedHome(world, -11, 7, -0.4, D, { w: 6, d: 4.5, keep: 0.5, door: false });
   fallenColumn(world, 11, -7.5, 0.8, D, 4.0);
   fallenColumn(world, -13, 3, -1.1, D, 3.4);
@@ -629,10 +633,6 @@ export async function buildVa1(scene) {
   rubbleField(world, -8, -10.5, 2.8, D, 12);
   rubbleField(world, 3, -9, 2.6, D, 11);
   aftermath(world, -10, 6, 2.0, D, 25);
-  world.markers.breakables = [
-    { x: -9, z: 5, kind: 'barrel' }, { x: -13, z: 9, kind: 'crate' },
-    { x: 8, z: 10, kind: 'vase' }, { x: 14, z: -3, kind: 'barrel' },
-  ];
   scatter(world, halfW, halfD, D, 81, 6, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLB', 'column'] });
   return finish(world, spec, D);
 }
@@ -662,6 +662,10 @@ export async function buildVa2(scene) {
   // THE GEODE. The room the whole seam was chasing — and the practice cracks
   // sit in the open on purpose, so the dressing is pushed to the walls and the
   // three of them stay the most obvious thing in the room.
+  world.markers.breakables = [
+    { x: -11, z: 6, kind: 'crate' }, { x: 14, z: 7, kind: 'barrel' },
+    { x: -8, z: -11, kind: 'vase' }, { x: 9, z: -11, kind: 'crate' },
+  ];
   ruinedHome(world, -13, 8, 0.5, D, { w: 5.5, d: 4.5, keep: 0.45, door: false });
   fallenColumn(world, 13, -6, -0.9, D, 4.2);
   fallenColumn(world, -14, -3, 0.6, D, 3.4);
@@ -670,10 +674,6 @@ export async function buildVa2(scene) {
   rubbleField(world, 15, 2, 2.6, D, 11);
   rubbleField(world, -2, -11, 2.8, D, 12);
   aftermath(world, -12, 7, 2.0, D, 26);
-  world.markers.breakables = [
-    { x: -11, z: 6, kind: 'crate' }, { x: 14, z: 7, kind: 'barrel' },
-    { x: -8, z: -11, kind: 'vase' }, { x: 9, z: -11, kind: 'crate' },
-  ];
   scatter(world, halfW, halfD, D, 82, 7, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
   return finish(world, spec, D);
 }
@@ -691,14 +691,14 @@ export async function buildVap(scene) {
   world.markers.pup4Spot = { x: 6, z: -4 };
   world.markers.slimeSpots = [{ x: -4, z: 3 }];
   // GLITTER POCKET: a seam so rich they camped in it rather than walk out
+  world.markers.breakables = [
+    { x: -8, z: 1.5, kind: 'crate' }, { x: 3, z: 5.5, kind: 'barrel' }, { x: 8, z: -6, kind: 'vase' },
+  ];
   coldHearth(world, -7, -4, D);
   cartWreck(world, 6.5, 4.5, 0.8, D);
   rubbleField(world, -3, 6, 2.6, D, 11);
   rubbleField(world, 8, 1, 2.4, D, 10);
   aftermath(world, -6, -3, 1.8, D, 29);
-  world.markers.breakables = [
-    { x: -8, z: 1.5, kind: 'crate' }, { x: 3, z: 5.5, kind: 'barrel' }, { x: 8, z: -6, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 83, 5, { spin: 1, kinds: ['rockSB', 'rockSA'] });
   return finish(world, spec, D);
 }
@@ -731,12 +731,12 @@ export async function buildVa3(scene) {
   // PETRA'S SPARK is a GRANT room: the shrine at (0,-3) and the teach crack at
   // (0,2) are the only two things a child must find, so this one is dressed at
   // the walls and nowhere else. Ceremony needs an empty middle.
+  world.markers.breakables = [{ x: -8.5, z: 1, kind: 'vase' }, { x: 8.5, z: 1, kind: 'vase' }];
   fallenColumn(world, -8, -5, 0.5, D, 2.6);
   fallenColumn(world, 8, -5, -0.5, D, 2.6);
   rubbleField(world, -8, 5.5, 2.4, D, 10);
   rubbleField(world, 8, 5.5, 2.4, D, 10);
   aftermath(world, 0, 6, 1.8, D, 33);
-  world.markers.breakables = [{ x: -8.5, z: 1, kind: 'vase' }, { x: 8.5, z: 1, kind: 'vase' }];
   return finish(world, spec, D);
 }
 
@@ -753,13 +753,13 @@ export async function buildVgb(scene) {
   sideDoor(world, 'w', halfW, halfD, 'vh', { x: 15.4, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb1', { x: -13.5, z: 0, angle: Math.PI / 2 });
   // THE CHALK MOUTH — the quarry's own doorway, and the last dry rest
+  world.markers.breakables = [{ x: -2.4, z: -1.6, kind: 'barrel' }, { x: 2.2, z: 2.4, kind: 'vase' }];
+  world.markers.restSpot = { x: 0, z: 0 };
   wayshrine(world, 4.4, -2.4, -0.5, D);
   coldHearth(world, -3.8, 1.4, D);
   rubbleField(world, -4.6, -2.8, 2.2, D, 11);
   rubbleField(world, 4.4, 2.8, 2.0, D, 9);
   aftermath(world, 0, 2.6, 1.6, D, 23);
-  world.markers.breakables = [{ x: -2.4, z: -1.6, kind: 'barrel' }, { x: 2.2, z: 2.4, kind: 'vase' }];
-  world.markers.restSpot = { x: 0, z: 0 };
   return finish(world, spec, D);
 }
 
@@ -788,6 +788,10 @@ export async function buildVb1(scene) {
   // THE BONE QUARRY. Cut stone, and what the cutting left. The terraces are
   // the room's shape and the dressing sits off them, so the two levels stay
   // legible from the fixed camera.
+  world.markers.breakables = [
+    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'barrel' },
+    { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'crate' },
+  ];
   fallenColumn(world, -13, 8, 0.7, D, 4.2);
   fallenColumn(world, 12, -8, -1.0, D, 3.8);
   cartWreck(world, -9, -9.5, 0.5, D);
@@ -797,10 +801,6 @@ export async function buildVb1(scene) {
   rubbleField(world, 3, 11, 2.8, D, 12);
   rubbleField(world, 15, 0, 2.6, D, 11);
   aftermath(world, -6, -10, 2.2, D, 27);
-  world.markers.breakables = [
-    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'barrel' },
-    { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'crate' },
-  ];
   scatter(world, halfW, halfD, D, 91, 7, { spin: 0, kinds: ['brick', 'rockLB', 'rockSA', 'skull'] });
   return finish(world, spec, D);
 }
@@ -823,6 +823,10 @@ export async function buildVb2(scene) {
   world.markers.minionSpots = [{ x: 9, z: 4 }, { x: -7, z: -4 }];
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
+  world.markers.breakables = [
+    { x: -10, z: 6, kind: 'barrel' }, { x: 13, z: 11, kind: 'crate' },
+    { x: -14, z: 5, kind: 'vase' }, { x: 6, z: 11, kind: 'barrel' },
+  ];
   ruinedHome(world, -12, 8, 0.4, D, { w: 6, d: 4.5, keep: 0.35, door: false });
   fallenColumn(world, 13, -7, -0.8, D, 4.0);
   fallenColumn(world, -14, 2, 1.2, D, 3.4);
@@ -832,10 +836,6 @@ export async function buildVb2(scene) {
   rubbleField(world, 15, 2, 2.8, D, 12);
   rubbleField(world, -3, 11.5, 2.6, D, 11);
   aftermath(world, -10, 7, 2.0, D, 28);
-  world.markers.breakables = [
-    { x: -10, z: 6, kind: 'barrel' }, { x: 13, z: 11, kind: 'crate' },
-    { x: -14, z: 5, kind: 'vase' }, { x: 6, z: 11, kind: 'barrel' },
-  ];
   scatter(world, halfW, halfD, D, 92, 7, { spin: 0, kinds: ['brick', 'skull', 'rockSB', 'column'] });
   return finish(world, spec, D);
 }
@@ -853,14 +853,14 @@ export async function buildVbp(scene) {
   visibleReward(world, 6, 4, 'l2_vbp_chest', { shards: 22 });
   world.markers.minionSpots = [{ x: -4, z: -3 }];
   // THE CHALK SEAM: a dead end they worked out and abandoned
+  world.markers.breakables = [
+    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 6.5, kind: 'vase' },
+  ];
   fallenColumn(world, -7, 4, 0.6, D, 3.0);
   cartWreck(world, -6.5, -5, 1.1, D);
   rubbleField(world, 7, -4, 2.6, D, 11);
   rubbleField(world, -2, 6.5, 2.4, D, 10);
   aftermath(world, 4, -5, 1.8, D, 30);
-  world.markers.breakables = [
-    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 6.5, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 93, 5, { spin: 0, kinds: ['brick', 'skull'] });
   return finish(world, spec, D);
 }
@@ -896,13 +896,13 @@ export async function buildVb3(scene) {
   // applies: the plate, the three stalactites and the bell-stone are the whole
   // mechanic, so this room is dressed at the WALLS and nowhere near them.
   // Clutter here would compete with the exact things a child has to spot.
+  world.markers.breakables = [{ x: -9, z: 1.5, kind: 'crate' }, { x: 9, z: 1.5, kind: 'vase' }];
+  world.markers.minionSpots = [{ x: -5, z: -2 }, { x: 5, z: -2 }];
   fallenColumn(world, -8.5, -5, 0.5, D, 2.6);
   fallenColumn(world, 8.5, 4.5, -0.8, D, 2.6);
   rubbleField(world, -8.5, 5.5, 2.4, D, 10);
   rubbleField(world, 8.5, -6, 2.2, D, 9);
   aftermath(world, -6, 6, 1.8, D, 38);
-  world.markers.breakables = [{ x: -9, z: 1.5, kind: 'crate' }, { x: 9, z: 1.5, kind: 'vase' }];
-  world.markers.minionSpots = [{ x: -5, z: -2 }, { x: 5, z: -2 }];
 
   if (GREY()) {
     // the plate, the three drop zones and the bell, all readable as shapes
@@ -961,13 +961,13 @@ export async function buildVgc(scene) {
   sideDoor(world, 'n', halfW, halfD, 'vc1', { x: 0, z: 10.5, angle: Math.PI });
   // THE WET MOUTH. Past here the workings flooded, and the props say so before
   // the floor colour does: everything left standing on this side is stained.
+  world.markers.breakables = [{ x: 2.8, z: -1.2, kind: 'vase' }, { x: -2.2, z: 2.4, kind: 'crate' }];
+  world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, -3.6, -1.6, D);
   fallenColumn(world, 4.2, 2.2, 1.1, D, 2.4);
   rubbleField(world, -4.6, 2.6, 2.2, D, 11);
   rubbleField(world, 4.4, -2.8, 2.0, D, 9);
   aftermath(world, 1.5, 2.6, 1.6, D, 24);
-  world.markers.breakables = [{ x: 2.8, z: -1.2, kind: 'vase' }, { x: -2.2, z: 2.4, kind: 'crate' }];
-  world.markers.restSpot = { x: 0, z: 0 };
   return finish(world, spec, D);
 }
 
@@ -1001,6 +1001,10 @@ export async function buildVc1(scene) {
   // down them for a very long time. Everything here is stained, slumped or
   // floated out of place — but nothing is on the terrace edges, which are the
   // room's whole readability from a fixed camera.
+  world.markers.breakables = [
+    { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'crate' },
+    { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'vase' },
+  ];
   fallenColumn(world, -13, 9, 0.5, D, 3.8);
   fallenColumn(world, 13, 6, -1.1, D, 3.4);
   ruinedHome(world, -12, -8, 0.7, D, { w: 5.5, d: 4, keep: 0.35, door: false });
@@ -1009,10 +1013,6 @@ export async function buildVc1(scene) {
   rubbleField(world, -15, 1, 2.6, D, 11);
   rubbleField(world, 2, 11.5, 2.6, D, 11);
   aftermath(world, -10, -7, 2.0, D, 31);
-  world.markers.breakables = [
-    { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'crate' },
-    { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'vase' },
-  ];
   // same fix as the vault: the arrival band was empty because the terraces
   // pushed everything to the walls. Nothing here sits ON a terrace edge, which
   // is what makes the three levels readable from a fixed camera.
@@ -1054,6 +1054,10 @@ export async function buildVc2(scene) {
   // rooms — the bramble behind the promise gate. Nothing is placed in the
   // alcove x 11..16, z -6..0: that is the gate's own space and it has to read
   // as the ONLY way to the chest.
+  world.markers.breakables = [
+    { x: -10, z: 5.5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
+    { x: -14, z: 10, kind: 'barrel' }, { x: 12, z: 5, kind: 'vase' },
+  ];
   ruinedHome(world, -12, 7.5, -0.4, D, { w: 5.5, d: 4.5, keep: 0.35, door: false });
   fallenColumn(world, -13, -6, 0.9, D, 3.6);
   fallenColumn(world, 6, 10.5, -0.6, D, 3.0);
@@ -1063,10 +1067,6 @@ export async function buildVc2(scene) {
   rubbleField(world, 9, -12, 2.6, D, 11);
   rubbleField(world, 14, 9, 2.6, D, 11);
   aftermath(world, -11, 6, 2.0, D, 32);
-  world.markers.breakables = [
-    { x: -10, z: 5.5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
-    { x: -14, z: 10, kind: 'barrel' }, { x: 12, z: 5, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 102, 6, { spin: 1, kinds: ['rockSB', 'rockLC', 'column', 'brick'] });
   return finish(world, spec, D);
 }
@@ -1085,14 +1085,14 @@ export async function buildVcp(scene) {
   world.markers.slimeSpots = [{ x: 5, z: 4 }];
   // the last dry pocket before the crypt — someone sheltered here and the gold
   // chest is what they were carrying
+  world.markers.breakables = [
+    { x: -3, z: -5.5, kind: 'crate' }, { x: 8, z: 1, kind: 'barrel' }, { x: -1, z: 6, kind: 'vase' },
+  ];
   coldHearth(world, -6.5, -4, D);
   cartWreck(world, -7, 4.5, 0.9, D);
   rubbleField(world, 3, -6, 2.6, D, 11);
   rubbleField(world, 8, 5, 2.4, D, 10);
   aftermath(world, -5, -3.5, 1.8, D, 34);
-  world.markers.breakables = [
-    { x: -3, z: -5.5, kind: 'crate' }, { x: 8, z: 1, kind: 'barrel' }, { x: -1, z: 6, kind: 'vase' },
-  ];
   scatter(world, halfW, halfD, D, 103, 5, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   return finish(world, spec, D);
 }
@@ -1113,12 +1113,12 @@ export async function buildVc3(scene) {
   world.markers.pinSpot = { x: 0, z: -3 };
   crackedPile(world, 'l2_vc3_pin', 0, -3, true);
   world.markers.shieldSpots = [{ x: -4, z: 2 }];
+  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'vase' }];
   fallenColumn(world, -7.5, -4.5, 0.6, D, 2.6);
   fallenColumn(world, 7.5, -4.5, -0.6, D, 2.6);
   rubbleField(world, -7.5, 5, 2.4, D, 10);
   rubbleField(world, 7.5, 5, 2.4, D, 10);
   aftermath(world, -4, 6, 1.8, D, 35);
-  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'vase' }];
   return finish(world, spec, D);
 }
 

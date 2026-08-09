@@ -152,6 +152,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
         if (r() > keep) continue;                     // this stretch has fallen
         const t = (i + 0.5) / n;
         const px = x0 + (x1 - x0) * t, pz = z0 + (z1 - z0) * t;
+        if (world.blocked(x + px, z + pz, 0.7)) continue;
         const sink = r() < 0.45 ? -(0.3 + r() * 0.8) : 0;   // slumped, not level
         place(world, g, K().wallMod, 'ruinWall', px, sink, pz,
           1.0, a + Math.PI / 2, 0, P);
@@ -164,7 +165,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     // the front is open — you can see in, and walk in
 
     // --- the doorway, still standing ------------------------------------------
-    if (opts.door !== false) {
+    if (opts.door !== false && !world.blocked(x, z + hd, 1.4)) {
       place(world, g, K().archDoor, 'ruinDoor', 0, 0, hd, 1.0, 0, 0, P);
       world.addBox(x - 1.4, x - 0.7, z + hd - 0.4, z + hd + 0.4);
       world.addBox(x + 0.7, x + 1.4, z + hd - 0.4, z + hd + 0.4);
@@ -221,14 +222,17 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 13 + z * 57));
     const dx = Math.sin(dir), dz = Math.cos(dir);
-    place(world, g, K().column, 'fallCol', 0, 0, 0, 1.0, 0, 0, D.propTint || D.wallTint);
-    world.addCircle(x, z, 0.6);
+    if (!world.blocked(x, z, 0.7)) {
+      place(world, g, K().column, 'fallCol', 0, 0, 0, 1.0, 0, 0, D.propTint || D.wallTint);
+      world.addCircle(x, z, 0.6, 'decor');
+    }
     for (let i = 1; i <= 3; i++) {                    // the drums, lying down
       const t = i * (len / 3);
+      if (world.blocked(x + dx * t, z + dz * t, 0.6)) continue;
       place(world, g, K().column2, 'fallCol',
         dx * t + (r() - 0.5) * 0.5, 0.42, dz * t + (r() - 0.5) * 0.5,
         0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint);
-      world.addCircle(x + dx * t, z + dz * t, 0.5);
+      world.addCircle(x + dx * t, z + dz * t, 0.5, 'decor');
     }
     g.position.set(x, 0, z);
     world.add(g);
@@ -264,7 +268,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     place(world, g, K().arch, 'shrine', 0, 0, 0, 1.1, 0, 0, D.propTint || D.wallTint);
     place(world, g, K().pedestal, 'shrine', 0, 0, -0.2, 1.0, 0, 0, D.propTint || D.wallTint);
     place(world, g, K().banner, 'shrine', 0, 0, -1.0, 1.0, 0, 0, D.propTint || D.floorTint);
-    world.addCircle(x, z, 0.9);
+    world.addCircle(x, z, 0.9, 'decor');
     g.position.set(x, 0, z);
     g.rotation.y = ry;
     world.add(g);
@@ -288,7 +292,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       place(world, g, gl, 'cart', (r() - 0.5) * 3.4, r() < 0.6 ? 0.28 : 0, (r() - 0.5) * 2.8,
         1.0, r() * 6.28, r() < 0.6 ? Math.PI / 2 : 0, P, false);
     }
-    world.addCircle(x, z, 1.0);        // the wreck itself blocks; the spill does not
+    world.addCircle(x, z, 1.0, 'decor');        // the wreck itself blocks; the spill does not
     g.position.set(x, 0, z);
     g.rotation.y = ry;
     world.add(g);
@@ -323,7 +327,11 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const steps = Math.max(2, Math.round(len / 1.2));
     for (let i = 0; i <= steps; i++) {
       const t = i / steps * 2 - 1;
-      world.addCircle(x + dx * t, z + dz * t, 0.62);
+      // COVER MUST NOT STAND ON A SPAWN POINT. la's second stub ran straight
+      // through the Shade at (6, -1), and t1b's through a thorn hound, and the
+      // sweep had to declaw all four of them on every single load.
+      if (world.blocked(x + dx * t, z + dz * t, 0.7)) continue;
+      world.addCircle(x + dx * t, z + dz * t, 0.62, 'decor');
     }
     return g;
   }
@@ -394,7 +402,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       // simply darker — you can SEE what the wood is losing
       const col = dead ? mixHex(P, 0x4a3a52, 0.55) : P;
       place(world, g, gltf, 'grove', px, 0, pz, sc, r() * 6.28, 0, col);
-      world.addCircle(x + px, z + pz, 0.55 * sc);
+      world.addCircle(x + px, z + pz, 0.55 * sc, 'decor');
     }
     // undergrowth: walk straight through it
     const under = Math.round(rad * 3.2);
@@ -449,7 +457,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       const sc = 0.75 + r() * 0.5;
       place(world, g, pick(BARE, r), 'blight', px, down ? 0.5 : 0, pz, sc,
         r() * 6.28, down ? Math.PI / 2 : 0, P);
-      world.addCircle(x + px, z + pz, (down ? 0.75 : 0.5) * sc);
+      world.addCircle(x + px, z + pz, (down ? 0.75 : 0.5) * sc, 'decor');
     }
     for (let i = 0; i < rad * 2.5; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad * 1.2;

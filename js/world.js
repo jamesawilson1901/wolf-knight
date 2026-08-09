@@ -70,8 +70,11 @@ export class World {
     this.boxColliders.push({ minX, maxX, minZ, maxZ });
   }
 
-  addCircle(x, z, r) {
-    this.circleColliders.push({ x, z, r });
+  // `tag` marks who owns this collider. Only 'decor' is ever swept away — see
+  // sweepKeepClear. Everything else (a gate, a landmark, a boulder, a wall) is
+  // gameplay or structure and is never touched.
+  addCircle(x, z, r, tag = null) {
+    this.circleColliders.push({ x, z, r, tag });
   }
 
   // --- KEEP-OUT: where scenery may not stand -------------------------------
@@ -92,35 +95,59 @@ export class World {
   // function sets its spawn points and chests before it dresses, and reading
   // them at placement time means fifty-two builders did not each have to
   // remember to declare the same thing twice.
-  reserve(x, z, r = 1.2) {
-    (this._keepClear || (this._keepClear = [])).push({ x, z, r });
+  reserve(x, z, r = 1.2, tag = 'reserved') {
+    (this._keepClear || (this._keepClear = [])).push({ x, z, r, tag });
   }
 
-  blocked(x, z, r = 0.6) {
+  // `why` — when true, returns the NAME of what claimed the ground instead of
+  // just true. The sweep reports it, because "5 colliders dropped" tells you a
+  // number and "dropped at (-7.2, 3.9), claimed by restSpot" tells you which
+  // line to move.
+  blocked(x, z, r = 0.6, why = false) {
     for (const k of (this._keepClear || [])) {
       const dx = x - k.x, dz = z - k.z;
-      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return true;
+      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return why ? (k.tag || 'reserved') : true;
     }
     const m = this.markers || {};
+    // KEEP-CLEAR PROTECTS STANDING ROOM, NOTHING ELSE.
+    //
+    // The first attempt protected every marker and the sweep fired in twelve of
+    // seventeen rooms — almost all of it false. A marker can mean three quite
+    // different things:
+    //
+    //   * where a BODY must stand or walk — a spawn point, a hound's post, a
+    //     chest's approach. Scenery here is a bug; this is what to protect.
+    //   * where a PROP IS — heroSpot is the fallen gate, ringSpot is the sunken
+    //     ring. Protecting these made the sweep drop the hero prop's own
+    //     collider, so you could walk through the Kiln and through Cinder's cage.
+    //   * where an INTERACTABLE is — cageBraziers, the order-hall braziers, the
+    //     practice cracks. They own their colliders too, for the same reason.
+    //
+    // So the list is positive and short. Anything not named here is ignored,
+    // which fails safe: the worst case is a prop standing somewhere slightly
+    // awkward, not a gate you cannot open or an enemy you cannot fight.
+    const STANDING_ROOM =
+      /(shade|hound|moth|geyser|slime|bat|minion|shield|pup|stalactite|enemy|boulder)\w*Spots?$/i;
+    const ALSO = /^(restSpot|potionSpot|chestDefs)$|Promise$/;
     const near = (p, pad) => {
       if (!p || typeof p.x !== 'number' || typeof p.z !== 'number') return false;
       const dx = x - p.x, dz = z - p.z;
       return dx * dx + dz * dz < (pad + r) * (pad + r);
     };
     // the spawn, and enough room around it to land and turn around
-    if (near(this.spawn, 2.4)) return true;
+    if (near(this.spawn, 2.4)) return why ? 'spawn' : true;
     for (const key of Object.keys(m)) {
       const v = m[key];
-      if (!v) continue;
+      if (!v || !(STANDING_ROOM.test(key) || ALSO.test(key))) continue;
       // A CHEST NEEDS ITS APPROACH, not just its square: 2.2u so a child can
       // walk up to it from any side. Everything else needs standing room.
       const pad = /chest|reward|Promise|Spot$/i.test(key) ? 2.2 : 1.6;
-      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return true; }
-      else if (near(v, pad)) return true;
+      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return why ? key : true; }
+      else if (near(v, pad)) return why ? key : true;
     }
     for (const d of (this.doors || [])) {
       const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
-      if (near({ x: cx, z: cz }, 2.6)) return true;
+      if (near({ x: cx, z: cz }, 2.6)) return why ? ('door→' + d.to) : true;
     }
     return false;
   }
@@ -130,15 +157,32 @@ export class World {
   // still sitting on a gameplay square has its COLLIDER dropped here and says
   // so. A prop you can walk through is a blemish; an enemy stuck inside one, or
   // a chest you cannot reach, is a broken game.
+  // ONLY SCENERY IS EVER SWEPT.
+  //
+  // The first version filtered every circle collider in the room and started
+  // dropping the wrong ones the moment it had good data: the Kiln cone (radius
+  // 4.6), the Forge Heart (5.2), the Great Vault's ring (7.5) — landmarks whose
+  // colliders naturally overlap half the markers in the room. Dropping them
+  // means walking through a volcano. And in va1 it dropped the cracked pile
+  // that GUARDS a chest, because the chest's own approach reservation claimed
+  // the ground the gate stands on.
+  //
+  // A prop the dressing placed is tagged 'decor' and may be swept. Anything
+  // else belongs to the room's design and is left alone, whatever it overlaps.
   sweepKeepClear() {
-    const before = this.circleColliders.length;
-    this.circleColliders = this.circleColliders.filter((c) => !this.blocked(c.x, c.z, c.r));
-    const dropped = before - this.circleColliders.length;
-    if (dropped) {
-      console.warn(`[keepclear] dropped ${dropped} collider(s) sitting on gameplay `
-        + 'squares — a cluster was placed before its markers were set.');
+    const hits = [];
+    this.circleColliders = this.circleColliders.filter((c) => {
+      if (c.tag !== 'decor') return true;
+      const claim = this.blocked(c.x, c.z, c.r, true);
+      if (!claim) return true;
+      hits.push(`(${c.x.toFixed(1)}, ${c.z.toFixed(1)}) r${c.r.toFixed(2)} → ${claim}`);
+      return false;
+    });
+    if (hits.length) {
+      console.warn(`[keepclear] dropped ${hits.length} collider(s) standing on gameplay `
+        + `ground: ${hits.join('; ')}`);
     }
-    return dropped;
+    return hits.length;
   }
 
   addLava(minX, maxX, minZ, maxZ) {
