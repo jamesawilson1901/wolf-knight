@@ -235,7 +235,12 @@ function finish(world, spec, D) {
 // room measures empty. Four steps, not a continuum.
 function washed(D, k) {
   const a = D.propTint, b = 0xcfd8d4;
-  const t = Math.max(0, Math.min(1, k)) * 0.55;
+  // QUANTISED TO FOUR STEPS, always. Stormreach learned this twice: a unique
+  // tint per cluster is a unique material per cluster, nothing merges, and the
+  // draw calls run away — d1b hit 151 against a ceiling of 125 the first time
+  // this took a continuous k. Callers may pass anything; four is what comes out.
+  const q = Math.round(Math.max(0, Math.min(1, k)) * 3) / 3;
+  const t = q * 0.55;
   const mix = (sh) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
   return { ...D, propTint: (mix(16) << 16) | (mix(8) << 8) | mix(0) };
 }
@@ -413,8 +418,12 @@ function dressShore(world, halfW, halfD, D, seed, opts = {}) {
   if (!world.blocked(p.x, p.z, 1.8)) aftermath(world, p.x, p.z, 2.2 + r() * 0.8, washed(D, r()), seed % 29);
 
   // ...and the loose stuff, each piece its own node so the count is honest
-  const KINDS = opts.kinds || ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'bush'];
-  for (let k = 0; k < (opts.loose || 26); k++) {
+  // SIX KINDS, THREE WEATHERS. Every (kind x tint) pair is its own batch, so
+  // eight kinds at four weathers is up to thirty-two buckets in one room on top
+  // of everything the clusters make — which is how d1b reached 132 draw calls
+  // against a ceiling of 125. Eighteen buckets looks the same and costs half.
+  const KINDS = opts.kinds || ['barrel', 'crate', 'brick', 'skull', 'rockSA', 'bush'];
+  for (let k = 0; k < (opts.loose || 16); k++) {
     const q = at(1.5 + r() * 12, (r() - 0.5) * 20);
     if (world.blocked(q.x, q.z, 0.7)) continue;
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
@@ -422,9 +431,35 @@ function dressShore(world, halfW, halfD, D, seed, opts = {}) {
     const g = new THREE.Group();
     g.position.set(q.x, 0, q.z);
     place(world, g, valeKit[kind], kind, 0, 0, 0, (big ? 0.7 : 0.85) + r() * 0.5,
-      r() * 6.28, 0, washed(D, Math.floor(r() * 4) / 3).propTint, big);
+      r() * 6.28, 0, washed(D, Math.floor(r() * 3) / 2).propTint, big);
     world.add(g);
     if (big) world.addCircle(q.x, q.z, 0.55, 'decor');
+  }
+}
+
+// A rim path is still a room — the lesson Stormreach's stairs taught the hard
+// way. Both long walls lined, the middle left clear, every piece its own node.
+function rimSides(world, halfW, halfD, D, seed) {
+  if (GREY()) return;
+  let s0 = seed;
+  const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
+  const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'bush'];
+  for (let i = 0; i < 34; i++) {
+    const side = i % 2 ? 1 : -1;
+    const x = -halfW + 1.2 + (i / 34) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.3;
+    let z = side * (halfD - 1.4 - r() * 1.5);
+    if (world.blocked(x, z, 0.6)) z = -z;
+    if (world.blocked(x, z, 0.6)) z = side * (halfD - 2.6);
+    if (world.blocked(x, z, 0.6)) continue;
+    const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
+    const big = kind.startsWith('rock');
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    place(world, g, valeKit[kind], kind, 0, 0, 0,
+      (big ? 0.7 : 0.9) + r() * 0.5, r() * 6.28, 0,
+      washed(D, Math.floor(r() * 4) / 3).propTint, big);
+    world.add(g);
+    if (big) world.addCircle(x, z, 0.55, 'decor');
   }
 }
 
@@ -475,8 +510,12 @@ export async function buildD1b(scene) {
   world.markers.deepPromise = { x: -10, z: -3 };
   world.markers.slimeSpots = [{ x: 5, z: 3, variant: 'tide' }, { x: -2, z: -6, variant: 'tide' },
     { x: 7, z: -4, variant: 'tide' }];
-  scatter(world, halfW, halfD, D, 602, 6, { spin: 1, kinds: ['rockLB', 'rockSA', 'logStack'] });
-  dressShore(world, halfW, halfD, D, 6021, { homes: 2 });
+  // d1b is the busiest room in the region — the lock, the islet, the chest and
+  // a pack of three — and it came in at 126 draw calls against a 125 ceiling.
+  // It loses clutter, not content: 127 things in the arrival frame against a
+  // bar of 32 means there is a great deal of clutter to lose.
+  scatter(world, halfW, halfD, D, 602, 4, { spin: 1, kinds: ['rockLB', 'rockSA'] });
+  dressShore(world, halfW, halfD, D, 6021, { homes: 2, loose: 10 });
   return finish(world, spec, D);
 }
 
@@ -833,7 +872,10 @@ export async function buildDlg(scene) {
   const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w'), gap('n'), gap('s')], D, {
     patches: [{ x: 0, z: 0, r: 9.0, kind: 'water' }],
   });
-  world.spawn = { x: 15, z: 0, angle: Math.PI / 2 };
+  // FACING IN. This was angle +PI/2 — pointing at the east wall two units away,
+  // so the arrival frame showed a wall and the density check read ONE thing in
+  // it. A spawn angle is not decoration: it is where the camera looks.
+  world.spawn = { x: 14, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'd1a', { x: -14, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'd2a', { x: 0, z: -13, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'd3a', { x: 0, z: 13, angle: Math.PI });
@@ -851,12 +893,15 @@ export async function buildDlg(scene) {
   if (!GREY()) {
     let s0 = 6401;
     const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 30; i++) {
       const x = (r() - 0.5) * 28, z = (r() - 0.5) * 24;
       if (world.blocked(x, z, 1.0)) continue;
       const kind = ['column', 'column2', 'pillar', 'arch', 'brick'][Math.floor(r() * 5) % 5];
       const g = new THREE.Group();
-      g.position.set(x, -0.9 - r() * 0.6, z);      // mostly under the surface
+      // Half of them break the surface. Entirely submerged, they were invisible
+      // under an opaque deep-water sheet — a drowned town nobody can see is a
+      // drowned town that is not there.
+      g.position.set(x, i % 2 ? -0.35 : -1.1 - r() * 0.5, z);
       place(world, g, valeKit[kind], kind, 0, 0, 0, 1.1 + r() * 0.6, r() * 6.28, 0,
         washed(D, Math.floor(r() * 4) / 3).propTint);
       world.add(g);
