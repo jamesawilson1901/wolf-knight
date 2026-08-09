@@ -141,7 +141,16 @@ export class World {
       if (!v || !(STANDING_ROOM.test(key) || ALSO.test(key))) continue;
       // A CHEST NEEDS ITS APPROACH, not just its square: 2.2u so a child can
       // walk up to it from any side. Everything else needs standing room.
-      const pad = /chest|reward|Promise|Spot$/i.test(key) ? 2.2 : 1.6;
+      // A BODY IS ABOUT 0.7u ACROSS. 1.6u of standing room plus a cluster's own
+      // 1.2u query radius excluded nearly three units around every marker, and
+      // once the markers moved above the dressing that started REJECTING props
+      // rather than merely sweeping their colliders — the Great Vault lost most
+      // of its arrival dressing overnight, from 55 things in frame to 9.
+      //
+      // 1.1u is ample room to stand and turn. Chests and gates keep the wider
+      // margin because an approach you cannot walk is a broken reward, and that
+      // is the failure this whole register exists to prevent.
+      const pad = /chest|reward|Promise/i.test(key) ? 2.2 : 1.1;
       if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return why ? key : true; }
       else if (near(v, pad)) return why ? key : true;
     }
