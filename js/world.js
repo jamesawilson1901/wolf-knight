@@ -40,6 +40,11 @@ export class World {
     // iceGate(), so a room with ice-sealed geometry built any other way had
     // no shatter verb at all and its ice could never be broken.
     this.shatterables = [];    // {id, x, z, clear, broken} — Frost Wolf breath
+    // STORMREACH (region 5). A gale lane pushes; it never damages. It is also
+    // the region's lock — see js/wind.js for why a wind you can lean into is a
+    // better closed door than a wall a child has to be told about.
+    this.galeLanes = [];       // {minX,maxX,minZ,maxZ, px,pz, strength, dir, id}
+    this.vanes = [];           // {x, z, r, dir, lane, group} — dash to turn
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
@@ -540,6 +545,42 @@ export class World {
       if (x >= d.minX && x <= d.maxX && z >= d.minZ && z <= d.maxZ) return d;
     }
     return null;
+  }
+
+  // The wind at a point, in units per second, summed over every lane covering
+  // it. Summed rather than "the strongest wins" because two lanes crossing is a
+  // real thing the Vanes room can produce, and the honest answer there is the
+  // resultant — a child pushed diagonally out of a crossing has been told the
+  // truth about what is happening to them.
+  windAt(x, z) {
+    let wx = 0, wz = 0;
+    for (const l of this.galeLanes) {
+      if (x < l.minX || x > l.maxX || z < l.minZ || z > l.maxZ) continue;
+      wx += l.px; wz += l.pz;
+    }
+    return (wx || wz) ? { x: wx, z: wz } : null;
+  }
+
+  // The strongest lane covering a point, for anything that needs to ask "am I
+  // standing in a gale" rather than "which way am I being pushed".
+  galeAt(x, z) {
+    let best = null, mag = 0;
+    for (const l of this.galeLanes) {
+      if (x < l.minX || x > l.maxX || z < l.minZ || z > l.maxZ) continue;
+      const m = Math.hypot(l.px, l.pz);
+      if (m > mag) { mag = m; best = l; }
+    }
+    return best;
+  }
+
+  // Turn a weathervane if the dash passed through one. Returns how many turned.
+  turnVanesAt(x, z, r) {
+    let n = 0;
+    for (const v of this.vanes) {
+      if (Math.hypot(v.x - x, v.z - z) > (v.r || 1.2) + r) continue;
+      if (v.turn) { v.turn(); n++; }
+    }
+    return n;
   }
 
   darknessAt(x, z) {

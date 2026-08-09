@@ -17,6 +17,10 @@ export const GATE_TYPES = {
   water: { ability: 'tide_wolf', icon: '💧', label: 'A rushing fire-water channel' },
   bramble: { ability: 'verdant_wolf', icon: '🌿', label: 'A thorny tangle chokes the way' },
   ice: { ability: 'frost_wolf', icon: '❄️', label: 'A spring sealed in old ice' },
+  // A gale is the only gate in the game you can walk right up to and lean on.
+  // It is not a wall: it pushes back, which says "not yet" without a bar and
+  // without a word (design/LEVEL-DESIGN-5.md §3).
+  gale: { ability: 'storm_wolf', icon: '🌀', label: 'A wind too strong to walk into' },
 };
 
 // Bramble tangle — the Verdant Wolf's VINE-LASH cuts it (v3.19: live).

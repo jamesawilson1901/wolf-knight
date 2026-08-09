@@ -30,6 +30,16 @@ const VINE_RANGE = 3.8;         // how far the whip reaches
 const VINE_HALFWIDTH = 0.9;     // corridor half-width the lash sweeps
 const VINE_DMG = 1.5;
 const VINE_SNARE = 2.6;       // a square-on lash HOLDS, it does not just tangle
+// THE THUNDER-DASH (region 5). The shortest cooldown in the game, on purpose:
+// every other special is aimed at an obstacle, this one is aimed at Kael, and a
+// way of MOVING that makes a child wait is a way of moving children stop using.
+// 5s against the ground-slam's 7 and the stomp's 8.
+const DASH_COOLDOWN = 5;
+const DASH_DIST = 5.2;          // far enough to cross a 4u gale lane and land clear
+const DASH_DUR = 0.26;          // 20 u/s — four times a walk, and plainly a dash
+const DASH_DMG = 1.5;           // thunder, not a shove
+const DASH_STUN = 1.6;
+const DASH_R = 0.95;            // how wide the bolt is, for what it catches
 const FROST_COOLDOWN = 7;       // Frost Wolf breath (cone: shatters ice, freezes foes)
 const FROST_RANGE = 3.6;
 const FROST_CONE_DEG = 40;
@@ -46,6 +56,7 @@ export const WOLF_TINTS = {
   earth_wolf: { main: 0x8b6b3d, eyes: 0xffe9a8 },
   verdant_wolf: { main: 0x6fae4a, eyes: 0xd8ffb0 }, // Sylva's gift (region 3)
   frost_wolf: { main: 0x9be3ff, eyes: 0xeaffff },   // Boreal's gift (region 4)
+  storm_wolf: { main: 0xc9d4ff, eyes: 0xfff4b0 },   // Aria's gift (region 5)
 };
 
 // FORM IDENTITY fields (data-driven so the seven later wolves slot in):
@@ -113,6 +124,17 @@ const FORM_DEFS = {
     attack: { lock: 0.42, hitAt: 0.22, range: 1.7, dmg: 1 },
     boltColor: 0x8fdc6a, rangedKind: 'thorn',   // thrown thorn: chips + ROOTS
   },
+  storm_wolf: {
+    // the fastest thing on four legs in the game — the sky spirit's gift is
+    // speed itself, so the form says so before its special is ever pressed
+    speed: 5.7, turnMult: 1.15,
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2', attack: 'Attack',
+      ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.40, hitAt: 0.21, range: 1.7, dmg: 1 },
+    boltColor: 0xfff4b0, rangedKind: 'spark',   // a thrown spark: chips + stuns
+  },
   frost_wolf: {
     // sure-footed on the ice where everything else slides
     speed: 5.0,
@@ -126,7 +148,7 @@ const FORM_DEFS = {
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost' };
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm' };
 const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant', shard: 'frost' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -255,7 +277,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
@@ -351,6 +373,30 @@ export class Player {
       this.forms.frost_wolf.aura = aura;
       this.forms.frost_wolf.auraData = { kind: 'frost', motes, chill };
     }
+    // STORM — white lightning that snaps between two points and re-strikes
+    // somewhere else, rather than orbiting. Every other aura drifts; this one
+    // is the only one that JUMPS, because the form it belongs to is the one
+    // that moves in a straight line faster than anything else in the game.
+    if (this.forms.storm_wolf) {
+      const aura = new THREE.Group();
+      const arcs = [];
+      for (let i = 0; i < 5; i++) {
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(0.035, 0.035, 1),
+          new THREE.MeshBasicMaterial({ color: 0xfff4b0, transparent: true, opacity: 0.9,
+            blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        aura.add(m);
+        arcs.push({ m, next: i * 0.12, a: 0, b: 0 });
+      }
+      const flash = new THREE.PointLight(0xc9d4ff, 1.4, 4.6, 1.8);
+      flash.position.set(0, 0.8, 0);
+      aura.add(flash);
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.storm_wolf.aura = aura;
+      this.forms.storm_wolf.auraData = { kind: 'storm', arcs, flash };
+    }
     // VERDANT — drifting leaves spiralling gently upward
     if (this.forms.verdant_wolf) {
       const aura = new THREE.Group();
@@ -429,6 +475,24 @@ export class Player {
         mo.m.rotation.y = t * 0.8;
       }
       d.chill.intensity = 1.0 + Math.sin(t * 2.2) * 0.25;
+    } else if (d.kind === 'storm') {
+      // each arc lives for a fraction of a second, then re-strikes between two
+      // fresh points on the body. Nothing here eases — lightning does not ease.
+      for (const arc of d.arcs) {
+        if (t > arc.next) {
+          arc.next = t + 0.10 + ((arc.a * 977) % 13) / 90;
+          arc.a = (arc.a + 0.37) % 1;
+          arc.b = (arc.b + 0.71) % 1;
+          const th1 = arc.a * Math.PI * 2, th2 = arc.b * Math.PI * 2;
+          const p1 = new THREE.Vector3(Math.cos(th1) * 0.5, 0.25 + arc.a * 0.9, Math.sin(th1) * 0.5);
+          const p2 = new THREE.Vector3(Math.cos(th2) * 0.5, 0.25 + arc.b * 0.9, Math.sin(th2) * 0.5);
+          arc.m.position.copy(p1).add(p2).multiplyScalar(0.5);
+          arc.m.scale.z = Math.max(0.2, p1.distanceTo(p2));
+          arc.m.lookAt(arc.m.position.clone().add(p2.clone().sub(p1)));
+        }
+        arc.m.material.opacity = Math.max(0, 0.9 - (t - (arc.next - 0.14)) * 6);
+      }
+      d.flash.intensity = 0.8 + Math.abs(Math.sin(t * 9)) * 1.4;
     } else if (d.kind === 'verdant') {
       for (const lf of d.leaves) {
         const cyc = (t * 0.45 + lf.phase) % 1;              // slow rising spiral
@@ -543,7 +607,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN, storm_wolf: DASH_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -1311,7 +1375,46 @@ export class Player {
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
     if (state.form === 'verdant_wolf') return this.tryVineLash(effects, world);
     if (state.form === 'frost_wolf') return this.tryFrostBreath(effects, world);
+    if (state.form === 'storm_wolf') return this.tryThunderDash(effects, world);
     return false;
+  }
+
+  // Storm Wolf THUNDER-DASH: a fast, straight, wind-proof burst along Kael's
+  // facing. It is the region-5 verb and the first gift in the game aimed at
+  // Kael rather than at an obstacle.
+  //
+  // Three things it does, in the order a child discovers them:
+  //   1. it crosses a gale lane, which nothing else can (js/wind.js)
+  //   2. it hurts and stuns whatever it passes through — thunder, not a shove
+  //   3. it SPINS A WEATHERVANE, which turns the lane that vane stands in
+  //
+  // The third is the twist (design/LEVEL-DESIGN-5.md §4) and, like the vine
+  // lash's tether, it stays part of the tool everywhere afterwards rather than
+  // being a trick that only works in the room that taught it.
+  //
+  // It is not a teleport. It rides the same collision-solved _dash drive the
+  // Dark Wolf's lunge uses, so it stops at walls like everything else — NOTHING
+  // TELEPORTS THE PLAYER still holds.
+  tryThunderDash(effects, world) {
+    if (state.form !== 'storm_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+    this._playOnce('jump', 0.05);
+    this.lockTime = DASH_DUR;
+    this._softLock = false;
+    // i-frames for the whole dash: a child crossing a gale under fire must not
+    // be punished for using the only tool that crosses it
+    this.iframes = Math.max(this.iframes, DASH_DUR + 0.12);
+    this._dash = {
+      t: 0, dur: DASH_DUR, dx: fx, dz: fz, speed: DASH_DIST / DASH_DUR,
+      thunder: true, hit: new Set(),
+    };
+    audio.play('whoosh', { volume: 0.95, rate: 1.45 });
+    audio.play('parry', { volume: 0.5, rate: 1.9 });     // the crack
+    if (effects && effects.punch) effects.punch(0.16, 0.18);
+    juice.burst(this.root.position.x, 0.8, this.root.position.z, 0xfff4b0, 8);
+    this.specialCooldown = this.specialMax;
+    return true;
   }
 
   // Verdant Wolf VINE-LASH: a living vine whips straight ahead — damages
@@ -1657,6 +1760,30 @@ export class Player {
         this.root.position.z + d.dz * d.speed * dt, BODY_RADIUS);
       this.root.position.x = s.x;
       this.root.position.z = s.z;
+      // THUNDER. The dash is checked every frame along its path rather than
+      // once at each end: at 20 u/s a single end-point test skips 0.33u per
+      // frame at 60fps and misses anything standing between the samples, which
+      // is exactly the enemy a child aimed at.
+      if (d.thunder) {
+        if (world.enemies) {
+          for (const e of world.enemies) {
+            if (e.dead || d.hit.has(e)) continue;
+            if (Math.hypot(e.x - s.x, e.z - s.z) > DASH_R + (e.radius || 0.3)) continue;
+            d.hit.add(e);
+            e.takeDamage(DASH_DMG, 'storm', 'melee');
+            if (!e.dead && e.takeStun && !e.flying) e.takeStun(DASH_STUN);
+            juice.burst(e.x, 0.9, e.z, 0xfff4b0, 7);
+            audio.play('hit', { volume: 0.8, rate: 1.5 });
+            this.gainMoon(CONFIG.MOON.PER_HIT || 0.02);
+          }
+        }
+        // ...and any weathervane it passes through turns a quarter (the twist)
+        if (world.turnVanesAt && world.turnVanesAt(s.x, s.z, DASH_R) > 0) {
+          audio.play('gate-creak', { volume: 0.75, rate: 0.8 });
+          juice.burst(s.x, 1.3, s.z, 0xffd76a, 10);
+        }
+        juice.burst(s.x, 0.55, s.z, 0xbfe8ff, 2);
+      }
       if (d.hop) {
         this.airY = Math.sin(Math.min(1, d.t / d.dur) * Math.PI) * d.hop;
         this.root.position.y = this.airY;
@@ -1753,10 +1880,22 @@ export class Player {
     this._vel.x += dvx; this._vel.z += dvz;
     const vmag = Math.hypot(this._vel.x, this._vel.z);
 
-    if (vmag > 0.02) {
+    // THE WIND (region 5). Added to the walk rather than to the velocity, so it
+    // is a force on the WORLD and not on Kael's legs: he keeps his own top
+    // speed, accelerates normally, and is simply carried while he does it.
+    // Doing it the other way round made leaning into a gale feel like the
+    // controls had broken rather than like the weather was winning.
+    //
+    // The thunder-dash is immune, and that immunity IS the region's key.
+    let wx = 0, wz = 0;
+    if (world.galeLanes && world.galeLanes.length && !(this._dash && this._dash.thunder)) {
+      const w = world.windAt(this.root.position.x, this.root.position.z);
+      if (w) { wx = w.x; wz = w.z; }
+    }
+    if (vmag > 0.02 || wx || wz) {
       const solved = world.resolveCircle(
-        this.root.position.x + this._vel.x * dt,
-        this.root.position.z + this._vel.z * dt, BODY_RADIUS);
+        this.root.position.x + (this._vel.x + wx) * dt,
+        this.root.position.z + (this._vel.z + wz) * dt, BODY_RADIUS);
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
     }
