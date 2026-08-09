@@ -2954,3 +2954,143 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 — Maren's shelf grows (BUILDLOG queue: "Maren tier-2 stock after Stoneroot")
+
+`sw.js` is deliberately still at v3.41.0. This is not a deploy.
+
+### Which item, and the archaeology it took to pick one
+
+**FIX-PLAN.md's status table is fully closed** (all 14 items, since v3.34.0), so
+this run fell through to the BUILDLOG queues, and they are old enough to need
+triage. Recorded here so the next session does not repeat it:
+
+| queue | entry | state |
+|---|---|---|
+| v2.2.6 QUEUED NEXT | economy/XP balance pass | **SKIPPED — needs the kids** |
+| | Maren tier-2 stock after Stoneroot | **taken, this entry** |
+| | hard landscape lock | shipped (`js/title.js:38`) |
+| | S3 Wild Woods | shipped (v3.19.0) |
+| v3.0.0 QUEUED pass B | settlement NPCs | shipped (`js/npcs.js`) |
+| | LEVEL-MAP SVG | shipped (`design/levels-1-3-topology.svg`) |
+| | S-bend route rework | **obsolete** — those `r*`/`e*` rooms retired at A1 |
+| | 5 vignettes · ambient critters | **undefined** — the words appear in no design doc |
+| | mid-region restorations ×2 · witnessed healing | superseded by the WS restoration registry |
+
+The economy/XP balance pass sits FIRST on that list and was skipped under the
+standing rule: shard income against the shop ladder and perk tiers past level 12
+are difficulty judgements, and difficulty judgements need a child holding the
+phone. It is not lost — it is the first thing on the AWAITING list below.
+
+### The shelf was not a ladder
+
+GAME-CONTRACT, in the law's own words: *"Shards: a region yields ~120-160
+(pots+chests+drops). Shop ladder per region tier ≈ 60/90/150/250/400. A kid who
+explores buys one big thing per region; completionists afford two."* The region
+shipping checklist names a **shop tier** per region alongside the revival pass
+and the Den growth item.
+
+`SHOP_STOCK` had no tier field. All eight rungs — 15 through 300 — sat on Maren's
+shelf from the first time a child walked up to her.
+
+That only matters if a child can reach the top rung early, so I measured it
+rather than assuming, with a new probe (`tools/probe-shard-income.mjs`):
+
+- **Level 1's chests yield 70 shards** a child can actually reach before
+  Stoneroot. 88 are placed; 18 of them sit behind `l1_crack_gate`, which needs
+  the Earth Wolf, which *is* Stoneroot.
+- **Its pots yield 94** — 47 breakable props at 2 shards each.
+- **The pot half repeats forever.** Chests persist per save; breakables do not.
+  Smashing every pot on the four islands and coming back: **16 / 12 / 12 / 12
+  shards on arrival, 0 after smashing, 16 / 12 / 12 / 12 again on return.**
+  loot.js calls this "small change, not farming gold", and per lap it is — but
+  a room can be re-entered as many times as a child likes.
+
+So Ember's first lap is 164 shards, dead on the law's 120-160. Its **third** lap
+is 352, and the 300-shard Boulder Hammer — the last weapon in the game, 3 damage
+against the starting sword's 1 — was buyable before leaving the first region.
+A child who liked smashing pots was quietly handed the endgame.
+
+### What shipped
+
+A tier is data, not a special case: one row in `SHOP_TIERS`, one `tier:` on the
+stock entry.
+
+| tier | opens | stock |
+|---|---|---|
+| 1 | always | Healing Potion 15 · Round Guard 70 · Swift Fang 80 · Ember Blade 90 |
+| 2 | `WS.get('stone','restored')` | Long Spear 120 · Tower Shield 180 · Moon Sword 200 · Boulder Hammer 300 |
+
+**No price changed.** Repricing is the balance pass, and the balance pass needs
+the kids.
+
+Judgement calls, all reversible:
+
+- **Where the break goes.** The law's first two rungs are ≈60 and ≈90, and Ember
+  yields 164 — so 70/80/90 is exactly "explore and buy one big thing, complete it
+  and afford two". The break falls between 90 and 120.
+- **The Ember Blade stays tier 1** even though it is the priciest of the four.
+  It is *"Forged in the Hollow"*; holding a region's own blade back until the
+  next region is fiction running backwards.
+- **A locked rung is still on the shelf**, greyed, reading `🔒 after Stoneroot
+  wakes`. This is A8's lesson applied to a menu: a thing a child cannot have yet
+  must read as a promise, never be invisible. A shop that silently grows teaches
+  nothing.
+- **Tiers 3-5 are deliberately not declared.** The queued item is tier 2. A tier
+  row with no trigger written for it is a promise nothing keeps.
+- **The tier lives in `items.js` beside `price`**, not in CONFIG. CONFIG holds
+  game-feel numbers; this is the stock registry, and price already lives there.
+
+Pip says it once when a child next walks up to Maren after Stoneroot
+(`shop_restock`, added to narration.js and the recording script).
+
+### Verification
+
+Nothing in `tools/` measured the shop before today, which is how eight rungs came
+to sit on one shelf without a verifier noticing — so **`tools/verify-shop.mjs`
+was written before the fix**. It drives the real path: it never calls
+`menus.showShop()`, it walks Kael to `world.markers.shopSpot` and lets main.js's
+proximity trigger open the shop, then taps cards the way a thumb does.
+
+Eleven checks, all green: 8 cards on the shelf, 4 open and 4 locked before
+Stoneroot; every locked card carries its promise text; 999 shards tapped against
+every locked card spend **0** and grant **0**; a tier-1 purchase still goes
+through; after `WS.set('stone','restored')` nothing is locked, Pip speaks, and
+the Boulder Hammer sells for exactly 300.
+
+**Negative control run, because a green test proves nothing on its own.**
+Deleting the single `!open ||` guard from the purchase handler — the whole fix,
+in one clause — fails 4 of the 11: the tap spends 800 shards and walks off with
+all four tier-2 items. The verifier catches the regression it was written for.
+
+Full suite: `verify-boot`, `verify-density`, `verify-shop`, `verify-den`,
+`verify-touch`, `verify-sequence`, `verify-minigame` — **passed 7, failed 0**.
+Boot was green before any edit, too.
+
+### AWAITING dad's call
+
+- **The economy/XP balance pass.** Skipped by rule, and it is the sibling of this
+  item: shard income against the ladder, perk tiers past level 12. The law says
+  the perk pool must stay ≥3 unmaxed choices to level 21; `PERKS` holds **four**
+  and `perkChoices` offers two of them, so a child picking every 3rd level from 3
+  to 21 has maxed the pool long before the end. Needs a playtest, not a session.
+- **Tiers 3-5.** The law's ladder is per *region* — ≈60/90/150/250/400 — and the
+  shipping checklist wants a shop tier per region. After Stoneroot the whole
+  remaining shelf opens at once, because there are only eight items to spread
+  across seven regions. Giving Wildwoods, Frostpeak, Stormreach and Sunkenvale
+  their own rungs means **new stock**, and new stock means new stat rows, which
+  is a design call rather than a wiring one. Five unused CC0 gear models are
+  already in `assets/gear/` (`axe_B`, `shield_B`, `staff_A`, `sword_C`,
+  `sword_E`) if the answer is yes.
+- **Seven shipped versions have no log entry.** `sw.js` reads v3.41.0; this file
+  stopped at v3.34.0. Stormreach Cliffs, the Storm Wolf and the thunder-dash,
+  Aria, the Sunken Vale, the Tide Wolf and Meri — roughly 4,000 lines across
+  `js/level5.js`, `js/level6.js`, `js/wind.js`, `js/water.js` and two design docs
+  — are in the repo with no BUILDLOG entry and no FIX-PLAN row. Nothing is
+  broken; the *record* is missing, and the record is how these sessions hand off.
+  Not fixed here: writing history I did not witness would be worse than the gap.
+- **Branch.** The standing overnight instruction says branch `overnight`, cut from
+  main. This session was assigned `claude/ecstatic-hawking-pid4vq` by the harness,
+  which is also how every previous session reached main (six merged PRs from
+  `claude/*` branches, no `overnight` branch has ever existed). Worked on the
+  assigned branch. main untouched, sw.js unbumped.

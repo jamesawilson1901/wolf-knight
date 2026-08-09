@@ -92,6 +92,8 @@ replace the robot text-to-speech voice.
   “A green shoot — all the way down here! Ember Hollow’s light is spreading.”
 - `shop_intro`
   “That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!”
+- `shop_restock`
+  “Look, Kael — Maren unpacked her big crate! Stoneroot is awake, so the good stuff is out.”
 - `moonstone_intro`
   “Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.”
 - `learn_thrust`

@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear, tierOpen, tierPromise } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -118,15 +118,21 @@ export class Menus {
     for (const s of SHOP_STOCK) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
+      // A LOCKED RUNG IS STILL ON THE SHELF. It greys out and says when it
+      // opens, so a child sees the ladder they are climbing rather than
+      // discovering a shop that silently grew.
+      const open = tierOpen(s);
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');
-      card.className = 'item-card ui' + (!afford || full ? ' cant' : '');
+      card.className = 'item-card ui' + (!open || !afford || full ? ' cant' : '');
+      if (!open) card.dataset.locked = '1';
       card.innerHTML = `<div class="ic">${def.icon}</div><div class="nm">${def.name}</div>
-        <div>${def.blurb || statLine(s.id, def, s.kind)}</div>
-        <div class="price">🔸 ${s.price}${full ? ' (bag full)' : ''}</div>`;
+        <div>${open ? (def.blurb || statLine(s.id, def, s.kind)) : 'Maren keeps this one back…'}</div>
+        <div class="price">${open ? `🔸 ${s.price}${full ? ' (bag full)' : ''}`
+          : `🔒 ${tierPromise(s)}`}</div>`;
       card.addEventListener('pointerdown', async () => {
-        if (!afford || full) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
+        if (!open || !afford || full) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
         state.shards -= s.price;
         bumpCounter('purchases');
         audio.play('pup-chime', { volume: 0.9 });

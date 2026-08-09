@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -77,14 +78,46 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
+// ---------------------------------------------------------------------------
+// SHOP TIERS — Maren's shelf GROWS as the world is restored.
+//
+// GAME-CONTRACT (law): "Shop ladder per region tier ≈ 60/90/150/250/400. A kid
+// who explores buys one big thing per region; completionists afford two." The
+// region shipping checklist names a "shop tier" per region. Until now every rung
+// of the ladder sat on the shelf from minute one, so there was no ladder: pots
+// respawn with the room, so a child could grind the 300-shard hammer in Ember
+// and walk into Stoneroot with the last weapon in the game.
+//
+// A tier is DATA, not a special case: one row here, one `tier:` on the stock
+// entry. Tiers 3+ are deliberately not declared — the queued item is tier 2, and
+// a tier with no trigger written for it would be a promise nothing keeps.
+//
+// Locked stock is SHOWN, greyed, with its promise. A8's lesson stands: a thing
+// a child cannot have yet must read as a promise, never be invisible.
+export const SHOP_TIERS = {
+  1: { open: () => true },
+  2: { open: () => WS.get('stone', 'restored'), promise: 'after Stoneroot wakes' },
+};
+
+export function tierOpen(entry) {
+  const t = SHOP_TIERS[entry.tier || 1];
+  return !t || t.open();
+}
+
+export function tierPromise(entry) {
+  const t = SHOP_TIERS[entry.tier || 1];
+  return (t && t.promise) || 'not yet';
+}
+
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+// `tier` (default 1) is the region rung the item sits on — see SHOP_TIERS.
 export const SHOP_STOCK = [
   { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
   { kind: 'weapon', id: 'dagger_a', price: 80 },
   { kind: 'weapon', id: 'sword_b', price: 90 },
   { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 2 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 2 },
 ];

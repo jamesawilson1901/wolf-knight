@@ -37,6 +37,40 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+## POST-PLAN QUEUE — drawn from BUILDLOG's QUEUED lists (2026-08-09)
+
+The table above is closed, so work now comes from the BUILDLOG queues. Those are
+old enough to need triage; the triage is recorded in the v3.42.0 BUILDLOG entry
+and its result is this table. **Read this one first — it is the live queue.**
+
+| | item | source | shipped |
+|---|---|---|---|
+| Q1 | Maren tier-2 stock after Stoneroot | v2.2.6 QUEUED NEXT | v3.42.0 |
+| Q2 | economy/XP balance pass | v2.2.6 QUEUED NEXT | **SKIPPED — needs the kids** |
+| Q3 | shop tiers 3-5 (one rung per region, per the law's ladder) | GAME-CONTRACT | AWAITING dad's call |
+| Q4 | BUILDLOG has no entry for v3.35-v3.41 (Stormreach, Sunken Vale) | observed | AWAITING dad's call |
+
+Q2 is skipped under the standing rule, not forgotten: shard income against the
+shop ladder and perk tiers past level 12 are difficulty judgements. Worth knowing
+before that session starts — `PERKS` holds **four** entries and the law requires
+the pool to keep ≥3 unmaxed choices to level 21.
+
+### Q1 · Maren's shelf grows
+**✅ DONE (v3.42.0)** — `SHOP_STOCK` had no tier field, so all eight rungs (15 to
+300) sat on the shelf from the first visit. Measured before gating anything:
+Level 1 yields **70 shards in chests a child can reach pre-Stoneroot** (88 placed,
+18 behind the Earth-Wolf gate) plus **94 in pots**, and the pots come back in full
+on every re-entry — 16/12/12/12 on the four islands, 0 after smashing, 16/12/12/12
+on return (`tools/probe-shard-income.mjs`). Third lap = 352 shards, so the
+300-shard Boulder Hammer was buyable inside Ember. Tier 1 is now 15/70/80/90,
+tier 2 (Long Spear, Tower Shield, Moon Sword, Boulder Hammer) opens on
+`WS.get('stone','restored')`, and a locked rung stays visible with its promise
+rather than vanishing. No price changed. `tools/verify-shop.mjs`, 11 checks,
+written before the fix and negative-controlled: deleting the one-line purchase
+guard fails 4 of them.
+
+---
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 

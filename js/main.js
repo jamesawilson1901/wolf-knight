@@ -1661,7 +1661,12 @@ async function start() {
       // the Den shop opens when Kael walks up to the mage
       if (world.markers.shopSpot) {
         const near = nearSpot(world.markers.shopSpot, 1.7);
-        if (near && !shopWasNear) menus.showShop();
+        if (near && !shopWasNear) {
+          menus.showShop();
+          // the tier-2 shelf opens with Stoneroot; Pip says it once, the first
+          // time a child walks up to Maren afterwards
+          if (WS.get('stone', 'restored')) narration.say('shop_restock');
+        }
         shopWasNear = near;
       }
       // ...and the moonstone opens fast travel

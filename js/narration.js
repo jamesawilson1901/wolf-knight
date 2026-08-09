@@ -61,6 +61,7 @@ export const LINES = {
   scar_r1: { voice: 'pip', text: 'This one patch won’t heal… so we remember. That’s okay.' },
   ripple_shoot: { voice: 'pip', text: 'A green shoot — all the way down here! Ember Hollow’s light is spreading.' },
   shop_intro: { voice: 'pip', text: 'That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!' },
+  shop_restock: { voice: 'pip', text: 'Look, Kael — Maren unpacked her big crate! Stoneroot is awake, so the good stuff is out.' },
   moonstone_intro: { voice: 'pip', text: 'Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.' },
 
   // Teaching lines — each one reveals its button when it first fires
