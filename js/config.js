@@ -93,6 +93,28 @@ export const CONFIG = {
     REWARD_REPEAT: 5,    // shards for wins after that
   },
 
+  // ---- SHOP (Maren's stock ladder — BUILDLOG queue: "tier-2 after Stoneroot") ----
+  // Maren's stock GROWS with the world instead of standing fully stocked on
+  // day one. Each rung arrives when a region is HEALED, so walking home after
+  // a boss is worth a trip to the Trading Post — and the shard income of the
+  // region just finished is sized against the rung it just unlocked
+  // (GAME-CONTRACT's ladder: ~60/90/150/250/400 per region tier).
+  //
+  // `after` is the RUNTIME WorldState region key ('stone', 'wild', 'frost') —
+  // the short ids js/main.js actually writes on a boss defeat, NOT the long
+  // names in js/regions.js. Those two vocabularies disagree and always have.
+  // `after: null` is the opening stock. `blurb` is what Maren promises while
+  // the rung is still locked; it names the region so the card is a POINTER,
+  // never a nag. Items carry their rung as `tier` in js/items.js.
+  SHOP: {
+    TIERS: [
+      { tier: 1, after: null,    blurb: '' },
+      { tier: 2, after: 'stone', blurb: 'when Stoneroot sings again' },
+      { tier: 3, after: 'wild',  blurb: 'when the Wild Woods bloom' },
+      { tier: 4, after: 'frost', blurb: 'when the storm lifts off Frostpeak' },
+    ],
+  },
+
   // ---- SWITCH FX (every ordinary form change is a tiny spectacle) ----
   SWITCH_FX: {
     STOP: 0.12,            // s self-hitstop on the morph

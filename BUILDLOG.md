@@ -2954,3 +2954,132 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.41.1 — Maren's stock grows with the world (2026-08-09)
+
+The FIX-PLAN status table is closed end to end, so this run took the first
+unfinished entry from the newest QUEUED NEXT list (v2.2.6, line 681):
+**"Maren tier-2 stock after Stoneroot"**.
+
+The item ahead of it in that queue — the economy/XP balance pass — was SKIPPED
+under the standing rule: shard income against the shop ladder is a difficulty
+judgement and needs the kids, not a headless run.
+
+### What was wrong
+
+`SHOP_STOCK` was one flat list. Every weapon and shield in the game was on
+Maren's cart at the Den before a child had walked into Ember — including the
+Boulder Hammer (3 damage, 0.6s daze) at 300 shards, buyable at level 1 by
+anyone who smashed enough pots. GAME-CONTRACT's economy line asks for the
+opposite: "shop ladder per region tier ~ 60/90/150/250/400 — a kid who explores
+buys one big thing per region."
+
+So the shop was a fixed catalogue: read once, and there was never a reason to
+look again.
+
+### What it is now
+
+Four rungs, each arriving when a region is HEALED. `CONFIG.SHOP.TIERS` holds
+the ladder, `tier` on each `SHOP_STOCK` line says which rung it rides, and
+`shopStock()` / `nextShopTier()` in `js/items.js` are the only two things the
+menu asks.
+
+| rung | arrives | new stock | cheapest new | contract target |
+|---|---|---|---|---|
+| 1 | the first visit | potion 15, Round Guard 70, Swift Fang 80 | 70 | ~60 |
+| 2 | Stoneroot healed | Ember Blade 90, Long Spear 120 | 90 | ~90 |
+| 3 | Wild Woods healed | Tower Shield 180, Moon Sword 200 | 180 | ~150 |
+| 4 | Frostpeak healed | Boulder Hammer 300 | 300 | ~250 |
+
+Measured against the contract: rungs 1 and 2 land on it, rung 3 is 30 over,
+rung 4 is 50 over. Nothing was repriced — the ladder was already latent in the
+prices and the queue item is about WHEN each rung appears, not what it costs.
+Repricing is the economy pass, which is the item I skipped.
+
+The `after` keys are the RUNTIME WorldState ids — `stone`, `wild`, `frost` —
+not the long names in `js/regions.js`. The two vocabularies disagree and always
+have (`js/main.js` writes `WS.set('stone', 'restored')`; `regions.js` calls the
+same region `stoneroot`). Gating on the wrong one would have produced a shop
+that never restocked and no error anywhere, so it is called out in the CONFIG
+comment.
+
+### Judgement calls
+
+- **One teaser card, not a silently shorter shelf.** A shop that quietly grows
+  is a shop a child stops checking, so the next locked rung shows as a dashed
+  `📦 New stock — Maren is off gathering, back when Stoneroot sings again`. It
+  names the region and never the route, which keeps it a promise rather than a
+  quest marker. It disappears when the ladder is done. One card, `pointer-events:
+  none`, no draw calls — the shop is DOM.
+- **The Ember Blade sits on the Stoneroot rung, not the Ember one.** Its blurb
+  says "forged in the Hollow", so by fiction it wants to arrive when Ember
+  heals. The queue line says tier 2 arrives after Stoneroot, and the Ember
+  Blade is the natural 90-shard rung. Off-fiction by one region, one line to
+  reverse. AWAITING dad's call.
+- **An unknown tier stays SHUT.** `shopTierOpen` returns false for a tier not
+  in the table. A typo should hide one card, not hand a five-year-old the
+  Boulder Hammer.
+- **A missing `tier` is treated as 1.** A future line that forgets the field
+  lands in the opening stock rather than vanishing.
+
+### Verified
+
+Nothing in `tools/` touched the shop, so `tools/verify-shop.mjs` was written
+BEFORE the fix and run against the unfixed code first: **6 of 17 assertions
+failed**, which is what makes the other 11 worth anything. After the fix, ALL
+CLEAN, and `verify-boot`, `verify-density` and `verify-den` are green with it.
+
+It drives the real thing — walks Kael into Maren's ring so `main.js`'s own
+proximity edge opens the shop, reads the cards out of the DOM, heals one region
+at a time and re-reads. Reading `SHOP_STOCK` out of the module would have
+proven the data and none of the wiring.
+
+The last assertion is the one that will matter in six months: a profile that
+already OWNS a tier-4 weapon keeps it through a real localStorage round-trip
+with nothing healed. The tier gate decides what Maren OFFERS, never what a
+child HAS — additive-forever applies to gear too. Measured: owns `hammer_a`,
+still equipped, and Maren does not offer it back.
+
+**A frozen loop cost a whole suite run.** The first verifier closed the panel
+with `display = 'none'`. `_open()` calls `onPauseGame()` and `main.js:1595`
+returns before the world update while a menu is up, so hiding the panel by hand
+left the game frozen: the player never moved, the proximity edge never reset,
+and every later read returned the render before it. The failures looked like
+the gate not working. It closes through the '✓ Done' button now, the way a
+child does.
+
+### Not bumped
+
+`sw.js` stays at `wolfknight-v3.41.0` — this is not a deploy. `index.html`,
+`js/config.js`, `js/items.js` and `js/menus.js` are all cached files, so
+**the next deploy to main must bump CACHE_NAME** or a returning child gets the
+old flat shop out of the service worker.
+
+### AWAITING dad's call
+
+- **The branch.** The standing overnight instruction says work on `overnight`,
+  cut from main. This session was assigned `claude/ecstatic-hawking-fdmjue` by
+  the harness and told never to push elsewhere. Both are off main, which is the
+  part that matters, so I used the assigned branch rather than stopping. Say
+  which one overnight work should live on and I will stay there.
+- **The Ember Blade's rung**, above.
+
+### For the queue — three things found, none fixed (one item per run)
+
+1. **BUILDLOG has a seven-version hole.** The last entry before this one is
+   v3.34.0; `sw.js` says the build is **v3.41.0**. Stormreach, the Sunken Vale,
+   the Tide Wolf, the mini-game harness and the Den rebuild all shipped with no
+   entry here — "Stormreach" appears in this whole file once. The overnight
+   process is told the repo is the only record, and for seven versions it is
+   not. Worth a reconstruction pass from `git log` before more history is lost.
+2. **`js/regions.js` says `sunkenvale: { built: false }`** and gives it no
+   rooms, gates or restoration block, but the level shipped (twenty rooms,
+   Meri, the Tide Wolf). `validateRegions()` machine-checks that manifest, so
+   it is currently checking a region that no longer matches the game.
+3. **`GRANTED_IN` declares `storm_wolf: 'stormreach'` twice** — harmless today
+   (the second write wins with the same value) and exactly the kind of thing
+   that stops being harmless when someone edits one of the two lines.
+4. **Maren has four rungs and six built regions.** The contract ladder has five
+   (~400 at the top) and there is nothing new to sell after Frostpeak, so
+   Stormreach and the Sunken Vale both end with a trip home to an unchanged
+   cart. A rung 5 wants new stock, which is an asset question, not a code one.

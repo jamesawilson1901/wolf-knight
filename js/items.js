@@ -4,6 +4,8 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { CONFIG } from './config.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -78,13 +80,41 @@ export function addGear(id) {
 }
 
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+//
+// `tier` is Maren's stock LADDER, not a power rating: which rung of
+// CONFIG.SHOP.TIERS a line arrives on. Tier 1 is on the shelf from the first
+// visit; every later rung waits for a region to be healed, so the shop is a
+// place that changes rather than a fixed catalogue a child reads once and
+// stops looking at. A line with no `tier` is treated as tier 1 — an addition
+// that forgets the field lands in the opening stock rather than vanishing.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 2 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 3 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 3 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 4 },
 ];
+
+// Has this rung of the ladder arrived? Tier 1 (and anything with no `after`)
+// is always in. Unknown tiers stay OUT rather than defaulting open: a typo
+// should hide one card, not hand a five-year-old the Boulder Hammer.
+export function shopTierOpen(tier) {
+  const t = CONFIG.SHOP.TIERS.find((x) => x.tier === (tier || 1));
+  if (!t) return false;
+  return !t.after || WS.get(t.after, 'restored');
+}
+
+// What Maren has on the shelf right now.
+export function shopStock() {
+  return SHOP_STOCK.filter((s) => shopTierOpen(s.tier));
+}
+
+// The next rung that has NOT arrived, so the shop can promise it. Returns null
+// once the ladder is complete — a finished shop says nothing rather than
+// showing an empty promise.
+export function nextShopTier() {
+  return CONFIG.SHOP.TIERS.find((t) => !shopTierOpen(t.tier)) || null;
+}
