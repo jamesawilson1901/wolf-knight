@@ -108,3 +108,29 @@ Most of the above is CC0 with a licence file to prove it (`assets/LICENSES/`); f
 are still unproven — see that folder's README. CREDITS.md lists sources as courtesy and
 marks the unproven ones. three.js is MIT — include
 its licence line in CREDITS.md.
+
+
+---
+
+## USAGE, not just inventory (2026-08-09)
+
+This file listed what had been vendored and never what was being USED, which is
+how the game reached dad's hands with 33 of 115 models on screen while every
+licence check passed. Level 1 was using three of its twenty-five dungeon props;
+Level 3 was using **none** of its fourteen forest models and dressing an entire
+region with two generic Kenney trees.
+
+The gap was not a licensing problem or a missing-asset problem. Every model
+below was already here, already cleared 🟢, already loading. It was a
+VOCABULARY problem: the builders could place a rock, so rooms got rocks.
+
+Now:
+
+| kit | models | in use |
+|---|---|---|
+| ember (Level 1) | 33 | 33 |
+| cave (Level 2) | 32 | 32 |
+| wood (Level 3) | 36 | 36 |
+
+`tools/verify-density.mjs` asserts a per-room minimum of distinct models on all
+52 dressed spaces, so a region cannot quietly go back to using three props.
