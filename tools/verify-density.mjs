@@ -52,6 +52,9 @@ await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false; g.state.settings.sfxVol = 0;
   g.state.settings.greybox = false;
+  // regions five and six only exist once their doors are open
+  g.state.flags.borealDefeated = true;
+  g.state.flags.ariaDefeated = true;
   g.state.formsUnlocked = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
   g.player.iframes = 999999;
   g.WS.set('wild3', 'rootCut', true); g.WS.set('wild3', 'logDown', true);
@@ -110,6 +113,17 @@ const ROOMS = [
   { id: 'svn', kind: 'puzzle' }, { id: 'sc3', kind: 'choke' },  { id: 's4a', kind: 'island' },
   { id: 's4b', kind: 'island' }, { id: 's4p', kind: 'pocket' }, { id: 'sc4', kind: 'choke' },
   { id: 'scr', kind: 'arena' },  { id: 'ssA', kind: 'choke' },
+  // The Sunken Vale. The RIM is measured as a choke for the same reason the
+  // stair is; the LAGOON as an arena, because it is deliberately open water and
+  // holding it to the island bar would mean filling the one space in the game
+  // whose whole job is to be empty and uncrossable.
+  { id: 'd1a', kind: 'island' }, { id: 'd1b', kind: 'island' }, { id: 'd1p', kind: 'pocket' },
+  { id: 'dg1', kind: 'choke' },  { id: 'd2a', kind: 'island' }, { id: 'd2b', kind: 'island' },
+  { id: 'd2p', kind: 'pocket' }, { id: 'dsh', kind: 'pocket' }, { id: 'dg2', kind: 'choke' },
+  { id: 'd3a', kind: 'island' }, { id: 'd3b', kind: 'island' }, { id: 'd3p', kind: 'pocket' },
+  { id: 'dtp', kind: 'puzzle' }, { id: 'dg3', kind: 'choke' },  { id: 'd4a', kind: 'island' },
+  { id: 'd4b', kind: 'island' }, { id: 'd4p', kind: 'pocket' }, { id: 'dg4', kind: 'choke' },
+  { id: 'dlg', kind: 'arena' },  { id: 'ddp', kind: 'arena' },
 ];
 // THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
 // that wrong. It shipped with an island minimum of 12 while the dressed islands
