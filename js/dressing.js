@@ -41,6 +41,17 @@ export function makeDressers({ kit, tint }) {
   const K = kit;
   const TINT = tint;
 
+  // blend two packed hex colours — used to DRAIN a sick tree toward the
+  // corruption's colour rather than merely darkening it
+  const mixHex = (a, b, t) => {
+    const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    return ((Math.round(ar + (br - ar) * t) << 16)
+          | (Math.round(ag + (bg - ag) * t) << 8)
+          | Math.round(ab + (bb - ab) * t));
+  };
+
+
   // ---------------------------------------------------------------------------
   // THE RUIN VOCABULARY
   //
@@ -313,6 +324,133 @@ export function makeDressers({ kit, tint }) {
   }
 
 
+
+  // ==========================================================================
+  // THE FOREST VOCABULARY
+  //
+  // Ember and Stoneroot are built things that fell down; the Wild Woods is a
+  // GROWN thing that is being eaten. Dad's brief: "it was the loveliest place
+  // in the world and something is rotting it from the inside. Gorgeous colour
+  // with the corruption spreading visibly through it — you can see what it's
+  // losing." So these clusters come in matched pairs — a grove and a dead
+  // grove, a thicket and a blighted one — and a room says how far the rot has
+  // reached by which of the pair it is dressed with, and where.
+  //
+  // The kit keys here (treeQ1..4, bareQ1..2, bushQ1..3, grassQ1..2, rockQ1..3)
+  // are the Quaternius forest pack, which was vendored, licence-cleared and
+  // used ZERO times — Level 3 shipped dressed with two generic Kenney trees.
+  // ==========================================================================
+
+  const TREES = ['treeQ1', 'treeQ2', 'treeQ3', 'treeQ4'];
+  const BARE = ['bareQ1', 'bareQ2'];
+  const BUSHES = ['bushQ1', 'bushQ2', 'bushQ3'];
+  const GRASS = ['grassQ1', 'grassQ2'];
+  const FROCKS = ['rockQ1', 'rockQ2', 'rockQ3'];
+  const pick = (arr, r) => K()[arr[Math.floor(r() * arr.length) % arr.length]];
+
+  // A stand of trees with the undergrowth that belongs under them. TREES BLOCK
+  // (ROOM-STANDARD §2 — you navigate around them and they are what shapes a
+  // forest room); grass, flowers and small bushes do NOT, so a five-year-old
+  // running at the screen brushes straight through the greenery.
+  function grove(world, x, z, rad, D, opts = {}) {
+    const g = new THREE.Group();
+    const r = srnd(Math.round(x * 37 + z * 91 + rad * 7));
+    const P = D.propTint || D.floorTint;
+    const sick = opts.sick || 0;                 // 0 = whole, 1 = wholly rotten
+    const n = opts.trees !== undefined ? opts.trees : 3 + Math.round(rad * 0.5);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+      const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
+      const dead = r() < sick;
+      const gltf = dead ? pick(BARE, r) : pick(TREES, r);
+      const sc = (dead ? 0.9 : 1.0) * (0.8 + r() * 0.5);
+      // a sick tree is drained toward the corruption's colour rather than
+      // simply darker — you can SEE what the wood is losing
+      const col = dead ? mixHex(P, 0x4a3a52, 0.55) : P;
+      place(world, g, gltf, 'grove', px, 0, pz, sc, r() * 6.28, 0, col);
+      world.addCircle(x + px, z + pz, 0.55 * sc);
+    }
+    // undergrowth: walk straight through it
+    const under = Math.round(rad * 3.2);
+    for (let i = 0; i < under; i++) {
+      const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad * 1.25;
+      const roll = r();
+      const gltf = roll < 0.42 ? pick(GRASS, r) : roll < 0.72 ? pick(BUSHES, r) : pick(FROCKS, r);
+      place(world, g, gltf, 'grove', Math.cos(a) * dd, 0, Math.sin(a) * dd,
+        0.6 + r() * 0.7, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
+    }
+    g.position.set(x, 0, z);
+    world.add(g);
+    return g;
+  }
+
+  // Undergrowth with no canopy — the gaps between groves, and the thing that
+  // makes a forest floor read as ALIVE rather than as a green plane. Nothing
+  // here takes a collider.
+  function thicket(world, x, z, rad, D, opts = {}) {
+    const g = new THREE.Group();
+    const r = srnd(Math.round(x * 53 + z * 17 + rad * 11));
+    const P = D.propTint || D.floorTint;
+    const sick = opts.sick || 0;
+    const n = opts.n !== undefined ? opts.n : Math.round(rad * 5);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+      const roll = r();
+      const gltf = roll < 0.5 ? pick(GRASS, r) : roll < 0.85 ? pick(BUSHES, r) : pick(FROCKS, r);
+      place(world, g, gltf, 'thicket', Math.cos(a) * dd, 0, Math.sin(a) * dd,
+        0.55 + r() * 0.8, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
+    }
+    g.position.set(x, 0, z);
+    world.add(g);
+    return g;
+  }
+
+  // Where the rot has actually WON: bare trunks, dead ground, and the fallen
+  // ones lying where they came down. This is the image the region is built
+  // around, so it is worth placing deliberately rather than scattering.
+  function blight(world, x, z, rad, D) {
+    const g = new THREE.Group();
+    const r = srnd(Math.round(x * 71 + z * 29));
+    const P = mixHex(D.propTint || D.floorTint, 0x3a2c44, 0.62);
+    const n = 3 + Math.round(rad * 0.6);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+      const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
+      const down = r() < 0.3;
+      const sc = 0.75 + r() * 0.5;
+      place(world, g, pick(BARE, r), 'blight', px, down ? 0.5 : 0, pz, sc,
+        r() * 6.28, down ? Math.PI / 2 : 0, P);
+      world.addCircle(x + px, z + pz, (down ? 0.75 : 0.5) * sc);
+    }
+    for (let i = 0; i < rad * 2.5; i++) {
+      const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad * 1.2;
+      place(world, g, pick(FROCKS, r), 'blight', Math.cos(a) * dd, 0, Math.sin(a) * dd,
+        0.5 + r() * 0.6, r() * 6.28, 0, P, false);
+    }
+    g.position.set(x, 0, z);
+    world.add(g);
+    return g;
+  }
+
+  // Somewhere people built, that the forest has taken back. The Wild Woods is
+  // "overgrown and forgotten" as well as sick, and a wall with a bush growing
+  // out of it says both at once.
+  function mossyRuin(world, x, z, ry, D, opts = {}) {
+    const g = ruinedHome(world, x, z, ry, D, opts);
+    const r = srnd(Math.round(x * 23 + z * 47 + 5));
+    const P = D.propTint || D.floorTint;
+    const W = (opts.w !== undefined ? opts.w : 6) / 2;
+    const Dp = (opts.d !== undefined ? opts.d : 5) / 2;
+    for (let i = 0; i < 9; i++) {
+      const roll = r();
+      const gltf = roll < 0.45 ? pick(BUSHES, r) : roll < 0.8 ? pick(GRASS, r) : pick(FROCKS, r);
+      place(world, g, gltf, 'mossyRuin', (r() - 0.5) * (W * 2 + 3), 0,
+        (r() - 0.5) * (Dp * 2 + 3), 0.6 + r() * 0.7, r() * 6.28, 0, P, false);
+    }
+    return g;
+  }
+
   return { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine,
-    aftermath, cartWreck, lowWall, place, srnd };
+    aftermath, cartWreck, lowWall, grove, thicket, blight, mossyRuin,
+    place, srnd };
 }

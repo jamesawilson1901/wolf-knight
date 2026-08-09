@@ -97,6 +97,12 @@ const mix = (a, b, t) => ({ r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, 
 //   path     multiplier on the base colour for the worn route (>1 polished
 //            pale by feet, <1 trodden dark into soil)
 //   grain    multiplier on the fine speckle
+//   base     OPTIONAL hex that replaces the district's floorTint as the ground
+//            colour. Needed where the district tint describes the CANOPY rather
+//            than the earth: the Bloomfall's tint is blossom pink, and using it
+//            as the ground turned four rooms into a flat candy-pink field —
+//            which reads as a toy, not as somewhere beautiful that is dying.
+//            The blossom belongs ON the ground as fallen petals, not AS it.
 export const GROUND_STYLES = {
   // --- Ember Hollow: people LIVED here, and then it burned -----------------
   ashfall:   { pattern: 'ash',       wear: 0.85, joint: 0.55, path: 1.18, grain: 0.90 },
@@ -114,7 +120,9 @@ export const GROUND_STYLES = {
   // --- Wild Woods: it was the loveliest place in the world -----------------
   thorn:     { pattern: 'grass', wear: 0.50, joint: 0.30, path: 0.78, grain: 1.00 },
   gloom:     { pattern: 'earth', wear: 0.60, joint: 0.30, path: 0.85, grain: 0.90 },
-  bloom:     { pattern: 'grass', wear: 0.35, joint: 0.25, path: 0.80, grain: 1.05 },
+  bloom:     { pattern: 'grass', wear: 0.35, joint: 0.25, path: 0.80, grain: 1.05, base: 0x7f8a4e },
+  root:      { pattern: 'earth', wear: 0.70, joint: 0.35, path: 0.84, grain: 0.95 },
+  glade:     { pattern: 'grass', wear: 0.30, joint: 0.22, path: 0.82, grain: 1.10 },
   rot:       { pattern: 'earth', wear: 0.80, joint: 0.35, path: 0.82, grain: 0.95 },
   // --- elsewhere ----------------------------------------------------------
   den:       { pattern: 'earth', wear: 0.45, joint: 0.30, path: 1.15, grain: 0.80 },
@@ -138,6 +146,7 @@ const PATCH_KINDS = {
   ice:        { col: 0xbcd8e4, alpha: 0.55, speck: 0xe8f4fa, edge: 0.70 },
   corruption: { col: 0x2c1a38, alpha: 0.68, speck: 0x6b3f8a, edge: 0.60 },
   sand:       { col: 0xb9a279, alpha: 0.50, speck: 0xd8c9a4, edge: 0.70 },
+  blossom:    { col: 0xe6a8c0, alpha: 0.55, speck: 0xf6d2e0, edge: 0.85 },
   rubble:     { col: 0x5f594f, alpha: 0.55, speck: 0x8d8880, edge: 0.50 },
 };
 
@@ -617,9 +626,29 @@ function paintSpeckle(g, W, H, ppu, base, S, rand) {
 // Paint one room's ground into a canvas. Exported separately from ground() so
 // the density verifier can pull the pixels and assert that a floor actually has
 // variation in it, rather than trusting that it was asked for.
+const warned = new Set();
 export function paintGround(w, d, D, opts = {}) {
-  const S = { ...DEFAULT_STYLE, ...(GROUND_STYLES[opts.style || D.ground] || {}) };
-  const base = toRGB(D.floorTint !== undefined ? D.floorTint : 0x7a746c);
+  // A DISTRICT THAT NAMES NO STYLE IS A BUG, NOT A DEFAULT.
+  //
+  // This shipped resolving `GROUND_STYLES[opts.style || D.ground]` and silently
+  // falling back to DEFAULT_STYLE when the lookup missed — and every district
+  // table in the game missed, because none of them carried a `ground` field.
+  // The result: eight authored patterns, none of them ever drawn, every room in
+  // three regions rendered as generic earth, and four screenshots reviewed
+  // before the flat pink Bloomfall floor made it obvious. A silent fallback
+  // that produces plausible output is the worst kind.
+  const styleName = opts.style || D.ground;
+  if (!styleName || !GROUND_STYLES[styleName]) {
+    const k = String(styleName);
+    if (!warned.has(k)) {
+      warned.add(k);
+      console.warn(`[ground] no style "${k}" — falling back to generic earth. `
+        + `Add a \`ground:\` key to the district, or a style to GROUND_STYLES.`);
+    }
+  }
+  const S = { ...DEFAULT_STYLE, ...(GROUND_STYLES[styleName] || {}) };
+  const base = toRGB(S.base !== undefined ? S.base
+    : (D.floorTint !== undefined ? D.floorTint : 0x7a746c));
   const { cv, g, W, H, ppu } = makeCanvas(w, d);
   const rand = rng(seedOf(opts.seed || 'room'));
 
@@ -639,7 +668,11 @@ export function paintGround(w, d, D, opts = {}) {
     paintPath(g, line.map(([x, z]) => [X(x), Y(z)]), ppu, base, S, rand, opts.pathWidth);
   }
 
-  paintCracks(g, W, H, ppu, base, S, rand);
+  // CRACKS ARE A STONE THING. Drawn over grass or snow they read as thin black
+  // scratches lying on top of the field — clearly visible in the first dressed
+  // shot of t1a, and clearly wrong: soil does not crack in hairlines, it just
+  // wears. So the pattern decides, not the district.
+  if (S.pattern !== 'grass' && S.pattern !== 'snow') paintCracks(g, W, H, ppu, base, S, rand);
   paintGrime(g, W, H, ppu, base, S);
   paintSpeckle(g, W, H, ppu, base, S, rand);
   return cv;

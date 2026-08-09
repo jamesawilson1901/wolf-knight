@@ -45,17 +45,17 @@ export const DISTRICTS = {
   // black slab; floorTint renders one as bleached bone. A thing you walk past
   // sits between them. Down here it also runs COLDER than Ember's, because the
   // only light that has reached this stone in an age is blue.
-  vaultDark:  { tint: 0x6d7480, floorTint: 0x555c68, wallTint: 0x22262e, propTint: 0x5c6470,
+  vaultDark:  { tint: 0x6d7480, floorTint: 0x555c68, wallTint: 0x22262e, propTint: 0x5c6470, ground: 'vaultDark',
                 name: 'THE GREAT VAULT', hero: 'THE STONE TITAN' },
-  vaultWarm:  { tint: 0xc79a5e, floorTint: 0xb08a55, wallTint: 0x3a2e20, propTint: 0x8e7048,
+  vaultWarm:  { tint: 0xc79a5e, floorTint: 0xb08a55, wallTint: 0x3a2e20, propTint: 0x8e7048, ground: 'vaultWarm',
                 name: 'THE GREAT VAULT', hero: 'THE STONE TITAN' },
-  glimmer:    { tint: 0x7fd8e8, floorTint: 0xa9c6cf, wallTint: 0x24414d, propTint: 0x6d8f9c,
+  glimmer:    { tint: 0x7fd8e8, floorTint: 0xa9c6cf, wallTint: 0x24414d, propTint: 0x6d8f9c, ground: 'glimmer',
                 name: 'THE GLIMMERWAY', hero: 'THE GEODE' },
-  quarry:     { tint: 0xd8c9a4, floorTint: 0xcabf9d, wallTint: 0x4a4132, propTint: 0x9a8f70,
+  quarry:     { tint: 0xd8c9a4, floorTint: 0xcabf9d, wallTint: 0x4a4132, propTint: 0x9a8f70, ground: 'quarry',
                 name: 'THE BONE QUARRY', hero: 'THE RIBCAGE' },
-  sunken:     { tint: 0x4e9c96, floorTint: 0x5a8a86, wallTint: 0x1c3a3c, propTint: 0x4e7472,
+  sunken:     { tint: 0x4e9c96, floorTint: 0x5a8a86, wallTint: 0x1c3a3c, propTint: 0x4e7472, ground: 'sunken',
                 name: 'THE SUNKEN STAIR', hero: 'THE DROWNED DOOR' },
-  crypt:      { tint: 0x8a8478, floorTint: 0x6a665e, wallTint: 0x1a1a1c, propTint: 0x6b6760,
+  crypt:      { tint: 0x8a8478, floorTint: 0x6a665e, wallTint: 0x1a1a1c, propTint: 0x6b6760, ground: 'crypt',
                 name: "THE WARDEN'S CRYPT", hero: "THE WARDEN'S THRONE" },
 };
 

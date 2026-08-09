@@ -25,6 +25,7 @@ import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
+import { makeDressers } from './dressing.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
 
 let forceGrey = false;
@@ -54,15 +55,21 @@ export const REGION = 'wild3';
 // the woods can be saved.
 // ---------------------------------------------------------------------------
 export const DISTRICTS = {
-  thorn:  { tint: 0xb9bd5e, floorTint: 0x9a9c55, wallTint: 0x3c3a1e,
+  // propTint here is the LIVING colour of the region — deliberately richer than
+  // the ground it stands on, because dad's brief for the Wild Woods is
+  // "beautiful and sick… you can see what it's losing", and you cannot see
+  // something being lost unless it was plainly worth having. The rot is applied
+  // per-prop by draining this toward 0x4a3a52 (js/dressing.js), so the same
+  // grove reads whole on one side of a room and drained on the other.
+  thorn:  { tint: 0xb9bd5e, floorTint: 0x9a9c55, wallTint: 0x3c3a1e, propTint: 0x7f9a48, ground: 'thorn',
             name: 'THORNEDGE',           hero: 'THE LEANING SHRINE' },
-  gloom:  { tint: 0x3e7d7a, floorTint: 0x35595c, wallTint: 0x14262b,
+  gloom:  { tint: 0x3e7d7a, floorTint: 0x35595c, wallTint: 0x14262b, propTint: 0x3f7a63, ground: 'gloom',
             name: 'THE GLOOMWOOD',       hero: 'THE WATCHING TREE' },
-  root:   { tint: 0xa8763c, floorTint: 0x8a6438, wallTint: 0x33241a,
+  root:   { tint: 0xa8763c, floorTint: 0x8a6438, wallTint: 0x33241a, propTint: 0x7d6a3a, ground: 'root',
             name: 'THE ROOTBOUND DEEP',  hero: 'THE GREAT ROOT ARCH' },
-  bloom:  { tint: 0xf0b8cf, floorTint: 0xd9aebe, wallTint: 0x5a3a48,
+  bloom:  { tint: 0xf0b8cf, floorTint: 0xd9aebe, wallTint: 0x5a3a48, propTint: 0xc98fa8, ground: 'bloom',
             name: 'THE BLOOMFALL',       hero: 'THE BLOSSOM FALL' },
-  glade:  { tint: 0x8fdc6a, floorTint: 0x6f9e55, wallTint: 0x2a3a22,
+  glade:  { tint: 0x8fdc6a, floorTint: 0x6f9e55, wallTint: 0x2a3a22, propTint: 0x6fae4a, ground: 'glade',
             name: "SYLVA'S GLADE",       hero: 'SYLVA, THORNBOUND' },
 };
 
@@ -184,6 +191,39 @@ export async function loadWoodKit() {
     pillar:  './assets/env/pillar.glb',            // Kenney Castle  🟢
     arch:    './assets/env/dungeon/Arch.glb',      // Quaternius     🟢
     column:  './assets/env/dungeon/Column.glb',
+    // --- THE FOREST ITSELF --------------------------------------------------
+    // Fourteen Quaternius forest models, vendored, licence-cleared 🟢 and used
+    // ZERO times: Level 3 shipped dressed with two generic Kenney trees. Dad
+    // counted this before I did. The two BARE trees are the point of the set —
+    // they are how the rot is shown spreading rather than described.
+    treeQ1:  './assets/env/forest/Tree_1_A.gltf',
+    treeQ2:  './assets/env/forest/Tree_2_B.gltf',
+    treeQ3:  './assets/env/forest/Tree_3_A.gltf',
+    treeQ4:  './assets/env/forest/Tree_4_B.gltf',
+    bareQ1:  './assets/env/forest/Tree_Bare_1_A.gltf',
+    bareQ2:  './assets/env/forest/Tree_Bare_2_A.gltf',
+    bushQ1:  './assets/env/forest/Bush_1_A.gltf',
+    bushQ2:  './assets/env/forest/Bush_2_C.gltf',
+    bushQ3:  './assets/env/forest/Bush_4_B.gltf',
+    grassQ1: './assets/env/forest/Grass_1_A.gltf',
+    grassQ2: './assets/env/forest/Grass_2_B.gltf',
+    rockQ1:  './assets/env/forest/Rock_1_F.gltf',
+    rockQ2:  './assets/env/forest/Rock_2_C.gltf',
+    rockQ3:  './assets/env/forest/Rock_3_H.gltf',
+    // and the ruin props, for the places people built before the woods took
+    // them back — the region is "overgrown and forgotten" as well as sick
+    wallMod: './assets/env/dungeon/Wall_Modular.glb',
+    archDoor:'./assets/env/dungeon/Arch_Door.glb',
+    brick:   './assets/env/dungeon/Brick.glb',
+    barrel:  './assets/env/dungeon/Barrel.glb',
+    crate:   './assets/env/dungeon/Crate.glb',
+    vase:    './assets/env/dungeon/Vase.glb',
+    skull:   './assets/env/dungeon/Skull.glb',
+    coins:   './assets/env/dungeon/Coin_Pile.glb',
+    pedestal:'./assets/env/dungeon/Pedestal.glb',
+    banner:  './assets/env/dungeon/Banner_wall.glb',
+    woodfire:'./assets/env/dungeon/Woodfire.glb',
+    column2: './assets/env/dungeon/Column2.glb',
     // the two hero props that are BEINGS get real character models, never code
     // geometry (no-code-built-creatures law)
     statue:  './assets/chars/knight.glb',          // the toppled wolf-knight shrine
@@ -198,6 +238,15 @@ const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
   darkZone } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
+
+// The shared cluster vocabulary (js/dressing.js), bound to the wood kit. The
+// forest half of it — grove, thicket, blight, mossyRuin — exists because Ember
+// and Stoneroot are built things that fell down while the Wild Woods is a GROWN
+// thing being eaten, and the clusters come in matched pairs so a room can say
+// how far the rot has reached by which of the pair dresses it.
+const { grove, thicket, blight, mossyRuin, ruinedHome, coldHearth, fallenColumn,
+  rubbleField, wayshrine, aftermath, cartWreck, lowWall } =
+  makeDressers({ kit: () => woodKit, tint: (...a) => tinted(...a) });
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -545,7 +594,12 @@ export async function buildT1a(scene) {
   // ring closing), and from the fallen-log chord once it is down.
   const gaps = [gap('s'), gap('n'), gap('e')];
   if (logDown) gaps.push(gap('w'));
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.29 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't1b', { x: 0, z: 10, angle: Math.PI });
@@ -560,13 +614,27 @@ export async function buildT1a(scene) {
   // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
   // labelled "first Thorn Hounds" — a hound here contradicted both, and made
   // the level open on a fight instead of on the feeling that something is off.
-  scatter(world, halfW, halfD, D, 121, 18, { spin: 1, kinds: ['treeA', 'stump', 'rockSA', 'bush'] });
+  scatter(world, halfW, halfD, D, 121, 6, { spin: 1, kinds: ['treeA', 'stump', 'rockSA', 'bush'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.1 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.1 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.30 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.1 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.30 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 4);
   return finish(world, spec, D);
 }
 
 export async function buildT1b(scene) {
   const { world, spec, D } = base(scene, 't1b');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.32 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't1a', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc1', { x: 0, z: 7, angle: Math.PI });
@@ -588,29 +656,57 @@ export async function buildT1b(scene) {
               { system: 'shatter', id: 'l3_spring_ice', region: REGION });
   visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };
-  scatter(world, halfW, halfD, D, 122, 20, { spin: 1, kinds: ['treeA', 'treeB', 'stump', 'rockSB'] });
+  scatter(world, halfW, halfD, D, 122, 6, { spin: 1, kinds: ['treeA', 'treeB', 'stump', 'rockSB'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.15 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.15 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.35 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.15 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.35 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 5);
   return finish(world, spec, D);
 }
 
 export async function buildT1p(scene) {
   const { world, spec, D } = base(scene, 't1p');
-  const { halfW, halfD } = shell(world, spec, [gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.29 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 't1b', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   wallRun(world, -2, -3, 5, -3, D);
   world.markers.pup7Spot = { x: 6, z: -5 };
-  scatter(world, halfW, halfD, D, 123, 10, { spin: 1, kinds: ['stump', 'bush'] });
+  scatter(world, halfW, halfD, D, 123, 6, { spin: 1, kinds: ['stump', 'bush'] });
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.1 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.30 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.1 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.1 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 6);
   return finish(world, spec, D);
 }
 
 export async function buildTc1(scene) {
   const { world, spec, D } = base(scene, 'tc1');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -3, z: 0, r: 2.1, kind: 'moss' },
+              { x: 3, z: 0, r: 2.0, kind: 'corruption', alpha: 0.32 },
+              { x: -2, z: -1, r: 1.7, kind: 'mud' }],
+  });
   world.spawn = { x: 0, z: 7, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't1b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't2a', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  scatter(world, halfW, halfD, D, 124, 12, { spin: 1, kinds: ['treeA', 'stump'] });
+  scatter(world, halfW, halfD, D, 124, 6, { spin: 1, kinds: ['treeA', 'stump'] });
+  grove(world, -4.4, 2.6, 2.2, D, { sick: 0.15, trees: 3 });
+  grove(world, 4.4, -2.6, 2.0, D, { sick: 0.15, trees: 3 });
+  thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.15 });
+  blight(world, -4.4, -2.6, 1.8, D);
+  aftermath(world, 0, 2.2, 1.5, D, 3);
   return finish(world, spec, D);
 }
 
@@ -622,7 +718,12 @@ export async function buildT2a(scene) {
   const rootCut = WS.get(REGION, 'rootCut');
   const gaps = [gap('s'), gap('n')];
   if (rootCut) gaps.push(gap('e'));
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.39 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc1', { x: 0, z: -7, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't2b', { x: 0, z: 10, angle: Math.PI });
@@ -639,13 +740,27 @@ export async function buildT2a(scene) {
   // 1.2 u/s, which is the only kind of thing that is fair to put where a child
   // cannot see without the Dark Wolf's eyes.
   world.markers.slimeSpots = [{ x: -7, z: -1, variant: 'bramble' }];
-  scatter(world, halfW, halfD, D, 131, 20, { spin: 1, kinds: ['treeB', 'mushT', 'mushG', 'rockSA'] });
+  scatter(world, halfW, halfD, D, 131, 6, { spin: 1, kinds: ['treeB', 'mushT', 'mushG', 'rockSA'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.3 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.3 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.50 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.3 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.50 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 6);
   return finish(world, spec, D);
 }
 
 export async function buildT2b(scene) {
   const { world, spec, D } = base(scene, 't2b');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('w')], D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.42 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't2a', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tsh', { x: 0, z: 5.5, angle: Math.PI });
@@ -656,13 +771,26 @@ export async function buildT2b(scene) {
     { x: -7, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: 7, z: 5, variant: 'bramble' }];
   wallRun(world, 4, -4, 4, 6, D);
-  scatter(world, halfW, halfD, D, 132, 22, { spin: 1, kinds: ['treeB', 'mushT', 'stump'] });
+  scatter(world, halfW, halfD, D, 132, 6, { spin: 1, kinds: ['treeB', 'mushT', 'stump'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.38 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.38 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.58 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.38 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.58 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 4);
   return finish(world, spec, D);
 }
 
 export async function buildT2p(scene) {
   const { world, spec, D } = base(scene, 't2p');
-  const { halfW, halfD } = shell(world, spec, [gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.39 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't2b', { x: -13.5, z: 0, angle: Math.PI / 2 });
   visibleReward(world, -6, -3, 'l3_t2p_chest', { shards: 24 });
@@ -672,7 +800,13 @@ export async function buildT2p(scene) {
   // drops land on top of whatever else the room has already dropped. t3b
   // arrives at 86 and went to 102 with one in it; this pocket arrives at 54.
   world.markers.slimeSpots = [{ x: 4, z: -4, variant: 'bramble' }];
-  scatter(world, halfW, halfD, D, 133, 10, { spin: 1, kinds: ['mushG', 'mushT'] });
+  scatter(world, halfW, halfD, D, 133, 6, { spin: 1, kinds: ['mushG', 'mushT'] });
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.3 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.50 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.3 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.3 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 4);
   return finish(world, spec, D);
 }
 
@@ -680,7 +814,11 @@ export async function buildT2p(scene) {
 // else in the room to do, no enemies, no timer.
 export async function buildTsh(scene) {
   const { world, spec, D } = base(scene, 'tsh');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.36 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't2b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc2', { x: 0, z: 7, angle: Math.PI });
@@ -697,6 +835,12 @@ export async function buildTsh(scene) {
     world.add(ped);
     world.addCircle(0, -2, 0.9);
   }
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.25 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.45 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.25 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.25 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 7);
   return finish(world, spec, D);
 }
 
@@ -704,7 +848,11 @@ export async function buildTsh(scene) {
 // dawdle, and a bramble rope you lash to swing a fallen log into a bridge.
 export async function buildTc2(scene) {
   const { world, spec, D } = base(scene, 'tc2');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -3, z: 0, r: 2.1, kind: 'moss' },
+              { x: 3, z: 0, r: 2.0, kind: 'corruption', alpha: 0.41 },
+              { x: -2, z: -1, r: 1.7, kind: 'mud' }],
+  });
   world.spawn = { x: 0, z: 7, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tsh', { x: 0, z: -5.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't3a', { x: 0, z: 10, angle: Math.PI });
@@ -717,6 +865,11 @@ export async function buildTc2(scene) {
   }
   // ...and then the same verb used on something that is NOT a tangle at all.
   logBridge(world, 'l3_tc2_bridge', 0, -6);
+  grove(world, -4.4, 2.6, 2.2, D, { sick: 0.35, trees: 3 });
+  grove(world, 4.4, -2.6, 2.0, D, { sick: 0.35, trees: 3 });
+  thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.35 });
+  blight(world, -4.4, -2.6, 1.8, D);
+  aftermath(world, 0, 2.2, 1.5, D, 5);
   return finish(world, spec, D);
 }
 
@@ -728,7 +881,12 @@ export async function buildT3a(scene) {
   const rootCut = WS.get(REGION, 'rootCut');
   const gaps = [gap('s'), gap('n')];
   if (rootCut) gaps.push(gap('w'));
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.50 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc2', { x: 0, z: -7, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't3b', { x: 0, z: 10, angle: Math.PI });
@@ -752,13 +910,27 @@ export async function buildT3a(scene) {
     world.markers.rootWallPromise = { x: -13, z: 0 };
   }
   world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }, { x: -6, z: 4, variant: 'thorn' }];
-  scatter(world, halfW, halfD, D, 141, 20, { spin: 1, kinds: ['logStack', 'stump', 'rockLB', 'treeA'] });
+  scatter(world, halfW, halfD, D, 141, 6, { spin: 1, kinds: ['logStack', 'stump', 'rockLB', 'treeA'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.55 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.55 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.75 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.55 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.75 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 4);
   return finish(world, spec, D);
 }
 
 export async function buildT3b(scene) {
   const { world, spec, D } = base(scene, 't3b');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.53 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't3a', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tkn', { x: 0, z: 10, angle: Math.PI });
@@ -768,19 +940,38 @@ export async function buildT3b(scene) {
     bramble(world, `l3_t3b_${i}`, p[0], p[1], 3.0, 1.2, true);
   }
   world.markers.houndSpots = [{ x: 8, z: 4, variant: 'thorn' }, { x: -8, z: -4, variant: 'thorn' }];
-  scatter(world, halfW, halfD, D, 142, 22, { spin: 1, kinds: ['logStack', 'rockLC', 'stump'] });
+  scatter(world, halfW, halfD, D, 142, 6, { spin: 1, kinds: ['logStack', 'rockLC', 'stump'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.62 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.62 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.82 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.62 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.82 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 6);
   return finish(world, spec, D);
 }
 
 export async function buildT3p(scene) {
   const { world, spec, D } = base(scene, 't3p');
-  const { halfW, halfD } = shell(world, spec, [gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.50 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 't3b', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   wallRun(world, 0, -4, 0, 3, D);
   world.markers.pup8Spot = { x: 6, z: -3 };
   world.markers.slimeSpots = [{ x: 5, z: 3, variant: 'bramble' }];
-  scatter(world, halfW, halfD, D, 143, 10, { spin: 1, kinds: ['logStack', 'stump'] });
+  scatter(world, halfW, halfD, D, 143, 6, { spin: 1, kinds: ['logStack', 'stump'] });
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.55 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.75 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.55 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.55 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 3);
   return finish(world, spec, D);
 }
 
@@ -793,7 +984,12 @@ export async function buildTkn(scene) {
   const { world, spec, D } = base(scene, 'tkn');
   const solved = () => !!state.flags.plates.l3_knot_p1;
   // the way onward opens when the plate is held down — the puzzle IS the door
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.52 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't3b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc3', { x: 0, z: 7, angle: Math.PI },
@@ -841,18 +1037,33 @@ export async function buildTkn(scene) {
   });
   world.markers.plateSpots = [{ x: 6, z: 2, id: 'l3_knot_p1' }];
 
-  scatter(world, halfW, halfD, D, 144, 16, { spin: 1, kinds: ['logStack', 'rockLA'] });
+  scatter(world, halfW, halfD, D, 144, 6, { spin: 1, kinds: ['logStack', 'rockLA'] });
+  // THE KNOT is the puzzle room — the mechanic must stay readable, so it is dressed at the WALLS and nowhere near the middle.
+  grove(world, -12.5, 9.5, 3.2, D, { sick: 0.6 });
+  grove(world, 12.5, 9.5, 3.2, D, { sick: 0.6 });
+  blight(world, -12.5, -9.5, 3.0, D);
+  blight(world, 12.5, -9.5, 3.0, D);
+  thicket(world, 0, 10.5, 4.0, D, { sick: 0.6 });
   return finish(world, spec, D);
 }
 
 export async function buildTc3(scene) {
   const { world, spec, D } = base(scene, 'tc3');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -3, z: 0, r: 2.1, kind: 'moss' },
+              { x: 3, z: 0, r: 2.0, kind: 'corruption', alpha: 0.52 },
+              { x: -2, z: -1, r: 1.7, kind: 'mud' }],
+  });
   world.spawn = { x: 0, z: 7, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tkn', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't4a', { x: 0, z: 10, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
-  scatter(world, halfW, halfD, D, 145, 12, { spin: 1, kinds: ['stump', 'rockSA'] });
+  scatter(world, halfW, halfD, D, 145, 6, { spin: 1, kinds: ['stump', 'rockSA'] });
+  grove(world, -4.4, 2.6, 2.2, D, { sick: 0.6, trees: 3 });
+  grove(world, 4.4, -2.6, 2.0, D, { sick: 0.6, trees: 3 });
+  thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.6 });
+  blight(world, -4.4, -2.6, 1.8, D);
+  aftermath(world, 0, 2.2, 1.5, D, 5);
   return finish(world, spec, D);
 }
 
@@ -864,7 +1075,18 @@ export async function buildT4a(scene) {
   const logDown = WS.get(REGION, 'logDown');
   const gaps = [gap('s'), gap('n')];
   if (logDown) gaps.push(gap('e'));
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    // DRIFTS, not a carpet. The first pass used r=6 and r=4 and the petals
+    // covered the entire arrival frame, which put the room straight back to the
+    // flat pink field the base change was meant to fix. Blossom should be the
+    // thing you notice ON the ground, never the ground.
+    patches: [{ x: -7, z: 5, r: 2.8, kind: 'blossom' },
+              { x: 6, z: -7, r: 2.4, kind: 'blossom' },
+              { x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.60 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc3', { x: 0, z: -7, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't4b', { x: 0, z: 10, angle: Math.PI });
@@ -913,7 +1135,16 @@ export async function buildT4a(scene) {
     { x: 6, z: -6, variant: 'elderthorn' },
     { x: -10, z: 2, variant: 'thorn' }, { x: 7, z: 5, variant: 'thorn' },
     { x: 3, z: 8, variant: 'thorn' }];
-  scatter(world, halfW, halfD, D, 151, 20, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB', 'bush'] });
+  scatter(world, halfW, halfD, D, 151, 6, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB', 'bush'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.78 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.78 });
+  grove(world, -11, -8, 3.6, D, { sick: 0.98 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.78 });
+  thicket(world, 5, -4, 3.2, D, { sick: 0.98 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 4);
   return finish(world, spec, D);
 }
 
@@ -921,7 +1152,18 @@ export async function buildT4a(scene) {
 // changes a district. Cutting it blooms the Bloomfall and opens the Glade.
 export async function buildT4b(scene) {
   const { world, spec, D } = base(scene, 't4b');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('w')], D, {
+    // DRIFTS, not a carpet. The first pass used r=6 and r=4 and the petals
+    // covered the entire arrival frame, which put the room straight back to the
+    // flat pink field the base change was meant to fix. Blossom should be the
+    // thing you notice ON the ground, never the ground.
+    patches: [{ x: -7, z: 5, r: 2.8, kind: 'blossom' },
+              { x: 6, z: -7, r: 2.4, kind: 'blossom' },
+              { x: -12, z: 8, r: 4.8, kind: 'moss' },
+              { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.63 },
+              { x: -11, z: -9, r: 3.8, kind: 'mud' },
+              { x: 11, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't4a', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc4', { x: 0, z: 7, angle: Math.PI });
@@ -937,23 +1179,58 @@ export async function buildT4b(scene) {
   });
   world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' },
     { x: 7, z: 5, variant: 'thorn' }];
-  scatter(world, halfW, halfD, D, 152, 24, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
+  scatter(world, halfW, halfD, D, 152, 6, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
+  grove(world, -12, 8, 4.2, D, { sick: 0.85 });
+  grove(world, 11.5, 7, 3.8, D, { sick: 0.85 });
+  grove(world, -11, -8, 3.6, D, { sick: 1.00 });
+  blight(world, 11, -8, 3.4, D);
+  thicket(world, -3, 4, 3.4, D, { sick: 0.85 });
+  thicket(world, 5, -4, 3.2, D, { sick: 1.00 });
+  mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, 4, 5, 0.4, D, 3.2);
+  aftermath(world, -11, 1.5, 2.0, D, 6);
   return finish(world, spec, D);
 }
 
 export async function buildT4p(scene) {
   const { world, spec, D } = base(scene, 't4p');
-  const { halfW, halfD } = shell(world, spec, [gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    // DRIFTS, not a carpet. The first pass used r=6 and r=4 and the petals
+    // covered the entire arrival frame, which put the room straight back to the
+    // flat pink field the base change was meant to fix. Blossom should be the
+    // thing you notice ON the ground, never the ground.
+    patches: [{ x: -7, z: 5, r: 2.8, kind: 'blossom' },
+              { x: 6, z: -7, r: 2.4, kind: 'blossom' },
+              { x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.60 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't4b', { x: -13.5, z: 0, angle: Math.PI / 2 });
   visibleReward(world, -6, -3, 'l3_t4p_chest', { shards: 26, heartPiece: 1 }, 'gold');
-  scatter(world, halfW, halfD, D, 153, 12, { spin: 1, kinds: ['flowerA', 'flowerB', 'bush'] });
+  scatter(world, halfW, halfD, D, 153, 6, { spin: 1, kinds: ['flowerA', 'flowerB', 'bush'] });
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.78 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.98 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.78 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.78 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 4);
   return finish(world, spec, D);
 }
 
 export async function buildTc4(scene) {
   const { world, spec, D } = base(scene, 'tc4');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n', BOSS_DOOR_HALF)], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n', BOSS_DOOR_HALF)], D, {
+    // DRIFTS, not a carpet. The first pass used r=6 and r=4 and the petals
+    // covered the entire arrival frame, which put the room straight back to the
+    // flat pink field the base change was meant to fix. Blossom should be the
+    // thing you notice ON the ground, never the ground.
+    patches: [{ x: -7, z: 5, r: 2.8, kind: 'blossom' },
+              { x: 6, z: -7, r: 2.4, kind: 'blossom' },
+              { x: -3, z: 0, r: 2.1, kind: 'moss' },
+              { x: 3, z: 0, r: 2.0, kind: 'corruption', alpha: 0.62 },
+              { x: -2, z: -1, r: 1.7, kind: 'mud' }],
+  });
   world.spawn = { x: 0, z: 7, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 't4b', { x: 0, z: -10, angle: 0 });
   // the glade waits on the great thorn-knot: the conclude step IS the door
@@ -961,6 +1238,11 @@ export async function buildTc4(scene) {
     { half: BOSS_DOOR_HALF, when: () => WS.get(REGION, 'knotCut') });
   world.markers.restSpot = { x: -3, z: 0 };
   world.markers.potionSpot = { x: 3, z: 0 };
+  grove(world, -4.4, 2.6, 2.2, D, { sick: 0.82, trees: 3 });
+  grove(world, 4.4, -2.6, 2.0, D, { sick: 0.82, trees: 3 });
+  thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.82 });
+  blight(world, -4.4, -2.6, 1.8, D);
+  aftermath(world, 0, 2.2, 1.5, D, 3);
   return finish(world, spec, D);
 }
 
@@ -976,7 +1258,12 @@ export async function buildTgl(scene) {
   // once Sylva is freed (fix plan A1) — Frostpeak was never rebuilt and is
   // reached exactly as it always was.
   const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), ...(beaten ? [gap('n')] : [])];
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -9, z: 8, r: 3.9, kind: 'moss' },
+              { x: 9, z: -8, r: 3.6, kind: 'corruption', alpha: 0.66 },
+              { x: -8, z: -9, r: 3.1, kind: 'mud' },
+              { x: 8, z: 9, r: 3.6, kind: 'grass' }],
+  });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc4', { x: 0, z: -7, angle: 0 }, { half: BOSS_DOOR_HALF });
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10, z: 9, angle: -Math.PI / 2 });
@@ -986,6 +1273,12 @@ export async function buildTgl(scene) {
   world.markers.heroSpot = { x: 0, z: -2 };
   if (!beaten) world.markers.bossSpot = { x: 0, z: -4, skin: 'sylva' };
   world.markers.sylvaSpot = { x: 0, z: -4, spirit: 'sylva' };
+  // SYLVA'S GLADE is the boss arena — she needs a clear floor, so it is dressed at the WALLS and nowhere near the middle.
+  grove(world, -10, 10, 3.0, D, { sick: 0.9 });
+  grove(world, 10, 10, 3.0, D, { sick: 0.9 });
+  blight(world, -10, -10, 3.0, D);
+  blight(world, 10, -10, 3.0, D);
+  thicket(world, 0, 11, 3.4, D, { sick: 0.9 });
   return finish(world, spec, D);
 }
 
@@ -996,7 +1289,11 @@ export async function buildTgl(scene) {
 // ===========================================================================
 export async function buildTsA(scene) {
   const { world, spec, D } = base(scene, 'tsA');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.45 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: 10, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't4a', { x: -10, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10, z: 0, angle: -Math.PI / 2 });
@@ -1009,16 +1306,32 @@ export async function buildTsA(scene) {
     log.scale.set(3.0, 2.0, 2.0);
     world.add(log);
   }
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.45 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.65 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.45 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.45 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 5);
   return finish(world, spec, D);
 }
 
 export async function buildTsB(scene) {
   const { world, spec, D } = base(scene, 'tsB');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -6, z: 3, r: 3.0, kind: 'moss' },
+              { x: 6, z: -3, r: 2.8, kind: 'corruption', alpha: 0.45 },
+              { x: -5, z: -4, r: 2.4, kind: 'mud' }],
+  });
   world.spawn = { x: 10, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't3a', { x: -10, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 't2a', { x: 10, z: 0, angle: -Math.PI / 2 });
   world.markers.shortcutSpot = { x: 0, z: 0 };
+  grove(world, -6.5, 4, 3.4, D, { sick: 0.45 });
+  grove(world, 6.5, -4, 3.0, D, { sick: 0.65 });
+  thicket(world, -2, -5, 2.8, D, { sick: 0.45 });
+  thicket(world, 3, 5, 2.6, D, { sick: 0.45 });
+  blight(world, 6, 4, 2.4, D);
+  aftermath(world, -6, -4, 1.8, D, 6);
   return finish(world, spec, D);
 }
 

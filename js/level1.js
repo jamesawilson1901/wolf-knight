@@ -65,15 +65,15 @@ export const DISTRICTS = {
   // tintedModel keys its cache on class+tint, so every prop in a district
   // shares three materials (dark/mid/light) and flattenStatic folds each
   // cell's worth into a single draw.
-  ashfall:  { tint: 0x8d8b86, floorTint: 0x8b8580, wallTint: 0x3b3835, propTint: 0x8a7a6c,
+  ashfall:  { tint: 0x8d8b86, floorTint: 0x8b8580, wallTint: 0x3b3835, propTint: 0x8a7a6c, ground: 'ashfall',
               name: 'THE ASHFALL',         hero: 'THE FALLEN GATE' },
-  causeway: { tint: 0xb5702f, floorTint: 0xa2632f, wallTint: 0x40241a, propTint: 0x8f6440,
+  causeway: { tint: 0xb5702f, floorTint: 0xa2632f, wallTint: 0x40241a, propTint: 0x8f6440, ground: 'causeway',
               name: 'EMBER CAUSEWAY',      hero: 'THE KILN' },
-  bridges:  { tint: 0x9c3a2a, floorTint: 0x8a4436, wallTint: 0x33191a, propTint: 0x7d4a3a,
+  bridges:  { tint: 0x9c3a2a, floorTint: 0x8a4436, wallTint: 0x33191a, propTint: 0x7d4a3a, ground: 'bridges',
               name: 'CINDER BRIDGES',      hero: 'THE BROKEN SPAN' },
-  kiln:     { tint: 0xc99a3a, floorTint: 0xb98d3c, wallTint: 0x453317, propTint: 0x9c7a44,
+  kiln:     { tint: 0xc99a3a, floorTint: 0xb98d3c, wallTint: 0x453317, propTint: 0x9c7a44, ground: 'kiln',
               name: 'THE KILN',            hero: 'THE FORGE HEART' },
-  heart:    { tint: 0x6a5a8a, floorTint: 0x5d5078, wallTint: 0x241d33, propTint: 0x5f5470,
+  heart:    { tint: 0x6a5a8a, floorTint: 0x5d5078, wallTint: 0x241d33, propTint: 0x5f5470, ground: 'heart',
               name: 'HEART OF THE HOLLOW', hero: "CINDER'S CAGE" },
 };
 
