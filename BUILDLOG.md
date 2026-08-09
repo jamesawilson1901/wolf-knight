@@ -2954,3 +2954,104 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.35.0 — Maren's cart grows with the world
+
+FIX-PLAN's status table is closed end to end (every row shipped by v3.34.0), so
+this run took the first unfinished entry from BUILDLOG's newest QUEUED NEXT list
+(v2.2.6, line 681): **"Maren tier-2 stock after Stoneroot"**. Its first entry,
+the economy/XP balance pass, was SKIPPED rather than taken — shard income
+against the shop ladder is a "does it feel right" judgement and belongs to the
+kids, not to an overnight run. `hard landscape lock` and `S3 Wild Woods` on the
+same list are long since done (manifest `orientation: landscape`, the portrait
+`#rotate` overlay and `screen.orientation.lock` in title.js; v3.19).
+
+Every weapon and shield in the game sat on the cart from the first minute. A
+child with 15 shards read eight cards, five of them a region or two of saving
+away, and nothing on the screen said the cart would ever be different. That is
+the same defect the promise-gate work fixed in the world: a thing you cannot
+have yet has to READ as a thing you cannot have YET.
+
+`SHOP_STOCK` rows now carry a `tier`, and `SHOP_TIERS` says when a tier goes on
+sale. **No price moved** — this is WHEN a row is for sale, not what it costs.
+
+| tier | on the cart | prices | unlocked by |
+|---|---|---|---|
+| 1 | potion, Round Guard, Swift Fang, Ember Blade | 15-90 | from the start |
+| 2 | Long Spear, Tower Shield, Moon Sword, Boulder Hammer | 120-300 | `WS.get('stone','restored')` |
+
+### The judgement calls
+
+**Where the split falls.** GAME-CONTRACT's ladder is "≈60/90/150/250/400 per
+region tier" and "a kid who explores buys one big thing per region", against a
+region yield of ~120-160 shards. Tier 1 therefore tops out at 90 — reachable on
+Ember Hollow's own income — and tier 2 opens at 120, which is Stoneroot money.
+The split is the contract's numbers, not a new opinion about them.
+
+**Two tiers, not five.** The queue item says tier 2 after Stoneroot, so that is
+what was built. Wild Woods, Frostpeak, Stormreach and the Sunken Vale add no
+further gate; once Stoneroot sings, the cart is everything it will ever be.
+`SHOP_TIERS` is a list, so a third tier is one row — AWAITING dad's call below.
+
+**The cart says so.** A held-back tier draws a line under the grid: "Maren's
+cart is only half unpacked. Free Stoneroot and she'll bring the rest." Written
+for a child who cannot read prices — not "tier 2 locked" but what brings her.
+It names only the FIRST locked tier, so a child is shown the next step and never
+a ladder. When nothing is held back the line is absent, not empty.
+
+**Nothing new in the save.** The unlock reads the WorldState flag Bram the miner
+already arrives on, which `js/save.js` round-trips today, so the additive-forever
+law holds with no new field: an old profile that has beaten Stoneroot walks up
+to a full cart. Owned gear was already filtered out of the stock list, so a child
+who somehow holds a tier-2 weapon is unaffected either way.
+
+### Measured
+
+`tools/verify-shop.mjs` is new, and was written and run BEFORE the fix — it
+failed on exactly the three assertions the fix exists to satisfy (tier-2 leak,
+no note, note names no unlock) and passed on all its controls, so the controls
+are load-bearing rather than passengers. It walks Kael into Maren's radius from
+the room's own `shopSpot` marker, buys through a card's real `pointerdown`, and
+taps Done to leave; `menus` is not on the debug hook, which is the point.
+
+    cards on the cart, before Stoneroot   8 → 4      (max price 300 → 90)
+    cards on the cart, after Stoneroot    8 → 8      (unchanged)
+    a sold row still vanishes             Swift Fang bought → 3 cards, 500 → 420 shards, auto-equipped
+    panel fit at 740 x 360, note on       scrollHeight 360 = clientHeight 360, Done bottom 353 ≤ 360
+
+That last row is the one worth keeping. The note costs vertical space on a
+360px-tall phone and the Done button is the last thing in the panel, so the
+measurement is "is Done still on the screen" — 7px of slack, which is thin
+enough that a second line of note text would push it off. The assertion is in
+the verifier so the next person to lengthen that sentence finds out.
+
+`verify-all.sh` with `verify-shop`, `verify-den`, `verify-minigame` and
+`verify-touch`: **passed 5, failed 0** (boot and density run by default).
+`verify-boot` was green before any edit, so the branch was not already broken.
+
+### AWAITING dad's call
+
+- **Tiers 3+.** Should the cart step again after the Wild Woods, Frostpeak,
+  Stormreach and the Sunken Vale? The contract's ladder has five rungs and only
+  two are built. One row of `SHOP_TIERS` per region, plus stock to put on it —
+  which is really a question about whether those regions get new gear at all.
+- **The economy pass is still first in that queue and still unbuilt.** It needs
+  a child to say whether shards arrive too fast or too slow; no measurement
+  settles it.
+- **The branch.** The overnight instructions say to work on `overnight` cut from
+  main; this session was handed `claude/ecstatic-hawking-kxe2qt` as its
+  designated branch and is not permitted to push elsewhere. Both agree on the
+  rule that matters — nothing goes near main — so the work is on the designated
+  branch. If the overnight runs should own one long-lived `overnight` branch,
+  that has to be set on the session rather than chosen here.
+- **The log skipped five commits.** Levels 5 and 6 (Stormreach Cliffs, the
+  Sunken Vale, the Tide Wolf, Meri, Aria) shipped after v3.34.0 with no BUILDLOG
+  entry and no FIX-PLAN row, which is why tonight's queue lookup had to fall
+  back to a list from v2.2.6. The history is in the commit messages and in
+  design/LEVEL-DESIGN-5.md / -6.md / ROOM-STANDARD.md; it is not in the file a
+  fresh session is told to read. Worth a catch-up entry, and worth an audit pass
+  over those two levels of the kind FIX-PLAN was for — neither is this run's
+  item.
+
+Not touched: `sw.js` (no deploy, and the one new file is a tool, not a shipped
+asset), prices, and `assets/`.

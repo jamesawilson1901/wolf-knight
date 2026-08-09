@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, stockForSale, lockedTierNote, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -115,7 +115,7 @@ export class Menus {
 
     const grid = document.createElement('div');
     grid.className = 'grid';
-    for (const s of SHOP_STOCK) {
+    for (const s of stockForSale()) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
       const afford = state.shards >= s.price;
@@ -145,6 +145,16 @@ export class Menus {
       grid.appendChild(card);
     }
     el.appendChild(grid);
+    // A held-back tier is a promise, and the game's rule for promises is that
+    // they are visible. Without this the cart is just short.
+    const note = lockedTierNote();
+    if (note) {
+      const n = document.createElement('div');
+      n.id = 'shop-note';
+      n.style.cssText = 'font-size:14px;color:#c9b8e6;max-width:520px;text-align:center;line-height:1.35';
+      n.textContent = '📦 ' + note;
+      el.appendChild(n);
+    }
     el.appendChild(this._closeBtn('shop-menu'));
     this._open('shop-menu');
   }

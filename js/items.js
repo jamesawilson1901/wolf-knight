@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -78,13 +79,56 @@ export function addGear(id) {
 }
 
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+//
+// MAREN'S CART GROWS WITH THE WORLD (v3.35.0). Every row used to be on the
+// cart from the first minute, so a child with 15 shards read eight cards, five
+// of which were a region or two of saving away, with nothing to say the cart
+// would ever change. `tier` is WHEN a row goes on sale; no price moved.
+//
+// The split follows GAME-CONTRACT's ladder ("shop ladder per region tier
+// ≈ 60/90/150/250/400", "a kid who explores buys one big thing per region"):
+// tier 1 tops out at 90, which is what Ember Hollow's ~120-160 shards can
+// reach, and tier 2 opens at 120 for a child who has Stoneroot's income behind
+// them.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.', tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 2 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 2 },
 ];
+
+// A tier is a promise, so it says what pays it. The note is written for a child
+// who cannot yet read prices: not "tier 2 locked" but "she'll bring more, and
+// here is what brings her". Tier 1 has no note because nothing is held back.
+//
+// The unlock reads WorldState, which js/save.js already round-trips, so this
+// adds no field to the save file and an old profile that has beaten Stoneroot
+// walks up to a full cart.
+export const SHOP_TIERS = [
+  { tier: 1, unlocked: () => true, note: null },
+  {
+    tier: 2,
+    unlocked: () => WS.get('stone', 'restored'),
+    note: 'Maren’s cart is only half unpacked. Free Stoneroot and she’ll bring the rest.',
+  },
+];
+
+function tierDef(n) {
+  return SHOP_TIERS.find((t) => t.tier === n) || SHOP_TIERS[0];
+}
+
+// What is on the cart today.
+export function stockForSale() {
+  return SHOP_STOCK.filter((s) => tierDef(s.tier || 1).unlocked());
+}
+
+// The line under the grid, or null when the cart is everything it will ever be.
+// The FIRST locked tier: a child is told about the next step, never a ladder.
+export function lockedTierNote() {
+  const locked = SHOP_TIERS.find((t) => !t.unlocked() && SHOP_STOCK.some((s) => (s.tier || 1) === t.tier));
+  return locked ? locked.note : null;
+}

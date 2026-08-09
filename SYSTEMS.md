@@ -133,7 +133,10 @@ additive-forever — old saves always load; new fields get safe defaults.
 ## Progression & menus (js/progress.js, js/menus.js, js/loot.js)
 XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
 shop, stickers, map screen (regions + mysteries), fast travel via Luna's
-moonstone, pause/settings.
+moonstone, pause/settings. Maren's stock is TIERED (items.js SHOP_STOCK
+`tier` + SHOP_TIERS): tier 1 (15-90) from the start, tier 2 (120-300) once
+Stoneroot is restored, with a line under the grid naming what unlocks the
+next tier. Tiers are WHEN a row sells, never what it costs.
 
 ## Difficulty assists (scattered, all quiet)
 Cozy default halves damage (min ½ heart); rubber-band after 3 deaths at

@@ -37,6 +37,21 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+**The table is closed, so the queue moved.** With every row above shipped, the
+work list is BUILDLOG's newest QUEUED NEXT block. Taken from it since:
+
+| | item | source | shipped |
+|---|---|---|---|
+| Q1 | economy/XP balance pass | BUILDLOG v2.2.6 | **skipped — needs the kids** |
+| Q2 | Maren tier-2 stock after Stoneroot | BUILDLOG v2.2.6 | v3.35.0 |
+| Q3 | hard landscape lock | BUILDLOG v2.2.6 | already done (manifest + title.js) |
+| Q4 | S3 Wild Woods | BUILDLOG v2.2.6 | v3.19 |
+
+Levels 5 and 6 (Stormreach Cliffs, the Sunken Vale) shipped after v3.34.0
+without entering this file. **Neither has had an audit pass of the kind that
+produced the table above**, and that is the largest unqueued thing in the
+project — see the v3.35.0 BUILDLOG entry.
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 
