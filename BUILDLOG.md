@@ -2954,3 +2954,125 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 — Maren's cart grows with the world (2026-08-09, overnight)
+
+Every FIX-PLAN item is shipped, so this run took the first unfinished entry from
+the newest QUEUED NEXT list (v2.2.6, line 681). Its four items, checked against
+the build: the economy/XP balance pass is a *balance* call and needs the kids;
+the hard landscape lock is long since done (`js/title.js` locks the orientation,
+`manifest.json` declares landscape, `index.html` has the rotate overlay); S3 Wild
+Woods shipped in v3.19. That leaves **Maren tier-2 stock after Stoneroot**.
+
+### The shelf was flat, and the ladder was a doc
+
+GAME-CONTRACT's region shipping checklist asks every region for a "shop tier",
+and the progression targets name the rungs (~60/90/150/250/400). `SHOP_STOCK`
+was a single flat list: **every weapon in the game was on the cart the first time
+a child walked up to it.** A good pot-smashing run through Ember Hollow — the
+contract budgets a region at ~120-160 shards — could buy the Long Spear before
+the first boss, and two regions of saving could buy the Boulder Hammer, which
+does 3 damage against enemies built for 1.
+
+`items.js` now carries a `SHOP_TIERS` table: a rung opens when the region that
+pays for it is FREE, never when the purse is fat. It counts from the front and
+stops at the first unfreed region — the same "everything up to here is done"
+semantics `WS.stage()` already uses, so the two systems read alike.
+
+| rung | opens when | stock | price band |
+|---|---|---|---|
+| 1 | from the start | Round Guard, Swift Fang, Ember Blade | 70–90 |
+| 2 | **Stoneroot is free** (`wardenDefeated`) | Long Spear, Tower Shield | 120–180 |
+| 3 | the Wild Woods (`sylvaDefeated`) | Moon Sword | 200 |
+| 4 | Frostpeak (`borealDefeated`) | Boulder Hammer | 300 |
+
+Measured against the contract's ~60/90/150/250/400: the bands are 70–90, 120–180,
+200, 300 — monotonic, and the verifier asserts every rung costs at least as much
+as the one below, so a later price edit that scrambles the ladder trips.
+
+Potions carry no tier. They are the one thing always on the shelf.
+
+### Judgement calls
+
+- **No new save field.** The tiers read the boss flags the map screen and the
+  fast-travel list already read (`state.flags.wardenDefeated` and friends), so
+  the additive-forever law holds for free — an old profile computes its rung
+  from what it already knows, and gear bought before the gating existed stays
+  owned, stays equipped, and does not reappear on the shelf. Asserted.
+- **An empty rung is a PROMISE, not an absence.** The game's whole language for
+  "come back later" is that you can SEE the locked thing — gates, mystery cards.
+  So the shelf carries a locked 📦 crate naming what Maren is waiting on ("New
+  stock once you free the Stoneroot Caverns") and never what is inside it. It
+  disappears at rung 4.
+- **Stopping at the first gap** rather than taking the highest satisfied flag.
+  In normal play the regions are strictly ordered — the map gates fast travel on
+  the previous region's completion line — so the two agree; the sequential
+  reading is the safer one if a save ever arrives out of order.
+- Prices, stock and the tier assignment are unchanged data in `js/items.js`
+  beside the registry they belong to; nothing here is a feel dial, so nothing
+  went into CONFIG.
+
+### Verification
+
+`tools/verify-shop.mjs` is new, and was written and confirmed FAILING (12 of its
+assertions red) before a line of the fix existed. It drives the real path — walks
+Kael to the mage and lets `main.js`'s own proximity trigger open the panel, then
+reads the cards a child would actually see — because a direct `showShop()` call
+would not prove the trigger still works. It covers both ways a gate like this
+rots: a rung that never opens, and a rung that opens early. It also buys through
+the real card handler (spear owned, 120 shards gone, item off the shelf) and
+replays an old profile that owns a rung-4 hammer with nothing freed.
+
+    sh tools/verify-all.sh verify-shop.mjs verify-den.mjs   →  passed 4, failed 0
+
+One thing the verifier needed that is worth recording: `main.js` arms
+`shopWasNear = true` on spawn so the panel cannot pop merely from landing next to
+the mage, and the trigger fires on the ENTERING edge. A test that teleports the
+player onto the shop spot therefore sees nothing at all. It has to step out of
+range and back in — which is the correct test anyway, since that is what a child
+does.
+
+### AWAITING dad's call
+
+- **The tier assignment itself.** Which weapon belongs on which rung is a
+  progression judgement. I mapped by existing price against the contract's
+  ladder, which is the smallest reversible reading — it changes no numbers, only
+  when each is offered. If the Ember Blade should wait for the Kiln, or the
+  Moon Sword should arrive with the Dark Wolf rather than with Sylva, that is one
+  line each in `SHOP_TIERS`.
+- **No Pip line when a rung opens.** A new crate on the cart is currently a quiet
+  discovery. A narration beat ("Maren's got new things, Kael!") on the first
+  visit after a region falls would be cheap and is probably right, but it is a
+  narration-script change and belongs with the kids' next session.
+- **Branch.** The overnight instructions say to work on `overnight`, cut from
+  main; this session's harness designates `claude/ecstatic-hawking-0dqmn4` and
+  forbids pushing anywhere else. Both agree on the one thing that matters —
+  never main. I pushed to the harness branch, which was cut from main at
+  `1f91829` and is otherwise identical to what `overnight` would have been. If
+  `overnight` is wanted, this is one cherry-pick.
+
+### Noticed, not touched (one item per run)
+
+**BUILDLOG stops at v3.34.0; `sw.js` is at v3.41.0.** Stormreach (`js/level5.js`)
+and the Sunken Vale (`js/level6.js`) — two whole regions, twenty rooms, the Tide
+Wolf and Meri — shipped across v3.35–v3.41 with no BUILDLOG entries, and
+FIX-PLAN's status table has not been revisited since. Nothing is broken, but the
+repo is the only record and right now it is missing two regions of history.
+Worth a doc-truth pass like the 2026-07-31 one.
+
+### QUEUED NEXT (in order)
+
+1. **BUILDLOG/FIX-PLAN doc-truth pass for v3.35–v3.41** — the two missing regions
+   above, so the next session inherits a true record.
+2. **Frostpeak's hand-built rooms never call `flattenStatic()`** — `f2` 99, `f4`
+   97, `f3` 96 draw calls, against a ceiling of 100. One line per room plus the
+   `keepLoose` audit `tools/verify-den.mjs` was written for; worth 15-18 calls
+   each. Logged in FIX-PLAN B2 as the thing worth doing instead of LOD.
+3. **Shop tiers for Stormreach and the Sunken Vale** — `SHOP_TIERS` stops at
+   Frostpeak because rung 4 is the last gear in the registry. Two regions now
+   ship past it with no shop tier, which the region checklist asks for. Needs new
+   gear, so it needs an asset pass first (CC0 only).
+4. **A Pip line when a rung opens** (above) — with the kids.
+5. **The economy/XP balance pass** — shard income vs the ladder, perk tiers past
+   level 12. Needs the kids; the contract's "≥3 unmaxed choices to level 21" is
+   the measurable half and could be checked headlessly first.

@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -115,7 +115,7 @@ export class Menus {
 
     const grid = document.createElement('div');
     grid.className = 'grid';
-    for (const s of SHOP_STOCK) {
+    for (const s of shopStock()) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
       const afford = state.shards >= s.price;
@@ -143,6 +143,19 @@ export class Menus {
         if (this.onHudChanged) this.onHudChanged();
       });
       grid.appendChild(card);
+    }
+    // An empty rung is a PROMISE, not an absence. The game's whole language
+    // for "come back later" is that you can see the locked thing (gates,
+    // mystery cards), so the shelf shows the crate Maren has not opened yet
+    // and names what she is waiting on — never what is inside it.
+    const next = nextShopTier();
+    if (next) {
+      const crate = document.createElement('div');
+      crate.className = 'item-card ui cant locked';
+      crate.innerHTML = `<div class="ic">📦</div><div class="nm">Maren’s next crate</div>
+        <div>New stock once you free ${next.place}.</div>
+        <div class="price">🔒</div>`;
+      grid.appendChild(crate);
     }
     el.appendChild(grid);
     el.appendChild(this._closeBtn('shop-menu'));

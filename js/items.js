@@ -77,14 +77,64 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
-// Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+// ---------------------------------------------------------------------------
+// THE SHOP LADDER — Maren's cart is restocked by the WORLD getting better.
+//
+// GAME-CONTRACT's region shipping checklist asks every region for a "shop
+// tier", and the progression targets name the rungs (~60/90/150/250/400).
+// Until now the shelf was flat: every weapon in the game was on it the first
+// time a child walked up to the cart, so a lucky pot-smashing run in Ember
+// Hollow could buy the Boulder Hammer before the first boss. The ladder
+// existed only in the doc.
+//
+// A rung opens when the region that pays for it is FREE — not when the purse
+// is fat. Each rung names the flag that region's boss sets, and the place a
+// child would recognise, so the locked crate can say what it is waiting for
+// without spoiling what is inside.
+//
+// Counted from the FRONT and stopping at the first unfreed region, exactly
+// like `WS.stage()`: a tier means "everything up to here is done".
+export const SHOP_TIERS = [
+  { tier: 1, flag: null,             place: null },
+  { tier: 2, flag: 'wardenDefeated', place: 'the Stoneroot Caverns' },
+  { tier: 3, flag: 'sylvaDefeated',  place: 'the Wild Woods' },
+  { tier: 4, flag: 'borealDefeated', place: 'Frostpeak' },
+];
+
+// Shop stock (the Den). Potions and gear; sold-out gear vanishes. Potions
+// carry no tier — they are the one thing always on the shelf.
 export const SHOP_STOCK = [
   { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 3 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 4 },
 ];
+
+// How many rungs are open. Reads the same boss flags the map screen and the
+// fast-travel list already read, so nothing new has to be saved — the
+// additive-forever law holds for free.
+export function shopTier() {
+  let n = 0;
+  for (const t of SHOP_TIERS) {
+    if (t.flag && !state.flags[t.flag]) break;
+    n = t.tier;
+  }
+  return n;
+}
+
+// The next rung, or null once the shelf is full. This is what the locked
+// crate on the shelf promises.
+export function nextShopTier() {
+  const open = shopTier();
+  return SHOP_TIERS.find((t) => t.tier > open) || null;
+}
+
+// What a child actually sees on the shelf today.
+export function shopStock() {
+  const open = shopTier();
+  return SHOP_STOCK.filter((s) => s.kind === 'potion' || s.tier <= open);
+}

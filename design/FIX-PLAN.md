@@ -37,6 +37,43 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+## STATUS — items drawn from BUILDLOG's QUEUED NEXT lists
+
+With the audit's own table closed, later runs take the first unfinished entry
+from the newest QUEUED NEXT list in BUILDLOG.md. Those land here so the plan
+stays the single status page.
+
+| | item | source | shipped |
+|---|---|---|---|
+| Q1 | Maren tier-2 stock after Stoneroot | BUILDLOG v2.2.6 | v3.42.0 |
+| Q2 | economy/XP balance pass | BUILDLOG v2.2.6 | deferred — needs the kids |
+| Q3 | hard landscape lock | BUILDLOG v2.2.6 | already shipped (title.js / manifest) |
+| Q4 | S3 Wild Woods | BUILDLOG v2.2.6 | v3.19 |
+
+### Q1 · The shop shelf was flat — the region ladder existed only in the doc
+**✅ DONE (v3.42.0).** GAME-CONTRACT's region checklist asks each region for a
+"shop tier" and the progression targets name the rungs (~60/90/150/250/400), but
+`SHOP_STOCK` was one flat list: every weapon in the game was on Maren's cart the
+first time a child walked up to it, so a good run through Ember Hollow could buy
+the Long Spear before the first boss.
+
+`SHOP_TIERS` in `js/items.js` now opens a rung when the region that pays for it
+is free — rung 2 on `wardenDefeated`, exactly as the queue asked — counted from
+the front and stopping at the first unfreed region, the same semantics as
+`WS.stage()`. Measured bands: **70–90 / 120–180 / 200 / 300**, monotonic, and
+`tools/verify-shop.mjs` asserts each rung costs at least as much as the one
+below. No new save field: the tiers read boss flags the map screen already reads,
+so old profiles keep gear they bought before the gating existed (asserted).
+
+The empty rung shows as a locked 📦 crate naming what Maren is waiting on — the
+game's existing "come back later" language — never what is inside it.
+
+**Awaiting dad:** which weapon belongs on which rung is a progression judgement;
+it was mapped by existing price against the contract ladder, which is one line
+each in `SHOP_TIERS` to change.
+
+---
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 
