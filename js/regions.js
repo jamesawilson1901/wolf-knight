@@ -183,8 +183,31 @@ export const REGIONS = {
   },
   sunkenvale: { name: 'Sunken Vale', built: false, spirit: 'Meri', grants: 'tide_wolf', gates: [] },
   shadowcourt: {
-    name: 'The Shadow Court', built: false, spirit: 'Luna (and Grimm)', grants: 'moonlight',
+    name: 'The Shadow Court', built: true, spirit: 'Luna (and Grimm)', grants: 'moonlight',
+    grantAt: "xsh (Luna's Light, the second room)",
+    threshold: "ddp north — the way out of Meri's Deep, once the vale drains",
+    rooms: ['x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3',
+      'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'],
+    beats: {
+      approach: 'ddp → x1, out of the drowned vale and up to his house',
+      lockVisible: 'a watcher in the first room, standing over a gold chest, unpassable and harmless',
+      ki: "xsh — Luna's own light, and one watcher between it and the door",
+      sho: 'xh THE GREAT HALL — two watchers pacing, four wing doors to reach past them',
+      ten: 'xm2 THE STANDING MIRRORS — the mirrors are shadow, and shadow does not stop a ghost',
+      boss: 'xth Shadow-Grimm — the Shadowgrip again, enormous, armoured against whatever hit him last',
+      grant30s: 'the watcher in the shrine room itself, three steps from the light that opens it',
+      restoration: 'he is FREED, not killed; the shadow goes and Grimm is left, old and tired and himself',
+    },
     gates: [],
+    restoration: {
+      flag: 'restored',
+      beats: ['the shadow lifts off the court', 'Grimm sits on his own seat again',
+        "Luna's moonlight comes home", 'the Den is full', 'credits'],
+      durationS: 27, skippable: false,
+    },
+    ripple: { room: 'den', what: 'every rescued soul is in the Den at once' },
+    scar: { room: 'xth', what: 'the throne is never repaired — he does not want it' },
+    denArrival: 'the ending itself: everyone, at once, by the fire',
     // Moonlight = the GHOST WOLF (user-approved): white → translucent;
     // enemies stay unaware until Kael attacks, breaks something, or bumps
     // one (contact works both ways). The wings are stealth levels built on

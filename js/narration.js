@@ -19,6 +19,7 @@ const VOICES = {
   boreal: { rate: 0.8, pitch: 0.75, label: 'Boreal' }, // slow, vast, wintry
   aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
   meri: { rate: 0.78, pitch: 0.95, label: 'Meri' },     // slow and low, like deep water
+  kael: { rate: 0.95, pitch: 1.0, label: 'Kael' },      // he speaks once, at the end
 };
 
 export const LINES = {
@@ -206,6 +207,26 @@ export const LINES = {
   meri_defeat: { voice: 'meri', text: 'The water lets go. Look — the town is standing up again.' },
   vale_restore_1: { voice: 'pip', text: 'It is draining! There were streets down there all along!' },
   luna_dream_6: { voice: 'luna', text: 'Six lights. Only the last one now — and it is mine. Come and find me, Kael. Come and find Grimm.' },
+
+  // --- THE SHADOW COURT (region 7), and the end of the story.
+  court_arrive: { voice: 'pip', text: 'This is his house, Kael. Stay close to me. Stay very close.' },
+  court_watcher: { voice: 'pip', text: 'It is watching. It will not move while it can see us.' },
+  ghost_grant: { voice: 'luna', text: 'Take my own light, Kael. Be a ghost. They cannot chase what they cannot see.' },
+  ghost_howto: { voice: 'pip', text: 'Press the star and go quiet! Walk right past them!' },
+  court_wings: { voice: 'pip', text: 'Four doors, four locks. Every wolf you ever were opens one of them.' },
+  court_relic: { voice: 'pip', text: 'A relic! Look up — one of the lights over the stair is on now.' },
+  court_mirrors: { voice: 'pip', text: 'The mirrors are made of shadow… and you are a shadow too. Go through!' },
+  grimm_intro: { voice: 'grimm', text: 'You came. Little knight, wearing my strength like a borrowed coat.' },
+  grimm_duel: { voice: 'pip', text: 'He is a WOLF, Kael — the biggest one. You know this fight. You have always known it.' },
+  grimm_adapt: { voice: 'pip', text: 'It stopped hurting him! Be a different wolf — quick!' },
+
+  // THE ENDING. Freed, not destroyed — the bible is explicit, and so is this.
+  end_1: { voice: 'grimm', text: 'Ah… it is quiet. I had forgotten quiet.' },
+  end_2: { voice: 'luna', text: 'He was the first of us, Kael. The shadow took his heart before it took anything else.' },
+  end_3: { voice: 'grimm', text: 'Keep them. Every one. They were always going to a kinder bearer than me.' },
+  end_4: { voice: 'kael', text: 'Come home with us.' },
+  end_5: { voice: 'pip', text: 'The Den is FULL, Kael. Everyone we found. Everyone.' },
+  end_6: { voice: 'luna', text: 'Seven lights. Thank you, Wolf Knight. Go and play — the world is yours again.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },

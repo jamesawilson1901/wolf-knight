@@ -1279,6 +1279,10 @@ async function loadRoom(id, entry, handoff = null) {
   if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
   if (id === 'd1a') narration.say('vale_arrive');
   if (id === 'ddp' && world.boss && !world.boss.defeated) narration.say('meri_intro');
+  if (id === 'x1') narration.say('court_arrive');
+  if (id === 'xh') narration.say('court_wings');
+  if (id === 'xm2') narration.say('court_mirrors');
+  if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
   await fadeTo(0, ms);
   transitioning = false;
@@ -1403,6 +1407,31 @@ function triggerSurge() {
   if (state.form !== 'dark_wolf') return false;
   return player.startSurge(effects, world);
 }
+// THE CREDITS. The game has never had an ending, so it has never had these
+// either. Icons and one short line each, on the same no-reading rule as the
+// rest of the game: the names are for dad, the pictures are for the kids, and
+// tapping anywhere puts it away.
+function rollCredits() {
+  if (document.getElementById('credits')) return;
+  const el = document.createElement('div');
+  el.id = 'credits';
+  el.innerHTML = `
+    <div class="cr-inner">
+      <div class="cr-moon">🌕</div>
+      <div class="cr-title">WOLF KNIGHT</div>
+      <div class="cr-line">🐺 Kael &middot; 🦊 Pip &middot; 🌙 Luna</div>
+      <div class="cr-line">🔥 Cinder &middot; ⛰️ Petra &middot; 🌿 Sylva &middot; ❄️ Boreal</div>
+      <div class="cr-line">🌩️ Aria &middot; 🌊 Meri &middot; 🖤 Grimm</div>
+      <div class="cr-seven">🌕🌕🌕🌕🌕🌕🌕</div>
+      <div class="cr-small">seven lights, all of them home</div>
+      <div class="cr-tap">👆</div>
+    </div>`;
+  document.body.appendChild(el);
+  const close = () => { el.remove(); };
+  el.addEventListener('pointerdown', close);
+  setTimeout(() => { if (document.getElementById('credits')) close(); }, 45000);
+}
+
 let titleScene = null;
 let menuPaused = false;
 
@@ -1703,6 +1732,18 @@ async function start() {
               WS.set('storm', 'restored');
               narration.say('storm_restore_1');
               setTimeout(() => narration.say('luna_dream_5'), 9000);
+            } else if (state.room === 'xth') {
+              // THE END OF THE STORY. He is FREED, not destroyed — the shadow
+              // goes and Grimm is left, old and tired and himself. The last
+              // thing the game shows is the Den, full.
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              WS.set('court', 'restored');
+              narration.say('end_1');
+              setTimeout(() => narration.say('end_2'), 5000);
+              setTimeout(() => narration.say('end_3'), 11000);
+              setTimeout(() => narration.say('end_4'), 16000);
+              setTimeout(() => { narration.say('end_5'); rollCredits(); }, 21000);
+              setTimeout(() => narration.say('end_6'), 27000);
             } else if (state.room === 'ddp') {
               // MERI FREED — the vale drains and the drowned town stands up
               audio.playMusic('victory', { loop: false, then: 'den' });

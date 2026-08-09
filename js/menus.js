@@ -198,6 +198,7 @@ export class Menus {
       // moonstone can carry you back to a place you have already reached.
       ...(state.flags.borealDefeated ? [{ room: 's1a', name: 'Stormreach Cliffs', icon: '🌩️' }] : []),
       ...(state.flags.ariaDefeated ? [{ room: 'd1a', name: 'The Sunken Vale', icon: '🌊' }] : []),
+      ...(state.flags.meriDefeated ? [{ room: 'x1', name: 'The Shadow Court', icon: '🌑' }] : []),
     ];
     for (const s of spots) {
       const d = document.createElement('div');
