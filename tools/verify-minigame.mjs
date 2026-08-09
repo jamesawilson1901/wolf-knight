@@ -190,6 +190,11 @@ check('the best is stored in THIS profile', (res.stored.fetch || {}).best > 0, r
 // §6: an empty reward pool pays a bonus with its own flourish, never a silent
 // nothing that reads as a reward which failed to arrive
 check('an empty reward pool still pays, and says so differently', res.bonus === true);
+// ...and it pays in SCORE. §2: every reward is cosmetic. Shards buy potions and
+// upgrades, so a mini game that drops them is a mini game a child has to grind.
+const dropped = await page.evaluate(() => (window.__game.world.drops || []).length);
+check('a round pays no shards — mini games never pay the shop', dropped === 0,
+  { drops: dropped });
 
 // EVERY CONTROL IS ACTUALLY ON THE SCREEN. The first results screen was laid
 // out as one tall column: on a 740x360 phone held sideways the bone was cut off
@@ -226,15 +231,6 @@ check('the world HUD comes back on the way out', hudBack.length === 0, { stillHi
 // Ten rounds. A leak of a single object per round is invisible once.
 const leak = await page.evaluate(async () => {
   const g = window.__game;
-  // Shards dropped by the round above are still lying on the floor and get
-  // collected as the player walks the loop below — which reads as NEGATIVE
-  // residue and has nothing to do with teardown. Clear them first so the count
-  // measures what it claims to measure.
-  for (const d of [...(g.world.drops || [])]) {
-    if (d.mesh && d.mesh.parent) d.mesh.parent.remove(d.mesh);
-    if (d.root && d.root.parent) d.root.parent.remove(d.root);
-  }
-  g.world.drops = [];
   // step off the ring first: it re-arms only when you leave it, which is the
   // whole reason exit works at all. A child walks away and comes back; so does
   // this loop.

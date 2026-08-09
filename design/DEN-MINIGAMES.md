@@ -288,6 +288,23 @@ instruction overrides this document.
    the existing frame by construction. Same outcome, no camera exception, and
    the child is never moved.
 
+### Three smaller calls, for the record
+
+- **The payout is score, never shards.** §6 says an empty pool pays "a small
+  score bonus"; §2 says every reward is cosmetic. Shards buy potions and
+  upgrades, so a round that dropped them would be a round a child could grind
+  for progress. The bonus goes on the score and shows as `✨ +N`, and a verifier
+  asserts a round drops nothing on the floor.
+- **There is no separate pause.** §3.2 lists "pause and exit". The world is
+  already frozen for the whole round — nothing can hurt anyone, nothing moves —
+  and exit is one tap with no confirmation, so a second modal would be a control
+  that does nothing a child can perceive. If a kid test says otherwise, it is a
+  small thing to add.
+- **The exit lives on the play HUD; the results screen has 🏡 instead.** Both are
+  one tap, both are over the 44px floor, and both are measured against the
+  viewport by the verifier — the first results layout put both of its buttons
+  half off the bottom of a phone held sideways and every other assertion passed.
+
 ### Left alone on purpose
 
 - **The three existing den games** (target, shuffle, paw) are exactly what §3

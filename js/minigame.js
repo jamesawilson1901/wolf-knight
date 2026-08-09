@@ -46,7 +46,6 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { spawnShards } from './loot.js';
 import { bumpCounter } from './progress.js';
 
 // design/METRICS.md, measured: the camera shows 22.2u across at Kael, 12.9u
@@ -134,11 +133,8 @@ export function makeHarness() {
     el('mg-score').textContent = String(score);
   };
 
-  // ONE TAP, ANYWHERE. §2: every game is winnable by mashing, so the catch /
-  // act input is the whole screen rather than a button a child has to find.
-  // The exit sits above this layer and stops the event itself.
-  // starting the round is one thing, so it is written once and called from both
-  // places that can start it — the tap and the demo timing out. The first
+  // Starting a round is one thing, so it is written once and called from both
+  // places that can start one — the tap, and the demo timing out. The first
   // version skipped the demo on tap without taking the demo CARD down, so a
   // child who tapped straight in played the whole round behind a giant bone.
   const beginPlay = () => {
@@ -148,6 +144,9 @@ export function makeHarness() {
     if (live.start) live.start();
   };
 
+  // ONE TAP, ANYWHERE. §2: every game is winnable by mashing, so the catch /
+  // act input is the whole screen rather than a button a child has to find.
+  // The exit sits above this layer and stops the event itself.
   const onTap = (e) => {
     if (phase === 'demo') { beginPlay(); return; }
     if (phase !== 'play' || !live || !live.tap) return;
@@ -158,18 +157,21 @@ export function makeHarness() {
 
   const finish = () => {
     const r = (live.end && live.end()) || { score };
-    const total = r.score !== undefined ? r.score : score;
+    const raw = r.score !== undefined ? r.score : score;
     const rec = records()[def.id] || (records()[def.id] = { best: 0, won: [], plays: 0 });
     rec.plays = (rec.plays || 0) + 1;
-    const isNewBest = total > (rec.best || 0);
-    if (isNewBest) rec.best = total;
 
     const rewardId = drawReward(def.id, def.rewards, ctx.rand);
     if (rewardId) { rec.won = [...(rec.won || []), rewardId]; }
 
-    // shards are pocket money, not the point — the score is the point
-    const shards = rewardId ? 0 : Math.min(10, 2 + Math.floor(total / 3));
-    if (shards) spawnShards(ctx.world, ctx.player.root.position.x, ctx.player.root.position.z, shards);
+    // §6: when the pool is empty the payout is a SCORE BONUS. Not an item, and
+    // pointedly not shards — §2 is that every reward is cosmetic, and shards buy
+    // potions and upgrades. A mini game that pays the shop is a mini game a
+    // child has to grind, and a stuck five-year-old must never be a stuck game.
+    const bonus = rewardId ? 0 : Math.min(10, 2 + Math.floor(raw / 3));
+    const total = raw + bonus;
+    const isNewBest = total > (rec.best || 0);
+    if (isNewBest) rec.best = total;
     bumpCounter('minigames');
 
     phase = 'results';
@@ -182,8 +184,8 @@ export function makeHarness() {
     el('mg-r-reward').style.display = rewardId ? 'block' : 'none';
     // §6: an empty pool pays a bonus and says so DIFFERENTLY, so it never reads
     // as a reward that failed to arrive
-    el('mg-r-bonus').style.display = (!rewardId && shards) ? 'block' : 'none';
-    el('mg-r-bonus').textContent = `✨ +${shards}`;
+    el('mg-r-bonus').style.display = bonus ? 'block' : 'none';
+    el('mg-r-bonus').textContent = `✨ +${bonus}`;
     paintBands();
     audio.play(isNewBest ? 'chest-open' : 'ui-click', { volume: 0.8 });
   };
