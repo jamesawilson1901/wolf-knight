@@ -23,6 +23,7 @@ import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
 import { LEVEL2_ROOMS, loadCaveKit } from './level2.js';
 import { LEVEL3_ROOMS, loadWoodKit } from './level3.js';
+import { LEVEL5_ROOMS, loadSkyKit } from './level5.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -3855,11 +3856,16 @@ async function buildF4(scene) {
 async function buildF5(scene) {
   const world = new World(scene);
   await loadSnowKit();
+  // THE WAY ON. Once Boreal is calmed the summit's north side opens: the cliff
+  // path down off the mountain and out onto the Stormreach sea cliffs.
+  const onward = !!state.flags.borealDefeated;
   buildSnowShell(world, 18, 18, [
     { side: 's', from: -1.3, to: 1.3 }, // back to the Windscour
+    ...(onward ? [{ side: 'n', from: -1.3, to: 1.3 }] : []),
   ]);
   world.spawn = { x: 0, z: 7.2, angle: Math.PI };
   world.addDoor(-1.3, 1.3, 8.85, 10.2, 'f4', { x: 0, z: -4.9, angle: 0 });
+  if (onward) world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
 
   // Standing stones round the RIM only — cover to break a dive line, never a
   // maze. They are pushed right out to the edges on purpose: a dive that ends
@@ -3907,7 +3913,7 @@ async function buildF5(scene) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);

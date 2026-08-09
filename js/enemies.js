@@ -166,6 +166,43 @@ export const VARIANTS = {
       if (m.color) { m.color.setHex(0xbfe8ff); m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 0.8; }
     },
   },
+  // --- STORMREACH (region 5): creatures of the air, and the first family in
+  // the game that does NOT fear fire. Four regions of "burn it" was becoming
+  // the only answer a child ever needed; these fear EARTH — the stomp drops
+  // them out of the air, and it is a tool the kids have owned since region 2.
+  gale: {
+    label: 'Gale Hound',
+    hp: 4.5, weakness: 'earth', chargeSpeed: 11.0, puffTint: 0xdfe9f2, dropChance: 0.5,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 1.7; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x6f7a8c); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0xb8c2d4); }
+    },
+  },
+  eldergale: {
+    label: 'Storm Hound',
+    scale: 1.32, hp: 7, weakness: 'earth', chargeSpeed: 12.2, dropChance: 1, puffTint: 0xdfe9f2,
+    tint: (m) => {
+      if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 2.1; }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x555f72); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x9fabc0); }
+    },
+  },
+  stormbat: {
+    label: 'Storm Bat',
+    hp: 2, weakness: 'earth', puffTint: 0xdfe9f2,
+    tint: (m) => {
+      if (m.color) { m.color.setHex(0xa8b4cc); m.emissive && m.emissive.setHex(0xc9d4ff); m.emissiveIntensity = 0.7; }
+    },
+  },
+  sparkblob: {
+    label: 'Spark Blob',
+    hp: 3.5, weakness: 'earth', puffTint: 0xfff4b0,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 1.8; }
+      else if (m.color) { m.color.setHex(0xb9c4dc); m.emissive && m.emissive.setHex(0x8a9ad0); m.emissiveIntensity = 0.45; }
+    },
+  },
   wisp: {
     label: 'Wisp Moth',
     hp: 1.5, weakness: 'fire', puffTint: 0xb8ffc8,

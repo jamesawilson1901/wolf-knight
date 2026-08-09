@@ -1285,6 +1285,7 @@ function regionOf(id) {
   if (r[0] === 'v') return 'stoneroot';
   if (r[0] === 't') return 'wildwoods';
   if (r[0] === 'f') return 'frostpeak';
+  if (r[0] === 's') return 'stormreach';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';

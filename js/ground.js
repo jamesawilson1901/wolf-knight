@@ -135,6 +135,15 @@ export const GROUND_STYLES = {
                // a lawn in a photograph, not a glade in a wood.
                base: 0x4f7a3c },
   snowfield: { pattern: 'snow',  wear: 0.30, joint: 0.20, path: 1.10, grain: 0.60 },
+  // --- Stormreach: sea-cliff rock, scoured barer the higher you climb -------
+  // One gradient, bottom to top, and the numbers carry it rather than the
+  // colours alone: `wear` climbs and `grain` falls as the wind gets at it, so
+  // the Landing's wet broken slate becomes the Open Sky's bare swept stone.
+  landing:   { pattern: 'cobble',    wear: 0.62, joint: 0.55, path: 1.12, grain: 0.95, base: 0x4a5560 },
+  galestair: { pattern: 'cobble',    wear: 0.78, joint: 0.48, path: 1.18, grain: 0.80, base: 0x5b6470 },
+  thunder:   { pattern: 'flagstone', wear: 0.86, joint: 0.44, path: 1.24, grain: 0.62, base: 0x6b6e78 },
+  opensky:   { pattern: 'flagstone', wear: 0.94, joint: 0.36, path: 1.28, grain: 0.48, base: 0x8a8378 },
+  crown:     { pattern: 'flagstone', wear: 0.70, joint: 0.40, path: 1.20, grain: 0.55, base: 0x9a9080 },
 };
 
 const DEFAULT_STYLE = { pattern: 'earth', wear: 0.55, joint: 0.45, path: 1.15, grain: 0.80 };
