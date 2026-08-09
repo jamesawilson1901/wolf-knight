@@ -551,9 +551,15 @@ export async function buildS1b(scene) {
   // word of explanation — and without being stopped from going on.
   wallRun(world, 4.5, -11, 4.5, -5.5, D);
   wallRun(world, 13.5, -11, 13.5, -5.5, D);
+  // 3.8 DEEP, NOT 5.2. A gale is crossed by dashing through it, and the dash
+  // covers 5.2 units — so a lane 5.2 deep is a knife edge: Kael lands exactly
+  // on its far lip and the wind blows him straight back out. It looked like the
+  // dash had stopped working. Every gale is authored at most 4.2 across the way
+  // a child crosses it, which leaves a clear unit of margin, and
+  // tools/verify-storm.mjs now measures that rather than trusting it.
   galePromise(world, {
-    x: 9, z: -6.5, w: 8.4, d: 5.2, dir: 's', id: 's_gale_stair',
-    reward: { x: 9, z: -9.4, id: 's5_s1b_gale', loot: { shards: 24 } },
+    x: 9, z: -6.5, w: 8.4, d: 3.8, dir: 's', id: 's_gale_stair',
+    reward: { x: 9, z: -9.6, id: 's5_s1b_gale', loot: { shards: 24 } },
   });
   world.markers.galePromise = { x: 9, z: -6.5 };
 
@@ -716,7 +722,7 @@ export async function buildSsh(scene) {
   // GRANT + 30s: a second gale, and the chest is visible through it from the
   // shrine itself.
   wallRun(world, 4.5, -8, 4.5, -3.5, D);
-  galeLane(world, { x: 7.2, z: -5.6, w: 5.0, d: 4.6, dir: 'e', strength: 'gale', id: 's_shrine_pay' });
+  galeLane(world, { x: 7.2, z: -5.6, w: 4.0, d: 4.6, dir: 'e', strength: 'gale', id: 's_shrine_pay' });
   visibleReward(world, 8.6, -5.6, 's5_shrine', { shards: 30, heartPiece: 1 });
 
   if (!GREY()) {
@@ -884,7 +890,7 @@ export async function buildSvn(scene) {
   const seats = [{ x: -6, z: 0, dir: 'n' }, { x: 1, z: 0, dir: 's' }, { x: 8, z: 0, dir: 'n' }];
   world.markers.vaneSpots = seats.map((s) => ({ x: s.x, z: s.z + 3.4 }));
   for (const s of seats) {
-    const lane = galeLane(world, { x: s.x, z: 0, w: 5.0, d: 15, dir: s.dir, strength: 'gale' });
+    const lane = galeLane(world, { x: s.x, z: 0, w: 4.2, d: 15, dir: s.dir, strength: 'gale', vaned: true });
     vane(world, s.x, s.z + 3.4, lane, D);
   }
 
@@ -983,7 +989,7 @@ export async function buildS4b(scene) {
   world.markers.windGate = { x: -10, z: 0 };
 
   for (const s of [{ x: -10, z: -5.0 }, { x: -10, z: 5.0 }]) {
-    const lane = galeLane(world, { x: -10, z: s.z, w: 7.0, d: 8.5, dir: s.z < 0 ? 's' : 'n', strength: 'gale' });
+    const lane = galeLane(world, { x: -10, z: s.z, w: 7.0, d: 8.5, dir: s.z < 0 ? 's' : 'n', strength: 'gale', vaned: true });
     vane(world, s.x, s.z, lane, D);
   }
   if (!GREY()) {

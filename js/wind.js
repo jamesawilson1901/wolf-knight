@@ -85,11 +85,14 @@ function streaks() {
 // every lane in a room is merged into ONE mesh by buildWindField, because the
 // draw-call ceiling is 125 and a dressed island already spends 111 of it.
 // ---------------------------------------------------------------------------
-export function galeLane(world, { x, z, w, d, dir = 'n', strength = 'gale', id = null }) {
+// `vaned` marks a lane a WEATHERVANE controls. Those are not meant to be dashed
+// through — they are turned aside — so they are exempt from the crossing rule
+// that every other gale obeys (tools/verify-storm.mjs).
+export function galeLane(world, { x, z, w, d, dir = 'n', strength = 'gale', id = null, vaned = false }) {
   const p = PUSH[dir] || PUSH.n;
   const v = WIND[strength] || WIND.gale;
   const lane = {
-    id, dir, strength,
+    id, dir, strength, vaned,
     minX: x - w / 2, maxX: x + w / 2,
     minZ: z - d / 2, maxZ: z + d / 2,
     px: p.x * v, pz: p.z * v,

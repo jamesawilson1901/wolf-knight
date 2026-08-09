@@ -80,8 +80,8 @@ check('the test can drive the real stick', wired === true);
 check('the Landing builds', await go('s1b'));
 
 console.log('\n── 1. the three strengths do what they say ───────────');
-// s1b's gale sits at x 9, z -6.5, pushing SOUTH (+z). Walking north INTO it
-// must lose ground; walking north outside it must gain.
+// s1b's gale sits at x 9, z -6.5, 3.8 deep, pushing SOUTH (+z). Walking north
+// INTO it must lose ground; walking north outside it must gain.
 // The assertion is the SIGN, not the distance. Under SwiftShader the frame
 // rate is a fraction of a phone's, so the metres walked in 1.6 seconds of
 // wall-clock are not a number worth asserting on — but "did he end up further
@@ -90,7 +90,10 @@ console.log('\n── 1. the three strengths do what they say ──────
 const clear = await walk(0, -1, 1.6, { x: -2, z: 4 });
 check('walking north on open ground gains ground', clear.dz < -1.5, clear);
 
-const intoGale = await walk(0, -1, 1.6, { x: 9, z: -4.6 });
+// -5.4 is INSIDE the lane, which now spans z -8.4 to -4.6. It used to start at
+// -4.6 exactly, which was inside the old 5.2-deep lane and is on the lip of the
+// 3.8-deep one — a test standing on an edge is a test that will flip on you.
+const intoGale = await walk(0, -1, 1.6, { x: 9, z: -5.4 });
 check('walking north INTO a gale loses ground — it is a lock, not a slope',
   intoGale.dz > 0, intoGale);
 check('...and the difference between them is the whole region',
@@ -103,24 +106,33 @@ const dashed = await page.evaluate(async () => {
   g.player.setForm('storm_wolf', { silent: true });
   g.player.root.position.set(9, 0, -3.6);
   g.player.root.rotation.y = Math.PI;      // facing north (-z)
-  // START FROM A CLEAN PLAYER. The step before this one walks Kael into the
-  // gale for 1.6 seconds, and whatever that leaves on him — a movement lock, a
-  // half-finished drive — belongs to that test and not this one. Without this
-  // the dash fired and travelled a quarter of a unit, which read as "the dash
-  // no longer crosses a gale" when a direct probe showed it crossing fine.
+  // START FROM A CLEAN PLAYER AND AN UNBLOCKED WORLD.
+  //
+  // Walking Kael up to the gale in the step before this one puts him next to a
+  // promise gate, which fires a story line — and a blocking line FREEZES THE
+  // WORLD: main.js returns before player.update while it plays. So the dash
+  // fired, reported success, and then sat still for forty frames because
+  // nothing was ticking it. It read exactly like "the dash no longer crosses a
+  // gale", and a direct probe in a fresh room crossed it every time.
+  //
+  // Any test that walks a child near a promise gate has to clear this.
   g.player.specialCooldown = 0;
   g.player.lockTime = 0;
   g.player._dash = null;
   g.player._roll = null;
   g.player._vel.x = 0; g.player._vel.z = 0;
+  g.narration.blocking = false;
   const z0 = g.player.root.position.z;
   const fired = g.player.trySpecial(g.effects, g.world);
   for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
   return { fired, z0: +z0.toFixed(2), z1: +g.player.root.position.z.toFixed(2) };
 });
 check('the thunder-dash fires as the Storm Wolf', dashed.fired === true, dashed);
-check('and it carries Kael clean through the gale',
-  dashed.z1 < dashed.z0 - 3.0, dashed);
+// CLEAN THROUGH means OUT THE FAR SIDE, and it is measured at the end rather
+// than at the furthest point on purpose: landing inside a gale is not crossing
+// it. The lane's far lip is at z -8.4, so anything short of that is Kael being
+// blown back where he came from, which is exactly what the wind is for.
+check('and it carries Kael clean through the gale', dashed.z1 < -8.4, dashed);
 
 console.log('\n── 3. no other form can cross ────────────────────────');
 const knightTry = await page.evaluate(async () => {
@@ -132,6 +144,7 @@ const knightTry = await page.evaluate(async () => {
   g.player.lockTime = 0;
   g.player._dash = null;
   g.player._vel.x = 0; g.player._vel.z = 0;
+  g.narration.blocking = false;
   const z0 = g.player.root.position.z;
   g.player.trySpecial(g.effects, g.world);
   for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
@@ -180,6 +193,28 @@ const solved = await page.evaluate(async () => {
     lanes: g.world.galeLanes.map((l) => l.dir) };
 });
 check('turning all three off the line opens the way', solved.solved === true, solved);
+
+console.log('\n── 5b. EVERY gale is crossable, in every room ────────');
+// The rule that failure taught: a gale must be at most 4.2 units across its
+// NARROW axis, because the dash covers 5.2 and landing on the far lip is not
+// crossing. The narrow axis is the right measure — a wall of wind is always cut
+// through the short way, and a lane long enough to walk along is a lane you go
+// round rather than into.
+//
+// Vane-driven lanes are exempt and say so in the data: those are not dashed
+// through, they are turned aside, which is the whole point of the puzzle room
+// and of the wind gate.
+const tooDeep = [];
+for (const id of ['s1a', 's1b', 's2a', 's2b', 'ssh', 'sc1', 'sc2', 'sc3', 'sc4',
+  's3a', 's3b', 'svn', 's4a', 's4b', 'ssA']) {
+  if (!(await go(id))) { tooDeep.push(id + ':unbuildable'); continue; }
+  const bad = await page.evaluate(() => window.__game.world.galeLanes
+    .filter((l) => l.strength === 'gale' && !l.vaned)
+    .map((l) => ({ id: l.id, dir: l.dir, cross: +Math.min(l.w, l.d).toFixed(1) }))
+    .filter((l) => l.cross > 4.2));
+  for (const l of bad) tooDeep.push(`${id} ${l.id || l.dir} ${l.cross}u`);
+}
+check('no gale is deeper than the dash can cross', tooDeep.length === 0, { tooDeep });
 
 console.log('\n── 6. Aria fights, and the arena narrows ─────────────');
 check("Aria's Crown builds", await go('scr'));
