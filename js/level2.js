@@ -210,7 +210,7 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // walls are burnt masonry or cut rock, and a vocabulary only one level can
 // speak is how Level 3 ended up using none of its forest models.
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
-  cartWreck, lowWall } = makeDressers({ kit: () => caveKit, tint: (...a) => tinted(...a) });
+  cartWreck, lowWall } = makeDressers({ kit: () => caveKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -367,6 +367,7 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
+    world.sweepKeepClear();
     protoLabel(world, 0, 0, spec.label, { color: '#cfe8f2', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#8f9aa4', y: 2.4, size: 1.4 });
     return world;
@@ -374,6 +375,11 @@ function finish(world, spec, D) {
   world.lightTint = { sky: D.tint, ground: D.wallTint, key: D.floorTint };
   // THE GUARDRAIL (js/batch.js). Every static prop above folds into one draw
   // per material. Measured on Level 1 this is worth 40-70 calls a room.
+  // LAST LINE OF DEFENCE. A builder that dressed before it set its markers
+  // could not have consulted them, so anything still standing on a gameplay
+  // square loses its collider here and says so on the console. See
+  // World.sweepKeepClear.
+  world.sweepKeepClear();
   flattenStatic(world);
   return world;
 }

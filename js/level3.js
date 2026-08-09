@@ -246,7 +246,7 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // how far the rot has reached by which of the pair dresses it.
 const { grove, thicket, blight, mossyRuin, ruinedHome, coldHearth, fallenColumn,
   rubbleField, wayshrine, aftermath, cartWreck, lowWall } =
-  makeDressers({ kit: () => woodKit, tint: (...a) => tinted(...a) });
+  makeDressers({ kit: () => woodKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -563,11 +563,17 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
+    world.sweepKeepClear();
     protoLabel(world, 0, 0, spec.label, { color: '#d8f0c8', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#93a68c', y: 2.4, size: 1.4 });
     return world;
   }
   world.lightTint = { sky: D.tint, ground: D.wallTint, key: D.floorTint };
+  // LAST LINE OF DEFENCE. A builder that dressed before it set its markers
+  // could not have consulted them, so anything still standing on a gameplay
+  // square loses its collider here and says so on the console. See
+  // World.sweepKeepClear.
+  world.sweepKeepClear();
   flattenStatic(world);
   return world;
 }

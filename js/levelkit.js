@@ -225,6 +225,12 @@ export function makeBuilders({ kit, isGrey }) {
   // A door on a wall side, in the gap the shell already cut.
   function sideDoor(world, side, halfW, halfD, to, entry, opts = {}) {
     const T = DOOR_ZONE;
+    // the mouth of the door, and room to walk out of it
+    const rc = opts.centre || 0;
+    if (side === 'n') world.reserve(rc, -halfD + 1.6, 2.8);
+    else if (side === 's') world.reserve(rc, halfD - 1.6, 2.8);
+    else if (side === 'w') world.reserve(-halfW + 1.6, rc, 2.8);
+    else if (side === 'e') world.reserve(halfW - 1.6, rc, 2.8);
     const half = opts.half || DOOR_HALF;
     const c = opts.centre || 0;          // offset ALONG the wall — see gap()
     const when = opts.when || null;
@@ -280,6 +286,9 @@ export function makeBuilders({ kit, isGrey }) {
       if (Math.abs(z) < DOOR_HALF + 1.2 && edge >= 2) continue;
       const kind = kinds[Math.floor(rnd() * kinds.length)];
       if (!kit0[kind]) continue;
+      // scatter() picks its spots at random, which makes it the likeliest thing
+      // in the whole toolkit to drop a rock on a chest's only approach
+      if (world.blocked(x, z, 0.9)) continue;
       const big = /rockL|Column|Brick/.test(kind);
       // SHADE IN THREE STEPS, NOT CONTINUOUSLY. A per-prop random float gave
       // every rock its own material and so its own draw call — twenty props
@@ -325,6 +334,10 @@ export function makeBuilders({ kit, isGrey }) {
       : /* shatter */        WS.get(region, 'ice_' + id);
     if (opened) return null;
 
+    // The gate and the ground immediately behind it belong to the gate: the
+    // whole promise is that THIS is the way through, and a prop dressed into
+    // the gap turns a solved puzzle into a locked door.
+    world.reserve(x, z, Math.max(w, d) * 0.6 + 1.4);
     // The group is positioned at the gate and its pieces sit RELATIVE to it,
     // so when a crack or a burn scatters the chunks they fly apart from the
     // gate rather than from the room's origin.
@@ -409,6 +422,11 @@ export function makeBuilders({ kit, isGrey }) {
     }
     (world.markers.chestDefs || (world.markers.chestDefs = []))
       .push({ id, tier, x, z, ry: 0.4, loot });
+    // A CHEST OWNS ITS APPROACH. vc2 shipped with the thorn gate cut, the
+    // puzzle solved, and the reward still 2.06u out of reach because a rock
+    // had been scattered into the alcove afterwards. 2.6u is enough for a
+    // child to walk up from any side.
+    world.reserve(x, z, 2.6);
     return null;
   }
 

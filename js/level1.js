@@ -190,7 +190,7 @@ export async function loadEmberKit() {
 // `tint` is wrapped rather than passed directly: `tinted` is declared further
 // down this file and a direct reference here reads it in the temporal dead zone.
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
-  cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a) });
+  cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
   darkZone: protoDarkZone } = makeBuilders({
@@ -366,6 +366,7 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
+    world.sweepKeepClear();
     protoLabel(world, 0, 0, spec.label, { color: '#ffd9c2', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#9b8e85', y: 2.4, size: 1.4 });
     return world;
@@ -380,6 +381,11 @@ function finish(world, spec, D) {
   // calls a room and it is the difference between Level 1 fitting in the
   // budget and not. Anything gameplay holds (gates, chests, enemies, the
   // Forge Heart coals) is protected and left alone. See js/batch.js.
+  // LAST LINE OF DEFENCE. A builder that dressed before it set its markers
+  // could not have consulted them, so anything still standing on a gameplay
+  // square loses its collider here and says so on the console. See
+  // World.sweepKeepClear.
+  world.sweepKeepClear();
   flattenStatic(world);
   return world;
 }

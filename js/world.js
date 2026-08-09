@@ -74,6 +74,73 @@ export class World {
     this.circleColliders.push({ x, z, r });
   }
 
+  // --- KEEP-OUT: where scenery may not stand -------------------------------
+  //
+  // Dressing the levels to ROOM-STANDARD put hundreds of new colliders into
+  // rooms that already had gameplay in them, and two of them landed badly: an
+  // enemy in t1b spawned inside a tree, and the chest behind vc2's thorn gate
+  // ended up 2.06u out of reach — you cut the bramble, solve the puzzle, and
+  // still cannot take the reward.
+  //
+  // Both are the same bug. A prop builder knows where it wants to put a rock;
+  // it does not know that a hound spawns there, or that the only approach to a
+  // chest runs through that square. So the world keeps a register of the places
+  // gameplay OWNS, and the builders ask before they place anything solid.
+  //
+  // `reserve` is for things a room states explicitly (a doorway, an alcove).
+  // `blocked` also consults the markers LIVE, because nearly every build
+  // function sets its spawn points and chests before it dresses, and reading
+  // them at placement time means fifty-two builders did not each have to
+  // remember to declare the same thing twice.
+  reserve(x, z, r = 1.2) {
+    (this._keepClear || (this._keepClear = [])).push({ x, z, r });
+  }
+
+  blocked(x, z, r = 0.6) {
+    for (const k of (this._keepClear || [])) {
+      const dx = x - k.x, dz = z - k.z;
+      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return true;
+    }
+    const m = this.markers || {};
+    const near = (p, pad) => {
+      if (!p || typeof p.x !== 'number' || typeof p.z !== 'number') return false;
+      const dx = x - p.x, dz = z - p.z;
+      return dx * dx + dz * dz < (pad + r) * (pad + r);
+    };
+    // the spawn, and enough room around it to land and turn around
+    if (near(this.spawn, 2.4)) return true;
+    for (const key of Object.keys(m)) {
+      const v = m[key];
+      if (!v) continue;
+      // A CHEST NEEDS ITS APPROACH, not just its square: 2.2u so a child can
+      // walk up to it from any side. Everything else needs standing room.
+      const pad = /chest|reward|Promise|Spot$/i.test(key) ? 2.2 : 1.6;
+      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return true; }
+      else if (near(v, pad)) return true;
+    }
+    for (const d of (this.doors || [])) {
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      if (near({ x: cx, z: cz }, 2.6)) return true;
+    }
+    return false;
+  }
+
+  // Last line of defence, run at the end of every dressed build. A builder that
+  // placed before its markers existed cannot have consulted them, so anything
+  // still sitting on a gameplay square has its COLLIDER dropped here and says
+  // so. A prop you can walk through is a blemish; an enemy stuck inside one, or
+  // a chest you cannot reach, is a broken game.
+  sweepKeepClear() {
+    const before = this.circleColliders.length;
+    this.circleColliders = this.circleColliders.filter((c) => !this.blocked(c.x, c.z, c.r));
+    const dropped = before - this.circleColliders.length;
+    if (dropped) {
+      console.warn(`[keepclear] dropped ${dropped} collider(s) sitting on gameplay `
+        + 'squares — a cluster was placed before its markers were set.');
+    }
+    return dropped;
+  }
+
   addLava(minX, maxX, minZ, maxZ) {
     this.lavaZones.push({ minX, maxX, minZ, maxZ });
   }

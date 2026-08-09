@@ -37,9 +37,20 @@
 
 import * as THREE from 'three';
 
-export function makeDressers({ kit, tint }) {
+export function makeDressers({ kit, tint, isGrey }) {
   const K = kit;
   const TINT = tint;
+  // GREYBOX IS NOT DRESSED. The build-order law is greybox before art, without
+  // exception — the greybox exists to have its LAYOUT walked and approved, and
+  // a greybox room with kit art standing in it is not the thing that was
+  // approved. It also wrecked the measurement: finish() returns before
+  // flattenStatic in greybox, so every unbatched cluster prop counted as its
+  // own draw call and verify-level1 reported `lb` at 272 against a room that
+  // measures 102 dressed.
+  //
+  // A room's SHAPE in greybox still comes from shell() and wallRun(), exactly
+  // as it did before the vocabulary existed.
+  const GREY = isGrey || (() => false);
 
   // blend two packed hex colours — used to DRAIN a sick tree toward the
   // corruption's colour rather than merely darkening it
@@ -96,7 +107,10 @@ export function makeDressers({ kit, tint }) {
   // One placement helper shared by every cluster below. Returns the mesh so a
   // caller can nudge it; adds nothing to any gameplay list, so flattenStatic
   // folds it away.
-  function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true) {
+  // Solid props ask the world before they stand anywhere. `place` itself stays
+// dumb — clutter with no collider may sit wherever it likes, and stopping a
+// tuft of grass from overlapping a spawn point would only make rooms emptier.
+function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true) {
     if (!gltf) return null;
     const m = TINT(gltf, key, colour);
     m.position.set(x, y, z);
@@ -119,6 +133,7 @@ export function makeDressers({ kit, tint }) {
   // The doorway is the point. A ruin without a doorway is a pile; a ruin WITH one
   // is a home, because a child knows what a door is for.
   function ruinedHome(world, x, z, ry, D, opts = {}) {
+    if (GREY()) return null;
     const r = srnd(Math.round(x * 73 + z * 31 + 17));
     const g = new THREE.Group();
     const P = D.propTint || D.floorTint;
@@ -184,6 +199,7 @@ export function makeDressers({ kit, tint }) {
   // A hearth nobody has lit in a long time. The one thing in a burnt village that
   // is unmistakably domestic.
   function coldHearth(world, x, z, D, parent = null) {
+    if (GREY()) return null;
     const g = parent || new THREE.Group();
     const px = parent ? x : 0, pz = parent ? z : 0;
     place(world, g, K().woodfire, 'hearth', px, 0, pz, 1.1, 0, 0, D.propTint || D.wallTint);
@@ -201,6 +217,7 @@ export function makeDressers({ kit, tint }) {
   // COLLAPSE rather than as decoration, because the pieces are scattered along
   // the direction it fell.
   function fallenColumn(world, x, z, dir, D, len = 4) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 13 + z * 57));
     const dx = Math.sin(dir), dz = Math.cos(dir);
@@ -222,6 +239,7 @@ export function makeDressers({ kit, tint }) {
   // the gaps between the things that matter, and a child must be able to run
   // straight through it.
   function rubbleField(world, x, z, rad, D, n = 14) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 29 + z * 83 + n));
     for (let i = 0; i < n; i++) {
@@ -240,6 +258,8 @@ export function makeDressers({ kit, tint }) {
   // A wayside shrine: pedestal, arch, a banner that did not burn all the way.
   // Somewhere people STOPPED — the strongest signal a space was lived in.
   function wayshrine(world, x, z, ry, D) {
+    if (GREY()) return null;
+    if (world.blocked(x, z, 1.1)) return null;
     const g = new THREE.Group();
     place(world, g, K().arch, 'shrine', 0, 0, 0, 1.1, 0, 0, D.propTint || D.wallTint);
     place(world, g, K().pedestal, 'shrine', 0, 0, -0.2, 1.0, 0, 0, D.propTint || D.wallTint);
@@ -256,6 +276,8 @@ export function makeDressers({ kit, tint }) {
   // "people were LEAVING" that the kit can make, and it is small enough to sit
   // mid-room without taking the fighting floor away.
   function cartWreck(world, x, z, ry, D) {
+    if (GREY()) return null;
+    if (world.blocked(x, z, 1.2)) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 51 + z * 23));
     const P = D.propTint || D.floorTint;
@@ -280,6 +302,7 @@ export function makeDressers({ kit, tint }) {
   // discrete pieces with clear space between them — which is how a Zelda arena
   // with pillars in it works.
   function lowWall(world, x, z, ry, D, len = 3) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const n = Math.max(1, Math.round(len / 2));
     const r = srnd(Math.round(x * 67 + z * 11));
@@ -309,6 +332,7 @@ export function makeDressers({ kit, tint }) {
   // are SMALL — no colliders, and deliberately sparse: one skull is a story, six
   // is a haunted house, and this is a sad place rather than a spooky one.
   function aftermath(world, x, z, rad, D, seed = 1) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 19 + z * 61 + seed));
     const n = 2 + Math.round(r() * 2);
@@ -353,6 +377,7 @@ export function makeDressers({ kit, tint }) {
   // forest room); grass, flowers and small bushes do NOT, so a five-year-old
   // running at the screen brushes straight through the greenery.
   function grove(world, x, z, rad, D, opts = {}) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 37 + z * 91 + rad * 7));
     const P = D.propTint || D.floorTint;
@@ -361,6 +386,7 @@ export function makeDressers({ kit, tint }) {
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
       const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
+      if (world.blocked(x + px, z + pz, 0.7)) continue;   // this is where the hound stands
       const dead = r() < sick;
       const gltf = dead ? pick(BARE, r) : pick(TREES, r);
       const sc = (dead ? 0.9 : 1.0) * (0.8 + r() * 0.5);
@@ -388,6 +414,7 @@ export function makeDressers({ kit, tint }) {
   // makes a forest floor read as ALIVE rather than as a green plane. Nothing
   // here takes a collider.
   function thicket(world, x, z, rad, D, opts = {}) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 53 + z * 17 + rad * 11));
     const P = D.propTint || D.floorTint;
@@ -409,6 +436,7 @@ export function makeDressers({ kit, tint }) {
   // ones lying where they came down. This is the image the region is built
   // around, so it is worth placing deliberately rather than scattering.
   function blight(world, x, z, rad, D) {
+    if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 71 + z * 29));
     const P = mixHex(D.propTint || D.floorTint, 0x3a2c44, 0.62);
@@ -416,6 +444,7 @@ export function makeDressers({ kit, tint }) {
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
       const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
+      if (world.blocked(x + px, z + pz, 0.8)) continue;
       const down = r() < 0.3;
       const sc = 0.75 + r() * 0.5;
       place(world, g, pick(BARE, r), 'blight', px, down ? 0.5 : 0, pz, sc,
@@ -436,6 +465,7 @@ export function makeDressers({ kit, tint }) {
   // "overgrown and forgotten" as well as sick, and a wall with a bush growing
   // out of it says both at once.
   function mossyRuin(world, x, z, ry, D, opts = {}) {
+    if (GREY()) return null;
     const g = ruinedHome(world, x, z, ry, D, opts);
     const r = srnd(Math.round(x * 23 + z * 47 + 5));
     const P = D.propTint || D.floorTint;
