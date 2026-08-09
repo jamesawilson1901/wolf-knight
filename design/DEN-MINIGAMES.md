@@ -305,6 +305,24 @@ instruction overrides this document.
   viewport by the verifier — the first results layout put both of its buttons
   half off the bottom of a phone held sideways and every other assertion passed.
 
+### The licence rule in §7 was overwritten (2026-08-09)
+
+Dad: *"the game is only for myself and my family and will never be made public
+or sold. overwrite the current rule. they can be used."* §7's closing line — no
+asset enters the repo without a confirmed CC0 or CC-BY licence file, unknown
+licence treated as blocked — no longer governs this build. The full record of
+what that changed is in `design/ASSETS.md` and `assets/LICENSES/MANIFEST.json`.
+
+What it changes for the games still to build: the §7 blockers are now sourcing
+problems rather than licence problems. Howl Echo needs seven wolf howls that
+*exist on disk*; it no longer needs them to be CC0 specifically. Same for the
+anvil, the rope and the herb icons. They still have to be found and downloaded —
+this environment's network policy blocks several of the asset hosts — but
+"cannot confirm the licence" has stopped being a reason to stop.
+
+`node tools/check-licences.mjs --strict` remains the gate if this ever goes
+anywhere but the family.
+
 ### Left alone on purpose
 
 - **The three existing den games** (target, shuffle, paw) are exactly what §3

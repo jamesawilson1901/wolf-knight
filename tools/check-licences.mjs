@@ -13,8 +13,22 @@
 //   * every licence file named in the manifest must actually exist and must
 //     actually contain a licence grant → a missing or empty one FAILS
 //
+// THE PRIVATE-USE DECISION (2026-08-09). Dad: *"the game is only for myself and
+// my family and will never be made public or sold. overwrite the current rule.
+// they can be used."* The standing rule was that an unknown licence is BLOCKED
+// rather than permission; for this build it is not. Packs carrying an
+// `accepted` field in the manifest are reported as ACCEPTED instead of PENDING
+// and no longer read as outstanding work.
+//
+// What is deliberately NOT done: the packs are not deleted from the manifest,
+// their `states` and `note` lines are untouched, and --strict still fails on
+// them. Accepting the risk is not the same as clearing the licence, and the day
+// this stops being a family build is the day that difference matters. Keeping
+// the record costs nothing; rebuilding it from memory later would cost a lot.
+//
 // Usage:  node tools/check-licences.mjs [--strict]
-//   --strict also fails on PENDING packs (use before a commercial release).
+//   --strict fails on unproven packs whether or not they are accepted — it is
+//   the gate to run before this build ever goes anywhere but the family.
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join, relative, sep } from 'path';
 
@@ -25,6 +39,7 @@ const STRICT = process.argv.includes('--strict');
 const manifest = JSON.parse(readFileSync(join(LIC_DIR, 'MANIFEST.json'), 'utf8'));
 const fail = [];
 const pending = [];
+const accepted = [];   // unproven, but knowingly accepted for private family use
 
 // ---- 1. every licence file the manifest names must exist and say something
 for (const p of manifest.packs) {
@@ -47,7 +62,7 @@ for (const p of manifest.packs) {
     const path = join(LIC_DIR, p.evidence);
     if (!existsSync(path)) fail.push(`${p.pack}: evidence file missing — assets/LICENSES/${p.evidence}`);
   }
-  if (!p.licence) pending.push(p);
+  if (!p.licence) (p.accepted ? accepted : pending).push(p);
 }
 
 // ---- 2. every directory under assets/ must be claimed by some pack
@@ -82,6 +97,19 @@ const cleared = manifest.packs.filter((p) => p.licence && p.licence !== 'SELF');
 console.log(`\n  ${cleared.length} pack(s) cleared by a licence file on disk:`);
 for (const p of cleared) console.log(`    ✓ ${p.pack}`);
 
+if (accepted.length) {
+  const d = manifest.distribution || {};
+  console.log(`\n  ${accepted.length} pack(s) ACCEPTED — no licence file, shipping under the`
+    + ` ${d.mode || 'private-use'} decision of ${d.decidedOn || '(undated)'}:`);
+  for (const p of accepted) {
+    console.log(`    · ${p.pack}`);
+    console.log(`        covers : ${(p.covers || []).join(', ')}`);
+    console.log(`        clear it by: ${p.source}`);
+  }
+  console.log(`    (still unproven — 'node tools/check-licences.mjs --strict' fails on these,`);
+  console.log(`     which is the check to run before this build goes outside the family.)`);
+}
+
 if (pending.length) {
   console.log(`\n  ${pending.length} pack(s) PENDING — shipping, but no licence file on disk:`);
   for (const p of pending) {
@@ -97,8 +125,11 @@ if (fail.length) {
   for (const f of fail) console.log(`    ✗ ${f}`);
 }
 
-const bad = fail.length || (STRICT && pending.length);
+const unproven = pending.length + accepted.length;
+const bad = fail.length || (STRICT && unproven);
 console.log(bad
-  ? `\n  FAIL${STRICT && pending.length && !fail.length ? ' (strict: pending packs are not acceptable for release)' : ''}\n`
-  : `\n  OK — every asset directory is accounted for.${pending.length ? ` ${pending.length} pack(s) still pending a licence file.` : ''}\n`);
+  ? `\n  FAIL${STRICT && unproven && !fail.length ? ' (strict: an unproven licence is not acceptable outside the family build)' : ''}\n`
+  : `\n  OK — every asset directory is accounted for.`
+    + `${pending.length ? ` ${pending.length} pack(s) still pending a licence file.` : ''}`
+    + `${accepted.length ? ` ${accepted.length} accepted for private family use.` : ''}\n`);
 process.exit(bad ? 1 : 0);
