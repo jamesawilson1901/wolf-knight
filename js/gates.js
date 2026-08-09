@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
+import { canWade } from './water.js';
 
 export const GATE_TYPES = {
   boulder: { ability: 'earth_wolf', icon: '🪨', label: 'A huge boulder blocks the way' },
@@ -220,18 +221,30 @@ export function boulderGate(world, prepareModel, rockGltf, id, x, z) {
 
 // Water channel — animated blue band + colliders. Nothing opens it yet;
 // it exists to be remembered (Tide Wolf, region 6).
+// THE PROMISE THE GAME HAS BEEN KEEPING SINCE MINUTE TEN.
+//
+// This channel has been in Ember Hollow's r2b since the first build, with a
+// gold chest and two heart pieces plainly visible on the other side of it, and
+// until region six there was no way to cross it — the collider went down
+// unconditionally and nothing anywhere could take it up again. A child who
+// remembered it for five regions would have found it still shut.
+//
+// It opens to the Tide Wolf now, by the same rule the Sunken Vale's deep water
+// uses (js/water.js): the collider is simply not laid for a profile that can
+// walk on water. A kid who comes back here after Meri walks straight across.
 export function waterGate(world, x, z, w, d) {
+  const wade = canWade();
   const water = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
     new THREE.MeshStandardMaterial({
-      color: 0x1d3a52, emissive: 0x3a7aa8, emissiveIntensity: 0.5,
-      transparent: true, opacity: 0.9, roughness: 0.4,
+      color: 0x1d3a52, emissive: 0x3a7aa8, emissiveIntensity: wade ? 0.8 : 0.5,
+      transparent: true, opacity: wade ? 0.7 : 0.9, roughness: 0.4,
     })
   );
   water.rotation.x = -Math.PI / 2;
   water.position.set(x, 0.03, z);
   world.add(water);
-  world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
+  if (!wade) world.addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
   world.onAnimate((t) => {
     water.material.emissiveIntensity = 0.4 + 0.2 * Math.sin(t * 1.8 + x);
     water.position.y = 0.03 + Math.sin(t * 2.4) * 0.008;

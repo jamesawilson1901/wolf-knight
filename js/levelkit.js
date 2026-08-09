@@ -412,6 +412,11 @@ export function makeBuilders({ kit, isGrey }) {
           audio.play('puff', { volume: 0.8, rate: 1.3 });
         },
       });
+    } else if (system === 'none') {
+      // A gate that no VERB opens. The Stormreach sea cave is one: it is water,
+      // and water opens by being walkable — the room simply does not build this
+      // at all once the child can wade (js/water.js). Registering it as a
+      // crackable or a shatterable would have handed it to the wrong wolf.
     } else {
       // crack + burn ride World._shatter, which does the break-apart itself
       // and writes the permanent flag; `clear` only takes the box away.

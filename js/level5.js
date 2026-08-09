@@ -30,6 +30,7 @@ import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField, turnVane, WIND } from './wind.js';
+import { canWade } from './water.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -508,8 +509,14 @@ export async function buildS1a(scene) {
   // asks, with the chest inside it plainly visible from the path.
   wallRun(world, -16, -3.0, -11.5, -3.0, D);
   wallRun(world, -16, 1.6, -11.5, 1.6, D);
-  promiseGate(world, -11.5, -0.7, 3.0, 4.2, 0x4fd0e0, 'FLOODED — later', 'rockSB',
-    { system: 'shatter', id: 's1a_seacave', region: REGION });
+  // A FLOODED CAVE MOUTH IS THE TIDE'S, NOT THE FROST'S. Seeded as a 'shatter'
+  // gate it would have opened to the Frost Wolf's breath — the wrong wolf, and
+  // one the child already had, so the promise would have paid out instantly and
+  // meant nothing. It is water: it opens when you can walk on water.
+  if (!canWade()) {
+    promiseGate(world, -11.5, -0.7, 3.0, 4.2, 0x4fd0e0, 'FLOODED — later', 'rockSB',
+      { system: 'none', id: 's1a_seacave', region: REGION });
+  }
   visibleReward(world, -14.0, -0.7, 's5_seacave', { shards: 26 });
   world.markers.tidePromise = { x: -11.5, z: -0.7 };
 
