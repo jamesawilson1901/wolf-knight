@@ -3055,3 +3055,121 @@ the verifier so the next person to lengthen that sentence finds out.
 
 Not touched: `sw.js` (no deploy, and the one new file is a tool, not a shipped
 asset), prices, and `assets/`.
+
+## v3.35.1 — Levels 5 and 6, audited (the new FIX-PLAN)
+
+Asked for directly, after the overnight run found both regions had shipped with
+no BUILDLOG entry and no plan row. The levels 1-3 plan (every item closed at
+v3.34.0) is archived at `design/FIX-PLAN-2026-08-07.md` — BUILDLOG's references
+to A1-A9, B1-B3 and C1-C4 still mean the items in that file — and
+`design/FIX-PLAN.md` is now the Stormreach / Sunken Vale audit, with a fresh ID
+space: 10 A items, 2 B, 7 C.
+
+**Stormreach is close to finished. The Sunken Vale does not work.**
+
+### The two that stop a child dead
+
+**`rimSides` is not defined.** `js/level6.js` calls it four times and nowhere
+declares it; Level 5 has the analogous `stairSides` at `level5.js:411`. All four
+rim rooms — the region's spine — throw on build, and the loader does not
+recover: the next room fails too. Traced through the door graph, `ddp` has one
+door, from `dg4`, so **Meri cannot be reached by any route**; and before the
+gift the reachable set from the region entrance is `{d1a, d1b, d1p}`, which does
+not include the spring that grants the Tide Wolf. **The sixth region is a
+three-room dead end.** `node --check` passes the file, which is the third time
+that has cost this project a shipped defect.
+
+**Neither new boss survives a save.** `js/save.js` round-trips `sylvaDefeated`
+and `borealDefeated` and not `ariaDefeated`, `meriDefeated`, `ariaHp` or
+`meriHp`. `ariaDefeated` is what opens `scr`'s north gap — the only door into
+the Vale — and what puts the Vale on the moonstone. Beat Aria, quit, come back:
+Aria is alive at full health and region 6 does not exist.
+
+### What the measurements changed about the audit
+
+- **The Vale's enemy family is not in `VARIANTS`.** All 29 placements name
+  `tide`/`deeptide`/`gull`/`drowned`; `applyVariant` returns early on an unknown
+  name, so every one spawns as a plain region-1 Slime, Bat or Skeleton Minion.
+  Measured at the level a child arrives: Vale baseline **6.5 hp** against
+  Stormreach's **11.0**, and `deeptide` — "bigger, darker" — is byte-identical
+  to `tide`. The archived A9 again, one region later, from a different cause.
+  Also: nothing in the game carries `weakness: 'storm'`, so the dash the
+  previous region gave has no payoff here (and nothing fears verdant, frost or
+  tide either — four forms with no SUPER!).
+- **The music table still addresses the retired rooms.** `f`/`w`/`k`/`e`
+  prefixes, then a `bossDefeated` fallback to `ember-calm`, which is `den.ogg`.
+  Every rebuilt level — 1, 2, 3, 5 and 6 — plays the cosy village theme, and the
+  boss-music branch names `r3`/`w5`/`f5`, so Aria and Meri fight to it too.
+- **Draw calls, swept rather than sampled.** Ten of thirteen rooms over 100, two
+  over 125: `ssA` **142**, `s2b` **139**, `vh` **130**, `sc2` **129**. There are
+  two ceilings in the codebase — METRICS.md's 100 and a 125 that `water.js`,
+  ROOM-STANDARD and both new verifiers assert — and `verify-level5` passes `ssA`
+  at 118 because it reads the spawn point, not the worst standing position.
+  `vh` was 82 when the archived B1 closed.
+- **The Tide Pools puzzle locks nothing.** No `when()` on the north door (there
+  is no `when:` anywhere in either level), three 0.8u braziers in a 32 × 26
+  room, and the WorldState flags it writes are read by no one — so it also
+  relights on every visit. The archived A5 and A8 in one room.
+- **No pups spawn in either region.** `spawnPups` reads `pup1Spot…pup12Spot`;
+  both regions set `pupSpot`. Four placed, zero spawned. `potionSpot` is dead
+  the same way, including in both pre-boss rooms.
+
+### New tool
+
+`tools/probe-door-entries.mjs`. `sideDoor(…, entry)` writes the arrival point in
+the destination's coordinates and **nothing has ever checked it** — every
+topology verifier reads `door.to` and none reads `door.entry`. The probe builds
+each room, flood-fills its real colliders from its real spawn, and measures each
+landing: can a child stand there, and is it beside the door they came through.
+
+    36 rooms, 80 doors, 0 stranded, 10 on the wrong side of the room
+    d2a → dlg  27.85u   ssA → s4a  24.85u   d1a → scr  20.85u
+    s4a → ssA  20.85u   d3a → dlg  20.57u   dlg → d2a  19.76u
+
+Three of the six are the lagoon's own mouths — swim north from the Reedbeds and
+you surface at the southern shore's doorway — and two are the wind bridge, both
+ends, so the seven spans are never walked. Level 3, run as a control, has two
+mild ones (8.3u, 9.75u) and one genuinely **stranded** landing (`t3a → tc2`
+lands at z=-7 in a room whose north wall is at -5), which is logged for a Level
+3 pass rather than folded in here.
+
+**And the probe lied to me first.** Its opening run printed "✓ every door lands
+inside the room it opens into" while measuring nothing: `page.evaluate` had been
+handed the read function as a template string, returned `undefined` for every
+room, and the loop's own `if (!info[id]) continue;` guard skipped all 36 in
+silence. It now prints `read N of M rooms, K doors` unconditionally, because a
+probe that measures nothing and a probe that finds nothing print the same tick.
+
+### Why none of this was caught
+
+- `verify-level6` **fails today** and is not in `verify-all.sh`'s default run,
+  so its failure has never been seen. `verify-density`'s room table stops at
+  Stormreach — all twenty Vale rooms are unmeasured by the check written
+  precisely because "big but bare" once reached a playtest.
+- `verify-progression` stops at Frostpeak: `f5 → s1a` and `scr → d1a` are
+  unchecked, and no assertion anywhere round-trips an unlock through
+  `persist()` + `applySave()`. That is the hole A2 walked through.
+
+Also logged: `js/districts.js`, `js/dressing.js` and `js/ground.js` are missing
+from sw.js PRECACHE (offline law); `regions.js` still says `sunkenvale: built:
+false` and declares `storm_wolf` twice; the map screen ends at Stoneroot and
+lists only retired rooms, so "⭐ You are here" can now appear on exactly one
+card in the game (the Den); STAIR, RIM and LAGOON never entered MODULES or the
+metrics zoo; and the storm/tide tunables sit inline in three files rather than
+in CONFIG.
+
+Nothing was fixed this pass. Suggested order is in the plan: **A1 alone first**,
+with the "every room builds" check written before the fix, then **A2 with a save
+round-trip assertion**.
+
+### AWAITING dad's call
+
+- **The ceiling: 100 or 125?** Two numbers are in force at once. Either way
+  `ssA` (142) and `s2b` (139) breach both.
+- **Is the wind bridge one-way?** `WS.set('storm','windBridge')` is never
+  called, so the Landing end can never open. The room table in LEVEL-DESIGN-5
+  writes it as `s4a → s1a`, which reads one-way; `verify-level5`'s heading says
+  "the shortcut runs both ways" and its assertion tests neither.
+- **Can the thunder-dash skip the Vanes?** `DASH_DIST` 5.2 against 5.0-wide
+  lanes says yes, on the arithmetic. Not measured. Multiple solutions are not a
+  bug, but it should be a known one.

@@ -1,860 +1,641 @@
-# FIX PLAN — audited against the build as it stands (2026-08-07, v3.24.0)
+# FIX PLAN — Stormreach Cliffs and the Sunken Vale (audited 2026-08-09, v3.35.0)
 
-The previous plan could not be located, so this is written fresh against the
-code and levels as they actually are. Every item points at something real.
+The previous plan (levels 1-3, every item shipped by v3.34.0) is archived at
+`design/FIX-PLAN-2026-08-07.md`; BUILDLOG's references to A1-A9, B1-B3 and
+C1-C4 mean the items in *that* file. This one starts a fresh ID space and
+audits the two regions built after it: **Level 5, Stormreach Cliffs** (20
+spaces, Aria, the Storm Wolf) and **Level 6, The Sunken Vale** (20 spaces,
+Meri, the Tide Wolf).
 
-**Method.** Findings come from reading the current source and from the headless
-suites (`tools/verify-level1.mjs`, `verify-level2.mjs`, `verify-level2-hub.mjs`,
-`verify-level3.mjs`, `verify-sequence.mjs`, `verify-touch.mjs`). Where a number
-appears, it was measured, not estimated.
+**Why now.** Both regions shipped between v3.34.0 and today with **no BUILDLOG
+entry and no FIX-PLAN row**. The overnight run of 2026-08-09 went looking for
+work, found the previous table closed and the fallback queue in BUILDLOG dating
+from v2.2.6, and flagged the gap. This is the pass that closes it.
 
-**Headline.** The three rebuilt levels are **structurally sound and completely
-unplayable**. Every topology assertion passes — the loop closes, spokes return,
-no dead ends, teach sequences in order. But none of the three is reachable
-except through the cheat menu, and Level 3 has no gameplay wired at all. The
-expansion built the *spaces*; the *game* still runs on the old rooms.
+**Method.** Read against the code as built, then measured: the existing suites
+(`verify-boot`, `verify-density`, `verify-level5`, `verify-level6`,
+`verify-storm`), a new probe written for this audit
+(`tools/probe-door-entries.mjs`), and static traces of the marker/handler and
+save/load paths. Where a number appears below it was measured, not estimated.
+
+**Headline.** Stormreach is close to finished and mostly needs its guard rails
+extended to it. **The Sunken Vale does not work.** Four of its twenty rooms
+throw a ReferenceError on build — including the only door to its boss — and
+neither region survives a save: the flag that opens the way onward from Aria's
+Crown is never written to disk, so beating Aria and coming back tomorrow closes
+the sixth region again.
+
+Performance has gone backwards at the same time, and further than either
+region: swept across standing positions, **ten of thirteen sampled rooms are
+over METRICS.md's 100-call ceiling and two are over the 125 one the new
+verifiers quietly adopted** — the worst is Stormreach's wind bridge at 142.
+`vh`, measured at 82 when the archived B1 closed, is 130 today.
+
+Both fatal faults are the same shape as faults this project has already fixed
+once:
+`node --check` cannot see a ReferenceError (v3.31.1, v3.32.0), and a flag that
+gates the world has to be round-tripped by `js/save.js` (A5, archived plan).
+The difference this time is that **nothing was watching**: `verify-level6` fails
+today, and it is not in any default suite, so its failure has never been seen.
 
 ---
 
-## STATUS — every item closed (v3.34.0, 2026-08-08)
+## STATUS
 
-| | item | shipped |
-|---|---|---|
-| A1 | rebuilt levels unreachable | v3.25.0 |
-| A2 | Level 3 has no gameplay | v3.26.0 |
-| A3 | spark shrine grants the wrong wolf | v3.25.1 |
-| A4 | Level 2's fourth teach step | v3.26.1 |
-| A5 | cut brambles do not survive a save | v3.25.1 |
-| A6 | junction landmark invisible from the north | v3.28.0 |
-| A7 | greybox is the shipping default | v3.25.0 |
-| A8 | promise gates absent from the map | v3.27.0 |
-| A9 | difficulty goes DOWN at Level 3 | v3.29.0 |
-| B1 | two Level 2 rooms over the draw-call ceiling | v3.30.0 |
-| B2 | no LOD anywhere | closed — not needed, on measurement |
-| B3 | the Den is the last room over the ceiling | v3.33.0 |
-| C1 | juice tuned for corridors, not islands | v3.31.0 / v3.31.1 |
-| C2 | the second ring chord is barely a shortcut | closed — dad's call, keep |
-| C3 | spec drift, docs vs implementation | v3.34.0 |
-| C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
-
-**The table is closed, so the queue moved.** With every row above shipped, the
-work list is BUILDLOG's newest QUEUED NEXT block. Taken from it since:
-
-| | item | source | shipped |
+| | item | severity | shipped |
 |---|---|---|---|
-| Q1 | economy/XP balance pass | BUILDLOG v2.2.6 | **skipped — needs the kids** |
-| Q2 | Maren tier-2 stock after Stoneroot | BUILDLOG v2.2.6 | v3.35.0 |
-| Q3 | hard landscape lock | BUILDLOG v2.2.6 | already done (manifest + title.js) |
-| Q4 | S3 Wild Woods | BUILDLOG v2.2.6 | v3.19 |
-
-Levels 5 and 6 (Stormreach Cliffs, the Sunken Vale) shipped after v3.34.0
-without entering this file. **Neither has had an audit pass of the kind that
-produced the table above**, and that is the largest unqueued thing in the
-project — see the v3.35.0 BUILDLOG entry.
-
-**Four of them were not the thing the audit described**, which is the most useful
-record this file holds:
-
-- **A8** was scoped as missing map entries. Underneath, four promise gates could
-  never be opened at all, and every one could be walked around.
-- **A9** was scoped as enemy density. The cause was `applyVariant` overwriting
-  the difficulty-scaled hp, which pinned every Level 3 enemy at its level-1
-  value — the corrupted forest creature was the weakest thing in the game.
-- **B1** was flagged as a whole-game visual trade-off. It was one line
-  (`prepareCharacter` casting shadows from every mesh of every character) and
-  cost nothing to look at: measured inside the pixel-noise floor.
-- **C1** was premised on rooms having got bigger. Measured, the camera frames
-  identical ground in a 14 × 10 choke and the 36 × 28 hub. What was actually
-  wrong is that every flourish lied about its ability's reach and shape — and
-  two boss telegraphs pointed the wrong way, one by up to 162 degrees.
-
-The habit that found all four: measure the thing before fixing the thing the
-plan named.
+| A1 | four Sunken Vale rooms crash on build (`rimSides`) | **fatal** | |
+| A2 | beating Aria or Meri does not survive a save | **fatal** | |
+| A3 | the Vale's enemy family does not exist | high | |
+| A4 | the Tide Pools puzzle locks nothing, and relights | high | |
+| A5 | no pups in either region | high | |
+| A6 | ten doors land on the wrong side of the room | medium | |
+| A7 | Stormreach's shortcut can never open at the Landing | medium | |
+| A8 | no potion is ever placed in either region | medium | |
+| A9 | both regions play the Den's music — and so does every rebuilt level | medium | |
+| A10 | neither region is on the map screen | medium | |
+| B1 | two draw-call ceilings, and the game is over both (worst 142) | high | |
+| B2 | the rebuilt levels have regressed 20-48 calls since B1/B3 | high | |
+| C1 | `verify-density` stops at Stormreach — 20 rooms unmeasured | high | |
+| C2 | `verify-progression` stops at Frostpeak — A2 shipped through the gap | high | |
+| C3 | three modules missing from the service worker precache | medium | |
+| C4 | `regions.js` still says the Sunken Vale is not built | medium | |
+| C5 | three new room modules bypassed the locked module list | low | |
+| C6 | spec drift, docs vs implementation | low | |
+| C7 | tunables live inline instead of in CONFIG | low | |
 
 ---
 
 # A · BREAKS OR FRUSTRATES A CHILD
 
-## A1 · The rebuilt levels are unreachable in normal play
-**✅ DONE (v3.25.0)** — dad chose REPLACE. The den now opens into `la`; beating
-each boss opens the way onward (`le → vh`, `vz → t1a`, `tgl → f1`); the retired
-rooms are redirected rather than deleted so old saves still load, mapped by
-position in the level. Verified by `tools/verify-progression.mjs` — 24 checks,
-all green. Original finding below for the record.
+## A1 · Four Sunken Vale rooms crash on build — `rimSides is not defined`
 
-Nothing in the game links to `la`, `vh` or `t1a`. Grepping every module outside
-`js/level*.js` finds references only in the cheat-menu table
-(`js/main.js:303-326`). The shipping game still plays `r1 → r2 → r3`, `e1…`,
-`w1…`, `f1…`. Each rebuilt level has a south door *out* to `den`
-(`level1.js` `buildLa`, `level2.js` `buildVh`, `level3.js` `buildT1a`) but the
-den has no door *in*, and `js/regions.js` REGIONS has no entry for them.
+**The region cannot be finished. Its boss cannot be reached at all.**
 
-So a child playing normally sees none of this work. Every other item in this
-plan is cosmetic until this is fixed.
+`js/level6.js` calls `rimSides(world, halfW, halfD, D, seed)` four times — lines
+510, 631, 744, 824 — and **the function is defined nowhere**. Level 5 has the
+analogous helper (`stairSides`, `js/level5.js:411`); the Vale's was never
+written. Measured, in the browser, through the real loader:
 
-**Decision needed from dad:** do the rebuilt levels *replace* r1-r3 / e* / w*,
-or sit alongside them? Replacement is cleaner but retires rooms the kids know.
+    ✗ dg1 did not build — PAGEERROR: rimSides is not defined
 
-## A2 · Level 3 has no gameplay — it is geometry only
-**✅ DONE (v3.26.0)** — split into three sessions, all verified.
+The four rooms are the whole rim, and the rim is the region's spine:
 
-| | scope | state |
+| room | joins | what is lost |
 |---|---|---|
-| **A2a** | the lash CUTS — introduce, develop, the log bridge | ✅ v3.25.1 |
-| **A2b** | THE KNOT — the lash HOLDS: tether a boulder, snare a hound | ✅ v3.26.0 |
-| **A2c** | the great thorn-knot, the two chords, Sylva | ✅ v3.26.0 |
-
-The four-step teach is real end to end, and all three world milestones hang off
-one verb (`world.cutAt`) through a single `onCut` hook — one implementation,
-three consequences. Verified by `tools/verify-l3-lash.mjs`,
-`verify-l3-knot.mjs` and `verify-l3-chords.mjs`.
-
-Two things this work turned up that the audit had not seen:
-
-- **Level 3 had grown a second, broken copy of the cut system** — its own
-  object shape, no `clear()`, and a `state.flags.cut` that was never declared.
-  Its brambles could never have been cut. Fixed by SHARING `registerCuttable()`
-  rather than adding the new flag namespace A5 proposed.
-- **`cuttables` was the only gate list not created in the `World` constructor**,
-  so `world.cutAt` existed in some rooms and not others — which is what the
-  `if (world.cutAt && …)` guard in player.js was quietly covering for. `cutAt`
-  is now a `World` method beside `burnAt` and `crackAt`.
-
-**Design deviation, flagged:** the docs call the great log "a log you push
-over"; it is CUT LOOSE with the lash. Pushing would mean a new verb after the
-twist, or the boulder push used on something that is not a boulder. Awaiting
-dad's call — if the doc stands, the code should change.
-
-Original finding below.
-
-Every Level 3 teach marker has zero handlers. Measured by grepping `js/main.js`,
-`js/gates.js` and `js/player.js`:
-
-| marker | handlers |
-|---|---|
-| `teachBramble` (introduce) | **0** |
-| `developBrambles`, `logBridge` (develop) | **0** |
-| `knotTether`, `knotSnare` (twist) | **0** |
-| `thornKnot` (conclude) | **0** |
-
-Nothing anywhere sets the `wild3` WorldState milestones, so **both ring chords
-can never open in play** — `tsA` and `tsB` exist but are permanently invisible.
-The verified ring is real, but a child would walk the long way round forever.
-
-Splits into: (a) bramble cut/regrow + the log bridge, (b) The Knot's tether and
-snare — a genuinely new verb, the lash as a *rope*, (c) the thorn-knot and the
-chord-opening state.
-
-## A3 · The spark shrine grants the wrong wolf in Level 3
-**✅ DONE (v3.25.1)** — the handler reads `grants` off the marker. Verified:
-Level 2's shrine gives the Earth Wolf and advances the vault; Level 3's gives
-the Verdant Wolf. Original finding below.
-
-`js/main.js:760` hardcodes the reward:
-
-    if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4) && !state.formsUnlocked.includes('earth_wolf')) {
-      state.formsUnlocked.push('earth_wolf');
-      if (WS.complete('vault', 'spark')) ...
-
-But the markers carry their own intent:
-
-    level2.js:581  sparkSpot = { spirit: 'petra', grants: 'earth_wolf' }
-    level3.js:523  sparkSpot = { spirit: 'sylva', grants: 'verdant_wolf' }
-
-Walking into Sylva's shrine in Level 3 therefore grants the **Earth** Wolf and
-advances the **vault** (Level 2) state. The handler should read `grants` and the
-room's region from the marker instead of hardcoding one level's answer.
-
-## A4 · Level 2's fourth teach step is not implemented
-**✅ DONE (v3.26.1) — but not the job the audit described.**
-
-I probed before building, and the MECHANIC already worked: a stomp stuns every
-grounded enemy, and `shieldUp` returns false while stunned, so the Warden's
-guard already dropped with no Warden-specific code at all.
-
-    {"guardBefore": true, "stunned": 2.34, "guardAfter": false, "punishLands": true}
-
-"`stompStagger` has 0 handlers" was true but misleading. The behaviour existed;
-the TEACHING did not, and a child had no way to discover it. So the fix is
-smaller and different: `GUARD BROKEN!` now appears over any guarding enemy a
-stomp staggers (with the parry ring and a punch), Pip teaches it only when the
-child is facing a RAISED shield while holding the Earth Wolf, and the same rule
-is asserted on the shieldlings so the Warden is the exam, not a special case.
-
-**My first probe lied to me.** It reported `blockedFrontal: false` — apparently
-a broken shield. The cause was in the test: `takeDamage` reads `this._pp`, the
-player position cached during `update()`, and the probe set the position
-directly without stepping the world, so the block check never ran. The verifier
-now steps `w.update()` first, and asserts the WHOLE chain rather than the one
-link the fix touched. Original finding below.
-
-`stompStagger` (`level2.js` `buildVz`) has **0** handlers. The docs' conclude
-step — "his tower shield front-blocks everything, but a stomp at his feet
-staggers him off his guard" — does not exist, so the Bone Warden is fought with
-no use of the gift the level just taught. The marker is placed; only the
-behaviour is missing.
-
-## A5 · Cut brambles do not survive a save
-**✅ DONE (v3.25.1)** — resolved WITHOUT adding `state.flags.cut`. The real
-machinery already existed and persisted through WorldState; Level 3 had
-invented an incompatible second one. `registerCuttable()` is now shared, so a
-cut bramble is recorded exactly the way every other gate is. Original finding
-below.
-
-`js/level3.js:204` reads `state.flags.cut[id]`, but `cut` is **never declared**
-in `js/state.js` and **never written** by `js/save.js`. Brambles a child cut
-yesterday are back today. `gates.js:60` keeps a local `cut: false` on its own
-objects, which is a different thing entirely and is not persisted either.
-
-Contrast `burned`, `cracked`, `plates`, `chests`, `keys`, which are all declared
-and round-tripped. This is a one-line-per-file omission with a real
-"where did my progress go" consequence.
-
-## A6 · A junction landmark is invisible approached from the north
-**✅ DONE (v3.28.0)** — every junction now says its name twice. A pair of
-half-size copies of the junction's OWN landmark stand just inside its north
-door, 1.2 u ahead of where a child lands, so the silhouette is at the top of
-the frame the instant they arrive; the big one at the centre is still the
-payoff when they turn round. All 16 approaches across the four junctions now
-show a landmark (`tools/verify-level3.mjs` section 6), dressed and greybox.
-
-Not the floor inlay this entry recommended. The inlay would have made the
-verifier pass by weakening what it asks — the check is "is the LANDMARK in
-frame", and a coloured floor is not a landmark. Repeating the silhouette
-answers the question as asked, and reads as architecture: the ring's north
-gates are marked gates.
-
-Two things fell out of it:
-
-- **The verifier was asking a slightly wrong question.** It projected one
-  object; a junction may legitimately say its name more than once, and a child
-  reads the silhouette, not the instance. It now projects every landmark
-  instance and reports which one was seen (`centre` or `gate`).
-- **Thornedge's shrine is a character model** (`assets/chars/knight.glb`), and
-  a character rig never merges into the static batch. Two more copies took
-  `t1a` from 79 draw calls to **119**. The gate markers there are smaller
-  stones set at the same lean, in the same grey, on the same base — cheaper,
-  and the truer fiction: there was one wolf-knight before Kael, not three.
-  `t1a` is now 85 dressed, and the worst room in Level 3 with it.
-
-Original finding below.
-
-Measured identically at all four ring junctions
-(`tools/verify-level3.mjs` section 6):
-
-    t1a from tgl  → IN FRAME      ndc(-0.62,  0.84)
-    t1a from tsA  → IN FRAME      ndc(-0.98, -0.03)
-    t1a from t1b  → NOT VISIBLE   ndc( 0.00, -4.06)
-
-Structural, not a placement slip. `js/main.js:1100` —
-`camGoal.copy(player.root.position).add(CAM_OFFSET)` — the camera is a **fixed
-world-space offset that never rotates with facing**. "12.8 u ahead" always means
-north; only **4.6 u** of the world south of the player is ever on screen. A
-landmark at room centre works from the south, east and west doors and sits 10 u
-behind you entering from the north. **No single position satisfies both**, so
-moving the prop only swaps which approach fails.
-
-Options: a second smaller landmark at each junction's north end; a district
-floor-inlay under the prop extending north (the floor fills the frame from every
-approach — cheapest, free once merged); or accept ~5 u of walking before
-recognition. **Recommended: the floor inlay.**
-
-### Also settled this session
-
-`tsB is shorter than walking round` had been failing against a threshold of
-`0.5` that was an unmeasured guess when the verifier was written. Both shortcut
-legs measure `0.63` — 81 u against 128 u, a 37% saving — and dad accepted that
-as plainly shorter on the walk. The bar is now the accepted figure with a
-little room (`0.7`), so it stays an assertion and a future edit that erodes the
-saving still trips it.
-
-## A7 · Greybox is the shipping default
-**✅ DONE (v3.25.0)** — default flipped to `false`, and `applySave` now STRIPS a
-persisted `greybox` value so an old profile saved during dev cannot restore a
-child into a checkerboard while keeping their real settings. Original finding
-below.
-
-`js/state.js:37` sets `greybox: true`. Any child who reached a rebuilt level
-without going through the cheat menu's "dressed" entry would be playing a
-checkerboard. Fine while these are dev-only; a hazard the moment A1 lands.
-Should flip to `false` with the cheat menu keeping an explicit greybox toggle.
-
-## A8 · Promise gates in the rebuilt levels are absent from the map
-**✅ DONE (v3.27.0) — and the audit had understated it. Twice.**
-
-Wiring the map entries turned up two much worse faults behind them, both now
-fixed and both covered by `tools/verify-promises.mjs`, which flood-fills each
-room's real colliders from its real spawn and then drives the real verb:
-
-1. **The gates could never be opened.** `promiseGate()` in `js/levelkit.js`
-   drew the obstacle, dropped a box collider and registered with **no gate
-   system at all** — not `crackables`, not `burnables`, not `cuttables`, not
-   `shatterables`. Level 1's cracked wall, Level 1's scorched barricade, Level
-   2's thorn tangle and Level 3's ice-sealed spring were permanent walls. A
-   child coming back with the exact form the gate advertises found the stomp,
-   the slam, the lash and the breath all did nothing. `promiseGate` now takes a
-   required `{system, id, region}` and rides the SAME system the shipping rooms
-   use, including the "already opened" check on re-entry.
-2. **...and it did not matter, because you could walk round them.** All five
-   promise obstacles sat loose in the middle of a 32×26 island or a 20×16
-   pocket with the reward beside them and open floor on every side. The flood
-   fill reached every chest with the gate standing. Each one now has an alcove:
-   two wall runs, with the gate as the only mouth. Measured nearest-approach
-   with the gate shut is now 3.2–5.2u; after the verb, 0.8u.
-
-Two supporting changes fell out of it: `world.shatterAt` is a World method
-rather than something `iceGate()` defined lazily (the same bug class already
-fixed once for `cuttables`), and every gate entry may carry a `hitR` so a blow
-landing anywhere ALONG a wall catches it — without that, an 8u-deep gate only
-answered to a slam within 2.6u of its exact centre point.
-
-One knock-on: Level 1's pup #3 sat inside the scorched alcove, so walling the
-alcove properly would have locked a collectible behind a form two levels away.
-The pup moved to `(-6, -6)`, outside the gate.
-
-Original finding below.
-
-The shipping rooms register every "come back later" obstacle in the mystery log
-(`js/main.js:624, 642, 663, 717, 788, 793` — six `logMystery` calls). The
-rebuilt levels place **eight** promise gates between them
-(`crackPromise`, `firePromise`, `underwaterPromise`, `bramblePromise`,
-`icePromise`, `rootWallPromise`, `logPromise`) and register **none**.
-
-A child who sees the ice-sealed spring in Thornedge gets no map entry and no
-Pip line, where the same obstacle in Frostpeak gets both. Inconsistent
-signposting across levels built in different sessions — exactly the drift risk.
-
-## A9 · Difficulty goes DOWN at Level 3
-**✅ DONE (v3.29.0) — and the density was the smaller half of it.**
-
-The audit blamed the head count. The head count was a contributor; the cause was
-`applyVariant` in `js/enemies.js`, which set `e.hp = v.hp` — a flat overwrite of
-the number the `Enemy` constructor had just computed. That made a varianted
-enemy opt out of BOTH difficulty levers the rest of the game runs on: the level
-scaling in `enemyScale()` and the Gentle-mode hp relief.
-
-Levels 1 and 2 barely use variants, so it never showed. **Level 3 is made of
-nothing else** — every hound is `thorn`/`elderthorn`, every moth is `wisp`:
-
-    player level        1     4     8    12    16
-    L2 skeleton       3.0   3.5   4.5   5.5   6.5   (scales)
-    plain hound       4.0   5.0   6.0   7.5   9.0   (scales)
-    THORN HOUND       3.5   3.5   3.5   3.5   3.5   (did not)
-
-A child reaches the Wild Woods at about level 5-7, so the corrupted, supposedly
-tougher forest creature was the **weakest thing in the game**. Variant hp now
-feeds the same formula as everything else, which also means Gentle mode reaches
-the woods for the first time.
-
-Two knock-ons, both intended: Frostpeak's rime family and Level 1's one Elder
-Hound start scaling too, having been frozen the same way.
-
-**`SkeletonShield` was missing from `XP_VALUES`**, so Level 2's four
-shield-bearers — the toughest ordinary enemy in the game — awarded nothing.
-`die()` guards with `|| 0`, so no save was ever corrupted; it just starved the
-level curve and landed a child in the woods under-levelled, which after the fix
-above made Level 3 easier still. Added at 12, matching the Rogue.
-
-### The encounter pass
-
-Rewritten against the LEVEL-MAP beat chart rather than against a target number.
-**25 placements / 21 rooms = 1.19 per room**, against Level 2's 1.18 — parity,
-with the difficulty step-up carried by the hp fix rather than by crowding.
-
-- `t1a` lost its only hound. The chart's first row is "the woods are wrong
-  (quiet dread, **no fight**)" and `t1b` next door is labelled "first Thorn
-  Hounds" — the placement contradicted both.
-- Every rest beat stays empty: `tc1`, `tc3`, `tc4`, both shortcut legs, the
-  shrine, and the two teach rooms that are not the twist.
-- **The Bramble Blob is back.** `bramble` was written for this region in v3.19
-  and every live placement went away when the `w*` rooms retired. Reviving it
-  cost zero lines in `enemies.js` and gives Level 3 a third body shape — it had
-  two, and three of its four districts threw the same thing at you.
-- `t4a` is a pack again: two elders and three of the pack, per the chart's
-  intensity-4 "the pack — Elder Thorn Hounds".
-
-### What the measurement changed
-
-`tools/probe-encounters.mjs` and `tools/probe-peak-calls.mjs` were written for
-this. The first measures a room with and without its cast; the second kills
-everything through the real damage path and reports the WORST frame, because a
-room is not busiest when you walk into it.
-
-That caught a real overrun: **`t3b` arrived at 86 calls and peaked at 102.** A
-Bramble Blob costs ~17 draw calls at its peak, not 5 — it splits into two minis
-on death and their drops land on top of the room's existing drops. Ordinary
-drops are nearly free (`t4a`'s peak equals its arrival); splitting is not. The
-blob moved to `t2p`, which arrives at 54. Worst frame anywhere in Level 3 is now
-94, through the fight and not merely on arrival.
-
-Also worth recording: **`CONFIG.ENGAGE` caps simultaneous attackers at 2** (1 on
-Gentle, 3 on Brave) no matter how many bodies a room holds — the rest prowl a
-waiting ring. That is what makes a density lever safe for a five-year-old, and
-it is why `t4a` can hold five hounds without becoming a pile-on.
-
-### The audit's own numbers were wrong
-
-Recounted from source and confirmed against a live probe:
-
-| | audit said | actually | rooms | per room |
-|---|---|---|---|---|
-| Level 1 | 13 | **8** | 14 | 0.57 |
-| Level 2 | 20 | **20** | 17 | 1.18 |
-| Level 3 | 13 | **16** | 21 | 0.76 |
-
-Only the Level 2 row was right. The finding held regardless.
-
-Original finding below.
-
-Enemy placements per room, counted from the level modules:
-
-| | placements | rooms | per room |
-|---|---|---|---|
-| Level 1 | 13 | 15 | 0.87 |
-| Level 2 | 20 | 17 | **1.18** |
-| Level 3 | 13 | 21 | **0.62** |
-
-Level 3 is the largest level with the fewest enemies per space — roughly half
-Level 2's density. The beat chart in LEVEL-MAP.md calls for intensity 4 through
-the Bloomfall pack and 5 at Sylva. As built, Level 3 is the *emptiest* of the
-three. Needs an encounter pass, not a redesign.
+| `dg1` The East Rim | `d1b` → `d2a` | the Shallows to the Reedbeds |
+| `dg2` The North Rim | `dsh` → `d3a` | **the DEVELOP teach step** (shallow / deep / shallow) |
+| `dg3` The West Rim | `dtp` → `d4a` | the Drowned Town to the Salt Flats |
+| `dg4` The South Rim | `d4b` → `ddp` | **the only door to Meri's Deep** |
+
+Traced through the real door graph, the damage is worse than four rooms:
+
+- **`ddp` has exactly one door** (`level6.js:877`, south to `dg4`) and `dg4` is
+  the only room that opens into it (`level6.js:818`). With `dg4` dead, **Meri
+  cannot be fought by any route, with or without the Tide Wolf.** The lagoon
+  crossings reach the four shores; none of them reaches the Deep.
+- **Before the gift, the region is three rooms long.** `d1a` opens to `d1b`
+  (and to the lagoon only once a child can wade); `d1b` opens to `d1p` and to
+  `dg1`. With `dg1` dead the reachable set from the region's entrance is
+  `{d1a, d1b, d1p}` — and Meri's Spring, which grants the Tide Wolf, is four
+  rooms further round a rim that does not exist. **A child cannot reach the
+  gift, so they cannot open the lagoon, so they cannot reach anything else.**
+
+Two things make this worse than a one-line omission:
+
+- **It does not recover.** After `dg1` throws, every subsequent room load in the
+  same session also fails, with no error of its own (`d2a`, then `d2b`, …). A
+  child who walks onto the East Rim does not get a broken room; they get a
+  broken game until they reload.
+- **`node --check` passes `js/level6.js` cleanly.** This is the third time that
+  has cost this project a shipped defect (the fire breath's `effects`
+  ReferenceError in v3.31.1, the if/else chain in v3.32.0). The lesson was
+  written down both times: *run the room, not the parser.*
+
+**Fix:** write `rimSides` in `js/level6.js`, to the same brief `stairSides`
+answers — a rim is a corridor module and dressing its middle blocks the walk,
+so the props line both long walls. Then extend the boot check (see C2) so a
+builder that throws fails a cheap verifier rather than a slow one nobody runs.
+
+## A2 · Beating Aria or Meri does not survive a save
+
+`js/save.js` writes an explicit flag list (lines 110-128). It carries
+`sylvaDefeated` and `borealDefeated`. It does **not** carry `ariaDefeated`,
+`meriDefeated`, `ariaHp` or `meriHp`, all four of which the game writes and
+reads:
+
+| written | read by | what breaks on reload |
+|---|---|---|
+| `boss.js:376` `ariaDefeated` | `level5.js:1052` — `scr`'s north gap | **the only door into the Sunken Vale closes again** |
+| | `level5.js:1057,1063` | Aria respawns, at full health |
+| | `menus.js:210` — the moonstone | the Sunken Vale drops off fast travel |
+| `boss.js:382` `meriDefeated` | `level6.js:882` | Meri respawns; the healed Deep, her light and its gold chest never appear |
+| `SKINS.aria.saveKey='ariaHp'` | `js/boss.js` | her wounds do not persist — against the v3.18 law every boss since has followed |
+| `SKINS.meri.saveKey='meriHp'` | `js/boss.js` | same |
+
+So a child beats the region-5 boss, watches the way north open, turns the tablet
+off, and the next morning the sixth region does not exist. Nothing warns them;
+nothing in the save is corrupt; the flag was simply never written down.
+
+**Fix:** four fields in `save.js`'s `flags` block and four in `applySave`,
+exactly matching the `sylva*`/`boreal*` pairs beside them. Additive-forever
+holds — an old profile reads `false`/`0`, which is what it means. Then assert it
+(C2): beat the boss, `persist()`, `applySave()`, check the door is still there.
+
+## A3 · The Sunken Vale's enemy family does not exist
+
+`js/level6.js` places 29 enemies across 13 rooms, every one of them asking for a
+variant: `tide` (11), `deeptide` (7), `gull` (5), `drowned` (6). **None of those
+four names is in `VARIANTS`** (`js/enemies.js:76-213`, which has the Kiln, Wild
+Woods, Frostpeak and Stormreach families and stops).
+
+`applyVariant` opens with `const v = VARIANTS[name]; if (!v) return e;` — an
+unknown variant is silently the base class. So the Vale is fought entirely with
+region-1 creatures wearing no paint:
+
+| the design asks for | what spawns | hp at level 16 |
+|---|---|---|
+| Tide Blob — "a blob of standing water" | plain Cave Slime (green) | 6.5 |
+| Deep Tide — "bigger, darker" | **the same plain Cave Slime** | 6.5 |
+| Gull — wheels over the lagoon | plain Cave Bat | 4.5 |
+| The Drowned — "what is left of the people who lived here" | plain Skeleton Minion | 6.5 |
+
+Against Stormreach one region earlier, at the level a child arrives
+(`hp = round((base + 1) × enemyScale() × 2) / 2`, `enemyScale()` 1.96 at level
+13 and capped 2.2 at 16):
+
+    Stormreach   Gale Hound   11.0      Storm Hound 15.5   Spark Blob 9.0
+    Sunken Vale  Tide Blob     6.5      Deep Tide    6.5   Gull       4.5
+
+**The last region of the game is 41% weaker at its baseline than the one before
+it** — the exact shape of the archived A9, from a different cause. And two
+further losses:
+
+- **The weakness lesson stops.** `LEVEL-DESIGN-6.md` §5 says the family fears
+  **storm**, so the thunder-dash earned one region ago is the answer here. No
+  enemy in the game carries `weakness: 'storm'` — the whole registry is 14
+  `fire`, 4 `earth`, 3 `moon`. (Worth recording beyond this region: nothing
+  fears `verdant`, `frost`, `storm` or `tide` either, so **four of the eight
+  forms can never trigger a SUPER!**)
+- **The region has no cast of its own to look at.** Every other region since
+  v3.19 tints its creatures. The drowned vale is fought against Ember Hollow's
+  green slimes.
+
+**Fix:** four entries in `VARIANTS`, following the Stormreach block immediately
+above them — the pattern is a label, an hp base, a weakness and a tint function.
+Nothing else changes; the spawn markers already name them.
+
+## A4 · The Tide Pools puzzle locks nothing, and relights every visit
+
+`dtp` is the Vale's one puzzle room (dad's law, one per level). Three braziers
+burn on three islets; the splash puts them out; the comment says "the way north
+opens when all three are dark."
+
+Measured against the code, two separate failures:
+
+1. **The way north was never shut.** `buildDtp`'s north door is a plain
+   `sideDoor(world, 'n', …, 'dg3', …)` with no `when()` predicate, and the
+   braziers are three 0.8u circle colliders in a 32 × 26 room. There is no
+   `when:` anywhere in `js/level6.js` or `js/level5.js`. A child walks straight
+   past all three and out the north door. Quenching sets
+   `world.markers.puzzleSolved`, `WS.set('vale','poolsQuenched')` and
+   `WS.set('vale','quench_' + id)` — **and nothing anywhere reads any of them**
+   (grepped across `js/`).
+2. **And it forgets.** `poolBrazier()` builds every brazier lit, unconditionally.
+   The WorldState flags it writes are never consulted at build time, so a child
+   who solves the puzzle, leaves and comes back finds all three burning again.
+   That is the archived A5 — cut brambles not surviving a save — reborn in
+   region 6, and the machinery to do it right (`WS.get` at build time) is what
+   every other gate in the game already uses.
+
+Stormreach's equivalent (`svn`, the Vanes) is sound by comparison: the gale
+lanes themselves are the wall, so the puzzle is physically load-bearing.
+
+**Fix:** read `WS.get(REGION, 'quench_' + id)` when the brazier is built and
+start it dark; gate the north door on `WS.get(REGION, 'poolsQuenched')` (or wall
+the north end so the braziers are the only mouth, per the archived A8's alcove
+pattern). Then `verify-level6` should assert both halves — sealed before, open
+after, still open on rebuild.
+
+**Also worth measuring, not yet measured:** whether the thunder-dash lets a
+child cross Stormreach's vane lanes one at a time and skip `svn`'s puzzle
+altogether. `DASH_DIST` is 5.2u and each lane is 5.0u wide, so on the arithmetic
+it should be possible. If it is, that is a design call for dad rather than a
+defect — multiple solutions are not a bug — but it should be a known one.
+
+## A5 · There are no pups in Stormreach or the Sunken Vale
+
+`spawnPups()` (`js/pip.js:245`) reads `markers.pup1Spot … pup12Spot`. Levels 1-3
+use those names (`pup1`, `pup3`, `pup4`, `pup7`, `pup8`). Both new regions
+instead set:
+
+    js/level5.js:579   world.markers.pupSpot = { x: 0, z: -3.5, id: 'pup_s1' };
+    js/level5.js:851   world.markers.pupSpot = { x: 0, z: -3.5, id: 'pup_s3' };
+    js/level6.js:490   world.markers.pupSpot = { x: 4, z: -2,   id: 'pup_d1' };
+    js/level6.js:692   world.markers.pupSpot = { x: 0, z: -4,   id: 'pup_d3' };
+
+`pupSpot` is read by nothing. **Four pups are placed and zero spawn.** The
+region checklist asks for three per region and pays a heart for the set; both
+regions ship two placements each and neither pays anything. The pocket rooms
+they sit in (`s1p`, `s3p`, `d1p`, `d3p`) are labelled "optional · pup" in the
+room tables and contain nothing at all.
+
+**Fix:** rename to the numbered scheme — `pup9`/`pup10` for Stormreach,
+`pup11`/`pup12` for the Vale, which is exactly the range `spawnPups` already
+reserves — and add the third of each set. The HUD counter and the all-pups
+reward then work with no other change.
+
+## A6 · Ten doors put the child down on the wrong side of the room
+
+`sideDoor(world, side, halfW, halfD, to, entry)` carries the arrival point in
+the DESTINATION room's coordinates, and **nothing has ever checked it**. Every
+topology verifier in `tools/` compares `door.to` against a room list; not one
+looks at `door.entry`. `tools/probe-door-entries.mjs` was written for this
+audit: it builds each room, flood-fills the real colliders from the real spawn,
+and measures each arrival point against the destination's own door back the way
+the child came.
+
+**36 rooms, 80 doors. Nothing lands inside a wall** — which is the good news and
+the reason this is A6 and not A1. Ten land somewhere other than the doorway:
+
+    from → to        entry            distance to the return door
+    d2a → dlg       (0, 13)          27.85   ← the far side of the lagoon
+    ssA → s4a       (-9, 0)          24.85
+    d1a → scr       (0, 8)           20.85
+    s4a → ssA       (-9, 0)          20.85
+    d3a → dlg       (0, -13)         20.57
+    dlg → d2a       (0, -13)         19.76
+    d1p → d1b       (7.5, 0)          8.35
+    d4p → d4a       (7.5, 0)          8.35
+    sc3 → svn       (9, 0)            6.85
+    sc4 → s4b       (-9, 0)           6.85
+
+The bottom four are the same side of the room, just deep — the child walks out
+of the arch already 7-8u into the space. Untidy, arguably fine.
+
+**The top six are the opposite side of the room.** Three of them are the
+lagoon's own mouths, which is region 6's whole idea: swim north across the water
+from the Reedbeds and you surface 27.85u away at the southern shore's doorway.
+One is the way home from the Vale into Aria's Crown — walk south out of `d1a`
+and you appear at the far end of the crown by the door to `sc4`, having crossed
+the arena you just walked into. And two are the wind bridge, both ends: **step
+east off `s4a` onto the bridge and you are put down at the far end of it**, so
+the seven stone spans and the gale running down them are never walked.
+
+**Is this new, or does the whole game do it?** The same probe over Level 3 as a
+control — 21 rooms, 43 doors — finds **two** wrong-side landings, both mild
+(8.3u and 9.75u, the boss room's pair), so the far-side landings really are a
+new-regions problem rather than how this game has always worked.
+
+The control did turn up one thing worth its own row when Level 3 is next
+touched, and it is the worse kind: `t3a → tc2` lands at `(0, -7)` in a choke
+whose north wall is at -5. **STRANDED** — outside the room, unreachable from its
+own spawn. Out of scope for this plan; recorded here because the probe found it
+and nothing else would have.
+
+**Fix:** the entries. Each is a two-number edit and the probe names them. Then
+keep the probe: an entry point is exactly the kind of number that is right the
+day it is written and wrong the day a room's size changes.
+
+## A7 · Stormreach's shortcut can never open at the Landing end
+
+`s1a` builds its west gap and its door to the wind bridge only if
+`WS.get('storm', 'windBridge')` (`js/level5.js:483,485,495`). **Nothing in the
+codebase ever calls `WS.set('storm', 'windBridge')`** — grepped across `js/`;
+the only other mention is the level's own spec table, which declares
+`opensWith: 'windBridge'`.
+
+`ssA`'s own doors are unconditional, so the bridge works one way: from the Open
+Sky down to the Landing. From the Landing the far mouth is a blank wall
+forever — and a child who takes the bridge down cannot take it back up.
+
+`verify-level5` §8 is headed *"the shortcut runs both ways"* and passes, because
+what it actually asserts is that `ssA` has doors to `s4a` and `s1a`. It never
+looks at `s1a`.
+
+**Fix (decide first):** either the bridge is a one-way descent, in which case
+delete the dead `windBridge` branch and rename the verifier's heading to what it
+checks; or it is a two-way shortcut like Level 3's chords, in which case
+something has to set the flag — reaching `ssA`, or `s4a`'s bridge head, is the
+natural trigger. **Smallest reversible option: set the flag when a child first
+stands on the bridge**, which is how they learn it exists. Logged for dad.
+
+## A8 · No potion is ever placed in either region
+
+`world.markers.potionSpot` is set six times across the two regions — including
+`sc4` and `dg4`, the rooms immediately before each boss — and **nothing reads
+it**. Potions come from `world.potionSpots`, an array pushed by a helper in
+`js/rooms.js:457`; the marker is only ever swept as a keep-clear hint
+(`js/world.js:151`).
+
+The region checklist says "campfire + potion pre-boss". Both regions have the
+marker and neither has the potion. (The same dead marker sits in `js/level1.js`
+and `js/level3.js`, so this is a whole-game gap that the new regions inherited
+rather than invented — but the pre-boss rooms are where it bites.)
+
+## A9 · Both regions play the Den's music — and so does every rebuilt level
+
+`updateMusic()` (`js/main.js:970-982`) picks the track by room id prefix: `f` →
+`stone-deep`, `w` → `causeway`, `k` → `kiln`, `e3`/`e` → the Stoneroot tracks,
+**else** `bossDefeated` → `ember-calm`, else `region-ember`.
+
+Those prefixes are the RETIRED room ids. The archived A1 replaced `r*` and `e*`
+with `la…`, `vh…`, `t1a…` and left the old ids as redirects — and nobody
+revisited this table. So every id the game actually plays in falls through to the
+`bossDefeated` branch, and `ember-calm` is an alias for `den.ogg`:
+
+| region | rooms | track played |
+|---|---|---|
+| 1 Ember Hollow (rebuilt) | `la…` | `den.ogg` |
+| 2 Stoneroot (rebuilt) | `vh…` | `den.ogg` |
+| 3 Wild Woods (rebuilt) | `t1a…` | `den.ogg` |
+| 4 Frostpeak (hand-built, `f*`) | `f1…` | `stone-deep` ✓ |
+| **5 Stormreach** | `s1a…` | **`den.ogg`** |
+| **6 Sunken Vale** | `d1a…` | **`den.ogg`** |
+
+And the boss branch names only `r3`, `w5` and `f5` — three room ids, two of them
+retired — so **Aria and Meri fight to the cosy village theme too**, as do the
+Shadowgrip, the Bone Warden and Sylva in their rebuilt arenas.
+
+`LEVEL-DESIGN-5.md` §8 says "no music of its own … Stormreach plays the shared
+region music", which is the intent. What it plays is the safest, most domestic
+track in the game, over a storm-lashed cliff and a drowned town.
+
+**Fix:** address the table to the ids that exist — a prefix case per region and
+a boss-room list that names `le`, `vz`, `tgl`, `f5`, `scr`, `ddp`. Point the two
+new regions at existing tracks until dad picks new ones (`causeway` for the
+cliffs, `stone-deep` for the Vale's depths are both closer than the den).
+Choosing the real tracks is a listening decision and stays dad's.
+
+## A10 · Neither region is on the map screen
+
+`Menus.showMap()` hardcodes two regions: Ember Hollow (`r1`, `r1b`, `r2`, `r2b`,
+`k1`, `r3`) and Stoneroot (`e1`, `e2`, `e3`), gated on `state.spoken`. Wild
+Woods, Frostpeak, Stormreach and the Sunken Vale have no cards at all, and the
+footer says "More regions will appear as Kael frees them…" — which they never
+do.
+
+Worse, **every playable room it lists is a retired one**. The archived A1
+replaced `r*`/`e*` with `la`/`vh`-and-onward and left the old ids as redirects,
+so `state.room` never equals any room id on the map. The "⭐ You are here"
+marker can now only ever appear on one card in the game: the Den.
+
+The mystery log below it still works — that part of the archived A8 is intact —
+so a Stormreach child sees their ??? cards under a map of two regions they have
+never been to.
+
+**Fix:** drive the region list off `js/regions.js` REGIONS (which already
+carries `name`, `rooms` and `built` for every region) instead of a hardcoded
+list, so a new region appears on the map by existing. That also fixes C4's
+consequence in the same stroke.
 
 ---
 
 # B · PERFORMANCE
 
-## B1 · Two Level 2 rooms are over the draw-call ceiling
-**✅ DONE (v3.30.0) — and it was never really a Level 2 problem.**
+## B1 · There are two draw-call ceilings, and the game is over both of them
 
-The audit was right that the cause is characters rather than geometry, and right
-that the lever is shadow-casting. It was wrong that this is a whole-game visual
-trade-off: there is a version that costs nothing to look at.
+`design/METRICS.md:143` is the law: **draw calls < 100 / frame**. The whole
+archived B programme — B1 (one shadow caster per character), B3 (batching the
+Den), B2 closed on the grounds that "every room in the game is under the
+ceiling" — was worked to that number.
 
-`prepareCharacter()` in `js/assets.js` set `castShadow = true` on **every mesh of
-every character**. A cast mesh is submitted twice — once to the shadow depth
-pass, once to the beauty pass — and a character is not one mesh. The knight is
-nine skinned parts plus a sword and a shield; every skeleton is nine more. Skinned
-meshes are also the one thing `js/batch.js` can never merge, so the cost is
-permanent and it is paid in every room, by the player, whether or not any enemy
-is present.
+The two new regions are held to a different one, and nothing records who raised
+it or on what measurement:
 
-Measured in `vc1`, then the worst room in the game: **32 of 112 draw calls were
-characters entering the shadow map.**
+    js/water.js:70            "a rounding error against a 125 draw-call ceiling"
+    design/ROOM-STANDARD.md   "111 (dressed) against a 125 ceiling"
+    tools/verify-level5.mjs   check('worst room under 125 draw calls') → ssA 118 PASS
+    tools/verify-level6.mjs   check('worst room under 125 draw calls')
 
-**One character now casts one shadow** — from its largest skinned mesh, which is
-the body, which is what the silhouette is made of. Held items (sword, shield,
-blade) arrive through the same function as their own root with no skinned mesh,
-so they stop casting too; that alone was the partial the audit suggested, worth 4
-of the 29.
+**And the 125 check passes by measuring the wrong thing.** It reads the room's
+draw calls at the spawn point. `tools/probe-worst-calls.mjs` exists because the
+frustum decides what is submitted, so the worst frame is somewhere else in the
+room — its own header says it produces "the number METRICS.md's '< 100 draw
+calls' should be checked against". Swept across standing positions, 2026-08-09:
 
-It is invisible. Screenshots of the Bloomfall with five hounds, animation frozen
-so the shadow policy is the *only* difference, diffed against a control pair of
-identical renders:
+| room | region | at spawn | **swept worst** | standing at |
+|---|---|---|---|---|
+| `ssA` | 5 the wind bridge | 118 | **142** | (0, 8) |
+| `s2b` | 5 the Gale Stair | 96 | **139** | (5, 8) |
+| `vh` | 2 the Great Vault hub | 109 | **130** | (0, 8) |
+| `sc2` | 5 the second stair | 100 | **129** | (0, 8) |
+| `d1a` | 6 the Shallows | — | **118** | (0, 8) |
+| `la` | 1 the Hollow | 111 | **115** | (0, 8) |
+| `ld` | 1 | 107 | **109** | (0, 8) |
+| `t3a` | 3 the Thunderhead junction | 93 | **108** | (0, 8) |
+| `vc2` | 2 | 95 | **103** | (-5, 8) |
+| `dtp` | 6 the Tide Pools | — | **101** | (0, 8) |
+| `lb` | 1 | 104 | 99 | (0, 8) |
+| `s1a` | 5 the Landing | 93 | 95 | (0, 8) |
+| `dlg` | 6 the lagoon | — | 89 | (0, 13) |
 
-| | pixels differing >8/255 | >32/255 |
-|---|---|---|
-| control (same policy, two shots) | 2.40% | 1.62% |
-| **body-only casting** | **2.49%** | **1.64%** |
-| no character shadows at all | 3.26% | 2.22% |
+**Ten of thirteen sampled rooms are over 100. Two are over 125.** The worst room
+in the game is `ssA` at 142 — the wind bridge, a 24 × 12 corridor with seven
+stone spans in it — and `verify-level5` calls it clean.
 
-Body-only sits inside the noise floor. Switching character shadows off entirely
-saves only 5 more calls and *is* visible, so it was not taken.
+This is one decision and two fixes. The decision is dad's: **is the ceiling 100
+or 125?** The fixes are not optional either way — at 142 and 139 the two worst
+rooms breach both numbers — and the verifiers must sweep rather than sample, or
+the ceiling they assert is decorative.
 
-### What it did to the whole game
+## B2 · The rebuilt levels have regressed 20-48 calls since B1/B3 closed
 
-Worst-case draw calls, sweeping a grid of standing positions per room (the
-frustum decides what is submitted, so a single sample at the spawn understates
-it — `tools/probe-drawcall-attrib.mjs` and the sweep in the same family):
+The sweep above is not only a Level 5/6 story. Against the swept worst-case
+numbers recorded when the archived B items closed at v3.30-v3.34:
 
-| room | before | after |
-|---|---|---|
-| `vc1` | 110 | **82** |
-| `vc2` | 105 | **83** |
-| `vh` | 88 | 82 |
-| `vb2` / `vb3` | 90 | 58 / 60 |
-| Level 3 worst frame *through a fight* | 94 | **77** |
+| room | at B1/B3 close | today | change |
+|---|---|---|---|
+| `vh` | 82 | **130** | **+48** |
+| `t3a` | 90 | 108 | +18 |
+| `vc2` | 83 | 103 | +20 |
+| `la` | — | 115 | (never recorded) |
 
-Level 2 verifies ALL CLEAN. Triangle counts fell with the calls, since
-shadow-pass triangles count too.
+`vh` was measured at 82 in the B1 table and is 130 now. Nothing in the archived
+plan predicts that; the levels 5/6 branch is what landed in between, and it
+brought three new modules the rebuilt levels all use (`js/dressing.js`,
+`js/ground.js`, `js/districts.js`). The likeliest reading is that levels 1-3
+were re-dressed and never re-measured — which is also exactly what C1 says about
+the density check's blind spot, one measurement over.
 
-**All 52 rebuilt-level rooms swept, worst standing position each** — this is the
-honest number, and it is higher than a spawn-point sample suggests. Two of the
-three design agents run for A9 independently flagged that sweeping the camera
-finds up to +19 calls in the same room, and measured `t1b` 105, `t2a` 107 and
-`t3a` 106 *before* this fix. After it:
-
-| | worst room | calls |
-|---|---|---|
-| Level 1 (14 rooms) | `lb2` | 96 |
-| Level 2 (17 rooms) | `vb2` | 97 |
-| Level 3 (21 rooms) | `t3a` | 90 |
-
-Every one is under the ceiling; the three rooms the agents flagged came down to
-87, 83 and 90. Nothing in the three rebuilt levels is over 100 from any standing
-position.
-
-Original finding below.
-
-Dressed, measured: `vc1` **112**, `vc2` **106**, against a ceiling of 100.
-Everything else fits (hub 82, worst Level 3 room 83).
-
-The cause is characters, not geometry. Breakdown of `vc1`'s original 106:
-
-    persistent 40  +  room geometry 23  +  three characters 43
-
-A `SkeletonShield` is ~16 draw calls alone — body, shield and blade, each
-redrawn for the shadow map. Cutting a third enemy from the room saved **zero**
-calls, which disproves the obvious fix.
-
-The real lever is shadow-casting on skinned characters, which is a whole-game
-visual trade-off rather than a Level 2 decision — hence flagged, not taken.
-A cheaper partial: drop `castShadow` on held items (shield, blade) only.
-
-## B3 · The Den is the last room over the ceiling
-**✅ DONE (v3.33.0)** — 113 → **95** worst-case, and the room is still alive.
-
-`flattenStatic(world)` at the end of `buildDen`. The whole fix was that the
-hand-built shipping rooms never called it while all three rebuilt levels do from
-`finish()`.
-
-Batching is precisely the change that can silently freeze a room — anything
-merged keeps its build-time transform forever — so the safety was checked rather
-than assumed. Skinned meshes are skipped outright (the villagers, Biscuit, the
-shopkeeper, the wolf pup), the checkpoint flame rides a protected gameplay list,
-`world.npcs` went into the protected keys during B1, and the three animated props
-— Petra's heart, Cinder's ember, the moonstone orb — are marked `keepLoose`
-where they are built. `tools/verify-den.mjs` samples every animated object over
-90 frames and asserts it actually moved, then sweeps standing positions for the
-worst frame.
-
-Original finding below.
-
-With B1 in, the Den is the only room in the game over 100 draw calls:
-**113 worst-case**, standing at (-5, 8). It was far worse before B1 — it holds
-more characters than any other room — but characters are no longer its problem.
-
-Attribution (`tools/probe-drawcall-attrib.mjs den`): turning off static-mesh
-shadow casting saves **18**, character shadows now save only 5. The Den's cost
-is its own static geometry, and the reason is simple: it is hand-built in
-`js/rooms.js`, and **the shipping rooms never call `flattenStatic()`**. Only the
-three rebuilt levels do, from `finish()`.
-
-The fix is to batch it like a rebuilt level. One prerequisite is already in
-place: `world.npcs` has been added to `flattenStatic`'s protected-key list
-(`js/batch.js`), because without it the villagers would be merged into the
-scenery and stop moving — the exact failure the function's own comment warns
-about. It changes nothing today, since no room with NPCs calls it yet.
-
-Worth checking the other hand-built shipping rooms in the same pass; they are
-all unbatched, and only the Den has been measured.
-
-## B2 · No LOD anywhere
-**✅ CLOSED (v3.34.0) — not needed, on measurement.**
-
-LOD exists to buy back draw calls and triangles. After B1 (one shadow caster per
-character) and B3 (the Den batched), **every room in the game is under the
-ceiling**, swept across standing positions rather than sampled at the spawn:
-
-| | worst room | calls |
-|---|---|---|
-| Level 1 (14 rooms) | `lb2` | 96 |
-| Level 2 (17 rooms) | `vb2` | 92 |
-| Level 3 (21 rooms) | `t3a` | 92 |
-| Frostpeak (7 rooms) | `f2` | 99 |
-| the Den | — | 95–99 |
-
-Worst triangle count anywhere is ~50k against a 500,000 budget — two orders of
-magnitude of headroom, because this is a low-poly kit game. LOD would add a
-system, a per-model authoring step and a pop-in artefact to solve a problem the
-measurements say does not exist.
-
-**What IS worth doing instead**, if more headroom is ever wanted: the remaining
-hand-built shipping rooms (Frostpeak's `f2` 99, `f4` 97, `f3` 96) still never
-call `flattenStatic()`, exactly as the Den did not before B3. That is a one-line
-change per room plus the same keepLoose audit `tools/verify-den.mjs` was written
-for, and it is worth roughly 15-18 calls each — far more than LOD would buy, for
-far less machinery. Logged here rather than opened as its own item because
-nothing is over budget today.
-
-Original finding below.
-
-The performance brief asks for "LOD plus fog to hide pop-in". Fog exists
-(`26 → 52 u`, METRICS.md). There is no `THREE.LOD` in the codebase. Not currently
-hurting — triangles peak at 50k of a 500,000 budget — but it is an unimplemented
-requirement and should be recorded as such rather than assumed done.
-
-**Not a problem, for the record:** memory is clean. A full 1 → 2 → 3 lap
-accumulates **0 geometries, 0 textures**; 20 hub entries accumulate 0.
+**Fix:** sweep every room, not thirteen, and put the table in METRICS.md beside
+the ceiling it is measured against. `probe-worst-calls` takes a comma-separated
+room list and does the rest.
 
 ---
 
-# C · POLISH
+# C · GUARD RAILS AND DOCS
 
-## C1 · The juice layer is tuned for corridors, not islands — RETUNE
-**✅ DONE (v3.31.0) — but the premise was wrong, and what was underneath is worse.**
+## C1 · `verify-density` stops at Stormreach — twenty rooms are unmeasured
 
-**The room-scale premise is false, measured.** The camera is a fixed world-space
-offset with a constant CAM_DIST, so the visible ground is **21.2u wide, 12.9u
-ahead and 4.5u behind in every room** — identical in a 14x10 choke and the 36x28
-hub, to the decimal. Bigger rooms do not put more world on screen, so screen
-shake does not read weaker in them and nothing needed scaling with room size. The
-shake magnitudes are unchanged; the only edit there was moving juice.js's two
-hardcoded numbers into `CONFIG.JUICE` where the rest live.
+`tools/verify-density.mjs`'s `ROOMS` table lists Ember, Stoneroot, the Wild
+Woods and Stormreach: 72 rooms, ending at `ssA`. **Not one of the Sunken Vale's
+twenty spaces is in it**, and the check passes (exit 0) while ignoring them.
 
-**What was actually wrong is that the flourishes lied about reach and shape.**
-`effects.groundSlam()` took no radius, so every caller drew the same ~4u circle:
+This is the check whose own comment says it exists because "every topology
+assertion in this suite was green while the rooms were empty boxes, which is
+exactly how 'big but bare' reached a playtest". It cannot catch that in the
+newest region because the newest region is not on its list.
 
-| flourish | drew | ability truly is |
+**Fix:** add the twenty rooms with their module kinds, and treat the `rim` and
+`lagoon` modules the way the table already treats the `stair` (measured as a
+choke, with the reason written beside it). Then re-measure — the Vale's rooms
+have never been held to the arrival-frame bar at all.
+
+## C2 · `verify-progression` stops at Frostpeak — A2 shipped through the gap
+
+`tools/verify-progression.mjs` checks the den → `la`, `le` → `vh`, `vz` →
+`t1a`, `tgl` → `f1` and the old-room redirects: 24 checks, all green, and the
+newest two handoffs — `f5` → `s1a` and `scr` → `d1a` — are not among them.
+Neither is any check that a region unlock **survives a save**, which is
+precisely how A2 shipped.
+
+`verify-level6` would have caught A1, and it is not in `verify-all.sh`'s default
+run (which is `verify-boot` + `verify-density` plus whatever is named on the
+command line). Its last run failed and timed out, and nobody saw.
+
+**Fix, in the order that pays:**
+
+1. Extend `verify-boot`'s static pass to **load every room module and call every
+   builder**, or add the room list to a cheap headless "every room builds"
+   check. A1 is a twenty-second failure that took a twelve-minute verifier to
+   find, and only because it was run by hand.
+2. Extend `verify-progression` through `f5 → s1a → scr → d1a → ddp`, and make
+   each unlock assertion round-trip through `persist()` + `applySave()`.
+3. Put `verify-level5` and `verify-level6` in `verify-all.sh`'s default list.
+4. Keep `tools/probe-door-entries.mjs` (new, this audit) and promote it to a
+   verifier once A6's ten entries are fixed, so the assertion is "no door lands
+   away from the door it opens into" rather than a table someone reads.
+
+**And one lesson about the probes themselves.** The first run of the new door
+probe reported *"✓ every door lands inside the room it opens into"* while
+measuring **nothing**: `page.evaluate` was handed the read function as a
+template string, returned `undefined` for every room, and the loop's own
+`if (!info[id]) continue;` guard skipped them all in silence. It now prints
+`read N of M rooms, K doors` on every run, unconditionally. A verifier that
+measures nothing and a verifier that finds nothing print the same tick, and this
+project has been bitten by that before — the archived A6's landmark check and
+the C1 pose check both had to be re-read for the same reason.
+
+## C3 · Three modules are missing from the service worker precache
+
+`js/districts.js`, `js/dressing.js` and `js/ground.js` are not in `sw.js`'s
+PRECACHE list. Every other module in `js/` is, and all 46 asset paths the two
+new levels reference are too — checked exhaustively, these three are the only
+gaps.
+
+`sw.js` caches at runtime on a successful fetch, so a child who has played
+online once is fine. A child who installs the game and goes offline before
+entering a dressed room is not: the fetch fails and `js/ground.js` is imported
+by every level module. The engineering law is "add every new file to PRECACHE".
+
+**Fix:** three lines. Do not bump `CACHE_NAME` — that belongs to a deploy.
+
+## C4 · `regions.js` still says the Sunken Vale is not built
+
+    sunkenvale: { name: 'Sunken Vale', built: false, spirit: 'Meri',
+                  grants: 'tide_wolf', gates: [] },
+
+Twenty rooms, a boss, a form and four gates exist. The manifest has no `rooms`,
+no `beats`, no `threshold`, no `restoration` and no gate declarations, which
+means `validateRegions()` — the machine check for lock-before-key — has nothing
+to check for region 6, and anything driven off REGIONS (see A10) cannot see it.
+Stormreach's entry, by contrast, is complete.
+
+Two smaller faults in the same file:
+
+- `GRANTED_IN` declares `storm_wolf: 'stormreach'` **twice** (lines 22-23). The
+  duplicate key is harmless — the second wins and every ability is still
+  mapped — but it is the kind of copy-paste that hides a missing line.
+- Stormreach's gate list still calls the wind gate `s_sail`, "the great
+  sail-gate at s4b", after `LEVEL-DESIGN-5.md` recorded the rename to THE WIND
+  GATE and the reason (no sail model exists in any vendored pack).
+
+## C5 · Three new room modules bypassed the locked module list
+
+`js/levelkit.js:39` MODULES is the locked list, with dad's rule written beside
+it: *"A level picks from this list; if a space seems to want a size that is not
+here, the module gets redesigned rather than the grid getting bent."* The hub
+was added to it properly in Level 2, with a note in METRICS.md.
+
+The STAIR (24 × 12), the RIM (22 × 14) and the LAGOON (34 × 30) are local
+`const`s inside `js/level5.js` and `js/level6.js`. None is in MODULES; none is
+in METRICS.md's zoo, which claims to exhibit "one of every wall/floor module".
+Both design docs promised the opposite — "straight into the metrics zoo before
+it is used at scale, same rule as the hub".
+
+Nothing is broken by this today. It matters because the zoo is where a size gets
+judged before twenty rooms are built at it, and three sizes have now skipped it.
+
+## C6 · Spec drift, docs vs implementation
+
+| doc claim | reality | which is wrong |
 |---|---|---|
-| knight spin | 4.0u | **2.3u** (its own comment said the ring "sweeps out to the spin's reach") |
-| fire slam | 4.0u | 3.0u |
-| stone stomp | 4.0u | 3.2u |
-| vine lash | 4.0u circle | a 3.8 x 0.9 **corridor** |
-| frost breath | 4.0u circle | a 40-degree **cone** |
-| Blood Moon crash | 4.0u | 2.6u |
+| LEVEL-DESIGN-5 §6: Aria has **24 hp**, "one step above Boreal's 22" | `boss.js:56` `maxHp: 26` | doc — and LEVEL-DESIGN-6 already quotes 26 |
+| LEVEL-DESIGN-6 §3: the bubble is a **4s duration** special the HUD must show | `player.js` `trySplash` is instant; deep water is gated by `canWade()` at build time | doc — the build-time gate is the same doc's §3, but the bubble's duration was never built |
+| METRICS.md: draw calls < 100 | ROOM-STANDARD.md and both new verifiers say 125 | see B1 — undecided |
+| `tools/verify-level6.mjs` header: "VALEREACH CLIFFS … design/LEVEL-DESIGN-5.md" | it verifies the Sunken Vale against LEVEL-DESIGN-6 | the header, copy-pasted |
+| Region checklist: a heart-piece set (4) per region | Stormreach 2, the Vale 2 | implementation — and levels 1 and 3 ship 1 each, so this is game-wide |
+| Region checklist: a shop tier per region | Maren's stock tiers at Stoneroot and never again (v3.35.0) | implementation — see the v3.35.0 BUILDLOG entry's AWAITING note |
 
-`groundSlam` now takes the ability's real reach, and an optional cone `{deg, fx,
-fz}` that draws a wedge from the same primitive (RingGeometry has thetaStart /
-thetaLength, so a cone costs no extra draw call). The growth eases out so the
-ring arrives at its true extent and lingers while it fades, instead of still
-expanding as it disappears — that is what makes an honest radius legible.
-Ceremony (transformations, boss deaths) keeps the full 4u, having no hitbox to be
-honest about; those are now visibly the biggest rings in the game, which reads
-right.
+## C7 · Tunables live inline instead of in CONFIG
 
-**One ability, one number.** Two secondary radii disagreed with their own rings:
-the stone stomp cracked rock at `SLAM_BURN_RADIUS` — the *fire* wolf's constant,
-leaked into the earth wolf's move — 2.6u against a 3.2u ring, and the fire slam
-burned at 2.6u against a 3.0u ring. Both now use their own ability's radius, so
-a brazier inside the orange ring lights and a cracked rock inside the brown ring
-breaks. `SLAM_BURN_RADIUS` is deleted; it had no other users.
+The tunables rule (SYSTEMS.md): game-feel numbers live in `CONFIG`. Every
+earlier form's feel numbers do — `CONFIG.FORMS` carries the Dark Wolf's speed,
+turn, hurt multiplier, lunge distance, duration and cooldown.
 
-`tools/verify-pose.mjs` fires each ability through the real input path, finds the
-ring in the scene and measures its world radius and wedge angle: all five match
-to within 0.02u.
+The two newest forms' do not:
 
-### And then the boss telegraphs, which is where it actually mattered
+    js/player.js:38-49   DASH_COOLDOWN 5 · DASH_DIST 5.2 · DASH_DUR 0.26
+                         SPLASH_COOLDOWN 6 · SPLASH_RADIUS 3.4
+    js/wind.js:28        WIND breeze 1.6 · gust 4.2 · gale 7.2
+    js/water.js:39-42    WATER shallow.slow 0.72 · deep.slow 0.88
 
-An audit of every flourish against its hitbox turned up two direction bugs of the
-same shape, both verified by measurement, both **high severity because a child
-dodges by these**:
-
-- **The Bone Warden's chop arc pointed the wrong way.** `rotation.z =
-  -rotation.y + ...` on a mesh laid flat by `rotation.x = -PI/2` MIRRORS the
-  heading instead of rotating it. Measured across seven facings, the red "the axe
-  lands here" arc was correct at **exactly one** (171 degrees) and **up to 162
-  degrees wrong** elsewhere — pointing almost directly away from the swing. Now
-  0 degrees of error at every facing.
-- **Boreal's dive lane had the same sign error**, lying perpendicular to the dive
-  at diagonals — and worse, she **re-aimed at the child the instant the dive
-  began**, discarding the direction she had just spent 0.9s advertising. The one
-  floor decal a boss charge is allowed to draw was decoration. She now dives
-  where the lane said.
-
-Three more of the same family, all fixed: the Warden's chop arc stopped 0.9u
-short of the axe (2.0u drawn, 2.9u hit); his spin — the attack you cannot step
-out of sideways — was signposted with a 162-degree wedge that implied a safe
-side, and is now a full ring; and both marks faded out *before* the damage frame.
-Boreal's lane was 1.3u wide against a 3.2u-wide hit.
-
-`tools/verify-telegraphs.mjs` measures the arc's world bearing against the
-warden's forward at seven facings.
-
-### One more, caught by the verification pass after the fact (v3.31.1)
-
-The **fire breath** is the frost breath's twin — both a 38-40 degree cone — and
-the first C1 pass gave the frost one an honest wedge while leaving fire as **the
-only ability in the game with no ground mark at all**. Its three flame puffs were
-drawn at ±0.3/±0.6/±0.9 against a real half-width of ±2.19u at the far step:
-**2.4x too narrow and 0.96u short**. And its `meltAt` probes used a flat 1.6u
-radius from 1.13u out, so the breath could melt a frozen brazier **0.47u BEHIND
-Kael** — the Frostpeak gate verb, firing backwards.
-
-It now draws the same cone from the same constants the hit test uses, the puffs
-spread to the cone's true half-width at each step, and the probe radius is
-clamped to its own reach so nothing behind can be melted. Verified at runtime:
-76 degrees drawn, 3.4u reach, no page errors.
-
-Worth recording how it was nearly shipped broken: the first version called
-`effects.groundSlam(...)`, but `tryRanged(world)` takes no `effects` parameter.
-`node --check` passes that happily — it is a ReferenceError at runtime, on the
-first breath a child ever fires. It uses `juice.effects` now, the same handle
-`js/boss.js` reaches for.
-
-Original finding below.
-
-Asked directly: **yes, it needs retuning.** The effects were built against
-16 × 12 rooms; the rebuilt spaces are 32 × 26 and the hub is 36 × 28.
-
-- `js/effects.js:74` — the ground-slam ring is `RingGeometry(0.5, 0.95, 36)`, a
-  **fixed ~1 u** flourish. In a 16 u-wide room that read as a real shockwave; on
-  a 32 u island it is a dot. It does not scale with the space or with the
-  ability's actual radius.
-- `js/juice.js:59` — `effects.shake(0.12, 0.18)`, a fixed magnitude. Screen
-  shake reads as proportionally *weaker* the more world is on screen.
-- Nothing in `juice.js` or `effects.js` references room size, camera distance or
-  a scale factor, so nothing adapts.
-
-The honest summary: hit feedback still *fires* correctly everywhere — it has not
-broken — but it has quietly become less legible as the spaces grew. Worth one
-focused pass sizing the ring to the ability radius and scaling shake with
-visible-area rather than leaving both constant.
-
-## C4 · The pose lies about TIME, not distance — i-frames and windows
-**✅ DONE (v3.32.0)** — all four, verified by `tools/verify-timing.mjs`.
-
-- **The jump.** `airborne` now returns true for the whole visible arc when the
-  arc is a JUMP (`jumpsUsed > 0`), and keeps the 0.35u threshold for hops — the
-  roll's 0.28u and the lunge's 0.18u are not jumps, carry their own i-frames,
-  and must not become free dodges of every ground attack. Measured: 0.658s
-  visible, 0.658s dodging, 0 lies.
-- **The lunge.** `LUNGE_IFRAMES` is deleted; the dodge reads `LUNGE_DUR`, so the
-  invulnerable window IS the visible dash and the two cannot drift apart again.
-  0.15 → 0.26.
-- **The parry.** The shield now glints pale blue for exactly the window, snapping
-  on the frame `defendStart` is stamped (not when the crossfade lands, which is
-  what wasted 40% of it) and easing off when it closes. Its materials are cloned
-  on mount — tinting the loader cache would have lit up every shield in the
-  game, including the skeletons'.
-- **The weapon arc.** A weapon narrower than 50 degrees now plays the STAB clip
-  instead of the wide diagonal slice. Already-loaded animation, no new asset;
-  the Long Spear (36 degrees) finally looks like what it hits.
-
-Two things worth keeping from how it went:
-
-**`node --check` is not a syntax check for this codebase.** It exits 0 on
-`js/player.js` with a broken if/else chain, because a `.js` file parses as
-CommonJS, hits the `import` on line 5 and never reads the body. It gave a false
-pass twice in one session — once on a ReferenceError in the fire breath, once on
-a genuine syntax error that stopped the game booting at all.
-`tools/verify-boot.mjs` is the cheap real check: load the page, start a game,
-report any page error. Run it first, always.
-
-**A decaying counter must be sampled in the tick it is set.** The i-frame
-assertion failed at 0.204 against 0.26 — the game was right and the test had
-waited two frames, which under SwiftShader is long enough to eat 20% of the
-window.
-
-Original finding below.
-
-C1 fixed every flourish that lied about *where* an ability reaches. An
-adversarial verification pass over the same audit confirmed three that lie about
-*when* — the visual and the rule disagree in time rather than in space. These are
-combat-feel changes rather than feedback fixes, so they want their own session
-and a playtest: each one alters what a child can survive.
-
-- **The jump.** `JUMP_V 6.8 / GRAVITY 21` puts Kael visibly airborne for 0.648s
-  and 1.10u up, but `get airborne()` is `airY > AIRBORNE_DODGE_Y` with
-  AIRBORNE_DODGE_Y 0.35. Solving the arc, the dodge is live only from t=0.056 to
-  t=0.591 — **17.4% of the jump, at each end, reads as airborne and takes the
-  hit**, up to a third of the character's height off the floor. Worse than a rare
-  mistime: `contact()` in `js/enemies.js` defaults to `{ground: true}` and
-  re-tests every frame of overlap, so the landing window is sampled continuously.
-  The fix has to be the `airY > 0 || airV > 0` variant rather than just lowering
-  the constant — 0.35 is also what stops the roll's 0.28u hop and the lunge's
-  0.18u hop from being free dodges.
-- **The Dark Wolf lunge.** `LUNGE_DUR` 0.26 against `LUNGE_IFRAMES` 0.15: **42%
-  of the dash has no i-frames and looks identical to the half that does**, and
-  the 0.18u hop is below AIRBORNE_DODGE_Y so it dodges nothing either. The code
-  calls the lunge "an attack AND an escape"; the form that most needs the dodge
-  to be legible is also the one taking +30% damage (`DARK_HURT_MULT` 1.3).
-- **The knight parry.** One `block` pose, crossfaded over 0.12s, pixel-identical
-  during the 0.3s parry window and for the whole hold afterwards. `defendStart`
-  is stamped when the button registers, so **40% of the window elapses while the
-  shield is still crossfading up**, and when it closes the same pose silently
-  downgrades to a 0.5-heart blunt block. Nothing marks the difference.
-
-Also live and cheap, same family: `js/items.js` gives weapons an `arc` from 36 to
-82 degrees — a **2.3x** difference in swing width — while every knight weapon
-plays the same `Melee_1H_Attack_Slice_Diagonal` clip. The pose is identical; the
-hitbox is not.
-
-## C2 · The second ring chord is barely a shortcut
-**✅ CLOSED (v3.34.0) — dad's call: 37% is fine, keep it.**
-
-Asked directly and answered: "37% is fine. I'll let you know if it isn't after
-first playthrough." Nothing to build. `tools/verify-level3.mjs` still asserts the
-saving, against a bar set to the accepted figure with a little room (0.7) rather
-than the unmeasured 0.5 guess it was written with — so an edit that erodes it
-still trips.
-
-Its real value was always the one the finding names: skipping the *dark*
-Gloomwood stretch, not the distance.
-
-Original finding below.
-
-Measured: `tsA` (fallen log) saves **75 %** — 81 u against 319 u, a real relief
-after the long lap. `tsB` (cut root-wall) is 81 u against 128 u, a **37 %**
-saving, because `t3a` and `t2a` are only five ring-hops apart.
-
-It is shorter, so it is not broken, but it is a convenience rather than a
-shortcut. Its genuine value is skipping the *dark* Gloomwood stretch, not the
-distance. Keep, cut, or move its far end further round the ring.
-
-## C3 · Spec drift — docs vs implementation
-**✅ DONE (v3.34.0) — and it found a load-bearing measurement error.**
-
-The listed drift was mostly annotated-in-place already. Two real corrections, and
-one that mattered more than "LOW" suggested:
-
-**METRICS.md's camera framing table had the width row mislabelled**, and level
-sizing has been reasoned from it ever since. It read "Visible width at Kael's own
-depth: 16.1 u". Re-measured at the documented aspect: 16.1 u is the width at the
-**near edge** of the screen — the bottom, 4.5 u behind Kael, closest to the
-camera and therefore narrowest. The width at Kael is **22.2 u**. The doc's own
-"~39.6 u at the far edge" is right and matches, which is what gives it away:
-16.1 / 22.2 / 39.6 are the near, middle and far widths of one fan, and the table
-had labelled the near one as the middle.
-
-Corrected, with two things the table never said and every later session had to
-re-derive: **width scales with aspect ratio (21.1 u at 2.06, 22.2 u at 2.16) but
-ahead and behind do not** — 12.9 u and 4.5 u on every device — and **none of it
-changes with room size**, because the camera is a fixed offset. A 14 × 10 choke
-and the 36 × 28 hub frame identical ground, to the decimal. That last fact is the
-one C1 was written against, and it is now recorded where the next session will
-find it instead of measuring it again.
-
-**LEVEL-MAP's Level 3 space count** said 18; 21 are built, and the doc's own
-component list adds to 21. Corrected.
-
-The COMBAT-SPEC row ("the stomp stagger is not implemented") is stale — A4
-shipped it in v3.26.1.
-
-Original finding below.
-
-| Doc claim | Reality | Which is wrong |
-|---|---|---|
-| LEVEL-MAP: Level 2 is "17 spaces" | 17 built | agree |
-| LEVEL-MAP: Level 3 is "**18** spaces" | **21** built; the doc's own component list (4 districts × 2 + glade + shrine + puzzle + 4 chokes + 4 pockets + 2 shortcut legs) adds to 21 | **doc** — arithmetic error |
-| LEVEL-MAP: The Rattle is an *optional* pocket | built **on Spoke B's spine** | **doc** — already annotated with the reason (a skippable twist teaches three quarters of an ability) |
-| LEVEL-MAP: Cinder Bridges hero is "THE GREAT CHAIN" | built as **THE BROKEN SPAN** | **doc** — already annotated; no chain model exists in any GREEN pack |
-| LEVEL-MAP: L2 develop step on "Spoke A's return leg" | built in `vb1` | **doc** — the shrine's shortcut home would let a child skip Spoke A's return entirely |
-| ASSETS.md: blanket "CC0" on the pack table | four packs unproven | **doc** — already carries a caveat note |
-| COMBAT-SPEC: Bone Warden "punish by flanking, jumping behind, or parry-stunning" | implemented; the *stomp* stagger (A4) is not | **implementation** |
-
-Most drift is already annotated in-place. The Level 3 space count is a plain
-arithmetic error worth correcting.
+These are exactly the numbers a playtest changes. Cooldowns and push strengths
+belong in `CONFIG` beside `FORMS`; the visual constants (tints, alphas) can stay
+at the top of their owning file, which is what the rule allows.
 
 ---
-
-# TOO LARGE FOR ONE SESSION
-
-- **A2 (Level 3 gameplay)** — three separate mechanics plus state wiring.
-  Split as noted.
-- **A1 (connecting the levels)** carries a design decision (replace vs
-  coexist) that should be settled before any code is written. The wiring itself
-  is one session once decided.
 
 # DEPENDENCY ORDER
 
-    A1 ─────────────────────────────► everything else is invisible until this lands
-    A2 ──► A3, A5                      (L3 gameplay before its shrine and its save flags)
-    A7 ──► must land with A1           (never ship a child a checkerboard)
-    A4, A6, A8, A9, B1, B2, C1, C2, C3 are independent
+    A1 ──────────────────────► nothing else in the Vale can be verified until
+                               its rooms build. Do this first, alone.
+    A2 ──────────────────────► second: without it, no test of region 6 that
+                               involves reloading means anything.
+    C2 ──► goes with A1/A2     the guard rails that would have caught both
+    A3, A4 ──► after A1        (they need the rooms to build to be verified)
+    C1 ──► after A1            (the density table needs rooms that build)
+    A5, A6, A7, A8, A9, A10, C3, C4, C5, C6, C7 are independent
+    B1 ──► needs dad's ceiling (100 or 125) before the work is scoped, but the
+           two worst rooms breach both, so ssA and s2b can be cut either way
+    B2 ──► sweep every room first; the decision above wants the whole table
 
-Suggested first session: **A1 + A7** together — that is the smallest change that
-turns this from a demo into a game.
+**Suggested first session: A1 alone**, with the "every room builds" check from
+C2 written first so the fix is verified by something that will keep catching it.
+**Second: A2 + the save round-trip assertion.** Those two are the difference
+between "the sixth region has bugs" and "the sixth region cannot be played".
 
-> **A1 + A7 shipped in v3.25.0.** Next by severity: **A2** (Level 3 gameplay —
-> needs splitting), then **A3/A5** which depend on it, then **A4** (Level 2's
-> conclude step), then **A6** (junction landmarks) and **A8/A9**.
+# NOT IN THIS PLAN
+
+- **Anything that needs the kids.** The economy/XP balance pass still queued in
+  BUILDLOG, whether Stormreach's climb is too long, whether Meri's hop is
+  readable — those need a playtest, not a measurement.
+- **The Shadow Court (region 7).** Not built; `regions.js` carries the stub.
+- **Level 4 (Frostpeak).** Hand-built in `js/rooms.js`, never audited to this
+  standard, and its three worst rooms (`f2` 99, `f4` 97, `f3` 96 as last
+  measured) still never call `flattenStatic()` — noted in the archived B2 and
+  still true. Given B2, those numbers are probably stale too.
+- **`t3a → tc2`**, the one stranded door landing the control run found in Level
+  3 (A6). It belongs to a Level 3 pass, not this one.
+
+# WHAT THIS AUDIT ADDED TO `tools/`
+
+- **`probe-door-entries.mjs`** — builds each room, flood-fills its real
+  colliders from its real spawn, and measures every door's arrival point: is it
+  somewhere a child can stand, and is it beside the door they came through.
+  Takes level keys (`s`, `d`, `t`, `v`, `l`) or bare room ids, so a region with
+  a room that crashes on build can still be measured around it. Found A6, and
+  the Level 3 landing above.
+
+Nothing else was changed. This pass measured; it did not fix.
