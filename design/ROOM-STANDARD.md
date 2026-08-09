@@ -104,8 +104,16 @@ vendored after the showcase room proves the standard.
 ## PROGRESS (2026-08-09)
 
 All 52 dressed spaces across the three built regions have been rebuilt to this
-standard. `tools/verify-density.mjs` measures every one of them at its own spawn
-point, in the arrival frame.
+standard, and **Stormreach Cliffs' twenty were built to it from the first line**
+— the first region that never had to be retrofitted. That is 72 spaces measured
+by `tools/verify-density.mjs`, every one at its own spawn point, in the arrival
+frame.
+
+Stormreach also found the standard's first gap: the STAIR is a new 24 × 12
+module, and the first pass dressed it like a corridor — 13 things in the arrival
+frame against a bar of 21. The bar was not lowered. Both long walls are lined and
+the middle left clear, so it still reads as a passage and has a world either side
+of it. A room you walk through is still a room.
 
 | | before | after |
 |---|---|---|
