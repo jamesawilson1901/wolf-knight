@@ -18,6 +18,7 @@ const VOICES = {
   sylva: { rate: 0.92, pitch: 1.15, label: 'Sylva' },
   boreal: { rate: 0.8, pitch: 0.75, label: 'Boreal' }, // slow, vast, wintry
   aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
+  meri: { rate: 0.78, pitch: 0.95, label: 'Meri' },     // slow and low, like deep water
 };
 
 export const LINES = {
@@ -193,6 +194,18 @@ export const LINES = {
   aria_gale: { voice: 'pip', text: 'The wind is closing in! Dash — do not walk!' },
   aria_defeat: { voice: 'aria', text: 'The gale lets go. Thank you, little knight. The sky is quiet.' },
   storm_restore_1: { voice: 'pip', text: 'The clouds went away! You can see the whole climb from up here.' },
+  // --- THE SUNKEN VALE (region 6)
+  vale_arrive: { voice: 'pip', text: 'Kael… the whole valley is under the water. There are roofs down there.' },
+  vale_deep_first: { voice: 'pip', text: 'That water is deep. Too deep. But look what is on the other side!' },
+  tide_grant: { voice: 'meri', text: 'Then walk on it. The Tide Wolf does not sink — the water will hold you up.' },
+  tide_howto: { voice: 'pip', text: 'Be the Tide Wolf and step right in! And the star button makes a big SPLASH.' },
+  tide_quench: { voice: 'pip', text: 'The fires are keeping the doors shut. Splash them out!' },
+  vale_lagoon: { voice: 'pip', text: 'We can walk across the middle now! Everywhere is close together!' },
+  meri_intro: { voice: 'meri', text: 'I could not hold it back. It came in, and it never went out again.' },
+  meri_duel: { voice: 'pip', text: 'She jumps like the little blobs! Get out from under her!' },
+  meri_defeat: { voice: 'meri', text: 'The water lets go. Look — the town is standing up again.' },
+  vale_restore_1: { voice: 'pip', text: 'It is draining! There were streets down there all along!' },
+  luna_dream_6: { voice: 'luna', text: 'Six lights. Only the last one now — and it is mine. Come and find me, Kael. Come and find Grimm.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },

@@ -32,7 +32,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'];
 
 // A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
 // rebuilt levels: the marker the room drops, the map entry it earns, and the
@@ -836,10 +836,12 @@ function narrationTriggers(dt, t) {
         earth_wolf: { region: 'vault', key: 'spark', toast: '🪨 The Earth Wolf awakens!' },
         verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
         storm_wolf: { region: 'storm', key: 'spark', toast: '🌩️ The Storm Wolf awakens!' },
+        tide_wolf: { region: 'vale', key: 'spark', toast: '🌊 The Tide Wolf awakens!' },
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
-      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant' }[gift] || 'earthwolf_grant');
+      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant' }[gift] || 'earthwolf_grant');
       if (gift === 'storm_wolf') narration.say('storm_howto');
+      if (gift === 'tide_wolf') narration.say('tide_howto');
       persist();
     }
   }
@@ -1272,6 +1274,8 @@ async function loadRoom(id, entry, handoff = null) {
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
   if (id === 'scr' && world.boss && !world.boss.defeated) narration.say('aria_intro');
   if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
+  if (id === 'd1a') narration.say('vale_arrive');
+  if (id === 'ddp' && world.boss && !world.boss.defeated) narration.say('meri_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
   await fadeTo(0, ms);
   transitioning = false;
@@ -1290,6 +1294,7 @@ function regionOf(id) {
   if (r[0] === 't') return 'wildwoods';
   if (r[0] === 'f') return 'frostpeak';
   if (r[0] === 's') return 'stormreach';
+  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
@@ -1693,6 +1698,13 @@ async function start() {
               WS.set('storm', 'restored');
               narration.say('storm_restore_1');
               setTimeout(() => narration.say('luna_dream_5'), 9000);
+            } else if (state.room === 'ddp') {
+              // MERI FREED — the vale drains and the drowned town stands up
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('meri_defeat');
+              WS.set('vale', 'restored');
+              narration.say('vale_restore_1');
+              setTimeout(() => narration.say('luna_dream_6'), 9000);
             } else if (state.room === 'w5') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
               // Wolf is earned (boss.js set the flags; here is the party)

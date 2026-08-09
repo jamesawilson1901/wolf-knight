@@ -24,6 +24,7 @@ import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
 import { LEVEL2_ROOMS, loadCaveKit } from './level2.js';
 import { LEVEL3_ROOMS, loadWoodKit } from './level3.js';
 import { LEVEL5_ROOMS, loadSkyKit } from './level5.js';
+import { LEVEL6_ROOMS, loadValeKit } from './level6.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -3913,7 +3914,7 @@ async function buildF5(scene) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -3929,6 +3930,8 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadWoodKit();
   } else if (id[0] === 's') {
     if (state.settings.greybox === false) await loadSkyKit();
+  } else if (id[0] === 'd' && id !== 'den') {
+    if (state.settings.greybox === false) await loadValeKit();
   } else {
     await loadKit();
     if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();
@@ -3938,7 +3941,13 @@ export async function buildRoom(rawId, scene) {
   await spawnEnemies(world);
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
-    if (bs.kind === 'boreal') {
+    if (bs.kind === 'meri') {
+      // The Sunken Vale's guardian is a TIDE BLOB, enormous — the family the
+      // kids have fought all region, so the hop and the helpless landing are
+      // reads they already own.
+      const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
+      new Shadowgrip(world, bs.x, bs.z, slimeGltf, 'meri');
+    } else if (bs.kind === 'boreal') {
       // Frostpeak's guardian is no wolf — she FLIES, which is why bolts
       // (full damage to flyers, since region 1) finally decide a fight.
       const dragonGltf = await loadGLB('./assets/chars/monsters/Dragon.glb');

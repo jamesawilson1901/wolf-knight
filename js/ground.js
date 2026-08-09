@@ -144,6 +144,13 @@ export const GROUND_STYLES = {
   thunder:   { pattern: 'flagstone', wear: 0.86, joint: 0.44, path: 1.24, grain: 0.62, base: 0x6b6e78 },
   opensky:   { pattern: 'flagstone', wear: 0.94, joint: 0.36, path: 1.28, grain: 0.48, base: 0x8a8378 },
   crown:     { pattern: 'flagstone', wear: 0.70, joint: 0.40, path: 1.20, grain: 0.55, base: 0x9a9080 },
+  // --- The Sunken Vale: four shores that drowned differently ---------------
+  shallows:  { pattern: 'earth',     wear: 0.60, joint: 0.35, path: 0.90, grain: 0.95, base: 0x6a8a84 },
+  reeds:     { pattern: 'grass',     wear: 0.55, joint: 0.28, path: 0.86, grain: 1.05, base: 0x5f7248 },
+  town:      { pattern: 'flagstone', wear: 0.80, joint: 0.58, path: 1.16, grain: 0.75, base: 0x5f6a80 },
+  salt:      { pattern: 'cobble',    wear: 0.88, joint: 0.42, path: 1.22, grain: 0.60, base: 0xa89f86 },
+  lagoon:    { pattern: 'cavefloor', wear: 0.50, joint: 0.40, path: 1.10, grain: 0.85, base: 0x2a5a6e },
+  deepvale:  { pattern: 'cavefloor', wear: 0.55, joint: 0.45, path: 1.12, grain: 0.80, base: 0x23485c },
 };
 
 const DEFAULT_STYLE = { pattern: 'earth', wear: 0.55, joint: 0.45, path: 1.15, grain: 0.80 };

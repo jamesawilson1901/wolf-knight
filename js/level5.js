@@ -1041,11 +1041,16 @@ export async function buildSc4(scene) {
 // ---------------------------------------------------------------------------
 export async function buildScr(scene) {
   const { world, spec, D } = base(scene, 'scr');
-  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
-    patches: [{ x: 0, z: 0, r: 7.0, kind: 'sand' }, { x: -9, z: -8, r: 3.2, kind: 'gravel' }],
-  });
+  const { halfW, halfD } = shell(world, spec,
+    state.flags.ariaDefeated ? [gap('s'), gap('n')] : [gap('s')], D, {
+      patches: [{ x: 0, z: 0, r: 7.0, kind: 'sand' }, { x: -9, z: -8, r: 3.2, kind: 'gravel' }],
+    });
+  // THE WAY ON. Once the gale drops off the crown, the north side opens: the
+  // long path down off the cliffs and into the drowned vale below.
+  const onward = !!state.flags.ariaDefeated;
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'sc4', { x: 0, z: -5, angle: 0 });
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'd1a', { x: 0, z: 10, angle: Math.PI });
 
   heroProp(world, 0, 0, 'crownstones', D);
   if (!state.flags.ariaDefeated) {

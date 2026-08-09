@@ -13,6 +13,7 @@ import { prepareCharacter } from './assets.js';
 import { smokePuff } from './enemies.js';
 import { state } from './state.js';
 import { galeLane } from './wind.js';
+import { waterZone, buildWaterField } from './water.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 
@@ -58,6 +59,28 @@ const SKINS = {
     gales: [
       { x: -8.5, z: 0, w: 7.0, d: 24, dir: 'e', strength: 'gale' },
       { x: 8.5, z: 0, w: 7.0, d: 24, dir: 'w', strength: 'gale' },
+    ],
+  },
+  // MERI, THE DROWNED — the Sunken Vale's guardian (region 6).
+  //
+  // Three wolf-shaped bosses is enough wolf-shaped bosses. Meri's family is the
+  // TIDE BLOBS the kids have fought all region, and she fights like one: the
+  // same deep crouch before a hop, the same helpless moment after she lands.
+  // Same class, because the fight underneath is the same fight — crouch, red
+  // ring, dodge, punish the recovery — and that is the law working rather than
+  // being worked around.
+  //
+  // What is new is the FLOOR. As she loses she floods it: standing ground
+  // shrinks, deep water grows, and the gift the region gave stops being optional.
+  meri: {
+    name: 'Meri, the Drowned',
+    body: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
+    maxHp: 28, dmg: 1.5, saveKey: 'meriHp', legacyPhases: false,
+    cinder: 0x8fe4ff, // her own tide-light, held under
+    speedMult: 0.92,  // deep water is not quick
+    floods: [
+      { x: -9.5, z: 0, w: 7.0, d: 24 },
+      { x: 9.5, z: 0, w: 7.0, d: 24 },
     ],
   },
 };
@@ -230,6 +253,7 @@ export class Shadowgrip {
       audio.howl({ volume: 0.95, rate: 0.7 });
       juice.burst(wx, 1.2, wz, this.skin.burst, 14);
       this._raiseGales();
+      this._flood();
     }
     if (this.coreHp <= 0) this._defeat();
   }
@@ -257,6 +281,51 @@ export class Shadowgrip {
     this._galesUp = false;
     this.world.galeLanes = this.world.galeLanes.filter((l) => l.id !== 'aria');
     if (this.world.rebuildWind) this.world.rebuildWind();
+  }
+
+  // HER SECOND HALF. The arena does not narrow with wind, it narrows with
+  // WATER: two channels open at the edges and the standing ground shrinks to
+  // the middle. A child who took the Tide Wolf twenty minutes ago finds that it
+  // was not a convenience.
+  _flood() {
+    if (!this.skin.floods || this._flooded) return;
+    this._flooded = true;
+    for (const f of this.skin.floods) {
+      waterZone(this.world, { x: this.x + f.x, z: this.z + f.z, w: f.w, d: f.d,
+        deep: true, id: 'meri' });
+    }
+    if (this.world._waterMeshes) {
+      for (const m of this.world._waterMeshes) {
+        this.world.root.remove(m);
+        m.geometry.dispose();
+        if (m.material.map) m.material.map.dispose();
+        m.material.dispose();
+      }
+    }
+    this.world._waterMeshes = buildWaterField(this.world);
+    audio.play('puff', { volume: 0.9, rate: 0.55 });
+  }
+
+  _drain() {
+    if (!this._flooded) return;
+    this._flooded = false;
+    const gone = this.world.waterZones.filter((z) => z.id === 'meri');
+    for (const z of gone) {
+      if (z.collider) {
+        const i = this.world.boxColliders.indexOf(z.collider);
+        if (i >= 0) this.world.boxColliders.splice(i, 1);
+      }
+    }
+    this.world.waterZones = this.world.waterZones.filter((z) => z.id !== 'meri');
+    if (this.world._waterMeshes) {
+      for (const m of this.world._waterMeshes) {
+        this.world.root.remove(m);
+        m.geometry.dispose();
+        if (m.material.map) m.material.map.dispose();
+        m.material.dispose();
+      }
+    }
+    this.world._waterMeshes = buildWaterField(this.world);
   }
 
   // A perfect parry (or a stunning blow) staggers even the great wolf —
@@ -309,6 +378,10 @@ export class Shadowgrip {
       // somehow reached the crown without it is not a save to strand
       if (!state.formsUnlocked.includes('storm_wolf')) state.formsUnlocked.push('storm_wolf');
       this._dropGales();
+    } else if (this.skin === SKINS.meri) {
+      state.flags.meriDefeated = true;
+      if (!state.formsUnlocked.includes('tide_wolf')) state.formsUnlocked.push('tide_wolf');
+      this._drain();       // the water goes out — that IS the restoration
     }
     if (this.onDefeated) this.onDefeated();
   }
