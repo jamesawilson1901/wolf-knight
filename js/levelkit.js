@@ -20,6 +20,7 @@ import * as THREE from 'three';
 import { prepareModel, instancePlacements, SHARED } from './assets.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { ground, pathsThroughDoors, roomSeed } from './ground.js';
+import { districtTint } from './districts.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
@@ -242,6 +243,13 @@ export function makeBuilders({ kit, isGrey }) {
     if (side === 's') world.addDoor(c - half, c + half, halfD - 0.15, halfD + T, to, entry, when);
     if (side === 'w') world.addDoor(-halfW - T, -halfW + 0.15, c - half, c + half, to, entry, when);
     if (side === 'e') world.addDoor(halfW - 0.15, halfW + T, c - half, c + half, to, entry, when);
+
+    // THE NEXT ROOM'S LIGHT, SPILLING THROUGH. Collected here and built as one
+    // mesh in thresholdGlow() below — see the note there for why it is one.
+    const tint = districtTint(to);
+    if (tint !== null) {
+      (world._thresholds || (world._thresholds = [])).push({ side, c, half, halfW, halfD, tint, when });
+    }
   }
 
   // An INTERIOR wall run — what makes a room a shape instead of a box.
@@ -449,4 +457,133 @@ export function makeBuilders({ kit, isGrey }) {
 
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
     promiseGate, visibleReward, darkZone, protoMaterial };
+}
+
+// ---------------------------------------------------------------------------
+// THE THRESHOLD GLOW
+//
+// A district's colour temperature is the game's wayfinding — a child recalls
+// "the orange bit" long before they could read a map. But you only see a
+// district once you are standing in it, so the colour says where you ARE and
+// never where you are GOING, and a doorway that shows you nothing gives you no
+// reason to walk through it. Terranigma and Zelda pull you forward because you
+// can SEE the next thing and want it.
+//
+// So each doorway spills a little of the next room's colour across the floor in
+// front of it. It costs no new geometry and reads instantly: warm light through
+// that arch means the Kiln is that way.
+//
+// ONE MESH FOR THE WHOLE ROOM. A separate quad per door would be five extra
+// draw calls in the Great Vault, which sits at 110 of a 125 budget — so every
+// doorway's fan goes into a single geometry and the destination colour rides on
+// the VERTICES. One material, one call, however many doors a room has.
+//
+// Additive and depth-write-off so it reads as light lying on the ground rather
+// than as paint. flattenStatic already skips transparent MeshBasicMaterial, so
+// it is left alone by the batcher without needing to be marked.
+// ---------------------------------------------------------------------------
+let glowTex = null;
+function thresholdTexture() {
+  if (glowTex) return glowTex;
+  const N = 64;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const img = g.createImageData(N, N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const u = x / (N - 1), v = y / (N - 1);
+      // v: 0 at the doorway, 1 deep into the room. u: 0..1 across the opening.
+      const along = Math.pow(1 - v, 1.9);            // falls off fast, like light
+      const across = Math.pow(Math.cos((u - 0.5) * Math.PI), 1.4);
+      const a = Math.max(0, Math.min(1, along * across));
+      const i = (y * N + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(a * 255);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  glowTex = new THREE.CanvasTexture(cv);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  SHARED.add(glowTex);
+  return glowTex;
+}
+
+export function thresholdGlow(world) {
+  const list = world._thresholds;
+  if (!list || !list.length) return null;
+  const pos = [], uv = [], col = [], idx = [];
+  const c3 = new THREE.Color();
+  let n = 0;
+  for (const t of list) {
+    if (t.when && !t.when()) continue;         // a sealed door glows for nothing
+    const w = t.half + 1.1;                    // a touch wider than the opening
+    // 3.4, not 5.0. At five units the fan from lb's south door washed most of
+    // the lower frame and read as a stain rather than as light through a
+    // doorway. It only has to be seen from across the room, not light it.
+    const D = 3.4;
+    // origin on the wall, and the direction pointing INTO this room
+    let ox, oz, fx, fz;
+    if (t.side === 'n') { ox = t.c; oz = -t.halfD; fx = 0; fz = 1; }
+    else if (t.side === 's') { ox = t.c; oz = t.halfD; fx = 0; fz = -1; }
+    else if (t.side === 'w') { ox = -t.halfW; oz = t.c; fx = 1; fz = 0; }
+    else { ox = t.halfW; oz = t.c; fx = -1; fz = 0; }
+    const rx = fz, rz = -fx;                   // across the opening
+    // SATURATE THE TINT before it becomes light. Several districts are close to
+    // neutral (the Ashfall is a grey), and neutral light added to an orange
+    // floor is invisible — the first version of this was so subtle I mistook a
+    // painted ash patch for it. Pushing the hue keeps the wayfinding readable
+    // without making the room look lit by a disco.
+    c3.setHex(t.tint);
+    const hsl = { h: 0, s: 0, l: 0 };
+    c3.getHSL(hsl);
+    c3.setHSL(hsl.h, Math.max(hsl.s, 0.40), Math.max(0.42, hsl.l));
+
+    // `k` scales this quad's share of the light. The spill on the FLOOR is a
+    // fraction of what stands in the opening: light falls off, and a floor fan
+    // as bright as the doorway reads as a glowing portal rather than as a lit
+    // room beyond a dark wall.
+    const quad = (fn, k = 1) => {
+      const base = n * 4;
+      for (const [du, dv] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+        const [px, py, pz] = fn(du, dv);
+        pos.push(px, py, pz);
+        uv.push(du, dv);
+        col.push(c3.r * k, c3.g * k, c3.b * k);
+      }
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      n++;
+    };
+
+    // 1. the fan of light lying on the floor in front of the opening
+    quad((du, dv) => {
+      const across = (du - 0.5) * 2 * w, into = dv * D;
+      return [ox + rx * across + fx * into, 0, oz + rz * across + fz * into];
+    }, 0.42);
+    // 2. THE OPENING ITSELF, standing upright in the gap. This is the image
+    //    that actually reads: a lit doorway in a dark wall, seen from across
+    //    the room. The floor fan alone was almost invisible against a bright
+    //    floor, because additive light on a lit surface has little to add — but
+    //    the wall beside it is nearly black, and against that it sings.
+    quad((du, dv) => {
+      const across = (du - 0.5) * 2 * (t.half + 0.15);
+      return [ox + rx * across + fx * 0.25, 1.85 * dv, oz + rz * across + fz * 0.25];
+    });
+  }
+  if (!n) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    map: thresholdTexture(), transparent: true, vertexColors: true, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5,
+  }));
+  mesh.position.y = (world.deckY || 0) + 0.03;   // above the ground, below decals
+  mesh.renderOrder = 2;
+  mesh.name = 'thresholdGlow';
+  world.add(mesh);
+  world.keepLoose(mesh);
+  return mesh;
 }

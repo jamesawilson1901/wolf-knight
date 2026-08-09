@@ -26,6 +26,8 @@ import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF } fr
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
+import { registerDistrictTints } from './districts.js';
+import { thresholdGlow } from './levelkit.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
 
 let forceGrey = false;
@@ -140,6 +142,11 @@ export const L3 = {
          from: 't3a', to: 't2a', opensWith: 'rootCut',
          label: 'THE CUT ROOT-WALL', beat: 'SHORTCUT · Rootbound → Gloomwood' },
 };
+
+// Each room's district colour, so a DOORWAY can show what is beyond it
+// (js/districts.js). Registered here because this is the only place that
+// knows both the room table and the palette.
+registerDistrictTints(L3, DISTRICTS);
 
 // The ring, clockwise, as it must be walkable. The last hop closes it.
 export const RING_PATH = [
@@ -564,6 +571,7 @@ function base(scene, id) {
 function finish(world, spec, D) {
   if (GREY()) {
     world.sweepKeepClear();
+    thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#d8f0c8', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#93a68c', y: 2.4, size: 1.4 });
     return world;
@@ -574,6 +582,7 @@ function finish(world, spec, D) {
   // square loses its collider here and says so on the console. See
   // World.sweepKeepClear.
   world.sweepKeepClear();
+  thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);
   return world;
 }

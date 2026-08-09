@@ -30,6 +30,8 @@ import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
 import { brazier } from './gates.js';
 import { makeDressers } from './dressing.js';
+import { registerDistrictTints } from './districts.js';
+import { thresholdGlow } from './levelkit.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -112,6 +114,11 @@ export const L1 = {
   le:  { kind: 'arena',  w: 26, d: 26, district: 'heart',    spine: true,
          label: 'E · HEART OF THE HOLLOW', beat: 'THE SHADOWGRIP' },
 };
+
+// Each room's district colour, so a DOORWAY can show what is beyond it
+// (js/districts.js). Registered here because this is the only place that
+// knows both the room table and the palette.
+registerDistrictTints(L1, DISTRICTS);
 
 // The spine, in order. Written down so it can be asserted, not just believed.
 export const SPINE = ['la', 'lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'];
@@ -367,6 +374,7 @@ function base(scene, id) {
 function finish(world, spec, D) {
   if (GREY()) {
     world.sweepKeepClear();
+    thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#ffd9c2', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#9b8e85', y: 2.4, size: 1.4 });
     return world;
@@ -386,6 +394,7 @@ function finish(world, spec, D) {
   // square loses its collider here and says so on the console. See
   // World.sweepKeepClear.
   world.sweepKeepClear();
+  thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);
   return world;
 }

@@ -23,6 +23,8 @@ import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
   wallTintMap } from './levelkit.js';
 import { makeDressers } from './dressing.js';
+import { registerDistrictTints } from './districts.js';
+import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, restorationOf } from './worldstate.js';
 
@@ -111,6 +113,11 @@ export const L2 = {
   vz:  { ...M.arena,  kind: 'arena',  district: 'crypt',   spine: true,
          label: "E · THE WARDEN'S CRYPT", beat: 'THE BONE WARDEN · CONCLUDE' },
 };
+
+// Each room's district colour, so a DOORWAY can show what is beyond it
+// (js/districts.js). Registered here because this is the only place that
+// knows both the room table and the palette.
+registerDistrictTints(L2, DISTRICTS);
 
 // The critical path. Written down so it can be asserted rather than believed.
 // Spokes B and C are interchangeable — that is the level's only real choice —
@@ -368,6 +375,7 @@ function base(scene, id) {
 function finish(world, spec, D) {
   if (GREY()) {
     world.sweepKeepClear();
+    thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#cfe8f2', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#8f9aa4', y: 2.4, size: 1.4 });
     return world;
@@ -380,6 +388,7 @@ function finish(world, spec, D) {
   // square loses its collider here and says so on the console. See
   // World.sweepKeepClear.
   world.sweepKeepClear();
+  thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);
   return world;
 }

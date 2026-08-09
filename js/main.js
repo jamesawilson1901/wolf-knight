@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
+import { sameDistrict } from './districts.js';
 import { Player } from './player.js';
 import { state, resolveRoom } from './state.js';
 import { Effects } from './effects.js';
@@ -1170,9 +1171,61 @@ async function setupRoomExtras() {
   }
 }
 
-async function loadRoom(id, entry) {
+// CARRY THE CHILD THROUGH THE DOOR.
+//
+// A transition used to cost three separate things, and only the first was
+// obvious: 520ms of black, then player.place() stopping them dead and resetting
+// their facing to a fixed per-door angle, then snapCamera() hard-cutting. You
+// walked into a doorway with momentum and heading and came out of it standing
+// still, pointed wherever the door said, with the camera jumping.
+//
+// This records what a child had when they crossed so the next room can give it
+// straight back. Rooms stay the authoring unit — Zelda, Terranigma and Hollow
+// Knight are all room-based underneath — what changes is that the SEAM stops
+// announcing itself.
+function handoffAt(door) {
+  // which way does this doorway run? the wide axis of its trigger box
+  const alongX = (door.maxX - door.minX) >= (door.maxZ - door.minZ);
+  const cx = (door.minX + door.maxX) / 2, cz = (door.minZ + door.maxZ) / 2;
+  const half = (alongX ? door.maxX - door.minX : door.maxZ - door.minZ) / 2;
+  const off = alongX ? player.root.position.x - cx : player.root.position.z - cz;
+  return {
+    alongX,
+    // WHERE ALONG THE DOORWAY they crossed. Exit three units left of the arch
+    // and you arrive three units left of the arch on the other side. Children
+    // track that spatially long before they could describe it — and n/s and
+    // w/e doors always pair on the same world axis in this topology, so the
+    // offset carries directly. Clamped so nobody arrives inside a wall.
+    off: Math.max(-half + 0.5, Math.min(half - 0.5, off)),
+    heading: player.root.rotation.y,
+    vx: player._vel.x, vz: player._vel.z,
+    leadX: camLead.x, leadZ: camLead.z,
+  };
+}
+
+// HOW HARD SHOULD A DOORWAY BE?
+//
+// Every doorway in the game used the same 260ms fade in both directions, which
+// makes a step between two halves of the Ashfall feel exactly like walking in
+// on a boss. A door that always means something ends up meaning nothing.
+//
+//   within a district — barely a blink. You are still in the same place.
+//   between districts — a beat, because the colour and the music change.
+//   into a boss arena  — the full ceremony. This is the one that should land.
+//
+// The rule a five-year-old ends up learning is: if the screen takes its time,
+// something is about to happen.
+const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'r3', 'w5', 'f5']);
+function seamMs(from, to) {
+  if (BOSS_ROOMS.has(to)) return 300;
+  if (regionOf(from) !== regionOf(to)) return 260;
+  return sameDistrict(from, to) ? 90 : 170;
+}
+
+async function loadRoom(id, entry, handoff = null) {
   transitioning = true;
-  await fadeTo(1, 260);
+  const ms = seamMs(state.room, id);
+  await fadeTo(1, ms);
   player.clearProjectiles();
   document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
@@ -1181,7 +1234,25 @@ async function loadRoom(id, entry) {
   state.region = regionOf(id);
   applyRoomMood();
   const at = entry || world.spawn;
-  player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
+  let px = at.x, pz = at.z;
+  let angle = at.angle !== undefined ? at.angle : Math.PI;
+  if (handoff) {
+    if (handoff.alongX) px += handoff.off; else pz += handoff.off;
+    // KEEP THEIR OWN HEADING when it broadly agrees with the way the door
+    // faces. A child who walks in at a slant should come out at that slant; one
+    // who scraped through sideways along a wall gets the door's angle instead,
+    // because arriving faced at the wall you just came through is worse than
+    // being politely turned.
+    const fwd = { x: Math.sin(angle), z: Math.cos(angle) };
+    const own = { x: Math.sin(handoff.heading), z: Math.cos(handoff.heading) };
+    if (fwd.x * own.x + fwd.z * own.z > 0.17) angle = handoff.heading;   // within ~80°
+  }
+  player.place(px, pz, angle);
+  if (handoff) {
+    // momentum survives the seam: they walked in moving, they come out moving
+    player._vel.x = handoff.vx; player._vel.z = handoff.vz;
+    camLead.set(handoff.leadX, 0, handoff.leadZ);
+  }
   player.iframes = Math.max(player.iframes, 0.6);
   // mark already-reached checkpoints in this room as lit
   for (const cp of world.checkpoints) {
@@ -1195,7 +1266,7 @@ async function loadRoom(id, entry) {
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast }; // debug/testing hook
-  await fadeTo(0, 260);
+  await fadeTo(0, ms);
   transitioning = false;
 }
 
@@ -1600,7 +1671,7 @@ async function start() {
 
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
-      if (door) loadRoom(door.to, door.entry);
+      if (door) loadRoom(door.to, door.entry, handoffAt(door));
 
       // (v3.18: the Echo Chasm drop-hole teleports are gone — dad's law:
       // nothing moves the player without a door they walked through.)
