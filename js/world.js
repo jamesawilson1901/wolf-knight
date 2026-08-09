@@ -44,6 +44,10 @@ export class World {
     // the region's lock — see js/wind.js for why a wind you can lean into is a
     // better closed door than a wall a child has to be told about.
     this.galeLanes = [];       // {minX,maxX,minZ,maxZ, px,pz, strength, dir, id}
+    // SUNKEN VALE (region 6). Shallow water slows; deep water is a wall you can
+    // see across until the Tide Wolf carries you over it — see js/water.js.
+    this.waterZones = [];      // {minX,maxX,minZ,maxZ, deep, collider}
+    this.quenchables = [];     // {x, z, id, out, quench} — the splash puts these out
     this.vanes = [];           // {x, z, r, dir, lane, group} — dash to turn
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
@@ -579,6 +583,31 @@ export class World {
     for (const v of this.vanes) {
       if (Math.hypot(v.x - x, v.z - z) > (v.r || 1.2) + r) continue;
       if (v.turn) { v.turn(); n++; }
+    }
+    return n;
+  }
+
+  // What is underfoot: null, 'shallow' or 'deep'. Deep wins where they overlap,
+  // which happens at every shoreline because the shallow band is authored to
+  // run UNDER the deep one — a hard edge between them reads as a cliff in the
+  // water, and there is no such thing.
+  waterAt(x, z) {
+    let found = null;
+    for (const w of this.waterZones) {
+      if (x < w.minX || x > w.maxX || z < w.minZ || z > w.maxZ) continue;
+      if (w.deep) return 'deep';
+      found = 'shallow';
+    }
+    return found;
+  }
+
+  // Put out anything burning within reach. Returns how many went out.
+  quenchAt(x, z, r) {
+    let n = 0;
+    for (const q of this.quenchables) {
+      if (q.out) continue;
+      if (Math.hypot(q.x - x, q.z - z) > r) continue;
+      if (q.quench()) n++;
     }
     return n;
   }
