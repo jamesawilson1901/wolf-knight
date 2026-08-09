@@ -17,6 +17,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', h
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 }, deviceScaleFactor: Number(process.env.DPR || 2) })).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR: ' + e.message));
+await page.addInitScript((v) => { window.__LATE = v; }, !!process.env.LATE);
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });
 await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
@@ -30,6 +31,14 @@ await page.evaluate(() => {
   g.state.formsUnlocked = ['knight','dark_wolf','fire_wolf','earth_wolf','verdant_wolf','frost_wolf'];
   g.player.iframes = 999999;
   g.WS.set('wild3','rootCut',true); g.WS.set('wild3','logDown',true);
+  // LATE=1 shoots the world as it looks once regions have been freed: the Den's
+  // spirit shrines, its third tent and the Stoneroot mushrooms only exist then,
+  // and a contact sheet of the early-game Den never shows half of what is in it.
+  if (window.__LATE) {
+    g.state.flags.wardenDefeated = true;
+    g.state.flags.bossDefeated = true;
+    g.WS.set('ember', 'restored'); g.WS.set('stone', 'restored');
+  }
   // hide the HUD: this sheet is about the ROOM
   for (const el of document.querySelectorAll('.ui, #joy-base, #joy-knob, #joy-hint, #hearts, #shards, #level-badge, #xp-bar, #potions, #pause-btn, #inv-btn, #form-badge, #moon-gauge, #btn-attack, #special-btn, #btn-ranged, #btn-defend, #btn-jump, #caption, #toast')) {
     el.style.display = 'none';

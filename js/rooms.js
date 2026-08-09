@@ -825,7 +825,16 @@ async function buildDen(scene) {
     m.scale.setScalar(s);
     // the Den keeps NATURAL colours — out of the volcanic cache, into a shared
     // den palette that still merges (see denTint)
-    denTint(m, { grass: 0x4e9a4a, dirt: 0x8a6a48, foliage: 0x4e9a4a });
+    // `leafsGreen`, not `foliage`. The Den has tinted a material called
+    // `foliage` since it was written and tree-a/tree-b do not have one — their
+    // leaves are `leafsGreen` and their trunks `woodBark`/`woodInner`. So the
+    // canopies were never tinted at all and had been rendering in the model's
+    // own turquoise the whole time, which is why the Den's trees read as
+    // crystals. Nothing in js/ sets that colour; it was simply never reached.
+    denTint(m, {
+      grass: 0x4e9a4a, dirt: 0x8a6a48, foliage: 0x4e9a4a,
+      leafsGreen: 0x4f9440, woodBark: 0x6a4c30, woodInner: 0x8a6a44,
+    });
     world.add(m);
     world.addCircle(x, z, 0.6);
   }
@@ -955,7 +964,8 @@ async function buildDen(scene) {
     t3.position.set(-6.8, 0, 4.4);
     t3.rotation.y = -2.4;
     t3.scale.setScalar(1.4);
-    denTint(t3, { grass: 0x4e9a4a, dirt: 0x8a6a48 });
+    denTint(t3, { grass: 0x4e9a4a, dirt: 0x8a6a48, leafsGreen: 0x4f9440,
+      woodBark: 0x6a4c30, woodInner: 0x8a6a44 });
     world.add(t3);
     world.addCircle(-6.8, 4.4, 0.6);
   }
@@ -1007,7 +1017,7 @@ async function buildDen(scene) {
   // bushes softening the wall line, so the glade has an edge rather than a box
   instAt(kit.bush, [[-11.2, 0.6, 1.4], [11.3, -1.4, 1.3], [-7.2, 8.2, 1.4],
     [11.2, 6.2, 1.3], [-11.4, -8.0, 1.3]],
-    { grass: 0x4e8a42, foliage: 0x4e8a42, dirt: 0x5a4632 });
+    { grass: 0x4e8a42, foliage: 0x4e8a42, leafsGreen: 0x4e8a42, dirt: 0x5a4632 });
   instAt(kit.rockSA, [[-9.8, -7.4, 1.2], [9.6, 1.8, 1.1], [6.0, -8.0, 1.0]],
     { grass: 0x7d8272, dirt: 0x6a6f60, colormap: 0x7d8272 });
 
@@ -1992,31 +2002,67 @@ function cavernMood(world) {
 
 // Post-warden life: glowing mushroom clusters (Kenney nature kit). Every
 // other patch carries a soft green light so the new life reads at a glance.
+// GLOWING MUSHROOMS — Stoneroot's growth, taking root wherever the caverns'
+// light has reached. One of the Terranigma beats: the world visibly changes as
+// regions are freed.
+//
+// They used to render as three teal boulders. Two reasons, and the first is
+// simply that a mushroom was being drawn at 1.6x — mushroom-group.glb is a
+// CLUSTER of caps modelled at roughly ankle height, so at 1.6 each "patch" was
+// a single object the size of a tree. The second is that a strong emissive
+// tint on a low-poly cap makes it read as a crystal rather than as something
+// that grew: fungus glows FAINTLY and unevenly, it does not blaze.
+//
+// So a patch is now what the word means — nine to fourteen small mushrooms
+// scattered across a couple of units, at ankle-to-knee height, with a single
+// soft light over the whole patch rather than one per clump. Instanced, so all
+// the patches in a room together cost two draw calls instead of one each.
 async function mushroomPatches(world, spots) {
   if (!state.flags.wardenDefeated) return;
   const [group, tall] = await Promise.all([
     loadGLB('./assets/env/mushroom-group.glb'),
     loadGLB('./assets/env/mushroom-tall.glb'),
   ]);
-  spots.forEach(([x, z, s], i) => {
-    const m = prepareModel((i % 3 === 2 ? tall : group).scene.clone(), { castShadow: false });
-    m.traverse((n) => {
+  // seeded off the spot list so a patch looks the same every time you come back
+  let seed = spots.length * 9301 + Math.round((spots[0] ? spots[0][0] * 71 : 7));
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+
+  const caps = [], stalks = [];
+  for (const [x, z, spread] of spots) {
+    const R = 1.3 * (spread || 1);
+    const n = 9 + Math.round(rnd() * 5);
+    for (let i = 0; i < n; i++) {
+      const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * R;
+      const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+      // a few tall ones standing out of the clump, the rest low
+      const isTall = rnd() < 0.24;
+      const sc = isTall ? 0.34 + rnd() * 0.2 : 0.26 + rnd() * 0.22;
+      (isTall ? stalks : caps).push({
+        x: px, z: pz, y: 0.02, ry: rnd() * 6.28, sx: sc, sy: sc * (0.9 + rnd() * 0.35), sz: sc,
+      });
+    }
+    // ONE light for the whole patch. A light per clump was three point lights
+    // in the Den alone, and the shader pays for every one of them in every
+    // material in the room.
+    const glow = new THREE.PointLight(0x9affc0, 1.5, 4.5, 1.9);
+    glow.position.set(x, 0.45, z);
+    world.add(glow);
+    world.onAnimate((t) => { glow.intensity = 1.2 + Math.sin(t * 1.9 + x) * 0.35; });
+  }
+
+  for (const [gltf, pts, hue] of [[group, caps, 0x8affc0], [tall, stalks, 0xd8ffb0]]) {
+    if (!pts.length) continue;
+    const inst = instancePlacements(gltf.scene, pts, { castShadow: false });
+    inst.traverse((n) => {
       if (!n.isMesh) return;
       n.material = n.material.clone();
-      n.material.emissive = new THREE.Color(i % 3 === 2 ? 0xd8ffb0 : 0x8affc0);
-      n.material.emissiveIntensity = 0.55;
+      n.material.emissive = new THREE.Color(hue);
+      // 0.28, not 0.55 — enough to read as lit from within, not enough to make
+      // a cap look like cut glass
+      n.material.emissiveIntensity = 0.28;
     });
-    m.position.set(x, 0.08, z);
-    m.rotation.y = (x * 5 + z * 3) % 6.28;
-    m.scale.setScalar(s || 1.6);
-    world.add(m);
-    if (i % 2 === 0) {
-      const glow = new THREE.PointLight(0x9affc0, 2.2, 5, 1.9);
-      glow.position.set(x, 0.7, z);
-      world.add(glow);
-      world.onAnimate((t) => { glow.intensity = 1.8 + Math.sin(t * 1.9 + x) * 0.5; });
-    }
-  });
+    world.add(inst);
+  }
 }
 
 // ---------------------------------------------------------------------------
