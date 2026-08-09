@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear, shopTierOpen, lockedTierPromise } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -117,6 +117,7 @@ export class Menus {
     grid.className = 'grid';
     for (const s of SHOP_STOCK) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
+      if (!shopTierOpen(s.tier)) continue; // Maren has not unpacked this crate yet
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
@@ -145,6 +146,16 @@ export class Menus {
       grid.appendChild(card);
     }
     el.appendChild(grid);
+    // What Maren has not unpacked yet, said as a promise rather than shown as
+    // a card that cannot be bought.
+    const promise = lockedTierPromise();
+    if (promise) {
+      const p = document.createElement('div');
+      p.id = 'shop-promise';
+      p.style.cssText = 'font-size:14px;color:#c9b9a0;font-style:italic;max-width:520px;text-align:center';
+      p.textContent = promise;
+      el.appendChild(p);
+    }
     el.appendChild(this._closeBtn('shop-menu'));
     this._open('shop-menu');
   }

@@ -2954,3 +2954,113 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## unreleased (on `claude/ecstatic-hawking-klzrgo`) — Maren's stall grows
+
+Overnight run, one item. Both queues read first: **FIX-PLAN's status table is
+entirely shipped** (A1-A9, B1-B3, C1-C4, closed at v3.34.0), so the work came
+from the newest QUEUED NEXT list in this file — the v2.2.6 one, which is the
+only list here that ever used that label. Its four entries, audited against the
+build as it stands:
+
+| entry | state |
+|---|---|
+| economy/XP balance pass (shard income vs shop ladder, perk tiers past 12) | **skipped — needs the kids** |
+| Maren tier-2 stock after Stoneroot | **taken, shipped below** |
+| hard landscape lock | already done — `manifest.json` orientation, `screen.orientation.lock` in js/title.js:38, and the `@media (orientation: portrait)` rotate overlay |
+| S3 Wild Woods | shipped v3.19 |
+
+The first entry is a difficulty/feel tuning pass — shard income and enemy XP are
+exactly the numbers a five-year-old's afternoon decides, not a measurement — so
+it is skipped per the standing rule and left at the head of the queue.
+
+### What was actually wrong
+
+`SHOP_STOCK` had no notion of time. All eight rows rendered on the first visit
+to the Den, so a child who had not left the village yet was looking at a
+300-shard Boulder Hammer, and beating a region changed nothing on Maren's
+table. The Den grows in every other way — Rook arrives when Ember heals, Bram
+when Stoneroot sings, mushrooms take root, minigames appear — and the shop was
+the one fixture that stayed identical from the first minute to the last.
+
+### The ladder
+
+Each stock row now carries a `tier`; each tier names the WorldState flag that
+opens it. Tier 1 is the opening stock; tier 2 opens on `WS.get('stone',
+'restored')` — the same flag the villagers, the minigames and the Den's own
+dressing already read, so nothing new is persisted and the additive-forever law
+is untouched. Adding tier 3 is one row in `SHOP_TIERS` plus a `tier:` on the
+stock it opens.
+
+| tier | opens | stock | prices |
+|---|---|---|---|
+| 1 | from the first visit | potion, Swift Fang, Ember Blade, Round Guard, Long Spear | 15 / 80 / 90 / 70 / 120 |
+| 2 | Stoneroot restored | Tower Shield, Moon Sword, Boulder Hammer | 180 / 200 / 300 |
+
+**Locked stock is hidden, not greyed out.** The shop already dims what a child
+cannot afford (`.item-card.cant`), so a second unbuyable state would read as
+"the shop is broken" rather than "come back". Instead Maren says it once, under
+the grid, and the line disappears the moment nothing is locked — the Den's
+version of a promise gate, which is how every other "not yet" in this game is
+signposted.
+
+### Measured
+
+- Shop cards in the DOM, driven through the real trigger (walk inside the 1.7u
+  ring at `shopSpot`, let `main.js`'s edge-triggered check fire): **5 before
+  Stoneroot, 8 after.** It grows; it does not swap.
+- Tier-1 gear totals **360** shards, tier-2 gear **680**. Against the contract's
+  ~120-160 per region, a child through Ember and Stoneroot has 240-320 — two or
+  three of tier 1, with tier 2 as the next two regions' saving. That matches
+  "one big thing per region; completionists afford two". The contract's full
+  five-rung ladder (60/90/150/250/400) is not built here: assigning those bands
+  is the economy pass, and this item only decides *when* a row appears.
+- `tools/verify-all.sh verify-shop.mjs verify-den.mjs` — **passed 4, failed 0**
+  (boot and density run by default). The Den verifier's worst frame is 129 of
+  its 135 bar, unchanged by this work.
+
+### The verifier
+
+`tools/verify-shop.mjs` is new, and was written before the fix. Nothing in
+`tools/` could have failed a shop that renders every row regardless of tier —
+the stock table is data, and data changes are exactly the ones that pass a
+suite silently. It boots, walks Kael to Maren the way a child does, and reads
+the cards out of the DOM: tier-1 present and tier-2 absent on a fresh save,
+tier-2 present after the flag flips, tier-1 still there, the promise line gone,
+and every stock row belonging to a declared tier so a typo in a `tier:` cannot
+quietly delete a weapon from the game.
+
+One thing it had to handle: Maren's stall has colliders, and a single
+hand-picked stand-point gets shoved back out of the 1.7u ring by the solver. It
+tries the ring from twelve bearings through `world.resolveCircle` and keeps the
+first the world actually allows — a fixed coordinate would have failed as a
+"the shop never opens" mystery the first time the Den was redressed.
+
+### Judgement calls
+
+- **Two tiers, not five.** The queue entry says "tier-2 stock after Stoneroot"
+  and that is what was built. The mechanism is general, so the remaining rungs
+  are data whenever the economy pass wants them, but inventing three more
+  region bands tonight would have been the balance decision this run is meant
+  to leave alone.
+- **`SHOP_TIERS` lives in `js/items.js`, not `CONFIG`.** It is not a game-feel
+  dial — it is a tier-to-flag map, and it belongs beside the stock it gates,
+  where the gear prices already are. No number moved.
+- **`sw.js` cache version deliberately NOT bumped** — this is not a deploy.
+
+### AWAITING dad's call
+
+- **Does the ladder split match what you want a kid to see?** Tier 2 is the
+  Tower Shield, the Moon Sword and the Boulder Hammer — the three most
+  expensive things Maren has. The alternative reading is a gentler split (spear
+  and tower shield at tier 2, moon sword and hammer at tier 3) which needs a
+  third region band, and that is the economy pass.
+- **Maren's promise line** is written blind: "Maren rests a hand on a
+  roped-shut crate. 'Wake the caverns and I'll open this one.'" It is a shop
+  card label, not narration, so it is not in `narration.js`'s canonical table.
+  Say the word and it moves.
+- **Branch.** The run's instructions name `overnight`; this session was assigned
+  `claude/ecstatic-hawking-klzrgo` by the harness. Pushed to both, neither is
+  main.
+- The economy/XP balance pass is still the head of the queue and still needs a
+  playtest before anyone touches a number.

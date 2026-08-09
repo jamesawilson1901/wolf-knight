@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -77,14 +78,55 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
+// THE SHOP LADDER (BUILDLOG queue: "Maren tier-2 stock after Stoneroot").
+//
+// Maren's stall is not a fixed catalogue. It GROWS as regions are freed, so
+// coming home from a boss is worth doing for its own sake: there is something
+// new on the table that was not there this morning. This is the Den's version
+// of the promise gates — a locked tier is a REASON TO COME BACK, and Maren
+// says so, rather than the shop silently being the same shop forever.
+//
+// Each tier names the WorldState flag that opens it (the same `restored` flag
+// the villagers, the minigames and the Den's own dressing already read) and
+// the line Maren says while it is still shut. Tier 1 has no gate. Locked stock
+// is HIDDEN rather than shown greyed out — a card a child can see, tap and not
+// buy teaches "the shop is broken"; the promise line teaches "come back".
+//
+// Adding a tier is one row here plus a `tier:` on the stock it opens.
+export const SHOP_TIERS = [
+  { tier: 1, region: null, key: null, promise: null },
+  { tier: 2, region: 'stone', key: 'restored',
+    promise: 'Maren rests a hand on a roped-shut crate. “Wake the caverns and I’ll open this one.”' },
+];
+
+// Is this tier's stock on the table yet? Unknown tiers read as open, so a
+// stock row can never vanish because someone mistyped a number.
+export function shopTierOpen(tier) {
+  const t = SHOP_TIERS.find((x) => x.tier === (tier || 1));
+  if (!t || !t.region) return true;
+  return WS.get(t.region, t.key);
+}
+
+// The first tier that is still shut AND still has something in it — what
+// Maren is promising right now. Null once everything is on the table.
+export function lockedTierPromise() {
+  for (const t of SHOP_TIERS) {
+    if (shopTierOpen(t.tier)) continue;
+    if (!SHOP_STOCK.some((s) => (s.tier || 1) === t.tier)) continue;
+    return t.promise;
+  }
+  return null;
+}
+
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+// `tier` defaults to 1 (open from the first visit).
 export const SHOP_STOCK = [
   { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
   { kind: 'weapon', id: 'dagger_a', price: 80 },
   { kind: 'weapon', id: 'sword_b', price: 90 },
   { kind: 'shield', id: 'shield_a', price: 70 },
   { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 2 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 2 },
 ];

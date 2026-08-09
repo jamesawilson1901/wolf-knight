@@ -37,6 +37,20 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+**This table is closed.** Work now comes from the newest QUEUED NEXT list in
+BUILDLOG.md. Its state, audited on 2026-08-09:
+
+| | queue entry | state |
+|---|---|---|
+| Q1 | economy/XP balance pass (shard income vs shop ladder, perk tiers past 12) | **OPEN — needs a playtest**, not a measurement |
+| Q2 | Maren tier-2 stock after Stoneroot | ✅ shipped (see BUILDLOG "Maren's stall grows") |
+| Q3 | hard landscape lock | ✅ already done (manifest + `screen.orientation.lock` + rotate overlay) |
+| Q4 | S3 Wild Woods | ✅ shipped v3.19 |
+
+Q1 is the only thing left in either queue, and it is a difficulty/feel item: an
+unattended run cannot decide what a region's shards should buy. **The next
+overnight run has nothing it may take.**
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 
