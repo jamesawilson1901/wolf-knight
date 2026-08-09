@@ -134,3 +134,29 @@ export function resolveMystery(id) {
     state.flags.mysteries[id].found = true;
   }
 }
+
+// ---------------------------------------------------------------------------
+// RESCUES — one count, in one place.
+//
+// design/DEN-MINIGAMES.md §5.1: the Den's tier and every mini game unlock derive
+// from the total rescue count, and *"rescue count must not be duplicated in a
+// second place"*. So it is derived here rather than stored: whatever the save
+// already knows about who has been freed IS the count, and there is nothing to
+// keep in sync.
+//
+// The spec names this `WorldState.rescuedIds`. Until the Den growth work (build
+// order step 4) needs the ids themselves, the count is what every caller wants,
+// and deriving it now means the number is never wrong in the meantime.
+export function rescueCount(state) {
+  const pups = state.flags && state.flags.pups ? Object.keys(state.flags.pups).length : 0;
+  const folk = state.flags && state.flags.rescued ? Object.keys(state.flags.rescued).length : 0;
+  return pups + folk;
+}
+
+// §4 unlock tiers: 1-3 rescues open Tier 1, 4-8 Tier 2, 9+ Tier 3. Unlocks are
+// driven by the COUNT and never by which characters a child happened to find,
+// so no game is orphaned by a missed rescue.
+export function unlockTier(state) {
+  const n = rescueCount(state);
+  return n >= 9 ? 3 : n >= 4 ? 2 : n >= 1 ? 1 : 0;
+}

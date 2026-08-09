@@ -18,6 +18,28 @@ All packs below are **verified to exist with the creatures we need**.
 > Animated Animals**, **Quaternius Animated Monster Pack**, **Kenney Holiday
 > Kit** and the three **OpenGameArt** music tracks (OGA licences vary per
 > track). Treat any "CC0" written below as a claim to check, not a finding.
+>
+> **THE RULE CHANGED (2026-08-09).** Dad: *"the game is only for myself and my
+> family and will never be made public or sold. overwrite the current rule. they
+> can be used."* The old rule — an unknown licence is BLOCKED, not permission —
+> **no longer applies to this build**. The four unproven packs ship.
+>
+> What that does and does not mean, because the difference is the whole point of
+> keeping a record at all:
+>
+> * The packs stay listed in `assets/LICENSES/MANIFEST.json` with everything
+>   that is and is not known about each one, unchanged. They are now marked
+>   `accepted`, not cleared.
+> * `node tools/check-licences.mjs` reports them as ACCEPTED and passes.
+> * `node tools/check-licences.mjs --strict` still **fails** on them. That flag
+>   is the gate for the day this stops being a family build — sharing it with a
+>   school, putting it in a store, anything outward. Clearing four licence files
+>   then is an afternoon; reconstructing which four and why, a year later, is
+>   not.
+> * Flagged once at the time and recorded here as fact rather than objection:
+>   the build is served from a public GitHub Pages URL, so it is *published*
+>   even though it is *for the family*. The decision stands; this note exists so
+>   nobody later reads "never made public" as a description of the hosting.
 Style family: chunky soft-shaded low-poly (Quaternius / KayKit / Kenney 3D — deliberately matching).
 
 > **HARD RULE (learned the hard way):** the human downloads these packs manually in a browser and
@@ -105,6 +127,33 @@ variant over a new model whenever the silhouette still reads.
 
 ## Licence notes
 Most of the above is CC0 with a licence file to prove it (`assets/LICENSES/`); four packs
-are still unproven — see that folder's README. CREDITS.md lists sources as courtesy and
-marks the unproven ones. three.js is MIT — include
+are still unproven and, since the private-use decision of 2026-08-09, ship anyway — see
+the caveat at the top of this file and `assets/LICENSES/MANIFEST.json`. CREDITS.md lists
+sources as courtesy and marks the unproven ones. three.js is MIT — include
 its licence line in CREDITS.md.
+
+
+---
+
+## USAGE, not just inventory (2026-08-09)
+
+This file listed what had been vendored and never what was being USED, which is
+how the game reached dad's hands with 33 of 115 models on screen while every
+licence check passed. Level 1 was using three of its twenty-five dungeon props;
+Level 3 was using **none** of its fourteen forest models and dressing an entire
+region with two generic Kenney trees.
+
+The gap was not a licensing problem or a missing-asset problem. Every model
+below was already here, already cleared 🟢, already loading. It was a
+VOCABULARY problem: the builders could place a rock, so rooms got rocks.
+
+Now:
+
+| kit | models | in use |
+|---|---|---|
+| ember (Level 1) | 33 | 33 |
+| cave (Level 2) | 32 | 32 |
+| wood (Level 3) | 36 | 36 |
+
+`tools/verify-density.mjs` asserts a per-room minimum of distinct models on all
+52 dressed spaces, so a region cannot quietly go back to using three props.

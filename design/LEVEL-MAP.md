@@ -7,6 +7,12 @@
 
 # Level Map — Levels 1–3 (Ember Hollow · Stoneroot Caverns · Wild Woods)
 
+> **Region 5 lives in its own file.** Stormreach Cliffs is
+> [`LEVEL-DESIGN-5.md`](LEVEL-DESIGN-5.md) — a switchback, four terraces up a sea
+> cliff, built 2026-08-09. It follows every rule set here (the hidden spine, one
+> puzzle room, no teleports, no fake fiction) and adds one shape this file does
+> not cover: a level whose topology is a DIRECTION rather than a place.
+
 > **THIS REWRITE (2026-08-07) — what changed and why**
 >
 > Dad: *"Levels 1 through 3 are currently small and linear. I want them much

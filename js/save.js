@@ -100,6 +100,10 @@ export function persist() {
     perks: { ...state.perks },
     counters: { ...state.counters },
     stickers: { ...state.stickers },
+    // PERSONAL BESTS, PER CHILD (design/DEN-MINIGAMES.md §2). Deliberately in
+    // the profile and nowhere shared: the youngest will never beat the eldest
+    // on a common leaderboard, and will stop playing.
+    minigames: JSON.parse(JSON.stringify(state.minigames || {})),
     formsUnlocked: [...state.formsUnlocked],
     pups: { [state.region]: pupList },
     settings: { ...state.settings },
@@ -169,6 +173,8 @@ export function applySave(profileId, profileName, data) {
   if (data.perks) Object.assign(state.perks, data.perks);
   state.counters = data.counters || {};
   state.stickers = data.stickers || {};
+  // additive forever: a profile saved before mini games existed simply has none
+  state.minigames = data.minigames || {};
   state.formsUnlocked = Array.isArray(data.formsUnlocked) && data.formsUnlocked.length
     ? data.formsUnlocked : ['knight', 'dark_wolf'];
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';

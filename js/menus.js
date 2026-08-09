@@ -194,6 +194,10 @@ export class Menus {
       ...(state.spoken.region_complete ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
       ...(state.spoken.stone_complete ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
       ...(state.spoken.wild_complete ? [{ room: 'f1', name: 'Frostpeak', icon: '🏔️' }] : []),
+      // The cliffs open on the same rule as every region before them: the
+      // moonstone can carry you back to a place you have already reached.
+      ...(state.flags.borealDefeated ? [{ room: 's1a', name: 'Stormreach Cliffs', icon: '🌩️' }] : []),
+      ...(state.flags.ariaDefeated ? [{ room: 'd1a', name: 'The Sunken Vale', icon: '🌊' }] : []),
     ];
     for (const s of spots) {
       const d = document.createElement('div');

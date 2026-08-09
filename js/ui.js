@@ -11,8 +11,10 @@ const FORM_META = {
   earth_wolf: { icon: '🪨', label: 'Earth Wolf', color: '#d8b06a' },
   verdant_wolf: { icon: '🌿', label: 'Verdant Wolf', color: '#6fae4a' },
   frost_wolf: { icon: '❄️', label: 'Frost Wolf', color: '#9be3ff' },
+  storm_wolf: { icon: '🌩️', label: 'Storm Wolf', color: '#c9d4ff' },
+  tide_wolf: { icon: '🌊', label: 'Tide Wolf', color: '#4fd0e0' },
 };
-const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
+const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'];
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
@@ -133,7 +135,7 @@ export class UI {
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
     this.specialIcon.textContent =
-      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿', frost_wolf: '❄️' }[state.form] || '🌙';
+      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿', frost_wolf: '❄️', storm_wolf: '🌩️', tide_wolf: '🌊' }[state.form] || '🌙';
     // The moon gauge is the DARK WOLF's power — no other form shows the
     // button (v3.18 playtest law; the gauge still fills quietly underneath)
     this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');

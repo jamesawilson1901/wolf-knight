@@ -22,6 +22,9 @@ import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
   wallTintMap } from './levelkit.js';
+import { makeDressers } from './dressing.js';
+import { registerDistrictTints } from './districts.js';
+import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, restorationOf } from './worldstate.js';
 
@@ -39,17 +42,22 @@ export const REGION = 'vault';
 // clearest way to say "this place changed" without a word of text.
 // ---------------------------------------------------------------------------
 export const DISTRICTS = {
-  vaultDark:  { tint: 0x6d7480, floorTint: 0x555c68, wallTint: 0x22262e,
+  // propTint: the third value. wallTint is deliberately about half the floor's
+  // luminance because it was chosen for rock faces, and renders a crate as a
+  // black slab; floorTint renders one as bleached bone. A thing you walk past
+  // sits between them. Down here it also runs COLDER than Ember's, because the
+  // only light that has reached this stone in an age is blue.
+  vaultDark:  { tint: 0x6d7480, floorTint: 0x555c68, wallTint: 0x22262e, propTint: 0x5c6470, ground: 'vaultDark',
                 name: 'THE GREAT VAULT', hero: 'THE STONE TITAN' },
-  vaultWarm:  { tint: 0xc79a5e, floorTint: 0xb08a55, wallTint: 0x3a2e20,
+  vaultWarm:  { tint: 0xc79a5e, floorTint: 0xb08a55, wallTint: 0x3a2e20, propTint: 0x8e7048, ground: 'vaultWarm',
                 name: 'THE GREAT VAULT', hero: 'THE STONE TITAN' },
-  glimmer:    { tint: 0x7fd8e8, floorTint: 0xa9c6cf, wallTint: 0x24414d,
+  glimmer:    { tint: 0x7fd8e8, floorTint: 0xa9c6cf, wallTint: 0x24414d, propTint: 0x6d8f9c, ground: 'glimmer',
                 name: 'THE GLIMMERWAY', hero: 'THE GEODE' },
-  quarry:     { tint: 0xd8c9a4, floorTint: 0xcabf9d, wallTint: 0x4a4132,
+  quarry:     { tint: 0xd8c9a4, floorTint: 0xcabf9d, wallTint: 0x4a4132, propTint: 0x9a8f70, ground: 'quarry',
                 name: 'THE BONE QUARRY', hero: 'THE RIBCAGE' },
-  sunken:     { tint: 0x4e9c96, floorTint: 0x5a8a86, wallTint: 0x1c3a3c,
+  sunken:     { tint: 0x4e9c96, floorTint: 0x5a8a86, wallTint: 0x1c3a3c, propTint: 0x4e7472, ground: 'sunken',
                 name: 'THE SUNKEN STAIR', hero: 'THE DROWNED DOOR' },
-  crypt:      { tint: 0x8a8478, floorTint: 0x6a665e, wallTint: 0x1a1a1c,
+  crypt:      { tint: 0x8a8478, floorTint: 0x6a665e, wallTint: 0x1a1a1c, propTint: 0x6b6760, ground: 'crypt',
                 name: "THE WARDEN'S CRYPT", hero: "THE WARDEN'S THRONE" },
 };
 
@@ -105,6 +113,11 @@ export const L2 = {
   vz:  { ...M.arena,  kind: 'arena',  district: 'crypt',   spine: true,
          label: "E · THE WARDEN'S CRYPT", beat: 'THE BONE WARDEN · CONCLUDE' },
 };
+
+// Each room's district colour, so a DOORWAY can show what is beyond it
+// (js/districts.js). Registered here because this is the only place that
+// knows both the room table and the palette.
+registerDistrictTints(L2, DISTRICTS);
 
 // The critical path. Written down so it can be asserted rather than believed.
 // Spokes B and C are interchangeable — that is the level's only real choice —
@@ -167,6 +180,23 @@ export async function loadCaveKit() {
     torch:   './assets/env/dungeon/Torch.glb',
     stairs:  './assets/env/dungeon/Stairs_Modular.glb',
     decoWall:'./assets/env/dungeon/Decorative_Wall.glb',
+    // --- THE OLD WORKINGS ---------------------------------------------------
+    // Stoneroot is BURIED AND WAITING: something enormous was carved here a
+    // very long time ago and the dark has been sitting on it since. These are
+    // the things the diggers left when they stopped — all already vendored and
+    // licence-cleared, all previously unused.
+    wallMod: './assets/env/dungeon/Wall_Modular.glb',      // Quaternius 🟢
+    wallCov: './assets/env/dungeon/WallCover_Modular.glb',
+    barrel:  './assets/env/dungeon/Barrel.glb',
+    crate:   './assets/env/dungeon/Crate.glb',
+    vase:    './assets/env/dungeon/Vase.glb',
+    banner:  './assets/env/dungeon/Banner_wall.glb',
+    woodfire:'./assets/env/dungeon/Woodfire.glb',
+    coins:   './assets/env/dungeon/Coin_Pile.glb',
+    cobweb:  './assets/env/dungeon/Cobweb.glb',
+    logStack:'./assets/env/log-stack.glb',                 // Kenney Nature 🟢
+    horse:   './assets/env/dungeon/Statue_Horse.glb',
+    archDoorB:'./assets/env/dungeon/Arch_Door.glb',
     // the hero prop that is a BEING gets a real character model, never code
     // geometry (no-code-built-creatures law). A stone titan is a slumped
     // giant: KayKit's barbarian at 3.4x, tinted granite.
@@ -178,9 +208,16 @@ export async function loadCaveKit() {
 }
 
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
-  darkZone, breadcrumbs } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
+  darkZone } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
+
+// The shared cluster vocabulary (js/dressing.js), bound to the cave kit. The
+// same builders Ember uses — a collapsed home is a collapsed home whether its
+// walls are burnt masonry or cut rock, and a vocabulary only one level can
+// speak is how Level 3 ended up using none of its forest models.
+const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
+  cartWreck, lowWall } = makeDressers({ kit: () => caveKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -337,6 +374,8 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
+    world.sweepKeepClear();
+    thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#cfe8f2', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#8f9aa4', y: 2.4, size: 1.4 });
     return world;
@@ -344,6 +383,12 @@ function finish(world, spec, D) {
   world.lightTint = { sky: D.tint, ground: D.wallTint, key: D.floorTint };
   // THE GUARDRAIL (js/batch.js). Every static prop above folds into one draw
   // per material. Measured on Level 1 this is worth 40-70 calls a room.
+  // LAST LINE OF DEFENCE. A builder that dressed before it set its markers
+  // could not have consulted them, so anything still standing on a gameplay
+  // square loses its collider here and says so on the console. See
+  // World.sweepKeepClear.
+  world.sweepKeepClear();
+  thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);
   return world;
 }
@@ -368,10 +413,16 @@ export async function buildVh(scene) {
   if (stage >= 1) { gaps.push(gap('e')); gaps.push(gap('n', DOOR_HALF, -9)); }
   if (stage >= 3) gaps.push(gap('n', BOSS_DOOR_HALF, 9));   // the hand-ramp
 
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -8, z: 8, r: 4.5, kind: 'gravel' }, { x: 12, z: 9, r: 4.5, kind: 'rubble' },
+              { x: -13, z: -6, r: 4.5, kind: 'water' }, { x: 9, z: -11, r: 4, kind: 'gravel' },
+              { x: 0, z: -10, r: 5.5, kind: 'rubble' }],
+    paths: [[[0, 14], [0, 6], [-1, -2], [0, -14]], [[-1, 0], [-10, 1], [-18, 0]],
+            [[1, 0], [10, 1], [18, 0]]],
+  });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
 
-  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
+  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 'vga', { x: 5.4, z: 0, angle: -Math.PI / 2 });
   if (stage >= 1) {
     sideDoor(world, 'e', halfW, halfD, 'vgb', { x: -5.4, z: 0, angle: Math.PI / 2 });
@@ -493,9 +544,42 @@ export async function buildVh(scene) {
   crackedPile(world, 'l2_vh_b', 13, -6);
 
   world.markers.restSpot = { x: -8, z: 8 };     // Old Bram's camp
+  // THE GREAT VAULT. Something enormous was carved here a very long time ago
+  // and the dark has been sitting on it since. Old Bram's camp is the only WARM
+  // thing in the room and it needs cold to read against — so the vault gets the
+  // diggers' abandoned workings: their stores, their fallen scaffold, and the
+  // shrine they cut into the rock before the work stopped.
+  world.markers.breakables = [
+    { x: -10.5, z: 8.5, kind: 'barrel' }, { x: -14, z: 12, kind: 'crate' },
+    { x: 11, z: 10, kind: 'vase' }, { x: 16, z: 5, kind: 'barrel' },
+    { x: -3, z: 12, kind: 'crate' },
+  ];
   world.markers.hubStage = stage;               // for the headless verifier
-  breadcrumbs(world, [[0, 8], [-6, 4], [-11, 0]], 0xffd18a);
-  scatter(world, halfW, halfD, D, 71, 18, { spin: 0 });   // fitted masonry: no free rotation
+  scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
+  coldHearth(world, -8, 6.6, D);                          // Bram's own fire
+  cartWreck(world, -12.5, 10, 0.7, D);
+  wayshrine(world, 14.5, -4, -Math.PI / 2 + 0.2, D);
+  fallenColumn(world, -15.5, 2, 0.4, D, 4.4);
+  fallenColumn(world, 15, 8, -1.3, D, 3.8);
+  ruinedHome(world, 13, 12, -0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
+  lowWall(world, -5, -4.5, 0.3, D, 3.4);
+  lowWall(world, 6, -3, -0.9, D, 3.0);
+  rubbleField(world, -16, -10, 3.2, D, 15);
+  rubbleField(world, 16.5, -11, 3.0, D, 13);
+  rubbleField(world, 4, 12.5, 2.8, D, 12);
+  aftermath(world, -13, -8, 2.2, D, 21);
+  // WHAT YOU SEE ON ARRIVAL. vh spawns at (0,10) facing the whole 36x28 vault,
+  // and the first dressed pass put every cluster on the perimeter — so the band
+  // the camera actually shows came out under the density floor. These sit in
+  // it, off the central route, which stays clear because three spokes and the
+  // crypt all lead off this room.
+  cartWreck(world, -6.5, 6, 0.4, D);
+  cartWreck(world, 7, 8.5, -0.7, D);
+  fallenColumn(world, -9.5, 11, 0.9, D, 3.2);
+  fallenColumn(world, 9, 12, -0.5, D, 3.0);
+  rubbleField(world, -4, 9.5, 2.6, D, 11);
+  rubbleField(world, 5, 11.5, 2.4, D, 10);
+  aftermath(world, 3, 7, 1.8, D, 39);
   return finish(world, spec, D);
 }
 
@@ -504,18 +588,32 @@ export async function buildVh(scene) {
 // ===========================================================================
 export async function buildVga(scene) {
   const { world, spec, D } = base(scene, 'vga');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 2.6, kind: 'gravel' }, { x: 4, z: -3, r: 2.2, kind: 'water' }],
+    pathWidth: 2.4,
+  });
   world.spawn = { x: 5.4, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'vh', { x: -15.4, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
+  // THE CRYSTAL MOUTH. The chokes shipped as bare 14x10 boxes with two doors
+  // and nothing else. Down here they are where the diggers stopped for breath.
+  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'crate' }, { x: -2.4, z: 2.2, kind: 'vase' }];
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[3, 0], [-3, 0]], 0x9fe8f4);
+  coldHearth(world, 0, 1.2, D);
+  fallenColumn(world, -4.4, -2.4, 0.5, D, 2.4);
+  rubbleField(world, 4.6, -2.6, 2.2, D, 11);
+  rubbleField(world, -4.4, 2.8, 2.0, D, 9);
+  aftermath(world, 3, 2.4, 1.6, D, 22);
   return finish(world, spec, D);
 }
 
 export async function buildVa1(scene) {
   const { world, spec, D } = base(scene, 'va1');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -11, z: -7, r: 4.5, kind: 'gravel' }, { x: 9, z: 6, r: 4.2, kind: 'water' },
+              { x: -6, z: 8, r: 4.0, kind: 'rubble' }, { x: 12, z: -8, r: 3.6, kind: 'gravel' }],
+    paths: [[[16, 0], [6, 2], [-4, 1], [-16, 0]]],
+  });
   world.spawn = { x: 13.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'vga', { x: -5.4, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'va2', { x: 13.5, z: 0, angle: -Math.PI / 2 });
@@ -527,14 +625,34 @@ export async function buildVa1(scene) {
   // a cracked pile you meet BEFORE you have the tool — the promise, in situ
   crackedPile(world, 'l2_va1_a', -11, -7);
   visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16 });
-  breadcrumbs(world, [[13, 0], [7, 2], [0, 4], [-7, 2], [-13, 0]], 0x9fe8f4);
-  scatter(world, halfW, halfD, D, 81, 16, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLB', 'column'] });
+  // THE GLIMMERWAY. The first cut, and the widest — the diggers worked this
+  // seam long enough to build in it. Scaffold, stores, and the shrine at the
+  // turn. The crystal light is cold, so everything it lands on is cold too.
+  world.markers.breakables = [
+    { x: -9, z: 5, kind: 'barrel' }, { x: -13, z: 9, kind: 'crate' },
+    { x: 8, z: 10, kind: 'vase' }, { x: 14, z: -3, kind: 'barrel' },
+  ];
+  ruinedHome(world, -11, 7, -0.4, D, { w: 6, d: 4.5, keep: 0.5, door: false });
+  fallenColumn(world, 11, -7.5, 0.8, D, 4.0);
+  fallenColumn(world, -13, 3, -1.1, D, 3.4);
+  cartWreck(world, 6, 8.5, 0.6, D);
+  wayshrine(world, 12.5, 4, Math.PI - 0.4, D);
+  lowWall(world, 0, 6, 0.4, D, 3.2);
+  rubbleField(world, 14, 10, 3.0, D, 13);
+  rubbleField(world, -8, -10.5, 2.8, D, 12);
+  rubbleField(world, 3, -9, 2.6, D, 11);
+  aftermath(world, -10, 6, 2.0, D, 25);
+  scatter(world, halfW, halfD, D, 81, 6, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLB', 'column'] });
   return finish(world, spec, D);
 }
 
 export async function buildVa2(scene) {
   const { world, spec, D } = base(scene, 'va2');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w'), gap('n')], D, {
+    patches: [{ x: -9, z: -8, r: 5.5, kind: 'gravel' }, { x: 10, z: 7, r: 4.2, kind: 'rubble' },
+              { x: -12, z: 6, r: 4.0, kind: 'water' }, { x: 6, z: -9, r: 3.8, kind: 'gravel' }],
+    paths: [[[16, 0], [5, -1], [-5, 1], [-16, 0]], [[0, 1], [0, -8], [0, -13]]],
+  });
   world.spawn = { x: 13.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'va1', { x: -13.5, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'va3', { x: 7.5, z: 0, angle: -Math.PI / 2 });
@@ -550,20 +668,47 @@ export async function buildVa2(scene) {
   // way in, now breakable.
   world.markers.practiceCracks = [{ x: 6, z: 5 }, { x: -2, z: 7 }, { x: 10, z: -2 }];
   for (const [i, p] of world.markers.practiceCracks.entries()) crackedPile(world, `l2_va2_${i}`, p.x, p.z);
-  breadcrumbs(world, [[13, 0], [6, 0], [0, 0], [-6, 0], [-13, 0]], 0x9fe8f4);
-  scatter(world, halfW, halfD, D, 82, 22, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
+  // THE GEODE. The room the whole seam was chasing — and the practice cracks
+  // sit in the open on purpose, so the dressing is pushed to the walls and the
+  // three of them stay the most obvious thing in the room.
+  world.markers.breakables = [
+    { x: -11, z: 6, kind: 'crate' }, { x: 14, z: 7, kind: 'barrel' },
+    { x: -8, z: -11, kind: 'vase' }, { x: 9, z: -11, kind: 'crate' },
+  ];
+  ruinedHome(world, -13, 8, 0.5, D, { w: 5.5, d: 4.5, keep: 0.45, door: false });
+  fallenColumn(world, 13, -6, -0.9, D, 4.2);
+  fallenColumn(world, -14, -3, 0.6, D, 3.4);
+  cartWreck(world, 12, 9.5, -0.6, D);
+  rubbleField(world, -6, 11, 2.8, D, 12);
+  rubbleField(world, 15, 2, 2.6, D, 11);
+  rubbleField(world, -2, -11, 2.8, D, 12);
+  aftermath(world, -12, 7, 2.0, D, 26);
+  scatter(world, halfW, halfD, D, 82, 7, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
   return finish(world, spec, D);
 }
 
 export async function buildVap(scene) {
   const { world, spec, D } = base(scene, 'vap');
-  const { halfW, halfD } = shell(world, spec, [gap('s')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+    patches: [{ x: -5, z: 4, r: 3.4, kind: 'water' }, { x: 6, z: -4, r: 3.2, kind: 'gravel' },
+              { x: 0, z: 0, r: 3.0, kind: 'rubble' }],
+    paths: [[[0, 8], [-1, 1], [3, -3], [7, -4]]],
+  });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'va2', { x: 0, z: -10.5, angle: 0 });   // LOOPS BACK
   wallRun(world, -5, -2, 3, -2, D);
   world.markers.pup4Spot = { x: 6, z: -4 };
   world.markers.slimeSpots = [{ x: -4, z: 3 }];
-  scatter(world, halfW, halfD, D, 83, 12, { spin: 1, kinds: ['rockSB', 'rockSA'] });
+  // GLITTER POCKET: a seam so rich they camped in it rather than walk out
+  world.markers.breakables = [
+    { x: -8, z: 1.5, kind: 'crate' }, { x: 3, z: 5.5, kind: 'barrel' }, { x: 8, z: -6, kind: 'vase' },
+  ];
+  coldHearth(world, -7, -4, D);
+  cartWreck(world, 6.5, 4.5, 0.8, D);
+  rubbleField(world, -3, 6, 2.6, D, 11);
+  rubbleField(world, 8, 1, 2.4, D, 10);
+  aftermath(world, -6, -3, 1.8, D, 29);
+  scatter(world, halfW, halfD, D, 83, 5, { spin: 1, kinds: ['rockSB', 'rockSA'] });
   return finish(world, spec, D);
 }
 
@@ -571,7 +716,11 @@ export async function buildVap(scene) {
 // timer, nothing else in the room to do.
 export async function buildVa3(scene) {
   const { world, spec, D } = base(scene, 'va3');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: -3, r: 4.0, kind: 'gravel' }, { x: -7, z: 4, r: 2.8, kind: 'water' },
+              { x: 7, z: 4, r: 2.8, kind: 'rubble' }],
+    paths: [[[10, 0], [3, 1], [-3, 1], [-10, 0]], [[0, 1], [0, -2]]],
+  });
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'va2', { x: -13.5, z: 0, angle: Math.PI / 2 });
   // THE SHORTCUT HOME — a walked gallery, not a teleport (dad's law).
@@ -588,6 +737,15 @@ export async function buildVa3(scene) {
     world.add(ped);
     world.addCircle(0, -3, 0.9);
   }
+  // PETRA'S SPARK is a GRANT room: the shrine at (0,-3) and the teach crack at
+  // (0,2) are the only two things a child must find, so this one is dressed at
+  // the walls and nowhere else. Ceremony needs an empty middle.
+  world.markers.breakables = [{ x: -8.5, z: 1, kind: 'vase' }, { x: 8.5, z: 1, kind: 'vase' }];
+  fallenColumn(world, -8, -5, 0.5, D, 2.6);
+  fallenColumn(world, 8, -5, -0.5, D, 2.6);
+  rubbleField(world, -8, 5.5, 2.4, D, 10);
+  rubbleField(world, 8, 5.5, 2.4, D, 10);
+  aftermath(world, 0, 6, 1.8, D, 33);
   return finish(world, spec, D);
 }
 
@@ -596,18 +754,31 @@ export async function buildVa3(scene) {
 // ===========================================================================
 export async function buildVgb(scene) {
   const { world, spec, D } = base(scene, 'vgb');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 2.6, kind: 'rubble' }, { x: 4, z: -3, r: 2.2, kind: 'gravel' }],
+    pathWidth: 2.4,
+  });
   world.spawn = { x: -5.4, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vh', { x: 15.4, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb1', { x: -13.5, z: 0, angle: Math.PI / 2 });
+  // THE CHALK MOUTH — the quarry's own doorway, and the last dry rest
+  world.markers.breakables = [{ x: -2.4, z: -1.6, kind: 'barrel' }, { x: 2.2, z: 2.4, kind: 'vase' }];
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[-3, 0], [3, 0]], 0xf0e2b8);
+  wayshrine(world, 4.4, -2.4, -0.5, D);
+  coldHearth(world, -3.8, 1.4, D);
+  rubbleField(world, -4.6, -2.8, 2.2, D, 11);
+  rubbleField(world, 4.4, 2.8, 2.0, D, 9);
+  aftermath(world, 0, 2.6, 1.6, D, 23);
   return finish(world, spec, D);
 }
 
 export async function buildVb1(scene) {
   const { world, spec, D } = base(scene, 'vb1');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D, {
+    patches: [{ x: -9, z: 6, r: 4.5, kind: 'sand' }, { x: 8, z: -7, r: 4.2, kind: 'gravel' },
+              { x: -12, z: -8, r: 4.0, kind: 'rubble' }, { x: 12, z: 8, r: 3.8, kind: 'sand' }],
+    paths: [[[-16, 0], [-6, -1], [6, 1], [16, 0]]],
+  });
   world.spawn = { x: -13.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vgb', { x: 5.4, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb2', { x: -13.5, z: 0, angle: Math.PI / 2 });
@@ -623,14 +794,33 @@ export async function buildVb1(scene) {
   world.markers.minionSpots = state.formsUnlocked.includes('earth_wolf')
     ? [{ x: 2, z: -3 }, { x: 8, z: 6 }, { x: -7, z: 5 }]
     : [{ x: 2, z: -3 }, { x: 8, z: 6 }];
-  breadcrumbs(world, [[-13, 0], [-6, -2], [1, -2], [8, 0], [13, 0]], 0xf0e2b8);
-  scatter(world, halfW, halfD, D, 91, 20, { spin: 0, kinds: ['brick', 'rockLB', 'rockSA', 'skull'] });
+  // THE BONE QUARRY. Cut stone, and what the cutting left. The terraces are
+  // the room's shape and the dressing sits off them, so the two levels stay
+  // legible from the fixed camera.
+  world.markers.breakables = [
+    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'barrel' },
+    { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'crate' },
+  ];
+  fallenColumn(world, -13, 8, 0.7, D, 4.2);
+  fallenColumn(world, 12, -8, -1.0, D, 3.8);
+  cartWreck(world, -9, -9.5, 0.5, D);
+  wayshrine(world, 13.5, 6, Math.PI + 0.4, D);
+  ruinedHome(world, 8, 9.5, -0.5, D, { w: 5.5, d: 4, keep: 0.4, door: false });
+  rubbleField(world, -15, -2, 3.0, D, 13);
+  rubbleField(world, 3, 11, 2.8, D, 12);
+  rubbleField(world, 15, 0, 2.6, D, 11);
+  aftermath(world, -6, -10, 2.2, D, 27);
+  scatter(world, halfW, halfD, D, 91, 7, { spin: 0, kinds: ['brick', 'rockLB', 'rockSA', 'skull'] });
   return finish(world, spec, D);
 }
 
 export async function buildVb2(scene) {
   const { world, spec, D } = base(scene, 'vb2');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e'), gap('s')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e'), gap('s')], D, {
+    patches: [{ x: 4, z: -8, r: 5.5, kind: 'sand' }, { x: -11, z: 7, r: 4.2, kind: 'rubble' },
+              { x: 12, z: 6, r: 4.0, kind: 'gravel' }, { x: -13, z: -6, r: 3.8, kind: 'sand' }],
+    paths: [[[-16, 0], [-5, 1], [5, -1], [16, 0]], [[0, -1], [1, 6], [0, 13]]],
+  });
   world.spawn = { x: -13.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vb1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb3', { x: -7.5, z: 0, angle: Math.PI / 2 });
@@ -641,20 +831,46 @@ export async function buildVb2(scene) {
   world.markers.shieldSpots = [{ x: -2, z: 2 }];
   world.markers.minionSpots = [{ x: 9, z: 4 }, { x: -7, z: -4 }];
   crackedPile(world, 'l2_vb2_a', 11, 6);
-  breadcrumbs(world, [[-13, 0], [-6, 2], [0, 2], [7, 0], [13, 0]], 0xf0e2b8);
-  scatter(world, halfW, halfD, D, 92, 26, { spin: 0, kinds: ['brick', 'skull', 'rockSB', 'column'] });
+  // THE RIBCAGE. The deepest the quarry got before something made them stop.
+  world.markers.breakables = [
+    { x: -10, z: 6, kind: 'barrel' }, { x: 13, z: 11, kind: 'crate' },
+    { x: -14, z: 5, kind: 'vase' }, { x: 6, z: 11, kind: 'barrel' },
+  ];
+  ruinedHome(world, -12, 8, 0.4, D, { w: 6, d: 4.5, keep: 0.35, door: false });
+  fallenColumn(world, 13, -7, -0.8, D, 4.0);
+  fallenColumn(world, -14, 2, 1.2, D, 3.4);
+  cartWreck(world, 11, 9, 0.7, D);
+  lowWall(world, -6, 5.5, -0.3, D, 3.2);
+  rubbleField(world, -15, -9, 3.0, D, 13);
+  rubbleField(world, 15, 2, 2.8, D, 12);
+  rubbleField(world, -3, 11.5, 2.6, D, 11);
+  aftermath(world, -10, 7, 2.0, D, 28);
+  scatter(world, halfW, halfD, D, 92, 7, { spin: 0, kinds: ['brick', 'skull', 'rockSB', 'column'] });
   return finish(world, spec, D);
 }
 
 export async function buildVbp(scene) {
   const { world, spec, D } = base(scene, 'vbp');
-  const { halfW, halfD } = shell(world, spec, [gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('n')], D, {
+    patches: [{ x: 6, z: 4, r: 3.4, kind: 'sand' }, { x: -6, z: -3, r: 3.2, kind: 'rubble' },
+              { x: 0, z: 2, r: 3.0, kind: 'gravel' }],
+    paths: [[[0, -8], [-1, -1], [3, 3], [6, 4]]],
+  });
   world.spawn = { x: 0, z: -5.5, angle: Math.PI };
   sideDoor(world, 'n', halfW, halfD, 'vb2', { x: 0, z: 10.5, angle: Math.PI });  // LOOPS BACK
   wallRun(world, -6, 1, 2, 1, D);
   visibleReward(world, 6, 4, 'l2_vbp_chest', { shards: 22 });
   world.markers.minionSpots = [{ x: -4, z: -3 }];
-  scatter(world, halfW, halfD, D, 93, 14, { spin: 0, kinds: ['brick', 'skull'] });
+  // THE CHALK SEAM: a dead end they worked out and abandoned
+  world.markers.breakables = [
+    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 6.5, kind: 'vase' },
+  ];
+  fallenColumn(world, -7, 4, 0.6, D, 3.0);
+  cartWreck(world, -6.5, -5, 1.1, D);
+  rubbleField(world, 7, -4, 2.6, D, 11);
+  rubbleField(world, -2, 6.5, 2.4, D, 10);
+  aftermath(world, 4, -5, 1.8, D, 30);
+  scatter(world, halfW, halfD, D, 93, 5, { spin: 0, kinds: ['brick', 'skull'] });
   return finish(world, spec, D);
 }
 
@@ -668,7 +884,11 @@ export async function buildVbp(scene) {
 // change 2. One room, one idea, one consequence.
 export async function buildVb3(scene) {
   const { world, spec, D } = base(scene, 'vb3');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D, {
+    patches: [{ x: 0, z: 2, r: 3.6, kind: 'sand' }, { x: 0, z: -6, r: 4.0, kind: 'water' },
+              { x: -8, z: 5, r: 2.8, kind: 'rubble' }, { x: 8, z: 5, r: 2.8, kind: 'gravel' }],
+    paths: [[[-10, 0], [-3, 1.5], [0, 2]], [[0, 2], [4, -2], [7, -5]]],
+  });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vb2', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE SHORTCUT HOME, opened by the dam breaking.
@@ -681,7 +901,17 @@ export async function buildVb3(scene) {
   // ...and a bell-stone you cannot see from the plate rings, opening the dam.
   world.markers.bellStone = { x: 7, z: -5 };
   world.markers.damSpot = { x: 0, z: -6 };
+  // THE RATTLE is Stoneroot's PUZZLE ROOM, and the same law as Ember's ld1
+  // applies: the plate, the three stalactites and the bell-stone are the whole
+  // mechanic, so this room is dressed at the WALLS and nowhere near them.
+  // Clutter here would compete with the exact things a child has to spot.
+  world.markers.breakables = [{ x: -9, z: 1.5, kind: 'crate' }, { x: 9, z: 1.5, kind: 'vase' }];
   world.markers.minionSpots = [{ x: -5, z: -2 }, { x: 5, z: -2 }];
+  fallenColumn(world, -8.5, -5, 0.5, D, 2.6);
+  fallenColumn(world, 8.5, 4.5, -0.8, D, 2.6);
+  rubbleField(world, -8.5, 5.5, 2.4, D, 10);
+  rubbleField(world, 8.5, -6, 2.2, D, 9);
+  aftermath(world, -6, 6, 1.8, D, 38);
 
   if (GREY()) {
     // the plate, the three drop zones and the bell, all readable as shapes
@@ -731,18 +961,32 @@ export async function buildVb3(scene) {
 // ===========================================================================
 export async function buildVgc(scene) {
   const { world, spec, D } = base(scene, 'vgc');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: 0, z: 0, r: 2.6, kind: 'water' }, { x: 4, z: -3, r: 2.2, kind: 'mud' }],
+    pathWidth: 2.4,
+  });
   world.spawn = { x: 0, z: 3.2, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vh', { x: -9, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc1', { x: 0, z: 10.5, angle: Math.PI });
+  // THE WET MOUTH. Past here the workings flooded, and the props say so before
+  // the floor colour does: everything left standing on this side is stained.
+  world.markers.breakables = [{ x: 2.8, z: -1.2, kind: 'vase' }, { x: -2.2, z: 2.4, kind: 'crate' }];
   world.markers.restSpot = { x: 0, z: 0 };
-  breadcrumbs(world, [[0, 3], [0, -3]], 0x8fe0d4);
+  coldHearth(world, -3.6, -1.6, D);
+  fallenColumn(world, 4.2, 2.2, 1.1, D, 2.4);
+  rubbleField(world, -4.6, 2.6, 2.2, D, 11);
+  rubbleField(world, 4.4, -2.8, 2.0, D, 9);
+  aftermath(world, 1.5, 2.6, 1.6, D, 24);
   return finish(world, spec, D);
 }
 
 export async function buildVc1(scene) {
   const { world, spec, D } = base(scene, 'vc1');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -10, z: 7, r: 4.5, kind: 'water' }, { x: 9, z: -8, r: 4.2, kind: 'mud' },
+              { x: 12, z: 8, r: 4.0, kind: 'water' }, { x: -13, z: -6, r: 3.8, kind: 'gravel' }],
+    paths: [[[0, 13], [-2, 5], [1, -2], [0, -13]]],
+  });
   world.spawn = { x: 0, z: 10.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vgc', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc2', { x: 0, z: 10.5, angle: Math.PI });
@@ -762,14 +1006,41 @@ export async function buildVc1(scene) {
   // still over; a character costs far more than the room's own geometry here
   // (43 of the original 106 was three of them). Two enemies on a three-terrace
   // stair is the right fight anyway — the stair IS the difficulty.
-  breadcrumbs(world, [[0, 10], [5, 5], [5, 0], [-2, -6], [0, -11]], 0x8fe0d4);
-  scatter(world, halfW, halfD, D, 101, 18, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
+  // THE SUNKEN STAIR. Three terraces, and the water has been finding its way
+  // down them for a very long time. Everything here is stained, slumped or
+  // floated out of place — but nothing is on the terrace edges, which are the
+  // room's whole readability from a fixed camera.
+  world.markers.breakables = [
+    { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'crate' },
+    { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'vase' },
+  ];
+  fallenColumn(world, -13, 9, 0.5, D, 3.8);
+  fallenColumn(world, 13, 6, -1.1, D, 3.4);
+  ruinedHome(world, -12, -8, 0.7, D, { w: 5.5, d: 4, keep: 0.35, door: false });
+  cartWreck(world, 10, -10, 0.9, D);
+  rubbleField(world, 15, -2, 2.8, D, 12);
+  rubbleField(world, -15, 1, 2.6, D, 11);
+  rubbleField(world, 2, 11.5, 2.6, D, 11);
+  aftermath(world, -10, -7, 2.0, D, 31);
+  // same fix as the vault: the arrival band was empty because the terraces
+  // pushed everything to the walls. Nothing here sits ON a terrace edge, which
+  // is what makes the three levels readable from a fixed camera.
+  cartWreck(world, -6, 9.5, 0.6, D);
+  fallenColumn(world, 6.5, 10.5, -0.8, D, 3.0);
+  rubbleField(world, -3, 7.5, 2.4, D, 10);
+  rubbleField(world, 4, 11.5, 2.4, D, 10);
+  aftermath(world, -7, 6, 1.8, D, 40);
+  scatter(world, halfW, halfD, D, 101, 6, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
   return finish(world, spec, D);
 }
 
 export async function buildVc2(scene) {
   const { world, spec, D } = base(scene, 'vc2');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D, {
+    patches: [{ x: -8, z: -7, r: 5.0, kind: 'water' }, { x: 10, z: 7, r: 4.2, kind: 'mud' },
+              { x: -12, z: 6, r: 4.0, kind: 'moss' }, { x: 6, z: -10, r: 3.6, kind: 'water' }],
+    paths: [[[0, 13], [-2, 4], [0, -4], [0, -13]], [[1, -3], [6, -3], [10, -3]]],
+  });
   world.spawn = { x: 0, z: 10.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc1', { x: 0, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc3', { x: 0, z: 5.5, angle: Math.PI });
@@ -788,27 +1059,61 @@ export async function buildVc2(scene) {
               { system: 'cut', id: 'l2_bramble_gate', region: REGION });
   visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24 });
   world.markers.bramblePromise = { x: 11, z: -3 };
-  breadcrumbs(world, [[0, 10], [-3, 4], [-3, -2], [0, -10]], 0x8fe0d4);
-  scatter(world, halfW, halfD, D, 102, 24, { spin: 1, kinds: ['rockSB', 'rockLC', 'column', 'brick'] });
+  // Where the wet workings meet the first green thing anyone has seen in three
+  // rooms — the bramble behind the promise gate. Nothing is placed in the
+  // alcove x 11..16, z -6..0: that is the gate's own space and it has to read
+  // as the ONLY way to the chest.
+  world.markers.breakables = [
+    { x: -10, z: 5.5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
+    { x: -14, z: 10, kind: 'barrel' }, { x: 12, z: 5, kind: 'vase' },
+  ];
+  ruinedHome(world, -12, 7.5, -0.4, D, { w: 5.5, d: 4.5, keep: 0.35, door: false });
+  fallenColumn(world, -13, -6, 0.9, D, 3.6);
+  fallenColumn(world, 6, 10.5, -0.6, D, 3.0);
+  cartWreck(world, -6, 10, 0.6, D);
+  lowWall(world, 3, 5.5, 0.4, D, 3.0);
+  rubbleField(world, -15, 0, 2.8, D, 12);
+  rubbleField(world, 9, -12, 2.6, D, 11);
+  rubbleField(world, 14, 9, 2.6, D, 11);
+  aftermath(world, -11, 6, 2.0, D, 32);
+  scatter(world, halfW, halfD, D, 102, 6, { spin: 1, kinds: ['rockSB', 'rockLC', 'column', 'brick'] });
   return finish(world, spec, D);
 }
 
 export async function buildVcp(scene) {
   const { world, spec, D } = base(scene, 'vcp');
-  const { halfW, halfD } = shell(world, spec, [gap('w')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('w')], D, {
+    patches: [{ x: 6, z: -3, r: 3.4, kind: 'water' }, { x: -5, z: 4, r: 3.2, kind: 'moss' },
+              { x: 2, z: 5, r: 2.8, kind: 'mud' }],
+    paths: [[[-10, 0], [-3, 2], [3, -1], [6, -3]]],
+  });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 13.5, z: 0, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, 0, -4, 0, 3, D);
   visibleReward(world, 6, -3, 'l2_vcp_chest', { shards: 20, heartPiece: 1 }, 'gold');
   world.markers.slimeSpots = [{ x: 5, z: 4 }];
-  scatter(world, halfW, halfD, D, 103, 12, { spin: 1, kinds: ['rockSA', 'rockSB'] });
+  // the last dry pocket before the crypt — someone sheltered here and the gold
+  // chest is what they were carrying
+  world.markers.breakables = [
+    { x: -3, z: -5.5, kind: 'crate' }, { x: 8, z: 1, kind: 'barrel' }, { x: -1, z: 6, kind: 'vase' },
+  ];
+  coldHearth(world, -6.5, -4, D);
+  cartWreck(world, -7, 4.5, 0.9, D);
+  rubbleField(world, 3, -6, 2.6, D, 11);
+  rubbleField(world, 8, 5, 2.4, D, 10);
+  aftermath(world, -5, -3.5, 1.8, D, 34);
+  scatter(world, halfW, halfD, D, 103, 5, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   return finish(world, spec, D);
 }
 
 // THE SHOULDER PIN — the last thing holding the titan's arm up.
 export async function buildVc3(scene) {
   const { world, spec, D } = base(scene, 'vc3');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D);
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: 0, z: -3, r: 3.8, kind: 'water' }, { x: -6, z: 4, r: 3.0, kind: 'moss' },
+              { x: 6, z: 3, r: 2.8, kind: 'mud' }],
+    paths: [[[0, 8], [0, 1], [0, -8]]],
+  });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc2', { x: 0, z: -10.5, angle: 0 });
   // THE SHORTCUT HOME.
@@ -817,6 +1122,12 @@ export async function buildVc3(scene) {
   world.markers.pinSpot = { x: 0, z: -3 };
   crackedPile(world, 'l2_vc3_pin', 0, -3, true);
   world.markers.shieldSpots = [{ x: -4, z: 2 }];
+  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'vase' }];
+  fallenColumn(world, -7.5, -4.5, 0.6, D, 2.6);
+  fallenColumn(world, 7.5, -4.5, -0.6, D, 2.6);
+  rubbleField(world, -7.5, 5, 2.4, D, 10);
+  rubbleField(world, 7.5, 5, 2.4, D, 10);
+  aftermath(world, -4, 6, 1.8, D, 35);
   return finish(world, spec, D);
 }
 
@@ -829,7 +1140,11 @@ export async function buildVz(scene) {
   // ONWARD to the Wild Woods once the Warden is down (fix plan A1). Before
   // that the crypt is a dead end on purpose — it is the boss room.
   const gaps = [gap('s', BOSS_DOOR_HALF), ...(beaten ? [gap('n')] : [])];
-  const { halfW, halfD } = shell(world, spec, gaps, D);
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: 0, z: -2, r: 7, kind: 'gravel' }, { x: -10, z: 8, r: 3.4, kind: 'rubble' },
+              { x: 10, z: 8, r: 3.4, kind: 'rubble' }, { x: 0, z: 10, r: 3.0, kind: 'water' }],
+    paths: [[[0, 13], [0, 6]]],
+  });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -11.5, angle: 0 }, { half: BOSS_DOOR_HALF });
   if (beaten) sideDoor(world, 'n', halfW, halfD, 't1a', { x: 0, z: 9, angle: Math.PI });
@@ -841,7 +1156,18 @@ export async function buildVz(scene) {
   // everything, and a stomp at his feet staggers him off his guard.
   world.markers.stompStagger = { x: 0, z: -2 };
   world.markers.petraSpot = { x: 0, z: -9, spirit: 'petra' };
-  scatter(world, halfW, halfD, D, 111, 14, { spin: 0, kinds: ['column', 'skull', 'brick'] });
+  // A BOSS ARENA IS DRESSED AT THE EDGES ONLY — the Warden's stomp needs a
+  // clear floor, and anything you can snag on mid-arena turns a readable dodge
+  // into an unfair hit. Same law as Ember's `le`.
+  for (const [cx, cz, cr] of [[-11, -9, 0.4], [11, -9, -0.4], [-11.5, 9, 1.2], [11.5, 9, -1.2]]) {
+    fallenColumn(world, cx, cz, cr, D, 3.0);
+  }
+  rubbleField(world, -11.5, 0, 2.6, D, 11);
+  rubbleField(world, 11.5, 0, 2.6, D, 11);
+  rubbleField(world, 0, -11.5, 2.8, D, 12);
+  aftermath(world, -9, -10, 2.0, D, 36);
+  aftermath(world, 9, -10, 2.0, D, 37);
+  scatter(world, halfW, halfD, D, 111, 6, { spin: 0, kinds: ['column', 'skull', 'brick'] });
   return finish(world, spec, D);
 }
 

@@ -173,7 +173,9 @@
         "assets/chars/fox.gltf",
         "assets/chars/husky.gltf"
       ],
-      "note": "SHIPPING NOW and load-bearing: Kael's four wolf forms, every hound, both giant-wolf bosses, Pip the fox and Biscuit the den dog. Blocked 2026-08-07: this build environment's network policy refuses quaternius.com, quaternius.itch.io and patreon.com (CONNECT 403), so the pack could not be re-fetched here. FIX: download the pack and drop its License.txt in as quaternius-ultimate-animated-animals.txt."
+      "note": "SHIPPING NOW and load-bearing: Kael's four wolf forms, every hound, both giant-wolf bosses, Pip the fox and Biscuit the den dog. Blocked 2026-08-07: this build environment's network policy refuses quaternius.com, quaternius.itch.io and patreon.com (CONNECT 403), so the pack could not be re-fetched here. FIX: download the pack and drop its License.txt in as quaternius-ultimate-animated-animals.txt.",
+      "accepted": "private-family-use 2026-08-09",
+      "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
     },
     {
       "pack": "Quaternius — Animated Monster Pack",
@@ -183,7 +185,9 @@
       "covers": [
         "assets/chars/monsters"
       ],
-      "note": "SHIPPING NOW: the Slime and Bat enemy families, and the Dragon that is Boreal of Frostpeak. Same network block as above. FIX: download and drop in as quaternius-animated-monsters.txt."
+      "note": "SHIPPING NOW: the Slime and Bat enemy families, and the Dragon that is Boreal of Frostpeak. Same network block as above. FIX: download and drop in as quaternius-animated-monsters.txt.",
+      "accepted": "private-family-use 2026-08-09",
+      "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
     },
     {
       "pack": "Kenney — Holiday Kit",
@@ -218,7 +222,9 @@
       ],
       "note": "EIGHT OF THE TEN TRACKS IN THE SHIPPING GAME. Established 2026-08-07 by md5-matching every file in assets/audio/music against the pack in the game-assets repo: boss-intro/loop = '09. Battle Theme II', causeway+kiln = '15. Volcanic Crater', den+ember-calm = '04. Peaceful Village', region-stone = '06. Hidden Cavern', stone-deep = '10. Dwarven Mine'. CREDITS.md had described this pack as an unused bonus for future regions. (v3.21.2: ember-calm.ogg and kiln.mp3 were byte-identical duplicates of den.ogg and causeway.mp3 and were deleted — those two names are now aliases in js/audio.js, so the same eight HydroGene tracks still cover ten music cues.)",
       "evidence": "hydrogene-16bit-rpg-music-README.txt",
-      "licence": null
+      "licence": null,
+      "accepted": "private-family-use 2026-08-09",
+      "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
     },
     {
       "pack": "OpenGameArt — Cave Theme (Brandon Morris) + Victory Fanfare Short (cynicmusic)",
@@ -229,7 +235,22 @@
         "assets/audio/music/region-ember.ogg",
         "assets/audio/music/victory.ogg"
       ],
-      "note": "The only two tracks NOT from HydroGene, confirmed by md5 against both the HydroGene pack and every Kenney audio pack (no match). OGA hosts CC0, CC-BY and GPL side by side and licences are per submission, so each page must be checked: a CC-BY track needs visible credit in-game, a GPL track could not be used at all. NOTE: 'Boss Battle Music' by Juhani Junkala is credited in CREDITS.md but is NOT in the build — the boss music is HydroGene's Battle Theme II."
+      "note": "The only two tracks NOT from HydroGene, confirmed by md5 against both the HydroGene pack and every Kenney audio pack (no match). OGA hosts CC0, CC-BY and GPL side by side and licences are per submission, so each page must be checked: a CC-BY track needs visible credit in-game, a GPL track could not be used at all. NOTE: 'Boss Battle Music' by Juhani Junkala is credited in CREDITS.md but is NOT in the build — the boss music is HydroGene's Battle Theme II.",
+      "accepted": "private-family-use 2026-08-09",
+      "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
     }
-  ]
+  ],
+  "distribution": {
+    "mode": "private-family",
+    "decidedOn": "2026-08-09",
+    "decidedBy": "dad",
+    "words": "the game is only for myself and my family and will never be made public or sold. overwrite the current rule. they can be used.",
+    "supersedes": "the standing rule that an unknown licence is BLOCKED, not permission",
+    "meansInPractice": [
+      "a pack with no licence file on disk may ship in this build",
+      "the pack is still RECORDED here with what is and is not known about it",
+      "check-licences.mjs --strict still fails on them: that flag is the release gate, and the day this stops being a family build is the day the list below has to be cleared for real"
+    ],
+    "note": "The build is served from a public GitHub Pages URL. That was flagged at the time of the decision and the decision stands regardless; it is written down here so nobody later mistakes private INTENT for private DISTRIBUTION."
+  }
 }

@@ -12,6 +12,8 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { prepareCharacter } from './assets.js';
 import { smokePuff } from './enemies.js';
 import { state } from './state.js';
+import { galeLane } from './wind.js';
+import { waterZone, buildWaterField } from './water.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 
@@ -35,6 +37,51 @@ const SKINS = {
     maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
     speedMult: 1.08,  // the forest is quicker than the shadow
+  },
+  // ARIA, THE GALEBOUND — Stormreach's guardian (region 5).
+  //
+  // BOSSES FIGHT LIKE THEIR FAMILY, so she wears the same class as the
+  // Shadowgrip and Sylva: the crouch, the charge, the red lane and the gold
+  // collapse ring the kids have been reading since region one. Nothing about
+  // the fight is new EXCEPT the weather, and the weather is the thing they were
+  // given a tool for two districts ago.
+  //
+  // At half health she does not simply hunt harder — she raises two gales that
+  // squeeze the arena from both sides. Walking out of her charge lane stops
+  // working; dashing out still does. That is the whole design of the region,
+  // asked as a question, once, at the moment it matters.
+  aria: {
+    name: 'Aria, the Galebound',
+    body: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
+    maxHp: 26, dmg: 1.5, saveKey: 'ariaHp', legacyPhases: false,
+    cinder: 0xfff4b0, // her own stormlight, held down by the gale
+    speedMult: 1.14,  // the sky is quicker than the forest
+    gales: [
+      { x: -8.5, z: 0, w: 7.0, d: 24, dir: 'e', strength: 'gale' },
+      { x: 8.5, z: 0, w: 7.0, d: 24, dir: 'w', strength: 'gale' },
+    ],
+  },
+  // MERI, THE DROWNED — the Sunken Vale's guardian (region 6).
+  //
+  // Three wolf-shaped bosses is enough wolf-shaped bosses. Meri's family is the
+  // TIDE BLOBS the kids have fought all region, and she fights like one: the
+  // same deep crouch before a hop, the same helpless moment after she lands.
+  // Same class, because the fight underneath is the same fight — crouch, red
+  // ring, dodge, punish the recovery — and that is the law working rather than
+  // being worked around.
+  //
+  // What is new is the FLOOR. As she loses she floods it: standing ground
+  // shrinks, deep water grows, and the gift the region gave stops being optional.
+  meri: {
+    name: 'Meri, the Drowned',
+    body: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
+    maxHp: 28, dmg: 1.5, saveKey: 'meriHp', legacyPhases: false,
+    cinder: 0x8fe4ff, // her own tide-light, held under
+    speedMult: 0.92,  // deep water is not quick
+    floods: [
+      { x: -9.5, z: 0, w: 7.0, d: 24 },
+      { x: 9.5, z: 0, w: 7.0, d: 24 },
+    ],
   },
 };
 
@@ -205,8 +252,80 @@ export class Shadowgrip {
       this._halfHowled = true;
       audio.howl({ volume: 0.95, rate: 0.7 });
       juice.burst(wx, 1.2, wz, this.skin.burst, 14);
+      this._raiseGales();
+      this._flood();
     }
     if (this.coreHp <= 0) this._defeat();
+  }
+
+  // HER SECOND HALF. The arena narrows from both sides, and it narrows with
+  // the thing the child already knows how to cross. Nothing is added to the
+  // fight's grammar — the charge, the tell and the punish window are all
+  // unchanged — the FLOOR just gets smaller, and the answer to that is the
+  // verb Aria's own shrine handed over.
+  _raiseGales() {
+    if (!this.skin.gales || this._galesUp) return;
+    this._galesUp = true;
+    for (const g of this.skin.gales) {
+      galeLane(this.world, { x: this.x + g.x, z: this.z + g.z, w: g.w, d: g.d,
+        dir: g.dir, strength: g.strength, id: 'aria' });
+    }
+    if (this.world.rebuildWind) this.world.rebuildWind();
+    audio.play('whoosh', { volume: 0.9, rate: 0.6 });
+  }
+
+  // ...and when she falls, the wind goes with her. A gale still blowing across
+  // a beaten boss's arena would be the room refusing to admit the fight is over.
+  _dropGales() {
+    if (!this._galesUp) return;
+    this._galesUp = false;
+    this.world.galeLanes = this.world.galeLanes.filter((l) => l.id !== 'aria');
+    if (this.world.rebuildWind) this.world.rebuildWind();
+  }
+
+  // HER SECOND HALF. The arena does not narrow with wind, it narrows with
+  // WATER: two channels open at the edges and the standing ground shrinks to
+  // the middle. A child who took the Tide Wolf twenty minutes ago finds that it
+  // was not a convenience.
+  _flood() {
+    if (!this.skin.floods || this._flooded) return;
+    this._flooded = true;
+    for (const f of this.skin.floods) {
+      waterZone(this.world, { x: this.x + f.x, z: this.z + f.z, w: f.w, d: f.d,
+        deep: true, id: 'meri' });
+    }
+    if (this.world._waterMeshes) {
+      for (const m of this.world._waterMeshes) {
+        this.world.root.remove(m);
+        m.geometry.dispose();
+        if (m.material.map) m.material.map.dispose();
+        m.material.dispose();
+      }
+    }
+    this.world._waterMeshes = buildWaterField(this.world);
+    audio.play('puff', { volume: 0.9, rate: 0.55 });
+  }
+
+  _drain() {
+    if (!this._flooded) return;
+    this._flooded = false;
+    const gone = this.world.waterZones.filter((z) => z.id === 'meri');
+    for (const z of gone) {
+      if (z.collider) {
+        const i = this.world.boxColliders.indexOf(z.collider);
+        if (i >= 0) this.world.boxColliders.splice(i, 1);
+      }
+    }
+    this.world.waterZones = this.world.waterZones.filter((z) => z.id !== 'meri');
+    if (this.world._waterMeshes) {
+      for (const m of this.world._waterMeshes) {
+        this.world.root.remove(m);
+        m.geometry.dispose();
+        if (m.material.map) m.material.map.dispose();
+        m.material.dispose();
+      }
+    }
+    this.world._waterMeshes = buildWaterField(this.world);
   }
 
   // A perfect parry (or a stunning blow) staggers even the great wolf —
@@ -253,6 +372,16 @@ export class Shadowgrip {
     } else if (this.skin === SKINS.sylva) {
       state.flags.sylvaDefeated = true;
       if (!state.formsUnlocked.includes('verdant_wolf')) state.formsUnlocked.push('verdant_wolf');
+    } else if (this.skin === SKINS.aria) {
+      state.flags.ariaDefeated = true;
+      // the Storm Wolf was earned at her shrine, not here — but a save that
+      // somehow reached the crown without it is not a save to strand
+      if (!state.formsUnlocked.includes('storm_wolf')) state.formsUnlocked.push('storm_wolf');
+      this._dropGales();
+    } else if (this.skin === SKINS.meri) {
+      state.flags.meriDefeated = true;
+      if (!state.formsUnlocked.includes('tide_wolf')) state.formsUnlocked.push('tide_wolf');
+      this._drain();       // the water goes out — that IS the restoration
     }
     if (this.onDefeated) this.onDefeated();
   }

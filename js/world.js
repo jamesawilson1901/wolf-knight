@@ -40,6 +40,15 @@ export class World {
     // iceGate(), so a room with ice-sealed geometry built any other way had
     // no shatter verb at all and its ice could never be broken.
     this.shatterables = [];    // {id, x, z, clear, broken} — Frost Wolf breath
+    // STORMREACH (region 5). A gale lane pushes; it never damages. It is also
+    // the region's lock — see js/wind.js for why a wind you can lean into is a
+    // better closed door than a wall a child has to be told about.
+    this.galeLanes = [];       // {minX,maxX,minZ,maxZ, px,pz, strength, dir, id}
+    // SUNKEN VALE (region 6). Shallow water slows; deep water is a wall you can
+    // see across until the Tide Wolf carries you over it — see js/water.js.
+    this.waterZones = [];      // {minX,maxX,minZ,maxZ, deep, collider}
+    this.quenchables = [];     // {x, z, id, out, quench} — the splash puts these out
+    this.vanes = [];           // {x, z, r, dir, lane, group} — dash to turn
     this.boulders = [];        // {x, z, r, group, collider} — pushable
     this.potionSpots = [];     // {x, z, group, taken}
     this.boss = null;
@@ -70,8 +79,139 @@ export class World {
     this.boxColliders.push({ minX, maxX, minZ, maxZ });
   }
 
-  addCircle(x, z, r) {
-    this.circleColliders.push({ x, z, r });
+  // `tag` marks who owns this collider. Only 'decor' is ever swept away — see
+  // sweepKeepClear. Everything else (a gate, a landmark, a boulder, a wall) is
+  // gameplay or structure and is never touched.
+  addCircle(x, z, r, tag = null) {
+    this.circleColliders.push({ x, z, r, tag });
+  }
+
+  // --- KEEP-OUT: where scenery may not stand -------------------------------
+  //
+  // Dressing the levels to ROOM-STANDARD put hundreds of new colliders into
+  // rooms that already had gameplay in them, and two of them landed badly: an
+  // enemy in t1b spawned inside a tree, and the chest behind vc2's thorn gate
+  // ended up 2.06u out of reach — you cut the bramble, solve the puzzle, and
+  // still cannot take the reward.
+  //
+  // Both are the same bug. A prop builder knows where it wants to put a rock;
+  // it does not know that a hound spawns there, or that the only approach to a
+  // chest runs through that square. So the world keeps a register of the places
+  // gameplay OWNS, and the builders ask before they place anything solid.
+  //
+  // `reserve` is for things a room states explicitly (a doorway, an alcove).
+  // `blocked` also consults the markers LIVE, because nearly every build
+  // function sets its spawn points and chests before it dresses, and reading
+  // them at placement time means fifty-two builders did not each have to
+  // remember to declare the same thing twice.
+  reserve(x, z, r = 1.2, tag = 'reserved') {
+    (this._keepClear || (this._keepClear = [])).push({ x, z, r, tag });
+  }
+
+  // `why` — when true, returns the NAME of what claimed the ground instead of
+  // just true. The sweep reports it, because "5 colliders dropped" tells you a
+  // number and "dropped at (-7.2, 3.9), claimed by restSpot" tells you which
+  // line to move.
+  blocked(x, z, r = 0.6, why = false) {
+    // Tally of what this register actually REFUSED, per room. A keep-out that
+    // rejects a handful of props is doing its job; one that rejects dozens is
+    // quietly emptying rooms, which is precisely how the Great Vault went from
+    // 55 things in its arrival frame to 9 without a single check failing.
+    const tally = (tag) => {
+      if (!why) {
+        const t = (this._blockedBy || (this._blockedBy = {}));
+        t[tag] = (t[tag] || 0) + 1;
+      }
+      return why ? tag : true;
+    };
+    for (const k of (this._keepClear || [])) {
+      const dx = x - k.x, dz = z - k.z;
+      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return tally(k.tag || 'reserved');
+    }
+    const m = this.markers || {};
+    // KEEP-CLEAR PROTECTS STANDING ROOM, NOTHING ELSE.
+    //
+    // The first attempt protected every marker and the sweep fired in twelve of
+    // seventeen rooms — almost all of it false. A marker can mean three quite
+    // different things:
+    //
+    //   * where a BODY must stand or walk — a spawn point, a hound's post, a
+    //     chest's approach. Scenery here is a bug; this is what to protect.
+    //   * where a PROP IS — heroSpot is the fallen gate, ringSpot is the sunken
+    //     ring. Protecting these made the sweep drop the hero prop's own
+    //     collider, so you could walk through the Kiln and through Cinder's cage.
+    //   * where an INTERACTABLE is — cageBraziers, the order-hall braziers, the
+    //     practice cracks. They own their colliders too, for the same reason.
+    //
+    // So the list is positive and short. Anything not named here is ignored,
+    // which fails safe: the worst case is a prop standing somewhere slightly
+    // awkward, not a gate you cannot open or an enemy you cannot fight.
+    const STANDING_ROOM =
+      /(shade|hound|moth|geyser|slime|bat|minion|shield|pup|stalactite|enemy|boulder)\w*Spots?$/i;
+    const ALSO = /^(restSpot|potionSpot|chestDefs)$|Promise$/;
+    const near = (p, pad) => {
+      if (!p || typeof p.x !== 'number' || typeof p.z !== 'number') return false;
+      const dx = x - p.x, dz = z - p.z;
+      return dx * dx + dz * dz < (pad + r) * (pad + r);
+    };
+    // the spawn, and enough room around it to land and turn around
+    if (near(this.spawn, 2.4)) return tally('spawn');
+    for (const key of Object.keys(m)) {
+      const v = m[key];
+      if (!v || !(STANDING_ROOM.test(key) || ALSO.test(key))) continue;
+      // A CHEST NEEDS ITS APPROACH, not just its square: 2.2u so a child can
+      // walk up to it from any side. Everything else needs standing room.
+      // A BODY IS ABOUT 0.7u ACROSS. 1.6u of standing room plus a cluster's own
+      // 1.2u query radius excluded nearly three units around every marker, and
+      // once the markers moved above the dressing that started REJECTING props
+      // rather than merely sweeping their colliders — the Great Vault lost most
+      // of its arrival dressing overnight, from 55 things in frame to 9.
+      //
+      // 1.1u is ample room to stand and turn. Chests and gates keep the wider
+      // margin because an approach you cannot walk is a broken reward, and that
+      // is the failure this whole register exists to prevent.
+      const pad = /chest|reward|Promise/i.test(key) ? 2.2 : 1.1;
+      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return tally(key); }
+      else if (near(v, pad)) return tally(key);
+    }
+    for (const d of (this.doors || [])) {
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      if (near({ x: cx, z: cz }, 2.6)) return tally('door→' + d.to);
+    }
+    return false;
+  }
+
+  // Last line of defence, run at the end of every dressed build. A builder that
+  // placed before its markers existed cannot have consulted them, so anything
+  // still sitting on a gameplay square has its COLLIDER dropped here and says
+  // so. A prop you can walk through is a blemish; an enemy stuck inside one, or
+  // a chest you cannot reach, is a broken game.
+  // ONLY SCENERY IS EVER SWEPT.
+  //
+  // The first version filtered every circle collider in the room and started
+  // dropping the wrong ones the moment it had good data: the Kiln cone (radius
+  // 4.6), the Forge Heart (5.2), the Great Vault's ring (7.5) — landmarks whose
+  // colliders naturally overlap half the markers in the room. Dropping them
+  // means walking through a volcano. And in va1 it dropped the cracked pile
+  // that GUARDS a chest, because the chest's own approach reservation claimed
+  // the ground the gate stands on.
+  //
+  // A prop the dressing placed is tagged 'decor' and may be swept. Anything
+  // else belongs to the room's design and is left alone, whatever it overlaps.
+  sweepKeepClear() {
+    const hits = [];
+    this.circleColliders = this.circleColliders.filter((c) => {
+      if (c.tag !== 'decor') return true;
+      const claim = this.blocked(c.x, c.z, c.r, true);
+      if (!claim) return true;
+      hits.push(`(${c.x.toFixed(1)}, ${c.z.toFixed(1)}) r${c.r.toFixed(2)} → ${claim}`);
+      return false;
+    });
+    if (hits.length) {
+      console.warn(`[keepclear] dropped ${hits.length} collider(s) standing on gameplay `
+        + `ground: ${hits.join('; ')}`);
+    }
+    return hits.length;
   }
 
   addLava(minX, maxX, minZ, maxZ) {
@@ -409,6 +549,67 @@ export class World {
       if (x >= d.minX && x <= d.maxX && z >= d.minZ && z <= d.maxZ) return d;
     }
     return null;
+  }
+
+  // The wind at a point, in units per second, summed over every lane covering
+  // it. Summed rather than "the strongest wins" because two lanes crossing is a
+  // real thing the Vanes room can produce, and the honest answer there is the
+  // resultant — a child pushed diagonally out of a crossing has been told the
+  // truth about what is happening to them.
+  windAt(x, z) {
+    let wx = 0, wz = 0;
+    for (const l of this.galeLanes) {
+      if (x < l.minX || x > l.maxX || z < l.minZ || z > l.maxZ) continue;
+      wx += l.px; wz += l.pz;
+    }
+    return (wx || wz) ? { x: wx, z: wz } : null;
+  }
+
+  // The strongest lane covering a point, for anything that needs to ask "am I
+  // standing in a gale" rather than "which way am I being pushed".
+  galeAt(x, z) {
+    let best = null, mag = 0;
+    for (const l of this.galeLanes) {
+      if (x < l.minX || x > l.maxX || z < l.minZ || z > l.maxZ) continue;
+      const m = Math.hypot(l.px, l.pz);
+      if (m > mag) { mag = m; best = l; }
+    }
+    return best;
+  }
+
+  // Turn a weathervane if the dash passed through one. Returns how many turned.
+  turnVanesAt(x, z, r) {
+    let n = 0;
+    for (const v of this.vanes) {
+      if (Math.hypot(v.x - x, v.z - z) > (v.r || 1.2) + r) continue;
+      if (v.turn) { v.turn(); n++; }
+    }
+    return n;
+  }
+
+  // What is underfoot: null, 'shallow' or 'deep'. Deep wins where they overlap,
+  // which happens at every shoreline because the shallow band is authored to
+  // run UNDER the deep one — a hard edge between them reads as a cliff in the
+  // water, and there is no such thing.
+  waterAt(x, z) {
+    let found = null;
+    for (const w of this.waterZones) {
+      if (x < w.minX || x > w.maxX || z < w.minZ || z > w.maxZ) continue;
+      if (w.deep) return 'deep';
+      found = 'shallow';
+    }
+    return found;
+  }
+
+  // Put out anything burning within reach. Returns how many went out.
+  quenchAt(x, z, r) {
+    let n = 0;
+    for (const q of this.quenchables) {
+      if (q.out) continue;
+      if (Math.hypot(q.x - x, q.z - z) > r) continue;
+      if (q.quench()) n++;
+    }
+    return n;
   }
 
   darknessAt(x, z) {

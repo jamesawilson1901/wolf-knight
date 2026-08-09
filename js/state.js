@@ -33,8 +33,13 @@ export const state = {
   level: 1,
   perks: { sword: 0, bolt: 0, cooldown: 0, speed: 0 },
   counters: {},                 // sticker-book tallies (kills, parries, ...)
+  minigames: {},                // id -> { best, plays, won[] } — per profile only
   stickers: {},                 // sticker id -> true
-  settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95, brave: false,
+  settings: { captions: true, voice: true, musicVol: 0.6, sfxVol: 0.8, voiceRate: 0.95,
+    // '' = let the ranked picker choose; a child's own choice from Settings
+    // overrides it and is remembered per profile. Old saves simply lack the
+    // key and fall back to the picker, which is the additive-forever rule.
+    voiceName: '', brave: false,
     // A7 — the DRESSED level is what a child gets. Greybox is a build-order
     // tool, not a costume to ship; it stays reachable from the cheat menu.
     greybox: false },

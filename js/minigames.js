@@ -23,7 +23,8 @@ import { juice } from './juice.js';
 import { spawnShards } from './loot.js';
 import { bumpCounter } from './progress.js';
 import { bigToast } from './menus.js';
-import { WS } from './worldstate.js';
+import { WS, unlockTier } from './worldstate.js';
+import { FETCH } from './mg-fetch.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -106,7 +107,7 @@ class GameTarget {
 }
 
 function makeTargetGame(world) {
-  const ring = actRing(world, 4.2, -0.4); // beside Rook's watch spot
+  const ring = actRing(world, 6.4, -0.6); // beside Rook's watch spot
   const g = {
     id: 'rook', state: 'idle', chip: '', cool: 0,
     count: 0, goal: 0, timeLeft: 0, target: null,
@@ -205,7 +206,7 @@ class ShuffleCrate {
 
 async function makeShuffleGame(world) {
   const crateGltf = await loadGLB('./assets/loot/survival/crate.glb');
-  const ring = actRing(world, -4.8, 2.8); // in front of Wren's tent row
+  const ring = actRing(world, -7.6, 3.4); // in front of Wren's tent row
   const coin = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.16, 0),
     new THREE.MeshStandardMaterial({
@@ -366,10 +367,10 @@ async function makeShuffleGame(world) {
 // ---------------------------------------------------------------------------
 
 const PADS = [
-  { x: -2.6, z: -0.6, color: 0x5aa0ff, rate: 0.8 },
-  { x: -1.4, z: -0.6, color: 0xffd76a, rate: 1.0 },
-  { x: -2.6, z: 0.6, color: 0x7ad078, rate: 1.2 },
-  { x: -1.4, z: 0.6, color: 0xb48aff, rate: 1.5 },
+  { x: -1.8, z: 2.4, color: 0x5aa0ff, rate: 0.8 },
+  { x: -0.6, z: 2.4, color: 0xffd76a, rate: 1.0 },
+  { x: -1.8, z: 3.6, color: 0x7ad078, rate: 1.2 },
+  { x: -0.6, z: 3.6, color: 0xb48aff, rate: 1.5 },
 ];
 
 function makePawGame(world) {
@@ -495,11 +496,73 @@ function makePawGame(world) {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 🦴 FETCH — the first game on the shared harness (js/minigame.js, js/mg-fetch.js)
+//
+// The three games above are one-offs written before design/DEN-MINIGAMES.md
+// existed, and they are exactly what §3 warns against: three private clocks,
+// three scoring rules, no results screen, no personal best, no exit. They are
+// left alone here — migrating them is a later session, and breaking three games
+// the kids already play in order to prove a contract is a poor trade.
+//
+// This host is only a DOORWAY. It owns a ring and nothing else; everything that
+// happens after a child steps into it belongs to the harness.
+function makeFetchHost(world) {
+  // §4: host is any pup, and Pip stands in when none have been rescued yet, so
+  // an unlocked game is never dead. Either way the ring goes by the meadow
+  // where the pups actually play.
+  const ring = actRing(world, 1.6, 4.6);
+  const g = { id: 'fetch', chip: '' };
+  // THE RING RE-ARMS ONLY WHEN YOU STEP OFF IT.
+  //
+  // Without this, tapping exit hands control back on the very frame the child
+  // is still standing in the ring, so the game reopens instantly and there is
+  // no way out except walking blind. The verifier caught it on the first run:
+  // "exit is one tap and closes everything" failed while everything else
+  // passed, which is exactly the kind of trap a five-year-old cannot escape and
+  // an adult tester walks out of without noticing.
+  //
+  // The latch is dropped AT THE MOMENT OF OPENING, not while the round runs.
+  // js/main.js freezes the world while the harness is up — it returns before
+  // world.updateMinigames — so any bookkeeping written for "during a round"
+  // never executes. That is the correct behaviour for a frozen world and the
+  // wrong place to keep a latch; the first version of this put `armed = false`
+  // in the h.active branch and it was dead code that let the ring reopen.
+  let armed = true;
+  g.update = (dt, t, player, busy) => {
+    const h = world.harness;
+    const on = nearRing(player, ring);
+    // (this guard is belt and braces — the world freeze means it is not reached
+    // during a round; the work it used to do now happens at the moment of open)
+    if (h && h.active) { g.chip = ''; return; }
+    if (!on) armed = true;                       // stepped off — it can invite again
+    ring.material.opacity = armed
+      ? 0.55 + Math.sin(t * 3) * 0.2
+      : 0.16;                                    // dimmed: "you have just played"
+    if (busy || !armed) { g.chip = ''; return; }
+    if (on) {
+      g.chip = '🦴 fetch!';
+      // dimmed AT THE MOMENT OF OPENING, for the same reason the latch is: the
+      // world freezes and this update does not run again until the round is
+      // over. Left bright, the host's gold ring pulses under Kael's feet all
+      // round and competes with the game's own gold "catch here" ring.
+      if (h && h.open(FETCH, world, player)) { armed = false; ring.material.opacity = 0.12; }
+    } else {
+      g.chip = '';
+    }
+  };
+  g.busy = () => !!(world.harness && world.harness.active);
+  return g;
+}
+
 export async function setupDenGames(world) {
   const games = [];
   if (WS.get('ember', 'restored')) games.push(makeTargetGame(world)); // Rook must be home
   games.push(await makeShuffleGame(world));
   games.push(makePawGame(world));
+  // §4 Tier 1 opens at the first rescue. Unlocks read the COUNT, never which
+  // characters were found, so no game is orphaned by a missed rescue.
+  if (unlockTier(state) >= 1) games.push(makeFetchHost(world));
   world.denGames = games;
   const chipEl = document.getElementById('mg-chip');
   world.updateMinigames = (dt, t, player) => {

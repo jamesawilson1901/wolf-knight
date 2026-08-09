@@ -1,7 +1,27 @@
-// TOUCH TARGET AUDIT — is every control at least 2cm x 2cm on a real phone?
+// TOUCH TARGET AUDIT — big enough to hit, small enough to see past.
 //
-// "2cm" is a physical measurement and a browser only knows CSS pixels, so the
-// conversion has to be pinned to a stated device rather than guessed:
+// Until v3.34 this file asserted a 2cm x 2cm minimum on every control. Dad
+// played it on a phone and the verdict was blunt: "the buttons are way too big
+// and take up too much of the screen." He is right, and the law was wrong.
+// 2cm was borrowed from a touch-accessibility guideline written for banking
+// forms, where a mis-tap costs money and nothing is behind the button. Here
+// everything is behind the button — the room, the enemy, the thing you are
+// aiming at — and a 106px pad on a 780px screen eats a seventh of the width
+// before you count the one next to it.
+//
+// So the 2cm figure stays in the OUTPUT, because knowing the physical size is
+// genuinely useful, and leaves the ASSERTIONS. What is asserted now:
+//
+//   1. a hard floor of 44 CSS px (0.83cm) — the size below which a thumb
+//      genuinely cannot land, and the one number every platform agrees on
+//   2. the controls together cover no more than 22% of the screen — this is
+//      the complaint, made measurable
+//   3. no two controls overlap — a fat thumb on a shared edge presses both
+//   4. nothing a child must READ sits under a landscape thumb
+//
+// 2 and 4 are the ones that were never checked, and 2 is the one that failed.
+//
+// The device model is pinned rather than guessed:
 //
 //   Samsung Galaxy A54 / Pixel 7a class, the mid-range Android this game is
 //   built for. 6.4", 1080 x 2340 physical, ~403 ppi, devicePixelRatio 3.
@@ -9,19 +29,11 @@
 //       physical width  = 2340 px / 403 ppi = 5.81 in = 14.75 cm
 //       CSS viewport    = 2340 / 3 = 780 CSS px wide
 //   =>  1 CSS px = 14.75 / 780 = 0.01891 cm
-//   =>  2.00 cm  = 105.8 CSS px
-//
-// Anything that measures under that on a 780x360 viewport is too small for a
-// five-year-old's thumb, full stop.
-//
-// It also checks THUMB OCCLUSION: in landscape a child holds the phone with
-// both thumbs over the bottom corners. Anything the game needs them to READ
-// must not live under a thumb.
 import { chromium } from 'playwright';
 
 const CM_PER_CSS_PX = 14.75 / 780;
-const MIN_CM = 2.0;
-const MIN_PX = MIN_CM / CM_PER_CSS_PX;
+const FLOOR_PX = 44;             // the hard floor: below this a thumb misses
+const MAX_HUD_FRACTION = 0.22;   // the controls may cover this much of the screen
 
 const errors = [];
 const warn = [];
@@ -63,7 +75,8 @@ await page.evaluate(() => {
 await page.waitForTimeout(1200);
 
 console.log(`\nDevice model: 780x360 CSS landscape, 1 CSS px = ${CM_PER_CSS_PX.toFixed(5)} cm`);
-console.log(`Minimum touch target: ${MIN_CM} cm = ${MIN_PX.toFixed(1)} CSS px\n`);
+console.log(`Hard floor: ${FLOOR_PX} CSS px = ${(FLOOR_PX * CM_PER_CSS_PX).toFixed(2)} cm`);
+console.log(`Screen budget: controls may cover ${(MAX_HUD_FRACTION * 100).toFixed(0)}% of the view\n`);
 
 const controls = await page.evaluate(() => {
   const out = [];
@@ -89,13 +102,27 @@ const controls = await page.evaluate(() => {
 
 console.log(`viewport ${controls.vw}x${controls.vh}, ${controls.controls.length} visible controls\n`);
 const tooSmall = [];
+let hudArea = 0;
 for (const c of controls.controls) {
   const wcm = c.w * CM_PER_CSS_PX, hcm = c.h * CM_PER_CSS_PX;
-  const ok = c.w >= MIN_PX && c.h >= MIN_PX;
+  const ok = c.w >= FLOOR_PX && c.h >= FLOOR_PX;
+  hudArea += c.w * c.h;
   console.log(`  ${ok ? '  ' : '!!'} ${String(c.id).padEnd(22)} ${c.w.toFixed(0).padStart(4)}x${c.h.toFixed(0).padStart(4)} px  =  ${wcm.toFixed(2)} x ${hcm.toFixed(2)} cm`);
-  if (!ok) tooSmall.push({ id: c.id, cm: `${wcm.toFixed(2)}x${hcm.toFixed(2)}` });
+  if (!ok) tooSmall.push({ id: c.id, px: `${c.w.toFixed(0)}x${c.h.toFixed(0)}` });
 }
-check(`\nevery control is at least ${MIN_CM}cm x ${MIN_CM}cm`, tooSmall.length === 0, { tooSmall });
+check(`\nevery control clears the ${FLOOR_PX}px thumb floor`, tooSmall.length === 0, { tooSmall });
+
+// THE COMPLAINT, MEASURED. The joystick base is excluded from the budget: it
+// lives on the left thumb and only draws where that thumb already is. Everything
+// else competes with the room for the child's eyes.
+const screen = controls.vw * controls.vh;
+const joy = controls.controls.filter((c) => String(c.id).includes('joy'))
+  .reduce((a, c) => a + c.w * c.h, 0);
+const frac = (hudArea - joy) / screen;
+console.log(`\ncontrols cover ${(frac * 100).toFixed(1)}% of the screen ` +
+  `(${Math.round(hudArea - joy)} of ${screen} px², joystick excluded)`);
+check(`the controls leave the room ${(100 - MAX_HUD_FRACTION * 100).toFixed(0)}% of the screen`,
+  frac <= MAX_HUD_FRACTION, { covered: `${(frac * 100).toFixed(1)}%`, budget: `${(MAX_HUD_FRACTION * 100).toFixed(0)}%` });
 
 // THUMB OCCLUSION. Landscape, two-handed: a child's thumbs cover roughly the
 // bottom 45% of each outer 22% of the screen. Nothing they must READ may sit

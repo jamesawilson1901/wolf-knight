@@ -17,6 +17,8 @@ const VOICES = {
   rook: { rate: 0.9, pitch: 0.9, label: 'Rook' },
   sylva: { rate: 0.92, pitch: 1.15, label: 'Sylva' },
   boreal: { rate: 0.8, pitch: 0.75, label: 'Boreal' }, // slow, vast, wintry
+  aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
+  meri: { rate: 0.78, pitch: 0.95, label: 'Meri' },     // slow and low, like deep water
 };
 
 export const LINES = {
@@ -175,12 +177,47 @@ export const LINES = {
   boreal_grounded: { voice: 'pip', text: 'She’s crashed! Gold ring — that’s your moment. HIT HER!' },
   boreal_defeat: { voice: 'boreal', text: 'The cold… lets go of me. I am Boreal, who was the storm. You struck me kindly, little knight.' },
   frost_grant: { voice: 'boreal', text: 'Take the winter in my heart — the Frost Wolf. Breathe, and even stone must let you pass.' },
+  // --- STORMREACH CLIFFS (region 5). Short, warm, concrete — the house voice.
+  // Every line here names something the child can SEE: the wind, the stone, the
+  // stairs. Nothing explains a mechanic in words, because they cannot be
+  // assumed to read and a line they cannot read is a line that is not there.
+  storm_arrive: { voice: 'pip', text: 'Wind up here. Big wind. Hold on to me?' },
+  storm_gale_first: { voice: 'pip', text: 'Whoa! It pushed me back. Nothing can walk into THAT.' },
+  storm_gale_promise: { voice: 'pip', text: 'There is treasure behind the wind. We will come back for it.' },
+  storm_grant: { voice: 'aria', text: 'Then run at it. The Storm Wolf does not go around — take my dash.' },
+  storm_howto: { voice: 'pip', text: 'The star button! Run RIGHT through the wind. Go on!' },
+  storm_vanes: { voice: 'pip', text: 'Look — the big blades turn. Bump one and see where the wind goes.' },
+  storm_vanes_done: { voice: 'pip', text: 'You turned the whole sky around. That is the way through!' },
+  storm_gate: { voice: 'pip', text: 'Two blades this time. Both of them, then the gate is ours.' },
+  aria_intro: { voice: 'aria', text: 'I am held down here. Do not stop for me — RUN.' },
+  aria_duel: { voice: 'pip', text: 'She charges like the big hounds! You know this one!' },
+  aria_gale: { voice: 'pip', text: 'The wind is closing in! Dash — do not walk!' },
+  aria_defeat: { voice: 'aria', text: 'The gale lets go. Thank you, little knight. The sky is quiet.' },
+  storm_restore_1: { voice: 'pip', text: 'The clouds went away! You can see the whole climb from up here.' },
+  // --- THE SUNKEN VALE (region 6)
+  vale_arrive: { voice: 'pip', text: 'Kael… the whole valley is under the water. There are roofs down there.' },
+  vale_deep_first: { voice: 'pip', text: 'That water is deep. Too deep. But look what is on the other side!' },
+  tide_grant: { voice: 'meri', text: 'Then walk on it. The Tide Wolf does not sink — the water will hold you up.' },
+  tide_howto: { voice: 'pip', text: 'Be the Tide Wolf and step right in! And the star button makes a big SPLASH.' },
+  tide_quench: { voice: 'pip', text: 'The fires are keeping the doors shut. Splash them out!' },
+  vale_lagoon: { voice: 'pip', text: 'We can walk across the middle now! Everywhere is close together!' },
+  meri_intro: { voice: 'meri', text: 'I could not hold it back. It came in, and it never went out again.' },
+  meri_duel: { voice: 'pip', text: 'She jumps like the little blobs! Get out from under her!' },
+  meri_defeat: { voice: 'meri', text: 'The water lets go. Look — the town is standing up again.' },
+  vale_restore_1: { voice: 'pip', text: 'It is draining! There were streets down there all along!' },
+  luna_dream_6: { voice: 'luna', text: 'Six lights. Only the last one now — and it is mine. Come and find me, Kael. Come and find Grimm.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },
   frost_complete: { voice: 'pip', text: 'Frostpeak is still and safe. Four lights found, Kael… three to go.' },
   all_pups_frost: { voice: 'pip', text: 'TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!' },
-  luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now listen for water — something calls beneath the waves.' },
+  // Luna's dream after Frostpeak used to point at the water — which is region
+  // SIX. It skipped Stormreach entirely, so a child who did as she said walked
+  // to a shore that is not built yet while the cliffs stood open behind them.
+  // The order in js/regions.js has always been frostpeak → stormreach →
+  // sunkenvale; this line now agrees with it, and the water gets its own.
+  luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now look up — the wind is crying on the cliffs.' },
+  luna_dream_5: { voice: 'luna', text: 'Five lights. The sky breathes again. Listen now for water — something calls beneath the waves.' },
 };
 
 export class Narration {
@@ -198,15 +235,93 @@ export class Narration {
     if (!state.spoken) state.spoken = {};
     this._voice = null;
     if ('speechSynthesis' in window) {
+      // CHOOSE THE VOICE DELIBERATELY.
+      //
+      // This used to prefer `localService` voices, which sounds sensible and is
+      // exactly backwards on the device the kids play on: on Android the local
+      // voices are the old low-quality eSpeak-style ones, while the good
+      // natural-sounding engines are the NETWORK ones. That preference is why
+      // the narration has sounded like a robot on every playtest.
+      //
+      // Prefer, in order: a voice whose name we recognise as one of the good
+      // modern engines; any non-local (network) English voice; then anything
+      // English. A named-quality match beats locality every time.
+      const GOOD = /natural|neural|enhanced|premium|siri|google|samsung|aria|guy|jenny|libby|ryan|sonia/i;
+      const AVOID = /espeak|compact|robot|pico/i;
+      const score = (v) => {
+        if (!v.lang || !v.lang.startsWith('en')) return -1;
+        let n = 0;
+        if (GOOD.test(v.name)) n += 4;
+        if (!v.localService) n += 2;          // network voices are the good ones
+        if (AVOID.test(v.name)) n -= 5;
+        if (/en-GB/i.test(v.lang)) n += 1;    // the kids' own accent
+        return n;
+      };
+      // The scored list, best first — this is what the Settings chooser walks.
+      // A ranked automatic pick is the right DEFAULT and cannot be the whole
+      // answer: which synthetic voice sounds tolerable is a matter of taste,
+      // the phones in this house do not offer the same set, and dad has now
+      // raised the voice twice. So the pick stays, and a child can overrule it
+      // by ear.
+      this._voices = [];
       const pick = () => {
         const vs = speechSynthesis.getVoices();
-        this._voice =
-          vs.find((v) => v.lang && v.lang.startsWith('en') && v.localService) ||
-          vs.find((v) => v.lang && v.lang.startsWith('en')) || vs[0] || null;
+        this._voices = vs.filter((v) => score(v) >= 0)
+          .sort((a, b) => score(b) - score(a));
+        const saved = state.settings.voiceName
+          && this._voices.find((v) => v.name === state.settings.voiceName);
+        this._voice = saved || this._voices[0] || vs[0] || null;
       };
       pick();
       speechSynthesis.addEventListener('voiceschanged', pick);
     }
+  }
+
+  // --- the Settings voice chooser -----------------------------------------
+  // Names as the device reports them, best first. Empty if the device has no
+  // speech synthesis at all, in which case the chooser hides itself.
+  voiceNames() { return (this._voices || []).map((v) => v.name); }
+
+  currentVoiceName() { return this._voice ? this._voice.name : ''; }
+
+  // A short display label. Device voice names are things like
+  // "Microsoft Libby Online (Natural) - English (United Kingdom)", which is
+  // useless on a phone-width settings row and unreadable to a seven-year-old.
+  voiceLabel(name) {
+    const n = name || this.currentVoiceName();
+    if (!n) return 'none';
+    const m = n.match(/\b(Aria|Guy|Jenny|Libby|Ryan|Sonia|Siri|Samantha|Daniel|Karen|Moira|Tessa|Serena|Fiona|Alex|Google|Microsoft)\b/i);
+    return (m ? m[1] : n.split(/[\s(–-]/)[0]).slice(0, 12);
+  }
+
+  // Choose by name, remember it, and SAY something so the choice is made by
+  // ear rather than by reading a list of strings.
+  useVoice(name, { sample = true } = {}) {
+    const v = (this._voices || []).find((x) => x.name === name);
+    if (!v) return false;
+    this._voice = v;
+    state.settings.voiceName = name;
+    if (sample) this.sampleVoice();
+    return true;
+  }
+
+  // Step to the next voice on the device and speak the sample.
+  nextVoice() {
+    const names = this.voiceNames();
+    if (!names.length) return false;
+    const i = names.indexOf(this.currentVoiceName());
+    return this.useVoice(names[(i + 1) % names.length]);
+  }
+
+  sampleVoice() {
+    if (!('speechSynthesis' in window) || !this._voice) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance("Hello Kael! I'm Pip. Let's go!");
+    const meta = VOICES.pip;
+    u.rate = meta.rate * (state.settings.voiceRate || 1);
+    u.pitch = meta.pitch;
+    u.voice = this._voice;
+    speechSynthesis.speak(u);
   }
 
   // Speak line `id`. Story lines fire once per save; `repeat` lines always.

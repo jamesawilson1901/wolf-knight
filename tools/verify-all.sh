@@ -17,6 +17,11 @@ run() {
   fi
 }
 run verify-boot.mjs
+# THE DENSITY CHECK RUNS BY DEFAULT, not on request. Every topology assertion in
+# this suite was green while the rooms were empty boxes, which is exactly how
+# "big but bare" reached a playtest — the suite could not fail a bare room
+# because nothing in it was measuring the room's contents.
+run verify-density.mjs
 for t in "$@"; do run "$t"; done
 echo
 echo "passed $PASS, failed $FAIL"

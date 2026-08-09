@@ -7,6 +7,9 @@ import * as THREE from 'three';
 import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
+import { sameDistrict } from './districts.js';
+import { makeHarness } from './minigame.js';
+import { FETCH } from './mg-fetch.js';
 import { Player } from './player.js';
 import { state, resolveRoom } from './state.js';
 import { Effects } from './effects.js';
@@ -29,7 +32,7 @@ import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
-const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
+const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'];
 
 // A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
 // rebuilt levels: the marker the room drops, the map entry it earns, and the
@@ -124,13 +127,29 @@ const key = new THREE.DirectionalLight(0xffd2a0, KEY_BASE);
 key.position.set(6, 13, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
-key.shadow.camera.left = -14;
-key.shadow.camera.right = 14;
-key.shadow.camera.top = 14;
-key.shadow.camera.bottom = -14;
+// THE SHADOW BOX FOLLOWS KAEL (see the render loop). It used to be nailed to
+// the world origin at 28 x 28, which on a 32 x 26 island covered nearly the
+// whole room — so every shadow-casting prop in the room was submitted a SECOND
+// time for the depth pass, whether or not it was anywhere near the camera. On
+// `la` dressed to ROOM-STANDARD that was 35 extra draw calls, a third of the
+// room's whole budget, spent on shadows for things off screen.
+//
+// A 20 x 20 box centred on the player covers everything the camera can see
+// (16.1u at the near edge, 22.2u at Kael — design/METRICS.md) and nothing it
+// cannot. It is also the same box in every room, so a big island now costs what
+// a small pocket costs, and the 1024 map is spread over 20 units instead of 28,
+// which makes the shadows sharper as a side effect rather than softer.
+const SHADOW_HALF = 10;
+key.shadow.camera.left = -SHADOW_HALF;
+key.shadow.camera.right = SHADOW_HALF;
+key.shadow.camera.top = SHADOW_HALF;
+key.shadow.camera.bottom = -SHADOW_HALF;
 key.shadow.camera.near = 2;
-key.shadow.camera.far = 32;
+key.shadow.camera.far = 34;
 key.shadow.normalBias = 0.03;
+const KEY_OFFSET = new THREE.Vector3(6, 13, 8);
+const tmpCol = new THREE.Color();
+const tmpHSL = { h: 0, s: 0, l: 0 };
 scene.add(key);
 scene.add(key.target);
 
@@ -531,7 +550,7 @@ function progressSnapshot() {
 function guideTarget() {
   const f = state.flags;
   switch (state.room) {
-    case 'den': return { x: 0, z: -5.4 };   // stairs up to the Hollow
+    case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
     case 'r1': return { x: 6, z: -6.3 };    // exit to the Causeway
     case 'r1b': return { x: 5.2, z: -5.0 }; // ledge drop home
     case 'r2': return f.keys.ember ? { x: 8.5, z: -6.2 } : { x: 10.2, z: 3.4 };
@@ -816,9 +835,13 @@ function narrationTriggers(dt, t) {
       const SPARK = {
         earth_wolf: { region: 'vault', key: 'spark', toast: '🪨 The Earth Wolf awakens!' },
         verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
+        storm_wolf: { region: 'storm', key: 'spark', toast: '🌩️ The Storm Wolf awakens!' },
+        tide_wolf: { region: 'vale', key: 'spark', toast: '🌊 The Tide Wolf awakens!' },
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
-      narration.say(gift === 'verdant_wolf' ? 'verdant_grant' : 'earthwolf_grant');
+      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant' }[gift] || 'earthwolf_grant');
+      if (gift === 'storm_wolf') narration.say('storm_howto');
+      if (gift === 'tide_wolf') narration.say('tide_howto');
       persist();
     }
   }
@@ -1154,18 +1177,89 @@ async function setupRoomExtras() {
   }
 }
 
-async function loadRoom(id, entry) {
+// CARRY THE CHILD THROUGH THE DOOR.
+//
+// A transition used to cost three separate things, and only the first was
+// obvious: 520ms of black, then player.place() stopping them dead and resetting
+// their facing to a fixed per-door angle, then snapCamera() hard-cutting. You
+// walked into a doorway with momentum and heading and came out of it standing
+// still, pointed wherever the door said, with the camera jumping.
+//
+// This records what a child had when they crossed so the next room can give it
+// straight back. Rooms stay the authoring unit — Zelda, Terranigma and Hollow
+// Knight are all room-based underneath — what changes is that the SEAM stops
+// announcing itself.
+function handoffAt(door) {
+  // which way does this doorway run? the wide axis of its trigger box
+  const alongX = (door.maxX - door.minX) >= (door.maxZ - door.minZ);
+  const cx = (door.minX + door.maxX) / 2, cz = (door.minZ + door.maxZ) / 2;
+  const half = (alongX ? door.maxX - door.minX : door.maxZ - door.minZ) / 2;
+  const off = alongX ? player.root.position.x - cx : player.root.position.z - cz;
+  return {
+    alongX,
+    // WHERE ALONG THE DOORWAY they crossed. Exit three units left of the arch
+    // and you arrive three units left of the arch on the other side. Children
+    // track that spatially long before they could describe it — and n/s and
+    // w/e doors always pair on the same world axis in this topology, so the
+    // offset carries directly. Clamped so nobody arrives inside a wall.
+    off: Math.max(-half + 0.5, Math.min(half - 0.5, off)),
+    heading: player.root.rotation.y,
+    vx: player._vel.x, vz: player._vel.z,
+    leadX: camLead.x, leadZ: camLead.z,
+  };
+}
+
+// HOW HARD SHOULD A DOORWAY BE?
+//
+// Every doorway in the game used the same 260ms fade in both directions, which
+// makes a step between two halves of the Ashfall feel exactly like walking in
+// on a boss. A door that always means something ends up meaning nothing.
+//
+//   within a district — barely a blink. You are still in the same place.
+//   between districts — a beat, because the colour and the music change.
+//   into a boss arena  — the full ceremony. This is the one that should land.
+//
+// The rule a five-year-old ends up learning is: if the screen takes its time,
+// something is about to happen.
+const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'r3', 'w5', 'f5']);
+function seamMs(from, to) {
+  if (BOSS_ROOMS.has(to)) return 300;
+  if (regionOf(from) !== regionOf(to)) return 260;
+  return sameDistrict(from, to) ? 90 : 170;
+}
+
+async function loadRoom(id, entry, handoff = null) {
   transitioning = true;
-  await fadeTo(1, 260);
+  const ms = seamMs(state.room, id);
+  await fadeTo(1, ms);
   player.clearProjectiles();
   document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
   world = await buildRoom(id, scene);
+  world.harness = harness;   // den hosts open mini games through it
   state.room = id;
   state.region = regionOf(id);
   applyRoomMood();
   const at = entry || world.spawn;
-  player.place(at.x, at.z, at.angle !== undefined ? at.angle : Math.PI);
+  let px = at.x, pz = at.z;
+  let angle = at.angle !== undefined ? at.angle : Math.PI;
+  if (handoff) {
+    if (handoff.alongX) px += handoff.off; else pz += handoff.off;
+    // KEEP THEIR OWN HEADING when it broadly agrees with the way the door
+    // faces. A child who walks in at a slant should come out at that slant; one
+    // who scraped through sideways along a wall gets the door's angle instead,
+    // because arriving faced at the wall you just came through is worse than
+    // being politely turned.
+    const fwd = { x: Math.sin(angle), z: Math.cos(angle) };
+    const own = { x: Math.sin(handoff.heading), z: Math.cos(handoff.heading) };
+    if (fwd.x * own.x + fwd.z * own.z > 0.17) angle = handoff.heading;   // within ~80°
+  }
+  player.place(px, pz, angle);
+  if (handoff) {
+    // momentum survives the seam: they walked in moving, they come out moving
+    player._vel.x = handoff.vx; player._vel.z = handoff.vz;
+    camLead.set(handoff.leadX, 0, handoff.leadZ);
+  }
   player.iframes = Math.max(player.iframes, 0.6);
   // mark already-reached checkpoints in this room as lit
   for (const cp of world.checkpoints) {
@@ -1178,8 +1272,12 @@ async function loadRoom(id, entry) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast }; // debug/testing hook
-  await fadeTo(0, 260);
+  if (id === 'scr' && world.boss && !world.boss.defeated) narration.say('aria_intro');
+  if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
+  if (id === 'd1a') narration.say('vale_arrive');
+  if (id === 'ddp' && world.boss && !world.boss.defeated) narration.say('meri_intro');
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
+  await fadeTo(0, ms);
   transitioning = false;
 }
 
@@ -1195,6 +1293,8 @@ function regionOf(id) {
   if (r[0] === 'v') return 'stoneroot';
   if (r[0] === 't') return 'wildwoods';
   if (r[0] === 'f') return 'frostpeak';
+  if (r[0] === 's') return 'stormreach';
+  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
@@ -1209,13 +1309,36 @@ function applyRoomMood() {
   // a room may recolour the light itself (Frostpeak runs cold; everywhere
   // else keeps the warm ember rig the earlier regions were tuned against)
   const lt = world.lightTint;
-  hemi.color.setHex(lt ? lt.sky : 0xa393b8);
-  hemi.groundColor.setHex(lt ? lt.ground : 0x5c4030);
-  key.color.setHex(lt ? lt.key : 0xffd2a0);
+  // A LIGHT'S COLOUR IS A HUE, NOT A SWATCH.
+  //
+  // Each region hands the rig its own district tints for wayfinding — the room's
+  // colour temperature tells a child which part of the level they are in before
+  // they read a single prop, which is the right idea. But the values handed over
+  // are SURFACE colours, chosen to look right lit, and several are very dark:
+  // Stoneroot's vaultDark ships floorTint 0x555c68 and wallTint 0x22262e. Used
+  // raw as light colours those multiply the whole room down — the key light ran
+  // at about a third of its intensity and the hemisphere bounce at a tenth,
+  // which is why the Great Vault came out almost unreadable once it had props in
+  // it worth seeing.
+  //
+  // So the HUE is kept and the VALUE is normalised. Wayfinding by colour
+  // survives; the room stops being dark by accident. The ground bounce stays
+  // deliberately low — it is bounced light — but never black.
+  const lit = (hex, want, sat) => {
+    tmpCol.setHex(hex).getHSL(tmpHSL);
+    return tmpCol.setHSL(tmpHSL.h, Math.max(tmpHSL.s, sat), want);
+  };
+  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62, 0.18));
+  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30, 0.22));
+  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74, 0.22));
 }
 
 function snapCamera() {
   camGoal.copy(player.root.position).add(CAM_OFFSET);
+  key.position.set(Math.round(player.root.position.x) + KEY_OFFSET.x, KEY_OFFSET.y,
+    Math.round(player.root.position.z) + KEY_OFFSET.z);
+  key.target.position.set(Math.round(player.root.position.x), 0, Math.round(player.root.position.z));
+  key.target.updateMatrixWorld();
   camera.position.copy(camGoal);
   camLook.copy(player.root.position);
   camera.lookAt(camLook.x, 0.6, camLook.z);
@@ -1237,6 +1360,7 @@ async function respawnAtCheckpoint() {
   player.clearProjectiles();
   if (world) world.dispose();
   world = await buildRoom(room, scene);
+  world.harness = harness;
   state.region = regionOf(room);
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
@@ -1249,7 +1373,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1276,6 +1400,29 @@ function triggerSurge() {
 }
 let titleScene = null;
 let menuPaused = false;
+
+// THE MINI GAME HARNESS (js/minigame.js). One instance for the whole game: the
+// contract is that only one round can be live at a time, and a single owner is
+// the simplest way to make that true rather than merely intended.
+const harness = makeHarness();
+function wireHarness() {
+  const tap = document.getElementById('mg-tap');
+  tap.addEventListener('pointerdown', (e) => harness._onTap(e));
+  document.getElementById('mg-exit').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.exit();          // ONE TAP, no confirmation (§2)
+  });
+  document.getElementById('mg-replay').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.replay();        // replaying IS the loop (§2)
+  });
+  document.getElementById('mg-leave').addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); harness.exit(); persist();
+  });
+  for (const b of ['cub', 'wolf', 'alpha']) {
+    document.getElementById('mg-band-' + b).addEventListener('pointerdown', (e) => {
+      e.stopPropagation(); harness.chooseBand(b); persist();
+    });
+  }
+}
 let shopWasNear = false;
 let travelWasNear = false;
 
@@ -1380,6 +1527,7 @@ async function start() {
     }
   };
   wireSettings();
+  wireHarness();
 
   menus = new Menus({
     player,
@@ -1413,7 +1561,9 @@ async function start() {
   renderShards();
   renderLevel();
   checkStickers();
-  player.onFormChanged = () => ui.refreshBadge();
+  // CONTEXTUAL BUTTONS: the throw belongs to the form, so the button that
+  // fires it has to appear and disappear WITH the form, not just at load.
+  player.onFormChanged = () => { ui.refreshBadge(); refreshControlReveal(); };
   input.onHold = (x, y, pointerId) => {
     if (transitioning) return false;
     ui.openPicker(x, y, pointerId);
@@ -1443,6 +1593,18 @@ async function start() {
     }
 
     if (paused || menuPaused) {
+      renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
+      return;
+    }
+
+    // A MINI GAME HOLDS THE WORLD STILL. Nothing can hurt a child mid-round —
+    // §2 is explicit that there is no death and no fail state — so the den's
+    // clock, its villagers and Kael himself all wait while the round plays.
+    // The game's own props still animate, because the harness ticks them here.
+    if (harness.active) {
+      harness.update(dt, t);
+      world.animate(t, dt);
       renderer.render(scene, camera);
       perf.sample(realDt, state.room);
       return;
@@ -1528,6 +1690,21 @@ async function start() {
               WS.set('frost', 'restored');
               narration.say('frost_restore_1');
               setTimeout(() => narration.say('luna_dream_4'), 9000);
+            } else if (state.room === 'scr') {
+              // ARIA FREED — the gale drops off the crown and the whole climb
+              // opens out below (boss.js set the flags; here is the party)
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('aria_defeat');
+              WS.set('storm', 'restored');
+              narration.say('storm_restore_1');
+              setTimeout(() => narration.say('luna_dream_5'), 9000);
+            } else if (state.room === 'ddp') {
+              // MERI FREED — the vale drains and the drowned town stands up
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('meri_defeat');
+              WS.set('vale', 'restored');
+              narration.say('vale_restore_1');
+              setTimeout(() => narration.say('luna_dream_6'), 9000);
             } else if (state.room === 'w5') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
               // Wolf is earned (boss.js set the flags; here is the party)
@@ -1559,7 +1736,7 @@ async function start() {
 
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
-      if (door) loadRoom(door.to, door.entry);
+      if (door) loadRoom(door.to, door.entry, handoffAt(door));
 
       // (v3.18: the Echo Chasm drop-hole teleports are gone — dad's law:
       // nothing moves the player without a door they walked through.)
@@ -1633,6 +1810,15 @@ async function start() {
     camLead.z += ((player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.z) * leadK;
     const k = 1 - Math.exp(-CONFIG.CAM_DAMPING * dt);
     camGoal.copy(player.root.position).add(camLead).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
+
+    // the shadow box rides with Kael (see the light rig above). Snapped to
+    // whole units so the depth map's texel grid does not crawl underneath
+    // static geometry as he walks — an unsnapped shadow camera makes every
+    // stationary shadow edge shimmer.
+    const sx = Math.round(player.root.position.x), sz = Math.round(player.root.position.z);
+    key.position.set(sx + KEY_OFFSET.x, KEY_OFFSET.y, sz + KEY_OFFSET.z);
+    key.target.position.set(sx, 0, sz);
+    key.target.updateMatrixWorld();
     camera.position.lerp(camGoal, k);
     _lookTarget.copy(player.root.position).add(camLead);
     camLook.lerp(_lookTarget, k);
@@ -1649,6 +1835,7 @@ async function start() {
 
 async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
+  world.harness = harness;
   applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;
@@ -1664,7 +1851,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
@@ -1688,6 +1875,36 @@ function wireSettings() {
     if (gentle.checked) { state.settings.brave = false; brave.checked = false; }
     persist();
   });
+  // --- the voice chooser ---------------------------------------------------
+  const vpick = document.getElementById('voice-pick');
+  const vrow = document.getElementById('voice-pick-row');
+  const vrate = document.getElementById('voice-rate');
+  const refreshVoiceBtn = () => {
+    const names = narration.voiceNames ? narration.voiceNames() : [];
+    vrow.style.display = names.length > 1 ? '' : 'none';
+    vpick.textContent = names.length ? narration.voiceLabel() + ' ▸' : '—';
+  };
+  vpick.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    narration.nextVoice();          // speaks a sample with the new voice
+    refreshVoiceBtn();
+    persist();
+  });
+  // the device usually reports its voices asynchronously, so the row is
+  // refreshed once they land rather than only at open
+  if ('speechSynthesis' in window) {
+    speechSynthesis.addEventListener('voiceschanged', refreshVoiceBtn);
+  }
+  refreshVoiceBtn();
+  vrate.value = state.settings.voiceRate || 1;
+  vrate.addEventListener('input', () => {
+    state.settings.voiceRate = +vrate.value;
+    persist();
+  });
+  // release rather than input: sampling on every step of the drag would stack
+  // a dozen utterances
+  vrate.addEventListener('change', () => { if (narration.sampleVoice) narration.sampleVoice(); });
+
   music.value = state.settings.musicVol;
   sfx.value = state.settings.sfxVol;
   captions.checked = state.settings.captions;
