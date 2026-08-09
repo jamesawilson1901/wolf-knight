@@ -2954,3 +2954,122 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.35.0 — Maren's ladder: the shop grows with the world (2026-08-09)
+
+From the QUEUED NEXT list in v2.2.6 — "Maren tier-2 stock after Stoneroot".
+The first entry on that list, the economy/XP balance pass, is a difficulty call
+and was skipped for the kids (see AWAITING below); "hard landscape lock" is
+already shipped (manifest `orientation: landscape`, `screen.orientation.lock`
+in js/title.js, the `#rotate` portrait overlay in index.html).
+
+**The Den shop offered its entire catalogue in the first minute of a new game.**
+A five-year-old's first look at Maren was a 300-shard Boulder Hammer sitting
+next to a 15-shard potion, and it would sit there unaffordable for four
+regions. The contract's shop ladder — "per region tier ≈ 60/90/150/250/400, a
+kid who explores buys one big thing per region" — only means anything if the
+rungs actually arrive one at a time, and nothing in the code made them.
+
+`SHOP_STOCK` rows now carry a `tier`, and `shopTier(state)` counts how many are
+out. `showShop()` skips anything above it, using the idiom the shop already had
+for "not on the shelf" — sold gear vanishes, so unarrived gear vanishes too,
+and there is one rule to read rather than two.
+
+### What it is gated on, and what it is NOT
+
+Unlock reads `state.spoken.<region>_complete` — the same flags the map screen's
+fast-travel list and the pup counter already branch on. **Nothing new is
+persisted**, so the additive-forever save law needed no work at all: an old
+profile mid-Stoneroot reads its own flags and lands on the right rung.
+
+Prices are untouched. Retuning them is the economy pass, which is the item this
+run deliberately did not take.
+
+### Measured — what is on the shelf, when
+
+Read out of the real menu at each stage (`tools/verify-shop.mjs`):
+
+| shelf | rows | prices | dearest visible |
+|---|---|---|---|
+| new game / Ember Hollow | 4 | 15 · 70 · 80 · 90 | **90** (was 300) |
+| Stoneroot freed | 6 | + 120 · 180 | 180 |
+| Wild Woods freed | 7 | + 200 | 200 |
+| Frostpeak freed | 8 | + 300 | 300 |
+
+Against the contract's "a region yields ~120-160 shards": the dearest thing a
+child can see in region 1 went from **roughly twice a whole region's income to
+56-75% of it** — one big thing per region, which is what the ladder was for.
+By the end of Stoneroot cumulative income is ~240-320 against a dearest-visible
+of 180. The tiers do not overlap in price (asserted, not assumed).
+
+### The verifier came first
+
+Nothing in `tools/` touched the shop, so `verify-shop.mjs` was written before
+the fix and watched to fail. It drives the REAL menu — starts a real game, sets
+the real region flags, calls the real `showShop()`, reads the cards a child
+would see — rather than testing the tier table in isolation, because the filter
+lives in `showShop` and that is the thing that can rot. It also re-asserts the
+rule that was already there and sits in the loop I edited: gear you own vanishes
+(own everything → only the potion is left; own one thing → 7 of 8 remain).
+
+Two things it checks that are not "did the fix work": every row declares a tier,
+and the tiers are a gapless ladder whose rungs climb in price. A future row
+added with no tier, or slipped into the wrong one, is a silent regression
+otherwise — it just quietly appears too early or never.
+
+`window.__game` gained `menus` so the menu can be driven headlessly. Worth
+recording why it is in the object literal in three places rather than assigned
+once: `__game` is REBUILT wholesale by `loadRoom`, `respawnAtCheckpoint` and
+`buildRoomInitial`, so a single assignment after `new Menus()` is wiped by the
+first room load. The first version of this change did exactly that and would
+have passed at the title screen and failed everywhere else.
+
+### Judgement calls
+
+- **Tier 2 lands after Stoneroot, not after Ember**, per the queue item. Ember
+  therefore adds no new stock, which is deliberate: a child finishes region 1
+  at roughly the price of the tier-1 shelf, and the reward for Ember is the
+  affordability of what is already there, not a new row.
+- **The tier table lives in `js/items.js` beside `SHOP_STOCK`, not in CONFIG.**
+  CONFIG holds game-feel numbers; prices and stock are already a registry in
+  items.js, the way `VARIANTS`, `FORM_DEFS` and `VILLAGERS` live with their
+  owners. Moving prices to CONFIG would be the economy pass's call to make.
+- **An empty-looking shelf is a bug report, so it says why.** While any tier is
+  locked the shop carries one grey line — Maren: "Free another land and I'll
+  have finer things for you." — and it disappears once the ladder is fully out.
+  Asserted both ways.
+- `shield_a` (70) now sorts before `dagger_a` (80) in the grid so tier 1 reads
+  as a price ladder. Cosmetic; no other consequence.
+
+### Verified
+
+`sh tools/verify-all.sh verify-shop.mjs verify-den.mjs verify-minigame.mjs
+verify-progression.mjs` — **passed 6, failed 0** (boot and density run by
+default). verify-boot was green BEFORE any edit, so the branch was sound to
+start from.
+
+### AWAITING dad's call
+
+- **The economy/XP balance pass is still open and was skipped on purpose.**
+  Shard income vs the shop ladder, and perk tiers past level 12, are difficulty
+  and "does it feel right" questions — the contract's own perk law ("the pool
+  must stay ≥3 unmaxed choices to level 21") can be measured, but the fix is
+  tuning, and tuning wants the kids. It stays first in the queue.
+- **Branch.** The run was told to work on `overnight`; this session was
+  provisioned on `claude/ecstatic-hawking-11c3c4` and told never to push
+  elsewhere. Committed there — cut from main, identical to it before this
+  entry, and nothing went near main. Cherry-picking to `overnight` is one
+  command if that is wanted.
+- Is tier 4 (the 300-shard Boulder Hammer, unlocked by Frostpeak) the right
+  home for the last rung, given Frostpeak is currently the last region built?
+  It is on the shelf for the endgame only. Easy to move down a tier.
+
+### QUEUED NEXT (in order)
+
+1. economy/XP balance pass — shard income vs the shop ladder, perk tiers past
+   level 12. **Needs the kids; not for an unattended run.**
+2. `flattenStatic()` the remaining hand-built Frostpeak rooms (f2 99, f4 97,
+   f3 96 draw calls) — one line each plus the `keepLoose` audit
+   `tools/verify-den.mjs` was written for, worth ~15-18 calls apiece. Logged in
+   B2 as the thing worth doing instead of LOD.
+3. Region 5 onward per the shipping checklist, once dad picks the region.

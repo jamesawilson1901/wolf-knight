@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, shopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -115,7 +115,13 @@ export class Menus {
 
     const grid = document.createElement('div');
     grid.className = 'grid';
+    // Stock arrives with the world (SHOP_TIER_GATES). Anything above the
+    // unlocked tier is simply absent, the same way sold gear is — the shop has
+    // one idiom for "not on the shelf", and a child is never shown a price they
+    // cannot reach for four regions.
+    const tier = shopTier(state);
     for (const s of SHOP_STOCK) {
+      if (s.tier > tier) continue; // not in yet
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
       const afford = state.shards >= s.price;
@@ -145,6 +151,16 @@ export class Menus {
       grid.appendChild(card);
     }
     el.appendChild(grid);
+    // An empty shelf is a bug report; a shelf that is going to grow is a
+    // promise. Say so while any tier is still locked, and stop saying it once
+    // the ladder is fully out.
+    if (SHOP_STOCK.some((s) => s.tier > tier)) {
+      const later = document.createElement('div');
+      later.className = 'shop-later';
+      later.style.cssText = 'font-size:14px;color:#9fb2c9;font-weight:700;max-width:520px';
+      later.textContent = 'Maren: “Free another land and I’ll have finer things for you.”';
+      el.appendChild(later);
+    }
     el.appendChild(this._closeBtn('shop-menu'));
     this._open('shop-menu');
   }

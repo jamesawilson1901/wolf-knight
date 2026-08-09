@@ -1276,7 +1276,7 @@ async function loadRoom(id, entry, handoff = null) {
   if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
   if (id === 'd1a') narration.say('vale_arrive');
   if (id === 'ddp' && world.boss && !world.boss.defeated) narration.say('meri_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, menus }; // debug/testing hook
   await fadeTo(0, ms);
   transitioning = false;
 }
@@ -1373,7 +1373,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, menus };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1851,7 +1851,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, menus };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

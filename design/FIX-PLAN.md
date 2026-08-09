@@ -843,3 +843,31 @@ turns this from a demo into a game.
 > **A1 + A7 shipped in v3.25.0.** Next by severity: **A2** (Level 3 gameplay —
 > needs splitting), then **A3/A5** which depend on it, then **A4** (Level 2's
 > conclude step), then **A6** (junction landmarks) and **A8/A9**.
+
+---
+
+# D · THE STANDING QUEUE
+
+Every audit item above is shipped, so work now comes off the QUEUED NEXT list
+carried at the end of the newest BUILDLOG entry. Given a row here so a run has
+something to update rather than a bullet in a log to reinterpret.
+
+| | item | state |
+|---|---|---|
+| D1 | economy/XP balance pass — shard income vs the shop ladder, perk tiers past level 12 | **open — needs the kids** |
+| D2 | Maren tier-2 stock after Stoneroot | ✅ v3.35.0 |
+| D3 | hard landscape lock | ✅ already shipped — `manifest.orientation`, `screen.orientation.lock` in js/title.js, the `#rotate` portrait overlay |
+| D4 | S3 Wild Woods | ✅ v3.19, rebuilt as Level 3 in v3.26.x |
+| D5 | `flattenStatic()` the hand-built Frostpeak rooms (f2 99, f4 97, f3 96 calls) | open — see B2 |
+
+**D1 is a difficulty call and an unattended run must skip it.** The contract's
+perk law ("the pool must stay ≥3 unmaxed choices to level 21") is measurable,
+but the fix is tuning, and tuning belongs to a playtest.
+
+**D2 (v3.35.0).** The shop offered its whole catalogue from minute one — the
+dearest thing visible in region 1 was 300 shards against a region's ~120-160
+income. `SHOP_STOCK` rows carry a `tier` and `shopTier(state)` reads the
+existing `state.spoken.<region>_complete` flags, so nothing new is persisted.
+Measured shelf: 4 rows / dearest 90 at the start, 6 / 180 after Stoneroot,
+7 / 200, 8 / 300. Prices untouched — that is D1's call.
+`tools/verify-shop.mjs` drives the real menu and was written before the fix.

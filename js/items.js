@@ -77,14 +77,41 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
-// Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+// MAREN'S LADDER — which tier of stock is on the shelf.
+//
+// The contract's shop ladder ("per region tier ≈ 60/90/150/250/400 — a kid who
+// explores buys one big thing per region") only means anything if the rungs
+// arrive one at a time. They did not: the whole catalogue was on the table in
+// the first minute of a new game, so a child's first look at Maren was a
+// 300-shard hammer they could not afford for four regions, sitting beside a
+// 15-shard potion.
+//
+// A tier is unlocked by a REGION BEING FREED, read from the same
+// `state.spoken.<id>_complete` flags the map screen and the pup counter already
+// use — so nothing new is persisted and the additive-forever save law is
+// untouched. Tier 1 is always out; tier N+1 arrives when TIERS[N] is freed.
+// Tier 2 lands after Stoneroot, which is where a child first has the shards to
+// reach it.
+export const SHOP_TIER_GATES = ['stone_complete', 'wild_complete', 'frost_complete'];
+
+export function shopTier(st = state) {
+  let t = 1;
+  for (const flag of SHOP_TIER_GATES) {
+    if (!(st.spoken && st.spoken[flag])) break;
+    t++;
+  }
+  return t;
+}
+
+// Shop stock (the Den). Potions and gear; sold-out gear vanishes, and stock
+// above the unlocked tier is not on the shelf yet.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 3 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 4 },
 ];
