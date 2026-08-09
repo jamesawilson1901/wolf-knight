@@ -104,9 +104,20 @@ export class World {
   // number and "dropped at (-7.2, 3.9), claimed by restSpot" tells you which
   // line to move.
   blocked(x, z, r = 0.6, why = false) {
+    // Tally of what this register actually REFUSED, per room. A keep-out that
+    // rejects a handful of props is doing its job; one that rejects dozens is
+    // quietly emptying rooms, which is precisely how the Great Vault went from
+    // 55 things in its arrival frame to 9 without a single check failing.
+    const tally = (tag) => {
+      if (!why) {
+        const t = (this._blockedBy || (this._blockedBy = {}));
+        t[tag] = (t[tag] || 0) + 1;
+      }
+      return why ? tag : true;
+    };
     for (const k of (this._keepClear || [])) {
       const dx = x - k.x, dz = z - k.z;
-      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return why ? (k.tag || 'reserved') : true;
+      if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return tally(k.tag || 'reserved');
     }
     const m = this.markers || {};
     // KEEP-CLEAR PROTECTS STANDING ROOM, NOTHING ELSE.
@@ -135,7 +146,7 @@ export class World {
       return dx * dx + dz * dz < (pad + r) * (pad + r);
     };
     // the spawn, and enough room around it to land and turn around
-    if (near(this.spawn, 2.4)) return why ? 'spawn' : true;
+    if (near(this.spawn, 2.4)) return tally('spawn');
     for (const key of Object.keys(m)) {
       const v = m[key];
       if (!v || !(STANDING_ROOM.test(key) || ALSO.test(key))) continue;
@@ -151,12 +162,12 @@ export class World {
       // margin because an approach you cannot walk is a broken reward, and that
       // is the failure this whole register exists to prevent.
       const pad = /chest|reward|Promise/i.test(key) ? 2.2 : 1.1;
-      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return why ? key : true; }
-      else if (near(v, pad)) return why ? key : true;
+      if (Array.isArray(v)) { for (const p of v) if (near(p, pad)) return tally(key); }
+      else if (near(v, pad)) return tally(key);
     }
     for (const d of (this.doors || [])) {
       const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
-      if (near({ x: cx, z: cz }, 2.6)) return why ? ('door→' + d.to) : true;
+      if (near({ x: cx, z: cz }, 2.6)) return tally('door→' + d.to);
     }
     return false;
   }

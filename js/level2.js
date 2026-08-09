@@ -547,7 +547,6 @@ export async function buildVh(scene) {
   ];
   world.markers.hubStage = stage;               // for the headless verifier
   scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
-  return finish(world, spec, D);
   coldHearth(world, -8, 6.6, D);                          // Bram's own fire
   cartWreck(world, -12.5, 10, 0.7, D);
   wayshrine(world, 14.5, -4, -Math.PI / 2 + 0.2, D);
@@ -572,6 +571,7 @@ export async function buildVh(scene) {
   rubbleField(world, -4, 9.5, 2.6, D, 11);
   rubbleField(world, 5, 11.5, 2.4, D, 10);
   aftermath(world, 3, 7, 1.8, D, 39);
+  return finish(world, spec, D);
 }
 
 // ===========================================================================
