@@ -3,6 +3,8 @@
 // is boring; this is how a human finds out without playing fifty-two rooms.
 //
 //   node tools/shot.mjs <outdir> <room> [room...]
+// DPR=1 halves the resolution, which is what the contact sheet uses: fifty-two
+// rooms at 2x is 26 MB of PNG and an Artifact page has to fit in 16.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 
@@ -12,7 +14,7 @@ mkdirSync(outDir, { recursive: true });
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
   args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
-const page = await (await b.newContext({ viewport: { width: 740, height: 360 }, deviceScaleFactor: 2 })).newPage();
+const page = await (await b.newContext({ viewport: { width: 740, height: 360 }, deviceScaleFactor: Number(process.env.DPR || 2) })).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

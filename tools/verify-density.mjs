@@ -78,11 +78,27 @@ const go = async (room) => {
 // nuisance: a blanket minimum would push clutter into exactly the two rooms
 // where clutter is a bug.
 const ROOMS = [
+  // Ember Hollow
   { id: 'la',  kind: 'island' }, { id: 'la1', kind: 'pocket' }, { id: 'lg1', kind: 'choke' },
   { id: 'lb',  kind: 'island' }, { id: 'lb1', kind: 'pocket' }, { id: 'lb2', kind: 'pocket' },
   { id: 'lg2', kind: 'choke' },  { id: 'lc',  kind: 'island' }, { id: 'lc1', kind: 'pocket' },
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
+  // Stoneroot Caverns
+  { id: 'vh',  kind: 'island' }, { id: 'vga', kind: 'choke' },  { id: 'va1', kind: 'island' },
+  { id: 'va2', kind: 'island' }, { id: 'vap', kind: 'pocket' }, { id: 'va3', kind: 'puzzle' },
+  { id: 'vgb', kind: 'choke' },  { id: 'vb1', kind: 'island' }, { id: 'vb2', kind: 'island' },
+  { id: 'vbp', kind: 'pocket' }, { id: 'vb3', kind: 'puzzle' }, { id: 'vgc', kind: 'choke' },
+  { id: 'vc1', kind: 'island' }, { id: 'vc2', kind: 'island' }, { id: 'vcp', kind: 'pocket' },
+  { id: 'vc3', kind: 'pocket' }, { id: 'vz',  kind: 'arena' },
+  // The Wild Woods
+  { id: 't1a', kind: 'island' }, { id: 't1b', kind: 'island' }, { id: 't1p', kind: 'pocket' },
+  { id: 'tc1', kind: 'choke' },  { id: 't2a', kind: 'island' }, { id: 't2b', kind: 'island' },
+  { id: 't2p', kind: 'pocket' }, { id: 'tsh', kind: 'pocket' }, { id: 'tc2', kind: 'choke' },
+  { id: 't3a', kind: 'island' }, { id: 't3b', kind: 'island' }, { id: 't3p', kind: 'pocket' },
+  { id: 'tkn', kind: 'puzzle' }, { id: 'tc3', kind: 'choke' },  { id: 't4a', kind: 'island' },
+  { id: 't4b', kind: 'island' }, { id: 't4p', kind: 'pocket' }, { id: 'tc4', kind: 'choke' },
+  { id: 'tgl', kind: 'arena' },  { id: 'tsA', kind: 'pocket' }, { id: 'tsB', kind: 'pocket' },
 ];
 // THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
 // that wrong. It shipped with an island minimum of 12 while the dressed islands

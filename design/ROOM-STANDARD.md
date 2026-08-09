@@ -97,3 +97,51 @@ vendored after the showcase room proves the standard.
   sideways at head height resting on nothing. `js/level1.js`, the `gate` hero
   prop. It is in the first room of the game.
 - It **played** well otherwise.
+
+
+---
+
+## PROGRESS (2026-08-09)
+
+All 52 dressed spaces across the three built regions have been rebuilt to this
+standard. `tools/verify-density.mjs` measures every one of them at its own spawn
+point, in the arrival frame.
+
+| | before | after |
+|---|---|---|
+| distinct models used, all three levels | 33 of 115 | **all 14 forest models, all 25 dungeon props, in use** |
+| Level 1 dungeon props used | 3 of 25 | 25 |
+| Level 3 forest models used | **0 of 14** | 14 |
+| floor | one Kenney tile, one flat tint per district | painted per room: pattern, patches, worn path |
+| draw calls, worst room | 85 (empty) | 111 (dressed) against a 125 ceiling |
+
+### What §1–§2, §4, §6 and §7 got
+
+Density, structure, secrets, floors and mood are done. The vocabulary is
+`js/dressing.js` — clusters, not props: `ruinedHome`, `cartWreck`, `wayshrine`,
+`fallenColumn`, `lowWall`, `rubbleField`, `aftermath`, `coldHearth`, and the
+forest half `grove` / `thicket` / `blight` / `mossyRuin`. Every cluster obeys
+§2: big things take colliders, small things take none.
+
+Two room types are dressed at the **perimeter only**, and this is a rule rather
+than an omission — it is written beside each one in code:
+
+* **puzzle rooms** (`ld1`, `vb3`, `tkn`) — the mechanic is a thing you have to
+  spot, and clutter competes with it
+* **boss arenas** (`le`, `vz`, `tgl`) — anything you can snag on mid-arena turns
+  a readable dodge into an unfair hit
+
+### What is NOT done, and is the next work
+
+* **§3 HEIGHT — ledges you climb, gaps you jump. Not started.** The player has
+  an `airY` used for jump arcs over a flat plane; nothing in the world can drive
+  a walkable `y`. This is engine work across movement, collision and the shadow
+  box, not a dressing pass, and doing it badly would break the five-year-old
+  rule everywhere at once. It is the largest remaining item in this file.
+* **§5 LIFE — creatures that scatter, and survivors to free. Not started.**
+  `js/npcs.js` populates the Den only; there is no ambient-creature system and
+  no rescue mechanic in the levels. Dad's steer on this is already recorded:
+  a mechanic with a reward, and *"too much dialogue will be clicked through"*.
+* **Stoneroot reads too dark.** The dressing is there and the measurements pass,
+  but `vh` in particular is hard to see. That is a lighting problem, not a
+  content one, and it wants a pass of its own.
