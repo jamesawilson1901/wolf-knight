@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -77,14 +78,43 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
+// THE STOCK LADDER. Maren does not lay her whole cart out in minute one: each
+// TIER arrives when the region that pays for it comes home. The contract's
+// "shop ladder per region tier" only means anything if the top of the ladder is
+// out of reach at the bottom of it — with everything on sale from the start, a
+// child who saves hard in Ember Hollow buys the 300-shard hammer before the
+// Kiln and the ladder is a list of prices.
+//
+// A locked row is still SHOWN, greyed, saying what opens it. That is the same
+// language the ability gates speak (gates.js: an unopenable gate reads as a
+// PROMISE, never as a missing thing), and it is the reason to come back.
+//
+// Unlock keys are the region restoration flags main.js already sets, so this
+// needs nothing new in the save and an old profile reads its tiers correctly
+// the first time it loads.
+export const SHOP_TIERS = {
+  1: { when: () => true, opens: '' },
+  2: { when: () => WS.get('stone', 'restored'), opens: 'When Stoneroot sings' },
+};
+
+export function tierOpen(tier) {
+  const t = SHOP_TIERS[tier || 1];
+  return t ? t.when() : true;
+}
+
+export function tierOpens(tier) {
+  const t = SHOP_TIERS[tier || 1];
+  return t ? t.opens : '';
+}
+
 // Shop stock (the Den). Potions and gear; sold-out gear vanishes.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', id: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 2 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 2 },
 ];

@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear, tierOpen, tierOpens } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -118,14 +118,20 @@ export class Menus {
     for (const s of SHOP_STOCK) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
+      // A tier Maren has not unstacked yet: shown, greyed, and it says what
+      // opens it. Never hidden — the empty space would teach nothing.
+      const locked = !tierOpen(s.tier);
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');
-      card.className = 'item-card ui' + (!afford || full ? ' cant' : '');
-      card.innerHTML = `<div class="ic">${def.icon}</div><div class="nm">${def.name}</div>
-        <div>${def.blurb || statLine(s.id, def, s.kind)}</div>
-        <div class="price">🔸 ${s.price}${full ? ' (bag full)' : ''}</div>`;
+      card.className = 'item-card ui' + (locked ? ' cant locked' : (!afford || full ? ' cant' : ''));
+      card.dataset.shopId = s.id;
+      card.dataset.shopTier = s.tier || 1;
+      card.innerHTML = `<div class="ic">${locked ? '🔒' : def.icon}</div><div class="nm">${def.name}</div>
+        <div>${locked ? tierOpens(s.tier) : (def.blurb || statLine(s.id, def, s.kind))}</div>
+        <div class="price">🔸 ${s.price}${full && !locked ? ' (bag full)' : ''}</div>`;
       card.addEventListener('pointerdown', async () => {
+        if (locked) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
         if (!afford || full) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
         state.shards -= s.price;
         bumpCounter('purchases');

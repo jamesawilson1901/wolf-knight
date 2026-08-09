@@ -2954,3 +2954,122 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 — Maren keeps the top of the ladder on the cart (2026-08-09)
+
+Overnight run. FIX-PLAN's status table is entirely shipped, so the queue fell
+back to the newest QUEUED NEXT list in this file (v2.2.6, line ~681):
+
+    economy/XP balance pass · Maren tier-2 stock after Stoneroot ·
+    hard landscape lock · S3 Wild Woods
+
+**The first item was skipped, not done.** An economy/XP balance pass is a
+difficulty change by any other name — shard income and the shop ladder decide
+how long a child saves before they get the shiny thing — and the standing rule
+is that those need the kids in the room, not a headless browser at 3am. Item 4
+shipped in v3.19. So this run took item 2.
+
+### What was wrong
+
+Every one of Maren's eight stock rows was on sale from minute one, including the
+300-shard Boulder Hammer. GAME-CONTRACT calls for a "shop ladder per region tier
+≈ 60/90/150/250/400", and a ladder whose top rung is reachable from the bottom
+one is a price list. There was nothing to come back for.
+
+### What changed
+
+`SHOP_STOCK` rows now carry a `tier`, and `SHOP_TIERS` in js/items.js maps a
+tier to the region flag that opens it — tier 2 is `WS.get('stone','restored')`,
+the same flag Bram the barbarian and the Den's stone-heart already arrive on. No
+new save fields: the unlock is read from state that main.js has been writing
+since v3.12, so an old profile reads its tiers correctly the first time it loads
+and the additive-forever law is untouched.
+
+**Prices are unchanged.** Which item sits on which rung is a placement decision;
+what a rung COSTS is the economy pass I just skipped, and moving both at once
+would make neither measurable.
+
+| tier | opens | stock |
+|---|---|---|
+| 1 | from the start | potion 15 · Round Guard 70 · Swift Fang 80 · Ember Blade 90 |
+| 2 | when Stoneroot sings | Long Spear 120 · Tower Shield 180 · Moon Sword 200 · Boulder Hammer 300 |
+
+A locked row is **shown**, greyed, dashed in moon-violet, saying "When Stoneroot
+sings" where its blurb goes. That is deliberate and it is the house language:
+gates.js has read unopenable obstacles as PROMISES since region 1, and hiding
+the row would teach a child nothing except that the cart is small. Tapping one
+plays the same refusal as an unaffordable card.
+
+### Measured
+
+`tools/verify-shop.mjs` — new, written before the fix, and it failed against the
+old code for the right reason (`every card declares a tier` → eight `undefined`).
+It drives the real path: walk Kael to within 1.7u of the mage, let the
+proximity trigger in main.js open the panel, and read the DOM she renders.
+
+    rows shown              8 before Stoneroot, 8 after   (nothing is hidden)
+    buyable                 4 before, 8 after
+    ceiling on sale        90 shards before, 300 after
+    tap a locked card      999 shards → 999, gear not granted
+    tap it once unlocked   spent 120, owned, row leaves the stock
+
+The tier-1 ceiling of 90 is exactly the contract's region-1 rung; tier 2 opens at
+120 against its ~150.
+
+`sh tools/verify-all.sh verify-shop.mjs verify-den.mjs verify-touch.mjs` —
+5 passed, 0 failed (boot and density run by default).
+
+### Two test bugs, both mine, both worth the note
+
+- **`every` on an empty array is true.** The first run printed
+  "✓ tier 2 is locked" against zero tier-2 cards. A vacuous pass is worse than a
+  failure: it is a green tick for a thing that does not exist. Every `.every()`
+  in that file now checks `length > 0` first.
+- **Waiting in milliseconds instead of frames.** The shop trigger is
+  edge-detected (`near && !shopWasNear`), so the test has to walk Kael AWAY and
+  let a real tick clear the edge. A 200ms sleep failed two runs in three — and
+  the identical file with a console listener attached, and therefore slower,
+  passed every time. It waits four `requestAnimationFrame`s now. This is the
+  same lesson v3.32.0 recorded about sampling a decaying counter: under
+  SwiftShader a frame outlasts any wall-clock guess.
+
+Also: leaving a panel by setting `display:none` freezes the game, because
+`_open()` calls `onPauseGame()` and only the ✓ Done button resumes. The verifier
+leaves through the button.
+
+### AWAITING dad's call
+
+- **Tiers 3-5 are unassigned.** The contract's ladder has five rungs
+  (60/90/150/250/400) and this run built two, because the queued item said two.
+  Mechanically `SHOP_TIERS` takes any number of them — one line each. The
+  obvious reading is Moon Sword 200 behind the Wild Woods and Boulder Hammer 300
+  behind Frostpeak, which would give every region its own big buy, but that
+  moves what a child can swing in regions 3 and 4 and is a power-curve decision,
+  not a placement one.
+- **This ran on branch `claude/ecstatic-hawking-5vcn9w`, not `overnight`.** The
+  execution environment assigns its own branch and forbids pushing anywhere
+  else. Nothing went near main, which is the law that matters, but the overnight
+  work is not where the standing instruction says to look for it.
+
+### Flagged, untouched: BUILDLOG stops five versions short of the code
+
+This file's last entry before tonight was v3.34.0. The badge in index.html reads
+**v3.41.0** and `git log` carries the Den rebuild, the minigame harness,
+Stormreach with Aria and the Storm Wolf, and the Sunken Vale with Meri and the
+Tide Wolf — none of it logged here. A fresh session is told to read the last 200
+lines of this file for history and for the queue, and would have been reading
+about level 3 while levels 5 and 6 sat built on disk. That is how tonight's run
+ended up working from a queue written at v2.2.6. Not fixed in this run —
+reconstructing five versions of history from diffs is its own job, and it is not
+the one item I was allowed.
+
+### QUEUED NEXT (in order)
+
+1. **Backfill BUILDLOG v3.35 → v3.41** from the commit history, or record
+   explicitly that the log restarts at v3.42 and where the gap is documented.
+2. **Hard landscape lock** — item 3 of the old list, still soft (manifest
+   `orientation: landscape` + best-effort `requestFullscreen`, BUILDLOG line 56).
+3. **`flattenStatic()` for the remaining hand-built rooms** — Frostpeak f2 99,
+   f4 97, f3 96 draw calls, one line each plus the keepLoose audit
+   `tools/verify-den.mjs` was written for (logged under B2, never opened).
+4. **Economy/XP balance pass** — needs the kids, not a night run.

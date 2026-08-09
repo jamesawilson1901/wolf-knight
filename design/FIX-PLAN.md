@@ -37,6 +37,35 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+## THE QUEUE AFTER THIS FILE (2026-08-09)
+
+With the table above closed, the work queue is the newest QUEUED NEXT list in
+BUILDLOG.md. Items taken from it are recorded here so this file stays the status
+board a fresh session is told to read.
+
+| | item | source | shipped |
+|---|---|---|---|
+| Q1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — a difficulty change; needs the kids |
+| Q2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.42.0 |
+| Q3 | hard landscape lock | BUILDLOG QUEUED NEXT (v2.2.6) | — |
+| Q4 | S3 Wild Woods | BUILDLOG QUEUED NEXT (v2.2.6) | v3.19.0 |
+| Q5 | backfill BUILDLOG v3.35 → v3.41 | found in v3.42.0 | — |
+| Q6 | `flattenStatic()` for Frostpeak's hand-built rooms | logged under B2 | — |
+
+**Q2 (v3.42.0)** — `SHOP_STOCK` rows carry a `tier`; `SHOP_TIERS` maps a tier to
+the region flag that opens it (tier 2 = `WS.get('stone','restored')`). Locked
+rows are shown greyed, saying what opens them, the way ability gates read as
+promises. Prices unchanged — what a rung costs is Q1. No new save fields.
+Measured by `tools/verify-shop.mjs` through the real proximity trigger: 8 rows
+shown throughout, 4 buyable before Stoneroot and 8 after, ceiling on sale 90 →
+300, a locked tap grants nothing with 999 shards in hand.
+
+**Q5** is why this section exists: BUILDLOG's last entry before v3.42.0 was
+v3.34.0, while the shipped badge reads v3.41.0 — five versions of history
+(the Den rebuild, the minigame harness, Stormreach, the Sunken Vale) are in
+`git log` and nowhere else. A session that reads the last 200 lines of BUILDLOG
+for its queue gets a picture that is five versions stale.
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 
