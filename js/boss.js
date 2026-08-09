@@ -12,6 +12,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { prepareCharacter } from './assets.js';
 import { smokePuff } from './enemies.js';
 import { state } from './state.js';
+import { galeLane } from './wind.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 
@@ -35,6 +36,29 @@ const SKINS = {
     maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
     speedMult: 1.08,  // the forest is quicker than the shadow
+  },
+  // ARIA, THE GALEBOUND — Stormreach's guardian (region 5).
+  //
+  // BOSSES FIGHT LIKE THEIR FAMILY, so she wears the same class as the
+  // Shadowgrip and Sylva: the crouch, the charge, the red lane and the gold
+  // collapse ring the kids have been reading since region one. Nothing about
+  // the fight is new EXCEPT the weather, and the weather is the thing they were
+  // given a tool for two districts ago.
+  //
+  // At half health she does not simply hunt harder — she raises two gales that
+  // squeeze the arena from both sides. Walking out of her charge lane stops
+  // working; dashing out still does. That is the whole design of the region,
+  // asked as a question, once, at the moment it matters.
+  aria: {
+    name: 'Aria, the Galebound',
+    body: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
+    maxHp: 26, dmg: 1.5, saveKey: 'ariaHp', legacyPhases: false,
+    cinder: 0xfff4b0, // her own stormlight, held down by the gale
+    speedMult: 1.14,  // the sky is quicker than the forest
+    gales: [
+      { x: -8.5, z: 0, w: 7.0, d: 24, dir: 'e', strength: 'gale' },
+      { x: 8.5, z: 0, w: 7.0, d: 24, dir: 'w', strength: 'gale' },
+    ],
   },
 };
 
@@ -205,8 +229,34 @@ export class Shadowgrip {
       this._halfHowled = true;
       audio.howl({ volume: 0.95, rate: 0.7 });
       juice.burst(wx, 1.2, wz, this.skin.burst, 14);
+      this._raiseGales();
     }
     if (this.coreHp <= 0) this._defeat();
+  }
+
+  // HER SECOND HALF. The arena narrows from both sides, and it narrows with
+  // the thing the child already knows how to cross. Nothing is added to the
+  // fight's grammar — the charge, the tell and the punish window are all
+  // unchanged — the FLOOR just gets smaller, and the answer to that is the
+  // verb Aria's own shrine handed over.
+  _raiseGales() {
+    if (!this.skin.gales || this._galesUp) return;
+    this._galesUp = true;
+    for (const g of this.skin.gales) {
+      galeLane(this.world, { x: this.x + g.x, z: this.z + g.z, w: g.w, d: g.d,
+        dir: g.dir, strength: g.strength, id: 'aria' });
+    }
+    if (this.world.rebuildWind) this.world.rebuildWind();
+    audio.play('whoosh', { volume: 0.9, rate: 0.6 });
+  }
+
+  // ...and when she falls, the wind goes with her. A gale still blowing across
+  // a beaten boss's arena would be the room refusing to admit the fight is over.
+  _dropGales() {
+    if (!this._galesUp) return;
+    this._galesUp = false;
+    this.world.galeLanes = this.world.galeLanes.filter((l) => l.id !== 'aria');
+    if (this.world.rebuildWind) this.world.rebuildWind();
   }
 
   // A perfect parry (or a stunning blow) staggers even the great wolf —
@@ -253,6 +303,12 @@ export class Shadowgrip {
     } else if (this.skin === SKINS.sylva) {
       state.flags.sylvaDefeated = true;
       if (!state.formsUnlocked.includes('verdant_wolf')) state.formsUnlocked.push('verdant_wolf');
+    } else if (this.skin === SKINS.aria) {
+      state.flags.ariaDefeated = true;
+      // the Storm Wolf was earned at her shrine, not here — but a save that
+      // somehow reached the crown without it is not a save to strand
+      if (!state.formsUnlocked.includes('storm_wolf')) state.formsUnlocked.push('storm_wolf');
+      this._dropGales();
     }
     if (this.onDefeated) this.onDefeated();
   }

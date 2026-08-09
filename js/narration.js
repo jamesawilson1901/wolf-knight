@@ -17,6 +17,7 @@ const VOICES = {
   rook: { rate: 0.9, pitch: 0.9, label: 'Rook' },
   sylva: { rate: 0.92, pitch: 1.15, label: 'Sylva' },
   boreal: { rate: 0.8, pitch: 0.75, label: 'Boreal' }, // slow, vast, wintry
+  aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
 };
 
 export const LINES = {
@@ -175,12 +176,35 @@ export const LINES = {
   boreal_grounded: { voice: 'pip', text: 'She’s crashed! Gold ring — that’s your moment. HIT HER!' },
   boreal_defeat: { voice: 'boreal', text: 'The cold… lets go of me. I am Boreal, who was the storm. You struck me kindly, little knight.' },
   frost_grant: { voice: 'boreal', text: 'Take the winter in my heart — the Frost Wolf. Breathe, and even stone must let you pass.' },
+  // --- STORMREACH CLIFFS (region 5). Short, warm, concrete — the house voice.
+  // Every line here names something the child can SEE: the wind, the stone, the
+  // stairs. Nothing explains a mechanic in words, because they cannot be
+  // assumed to read and a line they cannot read is a line that is not there.
+  storm_arrive: { voice: 'pip', text: 'Wind up here. Big wind. Hold on to me?' },
+  storm_gale_first: { voice: 'pip', text: 'Whoa! It pushed me back. Nothing can walk into THAT.' },
+  storm_gale_promise: { voice: 'pip', text: 'There is treasure behind the wind. We will come back for it.' },
+  storm_grant: { voice: 'aria', text: 'Then run at it. The Storm Wolf does not go around — take my dash.' },
+  storm_howto: { voice: 'pip', text: 'The star button! Run RIGHT through the wind. Go on!' },
+  storm_vanes: { voice: 'pip', text: 'Look — the big blades turn. Bump one and see where the wind goes.' },
+  storm_vanes_done: { voice: 'pip', text: 'You turned the whole sky around. That is the way through!' },
+  storm_gate: { voice: 'pip', text: 'Two blades this time. Both of them, then the gate is ours.' },
+  aria_intro: { voice: 'aria', text: 'I am held down here. Do not stop for me — RUN.' },
+  aria_duel: { voice: 'pip', text: 'She charges like the big hounds! You know this one!' },
+  aria_gale: { voice: 'pip', text: 'The wind is closing in! Dash — do not walk!' },
+  aria_defeat: { voice: 'aria', text: 'The gale lets go. Thank you, little knight. The sky is quiet.' },
+  storm_restore_1: { voice: 'pip', text: 'The clouds went away! You can see the whole climb from up here.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! Hold the screen to change. Your frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },
   frost_complete: { voice: 'pip', text: 'Frostpeak is still and safe. Four lights found, Kael… three to go.' },
   all_pups_frost: { voice: 'pip', text: 'TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!' },
-  luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now listen for water — something calls beneath the waves.' },
+  // Luna's dream after Frostpeak used to point at the water — which is region
+  // SIX. It skipped Stormreach entirely, so a child who did as she said walked
+  // to a shore that is not built yet while the cliffs stood open behind them.
+  // The order in js/regions.js has always been frostpeak → stormreach →
+  // sunkenvale; this line now agrees with it, and the water gets its own.
+  luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now look up — the wind is crying on the cliffs.' },
+  luna_dream_5: { voice: 'luna', text: 'Five lights. The sky breathes again. Listen now for water — something calls beneath the waves.' },
 };
 
 export class Narration {

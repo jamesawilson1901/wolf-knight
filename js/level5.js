@@ -379,6 +379,44 @@ function vane(world, x, z, lane, D) {
   return v;
 }
 
+// A STAIR IS STILL A ROOM. The 24 x 12 stair reads as a passage, and the first
+// pass dressed it like one — which measured 13 things in the arrival frame
+// against a bar of 21, i.e. a corridor with nothing to look at. The fix is not
+// to lower the bar: it is to line both long walls and leave the middle alone,
+// so the passage still reads as a passage AND has a world either side of it.
+// Everything here hugs the wall, and nothing takes a collider except the
+// pieces big enough that walking through them would look wrong.
+function stairSides(world, halfW, halfD, D, seed) {
+  if (GREY()) return;
+  let s0 = seed;
+  const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
+  const EDGE = halfD - 1.5;
+  const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'snowRockS'];
+  const g = new THREE.Group();
+  for (let i = 0; i < 26; i++) {
+    const side = i % 2 ? 1 : -1;
+    const x = -halfW + 1.2 + (i / 26) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.1;
+    const z = side * (EDGE - r() * 1.6);
+    if (world.blocked(x, z, 0.6)) continue;
+    const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
+    const big = kind.startsWith('rock') || kind.startsWith('snow');
+    place(world, g, skyKit[kind], kind, x, 0, z,
+      (big ? 0.7 : 0.9) + r() * 0.5, r() * 6.28, 0, D.propTint, big);
+    if (big) world.addCircle(x, z, 0.55, 'decor');
+  }
+  // and a few torches, because a stair up a cliff in a storm is a stair
+  // somebody kept lit
+  for (let i = 0; i < 4; i++) {
+    const x = -halfW + 3 + i * (halfW * 2 - 6) / 3;
+    for (const side of [-1, 1]) {
+      const z = side * (halfD - 0.9);
+      if (world.blocked(x, z, 0.5)) continue;
+      place(world, g, skyKit.torch, 'torch', x, 0, z, 1.4, side > 0 ? 0 : Math.PI, 0, D.propTint, false);
+    }
+  }
+  world.add(g);
+}
+
 // A "lock you can lean on" — the region's promise gate. Not a wall: a gale, and
 // a chest plainly visible on the other side of it.
 function galePromise(world, { x, z, w, d, dir, id, reward }) {
@@ -505,6 +543,7 @@ export async function buildSc1(scene) {
   // the first stair, and the first time the wind runs WITH you
   galeLane(world, { x: 0, z: 0, w: 7, d: 11, dir: 'n', strength: 'breeze' });
   scatter(world, halfW, halfD, D, 504, 5, { spin: 1, kinds: ['rockSA', 'rockSB'] });
+  stairSides(world, halfW, halfD, D, 5041);
   lowWall(world, -8, -4, 0, D, 4.0);
   lowWall(world, 8, 4, 0, D, 4.0);
   wayshrine(world, -8.5, 3.5, 0.5, D);
@@ -655,6 +694,7 @@ export async function buildSc2(scene) {
   galeLane(world, { x: -8.0, z: 0, w: 5.0, d: 11, dir: 'n', strength: 'breeze' }); // ride it
   world.markers.houndSpots = [{ x: -6, z: 3.5, variant: 'gale' }];
   scatter(world, halfW, halfD, D, 515, 4, { spin: 1, kinds: ['rockSA', 'rockSB'] });
+  stairSides(world, halfW, halfD, D, 5151);
   lowWall(world, 0, -5, 0, D, 5.0);
   lowWall(world, 0, 5, 0, D, 5.0);
   return finish(world, spec, D);
@@ -814,6 +854,7 @@ export async function buildSc3(scene) {
   world.markers.potionSpot = { x: -7, z: -3 };
   galeLane(world, { x: 0, z: 0, w: 8, d: 11, dir: 'n', strength: 'breeze' });
   scatter(world, halfW, halfD, D, 525, 4, { spin: 1, kinds: ['snowRockS', 'rockSB'] });
+  stairSides(world, halfW, halfD, D, 5251);
   lowWall(world, -8, 4, 0, D, 4.0);
   wayshrine(world, 8, -3.5, 2.4, D);
   return finish(world, spec, D);
@@ -917,6 +958,7 @@ export async function buildSc4(scene) {
   world.reserve(7, -3.5, 2.6, 'chest');
   galeLane(world, { x: 0, z: 0, w: 9, d: 11, dir: 'n', strength: 'breeze' });
   scatter(world, halfW, halfD, D, 534, 4, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
+  stairSides(world, halfW, halfD, D, 5341);
   lowWall(world, 0, -5, 0, D, 6.0);
   return finish(world, spec, D);
 }
@@ -934,7 +976,7 @@ export async function buildScr(scene) {
 
   heroProp(world, 0, 0, 'crownstones', D);
   if (!state.flags.ariaDefeated) {
-    world.markers.bossSpot = { x: 0, z: -2.0, kind: 'aria' };
+    world.markers.bossSpot = { x: 0, z: -2.0, skin: 'aria' };
   } else {
     // THE QUIET CROWN: the gale has dropped and her light rests on the stones
     world.bgColor = 0x3c5878;
@@ -981,6 +1023,7 @@ export async function buildSsA(scene) {
     world.add(g);
   }
   scatter(world, halfW, halfD, D, 542, 4, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
+  stairSides(world, halfW, halfD, D, 5421);
   return finish(world, spec, D);
 }
 

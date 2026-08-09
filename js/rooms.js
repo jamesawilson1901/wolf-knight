@@ -3927,6 +3927,8 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadCaveKit();
   } else if (id[0] === 't') {
     if (state.settings.greybox === false) await loadWoodKit();
+  } else if (id[0] === 's') {
+    if (state.settings.greybox === false) await loadSkyKit();
   } else {
     await loadKit();
     if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();

@@ -835,9 +835,11 @@ function narrationTriggers(dt, t) {
       const SPARK = {
         earth_wolf: { region: 'vault', key: 'spark', toast: '🪨 The Earth Wolf awakens!' },
         verdant_wolf: { region: 'wild3', key: 'spark', toast: '🌿 The Verdant Wolf awakens!' },
+        storm_wolf: { region: 'storm', key: 'spark', toast: '🌩️ The Storm Wolf awakens!' },
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
-      narration.say(gift === 'verdant_wolf' ? 'verdant_grant' : 'earthwolf_grant');
+      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant' }[gift] || 'earthwolf_grant');
+      if (gift === 'storm_wolf') narration.say('storm_howto');
       persist();
     }
   }
@@ -1268,7 +1270,9 @@ async function loadRoom(id, entry, handoff = null) {
   if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
   if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast }; // debug/testing hook
+  if (id === 'scr' && world.boss && !world.boss.defeated) narration.say('aria_intro');
+  if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
   await fadeTo(0, ms);
   transitioning = false;
 }
@@ -1364,7 +1368,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1681,6 +1685,14 @@ async function start() {
               WS.set('frost', 'restored');
               narration.say('frost_restore_1');
               setTimeout(() => narration.say('luna_dream_4'), 9000);
+            } else if (state.room === 'scr') {
+              // ARIA FREED — the gale drops off the crown and the whole climb
+              // opens out below (boss.js set the flags; here is the party)
+              audio.playMusic('victory', { loop: false, then: 'den' });
+              narration.say('aria_defeat');
+              WS.set('storm', 'restored');
+              narration.say('storm_restore_1');
+              setTimeout(() => narration.say('luna_dream_5'), 9000);
             } else if (state.room === 'w5') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
               // Wolf is earned (boss.js set the flags; here is the party)
@@ -1827,7 +1839,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

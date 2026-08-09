@@ -144,7 +144,7 @@ export const REGIONS = {
         'frost gates already opened stay open', 'victory sting → den theme'],
       durationS: 8, skippable: false,
     },
-    ripple: { room: 'f5', what: 'Luna hears water calling from beneath the waves (luna_dream_4)' },
+    ripple: { room: 'f5', what: 'Luna hears the wind crying on the cliffs (luna_dream_4)' },
     scar: { room: 'f3', what: 'the frozen lake never thaws — it only ever goes quiet' },
     denArrival: 'polish list: Boreal\'s rime-light joining the den fire',
   },

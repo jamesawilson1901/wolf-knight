@@ -99,6 +99,17 @@ const ROOMS = [
   { id: 'tkn', kind: 'puzzle' }, { id: 'tc3', kind: 'choke' },  { id: 't4a', kind: 'island' },
   { id: 't4b', kind: 'island' }, { id: 't4p', kind: 'pocket' }, { id: 'tc4', kind: 'choke' },
   { id: 'tgl', kind: 'arena' },  { id: 'tsA', kind: 'pocket' }, { id: 'tsB', kind: 'pocket' },
+  // Stormreach Cliffs. The STAIR is a new module and gets measured as a choke:
+  // it is the same job — compression and rest between islands — in a longer,
+  // narrower box, and holding it to the island bar would only push clutter into
+  // a space whose whole point is that you walk through it.
+  { id: 's1a', kind: 'island' }, { id: 's1b', kind: 'island' }, { id: 's1p', kind: 'pocket' },
+  { id: 'sc1', kind: 'choke' },  { id: 's2a', kind: 'island' }, { id: 's2b', kind: 'island' },
+  { id: 's2p', kind: 'pocket' }, { id: 'ssh', kind: 'pocket' }, { id: 'sc2', kind: 'choke' },
+  { id: 's3a', kind: 'island' }, { id: 's3b', kind: 'island' }, { id: 's3p', kind: 'pocket' },
+  { id: 'svn', kind: 'puzzle' }, { id: 'sc3', kind: 'choke' },  { id: 's4a', kind: 'island' },
+  { id: 's4b', kind: 'island' }, { id: 's4p', kind: 'pocket' }, { id: 'sc4', kind: 'choke' },
+  { id: 'scr', kind: 'arena' },  { id: 'ssA', kind: 'choke' },
 ];
 // THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
 // that wrong. It shipped with an island minimum of 12 while the dressed islands
