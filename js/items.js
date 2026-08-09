@@ -4,6 +4,7 @@
 // real KayKit props, swapped onto the knight's handslot bones.
 
 import { state } from './state.js';
+import { WS } from './worldstate.js';
 
 // STYLE fields (standing rule — weapons differ in HOW they swing, not just
 // numbers): `arc` = swing half-angle in degrees (default ±70), `stun` =
@@ -77,14 +78,49 @@ export function addGear(id) {
   if (!ownsGear(id)) state.inventory.gear.push(id);
 }
 
-// Shop stock (the Den). Potions and gear; sold-out gear vanishes.
+// ---- Maren's counter GROWS -------------------------------------------------
+//
+// GAME-CONTRACT's region shipping checklist asks every region for a "shop tier",
+// and its progression targets set the ladder at "≈ 60/90/150/250/400 per region
+// tier". The shop shipped as one flat shelf: all eight rows on a child's first
+// visit, and no ladder at all. Stock now carries a `tier`, and a tier is
+// unwrapped by the region whose restoration pays for it — the same Terranigma
+// beat the Den itself already runs on (mushrooms after the Warden, a third
+// tent, Rook when Ember heals, Bram when Stoneroot sings).
+//
+// A locked row is SHOWN, wrapped — never hidden. An empty counter says "this is
+// all there is"; a wrapped one says "come back". That is the rule the promise
+// gates follow (FIX-PLAN A8), and the shop is the one place in the game a child
+// can see the whole ladder at once.
+//
+// `unlocked` is a predicate rather than a stored flag so that an old save, which
+// already knows which regions it has healed, opens the right shelves the moment
+// it loads — no migration, additive-forever.
+export const SHOP_TIERS = [
+  { tier: 1, unlocked: () => true },
+  { tier: 2, unlocked: () => WS.get('stone', 'restored'),
+    teaser: 'Wrapped in oilcloth — Maren unpacks it when the Caverns sing again.' },
+];
+
+export function shopTierOpen(tier) {
+  const t = SHOP_TIERS.find((x) => x.tier === tier);
+  return t ? t.unlocked() : true; // an undeclared tier is on the shelf
+}
+
+export function shopTierTeaser(tier) {
+  const t = SHOP_TIERS.find((x) => x.tier === tier);
+  return (t && t.teaser) || 'Not for sale yet.';
+}
+
+// Shop stock (the Den). Potions and gear; sold-out gear vanishes. Rows are
+// listed in tier order, which is also the order a child reads them.
 export const SHOP_STOCK = [
-  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, blurb: '+3 hearts. Cherry flavor.' },
-  { kind: 'weapon', id: 'dagger_a', price: 80 },
-  { kind: 'weapon', id: 'sword_b', price: 90 },
-  { kind: 'shield', id: 'shield_a', price: 70 },
-  { kind: 'weapon', id: 'spear_a', price: 120 },
-  { kind: 'shield', id: 'shield_c', price: 180 },
-  { kind: 'weapon', id: 'sword_d', price: 200 },
-  { kind: 'weapon', id: 'hammer_a', price: 300 },
+  { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
+  { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'sword_b', price: 90, tier: 1 },
+  { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
+  { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
+  { kind: 'shield', id: 'shield_c', price: 180, tier: 2 },
+  { kind: 'weapon', id: 'sword_d', price: 200, tier: 2 },
+  { kind: 'weapon', id: 'hammer_a', price: 300, tier: 2 },
 ];

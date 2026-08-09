@@ -37,6 +37,17 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+**This table is closed, so the queue is now BUILDLOG's QUEUED NEXT list** — the
+standing rule is: first unshipped row here, else the newest queue there. Taken
+since:
+
+| | from | item | shipped |
+|---|---|---|---|
+| Q1 | BUILDLOG v2.2.6 queue | Maren tier-2 stock after Stoneroot (the contract's per-region "shop tier") | v3.42.0 — branch, not deployed |
+
+The same queue's economy/XP balance pass is deliberately **not** taken: it is a
+"does it feel right" change and needs the kids, not a measurement.
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 

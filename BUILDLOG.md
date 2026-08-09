@@ -2954,3 +2954,125 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 (branch, NOT deployed) — Maren's counter grows (2026-08-09)
+
+Overnight run, on branch `claude/ecstatic-hawking-hj8l3n` rather than
+`overnight`: this session is fenced to that branch by its runner and may not
+push to another. The rule that matters is unchanged — nothing went near `main`,
+and `sw.js` CACHE_NAME is untouched at v3.41.0, because this is not a deploy.
+
+The FIX-PLAN status table is closed end to end, so the work came
+from the newest QUEUED NEXT list in this log — which is the one under v2.2.6,
+and had never been struck through. Read against the build as it stands now:
+
+| queued (v2.2.6, in order) | state |
+|---|---|
+| economy/XP balance pass (shard income vs shop ladder, perk tiers past 12) | **SKIPPED — needs the kids.** A balance pass is a "does it feel right" change; a measurement cannot settle it. |
+| Maren tier-2 stock after Stoneroot | **taken — this entry** |
+| hard landscape lock | already shipped: `manifest.json` `"orientation": "landscape"`, `screen.orientation.lock('landscape')` on the first tap in `js/title.js`, and the `#rotate` overlay on a portrait media query |
+| S3 Wild Woods | shipped as Level 3 |
+
+### What was wrong
+
+The shop was one flat shelf. All eight rows — potions at 15 through the Boulder
+Hammer at 300 — were on the counter on a child's first visit, and nothing about
+it ever changed again. GAME-CONTRACT asks for the opposite in two places: the
+region shipping checklist lists "+ shop tier" beside the Den growth item as a
+per-region deliverable, and the progression targets set the ladder at
+"Shop ladder per region tier ≈ 60/90/150/250/400". Neither existed in code.
+
+### What changed
+
+`SHOP_STOCK` rows now carry a `tier`, and `SHOP_TIERS` says when a tier is
+unpacked. Tier 1 is on the shelf from the first visit; tier 2 unwraps on
+`WS.get('stone', 'restored')` — the same flag Bram's arrival at the Den and
+twenty-odd room rebuilds already read, so nothing new is persisted and an old
+save opens the right shelves the moment it loads. `unlocked` is a predicate
+rather than a stored flag for exactly that reason: additive-forever holds
+without a migration.
+
+**A wrapped row is SHOWN, not hidden.** The locked cards keep their icon and
+their name, swap the blurb for "Wrapped in oilcloth — Maren unpacks it when the
+Caverns sing again", and swap the price for 🔒. An empty counter tells a child
+"this is all there is"; a wrapped one tells them to come back, which is the rule
+the promise gates already follow (FIX-PLAN A8). It is also the only place in the
+game where the whole ladder is visible at once, and hiding it would have thrown
+that away to save four DOM nodes.
+
+### The judgement call, logged
+
+**Where the line falls between tier 1 and tier 2.** The contract's ladder is
+≈60/90/150/250/400 per region, so the split went at the gap in the existing
+prices: 70/80/90 (Round Guard, Swift Fang, Ember Blade) are the region-1 and
+region-2 rungs and stay on the open shelf; 120/180/200/300 (Long Spear, Tower
+Shield, Moon Sword, Boulder Hammer) are the 150-and-up rungs and wait for
+Stoneroot. **No price was touched** — that is the balance pass above, and it
+needs the kids. Reversible in one line if dad wants the spear on the first
+shelf.
+
+### Measured
+
+`tools/verify-shop.mjs`, new — nothing in `tools/` could see the shop at all
+before it, so the stock list could have gone back to one flat shelf with every
+other verifier green. It walks Kael to within 1.7u of `world.markers.shopSpot`
+and lets **main's own proximity trigger** open the menu (never `showShop()`
+directly), then reads the real cards out of the DOM and taps them with real
+pointer events:
+
+    rows on the counter                8   (none hidden)
+    open on a new save                 4   potion, dagger_a, sword_b, shield_a
+    wrapped on a new save              4   spear_a, shield_c, sword_d, hammer_a
+    999 shards vs a wrapped hammer     shards 999 → 999, gear unchanged
+    999 shards vs the open Ember Blade shards 999 → 909, gear +sword_b
+    after WS.set('stone','restored')   0 wrapped, hammer sells
+    tier-1 prices                      80, 90, 70   (all < 100)
+    tier-2 prices                      120, 180, 200, 300  (all ≥ 100)
+
+The ladder rows are asserted from `SHOP_STOCK` itself, so a future edit that
+quietly puts the 300-shard hammer on a five-year-old's first visit trips the
+check rather than shipping.
+
+**The verifier was checked against the bug it exists for.** With the tier-2
+predicate forced to `() => true` — the shop as it was this morning — it fails on
+five named assertions, not by crashing: the tier lists come back wrong, the
+hammer sells for 300 to a child who has never seen the Caverns, and nothing is
+wrapped. A verifier nobody has ever seen fail is a verifier nobody knows the
+shape of. It also now reports a missing row by name instead of timing out on a
+locator thirty seconds later.
+
+`sh tools/verify-all.sh verify-shop.mjs` — boot, density and shop: passed 3,
+failed 0. `sw.js` CACHE_NAME left at v3.41.0; this is a branch, not a deploy.
+
+### AWAITING dad's call
+
+- **Tiers 3-6 do not exist.** The contract wants a shop tier per region and
+  there are six built regions; this run wired the mechanism and the two tiers
+  the queue named. Filling 3-6 means choosing new stock and new prices at the
+  250/400 rungs, which is the balance conversation, so it was not invented
+  overnight. The mechanism takes them as one row each.
+- **Whether the spear (120) belongs on the first shelf** — see the judgement
+  call above.
+
+### Also noticed, not touched
+
+**This log has a hole.** It stops at v3.34.0, and the game has since shipped
+v3.35.0 through v3.41.0 — Stormreach, the Sunken Vale, the Tide Wolf, the Den
+rebuild, the mini game harness, the control-size pass — all of it recorded in
+commit messages and design docs but not here. A fresh session is told to read
+this file for history and the queue, and seven versions of it are missing. Left
+alone deliberately: reconstructing it is its own item, and one item per run.
+
+- QUEUED NEXT (in order, none of them game-feel):
+  1. **Backfill BUILDLOG v3.35.0 → v3.41.0** from the commit messages and design
+     docs, so the file a fresh session reads is the whole history again.
+  2. **Frostpeak's hand-built rooms never call `flattenStatic()`** — f2 at 99
+     calls, f4 97, f3 96, against a ceiling of 100. B3 did exactly this to the
+     Den for 113 → 95. One line per room plus the `keepLoose` audit
+     `tools/verify-den.mjs` was written for; worth 15-18 calls each.
+  3. **The reduce-motion setting** — GAME-CONTRACT lists it under "adopted law,
+     code catching up" and there is no `reduceMotion` anywhere in `js/`. An
+     accessibility toggle over the existing `CONFIG.JUICE` tiers, not a retune.
+  4. **Shop tiers 3-6**, once dad has settled the stock and the prices.
+  5. **Economy/XP balance pass** — still needs the kids, still first on the old
+     list, still not something a measurement can close.
