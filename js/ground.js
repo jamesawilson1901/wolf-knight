@@ -125,7 +125,15 @@ export const GROUND_STYLES = {
   glade:     { pattern: 'grass', wear: 0.30, joint: 0.22, path: 0.82, grain: 1.10 },
   rot:       { pattern: 'earth', wear: 0.80, joint: 0.35, path: 0.82, grain: 0.95 },
   // --- elsewhere ----------------------------------------------------------
-  den:       { pattern: 'earth', wear: 0.45, joint: 0.30, path: 1.15, grain: 0.80 },
+  // The Den is a GLADE, not a yard: grass, with the worn earth painted in as
+  // patches where a camp actually wears it — round the fire, at the tent
+  // mouths, along the tracks between them. `path` is below 1 because a track
+  // through grass is trodden DARK, not polished pale like stone.
+  den:       { pattern: 'grass', wear: 0.30, joint: 0.25, path: 0.80, grain: 1.05,
+               // 0x4f7a3c, not 0x62894a. The paler green came out as a washed
+               // sage once the grass tufts and the value layer went over it —
+               // a lawn in a photograph, not a glade in a wood.
+               base: 0x4f7a3c },
   snowfield: { pattern: 'snow',  wear: 0.30, joint: 0.20, path: 1.10, grain: 0.60 },
 };
 

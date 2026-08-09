@@ -106,7 +106,7 @@ class GameTarget {
 }
 
 function makeTargetGame(world) {
-  const ring = actRing(world, 4.2, -0.4); // beside Rook's watch spot
+  const ring = actRing(world, 6.4, -0.6); // beside Rook's watch spot
   const g = {
     id: 'rook', state: 'idle', chip: '', cool: 0,
     count: 0, goal: 0, timeLeft: 0, target: null,
@@ -205,7 +205,7 @@ class ShuffleCrate {
 
 async function makeShuffleGame(world) {
   const crateGltf = await loadGLB('./assets/loot/survival/crate.glb');
-  const ring = actRing(world, -4.8, 2.8); // in front of Wren's tent row
+  const ring = actRing(world, -7.6, 3.4); // in front of Wren's tent row
   const coin = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.16, 0),
     new THREE.MeshStandardMaterial({
@@ -366,10 +366,10 @@ async function makeShuffleGame(world) {
 // ---------------------------------------------------------------------------
 
 const PADS = [
-  { x: -2.6, z: -0.6, color: 0x5aa0ff, rate: 0.8 },
-  { x: -1.4, z: -0.6, color: 0xffd76a, rate: 1.0 },
-  { x: -2.6, z: 0.6, color: 0x7ad078, rate: 1.2 },
-  { x: -1.4, z: 0.6, color: 0xb48aff, rate: 1.5 },
+  { x: -1.8, z: 2.4, color: 0x5aa0ff, rate: 0.8 },
+  { x: -0.6, z: 2.4, color: 0xffd76a, rate: 1.0 },
+  { x: -1.8, z: 3.6, color: 0x7ad078, rate: 1.2 },
+  { x: -0.6, z: 3.6, color: 0xb48aff, rate: 1.5 },
 ];
 
 function makePawGame(world) {

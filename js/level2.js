@@ -422,7 +422,7 @@ export async function buildVh(scene) {
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
 
-  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
+  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 'vga', { x: 5.4, z: 0, angle: -Math.PI / 2 });
   if (stage >= 1) {
     sideDoor(world, 'e', halfW, halfD, 'vgb', { x: -5.4, z: 0, angle: Math.PI / 2 });

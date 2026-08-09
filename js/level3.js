@@ -616,7 +616,7 @@ export async function buildT1a(scene) {
               { x: 11, z: 9, r: 3.6, kind: 'grass' }],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
+  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 't1b', { x: 0, z: 10, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'tgl', { x: -10, z: 9, angle: Math.PI / 2 });
   if (logDown) sideDoor(world, 'w', halfW, halfD, 'tsA', { x: 10, z: 0, angle: -Math.PI / 2 });

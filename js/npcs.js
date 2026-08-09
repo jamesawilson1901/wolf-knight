@@ -22,11 +22,11 @@ import { WS } from './worldstate.js';
 // (z 3.6) both stood inside that band — measured, not guessed — so a kid
 // walking up to them saw a wall. Both pulled north into open ground.
 const VILLAGERS = [
-  { id: 'wren', file: './assets/chars/rogue_hooded.glb', x: -3.8, z: 2.4, ry: 0.7,
+  { id: 'wren', file: './assets/chars/rogue_hooded.glb', x: -6.4, z: 1.8, ry: 0.7,
     when: () => true },
-  { id: 'rook', file: './assets/chars/ranger.glb', x: 5.3, z: -1.4, ry: -2.2,
+  { id: 'rook', file: './assets/chars/ranger.glb', x: 8.0, z: -1.8, ry: -2.2,
     when: () => WS.get('ember', 'restored') },
-  { id: 'bram', file: './assets/chars/barbarian.glb', x: 3.9, z: 2.4, ry: -2.7,
+  { id: 'bram', file: './assets/chars/barbarian.glb', x: 2.6, z: 3.6, ry: -2.7,
     when: () => WS.get('stone', 'restored') },
 ];
 
@@ -34,8 +34,11 @@ const FACE_RANGE = 3.2;   // u — a villager turns to greet Kael inside this
 const FACE_TURN = 5;      // rad/s of the greeting turn
 
 // Biscuit's rounds: sniff-stops between these spots (clear of all furniture)
+// Biscuit's rounds. Spread across the rebuilt Den (24 x 18) rather than the
+// five units of it that used to exist — a dog that patrols a two-metre square
+// is not patrolling, it is pacing.
 const DOG_STOPS = [
-  [1.9, 2.3], [-1.6, 0.5], [0.8, -1.8], [-3.0, 0.2], [2.6, 0.6],
+  [2.6, 2.8], [-2.4, 0.2], [1.2, -3.4], [-5.2, -1.6], [4.4, 0.4], [-1.0, 4.2],
 ];
 
 export async function spawnDenNpcs(world) {

@@ -9,6 +9,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
 import { flattenStatic } from './batch.js';
+import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
 import { setRoomSeed } from './ground.js';
 import { spawnEnemies } from './enemies.js';
@@ -488,7 +489,7 @@ async function buildR1(scene) {
   // Exit door → R2 south-west entrance
   world.addDoor(4.8, 7.2, -6.9, -5.85, 'r2', { x: -8, z: 4.4, angle: 0 });
   // Cozy stairs down to the Den
-  world.addDoor(0.8, 3.2, 5.85, 6.9, 'den', { x: 0, z: -3.2, angle: 0 });
+  world.addDoor(0.8, 3.2, 5.85, 6.9, 'den', { x: 0, z: 7.4, angle: Math.PI });
   // east burrow into the Ash Warrens
   world.addDoor(7.9, 8.9, -2.2, 0.2, 'r1b', { x: -4.8, z: 0, angle: Math.PI / 2 });
   // Shortcut door (opens after the boss) → back from R1 to nothing; the
@@ -662,9 +663,45 @@ async function buildR1b(scene) {
 // The one place with living green grass; corruption never reached it.
 // ---------------------------------------------------------------------------
 
+// The Den's palette, in the same shape every district uses so it can hand
+// itself straight to the ground painter and the dressing helpers. Warmer and
+// greener than anywhere else in the game on purpose: this is the one place that
+// is not ruined, buried or rotting.
+const DEN_DISTRICT = {
+  tint: 0x8fc06a, floorTint: 0x62894a, wallTint: 0x3f4a30, propTint: 0x8a7048,
+  ground: 'den', name: 'THE MOONLIT DEN',
+};
+
 async function buildDen(scene) {
   const world = new World(scene);
-  const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, mageGltf, generalAnims] =
+  // ONE MATERIAL PER COLOUR, not one per prop.
+  //
+  // The Den tints its props by cloning the material on every mesh, which was
+  // fine when there were nine of them. Rebuilt at 24 x 18 with a village in it,
+  // every crate, stump, torch and bush arrived with a material of its own, so
+  // flattenStatic could not bucket any of them and the room came out at 170
+  // draw calls against a ceiling of 125.
+  //
+  // Keyed on the source material plus the tint, exactly as tintedModel does, so
+  // forty props that share a colour share one material and merge into one draw.
+  const denMats = new Map();
+  const denTint = (root, colours) => {
+    root.traverse((n) => {
+      if (!n.isMesh) return;
+      const want = colours[n.material.name];
+      if (want === undefined) return;
+      const key = `${n.material.uuid}|${want}`;
+      if (!denMats.has(key)) {
+        const m = n.material.clone();
+        m.color.setHex(want);
+        denMats.set(key, m);
+      }
+      n.material = denMats.get(key);
+    });
+    return root;
+  };
+  const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, mageGltf, generalAnims,
+    barrelGltf, crateGltf, torchGltf] =
     await Promise.all([
       loadGLB('./assets/env/den-survival/tent.glb'),
       loadGLB('./assets/env/den-town/cart.glb'),
@@ -674,111 +711,183 @@ async function buildDen(scene) {
       loadGLB('./assets/env/flower-b.glb'),
       loadGLB('./assets/chars/mage.glb'),
       loadGLB('./assets/anims/rig-medium-general.glb'),
+      // the things that make a camp look INHABITED rather than merely placed:
+      // stores that were carried here, light someone hung up, a flag someone
+      // chose to fly. All already vendored and licence-cleared 🟢.
+      loadGLB('./assets/env/dungeon/Barrel.glb'),
+      loadGLB('./assets/env/dungeon/Crate.glb'),
+      loadGLB('./assets/env/dungeon/Torch.glb'),
     ]);
 
-  // green shell: fresh grass + mossy walls
-  const halfW = 7, halfD = 5;
-  const floorPlacements = [];
-  for (let tx = 0; tx < 14; tx++) {
-    for (let tz = 0; tz < 10; tz++) {
-      floorPlacements.push({ x: tx - halfW + 0.5, z: tz - halfD + 0.5, ry: ((tx * 7 + tz * 13) % 4) * Math.PI / 2 });
-    }
-  }
-  world.add(instancePlacements(kit.floor.scene, floorPlacements, {
-    castShadow: false, materialTints: { grass: 0x5da05a },
-  }));
+  // THE DEN IS A PLACE PEOPLE LIVE, AND IT WAS THE SIZE OF A CORRIDOR.
+  //
+  // Dad: "there's no textures, it's physically tiny… the den needs to feel more
+  // lived in." All three are the same root cause — it was hand-built before the
+  // metrics existed and never revisited. It measured 14 x 10, which is the
+  // CHOKE module: the smallest space in the game, used for the compression
+  // beats between islands. The camera shows 22.2u across, so the entire home
+  // base fitted on one screen with room to spare, and every villager, tent,
+  // shrine and minigame was crammed into ten units of depth.
+  //
+  // 24 x 18 — three times the area. Deliberately NOT island-sized (32 x 26):
+  // home should feel gathered, and a hub you have to cross twice to reach the
+  // shop is a chore rather than a comfort. Between a pocket and an island is
+  // where a village belongs.
+  const halfW = 12, halfD = 9;
+
+  // ...and it had no painted ground, because it predates js/ground.js: one
+  // instanced tile under a flat green tint, which is exactly what dad
+  // described as "no textures". It gets the same treatment as every other room
+  // now — grass, with the earth worn through where a camp actually wears it.
+  // A BIGGER APRON THAN THE THREE UNITS dressShell uses. The Den spawns you
+  // 2.4u from its north wall, and from a camera eight units up at 50 degrees
+  // you look straight over a two-unit wall and out into the void — which is
+  // exactly what the first pass showed as a black band across the top of the
+  // frame. The apron is one draw call whatever size it is, so it simply gets
+  // big enough to fill what the camera can see past the wall.
+  ground(world, halfW * 2 + 16, halfD * 2 + 16, DEN_DISTRICT, {
+    seed: 'den',
+    patches: [
+      // trodden earth, kept SMALL and soft. The first pass used r 3.2-4.2 at
+      // full strength and the yard read as three brown blobs dropped on a lawn
+      // rather than as grass worn through by feet.
+      { x: 0, z: -1, r: 2.8, kind: 'mud', alpha: 0.34 },    // the yard round the fire
+      { x: 7.2, z: -4.4, r: 2.4, kind: 'mud', alpha: 0.30 },// where the cart turns
+      { x: -7.8, z: -2.5, r: 2.6, kind: 'mud', alpha: 0.30 },// the tent mouths
+      { x: 6.2, z: 1.4, r: 2.6, kind: 'gravel' },     // Rook's training patch
+      { x: -9.5, z: 6.5, r: 3.4, kind: 'moss', alpha: 0.42 },  // the damp corner
+      { x: 9.0, z: 7.0, r: 3.0, kind: 'moss', alpha: 0.42 },
+      { x: 0, z: 7.5, r: 2.8, kind: 'gravel' },       // the step up to the gate
+    ],
+    // the tracks a household actually makes: gate to fire, then fire to the
+    // beds, the market and the meadow
+    paths: [
+      [[0, 9], [0, 4], [0, -1]],                      // gate to fire
+      [[0, -1], [-4, -2], [-7.5, -3.5]],              // fire to the beds
+      [[0, -1], [4, -2.5], [7, -4.2]],                // fire to the market
+      [[0, -1], [1, 3], [1, 6]],                      // fire to the meadow
+    ],
+    pathWidth: 2.6,
+  });
+
   const wallPlacements = [];
-  const addWall = (tx, tz, side, coord) => {
-    if (side === 'n' && coord > -1.3 && coord < 1.3) return; // stairs up to R1
+  const addWall = (x, z) => {
     wallPlacements.push({
-      x: tx - halfW + 0.5, z: tz - halfD + 0.5,
-      ry: (Math.abs(tx * 11 + tz * 5) % 4) * Math.PI / 2,
-      sy: 1.7 + (Math.abs(tx * 31 + tz * 17) % 3) * 0.15,
+      x, z,
+      ry: (Math.abs(Math.round(x) * 11 + Math.round(z) * 5) % 4) * Math.PI / 2,
+      sy: 1.7 + (Math.abs(Math.round(x) * 31 + Math.round(z) * 17) % 3) * 0.15,
     });
   };
-  for (let tx = -1; tx <= 14; tx++) { addWall(tx, -1, 'n', tx - halfW + 0.5); addWall(tx, 10, 's', tx - halfW + 0.5); }
-  for (let tz = 0; tz < 10; tz++) { addWall(-1, tz, 'w', 0); addWall(14, tz, 'e', 0); }
+  // THE GATE IS ON THE SOUTH WALL, and that is a camera decision rather than a
+  // geographic one. CAM_OFFSET sits at +7z and looks toward -z, so the frame
+  // always shows 4.5u behind you and 12.9u NORTHWARD. With the gate on the
+  // north wall — where the Den had it, because la lies north — you arrived home
+  // at z = -8 and the entire camp, every tent, villager and shrine, sat behind
+  // the camera. The first pass of this rebuild rendered a fence and a lawn.
+  //
+  // Gate south, camp north: you come home and the whole place lies in front of
+  // you. Walking back out means walking toward the camera, which is what every
+  // other room in the game already does with its return door.
+  for (let x = -halfW - 0.5; x <= halfW + 0.5; x += 1) {
+    addWall(x, -halfD - 0.5);
+    if (!(x > -1.8 && x < 1.8)) addWall(x, halfD + 0.5);   // the gap is the stair to la
+  }
+  for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
+    addWall(-halfW - 0.5, z); addWall(halfW + 0.5, z);
+  }
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
-    materialTints: { grass: 0x5da05a, dirt: 0x6a5a48 },
+    materialTints: { grass: 0x4d6a3c, dirt: 0x5a4a34 },
   }));
-  world.addBox(-8, -1.4, -6, -5); world.addBox(1.4, 8, -6, -5); // north wall w/ gap
-  world.addBox(-8, 8, 5, 6);
-  world.addBox(-8, -7, -6, 6); world.addBox(7, 8, -6, 6);
-  world.spawn = { x: 0, z: -3.2, angle: 0 };
-  world.addDoor(-1.3, 1.3, -5.9, -4.85, 'la', { x: 0, z: 9, angle: Math.PI });
-  doorway(world, 0, -4.4, 'x');
+  world.addBox(-halfW - 1, halfW + 1, -halfD - 1, -halfD);
+  world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
+  world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
+  world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
+  world.addBox(halfW, halfW + 1, -halfD - 1, halfD + 1);
+  world.spawn = { x: 0, z: 7.4, angle: Math.PI };
+  world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
+  doorway(world, 0, halfD - 0.6, 'x');
 
   // warm heart campfire + tents + trees + flowers
-  checkpoint(world, 'cp_den', 0, 0.4);
+  checkpoint(world, 'cp_den', 0, -1.0);
   for (const [gltf, x, z, s, ry] of [
-    [tentGltf, -4.8, -2.6, 1.5, 0.6], [tentGltf, -5.2, 1.8, 1.4, 2.2],
-    [treeA, 5.6, -3.6, 1.6, 0.4], [treeB, -2.8, 3.9, 1.5, 2.0], [treeA, 5.9, 3.4, 1.4, 3.4],
+    // WEST — where people sleep. Two tents facing the fire, mouths onto the
+    // worn patch the ground painter puts there.
+    [tentGltf, -7.5, -4.6, 1.6, 0.6], [tentGltf, -8.6, 0.4, 1.5, 2.2],
+    // the trees that make the glade a glade, pushed out to the corners so the
+    // middle stays the plaza
+    [treeA, 9.8, -6.4, 1.7, 0.4], [treeB, -4.8, 7.6, 1.6, 2.0],
+    [treeA, 10.4, 4.4, 1.5, 3.4], [treeB, -10.6, -5.8, 1.6, 1.1],
+    [treeA, 3.2, 8.2, 1.4, 2.7], [treeB, -11.0, 3.4, 1.5, 0.2],
   ]) {
     const m = prepareModel(gltf.scene.clone());
     m.position.set(x, 0, z);
     m.rotation.y = ry;
     m.scale.setScalar(s);
-    // the Den keeps NATURAL colors — clone materials out of the volcanic cache
-    m.traverse((n) => {
-      if (!n.isMesh) return;
-      n.material = n.material.clone();
-      if (n.material.name === 'grass') n.material.color.setHex(0x4e9a4a);
-      if (n.material.name === 'dirt') n.material.color.setHex(0x8a6a48);
-      if (n.material.name === 'foliage') n.material.color.setHex(0x4e9a4a);
-    });
+    // the Den keeps NATURAL colours — out of the volcanic cache, into a shared
+    // den palette that still merges (see denTint)
+    denTint(m, { grass: 0x4e9a4a, dirt: 0x8a6a48, foliage: 0x4e9a4a });
     world.add(m);
     world.addCircle(x, z, 0.6);
   }
-  for (const [x, z] of [[-2.2, -1.6], [1.8, 1.8], [3.4, -1.2], [-3.6, 1.2], [4.6, 1.6]]) {
-    const f = prepareModel(((x + z) % 2 === 0 ? flowerA : flowerB).scene.clone(), { castShadow: false });
-    f.position.set(x, 0, z);
-    f.scale.setScalar(1.3);
-    f.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); } });
-    world.add(f);
+  // FLOWERS, INSTANCED. Eighteen individually-placed flowers were eighteen
+  // objects the batcher could not touch (each needed its own material to escape
+  // the volcanic tint cache). One InstancedMesh per kind is one draw call for
+  // all of them, however many there are.
+  const flowerSpots = [
+    [-2.6, -2.2], [2.4, 2.6], [4.8, -1.6], [-5.0, 1.8], [6.4, 5.2],
+    // A KITCHEN GARDEN, in rows. Rows are the tell: scattered flowers are
+    // scenery, but a line of them is somebody's work.
+    [-9.4, 2.6], [-8.6, 2.6], [-7.8, 2.6], [-9.4, 3.4], [-8.6, 3.4], [-7.8, 3.4],
+    [-2.0, 6.8], [-0.6, 7.2], [1.0, 6.6], [8.2, 1.2], [-6.0, -6.4], [4.0, -6.8],
+  ];
+  for (const [gltf, pick] of [[flowerA, 0], [flowerB, 1]]) {
+    const pts = flowerSpots.filter((_, i) => i % 2 === pick)
+      .map(([x, z]) => ({ x, z, ry: (x + z) * 0.9, sx: 1.3, sy: 1.3, sz: 1.3 }));
+    if (pts.length) world.add(instancePlacements(gltf.scene, pts, { castShadow: false }));
   }
 
   // The shopkeeper: a friendly mage by her cart
   const cart = prepareModel(cartGltf.scene.clone());
-  cart.position.set(4.2, 0, -3.0);
+  cart.position.set(7.2, 0, -4.6);
   cart.rotation.y = -0.5;
   cart.scale.setScalar(1.1);
   world.add(cart);
-  world.addCircle(4.2, -3.0, 0.7);
+  world.addCircle(7.2, -4.6, 0.7);
   const mage = prepareCharacter(SkeletonUtils.clone(mageGltf.scene));
   mage.scale.setScalar(0.5);
-  mage.position.set(3.2, 0, -2.2);
+  mage.position.set(5.9, 0, -3.7);
   mage.rotation.y = 2.6;
   world.add(mage);
   const mixer = new THREE.AnimationMixer(mage);
   const idle = generalAnims.animations.find((c) => c.name === 'Idle_A');
   if (idle) mixer.clipAction(idle).play();
   world.onAnimate((t, dt) => mixer.update(dt));
-  world.markers.shopSpot = { x: 3.2, z: -2.2 };
+  world.markers.shopSpot = { x: 5.9, z: -3.7 };
 
   // DEN ARRIVAL: Petra's stone-heart hums beside the moonstone once
   // Stoneroot is healed — the second spirit home.
   if (WS.get('stone', 'restored')) {
     const base = prepareModel(kit.rockSB.scene.clone());
-    base.position.set(-2.9, 0, -2.3);
+    base.position.set(-3.4, 0, -4.8);
     base.scale.setScalar(1.2);
     world.add(base);
-    world.addCircle(-2.9, -2.3, 0.4);
+    world.addCircle(-3.4, -4.8, 0.4);
     const heart = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.18, 1),
       new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd8b06a, emissiveIntensity: 2.8, roughness: 1 })
     );
-    heart.position.set(-2.9, 0.85, -2.3);
+    heart.position.set(-3.4, 0.85, -4.8);
     world.add(heart);
     world.keepLoose(heart);     // it bobs and turns (onAnimate below)
     const hGlow = new THREE.PointLight(0xd8b06a, 4, 7, 1.9);
-    hGlow.position.set(-2.9, 1.0, -2.3);
+    hGlow.position.set(-3.4, 1.0, -4.8);
     world.add(hGlow);
     world.onAnimate((t) => {
       heart.position.y = 0.85 + Math.sin(t * 1.4 + 2.1) * 0.06;
       heart.rotation.y = t * 0.6;
       hGlow.intensity = 3.6 + Math.sin(t * 2.0 + 1.0) * 0.5;
     });
-    world.markers.petraHome = { x: -2.9, z: -2.3 };
+    world.markers.petraHome = { x: -3.4, z: -4.8 };
   }
 
   // DEN ARRIVAL (WORLD-DESIGN §3): Cinder's ember settles by the campfire
@@ -788,76 +897,125 @@ async function buildDen(scene) {
       new THREE.IcosahedronGeometry(0.2, 1),
       new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 3.0, roughness: 1 })
     );
-    homeEmber.position.set(1.4, 0.9, -0.9);
+    homeEmber.position.set(2.2, 0.9, -2.4);
     world.add(homeEmber);
     world.keepLoose(homeEmber); // it floats (onAnimate below)
     const homeGlow = new THREE.PointLight(0xffc27a, 5, 8, 1.9);
-    homeGlow.position.set(1.4, 1.1, -0.9);
+    homeGlow.position.set(2.2, 1.1, -2.4);
     world.add(homeGlow);
     world.onAnimate((t) => {
       homeEmber.position.y = 0.9 + Math.sin(t * 1.6 + 0.8) * 0.07;
       homeGlow.intensity = 4.4 + Math.sin(t * 2.3) * 0.7;
     });
-    world.markers.cinderHome = { x: 1.4, z: -0.9 };
+    world.markers.cinderHome = { x: 2.2, z: -2.4 };
   }
 
   // Luna's moonstone — the fast-travel waystone. Glows once there is
   // somewhere to travel (a second region freed).
   {
     const base = prepareModel(kit.rockSA.scene.clone());
-    base.position.set(-4.6, 0, -3.4);
+    base.position.set(-5.4, 0, -7.0);
     base.scale.setScalar(1.6);
-    base.traverse((n) => {
-      if (!n.isMesh) return;
-      n.material = n.material.clone();
-      n.material.color.setHex(0x8d93a8);
-    });
+    denTint(base, { grass: 0x8d93a8, dirt: 0x8d93a8, colormap: 0x8d93a8 });
     world.add(base);
-    world.addCircle(-4.6, -3.4, 0.45);
+    world.addCircle(-5.4, -7.0, 0.45);
     const orb = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.22, 1),
       new THREE.MeshStandardMaterial({
         color: 0x000000, emissive: 0xa8bcff, emissiveIntensity: 2.2, roughness: 1,
       })
     );
-    orb.position.set(-4.6, 1.0, -3.4);
+    orb.position.set(-5.4, 1.0, -7.0);
     world.add(orb);
     world.keepLoose(orb);       // it bobs and turns (onAnimate below)
     const moonGlow = new THREE.PointLight(0xa8bcff, 4, 7, 1.9);
-    moonGlow.position.set(-4.6, 1.3, -3.4);
+    moonGlow.position.set(-5.4, 1.3, -7.0);
     world.add(moonGlow);
     world.onAnimate((t) => {
       orb.position.y = 1.0 + Math.sin(t * 1.8) * 0.08;
       orb.rotation.y = t * 0.9;
       moonGlow.intensity = 3.4 + Math.sin(t * 2.7) * 0.9;
     });
-    world.markers.travelSpot = { x: -4.6, z: -3.4 };
+    world.markers.travelSpot = { x: -5.4, z: -7.0 };
   }
 
   // training barrels (no loot — just for practicing swings)
   world.markers.breakables = [
-    { x: -1.8, z: 2.8, kind: 'barrel', shards: 0 },
-    { x: -0.6, z: 3.4, kind: 'barrel', shards: 0 },
+    { x: 5.6, z: 1.2, kind: 'barrel', shards: 0 },
+    { x: 6.9, z: 1.8, kind: 'barrel', shards: 0 },
+    { x: 6.2, z: 0.0, kind: 'crate', shards: 0 },
   ];
 
   // Terranigma rule, home edition: the Den grows as regions are freed.
   // Stoneroot freed → the caverns' glowing mushrooms take root in the glade
   // and a third tent stands for new friends.
-  await mushroomPatches(world, [[-6.2, 3.8], [5.2, -0.8, 1.3], [-1.4, -2.4]]);
+  await mushroomPatches(world, [[-9.8, 6.6], [9.0, 6.8, 1.3], [-2.6, -5.4]]);
   if (state.flags.wardenDefeated) {
     const t3 = prepareModel(tentGltf.scene.clone());
-    t3.position.set(4.9, 0, 2.9);
+    t3.position.set(-6.8, 0, 4.4);
     t3.rotation.y = -2.4;
     t3.scale.setScalar(1.4);
-    t3.traverse((n) => {
-      if (!n.isMesh) return;
-      n.material = n.material.clone();
-      if (n.material.name === 'grass') n.material.color.setHex(0x4e9a4a);
-      if (n.material.name === 'dirt') n.material.color.setHex(0x8a6a48);
-    });
+    denTint(t3, { grass: 0x4e9a4a, dirt: 0x8a6a48 });
     world.add(t3);
-    world.addCircle(4.9, 2.9, 0.6);
+    world.addCircle(-6.8, 4.4, 0.6);
   }
+
+  // --- WHAT MAKES IT LOOK LIVED IN ----------------------------------------
+  //
+  // Tents and trees say a camp EXISTS. These say somebody is still doing things
+  // in it: seats round the fire that face the fire, wood cut and stacked ready,
+  // stores carried in and not yet unpacked, light hung where people walk after
+  // dark, and a flag somebody chose to fly. Small things, all of them, and no
+  // colliders on the small ones so a five-year-old running at the screen never
+  // snags on the furniture.
+  // THE SMALL REPEATED THINGS ARE INSTANCED, one draw call per kind however
+  // many there are. Placed one at a time they were the single biggest cost in
+  // the room: forty-odd objects, each needing its own tinted material to escape
+  // the volcanic cache, none of which the batcher could bucket. The Den already
+  // carries more characters than any other room and skinned meshes never merge,
+  // so its furniture has to be cheap.
+  const instAt = (gltf, pts, tints, castShadow = false) => {
+    if (!pts.length) return;
+    world.add(instancePlacements(gltf.scene, pts.map(([x, z, sc, ry]) => ({
+      x, z, ry: ry !== undefined ? ry : (x + z) * 0.7,
+      sx: sc, sy: sc, sz: sc,
+    })), { castShadow, materialTints: tints }));
+    for (const [x, z, sc] of pts) if (sc >= 0.8) world.addCircle(x, z, 0.42 * sc);
+  };
+
+  // SEATS ROUND THE FIRE, facing it. Four stumps at the points of the compass
+  // is the clearest possible statement that people sit here together.
+  instAt(kit.stump, [
+    [-2.3, 0.2, 0.85], [2.3, 0.2, 0.85], [-1.7, -3.0, 0.85], [1.9, -3.2, 0.85],
+    [2.6, -6.5, 1.0],                                   // and the one by the woodpile
+  ], { grass: 0x6a5238, dirt: 0x6a5238, colormap: 0x6a5238 });
+
+  // wood cut and stacked, ready for tonight
+  instAt(kit.logStack, [[3.4, -5.6, 1.15, 0.5], [4.1, -6.3, 1.0, -0.9]],
+    { grass: 0x7a5c3a, dirt: 0x7a5c3a, colormap: 0x7a5c3a }, true);
+
+  // stores carried in and not yet unpacked
+  instAt(crateGltf, [[9.4, -6.4, 1.0], [8.8, -5.7, 1.0], [-10.2, -3.2, 1.0]],
+    { Wood: 0x8a6a44, DarkWood: 0x6a4e30 });
+  instAt(barrelGltf, [[10.1, -5.6, 1.0], [-10.4, -2.2, 1.0]],
+    { Wood: 0x8a6a44, DarkWood: 0x6a4e30 });
+
+  // light somebody hung up, along the way people actually walk after dark
+  instAt(torchGltf, [[-1.9, 6.6, 1.15, 0], [1.9, 6.6, 1.15, 0], [-4.6, -1.2, 1.15, 0],
+    [4.8, -1.4, 1.15, 0], [0.6, -6.4, 1.15, 0]], null);
+
+  // bushes softening the wall line, so the glade has an edge rather than a box
+  instAt(kit.bush, [[-11.2, 0.6, 1.4], [11.3, -1.4, 1.3], [-7.2, 8.2, 1.4],
+    [11.2, 6.2, 1.3], [-11.4, -8.0, 1.3]],
+    { grass: 0x4e8a42, foliage: 0x4e8a42, dirt: 0x5a4632 });
+  instAt(kit.rockSA, [[-9.8, -7.4, 1.2], [9.6, 1.8, 1.1], [6.0, -8.0, 1.0]],
+    { grass: 0x7d8272, dirt: 0x6a6f60, colormap: 0x7d8272 });
+
+  // A FLAG OVER THE GATE was the obvious idea and it did not work: Banner_wall
+  // is modelled to hang on a vertical wall face, and laid at the gate mouth it
+  // rendered as a pale slab on the ground right where a child walks in. The two
+  // torches already flanking the gate say "this is the way home" perfectly well,
+  // and a prop that reads as a mistake is worse than no prop.
 
   // rescued pups live here, playing in the grass
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
@@ -869,7 +1027,7 @@ async function buildDen(scene) {
     const pupMixer = new THREE.AnimationMixer(pup);
     const clip = wolfGltf.animations.find((c) => c.name === (i % 2 ? 'Gallop' : 'Idle'));
     if (clip) pupMixer.clipAction(clip).play();
-    const cx = -3.6 + (i % 3) * 2.4, cz = 1.6 + Math.floor(i / 3) * 1.9, r = 0.9 + (i % 3) * 0.25;
+    const cx = -3.4 + (i % 3) * 3.0, cz = 3.0 + Math.floor(i / 3) * 2.2, r = 1.1 + (i % 3) * 0.3;
     world.onAnimate((t, dt) => {
       pupMixer.update(dt);
       const a = t * (0.5 + i * 0.2) + i * 2;
@@ -897,7 +1055,15 @@ async function buildDen(scene) {
   // checkpoint flame is a protected gameplay list, `world.npcs` is in the
   // protected keys, and the three animated props — Petra's heart, Cinder's
   // ember and the moonstone orb — are marked keepLoose where they are built.
-  flattenStatic(world);
+  // A HUB CARRIES MORE CHARACTERS THAN ANY OTHER ROOM — the shopkeeper, three
+  // villagers, Biscuit, and every pup the kids have rescued. Skinned meshes
+  // never merge and every one of them casts a shadow, so the Den pays a cost no
+  // other room does, and it pays it for exactly the thing that makes it home.
+  //
+  // So the STATIC furniture gives up its shadows instead. 2.4 culls the crates,
+  // stumps, torches and bushes while leaving the tents, trees and cart — the
+  // things whose shadows actually tell you they are solid.
+  flattenStatic(world, { shadowCullBelow: 2.4 });
 
   // soft daylight mood handled by main (den has no lava rumble)
   return world;

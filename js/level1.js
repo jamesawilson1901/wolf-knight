@@ -422,7 +422,7 @@ export async function buildLa(scene) {
     ],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -3.2, angle: 0 });
+  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'lg1', { x: 0, z: 3.2, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'la1', { x: -7, z: 0, angle: Math.PI / 2 });
 

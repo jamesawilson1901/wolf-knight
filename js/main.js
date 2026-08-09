@@ -548,7 +548,7 @@ function progressSnapshot() {
 function guideTarget() {
   const f = state.flags;
   switch (state.room) {
-    case 'den': return { x: 0, z: -5.4 };   // stairs up to the Hollow
+    case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
     case 'r1': return { x: 6, z: -6.3 };    // exit to the Causeway
     case 'r1b': return { x: 5.2, z: -5.0 }; // ledge drop home
     case 'r2': return f.keys.ember ? { x: 8.5, z: -6.2 } : { x: 10.2, z: 3.4 };
