@@ -220,18 +220,71 @@ export class Narration {
         if (/en-GB/i.test(v.lang)) n += 1;    // the kids' own accent
         return n;
       };
+      // The scored list, best first — this is what the Settings chooser walks.
+      // A ranked automatic pick is the right DEFAULT and cannot be the whole
+      // answer: which synthetic voice sounds tolerable is a matter of taste,
+      // the phones in this house do not offer the same set, and dad has now
+      // raised the voice twice. So the pick stays, and a child can overrule it
+      // by ear.
+      this._voices = [];
       const pick = () => {
         const vs = speechSynthesis.getVoices();
-        let best = null, bestScore = -1;
-        for (const v of vs) {
-          const n = score(v);
-          if (n > bestScore) { bestScore = n; best = v; }
-        }
-        this._voice = best || vs[0] || null;
+        this._voices = vs.filter((v) => score(v) >= 0)
+          .sort((a, b) => score(b) - score(a));
+        const saved = state.settings.voiceName
+          && this._voices.find((v) => v.name === state.settings.voiceName);
+        this._voice = saved || this._voices[0] || vs[0] || null;
       };
       pick();
       speechSynthesis.addEventListener('voiceschanged', pick);
     }
+  }
+
+  // --- the Settings voice chooser -----------------------------------------
+  // Names as the device reports them, best first. Empty if the device has no
+  // speech synthesis at all, in which case the chooser hides itself.
+  voiceNames() { return (this._voices || []).map((v) => v.name); }
+
+  currentVoiceName() { return this._voice ? this._voice.name : ''; }
+
+  // A short display label. Device voice names are things like
+  // "Microsoft Libby Online (Natural) - English (United Kingdom)", which is
+  // useless on a phone-width settings row and unreadable to a seven-year-old.
+  voiceLabel(name) {
+    const n = name || this.currentVoiceName();
+    if (!n) return 'none';
+    const m = n.match(/\b(Aria|Guy|Jenny|Libby|Ryan|Sonia|Siri|Samantha|Daniel|Karen|Moira|Tessa|Serena|Fiona|Alex|Google|Microsoft)\b/i);
+    return (m ? m[1] : n.split(/[\s(–-]/)[0]).slice(0, 12);
+  }
+
+  // Choose by name, remember it, and SAY something so the choice is made by
+  // ear rather than by reading a list of strings.
+  useVoice(name, { sample = true } = {}) {
+    const v = (this._voices || []).find((x) => x.name === name);
+    if (!v) return false;
+    this._voice = v;
+    state.settings.voiceName = name;
+    if (sample) this.sampleVoice();
+    return true;
+  }
+
+  // Step to the next voice on the device and speak the sample.
+  nextVoice() {
+    const names = this.voiceNames();
+    if (!names.length) return false;
+    const i = names.indexOf(this.currentVoiceName());
+    return this.useVoice(names[(i + 1) % names.length]);
+  }
+
+  sampleVoice() {
+    if (!('speechSynthesis' in window) || !this._voice) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance("Hello Kael! I'm Pip. Let's go!");
+    const meta = VOICES.pip;
+    u.rate = meta.rate * (state.settings.voiceRate || 1);
+    u.pitch = meta.pitch;
+    u.voice = this._voice;
+    speechSynthesis.speak(u);
   }
 
   // Speak line `id`. Story lines fire once per save; `repeat` lines always.

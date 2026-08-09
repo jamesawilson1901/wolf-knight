@@ -1738,6 +1738,36 @@ function wireSettings() {
     if (gentle.checked) { state.settings.brave = false; brave.checked = false; }
     persist();
   });
+  // --- the voice chooser ---------------------------------------------------
+  const vpick = document.getElementById('voice-pick');
+  const vrow = document.getElementById('voice-pick-row');
+  const vrate = document.getElementById('voice-rate');
+  const refreshVoiceBtn = () => {
+    const names = narration.voiceNames ? narration.voiceNames() : [];
+    vrow.style.display = names.length > 1 ? '' : 'none';
+    vpick.textContent = names.length ? narration.voiceLabel() + ' ▸' : '—';
+  };
+  vpick.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    narration.nextVoice();          // speaks a sample with the new voice
+    refreshVoiceBtn();
+    persist();
+  });
+  // the device usually reports its voices asynchronously, so the row is
+  // refreshed once they land rather than only at open
+  if ('speechSynthesis' in window) {
+    speechSynthesis.addEventListener('voiceschanged', refreshVoiceBtn);
+  }
+  refreshVoiceBtn();
+  vrate.value = state.settings.voiceRate || 1;
+  vrate.addEventListener('input', () => {
+    state.settings.voiceRate = +vrate.value;
+    persist();
+  });
+  // release rather than input: sampling on every step of the drag would stack
+  // a dozen utterances
+  vrate.addEventListener('change', () => { if (narration.sampleVoice) narration.sampleVoice(); });
+
   music.value = state.settings.musicVol;
   sfx.value = state.settings.sfxVol;
   captions.checked = state.settings.captions;

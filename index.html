@@ -212,6 +212,7 @@
     }
     #caption.show { pointer-events: auto; cursor: pointer; }
     #caption.show::after { content: '  ▸'; opacity: .6; }
+    #voice-pick { min-width: 128px; padding: 8px 12px; font-size: 15px; margin: 0; }
     .setting-row {
       display: flex; align-items: center; gap: 14px; color: #e8ddd0;
       font-size: 18px; font-weight: 600; min-width: 270px; justify-content: space-between;
@@ -568,6 +569,16 @@
     <div class="setting-row ui"><span>🦊 Pip talks</span><input type="checkbox" id="talk-toggle"></div>
     <div class="setting-row ui"><span>💬 Captions</span><input type="checkbox" id="captions-toggle"></div>
     <div class="setting-row ui"><span>🗣️ Voice</span><input type="checkbox" id="voice-toggle"></div>
+    <!-- CHOOSE THE VOICE BY EAR. A dropdown of device voice names is unreadable
+         to a seven-year-old (they are strings like "Microsoft Libby Online
+         (Natural) - English (United Kingdom)"), so this is one big button that
+         steps to the next voice and immediately SPEAKS with it. Hidden when the
+         device has no speech synthesis. -->
+    <div class="setting-row ui" id="voice-pick-row">
+      <span>🔊 Which voice?</span>
+      <div class="menu-btn secondary ui" id="voice-pick">Pip ▸</div>
+    </div>
+    <div class="setting-row ui"><span>🐢 Talk speed</span><input type="range" id="voice-rate" min="0.6" max="1.2" step="0.05"></div>
     <div class="setting-row ui"><span>🌸 Gentle mode</span><input type="checkbox" id="gentle-toggle"></div>
     <div class="setting-row ui"><span>🦁 Brave mode</span><input type="checkbox" id="brave-toggle"></div>
     <div class="menu-btn secondary ui" id="map-btn">🗺️ Map</div>
