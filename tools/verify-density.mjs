@@ -55,6 +55,8 @@ await page.evaluate(() => {
   // regions five and six only exist once their doors are open
   g.state.flags.borealDefeated = true;
   g.state.flags.ariaDefeated = true;
+  g.state.flags.meriDefeated = true;
+  for (const r of ['ember', 'thorn', 'tide', 'moon']) g.WS.set('court', 'relic_' + r);
   g.state.formsUnlocked = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'];
   g.player.iframes = 999999;
   g.WS.set('wild3', 'rootCut', true); g.WS.set('wild3', 'logDown', true);
@@ -124,6 +126,16 @@ const ROOMS = [
   { id: 'dtp', kind: 'puzzle' }, { id: 'dg3', kind: 'choke' },  { id: 'd4a', kind: 'island' },
   { id: 'd4b', kind: 'island' }, { id: 'd4p', kind: 'pocket' }, { id: 'dg4', kind: 'choke' },
   { id: 'dlg', kind: 'arena' },  { id: 'ddp', kind: 'arena' },
+  // The Shadow Court. A WING is measured as an island (26x20 against 32x26 —
+  // close enough that a softer bar would just be a discount), the throne stair
+  // as a choke, and the throne itself as an arena.
+  { id: 'x1',  kind: 'island' }, { id: 'xsh', kind: 'pocket' }, { id: 'xh',  kind: 'island' },
+  { id: 'xa1', kind: 'island' }, { id: 'xa2', kind: 'pocket' }, { id: 'xa3', kind: 'island' },
+  { id: 'xr1', kind: 'island' }, { id: 'xr2', kind: 'pocket' }, { id: 'xr3', kind: 'island' },
+  { id: 'xg1', kind: 'island' }, { id: 'xg2', kind: 'pocket' }, { id: 'xg3', kind: 'island' },
+  { id: 'xm1', kind: 'island' }, { id: 'xm2', kind: 'puzzle' }, { id: 'xm3', kind: 'island' },
+  { id: 'xp1', kind: 'pocket' }, { id: 'xp2', kind: 'pocket' },
+  { id: 'xst', kind: 'choke' },  { id: 'xth', kind: 'arena' },
 ];
 // THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
 // that wrong. It shipped with an island minimum of 12 while the dressed islands
