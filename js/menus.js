@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, SHOP_STOCK, SHOP_TIERS, shopOpen, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -118,6 +118,18 @@ export class Menus {
     for (const s of SHOP_STOCK) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
+      // A rung whose region is still lost reads as a PROMISE — the same
+      // vocabulary the ability gates use. It is visible, named, and says who
+      // brings it, so the shelf is a ladder rather than a wall.
+      if (!shopOpen(s)) {
+        const p = document.createElement('div');
+        p.className = 'item-card ui cant locked';
+        p.innerHTML = `<div class="ic">🔒</div><div class="nm">${def.name}</div>
+          <div>Maren brings this when ${SHOP_TIERS[s.after]} is free.</div>
+          <div class="price">🔸 ${s.price}</div>`;
+        grid.appendChild(p);
+        continue;
+      }
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');

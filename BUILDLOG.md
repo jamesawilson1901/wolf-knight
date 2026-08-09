@@ -2954,3 +2954,104 @@ LOD would add a system, an authoring step and pop-in to solve a measured
 non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
+
+## v3.42.0 — Maren's shelf grows (queue Q2) (2026-08-09)
+
+Every row in FIX-PLAN's status table is closed, so this run took the first
+unfinished entry from BUILDLOG's newest QUEUED NEXT list that is not a balance
+call. The list's first entry — the economy/XP pass — IS a balance call, so it
+was skipped rather than guessed at; it needs the kids, not a measurement. The
+second is "Maren tier-2 stock after Stoneroot", queued in v2.2.6 and never
+built.
+
+### What was actually on the shelf
+
+Measured, on a fresh profile, the first time a child walks into the Den:
+
+    8 rungs buyable, 0 promised, top rung 300 shards
+
+All of it. The Boulder Hammer at 300 and the Moon Sword at 200 sat beside the
+70-shard Round Guard before the child had beaten anything. GAME-CONTRACT binds a
+"shop ladder per region tier ~60/90/150/250/400 — a kid who explores buys one
+big thing per region", and the region shipping checklist ships a shop tier per
+region, so the ladder was law that only ever existed in the prices. A five-year-
+old with 40 shards saw seven things they could not have and no reason why; one
+who saved through two regions could skip the middle of the ladder entirely.
+
+`SHOP_STOCK` entries now carry an `after` — the WorldState region flag that
+opens the rung — and `shopOpen()` reads it. Measured after:
+
+    start              3 buyable,  5 promised, top rung  80
+    after Ember        4 buyable,  4 promised, top rung  90
+    after Stoneroot    6 buyable,  2 promised, top rung 180
+    after Wild Woods   7 buyable,  1 promised, top rung 200
+    after Frostpeak    8 buyable,  0 promised, top rung 300
+
+Against the contract's 60/90/150/250/400 that is the right shape with the two
+top rungs cheap. **Prices are untouched** — moving them is the economy pass
+above, and this run had no mandate to guess at it.
+
+### A locked rung is shown, not hidden
+
+The obvious implementation drops unopened stock from the list. That would take
+things a child has already browsed off the shelf between one visit and the next,
+which reads as a bug, and it throws away the best thing about a ladder: seeing
+the next rung. So an unopened rung renders as a PROMISE — the same vocabulary
+the ability gates use — dimmed, named, priced, with the region that brings it:
+"Maren brings this when Stoneroot Caverns is free." It carries no handler at
+all, so tapping it cannot buy anything, which is asserted rather than assumed.
+
+Old saves need nothing: `WS.get` reads a missing flag as false, and gear a child
+already owns has always been skipped by the "sold" check, so a profile that
+bought the hammer yesterday still has the hammer.
+
+### The rung each region opens
+
+The one its own shards can nearly buy, and where the fiction allows, the one it
+earns: the Ember Blade (fire) is forged in the Hollow and is exactly what the
+BONE of Stoneroot fears next; the Tower Shield is the Bone Warden's own answer;
+the Long Spear reaches past the caverns' spike gauntlets. The Boulder Hammer's
+name points at Stoneroot but its 300-shard price puts it at the top of the
+ladder, and the contract binds the price, not the name. One line each to move —
+AWAITING dad's call.
+
+### Verification
+
+`tools/verify-shop.mjs` is new; nothing in tools/ measured the shop at all, so
+it was written and run BEFORE the fix, where it failed 8 assertions describing
+exactly the flat shelf above. It drives the real path — walk to Maren, let the
+proximity trigger open the menu — and reads the real rendered cards, because the
+defect is a rung appearing on screen at the wrong time, not a wrong value in a
+table. `verify-boot`, `verify-density` and `verify-den` all still PASS.
+
+Two harness lessons, both of which produced a confident wrong reading first:
+
+- **The card's handler captures `afford` at render time.** A fresh profile has 0
+  shards, so on the first run every card was inert and the purchase assertions
+  failed against healthy code. Shards are now set before the shop is ever
+  opened: this suite is about which rungs EXIST, and affordability must not be
+  what hides one.
+- **The menu pauses the world.** `menus._open` calls `onPauseGame`, so the
+  proximity trigger cannot fire again until the shop is dismissed through its
+  own "✓ Done" button. Hiding the panel by hand left the game paused, and every
+  later stage silently re-read the first render's cards — four "no change"
+  results that looked like a real finding.
+
+### AWAITING dad's call
+
+- **The tier mapping** above, and the Boulder Hammer's region in particular.
+- **Prices unchanged.** The contract's 60/90/150/250/400 and the built
+  80/90/180/200/300 differ most at the two ends. That is the skipped Q1 balance
+  pass, and it wants a playtest.
+- **This run pushed to the session's designated branch, not `overnight`.** The
+  container provisioned `claude/ecstatic-hawking-lt07ww` (cut from main) and its
+  rules forbid pushing anywhere else. The standing rule that matters — never
+  push to main, main is the game the kids play — is kept either way.
+
+### Noticed, not touched (out of scope for one item)
+
+`js/regions.js` still has `sunkenvale: { built: false }` with no rooms, beats or
+gates, though Level 6 shipped twenty rooms and the Tide Wolf; and `GRANTED_IN`
+declares `storm_wolf: 'stormreach'` twice (identical value, so it is a typo
+rather than a bug). Levels 5 and 6 also went in with no BUILDLOG entry at all.
+Recorded for whoever opens the next doc-truth pass.

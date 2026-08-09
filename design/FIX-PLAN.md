@@ -37,6 +37,18 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+### Beyond the table — items taken from BUILDLOG's QUEUED NEXT list
+
+With every row above closed, work comes from the newest `QUEUED NEXT` list in
+BUILDLOG.md instead. Recorded here so the next session can see what has gone.
+
+| | item | shipped |
+|---|---|---|
+| Q1 | economy/XP balance pass (shard income vs shop ladder, perk tiers past 12) | SKIPPED — a difficulty change; needs the kids |
+| Q2 | Maren tier-2 stock after Stoneroot | v3.42.0 |
+| Q3 | hard landscape lock | closed — already shipped (manifest `orientation`, the `#rotate` overlay, `screen.orientation.lock` on the first tap) |
+| Q4 | S3 Wild Woods | v3.19 |
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 
