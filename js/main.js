@@ -970,10 +970,39 @@ function narrationTriggers(dt, t) {
 }
 
 function updateMusic() {
+  // BOSS MUSIC, FROM THE ONE LIST THAT KNOWS WHICH ROOMS ARE BOSS ROOMS.
+  //
+  // This used to name r3, w5 and f5 — and r3 and w5 are RETIRED. The rooms the
+  // kids actually fight in are le, vz and tgl, so the rebuilt Ember, Stoneroot
+  // and Wild Woods bosses have been fighting to region music this whole time,
+  // and the three new ones would have joined them. BOSS_ROOMS is the same set
+  // the doorway timing uses, so a new arena can never again be a boss room for
+  // one system and an ordinary room for the other.
   if (state.room === 'den') audio.playMusic('den');
-  else if ((state.room === 'r3' || state.room === 'w5' || state.room === 'f5') && world.boss && !world.boss.defeated) {
+  // ...and `world.warden` counts. The Bone Warden is the one boss that is not
+  // stored as world.boss — Stoneroot's arena has been playing region music
+  // through the whole fight because of it.
+  else if (BOSS_ROOMS.has(state.room)
+    && ((world.boss && !world.boss.defeated) || (world.warden && !world.warden.dead))) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
-  } else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
+  }
+  // REGIONS 5-7. Five distinct loops exist for seven regions, so reuse is
+  // forced — but it is arranged so no two ADJACENT regions share one, which is
+  // the only part a child can actually notice. Frostpeak has stone-deep, so
+  // Stormreach takes causeway; the Vale takes region-stone; the Court takes
+  // stone-deep again, four regions later. All three are placeholders and want
+  // their own track (polish list, same as the woods and the cold hush).
+  // THE REBUILT LEVELS WERE NEVER ROUTED. This whole chain keyed off the OLD
+  // room ids — e for Stoneroot, w for the Wild Woods — and the rebuilt levels
+  // use v and t. So the rebuilt Stoneroot and Wild Woods, which are the levels
+  // the kids actually play, have been falling through to Ember Hollow's loop
+  // since the day they were built. Nothing was ever checking.
+  else if (state.room[0] === 'v') audio.playMusic('region-stone');   // Stoneroot, rebuilt
+  else if (state.room[0] === 't') audio.playMusic('causeway');       // Wild Woods, rebuilt
+  else if (state.room[0] === 's') audio.playMusic('causeway');
+  else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('region-stone');
+  else if (state.room[0] === 'x') audio.playMusic('stone-deep');
+  else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
   else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
   else if (state.room[0] === 'k') audio.playMusic('kiln');
   else if (state.room === 'e3') audio.playMusic('stone-deep');
@@ -1223,7 +1252,10 @@ function handoffAt(door) {
 //
 // The rule a five-year-old ends up learning is: if the screen takes its time,
 // something is about to happen.
-const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'r3', 'w5', 'f5']);
+// Every arena in the game. Read by the doorway timing (a boss door takes the
+// full 300ms ceremony) AND by the music, so the two can never disagree about
+// what a boss room is.
+const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'r3', 'w5', 'f5', 'scr', 'ddp', 'xth']);
 function seamMs(from, to) {
   if (BOSS_ROOMS.has(to)) return 300;
   if (regionOf(from) !== regionOf(to)) return 260;

@@ -22,6 +22,10 @@ run verify-boot.mjs
 # "big but bare" reached a playtest — the suite could not fail a bare room
 # because nothing in it was measuring the room's contents.
 run verify-density.mjs
+# ...and the music, which nothing checked until v3.43 and which was hiding two
+# regions playing the wrong loop and four bosses fighting to region music. It is
+# the one thing a child experiences with their eyes shut.
+run verify-music.mjs
 for t in "$@"; do run "$t"; done
 echo
 echo "passed $PASS, failed $FAIL"
