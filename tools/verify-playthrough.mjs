@@ -117,6 +117,31 @@ await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
 await page.fill('#t-name', 'WALK');
 await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
+
+// A FRESH PAGE PER REGION.
+//
+// Walking all seven in one session, the first leg of Stormreach, the Vale and
+// the Court all failed with Kael standing motionless on his spawn — and each
+// walked clean on its own moments later. By the fifth region this page has
+// built a hundred-odd rooms and decoded every model in the game on a software
+// rasteriser, and it simply stops keeping up. That is the harness wearing out,
+// not the game, and a harness that cries blocker is worth nothing.
+//
+// Each region is an independent question — can a child walk this? — so each
+// gets a clean page to answer it in.
+const freshGame = async () => {
+  await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
+  await page.waitForSelector('#title', { state: 'visible', timeout: 30000 });
+  await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
+  await page.fill('#t-name', 'WALK');
+  await page.locator('#t-start').dispatchEvent('pointerdown');
+  await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.state.settings.captions = false; g.state.settings.voice = false;
+    g.state.settings.musicVol = 0; g.state.settings.greybox = false;
+  });
+};
 await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false;
@@ -268,8 +293,11 @@ const walkTo = async (to, opts) => {
   return { ok: true, room: await page.evaluate(() => window.__game.state.room), frames: ok.frames };
 };
 
+let first = true;
 for (const r of RUN) {
   console.log(`\n── ${r.label} ─────────────────────────────────`);
+  if (!first) await freshGame();
+  first = false;
   if (!(await enterRegion(r))) { check(`${r.label}: the first room builds`, false); continue; }
   let here = r.enter;
   for (const [next, opts] of r.legs) {
