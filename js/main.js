@@ -592,30 +592,6 @@ function guideTarget() {
   const f = state.flags;
   switch (state.room) {
     case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
-    case 'r1': return { x: 6, z: -6.3 };    // exit to the Causeway
-    case 'r1b': return { x: 5.2, z: -5.0 }; // ledge drop home
-    case 'r2': return f.keys.ember ? { x: 8.5, z: -6.2 } : { x: 10.2, z: 3.4 };
-    case 'r2b': return f.keys.ember ? { x: -7.4, z: 0 } : { x: 5.5, z: -0.2 };
-    case 'k1': return !state.formsUnlocked.includes('fire_wolf') ? { x: -5, z: -6.2 }
-      : (f.keys.kiln ? { x: 5, z: -6.2 } : { x: 0, z: -6.2 }); // A, then C, else B
-    case 'ka': return { x: 0, z: -2.6 };    // the fire shrine / braziers
-    case 'kb': return { x: -4.4, z: -2.2 }; // brazier ONE of the order puzzle
-    case 'r3': return f.bossDefeated ? { x: -7.4, z: 0.6 } : { x: 0, z: -0.5 };
-    case 'e1': return { x: 0, z: -6.2 };    // deeper: the Deep Hall
-    case 'e1b': return { x: 1.8, z: 3.2 };  // the treasure chest in the dark
-    case 'e2': return f.plates.e2_gate ? { x: 9.6, z: 0 } : { x: -2.6, z: 1.4 }; // the boulder, then the crypt gate
-    case 'e2b': return (f.e2bCleared || (f.plates.e2b_p1 && f.plates.e2b_p2))
-      ? { x: 6.9, z: -5.0 } : { x: 0, z: -1.0 }; // the fight, then the vault
-    case 'e3': return f.wardenDefeated ? { x: 5.5, z: -6.2 } : { x: 0, z: -2 }; // then: the vine way
-    case 'w1': return { x: 0, z: -5.6 };    // deeper: the Gloomwood
-    case 'w1b': return { x: -2.0, z: -3.6 }; // the pup in the dell
-    case 'w2': return WS.get('wild', 'lanterns')
-      ? { x: 0, z: -6.4 }
-      : (f.cracked.w2_lantern ? { x: 0.5, z: -4.4 } : { x: 0.5, z: -2.6 }); // lanterns: crack, then light
-    case 'w2b': return { x: 4.4, z: -3.4 };
-    case 'w3': return (f.plates.w3_p1 && f.plates.w3_p2) ? { x: 0, z: -6.4 } : { x: -5.8, z: 2.2 };
-    case 'w4': return { x: 0, z: -5.6 };    // the boss door
-    case 'w5': return f.sylvaDefeated ? { x: 0, z: -6.6 } : { x: 0, z: -0.5 }; // then: the way up
     case 'f1': return { x: 0, z: -5.6 };    // deeper: the Icebound Hall
     case 'f1b': return { x: -2.2, z: -3.4 }; // the pup by the cairn
     case 'f2': return WS.get('frost', 'braziers') ? { x: 0, z: -6.4 } : { x: 0, z: -4.2 }; // the middle brazier
@@ -657,14 +633,14 @@ function narrationTriggers(dt, t) {
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
-  if (state.room === 'r2' && nearXZ(4.5, -4.4, 5)) narration.say('learn_jump');
+  if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 5))) narration.say('learn_jump');
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
       !player.surging && !player.ceremonyActive) narration.say('moon_full');
   refreshControlReveal();
 
-  if (state.room === 'r1') {
+  if (state.room === 'la') {
     if (state.flags.bossDefeated) narration.say('lava_cooled');
     const shade = (world.enemies || []).find((e) => e.constructor.name === 'Shade' && !e.dead);
     if (shade && nearXZ(shade.x, shade.z, 5.5)) narration.say('first_enemy');
@@ -672,10 +648,9 @@ function narrationTriggers(dt, t) {
     // path (right after the first victory), not just at the optional dark nook
     if ((state.counters.kills || 0) >= 1) narration.say('darkwolf_intro');
     if (m.darkNookMouth && nearSpot(m.darkNookMouth, 2.4)) narration.say('dark_nook');
-    if (!state.formsUnlocked.includes('fire_wolf') && nearXZ(-3.95, 4.4, 2.2)) narration.say('obstacle_first');
-    if (state.formsUnlocked.includes('fire_wolf') && !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 3.2)) {
-      narration.say('burn_prompt');
-    }
+    // the fire gate's prompts moved to GATE_HINTS, which finds it by marker
+    if (!state.formsUnlocked.includes('fire_wolf') && m.firePromise && nearSpot(m.firePromise, 3))
+      narration.say('obstacle_first');
     if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_r1');
   }
 
@@ -696,17 +671,17 @@ function narrationTriggers(dt, t) {
     if (m.dogSpot && nearSpot(m.dogSpot, 1.8)) narration.say('den_dog');
   }
 
-  if (state.room === 'r2') {
+  if (state.room === 'lb') {
     const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
     if (moth) narration.say('moth_intro');
-    if (!state.flags.keys.ember && nearXZ(8.5, -5.2, 2.6)) narration.say('key_door');
-    if (nearXZ(4.5, -4.4, 3.2)) narration.say('geyser_intro');
+    if (!state.flags.keys.ember && m.sealSpot && nearSpot(m.sealSpot, 2.6)) narration.say('key_door');
+    if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 3.2))) narration.say('geyser_intro');
     if (m.branchMouth && nearSpot(m.branchMouth, 2.6)) narration.say('hound_branch');
-    if (nearXZ(8.6, -3.6, 2.4)) narration.say('boss_door');
+    if (m.bossDoorSpot && nearSpot(m.bossDoorSpot, 2.4)) narration.say('boss_door');
   }
 
   // Stoneroot Caverns
-  if (state.room === 'e1') {
+  if (state.room === 'vh') {
     narration.say('stone_enter');
     if (m.rippleShoots && nearSpot(m.rippleShoots, 2.6)) narration.say('ripple_shoot');
     if (m.campSpot && nearSpot(m.campSpot, 3)) {
@@ -715,7 +690,7 @@ function narrationTriggers(dt, t) {
     const skel = (world.enemies || []).find((e) => e.constructor.name === 'SkeletonMinion' && !e.dead);
     if (skel && nearXZ(skel.x, skel.z, 4.6)) narration.say('skeleton_intro');
   }
-  if (state.room === 'e2') {
+  if (state.room === 'vb1') {
     if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_e2');
     if (m.brambleSpot && nearSpot(m.brambleSpot, 3)) {
       if (logMystery('stone_bramble', '🌿', 'A thorny tangle — the Deep Hall')) bigToast('🗺️ Added to the map: ???');
@@ -726,14 +701,14 @@ function narrationTriggers(dt, t) {
     if (m.spikeSpot && nearSpot(m.spikeSpot, 4)) narration.say('spike_hint');
     if (m.boulderSpot && nearSpot(m.boulderSpot, 3)) narration.say('boulder_hint');
     if (state.flags.plates.e2_gate) narration.say('plate_open');
-    if (state.flags.plates.e2_gate && nearXZ(8.6, 0, 3)) narration.say('warden_door');
+    if (m.wardenSpot && nearSpot(m.wardenSpot, 3)) narration.say('warden_door');
   }
-  if (state.room === 'e1b') narration.say('darkcave_enter');
-  if (state.room === 'e2b') {
+  if (state.room === 'va1') narration.say('darkcave_enter');
+  if (state.room === 'vbp') {
     narration.say('quarry_enter');
     if (world.quarryCleared && world.quarryCleared()) narration.say('quarry_clear');
   }
-  if (state.room === 'e3') {
+  if (state.room === 'vz') {
     if (m.wildwoodsWay && nearSpot(m.wildwoodsWay, 3)) {
       narration.say('ripple_vine');
       if (logMystery('wildwoods_way', '🌿', 'A vine through the stone — the way onward')) bigToast('🗺️ Added to the map: ???');
@@ -775,15 +750,15 @@ function narrationTriggers(dt, t) {
   // The Wild Woods (region 3)
   if (state.room[0] === 'w') {
     narration.say('wild_enter');
-    if (state.room === 'w1') {
+    if (state.room === 't1a') {
       const th = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
       if (th && nearXZ(th.x, th.z, 6)) narration.say('thornhound_intro');
     }
-    if (state.room === 'w1b' && m.iceSpot && nearSpot(m.iceSpot, 3.2)) {
+    if (state.room === 't1p' && m.iceSpot && nearSpot(m.iceSpot, 3.2)) {
       if (logMystery('frost_spring', '❄️', 'A spring sealed in ice — the Mossy Dell')) bigToast('🗺️ Added to the map: ???');
       narration.say('gate_promise');
     }
-    if (state.room === 'w2') {
+    if (state.room === 't2a') {
       const ls = m.lanternSpots || [];
       if (!WS.get('wild', 'lanterns')) {
         if (ls.some((l) => nearXZ(l.x, l.z, 4.2))) narration.say('lantern_hint');
@@ -792,11 +767,11 @@ function narrationTriggers(dt, t) {
         narration.say('lantern_open');
       }
     }
-    if (state.room === 'w3') {
+    if (state.room === 't3a') {
       if (m.boulderSpot && nearSpot(m.boulderSpot, 4.2)) narration.say('plates2_hint');
       if (state.flags.plates.w3_p1 && state.flags.plates.w3_p2) narration.say('plates2_open');
     }
-    if (state.room === 'w4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('wild_boss_door');
+    if (state.room === 't4a' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('wild_boss_door');
     // (`wild_complete` used to be triggered here, on `w5` + sylvaShrine — both
     // retired. It lives with the other two completion lines above.)
     if (m.frostWaySpot && nearSpot(m.frostWaySpot, 3.4)) narration.say('frostpeak_open');
@@ -867,8 +842,8 @@ function narrationTriggers(dt, t) {
   }
 
   // The Kiln
-  if (state.room === 'k1') narration.say('kiln_enter');
-  if (state.room === 'ka' && m.shrineSpot) {
+  if (state.room === 'ld') narration.say('kiln_enter');
+  if (state.room === 'ld' && m.shrineSpot) {
     if (nearSpot(m.shrineSpot, 2.4) && !state.formsUnlocked.includes('fire_wolf')) {
       state.formsUnlocked.push('fire_wolf');
       effects.warmFlood();
@@ -881,7 +856,7 @@ function narrationTriggers(dt, t) {
     }
     if (state.formsUnlocked.includes('fire_wolf') && nearXZ(1.8, -2.6, 3)) narration.say('brazier_hint');
   }
-  if (state.room === 'kb' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+  if (state.room === 'ld1' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
 
   // -------------------------------------------------------------------------
   // LEVEL 2 — THE VAULT CHANGES. Each spoke ends by doing something to the
@@ -1333,7 +1308,7 @@ function seamMs(from, to) {
 
 // THE ID STORED IS THE ROOM ON SCREEN. `buildRoom` resolves retired ids
 // (RETIRED_ROOMS in state.js) and always has, but loadRoom used to store the
-// RAW one — so walking Frostpeak's f1 door south left `state.room === 'w5'`
+// RAW one — so walking Frostpeak's f1 door south left `state.room === 'tgl'`
 // with `tgl` built and rendered. js/save.js already resolves for exactly this
 // reason and says so in its comment ("main.js compares room ids in a dozen
 // places and a mismatch would silently disable those checks"); loadRoom was the
