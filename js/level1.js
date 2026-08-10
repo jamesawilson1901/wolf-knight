@@ -232,13 +232,35 @@ function lavaSurface(world, x, z, w, d) {
 }
 
 // A walkable slab across the lava, from real bridge pieces.
+// THE SAFE CROSSINGS OVER THE LAVA. Dad, on seeing them: "the bridges are
+// awful."  He was right, and the numbers say why.
+//
+// bridge-stone.glb is a 1.04 x 0.40 x 1.04 SQUARE TILE. This laid pieces 2.0
+// apart at 1.1 scale — so each was 1.14 wide with a 0.86-unit HOLE beside it —
+// two of them, in one row, for a slab four units deep. It read as a couple of
+// pallets dropped in the fire, not a way across. And it was tinted `wallTint`,
+// the darkest colour the district owns, so the one surface that means SAFE was
+// the blackest thing on screen next to the lava.
+//
+// Now it TILES: the crossing is covered edge to edge with a slight overlap so
+// there are no seams, laid flat rather than as 0.4-tall blocks the player would
+// visibly walk into, and in pale stone. A child should be able to tell at a
+// glance which strip does not burn.
 function slab(world, x, z, w, d, D) {
   if (GREY()) return;
-  for (let i = 0; i < Math.max(1, Math.round(w / 2)); i++) {
-    const p = tinted(emberKit.bridge, 'slab', D.wallTint);
-    p.position.set(x - w / 2 + 1 + i * 2, world.deckY + 0.03, z);
-    p.scale.set(1.1, 1, d / 2.2);
-    world.add(p);
+  const TILE = 1.04;
+  const nx = Math.max(1, Math.round(w / TILE));
+  const nz = Math.max(1, Math.round(d / TILE));
+  const stepX = w / nx, stepZ = d / nz;
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < nz; j++) {
+      const p = tinted(emberKit.bridge, 'slab', 0xcfc0ad);   // pale stone: this is the safe way
+      p.position.set(x - w / 2 + (i + 0.5) * stepX, world.deckY + 0.02,
+        z - d / 2 + (j + 0.5) * stepZ);
+      // 1.04 wide models a 1.0 step, and 0.3 in y turns a block into a deck
+      p.scale.set((stepX / TILE) * 1.04, 0.3, (stepZ / TILE) * 1.04);
+      world.add(p);
+    }
   }
 }
 

@@ -26,7 +26,24 @@ export function spawnShards(world, x, z, n) {
   if (!world.shards) world.shards = [];
   for (let i = 0; i < n; i++) {
     const coin = prepareModel(coinGltf.scene.clone(), { castShadow: false });
-    coin.scale.setScalar(1.1);
+    // GOLD, AND LIT FROM INSIDE. The model ships with an ordinary material, so
+    // in a dark room the currency of the game rendered BLACK — dad found little
+    // black discs on the floor of the cave and could not tell what they were.
+    // A coin is the one thing that must read the same in the Kiln and in the
+    // dark, so it carries its own light rather than borrowing the room's.
+    coin.traverse((n) => {
+      if (!n.isMesh || !n.material) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (c.color) c.color.setHex(0xffc843);
+        if (c.emissive) { c.emissive.setHex(0xff9c1a); c.emissiveIntensity = 0.85; }
+        c.metalness = 0.35; c.roughness = 0.35;
+        return c;
+      });
+      if (!Array.isArray(n.material)) n.material = n.material[0];
+    });
+    coin.scale.setScalar(1.55);
     const a = (i / Math.max(1, n)) * Math.PI * 2 + x;
     coin.position.set(x, 0.4, z);
     world.add(coin);
@@ -92,7 +109,11 @@ export function updateShards(world, dt, t, player) {
 // ---------------------------------------------------------------------------
 
 export class Breakable {
-  constructor(world, gltf, x, z, { shards = 2, scale = 0.55 } = {}) {
+  // SCALE 0.85, NOT 0.55. Dad's words: "they are so small whatever they are you
+  // can barely see them". A breakable is a thing a child is meant to spot from
+  // across the room and run at; at 0.55 a crate was ankle-high clutter. The
+  // collider grows with it so it still feels like hitting a box.
+  constructor(world, gltf, x, z, { shards = 2, scale = 0.85 } = {}) {
     this.world = world;
     this.root = prepareModel(gltf.scene.clone());
     this.root.position.set(x, 0, z);
@@ -100,14 +121,14 @@ export class Breakable {
     this.root.scale.setScalar(scale);
     world.add(this.root);
     this.x = x; this.z = z;
-    this.radius = 0.42;
+    this.radius = 0.42 * (scale / 0.55);
     this.hp = 1;
     this.dead = false;
     this.stunned = 0;
     this.scenery = true; // a pot, not a foe: never feeds the moon gauge,
                          // never shoved by transformation shockwaves
     this.shardCount = shards;
-    world.addCircle(x, z, 0.38);
+    world.addCircle(x, z, 0.38 * (scale / 0.55));
     this._collider = world.circleColliders[world.circleColliders.length - 1];
   }
 
