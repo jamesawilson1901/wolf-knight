@@ -11,12 +11,40 @@
 //
 // Nothing failed, because nothing asked. This asks.
 import { chromium } from 'playwright';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const errors = [];
 const check = (n, ok, d) => {
   console.log((ok ? '✓ ' : '✗ ') + n, d !== undefined ? JSON.stringify(d) : '');
   if (!ok) errors.push(n);
 };
+
+// ── 0. the stuck-hint table covers every gate in the game ──────────────
+//
+// Read off the source, so it costs nothing and cannot drift. The hints used to
+// name retired rooms with raw coordinates; they are keyed on the markers rooms
+// publish now, and this is what stops a new gate from being added in silence.
+{
+  console.log('── 0. every promise gate has something to say ────────');
+  const main = readFileSync('js/main.js', 'utf8');
+  const table = main.slice(main.indexOf('const GATE_HINTS'), main.indexOf('const stuckHints'));
+  const covered = new Set([...table.matchAll(/marker: '(\w+)'/g)].map((m) => m[1]));
+  const lines = new Set([...table.matchAll(/line: '(\w+)'/g)].map((m) => m[1]));
+
+  const published = new Set();
+  for (const f of readdirSync('js').filter((f) => /^level\d+\.js$/.test(f))) {
+    for (const m of readFileSync('js/' + f, 'utf8').matchAll(/markers\.(\w*[Pp]romise\w*)\s*=/g)) {
+      published.add(m[1]);
+    }
+  }
+  const orphans = [...published].filter((p) => !covered.has(p));
+  check('every promise marker a level publishes has a hint', orphans.length === 0,
+    { orphans, covered: covered.size, published: published.size });
+
+  const narr = readFileSync('js/narration.js', 'utf8');
+  const missing = [...lines].filter((l) => !new RegExp('^\\s*' + l + ':', 'm').test(narr));
+  check('every hint names a line that actually exists', missing.length === 0, { missing });
+}
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',

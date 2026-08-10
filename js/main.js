@@ -513,20 +513,48 @@ function sayThrottled(id, t, wait) {
   if (narration.say(id)) throttles[id] = t + wait;
 }
 
-const stuckHints = [
-  { line: 'dark_nook', timer: 0, cond: () =>
-      state.room === 'r1' && !state.flags.pups.pup1 && state.form !== 'dark_wolf' &&
-      world.markers.darkNookMouth && nearSpot(world.markers.darkNookMouth, 4) },
-  { line: 'geyser_intro', timer: 0, cond: () =>
-      state.room === 'r2' && !state.spoken.boss_door && nearXZ(4.5, -4.4, 4) },
-  { line: 'burn_prompt', timer: 0, cond: () =>
-      state.room === 'r1' && state.formsUnlocked.includes('fire_wolf') &&
-      !state.flags.burned.r1_cubby && nearXZ(-3.95, 4.4, 4) },
-  { line: 'boulder_hint', timer: 0, cond: () =>
-      state.room === 'e2' && !state.flags.plates.e2_gate && nearXZ(-1.6, 3, 5) },
+// STUCK HINTS, KEYED ON WHAT THE ROOM PUBLISHES — NOT ON ROOM IDS.
+//
+// The four that used to be here named r1, r2 and e2, all retired, with raw
+// coordinates from rooms that no longer exist. They had been dead since the
+// levels were rebuilt: a child standing at a gate they could finally open was
+// told nothing at all.
+//
+// Every promise gate in the game already publishes a marker saying which verb
+// opens it, in all six rebuilt regions. So the rule is one rule: if you are
+// lingering at a gate, and you now own the wolf that opens it, the game says so
+// — wherever that gate happens to be. A new gate in a new region is covered the
+// day it publishes its marker, with nothing to remember.
+const GATE_HINTS = [
+  { marker: 'firePromise',       form: 'fire_wolf',    line: 'burn_prompt' },
+  { marker: 'crackPromise',      form: 'earth_wolf',   line: 'crack_prompt' },
+  { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
+  { marker: 'thornPromise',      form: 'verdant_wolf', line: 'thornknot_hint' },
+  { marker: 'rootWallPromise',   form: 'verdant_wolf', line: 'rootwall_hint' },
+  { marker: 'logPromise',        form: 'verdant_wolf', line: 'greatlog_hint' },
+  { marker: 'icePromise',        form: 'frost_wolf',   line: 'shatter_prompt' },
+  { marker: 'galePromise',       form: 'storm_wolf',   line: 'storm_gale_promise' },
+  { marker: 'tidePromise',       form: 'tide_wolf',    line: 'tide_quench' },
+  { marker: 'deepPromise',       form: 'tide_wolf',    line: 'tide_howto' },
+  { marker: 'ghostPromise',      form: 'ghost_wolf',   line: 'ghost_howto' },
+  { marker: 'watcherPromise',    form: 'ghost_wolf',   line: 'court_watcher' },
+  // Not every promise is a wolf. The vault's sunken chest is under water until
+  // the ring DRAINS — no form opens it, so the honest line is the one that says
+  // "later", not one that implies a verb the child has and should be using.
+  { marker: 'underwaterPromise', form: null,           line: 'gate_promise' },
+];
+
+const stuckHints = GATE_HINTS.map((g) => ({
+  line: g.line, timer: 0, cond: () => {
+    const spot = world.markers && world.markers[g.marker];
+    if (!spot) return false;
+    if (g.form && !state.formsUnlocked.includes(g.form)) return false;
+    return nearSpot(spot, 4);
+  },
+})).concat([
   { line: 'boss_duel', timer: 0, cond: () =>
       !!world.boss && !world.boss.defeated },
-];
+]);
 
 function nearXZ(x, z, r) {
   const dx = player.root.position.x - x;
