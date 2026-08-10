@@ -85,6 +85,13 @@ export const LINES = {
 
   // Part C — bridge to the next region
   grimm_taunt_1: { voice: 'grimm', text: 'So… the little knight saved one spark. You cannot save them all. The shadow always returns.' },
+  // Once per region, doubt climbing each time — and by six it is not doubt any
+  // more, it is the first guardian showing through the thing wearing him.
+  grimm_taunt_2: { voice: 'grimm', text: 'Two. The stone sings for you. It sang for me once… before I stopped listening.' },
+  grimm_taunt_3: { voice: 'grimm', text: 'Three. The woods opened for you. They never opened for me, little knight. Why you?' },
+  grimm_taunt_4: { voice: 'grimm', text: 'Four. You do not tire. I have not tired in a very long while… nor slept.' },
+  grimm_taunt_5: { voice: 'grimm', text: 'Five. Turn back. …I am asking you to turn back. I do not ask.' },
+  grimm_taunt_6: { voice: 'grimm', text: 'Six. That strength you carry was mine once. It is kinder in your hands. Come, then — come and see what is left of me.' },
   luna_dream_1: { voice: 'luna', text: 'You did well, Kael. One light returned… six to go. Follow the path to the stone caves. I am with you, always.' },
 
   // Stoneroot Caverns (region 2)
@@ -141,7 +148,7 @@ export const LINES = {
   darkcave_enter: { voice: 'pip', text: 'The Hidden Hollow… it’s pitch dark in here. Become the Dark Wolf and let your eyes shine!' },
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },
-  luna_dream_2: { voice: 'luna', text: 'Rest now, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
+  luna_dream_2: { voice: 'luna', text: 'Two lights, brave one. The stone sings again. Beyond the caverns, the wild woods are waiting for us.' },
 
   // The Wild Woods (region 3)
   wildwoods_open: { voice: 'pip', text: 'The vine grew into a doorway! The Wild Woods are open, Kael — the trees are calling us.' },

@@ -59,6 +59,7 @@ case "$1" in
     run verify-music.mjs
     run verify-guide.mjs
     run verify-awareness.mjs
+    run verify-story-beats.mjs
     # then everything else, per region and per system
     run verify-level1.mjs
     run verify-level2.mjs

@@ -739,6 +739,7 @@ function narrationTriggers(dt, t) {
   }
   if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
     if (narration.say('stone_complete')) {
+      narration.say('grimm_taunt_2');
       narration.say('luna_dream_2');
       persist();
     }
@@ -1809,6 +1810,7 @@ async function start() {
               narration.say('frost_howto');
               WS.set('frost', 'restored');
               narration.say('frost_restore_1');
+              narration.say('grimm_taunt_4');
               setTimeout(() => narration.say('luna_dream_4'), 9000);
             } else if (state.room === 'scr') {
               // ARIA FREED — the gale drops off the crown and the whole climb
@@ -1817,6 +1819,7 @@ async function start() {
               narration.say('aria_defeat');
               WS.set('storm', 'restored');
               narration.say('storm_restore_1');
+              narration.say('grimm_taunt_5');
               setTimeout(() => narration.say('luna_dream_5'), 9000);
             } else if (state.room === 'xth') {
               // THE END OF THE STORY. He is FREED, not destroyed — the shadow
@@ -1836,6 +1839,7 @@ async function start() {
               narration.say('meri_defeat');
               WS.set('vale', 'restored');
               narration.say('vale_restore_1');
+              narration.say('grimm_taunt_6');
               setTimeout(() => narration.say('luna_dream_6'), 9000);
             } else if (state.room === 'tgl') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
@@ -1846,6 +1850,7 @@ async function start() {
               narration.say('verdant_howto');
               WS.set('wild', 'restored');
               narration.say('wild_restore_1');
+              narration.say('grimm_taunt_3');
               setTimeout(() => narration.say('luna_dream_3'), 9000);
             } else {
               if (world.openShortcut) world.openShortcut(); // the way home opens
