@@ -30,28 +30,69 @@ const check = (n, ok, d) => {
 // forms earned so far and the bosses already down. This file tests the ROUTE,
 // not whether the game hands those out at the right moment; verify-progression
 // and verify-sequence own that.
+// THE WALK, region by region, as the game actually opens up.
+//
+// `legs` is the order a child physically travels — NOT the order rooms appear
+// in a level's table. Stoneroot is a hub with three spokes, so it returns to
+// the hub between each; the first version of this file read the table order,
+// tried to walk va3 → vgb, and reported a bug that was really my map.
+//
+// `earn` is what the child has DONE by the time they stand there, applied
+// before the leg. Nothing here is a shortcut past geometry: it is the lantern
+// they lit and the knot they cut, without which the next door does not exist.
+// The Stoneroot hub literally has no doorway to its other spokes until the
+// first spoke is finished — that is design, and kinder than a locked door.
+//
+// `needs` names a leg that cannot be walked, only performed. The gale across
+// the Stormreach shrine is crossed with the thunder-dash, which is the whole
+// point of the region; the walker suspends that lane for the crossing and says
+// so, rather than reporting the region's central mechanic as a blocker.
 const REGIONS = [
   { name: 'ember', label: 'Ember Hollow', enter: 'la',
-    spine: ['la', 'lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'],
-    grant: { forms: ['knight', 'dark_wolf', 'fire_wolf'], flags: {} } },
+    grant: { forms: ['knight', 'dark_wolf', 'fire_wolf'], flags: {} },
+    legs: [['lg1'], ['lb'], ['lg2'], ['lc'], ['lg3'], ['ld'], ['lg4'], ['le']] },
+
   { name: 'stoneroot', label: 'Stoneroot', enter: 'vh',
-    spine: ['vh', 'vga', 'va1', 'va2', 'va3', 'vgb', 'vb1', 'vb2', 'vb3', 'vgc', 'vc1', 'vc2', 'vc3', 'vz'],
-    grant: { forms: ['earth_wolf'], flags: { bossDefeated: true } } },
+    grant: { forms: ['earth_wolf'], flags: { bossDefeated: true } },
+    legs: [
+      // The milestone is earned in the SPOKE and the hub is rebuilt when you
+      // walk back into it — so the earn belongs on the returning leg, not the
+      // one leaving. Set it after the hub is already built and the doorway
+      // simply is not there, which is what the first version got wrong.
+      ['vga'], ['va1'], ['va2'], ['va3'],
+      ['vh', { ws: ['vault', 'spark'] }],           // the lantern opens two doorways
+      ['vgb'], ['vb1'], ['vb2'], ['vb3'],
+      ['vh', { ws: ['vault', 'drained'] }],
+      ['vgc'], ['vc1'], ['vc2'], ['vc3'],
+      ['vh', { ws: ['vault', 'handDown'] }],        // the hand lowers into a ramp
+      ['vz'],
+    ] },
+
   { name: 'woods', label: 'The Wild Woods', enter: 't1a',
-    spine: ['t1a', 't1b', 'tc1', 't2a', 't2b', 'tsh', 'tc2', 't3a', 't3b', 'tkn', 'tc3', 't4a', 't4b', 'tc4', 'tgl'],
-    grant: { forms: ['verdant_wolf'], flags: { wardenDefeated: true } } },
+    grant: { forms: ['verdant_wolf'], flags: { wardenDefeated: true } },
+    legs: [['t1b'], ['tc1'], ['t2a'], ['t2b'], ['tsh'], ['tc2'], ['t3a'], ['t3b'],
+      ['tkn', { ws: ['wild3', 'knotCut'] }],        // the great thorn-knot is parted
+      ['tc3'],
+      ['t4a'], ['t4b'], ['tc4'], ['tgl']] },
+
   { name: 'frostpeak', label: 'Frostpeak', enter: 'f1',
-    spine: ['f1', 'f2', 'f3', 'f4', 'f5'],
-    grant: { forms: ['frost_wolf'], flags: { sylvaDefeated: true } } },
+    grant: { forms: ['frost_wolf'], flags: { sylvaDefeated: true } },
+    legs: [['f2'], ['f3'], ['f4'], ['f5']] },
+
   { name: 'stormreach', label: 'Stormreach Cliffs', enter: 's1a',
-    spine: ['s1a', 's1b', 'sc1', 's2a', 's2b', 'ssh', 'sc2', 's3a', 's3b', 'svn', 'sc3', 's4a', 's4b', 'sc4', 'scr'],
-    grant: { forms: ['storm_wolf'], flags: { borealDefeated: true } } },
+    grant: { forms: ['storm_wolf'], flags: { borealDefeated: true } },
+    legs: [['s1b'], ['sc1'], ['s2a'], ['s2b'], ['ssh'],
+      ['sc2', { needs: 'the thunder-dash, across the shrine gale' }],
+      ['s3a'], ['s3b'], ['svn'], ['sc3'], ['s4a'], ['s4b'], ['sc4'], ['scr']] },
+
   { name: 'vale', label: 'The Sunken Vale', enter: 'd1a',
-    spine: ['d1a', 'd1b', 'dg1', 'd2a', 'd2b', 'dsh', 'dg2', 'd3a', 'd3b', 'dtp', 'dg3', 'd4a', 'd4b', 'dg4', 'ddp'],
-    grant: { forms: ['tide_wolf'], flags: { ariaDefeated: true } } },
+    grant: { forms: ['tide_wolf'], flags: { ariaDefeated: true } },
+    legs: [['d1b'], ['dg1'], ['d2a'], ['d2b'], ['dsh'], ['dg2'], ['d3a'], ['d3b'], ['dtp'],
+      ['dg3'], ['d4a'], ['d4b'], ['dg4'], ['ddp']] },
+
   { name: 'court', label: 'The Shadow Court', enter: 'x1',
-    spine: ['x1', 'xsh', 'xh', 'xst', 'xth'],
-    grant: { forms: ['ghost_wolf'], flags: { meriDefeated: true }, relics: true } },
+    grant: { forms: ['ghost_wolf'], flags: { meriDefeated: true }, relics: true },
+    legs: [['xsh'], ['xh'], ['xst'], ['xth']] },
 ];
 
 const only = process.argv[2];
@@ -100,9 +141,9 @@ const enterRegion = async (r) => {
 
 // WALK to the door leading to `to`. Route is a BFS over the floor the player
 // can actually stand on; movement is the game's own, driven through input.move.
-const walkTo = async (to) => {
+const walkTo = async (to, opts) => {
   const from = await page.evaluate(() => window.__game.state.room);
-  const ok = await page.evaluate(async (target) => {
+  const ok = await page.evaluate(async ([target, opts]) => {
     const g = window.__game, w = g.world;
     const STEP = 0.5, RAD = 0.32;
     // Impassable = solid OR on fire. hazardAt() knows about the bridge decks
@@ -123,8 +164,18 @@ const walkTo = async (to) => {
     for (const e of (w.enemies || [])) e.dead = true;
     w.enemies = [];
     const d = (w.doors || []).find((x) => x.to === target);
-    if (!d) return { ok: false, why: 'no door to ' + target };
+    if (!d) return { ok: false, why: 'no door to ' + target,
+      doorsHere: (w.doors || []).map((x) => x.to) };
     const dcx = (d.minX + d.maxX) / 2, dcz = (d.minZ + d.maxZ) / 2;
+    // A leg that needs a verb rather than a walk: suspend the wind for the
+    // crossing. Reported, never silent.
+    if (opts && opts.needs) w.galeLanes = [];
+    // DO NOT WANDER THROUGH OTHER DOORS. Crossing a room can clip a side
+    // doorway in passing and land Kael somewhere he never chose — which is how
+    // a walk to Frostpeak's f3 arrived in the f2b pocket instead.
+    const otherDoors = (w.doors || []).filter((x) => x !== d);
+    const inAnotherDoor = (x, z) => otherDoors.some((o) =>
+      x >= o.minX - 0.4 && x <= o.maxX + 0.4 && z >= o.minZ - 0.4 && z <= o.maxZ + 0.4);
 
     // BFS from where Kael is standing to the floor nearest the doorway.
     const ci = (v) => Math.round(v / STEP);
@@ -142,6 +193,7 @@ const walkTo = async (to) => {
         const k = key(ni, nj);
         if (prev.has(k)) continue;
         if (!inside(ni * STEP, nj * STEP) || solid(ni * STEP, nj * STEP)) continue;
+        if (inAnotherDoor(ni * STEP, nj * STEP)) continue;
         prev.set(k, [i, j]); q.push([ni, nj]);
       }
     }
@@ -173,7 +225,7 @@ const walkTo = async (to) => {
     const p = g.player.root.position;
     return { ok: false, why: frames >= 3000 ? 'walked for 3000 frames and never arrived' : 'ran out of path',
       stuckAt: { x: +p.x.toFixed(1), z: +p.z.toFixed(1) }, door: { x: +dcx.toFixed(1), z: +dcz.toFixed(1) } };
-  }, to);
+  }, [to, opts || null]);
   if (!ok.ok) return ok;
   try {
     await page.waitForFunction((f) => window.__game.state.room !== f, from, { timeout: 20000 });
@@ -186,10 +238,14 @@ for (const r of RUN) {
   console.log(`\n── ${r.label} ─────────────────────────────────`);
   if (!(await enterRegion(r))) { check(`${r.label}: the first room builds`, false); continue; }
   let here = r.enter;
-  for (let i = 1; i < r.spine.length; i++) {
-    const next = r.spine[i];
-    const res = await walkTo(next);
-    check(`  ${here} → ${next}`, !!res.ok, res.ok ? undefined : res);
+  for (const [next, opts] of r.legs) {
+    if (opts && opts.ws) {
+      await page.evaluate(([reg, key]) => window.__game.WS.set(reg, key, true), opts.ws);
+      console.log(`  · earned: ${opts.ws[1]} — the next doorway exists because of it`);
+    }
+    const res = await walkTo(next, opts);
+    const note = opts && opts.needs ? `  (performed with ${opts.needs})` : '';
+    check(`  ${here} → ${next}${note}`, !!res.ok, res.ok ? undefined : res);
     if (!res.ok) break;
     here = res.room;
   }
