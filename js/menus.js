@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, SHOP_STOCK, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -115,7 +115,7 @@ export class Menus {
 
     const grid = document.createElement('div');
     grid.className = 'grid';
-    for (const s of SHOP_STOCK) {
+    for (const s of shopStock()) {
       const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
       if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
       const afford = state.shards >= s.price;
@@ -143,6 +143,18 @@ export class Menus {
         if (this.onHudChanged) this.onHudChanged();
       });
       grid.appendChild(card);
+    }
+    // THE NEXT RUNG, PROMISED. A shop that quietly grows is a shop a child
+    // stops checking; one card says what is coming and what heals it, so the
+    // Trading Post is a reason to come home rather than a menu. It is a
+    // promise, not a quest marker: it names the region, never the route.
+    const next = nextShopTier();
+    if (next) {
+      const soon = document.createElement('div');
+      soon.className = 'item-card shop-teaser locked';
+      soon.innerHTML = `<div class="ic">📦</div><div class="nm">New stock</div>
+        <div>Maren is off gathering — back ${next.blurb}.</div>`;
+      grid.appendChild(soon);
     }
     el.appendChild(grid);
     el.appendChild(this._closeBtn('shop-menu'));

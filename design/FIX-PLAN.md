@@ -37,6 +37,22 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 | C3 | spec drift, docs vs implementation | v3.34.0 |
 | C4 | the pose lies about TIME (i-frames, windows) | v3.32.0 |
 
+### Then, from the BUILDLOG queue (the status table above being closed)
+
+| | item | source | shipped |
+|---|---|---|---|
+| D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
+| D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+
+**D2** — Maren's stock was one flat list: every weapon in the game on sale at the
+Den before a child had walked into Ember. It is now four rungs
+(`CONFIG.SHOP.TIERS`), each arriving when a region is healed, with the next one
+shown as a dashed promise card. Cheapest new item per rung 70 / 90 / 180 / 300
+against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
+the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
+failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
+for the ladder, the judgement calls and three drift findings left for the queue.
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 

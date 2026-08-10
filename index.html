@@ -461,6 +461,13 @@
     .item-card .price { color: #ffd76a; font-weight: 800; }
     .item-card.equipped { border-color: #8aff9a; box-shadow: 0 0 10px rgba(120,255,150,.35); }
     .item-card.cant { opacity: .45; }
+    /* Maren's next rung of stock: a promise, so it reads as a gap on the shelf
+       rather than as something broken or something you failed to afford. */
+    .item-card.locked {
+      opacity: .6; border-style: dashed; background: rgba(255,255,255,.04);
+      pointer-events: none;
+    }
+    .item-card.locked .nm { color: #cbb9e8; }
     .perk-card {
       width: 190px; padding: 22px 14px; border-radius: 18px; text-align: center;
       background: linear-gradient(#3a2a5a, #241a3a); border: 3px solid #b48aff;
