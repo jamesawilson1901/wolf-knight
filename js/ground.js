@@ -152,12 +152,19 @@ export const GROUND_STYLES = {
   lagoon:    { pattern: 'cavefloor', wear: 0.50, joint: 0.40, path: 1.10, grain: 0.85, base: 0x2a5a6e },
   deepvale:  { pattern: 'cavefloor', wear: 0.55, joint: 0.45, path: 1.12, grain: 0.80, base: 0x23485c },
   // --- The Shadow Court: one palace, and the four wings it grew ------------
-  court:     { pattern: 'flagstone', wear: 0.45, joint: 0.62, path: 1.14, grain: 0.55, base: 0x2e2740 },
-  ashwing:   { pattern: 'flagstone', wear: 0.78, joint: 0.55, path: 1.20, grain: 0.70, base: 0x3d2a26 },
-  rootwing:  { pattern: 'earth',     wear: 0.66, joint: 0.38, path: 0.92, grain: 0.95, base: 0x2c3a26 },
-  galewing:  { pattern: 'cobble',    wear: 0.80, joint: 0.48, path: 1.18, grain: 0.65, base: 0x36404e },
-  mirrorwing:{ pattern: 'flagstone', wear: 0.35, joint: 0.66, path: 1.10, grain: 0.45, base: 0x353050 },
-  throne:    { pattern: 'flagstone', wear: 0.30, joint: 0.70, path: 1.08, grain: 0.40, base: 0x241d33 },
+  // These bases were first authored around luminance 32-63, roughly a third of
+  // what every other region uses, on the theory that a shadow palace should be
+  // dark. Measured on a screen it made 18% of the Mirror Wing's puzzle room
+  // literally unreadable. The floor is most of a top-down frame, so it is the
+  // wrong surface to carry the mood: HUE says shadow, LIGHTING says shadow, and
+  // the floor stays legible. Re-valued to ~70 — still the darkest ground in the
+  // game, and the hue of each is untouched.
+  court:     { pattern: 'flagstone', wear: 0.45, joint: 0.62, path: 1.14, grain: 0.55, base: 0x4c416a },
+  ashwing:   { pattern: 'flagstone', wear: 0.78, joint: 0.55, path: 1.20, grain: 0.70, base: 0x5d403a },
+  rootwing:  { pattern: 'earth',     wear: 0.66, joint: 0.38, path: 0.92, grain: 0.95, base: 0x394c32 },
+  galewing:  { pattern: 'cobble',    wear: 0.80, joint: 0.48, path: 1.18, grain: 0.65, base: 0x3c4757 },
+  mirrorwing:{ pattern: 'flagstone', wear: 0.35, joint: 0.66, path: 1.10, grain: 0.45, base: 0x48416d },
+  throne:    { pattern: 'flagstone', wear: 0.30, joint: 0.70, path: 1.08, grain: 0.40, base: 0x4f3f6f },
 };
 
 const DEFAULT_STYLE = { pattern: 'earth', wear: 0.55, joint: 0.45, path: 1.15, grain: 0.80 };

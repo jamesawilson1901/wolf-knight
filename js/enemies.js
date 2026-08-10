@@ -206,14 +206,20 @@ export const VARIANTS = {
   // --- THE SHADOW COURT (region 7). Grimm's own, and the only creatures in the
   // game that can be UNAWARE — `_sleeps` is what opts a variant into that.
   // Nothing else anywhere gets it, so six regions behave exactly as before.
+  //
+  // These three were first tinted near-black (0x140e1e-0x1a1226) on top of a
+  // near-black Court floor, which made them holes rather than creatures — and
+  // the courtwarden had Main and Main_Light set to the SAME hex, so the biggest
+  // shadow in the game had no internal form at all and no wind-up a child could
+  // read. THE POSE NEVER LIES needs a silhouette that is dark, not absent.
   shadewalker: {
     label: 'Shadewalker',
     hp: 5, weakness: 'moon', chargeSpeed: 10.5, puffTint: 0x2a1a3a, dropChance: 0.6,
     sleeps: true,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xb9a8ff); m.emissiveIntensity = 1.8; }
-      else if (m.name === 'Main') { m.color && m.color.setHex(0x1a1226); }
-      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x2e2140); }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x322546); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x4f3b6e); }
     },
   },
   courtwarden: {
@@ -222,7 +228,8 @@ export const VARIANTS = {
     sleeps: true,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffd76a); m.emissiveIntensity = 2.2; }
-      else if (m.name === 'Main' || m.name === 'Main_Light') { m.color && m.color.setHex(0x140e1e); }
+      else if (m.name === 'Main') { m.color && m.color.setHex(0x2b2038); }
+      else if (m.name === 'Main_Light') { m.color && m.color.setHex(0x483559); }
     },
   },
   gloomblob: {
@@ -230,7 +237,7 @@ export const VARIANTS = {
     hp: 4, weakness: 'moon', puffTint: 0x2a1a3a, sleeps: true,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xb9a8ff); m.emissiveIntensity = 1.6; }
-      else if (m.color) { m.color.setHex(0x241a33); m.emissive && m.emissive.setHex(0x120c1c); m.emissiveIntensity = 0.4; }
+      else if (m.color) { m.color.setHex(0x3d2c55); m.emissive && m.emissive.setHex(0x1d1430); m.emissiveIntensity = 0.4; }
     },
   },
   wisp: {

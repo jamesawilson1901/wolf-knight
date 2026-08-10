@@ -34,17 +34,17 @@ export const hasRelic = (r) => !!WS.get(REGION, 'relic_' + r);
 export const relicCount = () => RELICS.filter(hasRelic).length;
 
 export const DISTRICTS = {
-  court:  { tint: 0x6e5f96, floorTint: 0x2e2740, wallTint: 0x1a1526, propTint: 0x6a5f80,
+  court:  { tint: 0x6e5f96, floorTint: 0x685991, wallTint: 0x362b4e, propTint: 0x6a5f80,
             ground: 'court',      name: 'THE SHADOW COURT', hero: 'THE COURT GATE' },
-  ash:    { tint: 0xb0654a, floorTint: 0x3d2a26, wallTint: 0x241713, propTint: 0x8a5a44,
+  ash:    { tint: 0xb0654a, floorTint: 0x805850, wallTint: 0x442b24, propTint: 0x8a5a44,
             ground: 'ashwing',    name: 'THE ASH WING',     hero: 'THE COLD FORGE' },
-  root:   { tint: 0x7aa54e, floorTint: 0x2c3a26, wallTint: 0x18220f, propTint: 0x6f8a4a,
+  root:   { tint: 0x7aa54e, floorTint: 0x4f6844, wallTint: 0x263618, propTint: 0x6f8a4a,
             ground: 'rootwing',   name: 'THE ROOT WING',    hero: 'THE SPLIT TREE' },
-  gale:   { tint: 0x8fa4c0, floorTint: 0x36404e, wallTint: 0x1b222c, propTint: 0x7e8c9e,
+  gale:   { tint: 0x8fa4c0, floorTint: 0x526277, wallTint: 0x273140, propTint: 0x7e8c9e,
             ground: 'galewing',   name: 'THE GALE WING',    hero: 'THE BROKEN VANE' },
-  mirror: { tint: 0xa89ce0, floorTint: 0x353050, wallTint: 0x1e1a30, propTint: 0x8f86b8,
+  mirror: { tint: 0xa89ce0, floorTint: 0x635a95, wallTint: 0x332c51, propTint: 0x8f86b8,
             ground: 'mirrorwing', name: 'THE MIRROR WING',  hero: 'THE STANDING MIRRORS' },
-  throne: { tint: 0xc9b8ff, floorTint: 0x241d33, wallTint: 0x120e1c, propTint: 0x7a6ea8,
+  throne: { tint: 0xc9b8ff, floorTint: 0x6c5799, wallTint: 0x362a55, propTint: 0x7a6ea8,
             ground: 'throne',     name: 'THE THRONE',       hero: "GRIMM'S SEAT" },
 };
 
@@ -143,7 +143,7 @@ const has = (form) => state.formsUnlocked.includes(form);
 function base(scene, id) {
   const spec = L7[id];
   const world = new World(scene);
-  world.bgColor = 0x0c0914;
+  world.bgColor = 0x171128;
   return { world, spec, D: DISTRICTS[spec.district] };
 }
 
@@ -176,9 +176,9 @@ function finish(world, spec, D) {
 // Four steps of weathering, for the reason Stormreach learned twice: a tint per
 // prop is a material per prop, nothing batches, and the draw calls run away.
 function aged(D, k) {
-  const a = D.propTint, b = 0x0f0b18;   // the court BLACKENS rather than bleaches
+  const a = D.propTint, b = 0x2b2338;   // the court BLACKENS rather than bleaches
   const q = Math.round(Math.max(0, Math.min(1, k)) * 3) / 3;
-  const t = q * 0.5;
+  const t = q * 0.34;                   // ...but only until it is still a prop
   const mix = (sh) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
   return { ...D, propTint: (mix(16) << 16) | (mix(8) << 8) | mix(0) };
 }
@@ -262,8 +262,12 @@ function watcher(world, x, z, D) {
     m.position.y = 1.3;
     g.add(m);
   } else {
-    place(world, g, courtKit.column, 'column', 0, 0, 0, 1.6, 0, 0, 0x120c1c);
-    place(world, g, courtKit.spikes, 'spikes', 0, 0, 0.9, 1.1, 0, 0, 0x1a1226, false);
+    // Dark, but a SHAPE. At 0x120c1c against the old floor this was a hole in
+    // the room: you could see the gold eye and nothing holding it up, so there
+    // was no body to read the state off. It is still the darkest thing in the
+    // Court — it just has a silhouette now.
+    place(world, g, courtKit.column, 'column', 0, 0, 0, 1.6, 0, 0, 0x33284c);
+    place(world, g, courtKit.spikes, 'spikes', 0, 0, 0.9, 1.1, 0, 0, 0x3d3159, false);
   }
   // the eye: gold when it is looking, dark when it is not (act-here grammar
   // inverted on purpose — this is the one gold thing you do NOT walk into)
@@ -439,6 +443,34 @@ export async function buildXh(scene) {
     world.add(g);
   }
   if (!open) world.addBox(-1.6, 1.6, -14.2, -12.4);
+
+  // FOUR DOORS, FOUR COLOURS — a torch pair either side of each wing door, in
+  // that wing's colour, and the SAME four colours the relic sockets over the
+  // throne stair use. The hall is a junction: a child standing in the middle
+  // has to be able to see there are four ways on, and then to remember which
+  // one they have already done. Before this the doorways were unlit holes in a
+  // dark wall, which is the actual reason the hall read as "too dark" — not
+  // enough light, and nothing worth looking at where the light should have been.
+  if (!GREY()) {
+    const WING_DOORS = [
+      { x: 11, z: -8, col: 0xff8a3a },   // the Ash Wing   — fire
+      { x: 11, z: 8, col: 0x8fdc6a },   // the Root Wing  — verdant
+      { x: -11, z: -8, col: 0x4fd0e0 },   // the Gale Wing  — storm/tide
+      { x: -11, z: 8, col: 0xd8cfff },   // the Mirror Wing — moon
+    ];
+    for (const d of WING_DOORS) {
+      const g = new THREE.Group();
+      g.position.set(d.x, 0, d.z);
+      // one tint per wing, not per torch — four materials, four batches
+      for (const off of [-1.5, 1.5]) {
+        place(world, g, courtKit.torch, 'torch', 0, 0, off, 1.5, 0, 0, d.col, false);
+      }
+      const l = new THREE.PointLight(d.col, 2.6, 9, 1.8);
+      l.position.set(0, 2.1, 0);
+      g.add(l);
+      world.add(g);
+    }
+  }
 
   world.markers.houndSpots = [{ x: -4, z: 8, variant: 'shadewalker' }, { x: 5, z: -8, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 703, 7, { spin: 1, kinds: ['rockLA', 'brick', 'column'] });
