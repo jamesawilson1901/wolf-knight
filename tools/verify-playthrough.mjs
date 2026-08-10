@@ -363,6 +363,7 @@ const CANNOT_WALK = {
     + 'crossing both say the route is open',
 };
 
+const skipped = [];
 let first = true;
 for (const r of RUN) {
   console.log(`\n── ${r.label} ─────────────────────────────────`);
@@ -400,14 +401,15 @@ for (const r of RUN) {
     const note = opts && opts.needs ? `  (performed with ${opts.needs})` : '';
     const known = CANNOT_WALK[`${here}→${next}`];
     if (!res.ok && known) {
-      console.log(`· ${here} → ${next} — not walked by this harness: ${known}`);
-      // carry on from the far side so the rest of the region is still tested
-      if (!(await enterRegion({ ...r, enter: next }))) {
-        check(`  ${here} → ${next} (skipped, could not resume at ${next})`, false, res);
-        break;
-      }
-      here = next;
-      continue;
+      // Say what was NOT tested, out loud and in legs. Resuming on the far side
+      // was tried and made it worse — the resumed walk failed on its own next
+      // leg, which is a second false blocker papering over the first. A number
+      // of untested legs is honest; a green tick that skipped six is not.
+      const left = r.legs.length - r.legs.findIndex(([n]) => n === next) - 1;
+      console.log(`· ${here} → ${next} — NOT WALKED: ${known}`);
+      console.log(`  ...so ${left} further legs of ${r.label} went untested this run.`);
+      skipped.push(`${here}→${next} (+${left} legs of ${r.label} untested)`);
+      break;
     }
     check(`  ${here} → ${next}${note}`, !!res.ok, res.ok ? undefined : res);
     if (!res.ok) break;
@@ -415,8 +417,14 @@ for (const r of RUN) {
   }
 }
 
+// SAY WHAT WAS NOT DONE. A pass that quietly skipped a sixth of a region is
+// how a suite stops meaning anything — the whole point of tonight was that the
+// game had eighteen green suites and an unreachable boss.
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')
-  : 'ALL CLEAN — the whole game is walkable.'));
+  : skipped.length
+    ? `NO FAILURES, BUT NOT A CLEAN RUN — ${skipped.length} leg(s) this harness cannot walk:\n  `
+      + skipped.join('\n  ') + '\nEverything else walked.'
+    : 'ALL CLEAN — the whole game is walkable.'));
 await b.close();
 process.exit(errors.length ? 1 : 0);
