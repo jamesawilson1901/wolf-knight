@@ -40,6 +40,10 @@ export const state = {
     // overrides it and is remembered per profile. Old saves simply lack the
     // key and fall back to the picker, which is the additive-forever rule.
     voiceName: '', brave: false,
+    // GENTLE MODE. Absent from this list until now, which is how the stuck-
+    // guide came to be gated on a key that never existed. Written down so the
+    // next thing that reads it can see what the default actually is.
+    easy: false,
     // A7 — the DRESSED level is what a child gets. Greybox is a build-order
     // tool, not a costume to ship; it stays reachable from the cheat menu.
     greybox: false },

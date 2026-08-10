@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
+import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import { FETCH } from './mg-fetch.js';
@@ -546,8 +547,20 @@ function progressSnapshot() {
     Object.keys(f.burned).length, Object.keys(f.cracked).length,
     state.formsUnlocked.length].join('|');
 }
-// The way forward per room, following the same flags the stuck-hints use.
+// The way forward per room.
+//
+// THIS USED TO BE THE WHOLE ANSWER, AND EVERY ROOM IN IT IS RETIRED. The switch
+// below names r1, r2, k1, e1, w1… — the rooms the rebuilt levels replaced. Five
+// of the seven regions a child plays had no entry, so Pip had nowhere to run
+// and the one system meant to rescue a lost child did nothing at all.
+//
+// js/route.js answers it properly now: it stores which room is NEXT and asks
+// the room where that door is, so moving a door moves the guide with it. The
+// switch is kept underneath for Frostpeak, which is still the old build, and
+// for the Den — and it will shrink to nothing as the last rooms are rebuilt.
 function guideTarget() {
+  const onward = onwardSpot(world);
+  if (onward) return onward;
   const f = state.flags;
   switch (state.room) {
     case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
@@ -586,7 +599,13 @@ function guideTarget() {
   }
 }
 function updateGentleGuide(dt) {
-  if (!state.settings.easy || pip.guiding || transitioning) return;
+  // IT USED TO REQUIRE GENTLE MODE, WHICH IS OFF UNLESS A PARENT FINDS IT.
+  // `settings.easy` is not in the defaults, so this returned on the first line
+  // for every child who ever played. Being lost is not a difficulty setting —
+  // Gentle changes what enemies do, and showing a stuck child the way is not
+  // that. It runs for everyone now, after the same 20 seconds of no progress
+  // at all; a child who is exploring is making progress and never sees it.
+  if (pip.guiding || transitioning) return;
   const snap = progressSnapshot();
   if (snap !== guideSnapshot) { guideSnapshot = snap; guideIdle = 0; return; }
   guideIdle += dt;
@@ -1347,7 +1366,7 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xh') narration.say('court_wings');
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom }; // debug/testing hook
   await fadeTo(0, ms);
   transitioning = false;
 }
@@ -1446,7 +1465,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -1962,7 +1981,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
