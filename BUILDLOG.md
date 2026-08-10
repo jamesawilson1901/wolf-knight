@@ -3595,6 +3595,23 @@ went untested because of it (13), and it no longer prints ALL CLEAN when it
 skipped something — a suite that reports a clean run it did not have is how this
 whole night started.
 
+### The final gate, with real numbers
+
+`verify-playthrough.mjs`, full run, after the final-stride fix:
+
+    60 legs walked, 0 failures, 1 leg this harness cannot walk.
+
+Ember Hollow (8), Stoneroot (16, three spokes and a hub that opens a stage at a
+time), the Wild Woods (14), Frostpeak (4), the Sunken Vale (14) and the Shadow
+Court (4) all walk end to end.
+
+**Stormreach walks NOTHING.** Its unwalkable leg is its FIRST one — s1a → s1b —
+so the run stops there and the other thirteen legs go untested. That is the
+worst-covered region in the game and it is also one of the three that no child
+has ever played. `verify-reachable` covers its doors geometrically and every
+other suite covers it, but the walk does not, and it should not be described as
+if it does.
+
 ### Still unverified by a human
 
 Everything. No child has played any of it. The wayfinding, the awareness window,
