@@ -863,7 +863,11 @@ export async function buildVbp(scene) {
   world.markers.minionSpots = [{ x: -4, z: -3 }];
   // THE CHALK SEAM: a dead end they worked out and abandoned
   world.markers.breakables = [
-    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 6.5, kind: 'vase' },
+    // The vase was at z 6.5, which is inside the 2.5u BLIND STRIP against the
+    // room's south edge — the band a child cannot see from where the camera
+    // sits, so a breakable there is a breakable nobody knows is there. Pulled
+    // in to z 4.6, which clears it with room to spare.
+    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 4.6, kind: 'vase' },
   ];
   fallenColumn(world, -7, 4, 0.6, D, 3.0);
   cartWreck(world, -6.5, -5, 1.1, D);
