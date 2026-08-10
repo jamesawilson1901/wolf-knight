@@ -2346,6 +2346,124 @@ across 216 files** (audio 20 MB, characters 13 MB, animations 3.3 MB,
 environment 2.5 MB). Five districts in Level 2 and five in Level 3 come out of
 the same geometry by material-name recolouring.
 
+## v3.25.0 — The rebuilt levels ARE the game (A1 + A7) (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (252e156) — the work shipped, the
+> entry never got written. Kept short because design/FIX-PLAN.md A1 and A7
+> carry the full write-up; this exists so the version is not a hole in the log.
+
+REPLACE, as dad chose. The den opens into the rebuilt Level 1, and beating each
+boss opens the way onward: `le → vh`, `vz → t1a`, `tgl → f1`. Frostpeak was
+never rebuilt and is reached exactly as it always was.
+
+THE RETIRED ROOMS ARE REDIRECTED, NOT DELETED. A child's save may be parked in
+any of them and additive-forever says an old profile must always load, so
+`r1-r3`, `k*`, `e*` and `w*` stay in the registry and resolve to their rebuilt
+equivalents, mapped by POSITION IN THE LEVEL — a child who stopped at the Kiln
+shrine comes back to the Kiln shrine, not to the front door.
+
+Three things the work turned up that were not in the ask:
+
+- **`state.room` vs the room actually built.** Resolving only inside `buildRoom`
+  would leave `state.room === 'r1'` while `la` is on screen, and `main.js`
+  compares room ids in a dozen places — every one of those checks would have
+  silently stopped firing. `applySave` resolves too, so the two always agree.
+- **Old profiles carry `settings.greybox: true`.** Flipping the default was not
+  enough: `applySave` does `Object.assign` over settings, so a returning child
+  would still have been handed a checkerboard. `greybox` is stripped on load —
+  it is a build-order tool, not a preference — while volume and captions restore.
+- **Two inline region ternaries had drifted apart.** `main.js:1063` knew about
+  the Wild Woods and Frostpeak; `main.js:1122` knew only `e` and called
+  everything else Ember. Both call one `regionOf()` now.
+
+`tools/verify-progression.mjs` walks both journeys — a fresh child through all
+four regions, and a forged pre-rebuild profile parked in `r2` with greybox on.
+24 checks green, including the negative case that a boss room does not leak
+onward before its boss is beaten.
+
+## v3.25.1 — The vine-lash CUTS, and `cutAt` becomes a World method (A2a, A3, A5) (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (bd53ed5, 4016d89). Full write-up in
+> design/FIX-PLAN.md A2a / A3 / A5.
+
+Level 3's first teach step — introduce, develop, the log bridge — plus the two
+fix-plan items that hung off it.
+
+**The A2a verifier crashed after passing three checks, and the crash was a real
+bug.** `world.cuttables` was undefined: `cuttables` was the ONE gate list not
+created in the `World` constructor. `burnables`, `crackables`, `boulders` and
+`potionSpots` are all initialised there; `cuttables` was built lazily by
+`gates.js` the first time a bramble appeared, so it was undefined in every room
+without brambles — including a room whose only bramble had already been cut. It
+joins `burnAt` and `crackAt` as a World method, which is what the
+`if (world.cutAt && …)` guard in `player.js` had been quietly covering for.
+
+**A3** — the shrine handler reads `grants` off the marker instead of hardcoding
+`earth_wolf`, so Sylva's shrine gives the Verdant Wolf and stops advancing
+Level 2's vault. **A5** — cut brambles persist through the shared
+`registerCuttable()` and WorldState, rather than the never-declared
+`state.flags.cut` the audit proposed; Level 3 had grown a second, incompatible
+cut system whose brambles could never have been cut at all.
+
+## v3.26.0 — THE KNOT and the two chords (A2b + A2c) (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (3af1f0b, 30e43b9, a997e63). Full
+> write-up in design/FIX-PLAN.md A2b / A2c.
+
+**THE TETHER.** `World.tetherAt()` joins `burnAt`, `crackAt` and `cutAt`, and is
+deliberately the exact INVERSE of the existing push: same cardinal-snapped
+slide, one 1.2u step, same speed, same click when it lands on a plate. The
+twist is that a boulder a child already knows how to shove now answers to a
+rope, so it had better behave identically — a second movement rule would teach
+that boulders are unpredictable, which the v3.18 playtest law forbids.
+
+**THE SNARE.** A graze still tangles for 0.6s; a square-on lash HOLDS for 2.6s.
+The same discovery, taught on something that fights back. The room teaches by
+making the old verb impossible: the boulder sits in a walled channel with no
+standing room behind it, so the only way it moves is toward you. A child who
+fights the patrolling hound rather than snaring it still wins, just slower — the
+snare is the elegant answer, never the only one.
+
+**ONE VERB, THREE CONSEQUENCES.** All three Level 3 milestones hang off
+`world.cutAt` through one `onCut` hook: `rootCut` → the chord back to the
+Gloomwood, `logDown` → the long chord home to Thornedge, `knotCut` → the glade
+door, so the puzzle IS the door.
+
+Two structural tidies: `boulder()` and `pressurePlate()` were private to
+`rooms.js` — the same setup that led Level 3 to grow its own incompatible cut
+system — and are now `pushableBoulder()` and `plateSwitch()` in `gates.js` with
+thin wrappers so every existing call site is unchanged; and the `wild3`
+restoration moved into `worldstate.js` beside the vault's, because one registry
+per level is how these drift apart.
+
+**AWAITING dad's call (still open):** the docs describe the great log as "a log
+you push over"; it is CUT LOOSE with the lash. Pushing would mean a new verb
+after the twist, or the boulder push used on something that is not a boulder.
+
+## v3.26.1 — The Warden's guard break is teachable (A4) (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (90e130a). Full write-up in
+> design/FIX-PLAN.md A4.
+
+Probed before building, and the mechanic already worked — a stomp stuns every
+grounded enemy and `shieldUp` is false while stunned, so the Warden's guard
+already dropped with no Warden-specific code:
+
+    {"guardBefore":true,"stunned":2.34,"guardAfter":false,"punishLands":true}
+
+"`stompStagger` has 0 handlers" was true but misleading. The behaviour existed;
+the TEACHING did not. So: `GUARD BROKEN!` over any guarding enemy a stomp
+staggers, with the parry ring and a punch; Pip teaches it only while the child
+faces a RAISED shield holding the wolf that answers it; the same rule asserted
+on the shieldlings, so the Warden is the exam rather than a special case.
+
+**The first probe lied and I nearly believed it.** It reported
+`blockedFrontal: false` — apparently a broken shield. `takeDamage` reads
+`this._pp`, the player position cached during `update()`, and the probe set the
+position directly without stepping the world, so the block check never ran. The
+verifier steps `w.update()` first now and asserts the whole chain rather than
+the one link the fix touched. 9 checks green.
+
 ## v3.27.0 — The promises the game could not keep (A8) (2026-08-08)
 
 The fix plan's A8 was scoped as signposting: the rebuilt levels place eight
@@ -2955,6 +3073,724 @@ non-problem. If more headroom is ever wanted, the remaining hand-built Frostpeak
 rooms (f2 99, f4 97, f3 96) still never call flattenStatic — one line each, worth
 15-18 calls, far more than LOD for far less machinery.
 
+## v3.35.0 — The buttons shrink, the orbs go, the archway comes down (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (316aa17). Everything from here to
+> v3.43.0 was written after the fact from the commit messages — the reasoning is
+> theirs, and every number below is the one that commit recorded rather than one
+> re-measured tonight.
+
+Dad played v3.34 and gave three verdicts. This is all three.
+
+**THE BUTTONS TAKE UP TOO MUCH OF THE SCREEN.** Measured: **45.7%** of it. The
+2cm touch-target law from v3.22 was borrowed from an accessibility guideline
+written for FORMS, where a mis-tap costs money and there is nothing behind the
+button. Here everything is behind the button. The law is REPEALED and replaced
+with a budget — a 44px hard floor per control, and the controls together may
+cover no more than 22% of the view. They now cover **18.7%**: attack and special
+92px, the second row 68px, the readouts 60px.
+
+`verify-touch.mjs` no longer asserts a size, because a size was the wrong thing
+to assert. It asserts the floor, the budget, no overlap, and no readable HUD
+under a landscape thumb — and it FAILS the old layout at 45.7%, which is what
+makes it worth keeping. The throw button is contextual now: it belongs to the
+form, so `onFormChanged` re-runs `refreshControlReveal()` and it appears and
+disappears with the wolf instead of only at load. Defend stays in every form —
+for a wolf that button is the dodge roll, not the shield.
+
+**THE RANDOM YELLOW ORBS.** `breadcrumbs()` dropped a line of bobbing emissive
+spheres down the middle of 32 rooms as a path hint. They are attached to
+nothing, they cannot be picked up, and a child reads an orb as a collectible.
+The builder and every call site are gone; nothing consumed `sparkSpots`. Paths
+get shown by the FLOOR instead, which is what a floor is for — see v3.36.0.
+
+**PART OF A CASTLE TOWER FLOATING IN MID AIR.** `la`'s hero archway put its
+lintel at y=4.9 on nothing at all, in the first room of the game. Two pillars
+stand; the third piece has fallen across the gap at y=0.55 and carries a
+collider, so you walk around it.
+
+Also: the voice picker was scoring `v.localService` highest, which on Android
+deliberately selects the worst eSpeak voice on the phone. It scores by name
+against the known-good engines and the known-bad ones now.
+
+## v3.36.0 — The floor stops being one flat colour, and 52 rooms become places (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` — nineteen commits under one version
+> (5b9d2f2 … da82b97). The biggest single pass in the project's history and the
+> largest part of the hole this log had.
+
+Dad's verdict on the rebuilt levels: they are "big but bare… they aren't like a
+Zelda game or terranigma game or even a Pokemon game that uses space
+effectively", and of all the vendored art "there is only a handful used". He was
+exactly right, measured: Level 1 used **three of twenty-five** dungeon props,
+Level 3 used **zero of fourteen** forest models, and the game as a whole had
+**33 of 115** models on screen.
+
+### The floor (5b9d2f2)
+
+"The floor is just a generic colour everywhere, do we have access to textures or
+something." We did not — fourteen PNGs in the repo, every one a pack's own
+colour atlas. Downloading a texture set is the wrong instinct for an
+offline-first PWA the kids install to a phone, so `js/ground.js` PAINTS the
+floor per room into a canvas at load: a district PATTERN (flagstone, cobble,
+cave floor, packed earth, grass, ash, snow), several materials meeting inside
+one room via `patches` (scorch, moss, gravel, mud, corruption, water), and a
+WORN PATH along the route through the room — the honest replacement for the
+guide-orbs v3.35 deleted. Seeded off the room id, so a room looks the same every
+time you walk back into it. Still ONE draw call; the canvas is freed by
+`World.dispose()`.
+
+Four drafts, each judged against a screenshot rather than against the code: the
+path came out a ruled vertical stripe (per-sample jitter, which a wide stroke
+averages straight back out — now a low-frequency wander); stacked blobs left a
+lumpy caterpillar (now one blurred band, blurred ONCE into an offscreen canvas,
+because setting `ctx.filter` and stroking a thousand segments runs a thousand
+blur passes and never returns); stones with low wobble read as soap bubbles (now
+angular chips); cobbles on an even grid read as pebbledash (now three passes,
+largest first). Path contrast is computed against the base rather than taken
+from the style multiplier, because on a pale floor a 1.3x multiplier clips to
+nothing and the guidance vanishes in exactly the rooms that need it most.
+
+**And the floor styles were never being used** (61c922c). `ground.js` resolved
+`GROUND_STYLES[opts.style || D.ground]` and fell back SILENTLY to generic earth
+when the lookup missed. Every district table in the game missed, because not one
+carried a `ground` field — so eight authored patterns were never drawn once, and
+three regions rendered as the same default soil. Four screenshots were reviewed
+without spotting it; what gave it away was the Bloomfall coming out a flat
+candy-pink field even after its base colour changed. A district that names no
+style now WARNS to the console: a silent fallback that produces plausible output
+is the worst kind.
+
+### The vocabulary (0f2256f, 4e5bd56, 23cbd99, eb7664c, 61c922c)
+
+`scatter()` sprinkles rocks, and a room sprinkled with rocks is decorated, not
+inhabited. So the levels gain CLUSTERS — each one a sentence about what happened
+here: `ruinedHome` (walls broken to different heights, a doorway still standing
+because doorways always are, a cold hearth, belongings knocked over),
+`cartWreck`, `wayshrine`, `fallenColumn`, `lowWall`, `rubbleField`, `aftermath`.
+Extracted to `js/dressing.js` and BOUND to a kit rather than wired to one,
+because a vocabulary only Level 1 can speak is precisely how Level 3 ended up
+using zero of its forest models. Every cluster is missing-asset safe: `place()`
+returns null for a key the bound kit lacks, so a region can adopt the vocabulary
+before it has vendored every model.
+
+All 52 spaces dressed, region by region, each to its own brief:
+
+- **Ember Hollow (14)** — ruined and sad. The four chokes shipped as completely
+  empty 14x10 boxes; each now has a banked hearth, a wayshrine and the gateposts
+  of the old road. Scatter drops from 10-16 per room to 5-7. 54-111 draw calls.
+- **Stoneroot (17)** — something enormous carved here long ago and the dark has
+  been sitting on it since. Twelve ruin props the cave kit never had; `propTint`
+  runs COLDER than Ember's, because the only light that has reached this stone
+  in an age is blue.
+- **The Wild Woods (21)** — the loveliest place in the world with something
+  rotting it from inside. The fourteen vendored-but-unused Quaternius forest
+  models arrive; groves take a `sick` fraction that DRAINS a tree toward the
+  corruption's colour rather than darkening it, rising 0.10 at Thornedge to 0.90
+  in Sylva's Glade, so a child watches the forest get worse without being told.
+  `propTint` is deliberately richer than the ground: you cannot see something
+  being lost unless it was plainly worth having.
+
+Rooms dressed at the PERIMETER ONLY are a rule, not an omission, and each says
+why in place: `ld1` and `vb3` are puzzle rooms (clutter competes with the exact
+thing a child must look at), `le` and `vz` are boss arenas (the Shadowgrip's
+charge runs about eight units and needs somewhere to run), `va3` is a grant room
+(ceremony needs an empty middle). Nothing is placed in `lc`'s lava band or on
+its safe slabs, and `lc`'s worn path bends TO the slabs rather than across the
+burn — a path that walks a child into lava is worse than no path.
+
+### What density cost, and how it was paid (0f2256f, 4414b59)
+
+`la` came in at **163 draw calls** against a ceiling of 100. Four fixes, none of
+them "remove the content":
+
+- `tintedModel` keys its cache on the material's SURFACE CLASS rather than its
+  name. A Quaternius `Wall_Modular` carries `Wall_Dark`, `Wall_Medium`,
+  `Wall_Highlights` and `Grey_Floor` — four materials differing only in value on
+  a model with no texture map — so eleven wall fragments arrived as forty-four
+  meshes in four buckets, which `flattenStatic` then split again per cell. Three
+  shared classes keep the light and shade. **163 → 136.**
+- The merge threshold drops from three geometries to two: `la` stranded 107
+  meshes in buckets of one and two. **→ 118.**
+- One `propTint` per district instead of three. **→ 112.**
+- Small clutter opts out of the shadow pass at placement, because the post-merge
+  size cull never sees a brick once it is inside a merged batch. **→ 113 with
+  351 loose meshes folded into 30 draws.**
+
+Then the key light: it was nailed to the world origin with a 28x28 shadow
+camera, which on a 32x26 island covers nearly the whole room, so every
+shadow-casting prop was submitted a second time whether or not it was near the
+camera. A **20x20 box centred on Kael** covers everything the camera can see and
+nothing it cannot, costs the same in a big island as in a small pocket, and
+spreads the same 1024 map over 20 units instead of 28 — the shadows get SHARPER.
+Snapped to whole units so the depth texels do not crawl as he walks.
+
+**The ceiling moves 100 → 125**, with the reasoning recorded in
+`verify-level1.mjs`: 100 was set against rooms dad has since played and called
+bare, so it was in effect enforcing the emptiness. 125 is 110 plus margin and is
+NOT a measured device limit — SwiftShader is a CPU rasteriser and says nothing
+about a phone GPU. If the kids report jank it is the first number to come back
+down.
+
+### The verifier this repo did not have (23cbd99, 4e5bd56, b80339f, 307f078, b74d1c8)
+
+Every topology assertion in the suite was green while the rooms were empty
+boxes. That is exactly how "big but bare" reached a playtest: nothing was
+measuring a room's CONTENTS. `tools/verify-density.mjs` measures the ARRIVAL
+FRAME — the camera is a fixed world-space offset, so the rectangle a child sees
+on walking in is known and constant (22.2u wide, 12.9u ahead, 4.5u behind) — and
+counts what is in it, at that room's own spawn, plus the floor texture's
+standard deviation, because a flat floor is a bug now rather than a default.
+
+Its own thresholds were guessed and wrong at first: it shipped asserting an
+island shows at least 12 things while the dressed islands measure 69-75 — it
+would have passed a room stripped to a sixth of its content and reported
+success. Set at roughly half the measured value now, with the measurements
+written beside them, and deliberately loose: the job is to catch a room being
+gutted, not to dictate how many barrels belong in it. It covers all 52 spaces,
+not Level 1 only — checking one level would have let the two regions with the
+worst art usage carry on passing by not being asked — and it runs in
+`verify-all.sh` **by default**, not on request.
+
+One metric was measuring the opposite of what it meant: the model count ran over
+the objects still standing after `flattenStatic`, so a room that BATCHED WELL
+scored as using fewer models. `flattenStatic` records the source set it consumed
+now, because it is the only place that still knows it.
+
+### The register of ground gameplay owns (ee97c09, 52da203, 4891ee8, f643295, da82b97)
+
+Two regressions the dressing caused that would have reached a child: an enemy in
+`t1b` spawned INSIDE a tree (a stuck enemy never reaches you and never leaves
+the screen), and the chest behind `vc2`'s thorn gate ended up **2.06u out of
+reach** — you cut the bramble, solve the puzzle, and cannot take the reward.
+Same bug both times: a prop builder knows where it wants to put a rock; it does
+not know a hound spawns there. Fixing the two placements would have left the
+next hundred props free to do it again.
+
+So `World.reserve(x, z, r)` for what a room states outright, `World.blocked()`
+reading `world.markers` LIVE at placement time, every solid cluster prop and
+every `scatter()` rock asking before it places, and `World.sweepKeepClear()` at
+the end of every build as a last line of defence.
+
+`probe-keepclear` then reported that last line firing in **twelve of seventeen**
+rooms — and a last line of defence that fires constantly is telling you the
+first line is missing. Almost none of it was the original problem: 51 marker
+statements were declared AFTER the dressing (so `world.blocked` had nothing to
+read); four placement checks had been added with the wrong indentation and
+silently did nothing; not every marker means "keep this clear" (`heroSpot` IS
+the fallen gate, so protecting it made the sweep drop the prop's own collider);
+and worst, only SCENERY may ever be swept — with good data the sweep began
+dropping the Kiln cone, the Forge Heart and the Great Vault's ring, which means
+walking through a volcano. Colliders placed by the dressing are tagged `decor`
+and only those are ever swept. **Fires in none of nineteen rooms now.**
+
+Then the padding: 1.6u of standing room plus a cluster's 1.2u query radius
+excluded nearly three units around every marker, and `vh` dropped from 55 things
+in the arrival frame to **9**. A body is about 0.7u across, so 1.1u is ample;
+chests and promise gates keep 2.2u, because an approach you cannot walk is a
+broken reward. A doorway is 2.4u wide, so reserving 2.8u round its centre was
+claiming exactly the ground gateposts belong on.
+
+**And the Great Vault was returning before it dressed.** `return finish(world,
+spec, D);` had been moved above nineteen lines of dressing by my own
+marker-reordering script, which detected the end of a statement by looking for a
+line ending in a semicolon — `world.markers.hubStage = stage;` ends with a
+trailing comment, so it swallowed the return and hoisted all three. **A builder
+that returns early still BUILDS**: the room boots, the topology holds, the
+promise gates open, the enemies spawn, and every behavioural verifier stays
+green while the room is empty. Only the density check noticed, and only because
+it counts contents rather than correctness. `verify-boot` gains a static check
+for unreachable code after `return finish()`, finding the function body by BRACE
+MATCHING — the first version sliced from one `export async function` to the
+next, read straight past a non-async export, and reported two healthy builders
+as broken. I nearly "fixed" both on its word.
+
+### Also in this version
+
+- **Stoneroot stops being unreadable** (0fdca6a). Each region hands the light
+  rig its district tints so colour temperature says which part of the level you
+  are in. Right idea, wrong values: those are SURFACE colours, chosen to look
+  correct once lit, and several are very dark. `vaultDark` ships `floorTint
+  0x555c68` / `wallTint 0x22262e`, and used raw as light colours they multiplied
+  the room down — the key light ran at about a third of its intensity and the
+  hemisphere bounce at a tenth. Hue kept, value normalised.
+- **`ASSETS.md` records what is USED, not only what is vendored** (3e7bece). The
+  gap was never licensing or missing assets — every model was here, cleared and
+  loading. It was a vocabulary problem: the builders could place a rock, so
+  rooms got rocks.
+- **The voice settings row** (4edde46). The ranked pick from v3.35 is the right
+  default and cannot be the whole answer — which synthetic voice is tolerable is
+  taste, and the phones in this house do not offer the same set. One big button
+  steps to the next English voice and immediately SPEAKS with it (a dropdown of
+  strings like "Microsoft Libby Online Natural - English United Kingdom" is not
+  usable by a seven-year-old); a talk-speed slider samples on release, not on
+  input. Hides itself when the device reports one voice or none. Saved as
+  `settings.voiceName`; old profiles lack the key and fall back — additive
+  forever.
+- **A 52-frame contact sheet** (d37e85a). A verifier cannot tell you a room is
+  boring, so the counter-measure is not another assertion but making the rooms
+  easy to LOOK AT: every arrival frame in walk order on one page, flickable in a
+  minute on a phone.
+
+## v3.37.0 — The seam stops announcing itself (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (ff78d57, e88b3c0).
+
+Dad asked whether the game should flow continuously instead of stepping through
+doors, keeping real doors only for bosses and locked areas. **Yes to the
+FEELING, no to the rewrite** — Zelda, Terranigma and Hollow Knight are all
+room-based underneath, and rooms are what make this game authorable: enemy
+budgets, draw calls, checkpoints, the map, WorldState and 52 build functions all
+assume one room is one world. What needed fixing was the seam.
+
+Measured, a transition cost three separate things and only the first was
+obvious: **520ms of black**, then `player.place()` stopping the child dead and
+resetting their facing to a fixed per-door angle, then `snapCamera()` hard-cutting
+the camera. You walked into a doorway with momentum and heading and came out
+standing still, pointed wherever the door said.
+
+- **Carrying them through.** The crossing records where along the doorway they
+  were, their facing, their velocity and the camera's look-ahead, and hands it
+  all back. Leave three units left of the arch, arrive three units left of the
+  arch — n/s and w/e doors always pair on the same world axis here — clamped so
+  nobody lands in a wall. Their heading is kept when it broadly agrees with the
+  way the door faces and only overridden when they scraped through sideways,
+  because arriving faced at the wall you just came through is worse than being
+  turned.
+- **How hard a doorway should be.** Every door used the same 260ms fade both
+  ways, which makes a step between two halves of the Ashfall feel exactly like
+  walking in on a boss — and a door that always means something means nothing.
+  Now **90ms within a district, 170ms between districts, 300ms into a boss
+  arena**. The rule a five-year-old ends up learning: if the screen takes its
+  time, something is about to happen.
+- **Seeing where you are going.** A district's colour is the game's wayfinding,
+  but you can only see a district while standing in it, so it says where you ARE
+  and never where you are GOING. Each doorway spills the next room's colour: a
+  fan across the floor, and the opening itself standing lit in the wall. Three
+  drafts — floor spill alone was so faint I mistook a painted ash patch for it
+  (additive light on an already-lit floor has little to add); then it was blown
+  out, so the fan drops to 42% of the opening's brightness, because a fan as
+  bright as the doorway reads as a glowing portal rather than a lit room beyond
+  a dark wall. District tints are pushed toward saturation first, since several
+  are near-neutral and neutral light adds nothing.
+
+**ONE draw call for every doorway in a room** — the colour rides on the vertices,
+so the Great Vault's five openings cost the same as one. Measured +2 calls worst
+case, 112 of the 125 budget in `vh`. `js/districts.js` is a registry rather than
+an import because levelkit is imported BY the level modules and reaching back
+would be a cycle.
+
+Written down alongside, in ROOM-STANDARD: the door-cost table is a design rule
+rather than an implementation detail; enemies still do not follow you through a
+door, because retreating into the last room is how a five-year-old survives a
+fight she is losing; and zone merging is the real continuous option if the seam
+work turns out not to be enough.
+
+## v3.38.0 — The Den: three times the size, a painted floor, somebody living in it (2026-08-08)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (fc71bad, 2a7c83d).
+
+Dad: "fix the den. there's no textures, it's physically tiny… the den needs to
+feel more lived in." All three were the same root cause — the Den is the oldest
+room in the game, hand-built before the metrics existed and before `ground.js`
+existed, and never revisited.
+
+**SIZE.** It measured 14 x 10, which is the CHOKE module: the smallest space in
+the game, the one used for compression beats between islands. The camera shows
+22.2u across, so the entire home base fitted inside a single frame with room to
+spare. Now **24 x 18** — three times the area, and deliberately NOT island-sized,
+because home should feel gathered and a hub you cross twice to reach the shop is
+a chore rather than a comfort.
+
+**TEXTURES.** It never had any, because it predates `js/ground.js`. It gets the
+same painted ground as everywhere else: grass, with earth worn through where a
+camp actually wears it (round the fire, at the tent mouths) and tracks between
+the gate, the beds, the market and the meadow.
+
+**THE GATE MOVED TO THE SOUTH WALL**, and that is a camera decision rather than a
+geographic one. `CAM_OFFSET` sits at +7z looking toward -z, so the frame always
+shows 4.5u behind and 12.9u NORTHWARD. With the gate on the north wall — where
+it was, because Ember Hollow lies north — you arrived home at z = -8 and the
+entire camp sat behind the camera. The first pass of the rebuild rendered a
+fence and a lawn. Gate south, camp north: you come home and the whole place is
+in front of you.
+
+**LIVED IN.** Tents and trees say a camp EXISTS. What says somebody is still
+doing things in it: seats round the fire that FACE the fire, wood cut and
+stacked ready, stores carried in and not unpacked, light hung along the paths
+people walk after dark, and a kitchen garden planted in ROWS — rows are the
+tell, because scattered flowers are scenery and a line of them is somebody's
+work. Villagers, Biscuit's rounds and all three minigames spread out to match; a
+dog patrolling a two-metre square is not patrolling, it is pacing.
+
+**DRAW CALLS.** 170 on the first pass. Two structural causes: every prop cloned
+its material to escape the volcanic tint cache, so nothing could bucket; and
+forty small repeated props were forty separate objects. One material per colour
+and one `InstancedMesh` per kind → **105 on arrival, 132 at the worst camera
+position**. The Den's ceiling is its own, at **135**, and `verify-den` says why
+in place: it carries more characters than any room in the game and skinned
+meshes never merge, so it pays a cost no other room does for exactly the thing
+that makes it home — and it is the one room with NO COMBAT, so what it measures
+standing still IS its worst frame rather than its quietest.
+
+Dropped: a flag over the gate. `Banner_wall` is modelled to hang on a vertical
+face, and laid at the gate mouth it rendered as a pale slab on the ground right
+where a child walks in. A prop that reads as a mistake is worse than no prop.
+
+**The mushrooms and the trees** (2a7c83d) — two faults that both read as
+"crystals in the Den". The mushrooms were drawn at 1.6x, and `mushroom-group.glb`
+is a CLUSTER of caps modelled at ankle height, so each "patch" was one object
+the size of a tree; a strong emissive on a low-poly cap reads as cut glass
+rather than as something that grew. A patch is what the word means now — nine to
+fourteen small mushrooms over a couple of units, emissive 0.55 → 0.28, and ONE
+soft light over the whole patch instead of one per clump (three point lights in
+the Den alone, and the shader pays for every one in every material in the room).
+Instanced: all the patches in a room cost two draw calls. And the trees were
+never tinted at all — the Den has tinted a material called `foliage` since it
+was written, and `tree-a`/`tree-b` do not have one; their leaves are
+`leafsGreen`, which appears nowhere in `js/`. The canopies had been rendering in
+the model's own turquoise the entire time. NOT introduced by the rebuild; it
+only became obvious once the room was three times the size and the ground around
+it was green.
+
+Also: `LATE=1` on `tools/shot.mjs` shoots the world as it looks once regions are
+freed, because the Den's spirit shrines, third tent and mushrooms only exist
+then. Late-game Den measures 130 against its 135 ceiling.
+
+## v3.39.0 — One mini game harness, and the wind (2026-08-09)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (782f7d7 … fcad2c0). Nine commits:
+> the mini-game system, the licence decision, and Stormreach designed and built.
+
+### The harness and Fetch (782f7d7, 29e8d93, 042fb9b, 7e198af)
+
+`design/DEN-MINIGAMES.md` §8 step 1: build the interface, the shared harness and
+Fetch only, and prove the contract end to end. `js/minigame.js` owns the round
+clock, the score, the how-to-play demo, exit, the results screen, personal
+bests, reward payout and ducking the den's ambience; a game supplies
+init/start/update/end/teardown and nothing else. Fetch (`js/mg-fetch.js`) is the
+first: a stick arcs out and **the catch window IS the parry window**, imported
+from `player.js` rather than copied — a child who learns to catch the stick has
+learned the timing that blocks a Bone Brute, and retuning the parry retunes the
+game.
+
+Unlocks read the rescue COUNT, never which characters were found, so no game is
+orphaned by a missed rescue. Bests live in the child's own profile and are saved
+additively. Two deliberate divergences from the spec, both written into the doc:
+the exit is 92px rather than 2cm (that law was repealed in v3.35), and the
+harness does not move the camera — the camera is a fixed world-space offset and
+nothing teleports the player, so a game is handed a play area built around where
+the child is already standing.
+
+**Mini games pay in SCORE, not shards** (7e198af). §6 says an empty reward pool
+pays "a small score bonus"; §2 says every reward is cosmetic. The first version
+paid shards, which buy potions and upgrades — a round a child could grind for
+progress, which is the one thing this system is not allowed to be.
+
+**Four things a verifier had no way to notice** (042fb9b), all found by
+screenshotting a real round: the world's HUD stayed up underneath the game's, so
+a child was reading three HUDs at once and pressing controls that did nothing
+(`body.mg` stands it down); tapping to skip the demo started the round but left
+the demo card on screen, so thirty seconds played behind a giant bone with Kael
+hidden under it (starting a round is one function called from both places now,
+and the card moved to the bottom edge — the demo IS the game running early, and
+parking it over the middle hid the thing it exists to show); the results screen
+was a tall column, which on a phone held sideways put both buttons half off the
+bottom (wide layout, plus assertions measuring every control against the
+viewport and the 44px floor on the screen it lives on); and the stick flew in
+from empty grass with nobody standing there to throw it. Kael throws it himself
+now — out, off the ground, back to his hands, one arc a child can follow — and
+it is bigger and pale, because the one object the game is about was the hardest
+thing on screen to see.
+
+`tools/verify-minigame.mjs` walks a child in through the real ring, taps through
+the demo, mashes a score, runs the clock out, reads the results, replays,
+leaves — then opens and closes ten more times and requires the room to hold
+exactly what it held before. 15 assertions.
+
+### The licence rule is overwritten for this build (598498c)
+
+Dad: "the game is only for myself and my family and will never be made public or
+sold. overwrite the current rule. they can be used." The standing rule was that
+an unknown licence is BLOCKED rather than permitted. It no longer governs this
+build.
+
+Recorded rather than erased. The four packs — both Quaternius packs, the
+HydroGene music that is eight of the ten tracks, and the two OpenGameArt tracks
+— keep every line of what is and is not known about each of them in
+`MANIFEST.json`, marked **accepted, not cleared**, and `check-licences.mjs`
+reports them under their own heading with the link that would clear each one.
+`--strict` still fails on them: that flag is the gate for the day this stops
+being a family build, and accepting a risk is not the same as clearing a licence
+— fetching four licence files then is an afternoon, working out which four and
+why a year later is not.
+
+Noted as fact rather than objection: the build is served from a public GitHub
+Pages URL, so it IS published even though it is for the family. The decision
+stands; the note exists so nobody later reads "never made public" as a
+description of the hosting.
+
+### Stormreach Cliffs — region 5 (ad1deb7, 5a26985, 1383222, fcad2c0)
+
+**The shape is a climb** — four terraces up a cliff face joined by stairs that
+alternate direction, the first level whose topology is a DIRECTION rather than a
+place. No height engine is involved: the climb is sold by the stairs reversing,
+the palette rising out of the storm, the wind getting louder with altitude, and
+each terrace showing the colour of the one below spilling up over its south lip.
+
+**A gale lane is a rectangle that pushes.** It never damages — the region has
+creatures for that, and a child should be able to stand in the weather and look
+around without losing a heart. The three strengths are set against Kael's own
+speed rather than picked for feel: into a breeze he makes **3.4 u/s**, into a
+gust **0.8** (crawling, still moving, so it never reads as a bug), into a gale
+**-2.2**, which is the lock. You can walk up to a gale, lean on it, and be walked
+back out, which says "not yet" better than a bar across a doorway and without a
+word. All the weather in a room is ONE mesh, with flow direction baked into the
+UVs so a single scrolling offset drives every lane along its own axis; the
+sheets are HORIZONTAL because the camera is a fixed 50° pitch and an upright
+sheet is edge-on and invisible for any north-south lane.
+
+**The thunder-dash is the first gift aimed at Kael rather than at an obstacle.**
+It crosses a gale and nothing else does; it hurts and stuns what it passes
+through; it spins a weathervane, which turns that vane's lane. It rides the same
+collision-solved drive as the Dark Wolf's lunge, so it stops at walls — nothing
+teleports the player. Its cooldown is the shortest in the game at five seconds,
+because a way of MOVING that makes a child wait is a way of moving children stop
+using. The wind is added to the WALK, not to the velocity: Kael keeps his own
+top speed and is carried while he uses it; the other way round felt like broken
+controls rather than losing weather.
+
+Twenty spaces, walked by `tools/verify-level5.mjs`: every step of the climb has
+a door to the next, nothing is one-way, every pocket door is answered from the
+other side, and the four teach steps are in the rooms the design doc says — most
+importantly that a gale is SHOWN in the second room of the region, four rooms
+before the shrine hands over the thing that crosses it. A child has to see what
+a tool does before they are given it, or the gift lands as a shrug. Frostpeak's
+summit now opens north once Boreal is calmed, the first time the game has had
+anywhere to go after region four. The Gale Hound family fears EARTH, not fire:
+four regions of "burn it" was becoming the only answer a child ever needed.
+
+**The rooms were rendering as greybox in the dressed build** — `buildRoom` had no
+branch for the region, so the sky kit never loaded and every `s`-room fell back
+to proto geometry with a flat floor, which is why the first density run measured
+a floor variation of zero in all twenty. With the kit loading: 38-60 things in
+the arrival frame against a bar of 32, worst room 95 of 125 draw calls. The
+STAIRS did fail honestly — 13 things against 21 — so they were dressed rather
+than the bar lowered.
+
+**Aria, the Galebound** is a SKIN on the class the Shadowgrip and Sylva already
+wear: bosses fight like their family, so the crouch, the charge, the red lane and
+the gold collapse ring are all ones the kids have read since region one. The only
+new thing is the weather — at half health she raises two gales that squeeze the
+arena from both sides, so walking out of her charge lane stops working and
+dashing out still does. The region asks its question once, at the moment it
+matters.
+
+Also: Luna's dream after Frostpeak told the kids to listen for water, which is
+region SIX — it skipped Stormreach entirely, so a child doing as she said would
+walk to a shore that does not exist while the cliffs stood open behind them. She
+points at the cliffs now, and the water gets its own line.
+
+`tools/verify-storm.mjs` drives the real stick through `Input.getMove` rather
+than moving the player directly, because the question is what the MOVEMENT CODE
+does with wind in it. Walking north on open ground gains ground; walking north
+into a gale loses it. That sign flip is the whole region.
+
+## v3.40.0 — Aria proven, and five rooms that were full and read as empty (2026-08-09)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (39d4045, 30a4a91, 0d63401, 1d04ba0).
+
+**The boss is hit through the Hittable the sword arcs and bolts actually find**,
+not by reaching into her internals: she spawns, the arena narrows by two gales at
+half health, beating her sets the region flag, and the wind goes with her rather
+than blowing across a finished fight.
+
+The design doc called for sails, sail-wrecks and a great sail-gate. There is no
+sail, ship or chain in any vendored pack, so the region does not have any — the
+same call LEVEL-MAP already made when the Cinder Bridges' GREAT CHAIN became THE
+BROKEN SPAN. What people built up this cliff is a road, and the ruin vocabulary
+already draws that. The Vanes puzzle was simplified too: three simultaneous
+conditions is a lot to hold in a five-year-old's head, so it is ONE condition —
+nothing blowing across the corridor — visible from anywhere in the room.
+
+Written down as well: **what this region does NOT have.** No music of its own, no
+survivors to rescue, no Grimm taunt and no Luna count yet.
+
+**Five Stormreach rooms were full and read as empty, for three different
+reasons** — the focused run during the build sampled only eight of twenty, and
+none of the causes is "add more props":
+
+1. **Dressed outside the frame.** `s2b`'s whole ruin sat at x 10-12 with Kael
+   walking in at x 13 facing west, so all of it was behind the camera; `s3b`'s
+   was at x +11 with the child arriving at x -13. A room can be completely
+   furnished and still look bare if every cluster is somewhere the player is not
+   looking.
+2. **One tint for a whole cliff.** Every cluster took the district's single
+   `propTint` — the "generic colour everywhere" complaint moved from the floor
+   onto the props. Sea-cliff stone bleaches where the weather gets at it: four
+   weathering STEPS, not a continuum, because a unique tint per prop reads fine
+   and batches terribly (nothing merges, the stair costs 24 more draw calls, and
+   the check that counts merged batches sees an empty room).
+3. **Thirty-eight things counted as one.** The stair parented all its rubble to a
+   single group at the origin, which is right for a ruined house — one thing to
+   look at — and wrong for a scatter of barrels and broken stone. Level 1's
+   chokes score 44 with less in them because they add each piece separately.
+   Same props, same draw calls after batching, an honest count. A blocked slot
+   now moves to the other wall instead of vanishing, which is what had quietly
+   emptied a third of `sc4`.
+
+Seventy-two dressed spaces measured, and region five is the first that never had
+to be retrofitted — built to ROOM-STANDARD from the first line. It found the
+standard's first gap: the STAIR is a new 24 x 12 module and the first pass
+dressed it like a corridor. The bar stayed where it was and the stairs got
+dressed instead. A room you walk through is still a room.
+
+**And the Sunken Vale's design half** (1d04ba0), written before a room of it
+exists. Two depths: shallow slows you and always has; deep is a wall you can see
+across, laid as a plain box collider until the Tide Wolf is owned, so it stops
+Kael exactly the way a cliff does and there is no special case in movement to get
+wrong. It is the best locked door the game has found — Ember's boulder and the
+brambles are opaque, Stormreach's gale shoves you out, and water just says no
+while letting a child stand at the edge looking at what they cannot reach yet.
+
+**The bubble is AUTOMATIC, a deliberate break from the design doc.** Built as a
+four-second special it can strand a child mid-lagoon with the timer running out,
+and there are exactly two ways that ends: drowning, which this game does not
+have, or being moved to shore, which is a teleport. So the FORM is the key — the
+same rule every other region follows — and the button does the other half of
+Meri's gift: a splash that soaks what is near it and PUTS FIRES OUT. The braziers
+the Fire Wolf learned to light in region one are the ones this learns to quench
+in region six. That is the joke, and it is the whole of the Tide Pools puzzle.
+
+## v3.41.0 — The Sunken Vale and the Shadow Court (2026-08-09)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (fffb0db … 1a4f26f). Two whole regions
+> under one version — forty rooms.
+
+### The Sunken Vale — region 6 (fffb0db, 44ce294, 276a1af, b54488d, e60e135, e4249a8)
+
+Built on region five's lessons rather than repeating its mistakes. **The dressing
+is ONE shared function in room-relative coordinates** instead of twenty bespoke
+blocks: Stormreach was written the bespoke way and five of its rooms quietly
+failed the density check because the clusters happened to sit outside the arrival
+frame, and the fix was the same every time. The Vale does it once and by
+construction — clusters go 2 to 13 units ahead of the spawn along the spawn's own
+heading, which is where the camera looks. Seed, palette, spread and which
+clusters get used still vary per room. It is the floor, not the room.
+
+**The shape is a lagoon, and it is the only level whose shape CHANGES when the
+child is given the gift**: four shores walked round the rim the long way until
+the Tide Wolf turns the water in the middle into the road. The rim is a complete
+loop, so a child who never works out what the lagoon is for still finishes the
+region — and the shores do not even show a door onto the water until the gift,
+because a door leading somewhere you cannot stand is worse than no door.
+
+**Meri** is a Tide Blob the size of the arena, on the same class the Shadowgrip
+wears — three wolf-shaped bosses is enough wolf-shaped bosses, and her family is
+the blobs the kids have fought all region. What is new is the floor: as she loses
+she FLOODS it, so the standing ground shrinks and the gift stops being a
+convenience.
+
+**Two gates that could never have been opened by the wolf they were promised
+to** (44ce294). The channel in `r2b` has been in Ember Hollow since the first
+build with a gold chest and two heart pieces plainly visible across it; its
+collider went down unconditionally and nothing anywhere could take it up again,
+so a child who remembered it for five regions would have come back to find it
+still shut. It opens to the Tide Wolf now, by the same rule the Vale's deep water
+uses — the collider is simply not laid for a profile that can walk on water. And
+Stormreach's flooded sea cave was seeded as a `shatter` gate, which is the FROST
+verb: it would have opened to a wolf the child already had, so the promise would
+have paid out on sight and meant nothing. There is a `none` gate system for
+exactly this now.
+
+**Four bugs the verifier found** (276a1af), all worth the record. `rimSides`
+vanished — written in the first draft and lost when the rooms were restructured
+onto the shared dresser, so all four rim paths threw on build (twenty page errors
+before anything else). The continuum tint came back: Stormreach learned twice
+that a unique colour per cluster is a unique material per cluster, and the Vale's
+`washed()` took a continuous `k` anyway — it quantises INSIDE the function now,
+so no caller can make that mistake again. The lagoon faced out of its own room:
+its spawn angle pointed at the east wall two units away, so the arrival frame
+showed a wall and the density check read ONE thing in it — **a spawn angle is not
+decoration, it is where the camera looks** — and its drowned roofs were entirely
+beneath an opaque water sheet, so half of them break the surface now. And `d1b`
+came in one draw call over the ceiling; it lost clutter, not content (127 things
+in the arrival frame against a bar of 32 is a lot of clutter to lose).
+
+**Two bare rooms and a contaminated test** (e60e135). `dg2`'s rim dressing walks
+the long walls, and `dg2` is the room whose deep channel runs right through them
+— two thirds of its slots were inside the water and got dropped, so the develop
+room measured eight things in frame. Meri's Deep was bare for the opposite
+reason: an arena keeps its middle clear because a boss that lands on a boulder
+buries its own punish ring, so what she drowned is piled round the rim instead.
+And `verify-storm` reported the thunder-dash no longer crossing a gale — it does;
+a direct probe walked it from z -3.6 to -10.17. The step before it walks Kael
+into the gale for 1.6 seconds and leaves a movement lock on him, which the dash
+test inherited. **The verifier was wrong about the game, and finding that out
+took a probe rather than a guess.**
+
+**A gale 5.2 deep is not crossable by a dash 5.2 long** (e4249a8) — the real bug
+behind three wrong diagnoses. Kael landed exactly on the far lip with no margin
+and the wind blew him straight back out; it looked from outside exactly like the
+dash had stopped working, and I blamed a leftover movement lock and then a
+blocking story line before instrumenting it and watching him cross and get pushed
+back. The lane is 3.8 deep now, and the rule is MEASURED rather than remembered:
+every gale is at most 4.2 across its narrow axis, checked in all fifteen rooms
+that have one, with weathervane-controlled lanes exempt and saying so in the data
+— those are turned aside, not dashed through. Two things it leaves behind: the
+dash assertion requires Kael to end up OUT the far side rather than merely far
+from where he started, because landing inside a gale is not crossing it; and a
+test that walks a child near a promise gate has to clear `narration.blocking`
+first, since a blocking line freezes the world and anything measured during one
+is measuring nothing.
+
+Density covers the Vale too (b54488d) — ninety-two rooms measured, with the
+verifier setting the two region flags it needs, because regions five and six do
+not exist until their doors are open.
+
+### The Shadow Court — region 7, the last one (2a9c5b4, 1a4f26f)
+
+**Awareness and the Ghost Wolf** first, the engine half — two new things and only
+two, because a finale is not the place to make a child learn a system from
+scratch. Every enemy gains unaware / suspicious / aware, and **every enemy in the
+game is born aware with nothing to change that**, so six regions of behaviour are
+untouched; only a variant that opts in can ever be unaware. An unaware shadow
+paces and looks the other way with its eyes dimmed to a quarter: **the pose is
+the readout, and there is no meter anywhere on screen.** Attacking, breaking
+something or BUMPING one wakes it — touch works both ways — and it settles again
+after three seconds unseen, because a child who makes one mistake should not have
+to leave the room.
+
+**The ghost walk is the only ability in the game with a duration**: six seconds
+unseen, eight to recover. Pressing it mid-fight makes everything already hunting
+him lose the trail, which is the point of having it in the throne room. What it
+is NOT is a stealth-failure system: being seen costs nothing but the fight the
+child has been having for six regions. No alarm, no reset, no way to lose a room
+by being spotted.
+
+**Twenty rooms, four wings.** Level 2's hub shape returned to at the very end of
+the game with every tool in hand, because the shape a child learned second is the
+shape they should finish on and a finale that needs explaining has gone wrong.
+Each wing is OPENED by one verb and SOLVED with a second — burn then crack, cut
+then freeze, dash then quench, ghost then ghost — which is the combine-your-tools
+lesson six regions have been building toward and the only thing this level asks
+that the game has not asked before. Each ends in a relic; four relics light four
+sockets over the throne stair, so a child can see how many are left without a
+word or a number on screen.
+
+The **watchers** are the region's lock: sentinels solid while they can see you,
+sinking into the floor with their eyes out when they cannot. The **Standing
+Mirrors** are the twist — they are shadow, and shadow does not stop a ghost, so
+ghosting does not only hide Kael, it lets him pass.
+
+**Shadow-Grimm** wears the same class as the Shadowgrip, because canon says the
+Shadowgrip WAS a piece of him. Below half he shrugs off steel and moon; below a
+third he shrugs off whatever hit him last. A child who only ever learned one wolf
+cannot finish it; a child who has been switching all along barely notices. One
+thing had to be fixed to make that work: **the Hittable adapter every boss is
+struck through was dropping the ELEMENT on the floor** — fine while no boss cared
+what hit it, and a resistance that cannot see the element is not a resistance.
+
 ## v3.41.1 — Maren's stock grows with the world (2026-08-09)
 
 The FIX-PLAN status table is closed end to end, so this run took the first
@@ -3083,3 +3919,213 @@ old flat shop out of the service worker.
    (~400 at the top) and there is nothing new to sell after Frostpeak, so
    Stormreach and the Sunken Vale both end with a trip home to an unchanged
    cart. A rung 5 wants new stock, which is an asset question, not a code one.
+
+## v3.42.0 — The ending, and four places the music was wrong (2026-08-09)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (6cf234b, 211c336, 06b1a66, d8c84fd,
+> 78f118d).
+
+### The game has an ending (6cf234b)
+
+Wolf Knight has never had one. After every boss the game plays a restoration and
+carries on; after this one there is nothing to carry on to, and a game that just
+STOPS is a game that tells a child their story did not matter.
+
+He is **FREED, not destroyed** — the bible is explicit and so is the flag's name.
+Six lines over twenty-seven seconds: the quiet, Luna explaining that he was the
+first of them, Grimm telling Kael to keep the forms because they were always
+going to a kinder bearer, Kael's only spoken line in the whole game, and the Den
+full of everyone they found. Then seven moons and a tap to put it away. The
+credits obey the same no-reading rule as everything else — icons and one short
+line each. The names are for dad, the pictures are for the kids.
+
+### The Great Hall was throwing, and it is the door to everything (211c336)
+
+`'hub'` in the ground painter is the POINT the worn paths bow through, not a
+flag. Passing `true` threw `boolean true is not iterable` inside the path
+builder, and because the hall is the only way into all four wings, **every room
+past the shrine failed to build — seventeen of nineteen, from one wrong
+argument.**
+
+Verifier green after: all nineteen spaces build, the spine walks, each wing is a
+there-and-back-again ending in exactly one relic, the four wings need four
+DIFFERENT wolves to open, the throne stair stays shut with no relics held and
+opens with four, and the standing mirrors drop their colliders while Kael is a
+ghost and take them back the moment he is not.
+
+### Density covers the Shadow Court (06b1a66)
+
+**A hundred and eleven rooms measured now.** A WING is held to the island bar —
+26x20 against 32x26 is close enough that a softer bar would just be a discount —
+the throne stair to the choke bar, and the throne itself to the arena's, which
+keeps its middle clear for the reason every arena does. The verifier also holds
+the four relics, because the throne stair does not exist without them and a run
+that could not reach the last two rooms would be measuring a region it had only
+half built.
+
+### A breakable hiding in the blind strip (d8c84fd)
+
+`verify-level2` had not been run since the Stoneroot dressing pass on 8 August,
+and it caught a vase in `vbp` at z 6.5 — inside the 2.5u band against the room's
+south edge that a child cannot see from where the camera sits. A breakable nobody
+can see is a breakable nobody knows is there. Not from that day's regions; it was
+from the dressing pass, and it is exactly what re-running the suites is for.
+
+### The music was wrong in four places, and nothing had ever looked (78f118d)
+
+Fixing the two known bugs turned up two worse ones, both found by writing the
+verifier rather than by reading the code.
+
+**THE REBUILT LEVELS WERE NEVER ROUTED.** The whole music chain keys off room-id
+prefixes and it used the OLD ids — `e` for Stoneroot, `w` for the Wild Woods. The
+rebuilt levels use `v` and `t`. So the rebuilt Stoneroot and the rebuilt Wild
+Woods, which are the levels the kids actually play, had been falling through to
+Ember Hollow's loop since the day they were built. **Three regions, one tune.**
+
+**THE BOSS-MUSIC BRANCH NAMED RETIRED ROOMS.** It listed `r3`, `w5` and `f5`; the
+arenas the kids fight in are `le`, `vz` and `tgl`. The Shadowgrip, the Bone Warden
+and Sylva have all been fought to ordinary region music. It reads from
+`BOSS_ROOMS` now — the same set the doorway timing uses, so an arena can never
+again be a boss room for one system and an ordinary room for the other. The Bone
+Warden needed one more thing: he is stored as `world.warden`, not `world.boss`,
+and was the only boss the fixed condition still missed.
+
+The three new regions get their own loops. **Five distinct tracks exist for seven
+regions**, so reuse is forced, but it is arranged so no two ADJACENT regions share
+one — that is the only part a child can notice. All three are placeholders and
+want their own track, same as the woods and the cold hush.
+
+`tools/verify-music.mjs` runs in `verify-all` by default now. Its own first run
+reported four false failures because it had pre-defeated the bosses whose arenas
+it then checked; the fix is in the file with the reason beside it.
+
+## v3.43.0 — The deploy bump (2026-08-10)
+
+> RECONSTRUCTED 2026-08-10 from `git log` (af79de3).
+
+`CACHE_NAME` → `wolfknight-v3.43.0`. The service worker caches everything by
+name, so a deploy that does not change it leaves the kids on the old files. The
+music fixes landed after the last bump, which means without this they would have
+downloaded nothing.
+
+## Log reconstruction — the thirteen-version hole, and a verifier so it cannot happen again (2026-08-10)
+
+The FIX-PLAN status table is closed end to end, so this run took the first
+unfinished entry from the newest queue list — the four "For the queue" items at
+the end of the v3.41.1 entry. Item 1: **"BUILDLOG has a seven-version hole…
+worth a reconstruction pass from `git log` before more history is lost."**
+
+### It was thirteen versions, not seven, and I measured that before writing a word
+
+`tools/verify-buildlog.mjs` is new and was written BEFORE the reconstruction, so
+its ruler could be checked against a known-broken file. It takes the set of
+values `sw.js`'s `CACHE_NAME` has ever held across all of git history — the
+contract says bump it every deploy, so that set IS the set of versions that
+shipped — and requires a `## vX.Y.Z` heading in this file for each.
+
+Against the unfixed log: **68 shipped versions at or above v2.0.0, 13 with no
+entry.**
+
+    v3.25.0  2 commits     v3.37.0   2 commits
+    v3.25.1  2 commits     v3.38.0   2 commits
+    v3.26.0  2 commits     v3.39.0   9 commits
+    v3.26.1  1 commit      v3.40.0   4 commits
+    v3.35.0  1 commit      v3.41.0   9 commits
+    v3.36.0 19 commits     v3.42.0   5 commits
+                           v3.43.0   1 commit
+
+Fifty-nine commits with no entry between them. The four v3.25/v3.26 versions were
+not in the queue item's count because their reasoning DID survive — in
+`design/FIX-PLAN.md`, under A1/A7, A2, A3, A4 and A5 — so those four entries are
+deliberately short and point there rather than restating it. The nine from v3.35
+onward had no record anywhere but the commit messages, and those are the long
+ones.
+
+All thirteen are now written, in version order, each marked RECONSTRUCTED with
+the commits it was built from. **Every number in them is the number that commit
+recorded, not one re-measured tonight** — that distinction matters, because a
+reconstructed entry that quietly re-measures is a document that disagrees with
+its own history and cannot be told apart from one that does not.
+
+### What the reconstruction is worth, beyond tidiness
+
+Reading fifty-nine commit messages in one pass surfaced things no single session
+would have noticed, and they are now in the entries where the next session will
+hit them: that "big but bare" was measured (3 of 25 dungeon props, 0 of 14 forest
+models, 33 of 115 models overall) rather than a matter of taste; that the same
+class of bug — a builder returning early, a lookup falling back silently, a
+verifier's own ruler being wrong — has now been paid for at least five separate
+times; and that three of the four biggest wins in that stretch came from a probe
+disagreeing with a plausible-looking diagnosis.
+
+### The verifier, and its one deliberate weakness
+
+It is honest about what it cannot do: it checks that a version has an ENTRY, not
+that the entry is any good. A one-line stub would pass it. That is the right
+trade — the failure it exists to catch is a version with NOTHING, which is what
+happened here, and a check that tried to judge quality would be a check nobody
+trusts.
+
+Its floor is `v2.0.0`, because this log's early history is phase-based
+("## Phase 0 — Scaffold") and versioned headings only begin once the game had
+versions to bump. Everything at or above the floor is checked.
+
+Wired into `tools/verify-all.sh` **by default**, beside the boot, density and
+music checks — the same reasoning `verify-density` was added under: the suite
+could not fail a bare room because nothing measured a room's contents, and it
+could not fail a missing entry because nothing measured the log.
+
+### Verified
+
+    verify-buildlog   PASS   (13 missing before, 0 after)
+    verify-boot       PASS
+    verify-density    PASS
+    verify-music      PASS
+
+`verify-boot` was run BEFORE any edit as well, per the overnight rule, and was
+green — the branch was not already broken.
+
+No game file was touched. `sw.js` stays at `wolfknight-v3.43.0`: this is not a
+deploy, and nothing in this run changes anything a service worker caches except
+`BUILDLOG.md` and a new file under `tools/`, neither of which is in PRECACHE.
+
+### AWAITING dad's call
+
+- **The branch, again.** The standing overnight instruction says work on
+  `overnight`, cut from main. The harness assigned this session
+  `claude/ecstatic-hawking-04grqp` and says never to push elsewhere without
+  permission. Both are off main, which is the part that matters, so — like the
+  v3.41.1 session before it — I used the assigned branch rather than stopping,
+  and I am recording it here again because it has now happened twice.
+
+### For the queue — carried forward, plus one new
+
+The remaining three items from the v3.41.1 queue are untouched (one item per
+run), and a fourth is added from what this pass turned up:
+
+1. **`js/regions.js` says `sunkenvale: { built: false }`** and gives it no rooms,
+   gates or restoration block, but the level shipped. `validateRegions()`
+   machine-checks that manifest, so it is checking a region that no longer
+   matches the game. *(Now also: the Shadow Court and Stormreach shipped after
+   that note was written — the manifest wants checking for all three.)*
+2. **`GRANTED_IN` declares `storm_wolf: 'stormreach'` twice** — harmless today,
+   and exactly the kind of thing that stops being harmless when someone edits one
+   of the two lines.
+3. **Maren has four rungs and seven built regions.** The contract ladder has five
+   (~400 at the top) and there is nothing new to sell after Frostpeak, so
+   Stormreach, the Sunken Vale and the Shadow Court all end with a trip home to
+   an unchanged cart. A rung 5 wants new stock, which is an asset question.
+4. **NEW — five music tracks for seven regions, three of them placeholders.**
+   v3.42.0 routed the music correctly and recorded that Stormreach, the Sunken
+   Vale and the Shadow Court are playing borrowed loops arranged so no two
+   ADJACENT regions share one. That arrangement is doing real work and should be
+   written down as the rule it is, and the three placeholders want their own
+   tracks — an asset question, like item 3, and one for dad rather than for an
+   overnight run.
+
+*(Not for the queue, recorded so it is not mistaken for a hole: the five
+"Mermaid Reef" commits in this history belong to a separate game living in the
+same repo under `mermaid/`. They carry stale `wolfknight-` cache versions from a
+divergent branch — v3.15.0 and v3.19.1, both of which already have entries of
+their own — so they never show up as missing. They are not Wolf Knight versions
+and want no entry here.)*

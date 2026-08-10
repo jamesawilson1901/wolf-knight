@@ -16,6 +16,11 @@ run() {
     fi
   fi
 }
+# A second of git, and it is the only check that fails on a MISSING record rather
+# than on broken code. BUILDLOG went thirteen versions with no entry and nothing
+# noticed, because a missing log entry breaks no test and boots fine — it is only
+# ever missed by the next session, which by then has lost the reasoning.
+run verify-buildlog.mjs
 run verify-boot.mjs
 # THE DENSITY CHECK RUNS BY DEFAULT, not on request. Every topology assertion in
 # this suite was green while the rooms were empty boxes, which is exactly how

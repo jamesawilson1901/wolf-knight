@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's version hole — reconstruct from git | BUILDLOG queue (v3.41.1) | shipped 2026-08-10 |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,16 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — the queue called it a seven-version hole; measured, it was **thirteen
+versions and fifty-nine commits** with no BUILDLOG entry (v3.25.0–v3.26.1, whose
+reasoning survived in this file, and v3.35.0–v3.43.0, whose reasoning existed
+only in commit messages). All thirteen are now written, each marked RECONSTRUCTED
+with the commits it came from and carrying that commit's numbers rather than
+re-measured ones. `tools/verify-buildlog.mjs` was written first — it takes the
+set of values `sw.js`'s `CACHE_NAME` has ever held as the set of versions that
+shipped and requires a heading for each, failed on 13 against the unfixed log,
+and now runs in `verify-all.sh` by default. See BUILDLOG's closing entry.
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
