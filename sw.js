@@ -30,6 +30,7 @@ const PRECACHE = [
   './js/worldstate.js',
   './js/assets.js',
   './js/input.js',
+  './js/orientation.js',
   './js/world.js',
   './js/player.js',
   './js/rooms.js',

@@ -43,6 +43,23 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | hard landscape lock | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.2 |
+
+**D3** — the landscape lock was two things that both looked done and neither was.
+The rotate card was an OPAQUE overlay with a live game running underneath it: the
+joystick and keyboard listen on `window`, so events reached them straight through
+the card, and a child holding the phone upright walked, swung and could die
+behind a screen reading "please turn your device sideways". Measured, unfixed:
+**0.84 u walked and a full attack swung in 800 ms of portrait**, and the swing
+carried through the turn back. And the lock itself was never granted — the
+instrumented call order was `fullscreen:call → lock:call → fullscreen:resolve`,
+but every browser implementing Screen Orientation requires fullscreen FIRST, so
+the request was rejected essentially always and `.catch(() => {})` ate the
+reason. Now `js/orientation.js` chains the lock onto fullscreen (order measured
+`fullscreen:call → fullscreen:resolve → lock:call`) and halts the world in
+portrait — 0.000 u, 0.000 s of animation, no swing. Proved by
+`tools/verify-orientation.mjs`, written first and failing 5 of 14 against the
+unfixed code. See BUILDLOG v3.41.2.
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs

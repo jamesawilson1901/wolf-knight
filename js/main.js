@@ -31,6 +31,7 @@ import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
+import { isPortrait, initOrientation } from './orientation.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'];
 
@@ -494,6 +495,13 @@ window.addEventListener('keydown', (e) => {
 
 const input = new Input();
 const timer = new THREE.Timer();
+
+// Turning the phone drops whatever was being held. A thumb still pushing
+// north when the screen went portrait must not still be pushing north when it
+// comes back, and a button pressed blind behind the rotate card must not be
+// banked and fired on the way out. Both directions, because both are a moment
+// where the child's hands and the game disagree about what is held.
+initOrientation(() => input.clear());
 
 let world = null;
 let player = null;
@@ -1589,6 +1597,18 @@ async function start() {
     const t = timer.getElapsed();
     if (!world) {
       if (titleScene) titleScene.render(dt); // the campfire lives behind the menu
+      return;
+    }
+
+    // THE HARD LANDSCAPE LOCK. The rotate card is an opaque overlay, but the
+    // joystick and keyboard listen on `window` and reached straight through
+    // it — so before this, a phone held upright meant a child walking, being
+    // swung at and dying behind a screen that said "please turn your device
+    // sideways". The card now has a stop behind it. Checked before the
+    // pause branch so it holds during a menu too.
+    if (isPortrait()) {
+      renderer.render(scene, camera);
+      perf.sample(realDt, state.room);
       return;
     }
 

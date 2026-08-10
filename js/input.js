@@ -181,6 +181,25 @@ export class Input {
     if (this._hint) this._hint.style.opacity = '0';
   }
 
+  // Drop everything currently held or queued. Called when the phone turns
+  // (js/orientation.js): the hands are somewhere else, and an edge-triggered
+  // press that survives the turn fires the frame the game comes back —
+  // a swing nobody asked for, at whatever is standing there.
+  clear() {
+    this._keys.clear();
+    this.defending = false;
+    this._attackQueued = false;
+    this._specialQueued = false;
+    this._formCycleQueued = false;
+    this._jumpQueued = false;
+    this._rangedQueued = false;
+    this._potionQueued = false;
+    this._pointers.clear();
+    clearTimeout(this._formHoldTimer);
+    this._formHeld = false;
+    this._releaseJoy();
+  }
+
   // Combined joystick + keyboard move vector, length clamped to 1.
   getMove() {
     let x = this.move.x;

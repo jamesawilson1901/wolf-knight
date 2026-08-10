@@ -34,6 +34,22 @@ export const CONFIG = {
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle
 
+  // ---- ORIENTATION (the hard landscape lock — js/orientation.js) ----
+  // The game is built for a phone held sideways: the camera frames 21-22 u of
+  // world across and only 4.5 u behind Kael, and the whole button cluster is
+  // sized against a landscape thumb. Portrait is not a smaller version of that
+  // — it is a different game with the sides cut off.
+  // ASK is what we request of the browser. HALT is the part that does not
+  // depend on the browser agreeing: iOS Safari has no Screen Orientation lock
+  // at all, so on the most likely device in the house the request is a no-op
+  // and the halt IS the lock. Turn HALT off and the rotate card goes back to
+  // being a suggestion with a live game running underneath it.
+  ORIENTATION: {
+    ASK: 'landscape',    // what screen.orientation.lock() is asked for
+    HALT: true,          // portrait freezes the world instead of hinting at it
+    QUERY: '(orientation: portrait)', // MUST match index.html's #rotate rule
+  },
+
   // ---- FORM IDENTITY (the Dark Wolf is the fast, fragile hunter) ----
   FORMS: {
     DARK_SPEED: 6.7,       // u/s (knight 4.6 — the wolf RUNS, +45%)

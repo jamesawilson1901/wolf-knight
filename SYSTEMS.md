@@ -17,6 +17,19 @@ button cluster, form button (tap = cycle, hold = radial picker), keyboard
 fallback. Edge-triggered presses consumed per frame — input responds within
 one frame. Tunables: CONFIG JOY_*, FORM_HOLD_MS.
 
+## Orientation lock (js/orientation.js, CONFIG.ORIENTATION)
+The game is landscape-only and now enforces it two ways. ASK:
+`lockLandscape()` requests fullscreen and CHAINS `screen.orientation.lock`
+onto it — every browser that implements the lock requires fullscreen first,
+so firing them side by side (what title.js did) is always rejected. Re-asked
+on every `fullscreenchange` back into fullscreen. HALT: `isPortrait()` gates
+main's animation loop ahead of the pause branch, so the "turn your device
+sideways" card in index.html has a real stop behind it instead of a live game
+— which is the ONLY mechanism on iOS Safari, where no orientation lock
+exists. Turning the phone calls `input.clear()` so nothing held or queued
+survives the turn. `CONFIG.ORIENTATION.QUERY` must match index.html's
+`#rotate` media rule. Verified by tools/verify-orientation.mjs.
+
 ## Player & forms (js/player.js)
 Kael's movement (velocity ramp: CONFIG ACCEL/DECEL/TURN_SPEED), jump/
 double-jump, shield+parry (KNIGHT-ONLY — FORM_DEFS.shield), potions,

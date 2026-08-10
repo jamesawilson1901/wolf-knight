@@ -3083,3 +3083,171 @@ old flat shop out of the service worker.
    (~400 at the top) and there is nothing new to sell after Frostpeak, so
    Stormreach and the Sunken Vale both end with a trip home to an unchanged
    cart. A rung 5 wants new stock, which is an asset question, not a code one.
+
+## v3.41.2 — The landscape lock grows teeth (2026-08-10)
+
+The FIX-PLAN status table is closed end to end, so this run took the next
+unfinished entry from the newest QUEUED NEXT list (v2.2.6, line 681):
+**"hard landscape lock"**. The two entries ahead of it are settled — the
+economy/XP pass stays SKIPPED (difficulty judgement, needs the kids) and
+Maren's tier ladder shipped in v3.41.1.
+
+### It was already "done" twice, and neither one worked
+
+Two things in the repo looked like a landscape lock:
+
+1. `index.html` shows a full-screen "please turn your device sideways" card
+   under `@media (orientation: portrait)`.
+2. `js/title.js` asked for `screen.orientation.lock('landscape')` on the tap
+   that starts a game.
+
+**The card is a HINT with a live game behind it.** It is an opaque overlay,
+which is exactly what makes it look like a stop — but the joystick and the
+keyboard listen on `window`, and pointer events bubble through an overlay to
+get there. Nothing in the animation loop knew the phone had turned. Measured
+against the unfixed code, in 800 ms of portrait with a direction held and two
+taps sent: **0.836 u walked, 0.246 s of animation ticked, a full attack
+swung** — and the swing was still running when the phone came back to
+landscape. A child holding the phone upright is walking blind into a room
+that can hurt them.
+
+**The lock request was rejected essentially every time.** `requestFullscreen()`
+and `orientation.lock()` were fired side by side in the same tick. Every
+browser that implements Screen Orientation requires the document to be
+fullscreen *first*; asking beforehand rejects. Instrumented call order,
+unfixed:
+
+    fullscreen:call → lock:call → fullscreen:resolve
+
+`.catch(() => {})` on the end of the lock swallowed the reason, which is why
+this survived: there was no error, no warning, and the card came up as if by
+design whenever a child turned the phone.
+
+### What it is now
+
+`js/orientation.js`, one small module, two halves:
+
+- **ASK** — `lockLandscape()` chains the lock onto the fullscreen promise, and
+  falls through to asking anyway if fullscreen rejects (desktop, no gesture).
+  Re-asked on every `fullscreenchange` back into fullscreen, because the one
+  shot at profile-select is lost the moment a child swipes away and back.
+  Measured order after: `fullscreen:call → fullscreen:resolve → lock:call`.
+- **HALT** — `isPortrait()` gates main's animation loop, ahead of the pause
+  branch so it holds during a menu too. Portrait now measures **0.000 u
+  walked, 0.000 s animated, no swing**.
+
+HALT is the half that carries it. **iOS Safari has no Screen Orientation lock
+at all** — on the device most likely to be in a child's hands, the ASK is a
+no-op and the halt is the entire mechanism. That asymmetry is why this is a
+freeze and not a nicer-looking card.
+
+Turning the phone also calls a new `input.clear()`: keys, joystick, pointer
+records and every edge-triggered queue. Without it a press made blind behind
+the card is BANKED and fires on the frame the game returns — measured, that is
+exactly what happened (`attacked: true` on the way out).
+
+### Judgement calls
+
+- **Freeze, not pause-menu.** Portrait returns early from the loop rather than
+  raising the pause menu. Rotating a phone is not a decision a child made, and
+  coming back to a modal they have to dismiss punishes them for it. The world
+  simply waits and picks up where it was — measured on the turn back: 0.000 u
+  of lurch before any new input.
+- **`CONFIG.ORIENTATION.HALT` is a lever, not a constant.** Set it false and
+  the card goes back to being a suggestion. If portrait play is ever wanted on
+  a tablet, that is the one line, and the CONFIG comment says so.
+- **`CONFIG.ORIENTATION.QUERY` duplicates index.html's media rule.** Two
+  copies of one truth is a drift risk, and it is deliberate: the CSS must work
+  before any JS parses, and JS cannot read a stylesheet's media rule without
+  reaching into `document.styleSheets`. Both are commented as needing to match.
+- **The lock is asked for on every re-entry to fullscreen**, not just once.
+  Costs nothing when already granted, and browsers drop the lock on exit.
+
+### Measured, not eyeballed
+
+`tools/verify-orientation.mjs`, written BEFORE the fix and run against the
+unfixed code first: **5 of 14 assertions failed**, which is what makes the
+other 9 worth anything. ALL CLEAN after. `verify-boot`, `verify-density`,
+`verify-touch`, `verify-den`, `verify-timing` and `verify-minigame` are all
+green with it.
+
+| | unfixed | fixed |
+|---|---|---|
+| walked in 800 ms of portrait | 0.836 u | **0.000 u** |
+| animation ticked in portrait | 0.246 s | **0.000 s** |
+| attack swung in portrait | yes | **no** |
+| press banked across the turn | yes | **no** |
+| lock/fullscreen call order | lock before resolve | **lock after resolve** |
+
+### Its own ruler was wrong three times, and that is the lesson
+
+The verifier was broken in three separate ways before it measured anything
+real, and every one of them failed in the direction that reports CLEAN:
+
+1. **The API stubs threw.** `page.addInitScript` runs at document *start*, when
+   `document.documentElement` is still null, so `Object.defineProperty` on it
+   threw and the whole stub never installed. The lock log came back empty,
+   which reads as "the game never asks for a lock" — a much bigger and
+   completely false finding. Stubbing `Element.prototype` fixes it.
+2. **The world-clock proxy was a Den idiom used in r1.** It sampled
+   `world._keepLoose` for motion, copying `verify-den`. A new game starts in
+   **r1**, which has two loose props that never move and *zero* animate hooks,
+   so the reading was 0 in landscape too — a ruler returning the same number
+   whatever it measures. The player's own mixer time is the honest clock: it
+   is ticked from `player.update()`, inside the branch under test.
+3. **It watched a property that does not exist.** `player.attacking` is not a
+   field — the swing state is `lockTime`. Reading `undefined` every 16 ms
+   reported a serene "no attack was swung" against code that swings freely in
+   portrait. That assertion passed on the unfixed build, which is the only
+   reason it got caught.
+
+Same shape as the v3.21.1 blind-strip finding: *a verification tool with a
+broken ruler is worse than no tool, because it reports clean and is believed.*
+
+One threshold was also flaky rather than wrong — the baseline walk measured
+0.17 u on the cold frames right after the room builds, against 0.83 u for the
+identical walk later in the same session. Fixed by discarding one warm-up
+window, not by lowering the bar to fit the cold frames.
+
+### Not bumped
+
+`sw.js` stays at `wolfknight-v3.41.0` — this is not a deploy. `js/orientation.js`
+is NEW and has been added to PRECACHE; `index.html` is untouched, but
+`js/main.js`, `js/input.js`, `js/title.js` and `js/config.js` are all cached.
+**The next deploy to main must bump CACHE_NAME**, and this time a stale cache
+would also mean a 404 on the new module — `cache.addAll` is not involved on an
+old client, but the import is, and the page will not boot without it.
+
+### AWAITING dad's call
+
+- **The branch, again (unchanged from v3.41.1).** The standing overnight
+  instruction says work on `overnight`, cut from main. This session was
+  assigned `claude/ecstatic-hawking-olja2j` by the harness and told never to
+  push elsewhere. Both are off main, which is the part that matters, so I used
+  the assigned branch rather than stopping. Say which one overnight work should
+  live on and I will stay there.
+- **Portrait on a tablet.** The halt is unconditional: an iPad held upright
+  freezes the same as a phone. `CONFIG.ORIENTATION.HALT` reverses it in one
+  line if that is wrong for the big screen.
+- Still open from v3.41.1: **the Ember Blade's shop rung**.
+
+### QUEUED NEXT (in order)
+
+1. **BUILDLOG has a seven-version hole.** The entry before v3.41.1 is v3.34.0,
+   while `sw.js` says the build is v3.41.0. Stormreach, the Sunken Vale, the
+   Tide Wolf, the minigame harness and the Den rebuild all shipped with no
+   entry here. The overnight process is told the repo is the only record, and
+   for seven versions it is not. Worth a reconstruction pass from `git log`.
+2. **`js/regions.js` says `sunkenvale: { built: false }`** with no rooms, gates
+   or restoration block, but the level shipped (twenty rooms, Meri, the Tide
+   Wolf). `validateRegions()` machine-checks that manifest, so it is currently
+   checking a region that no longer matches the game.
+3. **`GRANTED_IN` declares `storm_wolf: 'stormreach'` twice** — harmless today,
+   and exactly the kind of thing that stops being harmless when someone edits
+   one of the two lines.
+4. **Maren has four rungs and six built regions.** Stormreach and the Sunken
+   Vale both end with a trip home to an unchanged cart. A rung 5 wants new
+   stock, which is an asset question rather than a code one.
+5. **The remaining hand-built rooms never call `flattenStatic()`** (Frostpeak
+   f2 99, f4 97, f3 96 draw calls) — one line each, worth 15-18 calls, per the
+   B2 note. Nothing is over budget today, so this is headroom, not a fix.

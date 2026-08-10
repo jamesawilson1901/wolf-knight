@@ -6,6 +6,7 @@ import { loadProfiles, createProfile, loadSave, clearSave } from './save.js';
 import { audio } from './audio.js';
 import { state } from './state.js';
 import { PORTRAITS, AVATARS } from './titlescene.js';
+import { lockLandscape } from './orientation.js';
 
 const ICONS = ['🐺', '🦊', '🌙', '🔥', '⚔️', '💜']; // legacy profiles only
 
@@ -29,15 +30,11 @@ export function showTitle() {
     let confirmingNewGame = false;
 
     const finish = (profile, save) => {
-      // Landscape lock + fullscreen ride on this tap (best effort).
-      try {
-        document.documentElement.requestFullscreen &&
-          document.documentElement.requestFullscreen().catch(() => {});
-      } catch (e) {}
-      try {
-        screen.orientation && screen.orientation.lock &&
-          screen.orientation.lock('landscape').catch(() => {});
-      } catch (e) {}
+      // Landscape lock + fullscreen ride on this tap — this is the one user
+      // gesture we are guaranteed, and both APIs need one. The lock is chained
+      // onto fullscreen inside lockLandscape(); firing them side by side (as
+      // this did) means the lock is always rejected.
+      lockLandscape();
       el.style.display = 'none';
       resolve({ profile, save });
     };
