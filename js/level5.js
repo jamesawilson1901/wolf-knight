@@ -24,7 +24,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpots} from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -530,6 +530,7 @@ export async function buildS1a(scene) {
   rubbleField(world, 11, -9, 3.4, D, 13);
   aftermath(world, -12, -8, 2.2, D, 5);
   wayshrine(world, 12.5, 3.5, -0.6, D);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -572,6 +573,7 @@ export async function buildS1b(scene) {
   fallenColumn(world, 2, -2, 0, D, 4.5);
   rubbleField(world, -12, 6, 3.2, D, 12);
   aftermath(world, 6, 1, 2.4, D, 9);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -588,6 +590,7 @@ export async function buildS1p(scene) {
   ruinedHome(world, -5.5, -3.5, 0.6, D, { w: 6, d: 5, keep: 0.6, door: true });
   coldHearth(world, 4.5, 2.5, D);
   rubbleField(world, 6.5, -5, 2.4, D, 9);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -608,6 +611,7 @@ export async function buildSc1(scene) {
   lowWall(world, -8, -4, 0, D, 4.0);
   lowWall(world, 8, 4, 0, D, 4.0);
   wayshrine(world, -8.5, 3.5, 0.5, D);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -641,6 +645,7 @@ export async function buildS2a(scene) {
   cartWreck(world, -6, -9, 2.2, D);
   lowWall(world, 11, 5, 1.57, D, 4.5);
   aftermath(world, 4, -6, 2.4, D, 11);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -679,6 +684,7 @@ export async function buildS2b(scene) {
   coldHearth(world, 3, 2, weathered(D, 0.45));
   wayshrine(world, 12, 7, -0.5, weathered(D, 0.8));
   aftermath(world, 0, -1, 2.6, weathered(D, 0.3), 13);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -697,6 +703,7 @@ export async function buildS2p(scene) {
   lowWall(world, 6, -5, 0, D, 4.0);
   coldHearth(world, 5.5, 3, D);
   rubbleField(world, -6.5, 4.5, 2.4, D, 9);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -745,6 +752,7 @@ export async function buildSsh(scene) {
   scatter(world, halfW, halfD, D, 514, 4, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   lowWall(world, -8, 5, 0, D, 3.5);
   rubbleField(world, 8, 5, 2.2, D, 8);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -769,6 +777,7 @@ export async function buildSc2(scene) {
   stairSides(world, halfW, halfD, D, 5151);
   lowWall(world, 0, -5, 0, D, 5.0);
   lowWall(world, 0, 5, 0, D, 5.0);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -808,6 +817,7 @@ export async function buildS3a(scene) {
   rubbleField(world, -12, -8, 3.6, D, 14);
   aftermath(world, -4, -3, 2.8, D, 17);
   cartWreck(world, 12, -9, 0.8, D);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -844,6 +854,7 @@ export async function buildS3b(scene) {
   lowWall(world, -12, 6, 1.57, weathered(D, 1.0), 4.0);
   wayshrine(world, 0, -10, 0.2, weathered(D, 0.65));
   aftermath(world, 5, -9, 2.6, weathered(D, 0.25), 19);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -860,6 +871,7 @@ export async function buildS3p(scene) {
   fallenColumn(world, -6, -5, 0, D, 4);
   rubbleField(world, 6, -5, 2.6, D, 10);
   coldHearth(world, 5, 3, D);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -920,6 +932,7 @@ export async function buildSvn(scene) {
   lowWall(world, 0, -8.5, 0, D, 6.0);
   rubbleField(world, -12, 7, 3.0, D, 11);
   fallenColumn(world, 11, 8, 1, D, 4.5);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -938,6 +951,7 @@ export async function buildSc3(scene) {
   stairSides(world, halfW, halfD, D, 5251);
   lowWall(world, -8, 4, 0, D, 4.0);
   wayshrine(world, 8, -3.5, 2.4, D);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -971,6 +985,7 @@ export async function buildS4a(scene) {
   lowWall(world, -4, 9, 0, D, 5.5);
   rubbleField(world, -12, 1, 2.8, D, 10);
   fallenColumn(world, 5, -9, 1, D, 5);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1012,6 +1027,7 @@ export async function buildS4b(scene) {
   wayshrine(world, 11, 6, -0.4, weathered(D, 0.6));
   coldHearth(world, 3, -6, weathered(D, 0.4));
   aftermath(world, 0, -3, 2.4, weathered(D, 0.2), 23);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1027,6 +1043,7 @@ export async function buildS4p(scene) {
   scatter(world, halfW, halfD, D, 533, 5, { spin: 1, kinds: ['rockSA', 'flowerA', 'flowerB'] });
   wayshrine(world, -6, 2, 0.4, D);
   lowWall(world, 6, -4, 1.57, D, 3.5);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1046,6 +1063,7 @@ export async function buildSc4(scene) {
   scatter(world, halfW, halfD, D, 534, 4, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
   stairSides(world, halfW, halfD, D, 5341);
   lowWall(world, 0, -5, 0, D, 6.0);
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1089,6 +1107,7 @@ export async function buildScr(scene) {
     world.reserve(-4.5, -5.5, 2.6, 'chest');
   }
   scatter(world, halfW, halfD, D, 541, 4, { spin: 1, kinds: ['rockSA', 'flowerB'] });
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1125,6 +1144,7 @@ export async function buildSsA(scene) {
   lowWall(world, 6, 4.2, 0, weathered(D, 0.7), 5.0);
   lowWall(world, -6, -4.2, 0, weathered(D, 0.9), 4.0);
   wayshrine(world, 8.5, 3.6, -0.6, weathered(D, 0.45));
+  world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 

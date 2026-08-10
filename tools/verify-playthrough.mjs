@@ -150,7 +150,8 @@ const enterRegion = async (r) => {
 // can actually stand on; movement is the game's own, driven through input.move.
 const walkTo = async (to, opts) => {
   const from = await page.evaluate(() => window.__game.state.room);
-  const ok = await page.evaluate(async ([target, opts]) => {
+  let ok = await page.evaluate(async ([target, opts]) => {
+    window.__walkLeg = async (target, opts) => {
     const g = window.__game, w = g.world;
     const STEP = 0.5, RAD = 0.32;
     // Impassable = solid OR on fire. hazardAt() knows about the bridge decks
@@ -204,7 +205,8 @@ const walkTo = async (to, opts) => {
         prev.set(k, [i, j]); q.push([ni, nj]);
       }
     }
-    if (!best || bestD > 2.2) return { ok: false, why: 'no walkable floor reaches the doorway', bestD: +bestD.toFixed(2) };
+    if (!best || bestD > 2.2) return { ok: false, retryable: true,
+      why: 'no walkable floor reaches the doorway', bestD: +bestD.toFixed(2) };
 
     const path = [];
     for (let cur = best; cur; cur = prev.get(key(cur[0], cur[1]))) path.push([cur[0] * STEP, cur[1] * STEP]);
@@ -232,7 +234,20 @@ const walkTo = async (to, opts) => {
     const p = g.player.root.position;
     return { ok: false, why: frames >= 3000 ? 'walked for 3000 frames and never arrived' : 'ran out of path',
       stuckAt: { x: +p.x.toFixed(1), z: +p.z.toFixed(1) }, door: { x: +dcx.toFixed(1), z: +dcz.toFixed(1) } };
+    };
+    return window.__walkLeg(target, opts);
   }, [to, opts || null]);
+  // SOME FLOOR ARRIVES LATE. The Stoneroot hub's way to the arena is the
+  // titan's HAND, which lowers into a ramp — walk in at the wrong moment and
+  // there is genuinely nowhere to go yet. A child watches it settle; this gave
+  // up on the first frame and called it a blocker, then passed on a re-run.
+  // Two more looks, a second apart, before believing it.
+  if (!ok.ok && ok.retryable) {
+    for (let attempt = 0; attempt < 2 && !ok.ok; attempt++) {
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 1000)));
+      ok = await page.evaluate(async ([target, opts]) => window.__walkLeg(target, opts), [to, opts || null]);
+    }
+  }
   if (!ok.ok) return ok;
   try {
     await page.waitForFunction((f) => window.__game.state.room !== f, from, { timeout: 20000 });

@@ -128,6 +128,65 @@ export const wallTintMap = (D) => ({
   Stone_Dark: D.wallTint, Grey: D.wallTint, Main: D.wallTint, Wood: D.wallTint,
 });
 
+// POTS, CRATES AND BARRELS — placed, not hand-listed.
+//
+// Levels 3, 5, 6 and 7 shipped with none at all: 62 of 99 rooms held nothing to
+// break, and the Wild Woods sat under the shard floor because of it. Hand-
+// listing coordinates for forty-odd rooms is how the last four regions came to
+// have none — so this asks the room where there is space instead.
+//
+// Three rules, and they are the ones the suites already enforce:
+//   * NOT IN THE BLIND STRIP. The camera is a fixed offset, so the 2.5u nearest
+//     the south edge is behind the player on arrival. A pot a child cannot see
+//     is a pot they will not break.
+//   * NOT ON A KEEP-CLEAR SQUARE. blocked() is the build-time register — doors,
+//     spawns, chests, shrines — and it is exactly the right question here.
+//   * NOT INSIDE SOMETHING. resolveCircle is the player's own collision; a pot
+//     sunk into a ruin wall reads as a bug.
+//
+// Count comes from the room's own floor area, so a choke gets two and an island
+// gets six without anyone deciding it twice.
+export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase']) {
+  const label = (spec && spec.label) || '';
+  let s0 = 7;
+  for (let i = 0; i < label.length; i++) s0 = (s0 * 31 + label.charCodeAt(i)) % 233280;
+  const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
+  // Cap 5, not 6. A breakable is its own mesh and cannot be batched — it has
+  // to come apart on its own — so each one is a draw call. Six put the Vale's
+  // d1b at 126 against a ceiling of 125.
+  const want = Math.max(2, Math.min(5, Math.round((halfW * halfD) / 34)));
+  const out = [];
+  // MOST OF THEM WHERE THE CHILD IS LOOKING. The camera is a fixed offset, so
+  // "the room" on arrival is a known box: 12.9u ahead of the spawn along its own
+  // heading, 4.5 behind, 22.2 wide. Scattering uniformly put none at all in the
+  // Vale's d3a arrival frame — six pots nobody would ever see. Two thirds are
+  // aimed into that box; the rest fill the room so it is not a shop window.
+  const sp = world.spawn || { x: 0, z: 0, angle: Math.PI };
+  const a = sp.angle === undefined ? Math.PI : sp.angle;
+  const fx = Math.sin(a), fz = Math.cos(a), rx = fz, rz = -fx;
+  const inFrame = Math.ceil(want * 0.66);
+  for (let t = 0; t < want * 60 && out.length < want; t++) {
+    let x, z;
+    if (out.length < inFrame) {
+      const ahead = -2 + r() * 12, across = (r() * 2 - 1) * 9;
+      x = sp.x + fx * ahead + rx * across;
+      z = sp.z + fz * ahead + rz * across;
+      if (Math.abs(x) > halfW - 2.6 || Math.abs(z) > halfD - 2.6) continue;
+    } else {
+      x = (r() * 2 - 1) * (halfW - 2.6);
+      z = (r() * 2 - 1) * (halfD - 2.6);
+    }
+    if (z > halfD - 3.0) continue;                       // the blind strip
+    if (world.blocked(x, z, 0.85)) continue;             // doors, spawns, markers
+    const c = world.resolveCircle ? world.resolveCircle(x, z, 0.5) : { x, z };
+    if (Math.abs(c.x - x) > 1e-6 || Math.abs(c.z - z) > 1e-6) continue;   // inside a prop
+    if (world.hazardAt && world.hazardAt(x, z)) continue;
+    if (out.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 9)) continue;   // no huddles
+    out.push({ x: +x.toFixed(2), z: +z.toFixed(2), kind: kinds[Math.floor(r() * kinds.length)] });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 export function makeBuilders({ kit, isGrey }) {
   const K = () => kit();
