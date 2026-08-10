@@ -151,10 +151,11 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
   let s0 = 7;
   for (let i = 0; i < label.length; i++) s0 = (s0 * 31 + label.charCodeAt(i)) % 233280;
   const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
-  // Cap 5, not 6. A breakable is its own mesh and cannot be batched — it has
-  // to come apart on its own — so each one is a draw call. Six put the Vale's
-  // d1b at 126 against a ceiling of 125.
-  const want = Math.max(2, Math.min(5, Math.round((halfW * halfD) / 34)));
+  // Cap 4, not 6. A breakable is its own mesh and cannot be batched — it has to
+  // come apart on its own — so each one is a draw call. Six put the Vale's d1b
+  // at 126 against a ceiling of 125; five left it hovering on 123-126 run to
+  // run, which is not a pass, it is a coin toss. Four gives it real headroom.
+  const want = Math.max(2, Math.min(4, Math.round((halfW * halfD) / 34)));
   const out = [];
   // MOST OF THEM WHERE THE CHILD IS LOOKING. The camera is a fixed offset, so
   // "the room" on arrival is a known box: 12.9u ahead of the spawn along its own
@@ -182,6 +183,17 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
     if (Math.abs(c.x - x) > 1e-6 || Math.abs(c.z - z) > 1e-6) continue;   // inside a prop
     if (world.hazardAt && world.hazardAt(x, z)) continue;
     if (out.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 9)) continue;   // no huddles
+    // AND IT MUST NOT PLUG A GAP. A breakable is a collider, so one dropped in
+    // a corridor the width of a doorway seals it — which is how a pot came to
+    // wall off the Ash Wing's way round its own gate, the same shape of bug as
+    // the Kiln's forge. Open floor on all four sides or it does not go there:
+    // pots belong in the middle of a room, not in a pinch point.
+    let penned = false;
+    for (const [ox, oz] of [[1.4, 0], [-1.4, 0], [0, 1.4], [0, -1.4]]) {
+      const q = world.resolveCircle ? world.resolveCircle(x + ox, z + oz, 0.4) : null;
+      if (q && (Math.abs(q.x - (x + ox)) > 1e-6 || Math.abs(q.z - (z + oz)) > 1e-6)) { penned = true; break; }
+    }
+    if (penned) continue;
     out.push({ x: +x.toFixed(2), z: +z.toFixed(2), kind: kinds[Math.floor(r() * kinds.length)] });
   }
   return out;
