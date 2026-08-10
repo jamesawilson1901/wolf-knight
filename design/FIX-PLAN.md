@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's seven-version hole (v3.35 – v3.41) | BUILDLOG queue (v3.41.1) | v3.41.2 |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,19 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — `sw.js` said v3.41.0 and the log's last entry before the shop work said
+v3.34.0: **39 commits, 167 files, +11082 / −1215 lines** across two whole regions
+(Stormreach, the Sunken Vale), the painted floors, the 52-room dressing pass, the
+seam, the Den rebuild and the mini game harness, none of it logged. Seven entries
+reconstructed from git and checked against the code as it stands — ten
+load-bearing numbers re-read out of source, all ten agreeing. Guarded from here
+by `tools/verify-buildlog.mjs`, written before the fix and failing 7 of 7 against
+the unfixed file, ALL CLEAN after. It also found a **second, smaller hole** —
+v3.25.0 – v3.26.1 have no BUILDLOG entry either, though this file carries their
+full write-ups under A1/A7, A2, A3/A5 and A4 — recorded in the tool's
+`KNOWN_GAPS` and queued. See BUILDLOG v3.41.2. **Note that the D2 and D3 work
+sits on `claude/ecstatic-hawking-g0kz3o` and is not on main.**
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
