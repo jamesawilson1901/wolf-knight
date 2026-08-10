@@ -138,12 +138,24 @@ const enterRegion = async (r) => {
     g.player.iframes = 0; g.player.hearts = 0.5;
     g.player.hurt(99, { pierceDefend: true });
   }, r);
-  try {
-    await page.waitForFunction((id) => window.__game.state.room === id && window.__game.player.hearts > 1,
-      r.enter, { timeout: 60000 });
-  } catch { return false; }
-  await settle();
-  return true;
+  // RETRY LIKE EVERYTHING ELSE DOES. By the seventh region this browser has
+  // built a hundred-odd rooms on a software rasteriser and a single 60s attempt
+  // is not enough — the Wild Woods "failed to build" in a full run and walked
+  // clean on its own moments later. A flaky harness that cries blocker is worse
+  // than no harness.
+  for (let a = 0; a < 6; a++) {
+    try {
+      await page.waitForFunction((id) => window.__game.state.room === id && window.__game.player.hearts > 1,
+        r.enter, { timeout: 45000 });
+      await settle();
+      return true;
+    } catch {
+      await page.evaluate((reg) => { const g = window.__game;
+        g.state.room = reg.enter; g.player.iframes = 0; g.player.hearts = 0.5;
+        g.player.hurt(99, { pierceDefend: true }); }, r);
+    }
+  }
+  return false;
 };
 
 // WALK to the door leading to `to`. Route is a BFS over the floor the player
