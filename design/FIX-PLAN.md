@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's version hole — reconstruct from git | BUILDLOG queue (v3.41.1) | v3.43.0+ |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,16 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — the log had gone silent for nine versions. When the item was queued the gap
+ran v3.34.0 → v3.41.0; measured today it ran to **v3.43.0**, **53 of the 55 commits in
+`b53dff6..main`** with no entry, and it covered the whole dressing pass, the seam work,
+the Den rebuild, the mini-game harness, Stormreach, the Sunken Vale, the Shadow Court
+and the game's ending. Nine version entries reconstructed from the commit bodies, each
+naming the SHAs it was built from, each fenced and labelled as reconstructed so a
+number copied out of an old commit is never mistaken for one measured today. Coverage
+checked by machine rather than by eye — every SHA in the range looked up in the new
+text, which caught two commits that had been missed. See BUILDLOG v3.43.0+.
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
