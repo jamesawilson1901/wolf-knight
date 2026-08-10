@@ -1,32 +1,111 @@
 #!/bin/sh
-# THE WHOLE SUITE, in the order that fails fastest.
-# Under SwiftShader each browser verifier takes minutes, so boot first: it is
-# twenty seconds and catches the errors that make everything else meaningless.
+# THE WHOLE SUITE. All of it, by default.
+#
+# There are thirty-two verifiers in this directory and this script used to run
+# three. That is not a detail — it is the reason four separate things rotted
+# without anyone noticing:
+#
+#   * the rebuilt Stoneroot and Wild Woods played Ember Hollow's music for
+#     weeks, and three boss arenas fought to region music;
+#   * guideTarget() named only RETIRED rooms, so the one system meant to help a
+#     lost child had nothing to say in five of seven regions;
+#   * settings.easy was never in the defaults, so that system never ran at all;
+#   * Ember Hollow's boss sat sealed behind the Kiln's forge, and the game could
+#     not be finished.
+#
+# A suite you do not run is a suite you do not have. So: everything, in the
+# order that fails fastest, and `--quick` when you genuinely only want a smoke
+# test. Naming suites explicitly still runs just those, after boot.
+#
+#   sh tools/verify-all.sh                    everything (slow: hours)
+#   sh tools/verify-all.sh --quick            boot, density, music
+#   sh tools/verify-all.sh verify-level3.mjs  boot + that one
+#
+# The static server must be up: (nohup python3 -m http.server 8901 &)
 cd "$(dirname "$0")/.."
 PASS=0; FAIL=0; FAILED=""
 run() {
+  [ -f "tools/$1" ] || { printf '%-26s SKIP (no such file)\n' "$1"; return; }
   printf '%-26s ' "$1"
+  START=$(date +%s)
   if node "tools/$1" > "/tmp/vall-$1.log" 2>&1; then
-    printf 'PASS\n'; PASS=$((PASS+1))
+    printf 'PASS  %ss\n' "$(( $(date +%s) - START ))"; PASS=$((PASS+1))
   else
     if grep -q "ALL CLEAN" "/tmp/vall-$1.log" 2>/dev/null; then
-      printf 'PASS\n'; PASS=$((PASS+1))
+      printf 'PASS  %ss\n' "$(( $(date +%s) - START ))"; PASS=$((PASS+1))
     else
       printf 'FAIL  (/tmp/vall-%s.log)\n' "$1"; FAIL=$((FAIL+1)); FAILED="$FAILED $1"
     fi
   fi
 }
+
+# Boot first, always: twenty seconds, and it catches the errors that make every
+# other result meaningless.
 run verify-boot.mjs
-# THE DENSITY CHECK RUNS BY DEFAULT, not on request. Every topology assertion in
-# this suite was green while the rooms were empty boxes, which is exactly how
-# "big but bare" reached a playtest — the suite could not fail a bare room
-# because nothing in it was measuring the room's contents.
-run verify-density.mjs
-# ...and the music, which nothing checked until v3.43 and which was hiding two
-# regions playing the wrong loop and four bosses fighting to region music. It is
-# the one thing a child experiences with their eyes shut.
-run verify-music.mjs
-for t in "$@"; do run "$t"; done
+
+case "$1" in
+  --quick)
+    run verify-density.mjs
+    run verify-music.mjs
+    ;;
+  '')
+    # THE ONES THAT ANSWER "IS IT A GAME" come first, because a failure here
+    # makes the detail suites beside the point: can you walk it, can you reach
+    # every door, is anything in the rooms, does it sound right, and does a lost
+    # child get told where to go.
+    run verify-reachable.mjs
+    run verify-playthrough.mjs
+    run verify-density.mjs
+    run verify-music.mjs
+    run verify-guide.mjs
+    # then everything else, per region and per system
+    run verify-level1.mjs
+    run verify-level2.mjs
+    run verify-level2-hub.mjs
+    run verify-level3.mjs
+    run verify-level5.mjs
+    run verify-level6.mjs
+    run verify-level7.mjs
+    run verify-route.mjs
+    run verify-roomid.mjs
+    run verify-progression.mjs
+    run verify-sequence.mjs
+    run verify-completion.mjs
+    run verify-promises.mjs
+    run verify-spawn-clear.mjs
+    run verify-den.mjs
+    run verify-minigame.mjs
+    run verify-shop.mjs
+    run verify-pose.mjs
+    run verify-telegraphs.mjs
+    run verify-timing.mjs
+    run verify-touch.mjs
+    run verify-storm.mjs
+    run verify-l2-warden.mjs
+    run verify-l3-lash.mjs
+    run verify-l3-knot.mjs
+    run verify-l3-chords.mjs
+    ;;
+  *)
+    for t in "$@"; do run "$t"; done
+    ;;
+esac
+
+# AND A GUARD AGAINST THIS FILE ROTTING THE SAME WAY. A verifier that exists
+# but is not listed here is a verifier nobody runs, which is where this started.
+if [ -z "$1" ]; then
+  MISSING=""
+  for f in tools/verify-*.mjs; do
+    b=$(basename "$f")
+    grep -q "run $b" "$0" || MISSING="$MISSING $b"
+  done
+  if [ -n "$MISSING" ]; then
+    echo
+    echo "NOT RUN BY THIS SCRIPT — add them:$MISSING"
+    FAIL=$((FAIL+1)); FAILED="$FAILED unlisted-suites"
+  fi
+fi
+
 echo
 echo "passed $PASS, failed $FAIL"
 [ -n "$FAILED" ] && echo "failed:$FAILED"
