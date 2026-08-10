@@ -69,9 +69,18 @@ claim to summarise it.
 | | queue entry | state |
 |---|---|---|
 | Q5 | the three region-completion lines are dead — fast travel, pup count, map | ✅ v3.42.0 |
-| Q6 | `loadRoom` stores the raw room id, not the resolved one | open |
+| Q6 | `loadRoom` stores the raw room id, not the resolved one | ✅ 2026-08-10 |
 | Q7 | 62 of 99 live rooms hold no pot; region 3 is under the shard floor | open — level design |
 | Q8 | shop tiers 3+ (Wild Woods → Sunken Vale) | open — wants Q1 first |
+| Q9 | Stormreach and the Sunken Vale have no music branch; three boss arenas have no boss track | open — found by Q6 |
+| Q10 | ~25 retired-room narration/hint comparisons in main.js are provably dead | open — content, the shape Q5 used |
+
+**Q6 shipped 2026-08-10.** `loadRoom` resolved the id at the top, so `state.room`
+now always names the room on screen. Frostpeak's `f1` south door targets `w5`,
+which builds `tgl`: the same arena answered to two names, and Sylva's whole
+victory branch plus the boss music were keyed to the one a child never reaches.
+Measured — by its own door the Wild Woods boss arena played `region-ember`.
+Verified by `tools/verify-roomid.mjs`, which fails 5 checks against the old code.
 
 **Q5 shipped v3.42.0.** `state.spoken.region_complete` / `stone_complete` /
 `wild_complete` could never be set — each needed a retired room id plus a marker

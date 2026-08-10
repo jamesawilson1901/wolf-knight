@@ -120,7 +120,17 @@ for (const a of ARENAS) {
   check(`${a.who} fights to boss music`, track === 'boss-loop', { room: a.id, track });
 }
 
-console.log('\n── 4. the Den is the Den, wherever you came from ─────');
+console.log('\n── 4. a DISTRICT with its own track keeps it ─────────');
+// One room per region is not enough. The Kiln has its own loop and three live
+// rooms (ld, ld1, lg4), and every one of them was playing the ordinary Ember
+// loop because the branch keyed on `k` — a RETIRED prefix. Nothing noticed,
+// because section 1 only ever samples `la`.
+for (const id of ['ld', 'ld1', 'lg4']) {
+  const track = await trackIn(id);
+  check(`the Kiln room ${id} plays the Kiln's own track`, track === 'kiln', { room: id, track });
+}
+
+console.log('\n── 5. the Den is the Den, wherever you came from ─────');
 check('the Den plays its own theme', (await trackIn('den')) === 'den');
 
 console.log('\n' + (errors.length

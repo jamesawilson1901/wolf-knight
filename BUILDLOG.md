@@ -3346,3 +3346,168 @@ no longer exist.
    above are ready to build against, but the caps and a fifth perk change what a
    child gets, so dad decides.
 5. Hard landscape lock (still best-effort only).
+
+## 2026-08-10 — The branch is settled: `overnight`
+
+Dad's call, asked and answered: **`overnight` is the trunk.** Cut from main, and
+from here it is the branch that carries this work. This entry exists because the
+question was not cosmetic — it has now cost three builds of the same item.
+
+### Maren's stall has been built three times
+
+| when | where | outcome |
+|---|---|---|
+| 2026-08-09 12:09 | `claude/ecstatic-hawking-klzrgo` → `overnight` | **Q2, shipped** (25e3027) |
+| 2026-08-09 15:23 | `overnight` cut fresh from main | rebuilt, rejected on push, discarded |
+| 2026-08-09 ~23:00 | `claude/ecstatic-hawking-fdmjue` | rebuilt a third time, **and pushed** (b07e632) |
+
+The 15:23 run diagnosed this exactly right and wrote the rule — *fetch
+`origin/overnight` first* — and then the very next run broke it in a way that
+rule did not cover. It was not cutting from main by choice: the harness pinned
+it to a fresh `claude/*` branch and told it never to push anywhere else, so it
+never had `overnight` in view at all. It read main's documents, found
+FIX-PLAN's table all-closed and the newest QUEUED NEXT list to be the v2.2.6
+one, whose first non-feel entry is "Maren tier-2 stock after Stoneroot" — and
+shipped it, green, with its own `tools/verify-shop.mjs`, having no way to know.
+
+**Any session that starts from main's documents will pick that same item.** That
+is the defect, and it is a property of the documents, not of the run. Two things
+fix it, and both are now true: the branch is settled here in writing, and the
+first act of a run is `git fetch origin overnight && git checkout overnight`,
+BEFORE reading SYSTEMS.md — because which branch you read the documents from
+decides what work you think exists. If a harness pins a different branch, merge
+`overnight` in first or stop; do not read main and proceed.
+
+### What is kept from the third build: none of the code
+
+Its ladder had four rungs (stone / wild / frost) against Q2's two. That is not a
+better Q2 — it is **queue item 3** (shop tiers 3+), done early and without the
+prices, which the queue says wants the economy pass first. Q2 stands as shipped.
+
+One piece is worth salvaging when item 3 is built: that run's verifier asserts
+that a profile which already OWNS a locked-tier weapon keeps it through a real
+localStorage round-trip — the tier gate decides what Maren OFFERS, never what a
+child HAS. Additive-forever applies to gear, and no current verifier checks it.
+The commit is `b07e632` on `claude/ecstatic-hawking-fdmjue`.
+
+### The stray branch is left alone
+
+`claude/ecstatic-hawking-fdmjue` still exists on the remote carrying that third
+implementation. It is NOT deleted — deleting a pushed branch is dad's call, not
+a run's — but nothing should build on it. If two branches disagree, `overnight`
+is right.
+
+## 2026-08-10 — The id stored is the room on screen (queue item 1)
+
+Head of the queue, and the item Q5 explicitly left standing. `buildRoom` has
+always resolved retired ids through `RETIRED_ROOMS`; `loadRoom` stored the RAW
+one. js/save.js already resolves and says why in a comment — *"so state.room and
+the room actually built are the same string — main.js compares room ids in a
+dozen places and a mismatch would silently disable those checks"* — and
+`loadRoom` was the hole in that invariant.
+
+### It is not a cosmetic string
+
+Frostpeak's `f1` south door targets `w5`, which builds `tgl`. So the same arena
+answered to two different names depending on the door a child walked through,
+and every id-keyed branch in main.js picked a different answer for each. Walked
+both ways and measured:
+
+| arriving in Sylva's Glade | `state.room` | music |
+|---|---|---|
+| from Frostpeak (`f1` south → `w5`) | `w5` | `boss-loop` |
+| by its own door (`tc4` north → `tgl`) | `tgl` | **`region-ember`** |
+
+**The Wild Woods boss arena played Ember Hollow's overworld music by the route a
+child actually takes.** Sylva's whole victory branch — `sylva_defeat`, the
+Verdant howto, `WS.set('wild','restored')`, `luna_dream_3` — is keyed
+`state.room === 'w5'`, so it ran only for a child who had already been to
+Frostpeak and walked back down. By the normal route the region fell through to
+the Shadowgrip's `else` and Kael was congratulated on freeing Ember Hollow.
+
+### The fix
+
+`loadRoom(rawId)` resolves once at the top and everything downstream — the
+build, `state.room`, `state.region`, the checkpoint stamp — uses that one id.
+Then the branches that named retired rooms were repointed at the rooms that
+exist:
+
+    loadRoom intros   r2 → lb        r3 → le        w5 → tgl
+    boss victory                                    w5 → tgl
+    updateMusic       boss set: r3/w5/f5 → le/tgl/f5
+                      prefix 'w' → 't'   ·   'e' → 'v'   ·   e3 → vz
+                      the Kiln is ld/ld1 by id (it lives inside Level 1's
+                      'l' prefix, so no prefix rule can find it)
+                      r2 → lb
+                      ambient table  r1/r2/r3/e1/e2/e3/k1/ka/kb → la/lb/le/
+                      vh/vb1/vz/ld/ld1
+
+Every one of those branches had been dead: the rebuilt levels fell past all of
+them to the Ember default. Stoneroot now plays `region-stone` again, the Wild
+Woods `causeway`, the Kiln `kiln`, and the two reachable wolf-duel arenas the
+boss track.
+
+### Judgement calls
+
+- **Scope held at resolution.** Stormreach (`s*`) and the Sunken Vale (`d*`)
+  still have no music branch at all and fall through to `region-ember`, and the
+  `vz`/`scr`/`ddp` arenas get no boss track. Neither is a retired-id fault —
+  those ids resolve to themselves — so both are logged below rather than fixed
+  here.
+- **The ~25 dead retired-id comparisons are left alone.** The narration and
+  stuck-hint blocks in main.js (`state.room === 'r1'`, `'e2'`, `'w1'`, `'k1'`…)
+  were reachable only through a raw retired entry and are provably unreachable
+  now. Porting that narration onto the rebuilt rooms is a content job with its
+  own verification, not a rename — queued.
+- **No CONFIG numbers were touched**; this is entirely id plumbing.
+
+### Measured
+
+`tools/verify-roomid.mjs` is new. Nothing in tools/ asked whether a room agrees
+with itself: every level verifier walks the door graph, and the graph was always
+right — it is what the doors LEFT BEHIND that was wrong. It walks Kael through
+f1's real south door and through `tc4`'s real north door (opening the thorn-knot
+first, since that door is the conclude step) and compares the two arrivals, then
+crosses six more doors out of `tgl`, `la` and `vh` asserting no crossing leaves
+an unresolved id. A static pass reads the 20-entry `RETIRED_ROOMS` table out of
+state.js and asserts none of those ids is keyed on inside `loadRoom`,
+`updateMusic` or the boss-victory chain.
+
+Checked by stashing the fix rather than assumed: **5 of its checks fail against
+the old code**, including the two-routes-two-answers row above.
+
+One thing it got wrong first, worth keeping: it read `audio._musicName` and saw
+`stone-deep` in a room playing the boss track. `_musicName` is stamped only
+after the buffer decodes, which under SwiftShader lands well after the fade. The
+branch chosen is the thing under test, so it reads `_wantMusic.name`, which
+`playMusic` sets synchronously on entry.
+
+`verify-all.sh verify-roomid verify-completion verify-progression`: 5 passed,
+0 failed.
+
+### AWAITING dad's call
+
+Nothing needs approving — this restores behaviour the game already intended, and
+the one audible change (the right music in three regions) is what the code was
+always asking for.
+
+### QUEUED NEXT (in order)
+
+1. **Pots for Levels 3, 5 and 6** — 62 of 99 rooms hold no breakable, three
+   whole regions never write `markers.breakables`, and it is why region 3 sits
+   under the shard floor at 92. Level design, one region per session, against
+   ROOM-STANDARD.
+2. **Music and ambience for Stormreach and the Sunken Vale.** `updateMusic` has
+   no branch for `s*` or `d*`, so both regions play `region-ember`, and the
+   `vz`, `scr` and `ddp` boss arenas play no boss track. Measured this session.
+3. **Port the retired-room narration onto the rebuilt rooms.** ~25 comparisons
+   in main.js against `r1`/`r2`/`e1`/`e2`/`w1`…/`k1` are now provably dead: the
+   pup hints, the dark-cave line, the Kiln lines, the Wild Woods stuck hints.
+   Each needs a live room id and a marker that room really publishes — the shape
+   Q5 used.
+4. Shop tiers 3+ for the Wild Woods, Frostpeak, Stormreach and the Sunken Vale.
+   The mechanism from Q2 is general; the bands need prices, so this wants the
+   economy pass first. Salvage the owned-gear-survives-the-gate assertion from
+   `b07e632` when it is built.
+5. Economy/XP balance pass — **needs the kids. Do not do this overnight.**
+6. Hard landscape lock (still best-effort only).

@@ -1019,14 +1019,18 @@ function updateMusic() {
   else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('region-stone');
   else if (state.room[0] === 'x') audio.playMusic('stone-deep');
   else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
-  else if (state.room[0] === 'w') audio.playMusic('causeway'); // woods loop (custom track: polish list)
-  else if (state.room[0] === 'k') audio.playMusic('kiln');
-  else if (state.room === 'e3') audio.playMusic('stone-deep');
-  else if (state.room[0] === 'e') audio.playMusic('region-stone');
+  // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
+  // k-rooms are RETIRED — the live Kiln is ld/ld1/lg4 inside the rebuilt Level 1.
+  // So the one district in the game with its own track has been playing the
+  // ordinary Ember loop. Now that loadRoom resolves the id (Q6), every retired
+  // branch below it was provably dead, so they are gone rather than left to rot.
+  else if (state.room === 'ld' || state.room === 'ld1' || state.room === 'lg4') {
+    audio.playMusic('kiln');
+  }
   else if (state.flags.bossDefeated) audio.playMusic('ember-calm'); // the healed Hollow sings softly
-  else if (state.room === 'r2') audio.playMusic('causeway');
+  else if (state.room === 'lb') audio.playMusic('causeway');
   else audio.playMusic('region-ember');
-  audio.setAmbient({ r1: 0.5, r2: 0.75, r3: 0.65, den: 0, e1: 0.3, e2: 0.35, e3: 0.3, k1: 0.8, ka: 0.7, kb: 0.7 }[state.room] ?? 0.5);
+  audio.setAmbient({ la: 0.5, lb: 0.75, le: 0.65, den: 0, vh: 0.3, vb1: 0.35, vz: 0.3, ld: 0.8, ld1: 0.7 }[state.room] ?? 0.5);
 }
 
 // ---------------------------------------------------------------------------
@@ -1271,14 +1275,25 @@ function handoffAt(door) {
 // Every arena in the game. Read by the doorway timing (a boss door takes the
 // full 300ms ceremony) AND by the music, so the two can never disagree about
 // what a boss room is.
-const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'r3', 'w5', 'f5', 'scr', 'ddp', 'xth']);
+// f5 is Boreal's arena and is still LIVE — Frostpeak has not been rebuilt yet.
+// r3 and w5 were retired, and since Q6 they can no longer reach state.room.
+const BOSS_ROOMS = new Set(['le', 'vz', 'tgl', 'f5', 'scr', 'ddp', 'xth']);
 function seamMs(from, to) {
   if (BOSS_ROOMS.has(to)) return 300;
   if (regionOf(from) !== regionOf(to)) return 260;
   return sameDistrict(from, to) ? 90 : 170;
 }
 
-async function loadRoom(id, entry, handoff = null) {
+// THE ID STORED IS THE ROOM ON SCREEN. `buildRoom` resolves retired ids
+// (RETIRED_ROOMS in state.js) and always has, but loadRoom used to store the
+// RAW one — so walking Frostpeak's f1 door south left `state.room === 'w5'`
+// with `tgl` built and rendered. js/save.js already resolves for exactly this
+// reason and says so in its comment ("main.js compares room ids in a dozen
+// places and a mismatch would silently disable those checks"); loadRoom was the
+// hole in that invariant, and the same physical arena behaved differently
+// depending on which door a child came through.
+async function loadRoom(rawId, entry, handoff = null) {
+  const id = resolveRoom(rawId);
   transitioning = true;
   const ms = seamMs(state.room, id);
   await fadeTo(1, ms);
@@ -1319,9 +1334,10 @@ async function loadRoom(id, entry, handoff = null) {
   await setupRoomExtras();
   snapCamera();
   updateMusic();
-  if (id === 'r2') narration.say('r2_enter');
-  if (id === 'r3' && world.boss && !world.boss.defeated) narration.say('boss_intro');
-  if (id === 'w5' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
+  // Resolved ids: `r2`/`r3`/`w5` are retired and can no longer appear here.
+  if (id === 'lb') narration.say('r2_enter');
+  if (id === 'le' && world.boss && !world.boss.defeated) narration.say('boss_intro');
+  if (id === 'tgl' && world.boss && !world.boss.defeated) narration.say('sylva_intro');
   if (id === 'f5' && world.boss && !world.boss.defeated) narration.say('boreal_intro');
   if (id === 'scr' && world.boss && !world.boss.defeated) narration.say('aria_intro');
   if (id === 's1a' && regionOf(id) === 'stormreach') narration.say('storm_arrive');
@@ -1799,7 +1815,7 @@ async function start() {
               WS.set('vale', 'restored');
               narration.say('vale_restore_1');
               setTimeout(() => narration.say('luna_dream_6'), 9000);
-            } else if (state.room === 'w5') {
+            } else if (state.room === 'tgl') {
               // SYLVA FREED — the Wild Woods breathe again, the Verdant
               // Wolf is earned (boss.js set the flags; here is the party)
               audio.playMusic('victory', { loop: false, then: 'den' });
