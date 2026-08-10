@@ -16,6 +16,11 @@ run() {
     fi
   fi
 }
+# THE RECORDS CHECK RUNS FIRST because it is a third of a second and needs no
+# browser at all. Nine versions shipped with no BUILDLOG entry — the dressing
+# pass, the seam, the Den, the mini games, two regions and the ending — and
+# nothing in this suite could tell, because nothing was looking at the record.
+run check-buildlog.mjs
 run verify-boot.mjs
 # THE DENSITY CHECK RUNS BY DEFAULT, not on request. Every topology assertion in
 # this suite was green while the rooms were empty boxes, which is exactly how

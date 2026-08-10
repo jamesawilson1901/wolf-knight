@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's version hole — reconstruct from git | BUILDLOG queue (v3.41.1) | v3.43.2 |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,18 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — the queue called it a seven-version hole. Measured, it was **fourteen
+shipped versions with no BUILDLOG entry**, in two separate stretches: v3.35.0 to
+v3.43.1 (the dressing pass, the seam, the Den, the mini games, Stormreach, the
+Sunken Vale, the Shadow Court and the ending) and an older one nobody had
+noticed at all — v3.25.0 to v3.26.1, which is items A1/A7, A3/A5, A2 and A4
+above, documented in this file and nowhere else. All fourteen are written, in
+place, in the order things happened. The durable half is
+`tools/check-buildlog.mjs`: it enumerates every version `sw.js`'s history has
+ever carried, enumerates BUILDLOG's `## vX.Y.Z` headers, and fails on the
+difference. Written before the fix, failing with the fourteen; ALL CLEAN after,
+and first in `verify-all.sh` at a third of a second. See BUILDLOG v3.43.2.
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
