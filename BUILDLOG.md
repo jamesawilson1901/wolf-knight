@@ -3511,3 +3511,92 @@ always asking for.
    `b07e632` when it is built.
 5. Economy/XP balance pass — **needs the kids. Do not do this overnight.**
 6. Hard landscape lock (still best-effort only).
+
+
+---
+
+## 2026-08-10 (overnight) — the game had eighteen green suites and an unreachable boss
+
+Dad reported it from play: *"There is no boss fight available in level one. I
+searched every room and there's nothing. You come to a complete impasse."* He was
+exactly right, and every suite in the repo was green while he said it.
+
+**The Forge Heart — the Kiln's own hero prop — is a 5.2-radius solid at (0, -8).
+The north wall's inner face is at z = -12.5, so at the wall it still covers
+x ±3.2, and a doorway is 2.4u wide.** The gap was sealed. The only route to the
+Shadowgrip, and so into the rest of the game, was behind it. Coming back was
+wrong too: lg4's south door dropped the player at (0, -10), inside the forge.
+
+Shipped as **v3.44.1**. The door moved to x = -6 and the worn path bends around
+the forge — which reads better than the original: you come up the Hollow, the
+great forge fills the way ahead, and you go round it.
+
+### Why nothing caught it, which is the more important half
+
+`verify-level1` proved every room BUILDS and that the door GRAPH has no dead
+ends. `verify-route`, written the same morning, walked the spine but PLACED the
+player on each door trigger — teleporting straight through the collider that was
+the bug. **Graph connectivity is not physical reachability**, and the gap between
+them is exactly where a progression blocker lives.
+
+`verify-all.sh` also ran three of thirty-two suites.
+
+### What was built overnight (dev branch, NOT shipped)
+
+Fifteen commits on `claude/wolfknight-reassemble-extract-5p9m8b`:
+
+1. **`verify-reachable.mjs`** — flood-fills the walkable floor of all 108 rooms
+   and asserts every doorway has floor a player can reach. 218 doors. Three are
+   shut by design and named with reasons.
+2. **`verify-playthrough.mjs`** — walks the game with REAL input (`input.move`,
+   the field the joystick writes), never placing the player. All seven regions.
+3. **Wayfinding, in three layers, all of which were dead.** `settings.easy` was
+   not in the defaults, so Pip's stuck-guide has never run for anyone;
+   `guideTarget()` named only RETIRED rooms, so five of seven regions had no
+   target; and sixteen teaching-line triggers keyed on demolished rooms.
+   `js/route.js` answers "which room is next" and asks the room where that door
+   is, so moving a door moves the guide.
+4. **Stuck hints rebuilt on promise markers** — thirteen gates across six
+   regions, one rule instead of a list of room ids that rotted twice.
+5. **Pots in levels 3, 5, 6 and 7**, which had none. `potSpots()` places them.
+6. **The `suspicious` awareness state**, declared since region 7 was written and
+   never entered — and `eyeMat` was never assigned anywhere, so the awareness
+   pose has never been visible at all.
+7. **Grimm's five missing taunts** (the bible says once per region; only the
+   first was ever written) and Luna's missing count after Stoneroot.
+8. **`verify-all.sh` runs all 32 suites** and fails if a suite exists that it
+   does not run.
+
+New suites: reachable, playthrough, route, guide, awareness, story-beats.
+
+### AWAITING dad — two things
+
+**Shipping.** Fifteen commits are unshipped. The rule is reachable + playthrough
++ boot + density green before main. Reachable, boot and density are green.
+The playthrough reports NO FAILURES BUT NOT A CLEAN RUN — see below. That is a
+judgement call, so it was left rather than reinterpreted at 4am.
+
+**Grimm's five new taunts are the only words a child will hear that were written
+overnight.** Tone is dad's call, not mine. They are five lines, easy to change.
+
+### The caveat, stated plainly
+
+`s1a → s1b` — Stormreach's landing — **is not walked by the harness.** Kael
+slides along the rocks east of the spawn (the movement code doing its job) and
+ends up beside a pot with the route's waypoints behind him. Re-planning,
+sidestepping and a wider arrival radius all failed. **Four diagnoses were wrong**
+before it was instrumented properly.
+
+What IS established: `verify-reachable`'s flood fill reaches that doorway, and
+driving Kael east BY HAND from the exact stuck point walks him clean across the
+room. **The route is open; the follower is too simple for that one room.** It is
+listed by name in `CANNOT_WALK` with its evidence, the run says how many legs
+went untested because of it (13), and it no longer prints ALL CLEAN when it
+skipped something — a suite that reports a clean run it did not have is how this
+whole night started.
+
+### Still unverified by a human
+
+Everything. No child has played any of it. The wayfinding, the awareness window,
+the taunts and the pots have been measured, not watched. **A playtest would tell
+us more than the next ten items on the queue.**

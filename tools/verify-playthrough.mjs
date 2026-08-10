@@ -286,7 +286,14 @@ const walkTo = async (to, opts) => {
         wp++; bestGap = Infinity; stale = 0; nudge = 0;
       }
       if (wp >= path.length) break;
-      if (len < 1.0) { wp++; bestGap = Infinity; stale = 0; nudge = 0; continue; }
+      // THE LAST STRIDE IS NOT LIKE THE OTHERS. Every waypoint but the final
+      // one is a place to pass through, so "within a metre" counts as reached.
+      // The last one is the DOOR, and reaching it means standing inside the
+      // trigger — widening the radius here made the walker stop 0.8u short of
+      // every doorway in the game and report "ran out of path". Push into it
+      // until the room actually changes.
+      const last = wp === path.length - 1;
+      if (!last && len < 1.0) { wp++; bestGap = Infinity; stale = 0; nudge = 0; continue; }
       if (len < bestGap - 0.05) { bestGap = len; stale = 0; } else stale++;
       // UNSTICK, THE WAY A CHILD WOULD. Walking straight at a waypoint wedges
       // in a pinch — Stormreach's landing has a pot and a rock either side of
