@@ -218,6 +218,12 @@ export function makeBuilders({ kit, isGrey }) {
   // pathWidth, hub }. A room that passes nothing still gets a textured,
   // patterned floor with a worn route between its doors.
   function shell(world, spec, gaps, D, opts = {}) {
+    // The room's own extent, recorded rather than computed-and-discarded.
+    // Anything asking "is this point inside the room" — the reachability
+    // verifier especially — had no way to know, and guessing it from door
+    // positions fails for rooms whose doors are all on one axis.
+    world.halfW = spec.w / 2;
+    world.halfD = spec.d / 2;
     return GREY()
       ? protoShell(world, spec.w, spec.d, gaps, D.tint)
       : dressShell(world, spec.w, spec.d, gaps, D, opts);

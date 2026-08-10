@@ -811,17 +811,30 @@ export async function buildLg3(scene) {
 // --- ISLAND D — THE KILN (the ability: introduce + develop) ------------------
 export async function buildLd(scene) {
   const { world, spec, D } = base(scene, 'ld');
-  const { halfW, halfD } = shell(world, spec, [gap('n'), gap('s'), gap('e')], D, {
+  // THE BOSS DOOR IS OFF-CENTRE, AND HAS TO BE.
+  //
+  // The Forge Heart is a 5.2-radius solid at (0, -8). The north wall's inner
+  // face is at z = -12.5, so at the wall the forge still covers x ±3.2 — and a
+  // doorway is only 2.4u wide. Cut in the middle, the gap was completely
+  // sealed: Ember Hollow shipped with its boss unreachable, and a child could
+  // walk up to the great forge and no further. Nothing caught it because the
+  // door GRAPH was perfect; only the floor was impassable.
+  //
+  // Moving the forge would cost the room its centrepiece. Moving the DOOR costs
+  // nothing and reads better: you come up the Hollow, the forge fills the way
+  // ahead, and you go round it. tools/verify-reachable.mjs holds this now.
+  const { halfW, halfD } = shell(world, spec, [gap('n', undefined, -6), gap('s'), gap('e')], D, {
     patches: [{ x: 0, z: -8, r: 6.5, kind: 'scorch' }, { x: -11, z: 6, r: 4.4, kind: 'gravel' },
               { x: -12, z: -6, r: 4.0, kind: 'scorch' }, { x: 9.5, z: 6, r: 4.0, kind: 'ash' },
               { x: 13, z: -8, r: 3.6, kind: 'rubble' }],
     // the route bends WEST around the gutter channel (x 6..13, z 2..10) rather
-    // than through it: the channel is a timed run, not a corridor
-    paths: [[[0, 13], [-3, 8], [-2, 2], [0, -3], [0, -13]], [[1, 0], [9, -1], [16, 0]]],
+    // than through it: the channel is a timed run, not a corridor — and then
+    // west again around the forge itself to the boss door
+    paths: [[[0, 13], [-3, 8], [-2, 2], [0, -3], [-4, -8], [-6, -13]], [[1, 0], [9, -1], [16, 0]]],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg3', { x: 0, z: -3.2, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'lg4', { x: 0, z: 3.2, angle: Math.PI });
+  sideDoor(world, 'n', halfW, halfD, 'lg4', { x: 0, z: 3.2, angle: Math.PI }, { centre: -6 });
   sideDoor(world, 'e', halfW, halfD, 'ld1', { x: -7, z: 0, angle: Math.PI / 2 });
 
   heroProp(world, 0, -8, 'bowl', D.tint, D);               // ▲ THE FORGE HEART
@@ -903,7 +916,9 @@ export async function buildLg4(scene) {
     pathWidth: 2.6,
   });
   world.spawn = { x: 0, z: 3.2, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ld', { x: 0, z: -10, angle: 0 });
+  // ...and coming BACK put the player at (0, -10), which is inside the Forge
+  // Heart's collider. Both ends of this door were wrong.
+  sideDoor(world, 's', halfW, halfD, 'ld', { x: -6, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'le', { x: 0, z: 9.5, angle: Math.PI });
   // THE LAST ROOM BEFORE THE BOSS. Someone waited here, and did not go in: a
   // hearth still ringed with stones, a shrine, and the belongings they left
