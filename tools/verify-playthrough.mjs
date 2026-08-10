@@ -71,19 +71,26 @@ const REGIONS = [
   { name: 'woods', label: 'The Wild Woods', enter: 't1a',
     grant: { forms: ['verdant_wolf'], flags: { wardenDefeated: true } },
     legs: [['t1b'], ['tc1'], ['t2a'], ['t2b'], ['tsh'], ['tc2'], ['t3a'], ['t3b'],
-      ['tkn', { ws: ['wild3', 'knotCut'] }],        // the great thorn-knot is parted
-      ['tc3'],
+      // The knot's door opens on a PLATE, not on the wild3 milestone — the
+      // puzzle IS the door. Setting knotCut left Kael standing 0.2u from a
+      // doorway that had no reason to open.
+      ['tkn'],
+      ['tc3', { plate: 'l3_knot_p1', ws: ['wild3', 'knotCut'] }],
       ['t4a'], ['t4b'], ['tc4'], ['tgl']] },
 
   { name: 'frostpeak', label: 'Frostpeak', enter: 'f1',
     grant: { forms: ['frost_wolf'], flags: { sylvaDefeated: true } },
-    legs: [['f2'], ['f3'], ['f4'], ['f5']] },
+    legs: [['f2'],
+      ['f3', { ws: ['frost', 'braziers'], reload: true }],   // three braziers open the frost gate
+      ['f4', { plates: ['f3_p1', 'f3_p2'], reload: true }],  // two plates open the way up
+      ['f5']] },
 
   { name: 'stormreach', label: 'Stormreach Cliffs', enter: 's1a',
     grant: { forms: ['storm_wolf'], flags: { borealDefeated: true } },
     legs: [['s1b'], ['sc1'], ['s2a'], ['s2b'], ['ssh'],
       ['sc2', { needs: 'the thunder-dash, across the shrine gale' }],
-      ['s3a'], ['s3b'], ['svn'], ['sc3'], ['s4a'], ['s4b'], ['sc4'], ['scr']] },
+      ['s3a', { needs: 'the thunder-dash, across three lanes of wind' }],
+      ['s3b'], ['svn'], ['sc3'], ['s4a'], ['s4b'], ['sc4'], ['scr']] },
 
   { name: 'vale', label: 'The Sunken Vale', enter: 'd1a',
     grant: { forms: ['tide_wolf'], flags: { ariaDefeated: true } },
@@ -239,9 +246,30 @@ for (const r of RUN) {
   if (!(await enterRegion(r))) { check(`${r.label}: the first room builds`, false); continue; }
   let here = r.enter;
   for (const [next, opts] of r.legs) {
-    if (opts && opts.ws) {
-      await page.evaluate(([reg, key]) => window.__game.WS.set(reg, key, true), opts.ws);
-      console.log(`  · earned: ${opts.ws[1]} — the next doorway exists because of it`);
+    if (opts && (opts.ws || opts.plate || opts.plates)) {
+      await page.evaluate((o) => {
+        const g = window.__game;
+        if (o.ws) g.WS.set(o.ws[0], o.ws[1], true);
+        for (const p of [].concat(o.plate || [], o.plates || [])) g.state.flags.plates[p] = true;
+      }, opts);
+      const what = [opts.ws && opts.ws[1]].concat(opts.plate || [], opts.plates || []).filter(Boolean);
+      console.log(`  · earned: ${what.join(' + ')} — the next doorway needs it`);
+    }
+    // Some barriers are PHYSICAL and were built with the room: Frostpeak's
+    // frost gate is a solid until its braziers are lit. A child lights them
+    // standing there and the gate opens; headlessly the honest equivalent is
+    // to set what they earned and let the room rebuild around it. This is a
+    // scene reload, not a step through geometry — the walk that follows is
+    // still walked.
+    if (opts && opts.reload) {
+      const cur = await page.evaluate(() => window.__game.state.room);
+      await page.evaluate((r) => { const g = window.__game;
+        g.state.room = r; g.player.iframes = 0; g.player.hearts = 0.5;
+        g.player.hurt(99, { pierceDefend: true }); }, cur);
+      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
+        cur, { timeout: 60000 }).catch(() => {});
+      await settle();
+      console.log('  · the room is rebuilt around it');
     }
     const res = await walkTo(next, opts);
     const note = opts && opts.needs ? `  (performed with ${opts.needs})` : '';
