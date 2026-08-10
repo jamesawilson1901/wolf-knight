@@ -43,6 +43,24 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's seven-version hole | BUILDLOG queue (v3.41.1) | v3.43.2 |
+
+**D3** — the hole was **fourteen versions, not seven**. Measured by walking `sw.js`'s
+`CACHE_NAME` across git history (the one constant a deploy is under law to bump, so the
+closest thing this repo has to a release ledger) and diffing it against BUILDLOG's `## v…`
+headings: **69 shipped, 55 logged, 14 missing.** The queue item found the v3.34.0 → v3.41.1
+gap because it is the one you hit reading backwards from the end; underneath it sat an older
+one nobody had noticed — **v3.25.0, v3.25.1, v3.26.0 and v3.26.1**, which are fix-plan items
+A1/A7, A2a/A3/A5, A2b/A2c and A4. Their outcomes survived only because *this file* happens to
+carry them, and a work queue is not a history: once every row reads ✅ it stops being read.
+
+All fourteen are written now from the commit messages, in version order, each block labelled
+as a reconstruction and naming the commits it came from — a history that pretends to be
+contemporaneous is worse than a gap. `tools/check-buildlog.mjs` was written BEFORE the fix and
+exits 1 with the fourteen against the unfixed repo; it runs first in `verify-all.sh` because it
+is git and one file read, needs no browser, and is the only check in the suite that measures
+the RECORD rather than the game. See BUILDLOG v3.43.2 for the judgement calls and the refreshed
+queue.
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs

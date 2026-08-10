@@ -16,6 +16,11 @@ run() {
     fi
   fi
 }
+# The record check goes first: it is git and one file read, about a second, and
+# needs no browser at all. Every other verifier in here measures the GAME; this
+# one measures whether the work was written down. Fourteen shipped versions had
+# no BUILDLOG entry before it existed, and nothing could have told you.
+run check-buildlog.mjs
 run verify-boot.mjs
 # THE DENSITY CHECK RUNS BY DEFAULT, not on request. Every topology assertion in
 # this suite was green while the rooms were empty boxes, which is exactly how
