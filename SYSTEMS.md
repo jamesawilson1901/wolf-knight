@@ -146,6 +146,19 @@ Vendored three.js via import map, no bundler, cache-first service worker.
 LAW: bump CACHE_NAME every deploy; add every new file to PRECACHE; all
 URLs relative; verify offline before pushing main.
 
+## Orientation — the hard landscape lock (js/main.js, CONFIG.ORIENT)
+Landscape only, enforced two ways because neither alone binds: we keep
+ASKING (`screen.orientation.lock('landscape')` on the title tap, on every
+rotation and on every fullscreenchange — Android grants it only in
+fullscreen, iOS Safari never) and, when the platform refuses, portrait is
+a HALT — the render loop returns before anything updates or draws, and
+`input.release()` drops the stick, the keys and every queued edge on the
+way in AND out. `<html>` carries `orient-ok` / `orient-halt`, which is
+what raises the #rotate curtain, so the curtain and the frozen world are
+one fact. The CSS `@media (orientation: portrait)` rule is the pre-boot
+fallback only. Tunables: CONFIG.ORIENT (MIN_ASPECT, RELOCK_MS).
+Verified by `tools/verify-orientation.mjs`.
+
 ## Headless verification (scratchpad *.mjs, Playwright)
 Chromium + SwiftShader drives window.__game. Slow renderer → predicate
 waits, never fixed sleeps. Tests must use the player's real input path.

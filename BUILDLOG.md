@@ -3083,3 +3083,157 @@ old flat shop out of the service worker.
    (~400 at the top) and there is nothing new to sell after Frostpeak, so
    Stormreach and the Sunken Vale both end with a trip home to an unchanged
    cart. A rung 5 wants new stock, which is an asset question, not a code one.
+
+## v3.42.0 — The hard landscape lock: portrait STOPS the game (2026-08-10)
+
+The FIX-PLAN status table is closed end to end, so this run took the next
+unfinished entry from the newest QUEUED NEXT list (v2.2.6, line 681):
+**"hard landscape lock"**. The two items ahead of it are settled — the economy
+pass is SKIPPED under the standing rule (difficulty judgement, needs the kids)
+and Maren's tier ladder shipped as D2 in v3.41.1. The item after it, "S3 Wild
+Woods", shipped in v3.19.
+
+### Landscape-only was an intention, not a lock
+
+Three things claimed to enforce it, and none of them stopped the game:
+
+- `manifest.json` `"orientation": "landscape"` — a hint, honoured only for an
+  installed PWA.
+- One best-effort `screen.orientation.lock('landscape')` on the title tap
+  (`js/title.js:38`). Android grants that only in fullscreen; iOS Safari has no
+  `screen.orientation.lock` at all. Asked once, never again.
+- A CSS curtain: `@media (orientation: portrait) { #rotate { display: flex } }`.
+
+`tools/probe-orientation.mjs` was written to ask what actually happens behind
+that curtain, because a screenshot of it looks exactly like a working lock:
+
+    landscape  overlay: {"display":"none","w":780,"h":360}
+    portrait   overlay: {"display":"flex","w":360,"h":780}
+    portrait   Kael moved 0.188u while the overlay was up
+    portrait   hearts: {"enemies":2,"start":5,"end":4.5}  <- DAMAGE TAKEN
+    portrait   camera aspect: 0.462
+
+A child who turns the phone over mid-fight keeps walking and keeps losing hearts
+to enemies they cannot see, on a screen telling them to turn the phone back. The
+curtain was a picture of a stop, not a stop.
+
+### What it is now — ask, and halt
+
+**ASK.** `tryOrientationLock()` in `js/main.js` re-requests the platform lock on
+boot, on every rotation (both directions — turning over is when we learn the lock
+is not holding; turning back is the best chance of pinning it), and on every
+`fullscreenchange`, which is the moment Android becomes able to grant it. Rate
+limited by `CONFIG.ORIENT.RELOCK_MS` so a resize storm cannot spam it. A rejected
+lock is caught and costs nothing.
+
+**HALT.** When the platform refuses — which is always, on iOS — portrait stops
+the world. `rotateHalted` gates the animation loop *before* the `!world` branch
+and before the pause branch, so it covers the title diorama, live play, mini-game
+rounds and menus with one return. `timer.update()` still runs above it, so the
+delta is eaten every frame and a phone left portrait for a minute resumes on a
+normal-sized step rather than a jump.
+
+**LET GO.** New `Input.release()` clears the keys, the shield hold, the floating
+stick, its pointer map and all six queued edges, and is called on the way IN and
+on the way OUT of the halt. This is the half I would have missed: measured
+against the unfixed code, a swing tapped just before the rotation was still in
+the buffer and landed on resume with `lockTime 0.489` — a free hit out of a
+screen that had said stop. It is the same shape as the `window.blur` handler
+`input.js` already had, extended past the keyboard to the whole hand.
+
+### The judgement call: the class, not the media query
+
+The curtain now rides `orient-ok` / `orient-halt` on `<html>`, stamped by the
+same function that sets `rotateHalted`, and both classes out-specify the media
+rule (0,1,1 against 0,1,0). The media query stays as the pre-boot fallback — before
+`main.js` runs there is no world to stop, so a picture IS the whole job.
+
+The alternative was to leave the CSS alone and let the flag be invisible to the
+page. That is two systems answering the same question, which is exactly the
+drift the POSE NEVER LIES law was written against: the curtain and the frozen
+world have to be one fact, or a later edit moves one and not the other.
+
+### Measured
+
+`tools/verify-orientation.mjs` was written BEFORE the fix and run against the
+unfixed code first: **6 of 14 assertions failed**, which is what makes the other
+8 worth anything. After: ALL CLEAN.
+
+| | unfixed | fixed |
+|---|---|---|
+| portrait: Kael walks with the stick held | **1.67 u** | 0.000 u |
+| portrait: frames drawn in 2 s | **13** | 0 |
+| portrait: hearts with 2 enemies on him, 2.5 s | **5 → 4.5** | 5 → 5 |
+| resume: swing left in the buffer | **lockTime 0.489** | 0 |
+| resume: stick still pushed | **z −1** | 0 |
+| lock re-asked after a rotation | **no (1 call total)** | yes (5) |
+
+Landscape is unchanged and asserted to be: the curtain is down, Kael walks
+0.87–1.15 u per 2.5 s, and the loop draws 5–6 frames per 2 s (SwiftShader runs
+this page at 2–3 fps, which is why every distance assertion here is a floor and
+never an exact figure).
+
+Also green with the change, which is the set that exercises the animation loop,
+the input path and the DOM the curtain shares: `verify-boot`, `verify-density`,
+`verify-touch`, `verify-timing`, `verify-den`, `verify-sequence`, `verify-shop`
+— 8 of 8 including `verify-orientation`.
+
+### Two things worth keeping
+
+**The obvious assertion was the useless one.** The first draft checked "enemies
+do not move in portrait". It passed against the *unfixed* code — the room's cast
+was asleep and standing still in both orientations, so it proved nothing while
+looking like the strongest check in the file. It is now the renderer's own frame
+counter, which discriminates 13 against 0. An assertion that cannot fail is
+worse than no assertion: it reports clean and is believed.
+
+**`input.move` is not the input.** It holds the joystick vector only; the
+keyboard is added in `getMove()`. A check reading `input.move` reported a
+released stick against the unfixed code, where `getMove()` correctly reported
+`z −1`.
+
+### Not bumped
+
+`sw.js` stays at `wolfknight-v3.41.0` — this is not a deploy. `index.html`,
+`js/config.js`, `js/input.js` and `js/main.js` are all precached, so **the next
+deploy to main must bump CACHE_NAME** or a returning child gets the old
+soft curtain out of the service worker. No new files were added to `js/`, so
+PRECACHE is unchanged.
+
+### AWAITING dad's call
+
+- **`MIN_ASPECT` is 1.0**, chosen to match the CSS `@media (orientation:
+  portrait)` fallback exactly so the curtain cannot flicker at the swap. It
+  means a tablet held at, say, 1.05 counts as landscape and plays, even though
+  the HUD was laid out for 2.16. Raising it is one number in
+  `CONFIG.ORIENT` — but *where* it should sit is a "does it feel right on the
+  device" question, which is the kids' call and not a headless one.
+- **The branch**, still. The standing overnight instruction says work on
+  `overnight`, cut from main; this session was assigned
+  `claude/ecstatic-hawking-qezzoo` by the harness and told never to push
+  elsewhere. Both are off main, which is the part that matters, and the previous
+  run made the same choice for the same reason. Say which one overnight work
+  should live on and I will stay there.
+
+### QUEUED NEXT (in order)
+
+The v2.2.6 list is now exhausted. This is the live queue, carried over from
+v3.41.1's findings plus what this run saw:
+
+1. **BUILDLOG has a seven-version hole.** Last entry before v3.41.1 was v3.34.0;
+   `sw.js` says v3.41.0. Stormreach, the Sunken Vale, the Tide Wolf, the
+   mini-game harness and the Den rebuild all shipped with no entry. Worth a
+   reconstruction pass from `git log` before more history is lost.
+2. **`js/regions.js` says `sunkenvale: { built: false }`** with no rooms, gates
+   or restoration block, but the level shipped. `validateRegions()` is
+   machine-checking a manifest that no longer matches the game.
+3. **`GRANTED_IN` declares `storm_wolf: 'stormreach'` twice** — harmless today,
+   exactly the kind of thing that stops being harmless on the next edit.
+4. **Maren has four rungs and six built regions.** Nothing new to sell after
+   Frostpeak, so Stormreach and the Sunken Vale both end with a trip home to an
+   unchanged cart. A rung 5 is an asset question before it is a code one.
+5. **Batch the remaining hand-built rooms.** Frostpeak's `f2` (99), `f4` (97)
+   and `f3` (96) still never call `flattenStatic()`, exactly as the Den did not
+   before B3 — one line each plus the `keepLoose` audit `verify-den.mjs` was
+   written for, worth ~15-18 calls apiece. Nothing is over budget today, so this
+   is headroom rather than a fix.

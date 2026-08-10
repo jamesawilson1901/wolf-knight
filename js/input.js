@@ -103,6 +103,30 @@ export class Input {
     window.addEventListener('blur', () => { this._keys.clear(); this.defending = false; });
   }
 
+  // LET GO OF EVERYTHING. The blur handler above already does the keyboard half
+  // of this; a force-halt (the game turned portrait, main.js) needs the whole
+  // hand off the controller, including the floating stick and every queued
+  // edge. Without it a swing tapped a moment before the phone turned over would
+  // be sitting in the buffer and would land the instant play resumed — a free
+  // hit a child never asked for, out of a screen that said "stop".
+  release() {
+    this._keys.clear();
+    this.defending = false;
+    this.move.x = 0;
+    this.move.z = 0;
+    this._joyPointer = null;
+    this._pointers.clear();
+    this._attackQueued = false;
+    this._specialQueued = false;
+    this._formCycleQueued = false;
+    this._jumpQueued = false;
+    this._rangedQueued = false;
+    this._potionQueued = false;
+    if (this._base) this._base.style.display = 'none';
+    if (this._knob) this._knob.style.display = 'none';
+    if (this._hint) this._hint.style.display = 'block';
+  }
+
   _onDown(e) {
     if (e.target.closest && e.target.closest('.ui')) return; // HTML UI wins
 

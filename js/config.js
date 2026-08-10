@@ -34,6 +34,19 @@ export const CONFIG = {
   // ---- form button ----
   FORM_HOLD_MS: 300,     // hold this long for the radial picker; shorter = cycle
 
+  // ---- ORIENTATION (landscape only, and it is a HALT, not a curtain) ----
+  // The manifest asks for landscape and the title tap asks the browser to lock
+  // it, but neither is binding: iOS Safari has no screen.orientation.lock, and
+  // Android only honours it in fullscreen. So we keep asking, and when the
+  // platform says no, portrait STOPS the world instead of merely covering it.
+  ORIENT: {
+    MIN_ASPECT: 1.0,   // w/h below this is "turn the phone" — 1.0 matches the
+                       // CSS @media (orientation: portrait) pre-boot fallback
+                       // exactly, so the curtain never flickers at the swap
+    RELOCK_MS: 1200,   // ms between best-effort lock retries (a rejected lock
+                       // is cheap, but a retry every frame is not)
+  },
+
   // ---- FORM IDENTITY (the Dark Wolf is the fast, fragile hunter) ----
   FORMS: {
     DARK_SPEED: 6.7,       // u/s (knight 4.6 — the wolf RUNS, +45%)

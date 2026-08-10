@@ -111,6 +111,10 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // A rotation is a resize on every device; `orientationchange` is not fired
+  // everywhere and never fires for a resized desktop window. This is the one
+  // signal that always arrives (see THE HARD LANDSCAPE LOCK below).
+  refreshOrientation();
 });
 
 // ---------------------------------------------------------------------------
@@ -494,6 +498,72 @@ window.addEventListener('keydown', (e) => {
 
 const input = new Input();
 const timer = new THREE.Timer();
+
+// ---------------------------------------------------------------------------
+// THE HARD LANDSCAPE LOCK
+// ---------------------------------------------------------------------------
+// Landscape-only has been the intention since Phase 0 — manifest
+// `orientation: landscape`, a best-effort `screen.orientation.lock()` on the
+// title tap, and a CSS "please turn your device sideways" curtain. None of that
+// stopped the game. Measured against the code before this block existed
+// (tools/probe-orientation.mjs):
+//
+//     portrait   Kael moved 0.188u while the overlay was up
+//     portrait   hearts: {"enemies":2,"start":5,"end":4.5}
+//
+// A child who turned the phone over in a fight kept walking and kept losing
+// hearts to enemies they could not see, on a screen telling them to turn back.
+// So the lock is two things, and it has to be both:
+//
+//   ASK — keep requesting the platform lock, not once on the title tap. Android
+//         only grants it in fullscreen (which may arrive later, or be dismissed
+//         and come back), and iOS Safari never grants it at all.
+//   HALT — when the platform says no, portrait STOPS the world. Same early
+//         return the pause menu uses, plus a full input release in both
+//         directions so nothing held or tapped through the halt survives it.
+let rotateHalted = false;
+let orientStamped = false;
+let lastLockTry = 0;
+
+const isLandscape = () =>
+  window.innerWidth / Math.max(1, window.innerHeight) >= CONFIG.ORIENT.MIN_ASPECT;
+
+// Best effort by nature: rejected outside fullscreen on Android, absent on iOS.
+// Rate-limited because it is called on every resize and every rotation.
+function tryOrientationLock() {
+  const now = Date.now();
+  if (now - lastLockTry < CONFIG.ORIENT.RELOCK_MS) return;
+  lastLockTry = now;
+  try {
+    const so = screen && screen.orientation;
+    if (so && so.lock) so.lock('landscape').catch(() => {});
+  } catch (e) { /* unsupported — the halt below is the answer */ }
+}
+
+function refreshOrientation() {
+  const ok = isLandscape();
+  if (orientStamped && ok === !rotateHalted) return;  // no change, nothing to say
+  orientStamped = true;
+  rotateHalted = !ok;
+  // The class and the flag are set together, on purpose: the curtain IS the
+  // halt, and a future edit that moves one has to move the other.
+  document.documentElement.classList.toggle('orient-halt', !ok);
+  document.documentElement.classList.toggle('orient-ok', ok);
+  input.release();                        // let go on the way IN and on the way OUT
+  // Ask in BOTH directions. Turning over is the moment we learn the lock is not
+  // holding; turning back is the moment the device is in the state we want and
+  // is the best chance of pinning it there.
+  tryOrientationLock();
+}
+
+window.addEventListener('orientationchange', refreshOrientation);
+if (screen && screen.orientation) {
+  try { screen.orientation.addEventListener('change', refreshOrientation); } catch (e) {}
+}
+// Granting fullscreen is what makes the lock possible on Android, so that is
+// the moment worth asking again.
+document.addEventListener('fullscreenchange', () => { lastLockTry = 0; tryOrientationLock(); });
+refreshOrientation();
 
 let world = null;
 let player = null;
@@ -1392,7 +1462,7 @@ const surgeVignetteEl = document.getElementById('surge-vignette');
 // never collide with scripted beats, room transitions or menus.
 function triggerSurge() {
   if (!player || !world || !effects) return false;
-  if (transitioning || paused || menuPaused || narration.blocking) return false;
+  if (transitioning || paused || menuPaused || narration.blocking || rotateHalted) return false;
   // playtest law: the Blood Moon is the DARK WOLF's power — no other form
   // shows the button, hears the nag, or can fire it
   if (state.form !== 'dark_wolf') return false;
@@ -1587,6 +1657,14 @@ async function start() {
     const realDt = timer.getDelta();
     const dt = Math.min(realDt, 0.05);
     const t = timer.getElapsed();
+
+    // PORTRAIT IS A FULL STOP. Before anything else, and before the title
+    // scene: an opaque curtain is over the screen, so there is nothing to draw
+    // and nothing that may move. `timer.update()` above has already eaten this
+    // frame's delta, so however long the phone stays turned over the world
+    // resumes on a normal-sized step rather than a jump.
+    if (rotateHalted) return;
+
     if (!world) {
       if (titleScene) titleScene.render(dt); // the campfire lives behind the menu
       return;

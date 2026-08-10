@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | hard landscape lock | BUILDLOG QUEUED NEXT (v2.2.6) | v3.42.0 |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,17 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — landscape-only was an *intention*, not a lock: manifest
+`orientation: landscape`, one best-effort `screen.orientation.lock()` on the
+title tap, and a CSS curtain in portrait. Measured, the game kept running behind
+that curtain — Kael walked **1.67 u** with the stick held and hearts dropped
+**5 → 4.5** with two enemies on him, on a screen telling a child to turn the
+phone back. Portrait is now a full stop (the loop returns before it updates or
+draws), the lock is re-asked on every rotation and every fullscreenchange, and
+`input.release()` drops the stick, the keys and every queued edge in both
+directions. `tools/verify-orientation.mjs` was written first and fails **6 of 14**
+against the unfixed code, ALL CLEAN after. See BUILDLOG v3.42.0.
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:

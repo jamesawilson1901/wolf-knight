@@ -48,7 +48,15 @@
       animation: turn 1.8s ease-in-out infinite;
     }
     @keyframes turn { 0%,20% { transform: rotate(0); } 60%,100% { transform: rotate(90deg); } }
+    /* PRE-BOOT FALLBACK ONLY. Until main.js takes over, CSS alone raises the
+       curtain — there is no world to stop yet, so a picture is the whole job. */
     @media (orientation: portrait) { #rotate { display: flex; } }
+    /* ONCE THE GAME IS RUNNING the HALT is the source of truth: main.js stamps
+       one of these two classes on <html> in the same breath as it freezes or
+       resumes the world, so the curtain and the frozen game can never disagree.
+       Both out-specify the media rule above (0,1,1 vs 0,1,0). */
+    html.orient-ok #rotate { display: none; }
+    html.orient-halt #rotate { display: flex; }
     .dmg-num {
       position: fixed; z-index: 8; pointer-events: none;
       font-size: 20px; font-weight: 900; color: #ffd76a;
