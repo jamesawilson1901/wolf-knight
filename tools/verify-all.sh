@@ -26,6 +26,11 @@ run verify-density.mjs
 # regions playing the wrong loop and four bosses fighting to region music. It is
 # the one thing a child experiences with their eyes shut.
 run verify-music.mjs
+# ...and the log itself, which nothing checked until it had fallen eleven
+# versions behind the build. Every other tool here reads the game; an overnight
+# session is told the repo is the only record, and nothing was reading the
+# record. It costs no browser.
+run check-buildlog.mjs
 for t in "$@"; do run "$t"; done
 echo
 echo "passed $PASS, failed $FAIL"

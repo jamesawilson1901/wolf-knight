@@ -43,6 +43,7 @@ expansion built the *spaces*; the *game* still runs on the old rooms.
 |---|---|---|---|
 | D1 | economy/XP balance pass | BUILDLOG QUEUED NEXT (v2.2.6) | **skipped** — difficulty judgement, needs the kids |
 | D2 | Maren tier-2 stock after Stoneroot | BUILDLOG QUEUED NEXT (v2.2.6) | v3.41.1 |
+| D3 | BUILDLOG's version hole — reconstruct from git log | BUILDLOG queue (v3.41.1) | 2026-08-10 (no version; not a deploy) |
 
 **D2** — Maren's stock was one flat list: every weapon in the game on sale at the
 Den before a child had walked into Ember. It is now four rungs
@@ -52,6 +53,17 @@ against the contract's ~60/90/150/250; nothing was repriced, because pricing IS
 the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
+
+**D3** — the queue called it a seven-version hole; measured from the service worker's
+own bump history it was **eleven** (v3.25.0-v3.26.1 as well, and v3.42-v3.43 shipped
+after the note was written). Fourteen entries reconstructed from `git log` and marked
+as such — the commit bodies are the primary record for those versions and this file's
+sibling, BUILDLOG.md, is the secondhand one. `tools/check-buildlog.mjs` was written
+first, failed against the unfixed file, and now runs in `verify-all.sh` by default:
+BUILDLOG's newest `## vX.Y.Z` must be at least the version `sw.js` serves. Nothing in
+`tools/` had ever read a document, which is why eleven versions of drift kept every
+suite green. See the BUILDLOG entry of 2026-08-10 for the judgement calls and the
+six items left in the queue.
 
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
