@@ -53,6 +53,40 @@ the D1 pass. Proved by `tools/verify-shop.mjs` — written before the fix and
 failing 6 of 17 against the unfixed code, ALL CLEAN after. See BUILDLOG v3.41.1
 for the ladder, the judgement calls and three drift findings left for the queue.
 
+<!-- MERGED: the `overnight` branch kept its own copy of this table. Both are
+kept — the rows below came from that branch. -->
+
+Q1 is the only thing left in either queue, and it is a difficulty/feel item: an
+unattended run cannot decide what a region's shards should buy. ~~**The next
+overnight run has nothing it may take.**~~
+
+**That last line was wrong within hours of being written.** The run that wrote
+it went on to MEASURE a live progression fault and put it at the head of a new
+QUEUED NEXT list, so there was plenty to take — this table just did not know it.
+The queue lives in BUILDLOG's newest QUEUED NEXT list, and this file must not
+claim to summarise it.
+
+| | queue entry | state |
+|---|---|---|
+| Q5 | the three region-completion lines are dead — fast travel, pup count, map | ✅ v3.42.0 |
+| Q6 | `loadRoom` stores the raw room id, not the resolved one | open |
+| Q7 | 62 of 99 live rooms hold no pot; region 3 is under the shard floor | open — level design |
+| Q8 | shop tiers 3+ (Wild Woods → Sunken Vale) | open — wants Q1 first |
+
+**Q5 shipped v3.42.0.** `state.spoken.region_complete` / `stone_complete` /
+`wild_complete` could never be set — each needed a retired room id plus a marker
+only that retired room's builder publishes — and Luna's moonstone, the pup
+counter and the map screen all read them as "is this region finished". A region
+is now finished when its BOSS IS DOWN (`regionCleared()` in js/state.js), and
+the three lines moved onto the rebuilt arenas. `tools/verify-completion.mjs`
+fails 6 of 9 against the old code.
+
+**Q7 is a measurement, not an opinion.** Levels 3, 5 and 6 never write
+`world.markers.breakables`, so the Wild Woods, Stormreach and the Sunken Vale
+contain no smashable pot between them, and the Wild Woods yields 92 shards
+against the contract's 120-160 floor on four chests alone. Per-region table in
+the v3.42.0 BUILDLOG entry.
+
 **Four of them were not the thing the audit described**, which is the most useful
 record this file holds:
 

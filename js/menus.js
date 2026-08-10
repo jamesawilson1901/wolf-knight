@@ -2,7 +2,7 @@
 // region map, and the sticker book. All icon-first, big targets, and every
 // action gives audio + visual feedback.
 
-import { state } from './state.js';
+import { state, regionCleared } from './state.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
@@ -96,7 +96,7 @@ export class Menus {
 
     const foot = document.createElement('div');
     foot.style.cssText = 'font-size:16px;color:#ffd76a;font-weight:800';
-    foot.textContent = `🔸 ${state.shards} shards · 🧪 ${state.potions} potions · 🐺 pups ${Object.keys(state.flags.pups).length}/${state.spoken.wild_complete ? 12 : state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3}`;
+    foot.textContent = `🔸 ${state.shards} shards · 🧪 ${state.potions} potions · 🐺 pups ${Object.keys(state.flags.pups).length}/${regionCleared('wildwoods') ? 12 : regionCleared('stoneroot') ? 9 : regionCleared('ember') ? 6 : 3}`;
     el.appendChild(foot);
     el.appendChild(this._closeBtn('inv-menu'));
   }
@@ -203,9 +203,9 @@ export class Menus {
     row.className = 'map-rooms';
     const spots = [
       { room: 'r1', name: 'Ember Hollow', icon: '🔥' },
-      ...(state.spoken.region_complete ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
-      ...(state.spoken.stone_complete ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
-      ...(state.spoken.wild_complete ? [{ room: 'f1', name: 'Frostpeak', icon: '🏔️' }] : []),
+      ...(regionCleared('ember') ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
+      ...(regionCleared('stoneroot') ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
+      ...(regionCleared('wildwoods') ? [{ room: 'f1', name: 'Frostpeak', icon: '🏔️' }] : []),
       // The cliffs open on the same rule as every region before them: the
       // moonstone can carry you back to a place you have already reached.
       ...(state.flags.borealDefeated ? [{ room: 's1a', name: 'Stormreach Cliffs', icon: '🌩️' }] : []),
@@ -267,7 +267,7 @@ export class Menus {
       { id: 'k1', name: 'The Kiln', icons: '🌋🚪' },
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
     ]);
-    if (state.spoken.region_complete || state.region === 'stoneroot') {
+    if (regionCleared('ember') || state.region === 'stoneroot') {
       addRegion('⛰️ Stoneroot Caverns', [
         { id: 'e1', name: 'Cavern Gate', icons: '💀🕯️' },
         { id: 'e2', name: 'The Deep Hall', icons: '🪨⚙️' },

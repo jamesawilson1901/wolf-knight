@@ -3083,3 +3083,266 @@ old flat shop out of the service worker.
    (~400 at the top) and there is nothing new to sell after Frostpeak, so
    Stormreach and the Sunken Vale both end with a trip home to an unchanged
    cart. A rung 5 wants new stock, which is an asset question, not a code one.
+
+<!-- MERGED HISTORY: everything below to the end of this section was written on
+the `overnight` branch, which ran for two days without a path back to main. The
+entries are kept verbatim because the overnight process is told the repo is the
+only record, and deleting the branch would have made that false. -->
+
+No code changed tonight. This entry is the record of a wasted run and the two
+things worth keeping out of it.
+
+### What went wrong
+
+The run instructions say *"Work on branch `overnight`, cut from main; create it
+if absent."* It was **not** absent — `origin/overnight` already carried Q2
+(Maren's stall, 25e3027). I read "cut from main" as the instruction and created
+`overnight` fresh from `1f91829`, which silently discarded that history from my
+view. Every document I then read was main's copy: FIX-PLAN with all rows
+shipped, and BUILDLOG's newest QUEUED NEXT list being the v2.2.6 one — whose
+first non-feel entry is *"Maren tier-2 stock after Stoneroot"*.
+
+So I picked the item that had already been done, and rebuilt it a second way:
+five region tiers gated on the DEFEAT flags, locked stock shown greyed on the
+counter, and a second `tools/verify-shop.mjs`. It went green — 5 verifiers, 0
+failures — and it was worthless, because the item was shipped.
+
+The push is what caught it: `origin/overnight` rejected a non-fast-forward. Had
+the branch not existed remotely, or had I force-pushed, Q2 would have been
+deleted. My commit is **not** pushed and the branch is exactly `25e3027`.
+
+**RULE FOR EVERY LATER RUN: `git fetch origin overnight` FIRST, and if the
+branch exists, check it out. Cut from main only if it genuinely does not exist.**
+The repo is the only record, and half the record was on a branch I never
+fetched. A verifier suite passing 5/5 says nothing about whether the work needed
+doing.
+
+### Q2 re-checked, and it holds
+
+Before discarding my version I checked the one thing that could have made it
+worth keeping — whether Q2's gate flag is ever actually set in play. It is:
+`WS.set('stone', 'restored')` fires in `world.onWardenDefeated`
+(`js/main.js:1157`), the real Warden-defeat path, as well as from the cheat
+menu's `stoneDone`. Q2's ladder opens for a child who beats Stoneroot. Nothing
+to fix.
+
+### The one finding worth salvaging: three region-completion lines are DEAD
+
+Measured while choosing a gate flag, and it is a live progression fault that
+neither run has touched. `state.spoken.region_complete`, `stone_complete` and
+`wild_complete` can never be set on the shipping path. Each needs BOTH a retired
+room id AND a marker published only by that retired room's builder:
+
+    region_complete   state.room === 'r3'  + markers.exitSpot     (buildR3)
+    stone_complete    state.room === 'e3'  + markers.petraSpot    (buildE3)
+    wild_complete     state.room === 'w5'  + markers.sylvaShrine  (buildW5)
+
+`RETIRED_ROOMS` redirects `r3→le`, `e3→vz`, `w5→tgl` (js/state.js:60), so none
+of those three builders ever runs and none of those markers exists. `vz` does
+publish a `petraSpot` of its own (level2.js:1158), but the guard still names
+`e3`. `exitSpot` exists in exactly one place in the codebase — `buildR3`.
+
+What that breaks, all of it silent:
+
+- **Fast travel never grows.** `js/menus.js:194-196` adds Stoneroot, the Wild
+  Woods and Frostpeak to Luna's moonstone only on those three flags. A child who
+  beats Stoneroot cannot travel to the Wild Woods.
+- **The pup counter is stuck at 3** (`js/main.js:216-217`, `js/menus.js:99`) —
+  it reads the same flags for the total, so the sticker book says `x/3` forever.
+- Any later gate that reaches for the obvious "region complete" flag inherits
+  the fault. Q2 avoided it by using WorldState instead; that was the right
+  instinct and it should not have to be an instinct.
+
+A related smaller one, same family: `loadRoom` stores the RAW id
+(`state.room = id`, js/main.js:1240) while building the RESOLVED one, so
+Frostpeak's `f1` door back to `w5` leaves `state.room === 'w5'` with `tgl` on
+screen (`js/rooms.js:3607`).
+
+### AWAITING dad's call
+
+- Nothing to approve — no code changed. Q2 stands as pushed.
+- Its own AWAITING list (the tier split, Maren's promise line) is still open
+  above and unaffected.
+
+- QUEUED NEXT (in order):
+  1. **The three dead region-completion lines** (measured above): move each
+     trigger onto the rebuilt room and a marker that room actually publishes,
+     and fix the fast-travel and pup-count reads that hang off them. Verifier
+     first — nothing in `tools/` currently asserts that a region can be
+     *completed*, only that its rooms connect.
+  2. `loadRoom` storing the raw room id rather than the resolved one — same
+     family, probably the same session.
+  3. Shop tiers 3+ for the Wild Woods, Frostpeak, Stormreach and the Sunken
+     Vale. The mechanism from Q2 is general; the bands need prices, so this
+     wants the economy pass first.
+  4. Economy/XP balance pass (shard income vs shop ladder, perk tiers past
+     level 12) — **needs the kids. Do not do this overnight.**
+  5. Hard landscape lock (still best-effort only; see BUILDLOG line 56).
+
+## v3.42.0 — Three regions that could never be finished (2026-08-09, overnight)
+
+Head of the newest QUEUED NEXT list, measured and logged by the previous run:
+**the three region-completion lines are dead.** They are, and what hung off
+them is worse than a missed line of dialogue.
+
+`state.spoken.region_complete` / `stone_complete` / `wild_complete` are the
+record of which NARRATION LINES a save has heard. Each needed BOTH a retired
+room id AND a marker only that retired room's builder publishes:
+
+    region_complete   m.exitSpot                          (buildR3 — the only
+                                                           exitSpot in the repo)
+    stone_complete    state.room === 'e3'  + petraSpot    (buildE3)
+    wild_complete     state.room === 'w5'  + sylvaShrine  (buildW5)
+
+`RETIRED_ROOMS` redirects `r3→le`, `e3→vz`, `w5→tgl`, so none of those three
+builders ever runs. All three flags were unreachable, and three progression
+systems read them as *"is this region finished"*:
+
+- **Luna's moonstone never grew a destination.** A child who beat Stoneroot
+  could not fast-travel to the Wild Woods.
+- **The pup counter was stuck at 3.** The HUD and the sticker book both compute
+  the TOTAL from these flags, so it read `x/3` for the whole game while twelve
+  pups exist.
+- **The map screen never showed Stoneroot** — the same read, at menus.js:268.
+
+### The fix is that a region is finished when its BOSS IS DOWN
+
+`regionCleared(region)` in js/state.js, keyed off the defeat flag the boss's own
+death sets (`bossDefeated`, `wardenDefeated`, `sylvaDefeated`, and the three
+later regions' flags while the table is being written). A save flag set by the
+defeat path cannot drift apart from a line of dialogue, and **what a child can
+travel to should not depend on whether they stood close enough to hear Pip say
+so.** All six progression reads now go through it.
+
+The three lines themselves moved onto the rebuilt arenas and the markers those
+arenas really publish — each keyed to the spirit the line is ABOUT:
+
+    region_complete   le  + heroSpot   (Cinder's cage) + bossDefeated
+    stone_complete    vz  + petraSpot                  + wardenDefeated
+    wild_complete     tgl + sylvaSpot                  + sylvaDefeated
+
+`petraSpot` and `sylvaSpot` are published by exactly one live room each, so
+those two need no room guard at all. `heroSpot` is published by every Level 1
+room, so `region_complete` keeps a room guard — through `resolveRoom`, not the
+raw id, because `state.room` stores the raw one (queue item 2, untouched).
+
+### Measured
+
+`tools/verify-completion.mjs` is new, and nothing in `tools/` asked this
+question before: every level verifier asserts a region's rooms CONNECT, and all
+of them were green while no region could be COMPLETED.
+
+It renders Luna's moonstone and the inventory footer from the real `Menus`
+class rather than re-implementing the predicate, and it **wipes the narration
+record before every sample**, because that is precisely the fault:
+
+| state | destinations | pups shown |
+|---|---|---|
+| nothing beaten | 1 | x/3 |
+| Shadowgrip down | 2 | x/6 |
+| Warden down | 3 | x/9 |
+| Sylva down | 4 | x/12 |
+
+Then it stands Kael on each rebuilt arena's own marker, lets the world tick, and
+asserts the line speaks through the real narration pass — never by calling the
+trigger directly. Last, it reads main.js and menus.js back over HTTP and asserts
+**zero** remaining `state.spoken.*_complete` progression reads, so the fault
+cannot come back by the same door.
+
+**Run against the old code it fails 6 of 9** (destinations 1,1,1,1 · pups
+3,3,3,3 · all three lines silent · 10 narration-record reads). A verifier that
+cannot fail is the thing this repo has been bitten by twice, so it was checked
+by stashing the fix rather than assumed.
+
+`verify-all.sh verify-completion verify-progression verify-den`: all green.
+
+### AWAITING dad's call
+
+Nothing needs approving — this restores behaviour the game always intended. One
+judgement call worth naming: `region_complete` also fires `showCompleteScreen()`,
+and it now fires when Kael stands at Cinder's cage after the Shadowgrip falls,
+which is a few seconds earlier in the beat than the old portal-side trigger.
+The celebration lands on the freed spirit rather than on the door out. If that
+reads wrong on a playthrough it is one line to move.
+
+### A run that nearly wasted itself the same way the last one did
+
+The previous entry ends with a rule in bold: *fetch `origin/overnight` FIRST*.
+This run did not, cut `overnight` from main exactly as that run did, read main's
+stale documents, and picked from the v2.2.6 queue — landing on the economy/XP
+pass, which the real queue lists at **#4 and marked "needs the kids, do not do
+this overnight."** The work was built and verified green (perk tiers, 128
+pick-paths, a `verify-economy.mjs`) before `git push` rejected the
+non-fast-forward and the branch's real history appeared.
+
+It was **discarded**, unpushed, the same way the last run discarded its
+duplicate Q2 — the item was not mine to take. The findings are kept below,
+because they are measurements and the code was not.
+
+The rule needs to be stronger than a sentence in the log, because the log is
+what a fresh session reads last and the mistake happens first. Suggested for the
+run prompt itself: *"git fetch origin overnight && git checkout overnight before
+reading anything; cut from main only if the branch does not exist on the
+remote."*
+
+### Salvaged: what the economy measurements found
+
+Kept as measurements for whoever takes queue item 4 with the kids in the room.
+
+**The perk pool has run dry, and the law cannot see it.** GAME-CONTRACT says the
+pool must hold ≥3 unmaxed choices to level 21 and to *"add tiers when a pool
+would run dry"*. Perks have no rank cap — `applyPerk` is a bare `+1` — so no
+perk is ever "maxed", "≥3 unmaxed" is trivially true, and the pool can run dry
+without anything being able to say so. It has: four perks offered two at a time
+means every card after level 12 is one the child has already taken. And the
+uncapped counter feeds the maths — `cdMult = 1 - 0.15 * ranks` reaches **-0.05**
+at seven ranks of Quicker Moon, a negative cooldown multiplier that leaves the
+special permanently ready. Not reachable by level 21 (the rotation offers
+`cooldown` four times in seven picks) but plainly reachable in a long game.
+Five perks × 3 ranks is the smallest pool that satisfies the law; the fifth
+should not be a damage lever.
+
+**Shard income per region**, counted from the level modules (`markers.breakables`
+entries × the `shards = 2` default in js/loot.js, plus `visibleReward` and
+`markers.chestDefs` payloads), against the contract's 120-160:
+
+| region | rooms | pots | chests | shards | vs 120-160 |
+|---|---|---|---|---|---|
+| 1 Ember Hollow | 14 | 47 | 5 | 182 | over by 22 |
+| 2 Stoneroot | 17 | 50 | 6 | 234 | **over by 74** |
+| 3 Wild Woods | 21 | **0** | 4 | **92** | **under by 28** |
+| 4 Frostpeak | 7 | 8 | 9 | 204 | over by 44 |
+| 5 Stormreach | 20 | **0** | 7 | 176 | over by 16 |
+| 6 Sunken Vale | 20 | **0** | 7 | 182 | over by 22 |
+
+**62 of the 99 live rooms contain no smashable pot.** Levels 3, 5 and 6 never
+write `world.markers.breakables` at all — not one, in three whole regions. Pip's
+shop line is *"Smash pots and beat shadows for shards"*, the sticker book has a
+Pot Smasher at five, and a child who reaches the Wild Woods never smashes
+another one. Region 3 is under the contract floor as a direct consequence: its
+entire income is four chests.
+
+Two corrections to the contract's own wording, both measured: "pots+chests+
+drops" is **two** sources, not three — enemies drop ember hearts, not coins
+(`js/enemies.js die()`), and the Den mini-games now pay in score. And every
+spawnable enemy family **is** priced in XP_VALUES (9 of 9), so the A9 hole has
+not reopened; the table also prices `SkeletonWarrior` and `SkeletonMage`, which
+no longer exist.
+
+### QUEUED NEXT (in order)
+
+1. `loadRoom` stores the RAW room id while building the RESOLVED one
+   (`state.room = id`, js/main.js), so Frostpeak's `f1` door back to `w5` leaves
+   `state.room === 'w5'` with `tgl` on screen. Same family as tonight's item and
+   the reason `region_complete` still needs a `resolveRoom` guard.
+2. **Pots for Levels 3, 5 and 6** — 62 rooms with no breakable in them, and the
+   reason region 3 is under the shard floor. Level design, one region per
+   session, against ROOM-STANDARD.
+3. Shop tiers 3+ for the Wild Woods, Frostpeak, Stormreach and the Sunken Vale.
+   The mechanism from Q2 is general; the bands need prices, so this wants the
+   economy pass first.
+4. Economy/XP balance pass — **needs the kids. Do not do this overnight.** The
+   perk-tier half is law conformance rather than taste and the measurements
+   above are ready to build against, but the caps and a fifth perk change what a
+   child gets, so dad decides.
+5. Hard landscape lock (still best-effort only).

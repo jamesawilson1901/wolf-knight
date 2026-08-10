@@ -75,3 +75,33 @@ export function resolveRoom(id) {
   return RETIRED_ROOMS[id] || id;
 }
 
+// ---------------------------------------------------------------------------
+// IS A REGION FINISHED?
+//
+// This used to be asked of `state.spoken.*` — the once-per-save record of which
+// NARRATION LINES have been heard. Fast travel, the pup counter and the map
+// screen all read `region_complete` / `stone_complete` / `wild_complete`, and
+// all three of those lines were unsayable on the shipping path: each needed a
+// RETIRED room id plus a marker only that retired room's builder publishes
+// (`r3` + exitSpot, `e3` + petraSpot, `w5` + sylvaShrine), and RETIRED_ROOMS
+// above redirects all three away. So the moonstone never grew a destination,
+// the sticker book said x/3 forever, and the map never showed Stoneroot.
+//
+// A region is finished when its BOSS IS DOWN. That is a save flag, set by the
+// defeat path itself, and it cannot drift apart from a line of dialogue.
+// Whether a child heard Pip say so is a separate question, and not one the
+// moonstone should be asking.
+export const REGION_BOSS_FLAG = {
+  ember: 'bossDefeated',        // the Shadowgrip
+  stoneroot: 'wardenDefeated',  // the Bone Warden
+  wildwoods: 'sylvaDefeated',
+  frostpeak: 'borealDefeated',
+  stormreach: 'ariaDefeated',
+  sunkenvale: 'meriDefeated',
+};
+
+export function regionCleared(region) {
+  const f = REGION_BOSS_FLAG[region];
+  return !!(f && state.flags[f]);
+}
+

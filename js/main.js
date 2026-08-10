@@ -11,7 +11,7 @@ import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import { FETCH } from './mg-fetch.js';
 import { Player } from './player.js';
-import { state, resolveRoom } from './state.js';
+import { state, resolveRoom, regionCleared } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
@@ -213,8 +213,8 @@ function renderPotions(player) {
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
   // each opened region adds three pups to the count the HUD promises
-  const total = state.spoken.wild_complete ? 12
-    : state.spoken.stone_complete ? 9 : state.spoken.region_complete ? 6 : 3;
+  const total = regionCleared('wildwoods') ? 12
+    : regionCleared('stoneroot') ? 9 : regionCleared('ember') ? 6 : 3;
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -693,13 +693,36 @@ function narrationTriggers(dt, t) {
     }
     if (world.warden && world.warden.state !== 'sleep' && !world.warden.dead) narration.say('warden_intro');
     if (world.warden && world.warden._blockedOnce) narration.say('warden_block');
-    if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
-      if (narration.say('stone_complete')) {
-        narration.say('luna_dream_2');
-        persist();
-      }
-    }
     if (WS.get('stone', 'restored') && nearXZ(5.5, -5.5, 3.4)) narration.say('wildwoods_open');
+  }
+
+  // ---- THE THREE REGION-COMPLETION LINES ---------------------------------
+  //
+  // All three used to hang off a RETIRED room id plus a marker only that
+  // retired room's builder publishes, so none of them could fire on the
+  // shipping path: `r3` + exitSpot, `e3` + petraSpot, `w5` + sylvaShrine, while
+  // RETIRED_ROOMS redirects r3→le, e3→vz, w5→tgl. They are keyed now to the
+  // spirit each one is ABOUT — the marker the rebuilt arena really publishes —
+  // and to the boss flag, which is what "complete" has always meant.
+  if (state.flags.bossDefeated && resolveRoom(state.room) === 'le' &&
+      m.heroSpot && nearSpot(m.heroSpot, 2.6)) {
+    // Cinder's cage: `le` is the only Level 1 room whose heroSpot is the cage,
+    // and the boss flag is what opens its doors, so the room guard stays.
+    if (narration.say('region_complete')) {
+      narration.say('grimm_taunt_1');
+      narration.say('luna_dream_1');
+      persist();                 // region complete is a save point
+      showCompleteScreen();
+    }
+  }
+  if (state.flags.wardenDefeated && m.petraSpot && nearSpot(m.petraSpot, 2.6)) {
+    if (narration.say('stone_complete')) {
+      narration.say('luna_dream_2');
+      persist();
+    }
+  }
+  if (state.flags.sylvaDefeated && m.sylvaSpot && nearSpot(m.sylvaSpot, 3.0)) {
+    if (narration.say('wild_complete')) persist();
   }
 
   // The Wild Woods (region 3)
@@ -727,10 +750,8 @@ function narrationTriggers(dt, t) {
       if (state.flags.plates.w3_p1 && state.flags.plates.w3_p2) narration.say('plates2_open');
     }
     if (state.room === 'w4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('wild_boss_door');
-    if (state.room === 'w5' && state.flags.sylvaDefeated &&
-        m.sylvaShrine && nearSpot(m.sylvaShrine, 2.8)) {
-      if (narration.say('wild_complete')) persist();
-    }
+    // (`wild_complete` used to be triggered here, on `w5` + sylvaShrine — both
+    // retired. It lives with the other two completion lines above.)
     if (m.frostWaySpot && nearSpot(m.frostWaySpot, 3.4)) narration.say('frostpeak_open');
   }
 
@@ -941,14 +962,9 @@ function narrationTriggers(dt, t) {
     }
   }
 
-  if (m.exitSpot && nearSpot(m.exitSpot, 1.6)) {
-    if (narration.say('region_complete')) {
-      narration.say('grimm_taunt_1');
-      narration.say('luna_dream_1');
-      persist(); // region complete is a save point
-      showCompleteScreen();
-    }
-  }
+  // (`region_complete` used to be triggered here, on `exitSpot` — a marker that
+  // exists in exactly one place in the codebase, `buildR3`, which is retired.
+  // It lives with the other two completion lines above.)
 
   // contextual (repeatable, throttled)
   const shadesNear = (world.enemies || []).filter((e) =>
