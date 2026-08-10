@@ -12,6 +12,14 @@ import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
 
+// AWARENESS, the middle state. Two numbers, both about a child rather than a
+// simulation: how close you have to be before a shadow half-notices, and how
+// long it takes to decide. Two seconds is long — deliberately. It is the window
+// in which a five-year-old sees the eyes come up and gets to ghost or back off,
+// and the whole point of the state is that the window exists.
+const SUSPECT_R = 5.5;
+const SUSPECT_HOLD = 2.0;
+
 // ---------------------------------------------------------------------------
 // Death puff: a harmless burst of smoke
 // ---------------------------------------------------------------------------
@@ -310,6 +318,20 @@ function applyVariant(e, name) {
     e._flashMats = [];
     e.registerFlashMats(e.model); // re-point the hurt flash at the clones
   }
+  // AND KEEP HOLD OF THE EYES. Awareness reads off `eyeMats`, and a variant
+  // that recolours Eyes_Black never handed the material over — so `this.eyeMat`
+  // was checked in three places and was undefined in all of them. The whole
+  // awareness system has been invisible since it was written: unaware,
+  // suspicious and aware looked identical. THE POSE NEVER LIES needs a pose.
+  if (v.sleeps && e.model) {
+    e.eyeMats = e.eyeMats || [];
+    e.model.traverse((n) => {
+      if (!n.isMesh) return;
+      for (const m of (Array.isArray(n.material) ? n.material : [n.material])) {
+        if (/eye/i.test(m.name || '') && !e.eyeMats.includes(m)) e.eyeMats.push(m);
+      }
+    });
+  }
   return e;
 }
 
@@ -344,11 +366,19 @@ class Enemy {
   // Snap this one awake. Called when Kael attacks, breaks something, or walks
   // into it — contact works both ways, which is the rule that keeps ghosting
   // honest: you cannot barge through a room and stay a rumour.
+  // One place that lights the eyes, because there are two shapes of eye in the
+  // codebase — a single material on some, a list on others — and the awareness
+  // code only ever knew about the one that does not exist.
+  _eyes(v) {
+    if (this.eyeMat) this.eyeMat.emissiveIntensity = v;
+    for (const m of (this.eyeMats || [])) m.emissiveIntensity = v;
+  }
+
   notice(why = 'contact') {
     if (this.dead || this.alert === 'aware') return false;
     this.alert = 'aware';
     this._calmT = 0;
-    if (this.eyeMat) this.eyeMat.emissiveIntensity = 2.2;
+    this._eyes(2.2);
     audio.play('ui-click', { volume: 0.5, rate: 0.7 });
     void why;
     return true;
@@ -361,13 +391,52 @@ class Enemy {
     const d = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
     const hidden = player.ghosted;
     this._calmT = (hidden && d > 2.2) ? this._calmT + dt : 0;
-    if (this._calmT > 3.0) { this.alert = 'unaware'; this._calmT = 0; }
+    if (this._calmT > 3.0) { this.alert = 'unaware'; this._calmT = 0; this._suspT = 0; }
+  }
+
+  // THE MIDDLE STATE, which was declared and never entered.
+  //
+  // `alert` has always named three states and the code only ever used two: a
+  // shadow was oblivious or it was hunting you, and the change happened between
+  // one frame and the next. That is the one thing a stealth rule must not do to
+  // a five-year-old — there was no moment in which the game told her she was
+  // about to be seen, and no moment in which she could do anything about it.
+  //
+  // Suspicious is that moment. A shadow that half-notices STOPS, turns to look,
+  // and its eyes come up — and it takes a beat and a half to decide. Ghost, or
+  // back off, and it settles again. THE POSE NEVER LIES applies to attention:
+  // the state is on the body, and there is no meter anywhere.
+  _senses(dt, player) {
+    // Long enough for a five-year-old to notice and do something. 1.2s read
+    // fine to me and is not the test that matters.
+
+    if (!this._sleeps || this.dead || this.alert === 'aware') return;
+    const d = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
+    const hidden = !!player.ghosted;
+    const near = d < SUSPECT_R;
+    if (this.alert === 'unaware') {
+      if (near && !hidden) {
+        this.alert = 'suspicious';
+        this._suspT = 0;
+        audio.play('growl', { volume: 0.25, rate: 1.6 });   // the rising note
+      }
+      return;
+    }
+    // suspicious: closing the distance decides it faster than loitering does
+    if (hidden || !near) {
+      this._suspT -= dt * 1.5;
+      if (this._suspT <= 0) { this.alert = 'unaware'; this._suspT = 0; }
+    } else {
+      this._suspT += dt * (d < 3 ? 1.8 : 1);
+      if (this._suspT > SUSPECT_HOLD) this.notice('seen');
+    }
   }
 
   // Does this one act at all this frame? An unaware shadow carries on with
-  // whatever it was doing and does not know Kael is in the room.
+  // whatever it was doing and does not know Kael is in the room. A suspicious
+  // one has stopped to look, which is also not acting — it is deciding.
   _asleep(player) {
-    if (this.alert !== 'unaware') return false;
+    if (this.alert === 'aware') return false;
     // ...unless he walks into it. Touch is the third way to be noticed.
     const d = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
     if (d < this.radius + 0.55) { this.notice('bump'); return false; }
@@ -377,11 +446,25 @@ class Enemy {
   // WHAT AN UNAWARE SHADOW DOES. Not nothing — nothing reads as broken. It
   // paces the spot it was left on and looks the other way, which is the pose
   // saying "has not seen you" without a meter anywhere on screen.
-  _drowse(dt, t) {
+  _drowse(dt, t, player) {
+    // SUSPICIOUS READS AS STOPPING. It paces while oblivious; the moment it
+    // half-notices it stands still and turns to face him, and the eyes climb
+    // with the timer — so a child can see the decision being made and has a
+    // beat and a half to ghost or back away.
+    if (this.alert === 'suspicious') {
+      this._play && this._play('idle');
+      if (player) {
+        this.root.rotation.y = Math.atan2(player.root.position.x - this.x,
+          player.root.position.z - this.z);
+      }
+      const k = Math.max(0, Math.min(1, (this._suspT || 0) / SUSPECT_HOLD));
+      this._eyes(0.25 + k * 1.5);
+      return;
+    }
     this._play && this._play('walk');
     const a = (this._drowseA === undefined ? (this._drowseA = (this.x * 7 + this.z * 3) % 6.28) : this._drowseA);
     this.root.rotation.y = a + Math.sin(t * 0.5 + a) * 0.9;
-    if (this.eyeMat) this.eyeMat.emissiveIntensity = 0.25;
+    this._eyes(0.25);
     void dt;
   }
 
@@ -596,7 +679,8 @@ export class Hound extends Enemy {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     this._calm(dt, player);
-    if (this._asleep(player)) { this._drowse(dt, t); this.mixer.update(dt); return; }
+    this._senses(dt, player);
+    if (this._asleep(player)) { this._drowse(dt, t, player); this.mixer.update(dt); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
@@ -870,7 +954,8 @@ export class Bat extends Enemy {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     this._calm(dt, player);
-    if (this._asleep(player)) { this._drowse(dt, t); this.mixer.update(dt); return; }
+    this._senses(dt, player);
+    if (this._asleep(player)) { this._drowse(dt, t, player); this.mixer.update(dt); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
