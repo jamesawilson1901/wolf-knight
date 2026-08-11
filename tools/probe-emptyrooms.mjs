@@ -55,7 +55,15 @@ const DOING = ['breakables', 'chestDefs', 'crackSpot', 'teachCrack', 'practiceCr
   'developCracks', 'pinSpot', 'rattlePlate', 'sparkSpot', 'shrineSpot', 'teachBrazier',
   'gutterSpots', 'orderSpots', 'teachBramble', 'brambleSpots', 'iceSpots', 'vaneSpots',
   'plateSpots', 'mirrorSpots', 'pupSpot', 'pup4Spot', 'pup6Spot', 'restSpot',
-  'potionSpot', 'shopSpot', 'wardenSpot', 'bossSpot', 'minigameSpot', 'moonstoneSpot'];
+  'potionSpot', 'shopSpot', 'wardenSpot', 'bossSpot', 'minigameSpot', 'moonstoneSpot',
+  // THE SHADOW COURT'S OWN VOCABULARY. The first run of this called xg2 and xm1
+  // EMPTY — xg2 holds three braziers you douse as the Tide Wolf and xm1 three
+  // watchers and a ghost-lock. Both rooms are fine; the LIST was short. A probe
+  // that only knows the markers I happened to remember will keep inventing
+  // findings, which is worse than finding nothing.
+  'wingSolve', 'wingLock', 'poolBraziers', 'relicSocket', 'mirrorPair',
+  'lanternPair', 'damSpot', 'bellStone', 'bramblePromise', 'underwaterPromise',
+  'deepPromise', 'crackPromise', 'firePromise', 'icePromise', 'thornPromise'];
 
 console.log('room   foes  break  things  verdict');
 const rows = [];
@@ -63,7 +71,12 @@ for (const room of ROOMS) {
   if (!(await go(room))) { console.log(room.padEnd(6), 'BUILD FAILED'); continue; }
   const r = await page.evaluate((doing) => {
     const g = window.__game, w = g.world;
-    const foes = (w.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun).length;
+    // WATCHERS ARE NOT IN world.enemies. The Court's watchers live in their own
+    // list, so counting only `enemies` reported its wings as barren when they
+    // are the one region built around standing still and being seen.
+    const foes = (w.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun).length
+      + (w.watchers || []).filter((e) => !e.dead).length
+      + (w.pups || []).filter((e) => !e.dead).length;
     const breakables = (w.enemies || []).filter((e) => e.scenery && !e.dead).length;
     const m = w.markers || {};
     const things = doing.filter((k) => {
