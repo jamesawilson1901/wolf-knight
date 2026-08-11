@@ -569,14 +569,26 @@ export class World {
     return null;
   }
 
-  // Arm the seal, if this room is an encounter at all. `count` foes or more and
-  // the way out shuts behind you until the floor is clear.
+  // Arm the seal, if this room is an encounter at all.
   //
-  // Chokes and grant rooms hold one or two and must NOT lock — a rest camp you
-  // have to fight your way out of is not a rest camp, and the room where a
-  // spirit hands you a wolf should be quiet. Three is the line.
-  armEncounter(count = 3) {
+  // THE LINE IS TWO, NOT THREE, AND IT IS DRAWN BY WHAT A ROOM IS FOR.
+  //
+  // Three was a guess and the measurement caught it: with the seal live,
+  // tools/probe-sprint.mjs showed every 3-foe room correctly shut and every
+  // 2-foe room still free to stroll through — la, lb and va2, all of them big
+  // island rooms with two enemies rattling around in them. Two foes in a 32x26
+  // room is not "not an encounter", it is a thin encounter, and a child walked
+  // past it exactly as dad described.
+  //
+  // But a count alone cannot tell a fight from a campfire, so the exemption is
+  // by PURPOSE rather than by number: a room with a rest camp in it, or a
+  // spirit's shrine, never seals. A rest camp you have to fight your way out of
+  // is not a rest camp, and the moment a spirit hands a child a wolf should be
+  // quiet.
+  armEncounter(count = 2) {
     const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
+    const m = this.markers || {};
+    if (m.restSpot || m.sparkSpot || m.shrineSpot) return false;
     if (live.length < count || this.boss || this.warden) return false;
     this.sealed = true;
     this.sealTimer = 0;
