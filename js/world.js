@@ -589,6 +589,17 @@ export class World {
     const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
     const m = this.markers || {};
     if (m.restSpot || m.sparkSpot || m.shrineSpot) return false;
+    // AND THE WAY HOME IS NEVER BARRED.
+    //
+    // The first full run with the seal live shut `la` — the FIRST ROOM OF THE
+    // GAME, which holds the door back to the Den. A five-year-old's opening
+    // thirty seconds would have been "you are locked in with two shadows", and
+    // the one place they can save, shop and rest would have been on the far side
+    // of a fight they had not been taught to have yet.
+    //
+    // A room you can walk home from is a room a frightened child can leave. That
+    // is worth more than the encounter.
+    if ((this.doors || []).some((d) => d.to === 'den')) return false;
     if (live.length < count || this.boss || this.warden) return false;
     this.sealed = true;
     this.sealTimer = 0;

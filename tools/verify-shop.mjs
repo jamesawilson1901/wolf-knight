@@ -139,9 +139,45 @@ check('the Boulder Hammer stays back', !t3.names.includes('Boulder Hammer'));
 await heal('frost');
 const t4 = await readShop();
 check('healing Frostpeak puts the Boulder Hammer on the shelf', t4.names.includes('Boulder Hammer'));
-check('every line is on sale once the ladder is done — 7 weapons/shields + the potion',
-  t4.names.length === 8, t4.names);
-check('no teaser is left when the ladder is done', !t4.teaser, t4.teaser);
+// EVERY LINE, NOT A MAGIC NUMBER.
+//
+// This asserted `names.length === 8`, so the day the weapon rack grew from
+// seven items to twenty-three it went red for a shop that was working
+// perfectly. A count is a restatement of the stock table, not a fact about it —
+// and it says nothing about WHICH line went missing. Ask the table.
+const stockAll = await page.evaluate(async () => {
+  const items = await import('/js/items.js');
+  const { CONFIG } = await import('/js/config.js');
+  const top = Math.max(...CONFIG.SHOP.TIERS.map((t) => t.tier));
+  return { upTo4: items.SHOP_STOCK.filter((s) => (s.tier || 1) <= 4)
+    .map((s) => s.kind === 'potion' ? s.name
+      : (items.WEAPONS[s.id] || items.SHIELDS[s.id] || items.ARMOURS[s.id] || {}).name),
+    top, tiers: CONFIG.SHOP.TIERS.map((t) => t.tier) };
+});
+const missing = stockAll.upTo4.filter((n) => n && !t4.names.includes(n));
+check('every line up to tier 4 is on the shelf once Frostpeak is healed',
+  missing.length === 0, { missing, onShelf: t4.names.length });
+
+// AND EVERY RUNG A LINE NAMES ACTUALLY EXISTS. Five items were shipped on a
+// tier 5 when the ladder stopped at four — in the table, and unreachable.
+const orphanTier = await page.evaluate(async () => {
+  const items = await import('/js/items.js');
+  const { CONFIG } = await import('/js/config.js');
+  const rungs = new Set(CONFIG.SHOP.TIERS.map((t) => t.tier));
+  return items.SHOP_STOCK.filter((s) => !rungs.has(s.tier || 1))
+    .map((s) => s.id || s.name);
+});
+check('no stock line sits on a rung the ladder does not have',
+  orphanTier.length === 0, { orphanTier });
+// THE LADDER IS DONE WHEN THE LAST RUNG OPENS, NOT WHEN FROSTPEAK DOES.
+// This checked for a teaser at tier 4 and called that "done" — true only while
+// four was the last rung. Heal the Vale and ask again.
+await heal('vale');
+const t5 = await readShop();
+check('healing the Vale puts the last rung on the shelf',
+  ['Moonwood Staff', 'Stormfang', 'Moonguard', 'Petra\u2019s Maul', 'Moonplate']
+    .every((n) => t5.names.includes(n)), t5.names);
+check('no teaser is left when the ladder is done', !t5.teaser, t5.teaser);
 
 // ---- Buying still works, through the real card ---------------------------
 await shards(500);
@@ -159,8 +195,8 @@ const bought = await page.evaluate(() => ({
 }));
 check('buying a card still spends shards and grants the gear',
   bought.owns && bought.shards === before - 80, { before, ...bought });
-const t5 = await readShop();
-check('a bought weapon leaves the shelf', !t5.names.includes('Swift Fang'));
+const afterBuy = await readShop();
+check('a bought weapon leaves the shelf', !afterBuy.names.includes('Swift Fang'));
 
 // ---- THE OLD-SAVE RULE ---------------------------------------------------
 // A profile from before the ladder existed may own anything. The tier gate

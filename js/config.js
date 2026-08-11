@@ -112,6 +112,13 @@ export const CONFIG = {
       { tier: 2, after: 'stone', blurb: 'when Stoneroot sings again' },
       { tier: 3, after: 'wild',  blurb: 'when the Wild Woods bloom' },
       { tier: 4, after: 'frost', blurb: 'when the storm lifts off Frostpeak' },
+      // A FIFTH RUNG, because five lines were put on one that did not exist.
+      // The full weapon rack added `staff_moon`, `sword_storm`, `shield_moon`,
+      // `hammer_earth` and Moonplate at tier 5 when the ladder stopped at four —
+      // so all five were in the shop table and could never once be offered.
+      // verify-gear called them obtainable because it checked that a stock line
+      // existed, not that its rung could ever open. It checks the rung now.
+      { tier: 5, after: 'vale',  blurb: 'when the Vale drains' },
     ],
   },
 

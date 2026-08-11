@@ -147,7 +147,17 @@ check('nothing soaks so much that a hit stops costing anything',
 console.log('\n── 5. the shop and the chests can actually hand these out ──');
 const reach = await page.evaluate(async () => {
   const items = await import('/js/items.js');
-  const stocked = new Set(items.SHOP_STOCK.filter((s) => s.kind !== 'potion').map((s) => s.id));
+  const { CONFIG } = await import('/js/config.js');
+  // A LINE ON A RUNG THAT DOES NOT EXIST IS NOT STOCK.
+  //
+  // This counted an item as obtainable if SHOP_STOCK named it. Five weapons and
+  // a suit of armour were then shipped on tier 5 while the ladder stopped at
+  // four — in the table, in the shop's own data, and impossible to be offered
+  // once in a whole playthrough. Membership was never the question; whether the
+  // rung can open is.
+  const rungs = new Set(CONFIG.SHOP.TIERS.map((t) => t.tier));
+  const stocked = new Set(items.SHOP_STOCK
+    .filter((s) => s.kind !== 'potion' && rungs.has(s.tier || 1)).map((s) => s.id));
   const all = [...Object.keys(items.WEAPONS), ...Object.keys(items.SHIELDS), ...Object.keys(items.ARMOURS)];
   const free = ['sword_knight', 'shield_badge', 'plain'];
   const badStock = items.SHOP_STOCK.filter((s) => s.kind !== 'potion' &&
