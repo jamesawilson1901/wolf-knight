@@ -175,6 +175,31 @@ check('every one is drawn where the level put it',
 check('the collider matches the model it is drawn as',
   kit.every((k) => !k.built || (k.radius > k.wide * 0.35 && k.radius < k.wide * 0.95)),
   kit.map((k) => ({ kind: k.kind, wide: k.wide, radius: k.radius })));
+// ONE POT, ONE DRAW CALL, WHATEVER IT IS MADE OF.
+//
+// A breakable can never join the room's static batch — it has to come apart on
+// its own — so every one of them is a draw call that lasts the whole room. That
+// was free while every smashable was a single-mesh plank stack, and the day they
+// became real props the dungeon barrel arrived as THREE meshes and the Sunken
+// Vale's d1b went through the 125-call ceiling to 128. Choosing a better model
+// must never be a budget decision, so this is the property that makes it not one.
+const cost = await page.evaluate(async () => {
+  const g = window.__game, w = g.world;
+  const mod = await import('/js/loot.js');
+  const out = [];
+  for (const kind of mod.BREAKABLE_KINDS) {
+    const before = w.enemies.length;
+    await mod.spawnBreakables(w, [{ x: 400 + out.length * 8, z: 400, kind }]);
+    const b = w.enemies[before];
+    let meshes = 0;
+    if (b) b.root.traverse((n) => { if (n.isMesh) meshes += Array.isArray(n.material) ? n.material.length : 1; });
+    out.push({ kind, meshes });
+  }
+  return out;
+});
+check('no smashable costs more than one draw call', cost.every((c) => c.meshes <= 1),
+  cost.filter((c) => c.meshes > 1));
+
 check('a chest is worth more than a jar',
   (kit.find((k) => k.kind === 'chest') || {}).shards > (kit.find((k) => k.kind === 'jar') || {}).shards,
   kit.map((k) => [k.kind, k.shards]));

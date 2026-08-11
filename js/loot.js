@@ -4,7 +4,8 @@
 // respawn with the room (small change, not farming gold).
 
 import * as THREE from 'three';
-import { loadGLB, prepareModel } from './assets.js';
+import { loadGLB, prepareModel, SHARED } from './assets.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
@@ -221,12 +222,93 @@ const BREAK_KINDS = {
     potion: 0.75 },
 };
 const breakGltf = {};
+const breakCollapsed = {};
+
+// ONE SMASHABLE, ONE DRAW CALL — WHATEVER MODEL IT IS.
+//
+// A breakable cannot join the room's static batch: it has to come apart on its
+// own, so it stays a separate object forever. That was one draw call each while
+// every smashable in the game was a single-mesh plank stack. The moment they
+// became real props it stopped being true — the dungeon crate is two meshes,
+// its barrel is three — and the Sunken Vale's d1b went straight through the
+// 125-call ceiling to 128.
+//
+// The honest fix is not fewer pots or a cheaper kit. It is that a pot should
+// cost the same whatever it is made of, so choosing a better model is never a
+// budget decision. Each KIND is collapsed ONCE, at load: meshes that share a
+// material merge outright, and where the materials are flat colours with no
+// texture (the whole Quaternius dungeon kit) their colours bake into vertices
+// and the lot becomes a single mesh. Both cases end at one call, and a kind
+// that cannot be collapsed safely is simply left alone rather than risked.
+function collapse(gltf) {
+  const src = prepareModel(gltf.scene.clone());
+  const meshes = [];
+  src.updateWorldMatrix(true, true);
+  let ok = true;
+  src.traverse((n) => {
+    if (!n.isMesh) return;
+    if (Array.isArray(n.material) || n.isSkinnedMesh || n.isInstancedMesh) { ok = false; return; }
+    meshes.push(n);
+  });
+  if (!ok || meshes.length < 2) return null;
+  const maps = new Set(meshes.map((m) => (m.material.map ? m.material.map.uuid : '')));
+  if (maps.size > 1) return null;              // different textures cannot merge
+  const textured = !!meshes[0].material.map;
+  // a textured set must also agree on colour, or merging would repaint it
+  if (textured && new Set(meshes.map((m) => m.material.color.getHex())).size > 1) return null;
+  const geos = [];
+  for (const m of meshes) {
+    const g = m.geometry.clone();
+    g.applyMatrix4(m.matrixWorld);
+    for (const k of Object.keys(g.attributes)) {
+      if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k);
+    }
+    if (!g.attributes.uv) {
+      g.setAttribute('uv', new THREE.BufferAttribute(
+        new Float32Array(g.attributes.position.count * 2), 2));
+    }
+    if (!textured) {
+      // bake this mesh's flat colour into its vertices
+      const n = g.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      const c = m.material.color;
+      for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    } else if (g.attributes.color) {
+      g.deleteAttribute('color');
+    }
+    geos.push(g);
+  }
+  let merged = null;
+  try { merged = mergeGeometries(geos, false); } catch { merged = null; }
+  for (const g of geos) g.dispose();
+  if (!merged) return null;
+  const base = meshes[0].material;
+  const mat = new THREE.MeshStandardMaterial({
+    map: base.map || null,
+    color: textured ? base.color.clone() : 0xffffff,
+    vertexColors: !textured,
+    roughness: base.roughness !== undefined ? base.roughness : 1,
+    metalness: base.metalness !== undefined ? base.metalness : 0,
+  });
+  // REGISTER AS SHARED, or the first room to be torn down frees the geometry
+  // every later room is still drawing from and the crates render as nothing.
+  // This is the same registry the GLB cache uses (js/assets.js), and the same
+  // trap the level kit's tint cache had to be taught about.
+  SHARED.add(merged);
+  SHARED.add(mat);
+  if (mat.map) SHARED.add(mat.map);
+  return { geometry: merged, material: mat };
+}
 
 export class Breakable {
   constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
-    potion = 0.14 } = {}) {
+    potion = 0.14, collapsed = null } = {}) {
     this.world = world;
-    const model = prepareModel(gltf.scene.clone());
+    const model = collapsed
+      ? new THREE.Mesh(collapsed.geometry, collapsed.material)
+      : prepareModel(gltf.scene.clone());
+    if (collapsed) { model.castShadow = true; model.receiveShadow = true; }
     // MEASURE FIRST, in the model's own units and before anything is moved.
     const bb = new THREE.Box3().setFromObject(model);
     const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
@@ -242,7 +324,14 @@ export class Breakable {
       model.traverse((n) => {
         if (!n.isMesh || !n.material) return;
         const mats = Array.isArray(n.material) ? n.material : [n.material];
-        n.material = mats.map((m) => { const c = m.clone(); if (c.color) c.color.setHex(tint); return c; });
+        n.material = mats.map((m) => {
+          const c = m.clone();
+          if (c.color) c.color.setHex(tint);
+          // a collapsed prop carries its colour in the vertices, so tinting has
+          // to switch that off or the bake would win
+          c.vertexColors = false;
+          return c;
+        });
         if (!Array.isArray(n.material)) n.material = n.material[0];
       });
     }
@@ -328,8 +417,13 @@ export async function spawnBreakables(world, spots) {
     if (!breakGltf[url]) breakGltf[url] = await loadGLB(url);
   }));
   for (const s of spots) {
-    const def = BREAK_KINDS[s.kind] || BREAK_KINDS.crate;
-    world.enemies.push(new Breakable(world, breakGltf[def.url], s.x, s.z, { ...def, ...s }));
+    const kind = BREAK_KINDS[s.kind] ? s.kind : 'crate';
+    const def = BREAK_KINDS[kind];
+    // collapsed per KIND, not per url: `jar` is a tinted vase and must not
+    // share the vase's baked material
+    if (breakCollapsed[kind] === undefined) breakCollapsed[kind] = collapse(breakGltf[def.url]);
+    world.enemies.push(new Breakable(world, breakGltf[def.url], s.x, s.z,
+      { ...def, ...s, collapsed: breakCollapsed[kind] }));
   }
 }
 
