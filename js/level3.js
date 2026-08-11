@@ -22,7 +22,8 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, potSpots } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, potSpots,
+  spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -859,8 +860,11 @@ export async function buildTsh(scene) {
     ped.position.set(0, 0, -2);
     ped.scale.setScalar(1.6);
     world.add(ped);
-    world.addCircle(0, -2, 0.9);
   }
+  world.addCircle(0, -2, 0.9);
+  // The same light Petra's shrine now carries. A spirit's stone is the most
+  // important thing in its region and it should not be the dimmest.
+  spiritShrine(world, 0, -2, 0x9fe07a);
   grove(world, -6.5, 4, 3.4, D, { sick: 0.25 });
   grove(world, 6.5, -4, 3.0, D, { sick: 0.45 });
   thicket(world, -2, -5, 2.8, D, { sick: 0.25 });

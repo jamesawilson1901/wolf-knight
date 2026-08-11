@@ -21,7 +21,7 @@ import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
-  wallTintMap } from './levelkit.js';
+  wallTintMap, spiritShrine } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -417,8 +417,13 @@ export async function buildVh(scene) {
     patches: [{ x: -8, z: 8, r: 4.5, kind: 'gravel' }, { x: 12, z: 9, r: 4.5, kind: 'rubble' },
               { x: -13, z: -6, r: 4.5, kind: 'water' }, { x: 9, z: -11, r: 4, kind: 'gravel' },
               { x: 0, z: -10, r: 5.5, kind: 'rubble' }],
-    paths: [[[0, 14], [0, 6], [-1, -2], [0, -14]], [[-1, 0], [-10, 1], [-18, 0]],
-            [[1, 0], [10, 1], [18, 0]]],
+    // THE WORN PATH MUST NOT LIE. It used to run straight down the middle and
+    // straight into the pool, which is the floor of the room telling a child to
+    // walk somewhere they cannot. It forks around the water now, both ways, and
+    // meets again at the Titan's feet.
+    paths: [[[0, 14], [0, 8], [-8, 5], [-9, -6], [0, -10], [0, -14]],
+            [[0, 8], [8, 5], [9, -6], [0, -10]],
+            [[-8, 4], [-13, 1], [-18, 0]], [[8, 4], [13, 1], [18, 0]]],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
 
@@ -434,8 +439,8 @@ export async function buildVh(scene) {
   }
 
   // ▲ THE STONE TITAN, slumped against the north wall. The level's anchor.
-  heroProp(world, 0, -10, 'titan', D);
-  world.markers.heroSpot = { x: 0, z: -10 };
+  heroProp(world, 0, -11.5, 'titan', D);
+  world.markers.heroSpot = { x: 0, z: -11.5 };
 
   // --- CHANGE 1: the lantern -----------------------------------------------
   world.markers.lanternSpot = { x: 3.6, z: -7.4 };
@@ -462,7 +467,22 @@ export async function buildVh(scene) {
   // --- CHANGE 2: the sunken ring -------------------------------------------
   // A ring of floor at the vault's centre. Flooded, it is impassable and you
   // can SEE the door and the chest through the water; drained, it is a place.
-  const RING = { x: 0, z: 2, r: 7.5 };
+  //
+  // IT USED TO START HALF A METRE FROM THE CHILD'S FEET. Dad, twice: "There is
+  // a puddle of water with a character and a chest in the centre that you are
+  // unable to get to", then "you still walk into the first room with the water
+  // and an unreachable character and chest."
+  //
+  // He was not describing a puzzle he had not solved. He was describing the
+  // FIRST ROOM OF THE REGION being a wall: the door drops you at (0,10), the
+  // water began at 9.5, and the worn path painted on the floor ran straight
+  // into it. A promise you cannot walk around is indistinguishable from a bug,
+  // and the Titan — the room's whole anchor — sat on the far side of it.
+  //
+  // Pulled back to the middle and shrunk, so arriving in the Great Vault means
+  // arriving in a room: five metres of open floor ahead, twelve either side,
+  // and the pool is a thing across the way rather than a thing in your face.
+  const RING = { x: 0, z: -1, r: 6.0 };
   world.markers.ringSpot = { x: RING.x, z: RING.z };
   if (stage < 2) {
     if (GREY()) {
@@ -490,6 +510,29 @@ export async function buildVh(scene) {
     // THE PROMISE: the reward is plainly visible through the water
     visibleReward(world, RING.x, RING.z - 3.2, 'l2_vault_sunken', { shards: 26, heartPiece: 1 }, 'gold');
     world.markers.underwaterPromise = { x: RING.x, z: RING.z - 3.2 };
+    // AND THE THING THAT LETS IT OUT, ON THE NEAR RIM WHERE YOU ARRIVE.
+    //
+    // Water you cannot cross reads as a wall. Water with a shut sluice gate in
+    // it reads as water that opens — same geometry, completely different
+    // sentence, and it is the difference between "this level is broken" and
+    // "I'll come back". The gate is carved stone, it is lit, and it stands on
+    // the rim a child walks up to first.
+    world.markers.sluiceSpot = { x: RING.x, z: RING.z + RING.r - 0.4 };
+    if (!GREY()) {
+      const gate = tinted(caveKit.archDoor, 'sluice', 0x7f8894);
+      gate.position.set(RING.x, 0, RING.z + RING.r - 0.4);
+      gate.scale.setScalar(1.1);
+      world.add(gate);
+    }
+    const seal = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 2.6),
+      new THREE.MeshBasicMaterial({ color: 0x59d6e4, transparent: true, opacity: 0.3,
+        depthWrite: false, side: THREE.DoubleSide })
+    );
+    seal.position.set(RING.x, 1.3, RING.z + RING.r - 0.35);
+    world.add(seal);
+    world.keepLoose(seal);
+    world.onAnimate((t) => { seal.material.opacity = 0.22 + Math.sin(t * 1.7) * 0.09; });
   } else {
     // drained: walkable mud, and glowing mushrooms bloom in the wet
     if (!GREY()) {
@@ -550,9 +593,9 @@ export async function buildVh(scene) {
   // diggers' abandoned workings: their stores, their fallen scaffold, and the
   // shrine they cut into the rock before the work stopped.
   world.markers.breakables = [
-    { x: -10.5, z: 8.5, kind: 'barrel' }, { x: -14, z: 12, kind: 'crate' },
-    { x: 11, z: 10, kind: 'vase' }, { x: 16, z: 5, kind: 'barrel' },
-    { x: -3, z: 12, kind: 'crate' },
+    { x: -10.5, z: 8.5, kind: 'cask' }, { x: -14, z: 12, kind: 'crate' },
+    { x: 11, z: 10, kind: 'jar' }, { x: 16, z: 5, kind: 'barrel' },
+    { x: -3, z: 12, kind: 'box' },
   ];
   world.markers.hubStage = stage;               // for the headless verifier
   scatter(world, halfW, halfD, D, 71, 8, { spin: 0 });   // fitted masonry: no free rotation
@@ -597,7 +640,14 @@ export async function buildVga(scene) {
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE CRYSTAL MOUTH. The chokes shipped as bare 14x10 boxes with two doors
   // and nothing else. Down here they are where the diggers stopped for breath.
-  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'crate' }, { x: -2.4, z: 2.2, kind: 'vase' }];
+  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'box' }, { x: -2.4, z: 2.2, kind: 'vase' }];
+  // AND SOMETHING LIVING IN IT. Dad, from play: "rocks everywhere nothing to do
+  // throught the level." He was not exaggerating — the vault and all three of
+  // its mouths held no creature at all, so the spine of the region, the rooms a
+  // child crosses most often, were scenery with a door at each end. Two natives
+  // apiece: enough that walking in is an event, few enough that a room you cross
+  // six times never becomes a toll gate.
+  world.markers.batSpots = [{ x: -3.4, z: -2.2 }, { x: 3.8, z: 2.6 }];
   world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, 0, 1.2, D);
   fallenColumn(world, -4.4, -2.4, 0.5, D, 2.4);
@@ -629,8 +679,8 @@ export async function buildVa1(scene) {
   // seam long enough to build in it. Scaffold, stores, and the shrine at the
   // turn. The crystal light is cold, so everything it lands on is cold too.
   world.markers.breakables = [
-    { x: -9, z: 5, kind: 'barrel' }, { x: -13, z: 9, kind: 'crate' },
-    { x: 8, z: 10, kind: 'vase' }, { x: 14, z: -3, kind: 'barrel' },
+    { x: -9, z: 5, kind: 'barrel' }, { x: -13, z: 9, kind: 'box' },
+    { x: 8, z: 10, kind: 'vase' }, { x: 14, z: -3, kind: 'cask' },
   ];
   ruinedHome(world, -11, 7, -0.4, D, { w: 6, d: 4.5, keep: 0.5, door: false });
   fallenColumn(world, 11, -7.5, 0.8, D, 4.0);
@@ -672,8 +722,8 @@ export async function buildVa2(scene) {
   // sit in the open on purpose, so the dressing is pushed to the walls and the
   // three of them stay the most obvious thing in the room.
   world.markers.breakables = [
-    { x: -11, z: 6, kind: 'crate' }, { x: 14, z: 7, kind: 'barrel' },
-    { x: -8, z: -11, kind: 'vase' }, { x: 9, z: -11, kind: 'crate' },
+    { x: -11, z: 6, kind: 'box' }, { x: 14, z: 7, kind: 'barrel' },
+    { x: -8, z: -11, kind: 'jar' }, { x: 9, z: -11, kind: 'crate' },
   ];
   ruinedHome(world, -13, 8, 0.5, D, { w: 5.5, d: 4.5, keep: 0.45, door: false });
   fallenColumn(world, 13, -6, -0.9, D, 4.2);
@@ -701,7 +751,7 @@ export async function buildVap(scene) {
   world.markers.slimeSpots = [{ x: -4, z: 3 }];
   // GLITTER POCKET: a seam so rich they camped in it rather than walk out
   world.markers.breakables = [
-    { x: -8, z: 1.5, kind: 'crate' }, { x: 3, z: 5.5, kind: 'barrel' }, { x: 8, z: -6, kind: 'vase' },
+    { x: -8, z: 1.5, kind: 'box' }, { x: 3, z: 5.5, kind: 'barrel' }, { x: 8, z: -6, kind: 'jar' },
   ];
   coldHearth(world, -7, -4, D);
   cartWreck(world, 6.5, 4.5, 0.8, D);
@@ -716,46 +766,54 @@ export async function buildVap(scene) {
 // timer, nothing else in the room to do.
 export async function buildVa3(scene) {
   const { world, spec, D } = base(scene, 'va3');
-  const homeOpen = !!WS.get('vault', 'spark');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), ...(homeOpen ? [gap('w')] : [])], D, {
-    patches: [{ x: 0, z: -3, r: 4.0, kind: 'gravel' }, { x: -7, z: 4, r: 2.8, kind: 'water' },
-              { x: 7, z: 4, r: 2.8, kind: 'rubble' }],
-    paths: [[[10, 0], [3, 1], [-3, 1], [-10, 0]], [[0, 1], [0, -2]]],
+  // THE SHRINE STANDS IN THE DOORWAY OF THE ROUTE, AND BOTH DOORS ARE OPEN.
+  //
+  // Dad, from play, twice: "the rooms loop back to the start and there's nothing
+  // you can do", then "the rooms just end suddenly". Those are the same room and
+  // they are the two halves of one mistake.
+  //
+  // Everything in Stoneroot hangs off ONE grant: Petra's spark, here. Until it
+  // lands the hub has a single spoke and the crypt does not exist — so a child
+  // who crosses this room without touching the shrine is locked into a loop with
+  // no boss and no way to know what they missed. The first fix was to take the
+  // far door away until the spark was earned, which stopped the loop and bought
+  // a dead end instead: walk in, see a wall, walk out.
+  //
+  // Neither door was ever the problem. The SHRINE WAS FOUR UNITS OFF THE PATH,
+  // and it was an unlit grey pedestal in a grey cave. The Wild Woods' shrine has
+  // always been placed correctly — spawn, shrine, exit, in a line — so this is
+  // that layout, with the light the Woods gets for free from its own kit. You
+  // cannot cross this room without walking into it.
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 4.6, kind: 'gravel' }, { x: -7, z: 5, r: 2.8, kind: 'water' },
+              { x: 7, z: 5, r: 2.8, kind: 'rubble' }],
+    paths: [[[14, 0], [4, 0], [-4, 0], [-14, 0]]],
   });
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'va2', { x: -13.5, z: 0, angle: Math.PI / 2 });
-  // THE SHORTCUT HOME IS EARNED, NOT GIVEN.
-  //
-  // Dad, from play: "Level two does not work. The rooms loop back to the start
-  // and there's nothing you can do." He was exactly right, and this is why.
-  //
-  // Each spoke ends with ONE thing that moves the region on, and each of these
-  // rooms also had a door straight back to the hub on the far wall. The worn
-  // path runs across the room; the thing sits a few units off it. So a child
-  // walks in, walks out the other side, arrives at a hub that has not changed,
-  // and goes round again — forever, with no way to know what was missed. Every
-  // suite passed the whole time, because every door worked perfectly.
-  //
-  // A shortcut is something you have earned the right to. Until the spoke's
-  // milestone lands, the only way out is the way you came in — not a dead end,
-  // and it leaves the room's one feature as the only thing left to try.
-  if (homeOpen) sideDoor(world, 'w', halfW, halfD, 'vh', { x: -13, z: -9, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'vh', { x: -13, z: -9, angle: Math.PI / 2 });
 
-  world.markers.shrineSpot = { x: 0, z: -3 };
-  world.markers.sparkSpot = { x: 0, z: -3, spirit: 'petra', grants: 'earth_wolf' };
-  world.markers.teachCrack = { x: 0, z: 2 };
-  crackedPile(world, 'l2_va3_teach', 0, 2, true);
+  world.markers.shrineSpot = { x: 0, z: 0 };
+  world.markers.sparkSpot = { x: 0, z: 0, spirit: 'petra', grants: 'earth_wolf' };
+  world.markers.teachCrack = { x: 0, z: 4 };
+  crackedPile(world, 'l2_va3_teach', 0, 4, true);
   if (!GREY()) {
+    // 0.55, NOT 2.2. Pedestal.glb is 2.19m tall in its own units, so this
+    // altar was rendering FOUR AND A HALF METRES HIGH — taller than the cavern
+    // wall, wider than the doorway, and it swallowed everything placed on it.
+    // Every other pedestal in the game is set around 0.7; this one was never
+    // looked at from the game's own camera.
     const ped = tinted(caveKit.pedestal, 'shrine', 0xb6c8cf);
-    ped.position.set(0, 0, -3);
-    ped.scale.setScalar(2.2);
+    ped.position.set(0, 0, 0);
+    ped.scale.setScalar(0.55);
     world.add(ped);
-    world.addCircle(0, -3, 0.9);
   }
-  // PETRA'S SPARK is a GRANT room: the shrine at (0,-3) and the teach crack at
-  // (0,2) are the only two things a child must find, so this one is dressed at
-  // the walls and nowhere else. Ceremony needs an empty middle.
-  world.markers.breakables = [{ x: -8.5, z: 1, kind: 'vase' }, { x: 8.5, z: 1, kind: 'vase' }];
+  world.addCircle(0, 0, 0.9);         // the stone is solid in greybox too
+  spiritShrine(world, 0, 0, 0xd8b06a, 1.25);
+  // PETRA'S SPARK is a GRANT room: the shrine at the centre and the teach crack
+  // just behind it are the only two things a child must find, so this one is
+  // dressed at the walls and nowhere else. Ceremony needs an empty middle.
+  world.markers.breakables = [{ x: -8.5, z: 3, kind: 'vase' }, { x: 8.5, z: 3, kind: 'jar' }];
   fallenColumn(world, -8, -5, 0.5, D, 2.6);
   fallenColumn(world, 8, -5, -0.5, D, 2.6);
   rubbleField(world, -8, 5.5, 2.4, D, 10);
@@ -777,7 +835,8 @@ export async function buildVgb(scene) {
   sideDoor(world, 'w', halfW, halfD, 'vh', { x: 15.4, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'vb1', { x: -13.5, z: 0, angle: Math.PI / 2 });
   // THE CHALK MOUTH — the quarry's own doorway, and the last dry rest
-  world.markers.breakables = [{ x: -2.4, z: -1.6, kind: 'barrel' }, { x: 2.2, z: 2.4, kind: 'vase' }];
+  world.markers.breakables = [{ x: -2.4, z: -1.6, kind: 'barrel' }, { x: 2.2, z: 2.4, kind: 'jar' }];
+  world.markers.slimeSpots = [{ x: -3.6, z: 2.4 }, { x: 3.4, z: -2.6 }];
   world.markers.restSpot = { x: 0, z: 0 };
   wayshrine(world, 4.4, -2.4, -0.5, D);
   coldHearth(world, -3.8, 1.4, D);
@@ -813,8 +872,8 @@ export async function buildVb1(scene) {
   // the room's shape and the dressing sits off them, so the two levels stay
   // legible from the fixed camera.
   world.markers.breakables = [
-    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'barrel' },
-    { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'crate' },
+    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'cask' },
+    { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'box' },
   ];
   fallenColumn(world, -13, 8, 0.7, D, 4.2);
   fallenColumn(world, 12, -8, -1.0, D, 3.8);
@@ -848,8 +907,8 @@ export async function buildVb2(scene) {
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
   world.markers.breakables = [
-    { x: -10, z: 6, kind: 'barrel' }, { x: 13, z: 11, kind: 'crate' },
-    { x: -14, z: 5, kind: 'vase' }, { x: 6, z: 11, kind: 'barrel' },
+    { x: -10, z: 6, kind: 'cask' }, { x: 13, z: 11, kind: 'crate' },
+    { x: -14, z: 5, kind: 'jar' }, { x: 6, z: 11, kind: 'barrel' },
   ];
   ruinedHome(world, -12, 8, 0.4, D, { w: 6, d: 4.5, keep: 0.35, door: false });
   fallenColumn(world, 13, -7, -0.8, D, 4.0);
@@ -882,7 +941,7 @@ export async function buildVbp(scene) {
     // room's south edge — the band a child cannot see from where the camera
     // sits, so a breakable there is a breakable nobody knows is there. Pulled
     // in to z 4.6, which clears it with room to spare.
-    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'crate' }, { x: 8, z: 4.6, kind: 'vase' },
+    { x: -8.5, z: 1, kind: 'barrel' }, { x: 2, z: -6, kind: 'box' }, { x: 8, z: 4.6, kind: 'vase' },
   ];
   fallenColumn(world, -7, 4, 0.6, D, 3.0);
   cartWreck(world, -6.5, -5, 1.1, D);
@@ -903,19 +962,20 @@ export async function buildVbp(scene) {
 // change 2. One room, one idea, one consequence.
 export async function buildVb3(scene) {
   const { world, spec, D } = base(scene, 'vb3');
-  const homeOpen = !!WS.get('vault', 'drained');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), ...(homeOpen ? [gap('e')] : [])], D, {
-    patches: [{ x: 0, z: 2, r: 3.6, kind: 'sand' }, { x: 0, z: -6, r: 4.0, kind: 'water' },
+  // BOTH DOORS, ALWAYS — see buildVa3 for why the earned-shortcut was the wrong
+  // fix. The plate sits on the line between them instead, so the way across the
+  // room runs over the one thing in it.
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D, {
+    patches: [{ x: 0, z: 0, r: 3.6, kind: 'sand' }, { x: 0, z: -6, r: 4.0, kind: 'water' },
               { x: -8, z: 5, r: 2.8, kind: 'rubble' }, { x: 8, z: 5, r: 2.8, kind: 'gravel' }],
-    paths: [[[-10, 0], [-3, 1.5], [0, 2]], [[0, 2], [4, -2], [7, -5]]],
+    paths: [[[-14, 0], [-4, 0], [0, 0], [4, 0], [14, 0]], [[0, 0], [4, -2], [7, -5]]],
   });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vb2', { x: 13.5, z: 0, angle: -Math.PI / 2 });
-  // THE SHORTCUT HOME, opened by the dam breaking.
-  if (homeOpen) sideDoor(world, 'e', halfW, halfD, 'vh', { x: 13, z: -9, angle: -Math.PI / 2 });
+  sideDoor(world, 'e', halfW, halfD, 'vh', { x: 13, z: -9, angle: -Math.PI / 2 });
 
   // The resonant plate: stomp HERE and the whole chamber answers.
-  world.markers.rattlePlate = { x: 0, z: 2 };
+  world.markers.rattlePlate = { x: 0, z: 0 };
   // What answers: stalactites drop on whatever stands beneath them...
   world.markers.stalactiteSpots = [{ x: -5, z: -2 }, { x: 0, z: -4 }, { x: 5, z: -2 }];
   // ...and a bell-stone you cannot see from the plate rings, opening the dam.
@@ -925,7 +985,7 @@ export async function buildVb3(scene) {
   // applies: the plate, the three stalactites and the bell-stone are the whole
   // mechanic, so this room is dressed at the WALLS and nowhere near them.
   // Clutter here would compete with the exact things a child has to spot.
-  world.markers.breakables = [{ x: -9, z: 1.5, kind: 'crate' }, { x: 9, z: 1.5, kind: 'vase' }];
+  world.markers.breakables = [{ x: -9, z: 1.5, kind: 'crate' }, { x: 9, z: 1.5, kind: 'jar' }];
   world.markers.minionSpots = [{ x: -5, z: -2 }, { x: 5, z: -2 }];
   fallenColumn(world, -8.5, -5, 0.5, D, 2.6);
   fallenColumn(world, 8.5, 4.5, -0.8, D, 2.6);
@@ -939,7 +999,7 @@ export async function buildVb3(scene) {
       new THREE.CylinderGeometry(1.5, 1.5, 0.18, 20),
       protoMaterial(0xffd54a, 3, 3)
     );
-    plate.position.set(0, world.deckY + 0.09, 2);
+    plate.position.set(0, world.deckY + 0.09, 0);
     world.add(plate);
     for (const s of world.markers.stalactiteSpots) {
       const c = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.4, 8), protoMaterial(0xc8bda0, 2, 2));
@@ -949,7 +1009,7 @@ export async function buildVb3(scene) {
     }
   } else {
     const plate = tinted(caveKit.pedestal, 'rattlePlate', 0xd8c78a);
-    plate.position.set(0, 0, 2);
+    plate.position.set(0, 0, 0);
     plate.scale.set(2.4, 0.5, 2.4);
     world.add(plate);
     const ring = new THREE.Mesh(
@@ -958,7 +1018,7 @@ export async function buildVb3(scene) {
         side: THREE.DoubleSide, depthWrite: false })
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(0, world.deckY + 0.05, 2);
+    ring.position.set(0, world.deckY + 0.05, 0);
     world.add(ring);
     for (const s of world.markers.stalactiteSpots) {
       const c = tinted(caveKit.column, 'stal', 0xc8bda0);
@@ -990,7 +1050,8 @@ export async function buildVgc(scene) {
   sideDoor(world, 'n', halfW, halfD, 'vc1', { x: 0, z: 10.5, angle: Math.PI });
   // THE WET MOUTH. Past here the workings flooded, and the props say so before
   // the floor colour does: everything left standing on this side is stained.
-  world.markers.breakables = [{ x: 2.8, z: -1.2, kind: 'vase' }, { x: -2.2, z: 2.4, kind: 'crate' }];
+  world.markers.breakables = [{ x: 2.8, z: -1.2, kind: 'vase' }, { x: -2.2, z: 2.4, kind: 'box' }];
+  world.markers.slimeSpots = [{ x: -3.8, z: -2.4 }, { x: 3.2, z: 2.8 }];
   world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, -3.6, -1.6, D);
   fallenColumn(world, 4.2, 2.2, 1.1, D, 2.4);
@@ -1031,8 +1092,8 @@ export async function buildVc1(scene) {
   // floated out of place — but nothing is on the terrace edges, which are the
   // room's whole readability from a fixed camera.
   world.markers.breakables = [
-    { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'crate' },
-    { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'vase' },
+    { x: -14, z: 4, kind: 'vase' }, { x: 12, z: 10, kind: 'box' },
+    { x: -6, z: 11, kind: 'barrel' }, { x: 8, z: -12, kind: 'jar' },
   ];
   fallenColumn(world, -13, 9, 0.5, D, 3.8);
   fallenColumn(world, 13, 6, -1.1, D, 3.4);
@@ -1084,8 +1145,8 @@ export async function buildVc2(scene) {
   // alcove x 11..16, z -6..0: that is the gate's own space and it has to read
   // as the ONLY way to the chest.
   world.markers.breakables = [
-    { x: -10, z: 5.5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
-    { x: -14, z: 10, kind: 'barrel' }, { x: 12, z: 5, kind: 'vase' },
+    { x: -10, z: 5.5, kind: 'vase' }, { x: 2, z: 11, kind: 'box' },
+    { x: -14, z: 10, kind: 'barrel' }, { x: 12, z: 5, kind: 'jar' },
   ];
   ruinedHome(world, -12, 7.5, -0.4, D, { w: 5.5, d: 4.5, keep: 0.35, door: false });
   fallenColumn(world, -13, -6, 0.9, D, 3.6);
@@ -1115,7 +1176,7 @@ export async function buildVcp(scene) {
   // the last dry pocket before the crypt — someone sheltered here and the gold
   // chest is what they were carrying
   world.markers.breakables = [
-    { x: -3, z: -5.5, kind: 'crate' }, { x: 8, z: 1, kind: 'barrel' }, { x: -1, z: 6, kind: 'vase' },
+    { x: -3, z: -5.5, kind: 'crate' }, { x: 8, z: 1, kind: 'cask' }, { x: -1, z: 6, kind: 'vase' },
   ];
   coldHearth(world, -6.5, -4, D);
   cartWreck(world, -7, 4.5, 0.9, D);
@@ -1129,21 +1190,22 @@ export async function buildVcp(scene) {
 // THE SHOULDER PIN — the last thing holding the titan's arm up.
 export async function buildVc3(scene) {
   const { world, spec, D } = base(scene, 'vc3');
-  const homeOpen = !!WS.get('vault', 'handDown');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), ...(homeOpen ? [gap('n')] : [])], D, {
+  // BOTH DOORS, ALWAYS. The pin-pile sits square in the middle of the only line
+  // between them, so it cannot be walked past — which is what the earned
+  // shortcut was clumsily trying to guarantee.
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
     patches: [{ x: 0, z: -3, r: 3.8, kind: 'water' }, { x: -6, z: 4, r: 3.0, kind: 'moss' },
               { x: 6, z: 3, r: 2.8, kind: 'mud' }],
     paths: [[[0, 8], [0, 1], [0, -8]]],
   });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc2', { x: 0, z: -10.5, angle: 0 });
-  // THE SHORTCUT HOME.
-  if (homeOpen) sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -11.5, angle: Math.PI });
+  sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -11.5, angle: Math.PI });
 
   world.markers.pinSpot = { x: 0, z: -3 };
   crackedPile(world, 'l2_vc3_pin', 0, -3, true);
   world.markers.shieldSpots = [{ x: -4, z: 2 }];
-  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'vase' }];
+  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'jar' }];
   fallenColumn(world, -7.5, -4.5, 0.6, D, 2.6);
   fallenColumn(world, 7.5, -4.5, -0.6, D, 2.6);
   rubbleField(world, -7.5, 5, 2.4, D, 10);

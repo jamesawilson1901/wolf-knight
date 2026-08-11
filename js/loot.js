@@ -102,11 +102,19 @@ export function spawnPotionDrop(world, x, z) {
     });
     if (!Array.isArray(n.material)) n.material = n.material[0];
   });
-  m.scale.setScalar(1.5);
-  m.position.set(x, 0.4, z);
-  world.add(m);
+  // RECENTRED, because Vase.glb is modelled 1.09u off its own origin in Z — so
+  // the potion a child could see was over a metre from the potion they could
+  // pick up. Wrapped rather than nudged, so the shard physics keeps driving one
+  // object and this file keeps one rule about where a drop is.
+  const inner = new THREE.Group();
+  const bb = new THREE.Box3().setFromObject(m);
+  m.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+  inner.add(m);
+  inner.scale.setScalar(0.55 / Math.max(0.01, bb.max.y - bb.min.y));   // 0.55m tall
+  inner.position.set(x, 0.4, z);
+  world.add(inner);
   world.shards.push({
-    mesh: m, kind: 'potion',
+    mesh: inner, kind: 'potion',
     x, z, vx: 0, vz: 0, vy: 3.4, y: 0.4,
     settled: false, life: 40, arm: 0.5, taken: false,
   });
@@ -164,27 +172,98 @@ export function updateShards(world, dt, t, player) {
 // swords, bolts, slams and the Blood Moon all break them.
 // ---------------------------------------------------------------------------
 
+// THE SMASHABLES, AS A KIT.
+//
+// Dad, twice: "Smashable items should be replaced with chests, jars, crates,
+// barrels etc filled with not only coins but the occasional potion to heal."
+//
+// It was three kinds — and two of those were the same wooden box from the same
+// pack, so a cave, a quarry and a forge all had the identical crate in them.
+// Seven now, from four kits, and they are deliberately different SILHOUETTES
+// rather than different colours: a child playing on a phone in a dark room
+// picks a shape out long before a tint.
+//
+// EVERY KIND IS SIZED BY MEASUREMENT, NOT BY A NUMBER SOMEONE TYPED — and
+// measuring is how the actual bug got found.
+//
+// Dad's other complaint: "little boxes on the ground that you hit and coins come
+// out... they are so small whatever they are you can barely see them." The scale
+// was bumped 0.55 → 0.85 and that was assumed to be that. It was not. The model
+// the whole game called `crate` is `resource-planks.glb` under another name: a
+// STACK OF PLANKS nine centimetres tall. At 0.85 it was a 7 cm smear on the
+// floor, and no amount of scaling was going to turn it into a crate, because it
+// was never a crate. Dad was not describing a small box. He was describing
+// planks, and he was right that you cannot see what they are.
+//
+// So the crate is the dungeon kit's actual crate now, every model is measured on
+// load, and each is scaled so its LARGEST dimension is `size` — height alone
+// would have quietly turned that plank stack into a four-metre pancake, which is
+// what the first version of this did.
+const BREAK_KINDS = {
+  crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.10, shards: 2 },
+  // the same crate, low and wide: a supply box rather than a shipping one
+  box:    { url: './assets/env/dungeon/Crate.glb',        size: 0.85, shards: 2, squash: 1.25 },
+  barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.15, shards: 3 },
+  // the survival pack's barrel is slimmer and lighter — a different outline
+  cask:   { url: './assets/loot/survival/barrel.glb',     size: 0.95, shards: 2 },
+  vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.00, shards: 2 },
+  // a squat clay jar: the vase again, shorter, wider and browner. Same mesh, and
+  // the asset-multiplication law says that is a feature.
+  jar:    { url: './assets/env/dungeon/Vase.glb',         size: 0.80, shards: 1,
+    tint: 0xb07a4e, squash: 1.35 },
+  // AND CHESTS. Small, and they burst rather than open — the standing chests are
+  // a different thing with a different promise. This is the one a child hopes
+  // for: five coins, and a potion better than half the time.
+  chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.00, shards: 5,
+    potion: 0.55 },
+  // and the rare one, worth running across a room for
+  goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.05, shards: 12,
+    potion: 0.75 },
+};
+const breakGltf = {};
+
 export class Breakable {
-  // SCALE 0.85, NOT 0.55. Dad's words: "they are so small whatever they are you
-  // can barely see them". A breakable is a thing a child is meant to spot from
-  // across the room and run at; at 0.55 a crate was ankle-high clutter. The
-  // collider grows with it so it still feels like hitting a box.
-  constructor(world, gltf, x, z, { shards = 2, scale = 0.85 } = {}) {
+  constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
+    potion = 0.14 } = {}) {
     this.world = world;
-    this.root = prepareModel(gltf.scene.clone());
-    this.root.position.set(x, 0, z);
+    const model = prepareModel(gltf.scene.clone());
+    // MEASURE FIRST, in the model's own units and before anything is moved.
+    const bb = new THREE.Box3().setFromObject(model);
+    const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
+    const s = size / Math.max(0.01, dx, dy, dz);
+    // RECENTRE, DO NOT ASSUME. `Vase.glb` is modelled a metre and a bit off its
+    // own origin in Z, so every vase in the game — and every potion dropped from
+    // a smashed one, since the drop borrows the same mesh — was drawn well over
+    // a metre from where the level put it. A child walked at the pot they could
+    // see and hit nothing. Nothing in the game had ever measured a model against
+    // its own pivot, so nothing had ever noticed.
+    model.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+    if (tint) {
+      model.traverse((n) => {
+        if (!n.isMesh || !n.material) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        n.material = mats.map((m) => { const c = m.clone(); if (c.color) c.color.setHex(tint); return c; });
+        if (!Array.isArray(n.material)) n.material = n.material[0];
+      });
+    }
+    this.root = new THREE.Group();
+    this.root.add(model);
+    this.root.scale.set(s * squash, s, s * squash);
+    this.root.position.set(x, world.deckY || 0, z);
     this.root.rotation.y = (x * 7 + z * 3) % 6.28;
-    this.root.scale.setScalar(scale);
     world.add(this.root);
     this.x = x; this.z = z;
-    this.radius = 0.42 * (scale / 0.55);
+    // the collider follows the measured footprint rather than a guess
+    const foot = Math.max(dx, dz) * s * squash;
+    this.radius = Math.max(0.4, foot * 0.55);
     this.hp = 1;
     this.dead = false;
     this.stunned = 0;
     this.scenery = true; // a pot, not a foe: never feeds the moon gauge,
                          // never shoved by transformation shockwaves
     this.shardCount = shards;
-    world.addCircle(x, z, 0.38 * (scale / 0.55));
+    this.potionChance = potion;
+    world.addCircle(x, z, Math.max(0.34, foot * 0.46));
     this._collider = world.circleColliders[world.circleColliders.length - 1];
   }
 
@@ -228,23 +307,29 @@ export class Breakable {
     // child has room to carry it — a potion that vanishes because the belt is
     // full teaches that breaking things is pointless. It arcs out like the
     // coins do and waits to be walked over.
-    if (lootEvents.onPotionDrop && Math.random() < 0.14) lootEvents.onPotionDrop(this.x, this.z);
+    if (lootEvents.onPotionDrop && Math.random() < this.potionChance) {
+      lootEvents.onPotionDrop(this.x, this.z);
+    }
     // rare bonus: a power-up pops out (wired by powerups.js via hook)
     if (this.world.onBreakableSmashed) this.world.onBreakableSmashed(this.x, this.z);
   }
   update() {}
 }
 
+export const BREAKABLE_KINDS = Object.keys(BREAK_KINDS);
+
 export async function spawnBreakables(world, spots) {
-  const [crate, barrel, vase] = await Promise.all([
-    loadGLB('./assets/loot/survival/crate.glb'),
-    loadGLB('./assets/loot/survival/barrel.glb'),
-    loadGLB('./assets/env/dungeon/Vase.glb'),
-  ]);
+  // Load only the kinds this room actually asks for, plus the crate as the
+  // fallback for a spot that names something that does not exist.
+  const want = new Set(['crate']);
+  for (const s of spots) if (BREAK_KINDS[s.kind]) want.add(s.kind);
+  await Promise.all([...want].map(async (k) => {
+    const url = BREAK_KINDS[k].url;
+    if (!breakGltf[url]) breakGltf[url] = await loadGLB(url);
+  }));
   for (const s of spots) {
-    const gltf = { barrel, vase }[s.kind] || crate;
-    if (s.kind === 'vase' && s.scale === undefined) s.scale = 2.0; // dungeon vase is tiny
-    world.enemies.push(new Breakable(world, gltf, s.x, s.z, s));
+    const def = BREAK_KINDS[s.kind] || BREAK_KINDS.crate;
+    world.enemies.push(new Breakable(world, breakGltf[def.url], s.x, s.z, { ...def, ...s }));
   }
 }
 

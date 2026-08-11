@@ -118,6 +118,83 @@ const healed = await page.evaluate(async () => {
 });
 check('walking over it puts a potion on the belt', healed.potions > 0, healed);
 
+console.log('\n── 4. seven kinds of smashable, all the right size ───');
+// Dad, twice: "Smashable items should be replaced with chests, jars, crates,
+// barrels etc" — and before that, "they are so small whatever they are you can
+// barely see them". Both are one measurement: every kind in the kit loads, and
+// every kind ends up a thing a child can see from across a room and standing on
+// the floor rather than sunk into it or hovering over it.
+const kit = await page.evaluate(async () => {
+  const g = window.__game, w = g.world;
+  const mod = await import('/js/loot.js');
+  const THREE = await import('three');
+  const out = [];
+  for (const kind of mod.BREAKABLE_KINDS) {
+    const before = w.enemies.length;
+    // far from anything, so nothing else is measured by accident
+    const at = { x: 200 + out.length * 8, z: 200 };
+    await mod.spawnBreakables(w, [{ ...at, kind }]);
+    const b = w.enemies[before];
+    if (!b) { out.push({ kind, built: false }); continue; }
+    const bb = new THREE.Box3().setFromObject(b.root);
+    out.push({ kind, built: true,
+      h: +(bb.max.y - bb.min.y).toFixed(2),
+      sits: +bb.min.y.toFixed(3),
+      wide: +Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z).toFixed(2),
+      // how far the drawn thing is from the spot the level asked for
+      off: +Math.hypot((bb.min.x + bb.max.x) / 2 - at.x, (bb.min.z + bb.max.z) / 2 - at.z).toFixed(2),
+      radius: +b.radius.toFixed(2), shards: b.shardCount });
+  }
+  return out;
+});
+check('every kind in the kit actually loads', kit.every((k) => k.built), kit.filter((k) => !k.built));
+check('there are at least seven of them', kit.length >= 7, { kinds: kit.map((k) => k.kind) });
+// 0.65 is roughly knee-high on Kael and 0.55 was ankle-high clutter; nothing
+// should tower over him either.
+check('none is too small to see', kit.every((k) => !k.built || k.h >= 0.65),
+  kit.filter((k) => k.built && k.h < 0.65));
+check('...and none is a monolith', kit.every((k) => !k.built || k.h <= 1.4),
+  kit.filter((k) => k.built && k.h > 1.4));
+// AN ABSOLUTE BOUND, NOT A RATIO. The first version of this check compared the
+// collider to the model's own width, so it happily passed a `crate` that had
+// come out SEVEN METRES ACROSS — the model under that name is a stack of planks
+// nine centimetres tall, and scaling it to a sensible height made a pancake. A
+// relative check cannot catch a thing that is uniformly wrong.
+check('nothing is wider than a doorway', kit.every((k) => !k.built || k.wide <= 1.6),
+  kit.filter((k) => k.built && k.wide > 1.6));
+check('...and nothing is a smear on the floor',
+  kit.every((k) => !k.built || k.h > k.wide * 0.4),
+  kit.filter((k) => k.built && k.h <= k.wide * 0.4));
+check('every one sits on the floor', kit.every((k) => !k.built || Math.abs(k.sits) < 0.06),
+  kit.filter((k) => k.built && Math.abs(k.sits) >= 0.06));
+// AND IT IS DRAWN WHERE IT WAS PUT. Vase.glb is modelled 1.09u off its own
+// origin, so every vase in the game stood over a metre from the spot the level
+// gave it and the collider a child bumped into was somewhere else entirely.
+check('every one is drawn where the level put it',
+  kit.every((k) => !k.built || k.off < 0.12), kit.filter((k) => k.built && k.off >= 0.12));
+check('the collider matches the model it is drawn as',
+  kit.every((k) => !k.built || (k.radius > k.wide * 0.35 && k.radius < k.wide * 0.95)),
+  kit.map((k) => ({ kind: k.kind, wide: k.wide, radius: k.radius })));
+check('a chest is worth more than a jar',
+  (kit.find((k) => k.kind === 'chest') || {}).shards > (kit.find((k) => k.kind === 'jar') || {}).shards,
+  kit.map((k) => [k.kind, k.shards]));
+
+// and rooms have to actually SPEND the kit — three kinds across a hundred rooms
+// is how every room came to look the same
+const spread = await page.evaluate(async () => {
+  const lk = await import('/js/levelkit.js');
+  const g = window.__game, w = g.world;
+  const seen = {};
+  for (const label of ['t1a', 't2b', 't3a', 't4b', 's1a', 's2b', 's3a', 'd1a', 'd2b', 'd3a',
+    'xa1', 'xr2', 'xm3', 'xg1']) {
+    for (const p of lk.potSpots(w, 14, 11, { label })) seen[p.kind] = (seen[p.kind] || 0) + 1;
+  }
+  return seen;
+});
+check('a sweep of rooms uses more than three shapes', Object.keys(spread).length > 3, spread);
+check('...and chests turn up, but are not everywhere',
+  spread.chest > 0 && spread.chest < 14, spread);
+
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')
   : 'ALL CLEAN — you can see what you broke it for.'));

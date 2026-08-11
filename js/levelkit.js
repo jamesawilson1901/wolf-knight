@@ -146,7 +146,10 @@ export const wallTintMap = (D) => ({
 //
 // Count comes from the room's own floor area, so a choke gets two and an island
 // gets six without anyone deciding it twice.
-export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase']) {
+// SEVEN SHAPES, NOT THREE. Dad asked twice for "chests, jars, crates, barrels
+// etc". Three kinds across a hundred and eight rooms is why every room read the
+// same; the kit in js/loot.js has seven now and this is what spends them.
+export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase', 'jar', 'box', 'cask']) {
   const label = (spec && spec.label) || '';
   let s0 = 7;
   for (let i = 0; i < label.length; i++) s0 = (s0 * 31 + label.charCodeAt(i)) % 233280;
@@ -195,6 +198,13 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
     }
     if (penned) continue;
     out.push({ x: +x.toFixed(2), z: +z.toFixed(2), kind: kinds[Math.floor(r() * kinds.length)] });
+  }
+  // AND ROUGHLY EVERY THIRD ROOM HIDES A CHEST. Not every room — a reward you
+  // are certain of is scenery. The seed comes off the room label, so a given
+  // room either has one or does not, the same way every time a child plays it:
+  // "the one with the chest in" is a place you can remember and go back to.
+  if (out.length && r() < 0.36) {
+    out[out.length - 1].kind = r() < 0.22 ? 'goldchest' : 'chest';
   }
   return out;
 }
@@ -589,6 +599,74 @@ function thresholdTexture() {
   glowTex.colorSpace = THREE.SRGBColorSpace;
   SHARED.add(glowTex);
   return glowTex;
+}
+
+// A SPIRIT SHRINE YOU CANNOT WALK PAST WITHOUT SEEING.
+//
+// Dad, from play: "rocks everywhere nothing to do throught the level... there
+// is not boss fight." Stoneroot's whole region hangs off one grant — Petra's
+// spark in va3 — and until that grant lands the hub has a single spoke and the
+// crypt does not exist. So the level was one missed pedestal away from being an
+// endless loop, and the pedestal was a GREY STONE LUMP AGAINST A GREY STONE
+// WALL, unlit, in a cave. Every suite passed. Nothing in the room said "here".
+//
+// Ember Hollow got this right by accident: its shrine sits behind a lit brazier
+// and you cannot miss a fire. This is that, made deliberate and shared, so the
+// Wild Woods' shrine and every spirit after it reads the same way:
+//
+//   * a heart of light floating over the stone, turning, bobbing;
+//   * the brightest lamp in the room, so a dark cave points at it;
+//   * a column of light standing straight up out of it — visible from a doorway
+//     across a thirty-metre cavern, which a 2-metre pedestal is not;
+//   * a ring on the floor saying where to stand.
+//
+// It is drawn from primitives on purpose. This is LIGHT, not a creature, and
+// the no-code-built-creatures law is about creatures.
+export function spiritShrine(world, x, z, colour = 0xd8b06a, top = 1.35) {
+  const g = new THREE.Group();
+
+  const heart = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.42, 1),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colour,
+      emissiveIntensity: 3.2, roughness: 1 })
+  );
+  heart.position.set(x, top + 0.5, z);
+  world.add(heart);
+  world.keepLoose(heart);
+
+  // the column: a tall cone of light, drawn from inside so it never occludes
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 1.25, 9, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.17,
+      depthWrite: false, side: THREE.DoubleSide })
+  );
+  beam.position.set(x, top + 3.0, z);
+  world.add(beam);
+  world.keepLoose(beam);
+
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(1.5, 2.3, 32),
+    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.34,
+      depthWrite: false, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, (world.deckY || 0) + 0.05, z);
+  world.add(ring);
+  world.keepLoose(ring);
+
+  const lamp = new THREE.PointLight(colour, 22, 26, 1.6);
+  lamp.position.set(x, top + 1.0, z);
+  world.add(lamp);
+
+  world.onAnimate((t) => {
+    heart.position.y = top + 0.5 + Math.sin(t * 1.5) * 0.16;
+    heart.rotation.y = t * 0.6;
+    const p = 0.9 + Math.sin(t * 2.2) * 0.1;
+    lamp.intensity = 22 * p;
+    beam.material.opacity = 0.17 * p;
+    ring.material.opacity = 0.34 * p;
+  });
+  return g;
 }
 
 export function thresholdGlow(world) {

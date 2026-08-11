@@ -462,10 +462,10 @@ export async function buildLa(scene) {
   // that open ground is kept where fights happen. Dense at the edges, clear in
   // the middle, which is how a Zelda screen is actually built.
   world.markers.breakables = [
-    { x: -9.5, z: 5.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
-    { x: -12.5, z: 4.5, kind: 'vase' },
-    { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'vase' },
-    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'barrel' },
+    { x: -9.5, z: 5.5, kind: 'cask' }, { x: -13, z: 8.5, kind: 'crate' },
+    { x: -12.5, z: 4.5, kind: 'jar' },
+    { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'jar' },
+    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'cask' },
     { x: 9.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
@@ -543,8 +543,8 @@ export async function buildLa1(scene) {
   // the warrens are where the village kept its stores — the switchback is
   // lined with what was in them, and the chest at the end is the last of it
   world.markers.breakables = [
-    { x: -2, z: 5.5, kind: 'crate' }, { x: 3.5, z: 5.5, kind: 'barrel' },
-    { x: 1, z: -5, kind: 'vase' }, { x: -8, z: 1.5, kind: 'crate' },
+    { x: -2, z: 5.5, kind: 'crate' }, { x: 3.5, z: 5.5, kind: 'cask' },
+    { x: 1, z: -5, kind: 'vase' }, { x: -8, z: 1.5, kind: 'box' },
   ];
   world.markers.shadeSpots = [{ x: 5, z: -5 }];
   world.markers.pocketChest = { x: 7, z: 5 };
@@ -573,7 +573,7 @@ export async function buildLg1(scene) {
   // the smallest rooms in the level, which makes them the cheapest to fill and
   // the most obviously bare when they are not. A hearth someone banked up, the
   // shrine they passed on the way, and the gateposts of the old road.
-  world.markers.breakables = [{ x: 3.4, z: 0.8, kind: 'barrel' }, { x: -2.2, z: -3.2, kind: 'vase' }];
+  world.markers.breakables = [{ x: 3.4, z: 0.8, kind: 'cask' }, { x: -2.2, z: -3.2, kind: 'vase' }];
   world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, 0, 0.6, D);
   wayshrine(world, -4.6, -2.2, 0.5, D);
@@ -609,9 +609,9 @@ export async function buildLb(scene) {
   // where the road widens, the stalls stood, and the gateposts still do. It is
   // busier than the Ashfall on purpose: you are walking INTO somewhere.
   world.markers.breakables = [
-    { x: -9, z: 4.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'crate' },
-    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'crate' },
-    { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'vase' },
+    { x: -9, z: 4.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'box' },
+    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
+    { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'jar' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }, { x: 4, z: 2 }];
   world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
@@ -646,8 +646,8 @@ export async function buildLb1(scene) {
   // Moth Hollow: a house whose roof went but whose hearth the moths still
   // gather at. The pup is behind the wall run, which is the whole point of it.
   world.markers.breakables = [
-    { x: -3.5, z: -5.5, kind: 'barrel' }, { x: 3, z: -5.5, kind: 'vase' },
-    { x: -8, z: 4.5, kind: 'crate' },
+    { x: -3.5, z: -5.5, kind: 'cask' }, { x: 3, z: -5.5, kind: 'vase' },
+    { x: -8, z: 4.5, kind: 'box' },
   ];
   world.markers.pup1Spot = { x: 6, z: -4 };
   world.markers.mothSpots = [{ x: 4, z: 3 }];
@@ -684,7 +684,7 @@ export async function buildLb2(scene) {
   // the fire came through, and the props say so: everything on this side is
   // charred, collapsed, and the shrine did not survive it upright.
   world.markers.breakables = [
-    { x: 3, z: 4.5, kind: 'crate' }, { x: 7.5, z: -3, kind: 'barrel' },
+    { x: 3, z: 4.5, kind: 'crate' }, { x: 7.5, z: -3, kind: 'cask' },
     { x: -8.5, z: 2, kind: 'vase' },
   ];
   ruinedHome(world, -6.5, 5.5, 0.4, D, { w: 6, d: 4.5, keep: 0.35 });
@@ -709,7 +709,7 @@ export async function buildLg2(scene) {
   sideDoor(world, 's', halfW, halfD, 'lb', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lc', { x: 0, z: 10, angle: Math.PI });
   // THE NARROWS: the road pinches between two collapsed frontages
-  world.markers.breakables = [{ x: -3.2, z: 1.4, kind: 'crate' }, { x: 3.4, z: 1.6, kind: 'barrel' }];
+  world.markers.breakables = [{ x: -3.2, z: 1.4, kind: 'crate' }, { x: 3.4, z: 1.6, kind: 'cask' }];
   world.markers.restSpot = { x: 0, z: 0 };
   coldHearth(world, -0.4, 1.2, D);
   ruinedHome(world, -5.4, -3.4, 0.9, D, { w: 4.5, d: 3.5, keep: 0.4, door: false });
@@ -752,9 +752,9 @@ export async function buildLc(scene) {
   // carried the span, the stacks that fed it, and what the heat left. Nothing
   // is placed in the lava band z -3..1 or on the two safe slabs.
   world.markers.breakables = [
-    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'crate' },
-    { x: 8.5, z: 9, kind: 'crate' }, { x: 13.5, z: 2, kind: 'barrel' },
-    { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'vase' },
+    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'box' },
+    { x: 8.5, z: 9, kind: 'crate' }, { x: 13.5, z: 2, kind: 'cask' },
+    { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'jar' },
   ];
   world.markers.houndSpot = { x: 8, z: -8, variant: 'elder' };
   ruinedHome(world, -12, 7.5, 0.5, D, { w: 6, d: 4.5, keep: 0.45 });
@@ -790,7 +790,7 @@ export async function buildLc1(scene) {
   // took the floor, the stacks went over, and the heart piece is at the back
   // of it — which is why this pocket is worth the detour.
   world.markers.breakables = [
-    { x: -3, z: -3, kind: 'barrel' }, { x: 7.5, z: 5.5, kind: 'crate' },
+    { x: -3, z: -3, kind: 'barrel' }, { x: 7.5, z: 5.5, kind: 'box' },
     { x: 1, z: 3.5, kind: 'vase' },
   ];
   world.markers.pocketChest = { x: 6, z: -2 };
@@ -818,7 +818,7 @@ export async function buildLg3(scene) {
   sideDoor(world, 'n', halfW, halfD, 'ld', { x: 0, z: 10, angle: Math.PI });
   // THE EMBER SEAL: the last gate before the Kiln, and someone kept a watch
   // here. The shrine is the tell — this door mattered to whoever held it.
-  world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'crate' }];
+  world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'box' }];
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.sealSpot = { x: 0, z: -2 };
   wayshrine(world, -4.4, -2.4, 0.4, D);
@@ -875,9 +875,9 @@ export async function buildLd(scene) {
   // toward. Nothing sits in the gutter channel (x 6..13, z 2..10) or within
   // four units of the Forge Heart, which needs its approach clear.
   world.markers.breakables = [
-    { x: -10, z: 4.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'crate' },
-    { x: -10.5, z: -5, kind: 'vase' }, { x: 2, z: 11, kind: 'crate' },
-    { x: 14, z: 4, kind: 'barrel' }, { x: -3.5, z: -10, kind: 'vase' },
+    { x: -10, z: 4.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'box' },
+    { x: -10.5, z: -5, kind: 'vase' }, { x: 2, z: 11, kind: 'box' },
+    { x: 14, z: 4, kind: 'barrel' }, { x: -3.5, z: -10, kind: 'jar' },
   ];
   wayshrine(world, -5, -4, 0.3, D);
   ruinedHome(world, -12, 6.5, -0.4, D, { w: 6, d: 5, keep: 0.66 });
@@ -921,7 +921,7 @@ export async function buildLd1(scene) {
   world.markers.orderSpot = { x: 0, z: 0 };
   teachBraziers(world, world.markers.orderSpots, 'ld1_order');
   // perimeter only — see the note on the shell above
-  world.markers.breakables = [{ x: -8.5, z: 2, kind: 'vase' }, { x: 8.5, z: -2, kind: 'vase' }];
+  world.markers.breakables = [{ x: -8.5, z: 2, kind: 'jar' }, { x: 8.5, z: -2, kind: 'vase' }];
   fallenColumn(world, -8.5, -6, 0.5, D, 2.6);
   fallenColumn(world, 8.5, 6, -0.8, D, 2.6);
   rubbleField(world, 8.5, -6.5, 2.2, D, 9);

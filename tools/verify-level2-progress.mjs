@@ -66,6 +66,42 @@ const first = await doorsHere();
 check('the hub starts with the way out and Spoke A only',
   first.includes('vga') && !first.includes('vgb') && !first.includes('vgc'), { doors: first });
 
+// AND THE FIRST THING YOU SEE IS A ROOM, NOT A WALL OF WATER.
+//
+// Dad, twice: "you still walk into the first room with the water and an
+// unreachable character and chest". The pool used to start half a metre in
+// front of the spawn, with the worn path painted straight into it. A child
+// arriving in the region's first room must be able to walk FORWARD.
+const arrival = await page.evaluate(() => {
+  const g = window.__game, w = g.world;
+  const sp = w.spawn || { x: 0, z: 10, angle: Math.PI };
+  const a = sp.angle === undefined ? Math.PI : sp.angle;
+  const fx = Math.sin(a), fz = Math.cos(a);
+  const solid = (x, z) => {
+    const r = w.resolveCircle(x, z, 0.32);
+    return Math.abs(r.x - x) > 1e-6 || Math.abs(r.z - z) > 1e-6;
+  };
+  let ahead = 0;
+  for (let d = 0.4; d < 14; d += 0.2) {
+    if (solid(sp.x + fx * d, sp.z + fz * d)) break;
+    ahead = d;
+  }
+  // and can the Titan — the room's anchor — actually be walked up to?
+  const h = w.markers.heroSpot;
+  let toHero = null;
+  if (h) {
+    for (let rr = 1.4; rr < 6 && toHero === null; rr += 0.2) {
+      for (let i = 0; i < 32; i++) {
+        const x = h.x + Math.cos(i / 32 * 6.283) * rr, z = h.z + Math.sin(i / 32 * 6.283) * rr;
+        if (!solid(x, z)) { toHero = +rr.toFixed(1); break; }
+      }
+    }
+  }
+  return { ahead: +ahead.toFixed(1), toHero };
+});
+check('you can walk forward out of the door you came in by', arrival.ahead >= 4, arrival);
+check('...and the Stone Titan can be stood next to', arrival.toHero !== null && arrival.toHero <= 3.0, arrival);
+
 console.log('\n── 2. the spoke leads to Petra, and she is reachable ──');
 await go('va3');
 const shrine = await page.evaluate(() => {
@@ -90,6 +126,56 @@ const shrine = await page.evaluate(() => {
 check('va3 has Petra\'s shrine', !!shrine, shrine);
 check('a child can stand within the 2.4u the grant needs',
   shrine && shrine.closest <= 2.4, shrine);
+
+// AND IT MUST BE ON THE WAY, NOT BESIDE IT.
+//
+// Dad, on this exact room: "the rooms just end suddenly", and before that "the
+// rooms loop back to the start and there's nothing you can do." Both were one
+// mistake — the shrine sat four units off the line between the two doors, so a
+// child could cross the room, reach an unchanged hub, and loop forever. The fix
+// that removed the far door swapped the loop for a dead end.
+//
+// So: no gating, and instead the geometry has to make it impossible to miss.
+// This walks the straight line from door to door and asks how close that walk
+// comes, WITHOUT ever aiming at the shrine.
+const online = await page.evaluate(() => {
+  const g = window.__game, w = g.world;
+  const s = w.markers.sparkSpot;
+  const doors = (w.doors || []);
+  const sp = w.spawn;
+  if (!s || !sp || doors.length < 2) return null;
+  const solid = (x, z) => {
+    const r = w.resolveCircle(x, z, 0.32);
+    return Math.abs(r.x - x) > 1e-6 || Math.abs(r.z - z) > 1e-6;
+  };
+  // a door is a rectangle in the wall band; its middle is where you walk out
+  const mid = (d) => ({ to: d.to, x: (d.minX + d.maxX) / 2, z: (d.minZ + d.maxZ) / 2 });
+  let far = null, best = -1;
+  for (const d of doors.map(mid)) {
+    const dd = Math.hypot(d.x - sp.x, d.z - sp.z);
+    if (dd > best) { best = dd; far = d; }
+  }
+  // walk the straight line, sliding around anything solid the way the player
+  // controller does, and record the closest approach to the shrine
+  let x = sp.x, z = sp.z, closest = Infinity;
+  for (let i = 0; i < 900; i++) {
+    const dx = far.x - x, dz = far.z - z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.6) break;
+    const r = w.resolveCircle(x + dx / len * 0.12, z + dz / len * 0.12, 0.32);
+    if (Math.abs(r.x - (x + dx / len * 0.12)) > 1e-6 || Math.abs(r.z - (z + dz / len * 0.12)) > 1e-6) {
+      // blocked head-on: slide sideways, either way, like a body does
+      const px = -dz / len * 0.12, pz = dx / len * 0.12;
+      if (!solid(x + px, z + pz)) { x += px; z += pz; } else { x -= px; z -= pz; }
+    } else { x = r.x; z = r.z; }
+    closest = Math.min(closest, Math.hypot(x - s.x, z - s.z));
+  }
+  return { far: far.to, closest: +closest.toFixed(2), doors: doors.map((d) => d.to) };
+});
+check('va3 is not a dead end — it has both its doors',
+  online && online.doors.length >= 2, online);
+check('walking straight across the room passes inside the shrine\'s 2.4u',
+  online && online.closest <= 2.4, online);
 
 console.log('\n── 3. standing there actually gives the Earth Wolf ────');
 const granted = await page.evaluate(async (spot) => {
@@ -131,6 +217,85 @@ const drained = await page.evaluate(() => {
 });
 check('once the water drains, the middle of the vault can be walked',
   !drained.stillWalled, { ...ring, ...drained });
+
+console.log('\n── 6. the other two spokes cannot be crossed blind ────');
+// Same law as va3, applied to the two milestones that open the crypt. Dad: "the
+// rooms just end suddenly... there is not boss fight." Stoneroot's boss door
+// needs all three milestones, so a spoke a child can walk through without
+// noticing its one job is a boss that never appears.
+await go('vb3');
+const b3 = await page.evaluate(() => ({ doors: (window.__game.world.doors || []).map((d) => d.to) }));
+check('vb3 has both its doors', b3.doors.length >= 2, b3);
+{
+  const r = await page.evaluate(() => {
+    const w = window.__game.world;
+    const p = w.markers.rattlePlate, sp = w.spawn;
+    const mid = (d) => ({ x: (d.minX + d.maxX) / 2, z: (d.minZ + d.maxZ) / 2, to: d.to });
+    let far = null, best = -1;
+    for (const d of (w.doors || []).map(mid)) {
+      const dd = Math.hypot(d.x - sp.x, d.z - sp.z);
+      if (dd > best) { best = dd; far = d; }
+    }
+    if (!p || !far) return null;
+    // distance from the plate to the straight line between the two doors
+    const ax = sp.x, az = sp.z, bx = far.x, bz = far.z;
+    const t = Math.max(0, Math.min(1,
+      ((p.x - ax) * (bx - ax) + (p.z - az) * (bz - az)) / ((bx - ax) ** 2 + (bz - az) ** 2)));
+    return { to: far.to, off: +Math.hypot(ax + (bx - ax) * t - p.x, az + (bz - az) * t - p.z).toFixed(2) };
+  });
+  check('...and the resonant plate is on the line between them, inside its 1.9u',
+    r && r.off <= 1.9, r);
+}
+await go('vc3');
+const c3 = await page.evaluate(() => {
+  const w = window.__game.world;
+  const p = w.markers.pinSpot, sp = w.spawn;
+  const mid = (d) => ({ x: (d.minX + d.maxX) / 2, z: (d.minZ + d.maxZ) / 2, to: d.to });
+  let far = null, best = -1;
+  for (const d of (w.doors || []).map(mid)) {
+    const dd = Math.hypot(d.x - sp.x, d.z - sp.z);
+    if (dd > best) { best = dd; far = d; }
+  }
+  if (!p || !far) return { doors: (w.doors || []).map((d) => d.to) };
+  const ax = sp.x, az = sp.z, bx = far.x, bz = far.z;
+  const t = Math.max(0, Math.min(1,
+    ((p.x - ax) * (bx - ax) + (p.z - az) * (bz - az)) / ((bx - ax) ** 2 + (bz - az) ** 2)));
+  return { doors: (w.doors || []).map((d) => d.to), to: far.to,
+    off: +Math.hypot(ax + (bx - ax) * t - p.x, az + (bz - az) * t - p.z).toFixed(2) };
+});
+check('vc3 has both its doors', c3.doors.length >= 2, c3);
+check('...and the shoulder pin stands in the way out', c3.off !== undefined && c3.off <= 1.5, c3);
+
+console.log('\n── 7. and then there is a boss to fight ──────────────');
+await page.evaluate(() => {
+  const g = window.__game;
+  for (const k of ['spark', 'drained', 'handDown']) g.WS.set('vault', k, true);
+});
+await go('vh');
+const crypt = await page.evaluate(() => {
+  const g = window.__game, w = g.world;
+  const solid = (x, z) => {
+    const r = w.resolveCircle(x, z, 0.32);
+    return Math.abs(r.x - x) > 1e-6 || Math.abs(r.z - z) > 1e-6;
+  };
+  const d = (w.doors || []).find((q) => q.to === 'vz');
+  if (!d) return { doors: (w.doors || []).map((q) => q.to) };
+  const x = (d.minX + d.maxX) / 2, z = (d.minZ + d.maxZ) / 2;
+  // is there floor to stand on in front of it?
+  let standable = false;
+  for (let r = 0.6; r < 3 && !standable; r += 0.2) if (!solid(x, z + r)) standable = true;
+  return { doors: (w.doors || []).map((q) => q.to), at: [+x.toFixed(1), +z.toFixed(1)], standable,
+    stage: g.WS.stage('vault') };
+});
+check('with all three milestones the crypt door is open', !!crypt.at, crypt);
+check('...and it can be walked to', crypt.standable === true, crypt);
+await go('vz');
+const warden = await page.evaluate(() => {
+  const w = window.__game.world;
+  return { warden: !!w.warden, dead: w.warden ? !!w.warden.dead : null,
+    hp: w.warden ? w.warden.hp : null };
+});
+check('the Bone Warden is standing in it', warden.warden && !warden.dead, warden);
 
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')

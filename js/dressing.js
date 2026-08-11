@@ -110,9 +110,24 @@ export function makeDressers({ kit, tint, isGrey }) {
   // Solid props ask the world before they stand anywhere. `place` itself stays
 // dumb — clutter with no collider may sit wherever it likes, and stopping a
 // tuft of grass from overlapping a spawn point would only make rooms emptier.
-function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true) {
+function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true,
+    centre = false) {
     if (!gltf) return null;
     const m = TINT(gltf, key, colour);
+    // SOME MODELS ARE NOT MODELLED ON THEIR OWN ORIGIN.
+    //
+    // `Vase.glb` sits 1.09u away from its pivot in Z (tools/probe-modelsize.mjs
+    // prints this for any GLB), so a vase asked for at a spot was DRAWN a metre
+    // and a bit from it — through a wall, or outside the house it belonged to.
+    // Nothing in the codebase had ever measured a model against its own pivot,
+    // so nothing had ever noticed. Callers that place a thing AT a point rather
+    // than aligned to a grid ask for it to be centred first; the shell and the
+    // arch pieces do not, because their offsets are how they tile.
+    if (centre) {
+      const bb = new THREE.Box3().setFromObject(m);
+      const ox = (bb.min.x + bb.max.x) / 2, oz = (bb.min.z + bb.max.z) / 2;
+      for (const c of m.children) { c.position.x -= ox; c.position.z -= oz; }
+    }
     m.position.set(x, y, z);
     m.rotation.set(0, ry, rz);
     m.scale.setScalar(s);
@@ -189,7 +204,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       // pockets were doing.
       const round = gltf !== K().crate;
       place(world, g, gltf, 'ruinGoods', px, down && round ? 0.28 : 0, pz,
-        sc, r() * 6.28, down ? Math.PI / 2 : 0, P, false);
+        sc, r() * 6.28, down ? Math.PI / 2 : 0, P, false, true);
     }
     // brick spill from the fallen courses — small, so you walk through it
     for (let i = 0; i < 6 + r() * 6; i++) {
