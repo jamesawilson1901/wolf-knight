@@ -181,7 +181,47 @@ export const REGIONS = {
     scar: { room: 's3b', what: 'the lightning-struck mast on the Thunderhead is never re-raised' },
     denArrival: 'polish list: Aria\'s stormlight joining the den fire',
   },
-  sunkenvale: { name: 'Sunken Vale', built: false, spirit: 'Meri', grants: 'tide_wolf', gates: [] },
+  // THE VALE WAS A ONE-LINE STUB while the region itself was finished.
+  //
+  // Twenty rooms, a shrine, a puzzle room, a boss and a restoration — all built,
+  // all walked clean by verify-playthrough — and this file still said
+  // `built: false` with no room list and no beats, because the entry was written
+  // before the region was and nobody came back to it. Anything that reads this
+  // table to ask "what is in the game" — the credits, region-complete tracking,
+  // the gate audit in checkRegions below — has been quietly leaving the Sunken
+  // Vale out.
+  sunkenvale: {
+    name: 'Sunken Vale', built: true, spirit: 'Meri',
+    grants: 'tide_wolf', grantAt: "dsh (Meri's Spring, the reed pocket)",
+    threshold: 'scr north — down off the cliffs into the drowned valley, once Aria is calmed',
+    rooms: ['d1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2',
+      'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp'],
+    beats: {
+      approach: 'scr → d1a, out of the storm and down into still, deep water',
+      lockVisible: 'the deep channel in d1b, in the first minute, with the chest on the islet beyond it',
+      ki: 'dsh — the spring grants the Tide Wolf, and one deep channel lies across the way out',
+      sho: 'dg2 and d3a — deeper water, and current that carries you off your line',
+      ten: 'dtp THE TIDE POOLS — the pools rise and fall on a clock, so the floor you crossed is gone when you come back',
+      boss: 'ddp Meri, the Drowned — a tide blob the size of the arena, the family fought all region, made enormous',
+      grant30s: 'a second channel in the spring room itself, with a gold chest visible through it',
+      restoration: 'the vale drains to a valley; her light rests on the drowned door',
+    },
+    gates: [
+      { id: 'd_deep_channel', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'the channel in d1b, with the islet chest plainly behind it' },
+      { id: 'd_shrine', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'across the way out of the spring room' },
+      { id: 'd_lagoon', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'the lagoon is THE ROAD, once you can walk it' },
+      { id: 'ddp_out', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'the way out of the deep, which opens when the vale drains' },
+    ],
+    restoration: {
+      flag: 'restored',
+      beats: ['the water falls and the valley comes back', "Meri's light rests on the drowned door",
+        'the reeds green from the spring outward', 'victory sting → den theme'],
+      durationS: 8, skippable: false,
+    },
+    ripple: { room: 'ddp', what: 'Luna hears the shadow above the water (luna_dream_6)' },
+    scar: { room: 'd3b', what: 'the sunken house on the deep shelf is never raised' },
+    denArrival: "polish list: Meri's tidelight joining the den fire",
+  },
   shadowcourt: {
     name: 'The Shadow Court', built: true, spirit: 'Luna (and Grimm)', grants: 'moonlight',
     grantAt: "xsh (Luna's Light, the second room)",
