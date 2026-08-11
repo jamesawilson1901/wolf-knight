@@ -561,6 +561,30 @@ class Enemy {
   // Un-engaged foes PROWL: hold the waiting ring around Kael, drifting
   // sideways — a visible "waiting their turn", never a pile-on. dx/dz point
   // TOWARD the player.
+  // CLOSING THE GAP, WITHOUT TOUCHING THE FIGHT.
+  //
+  // Dad: "the game is too easy. not in terms of hp and attack power etc, its
+  // easy because I can literally run straight through each level without
+  // getting hurt." tools/probe-sprint.mjs put a number on it — seven of eight
+  // rooms cost NOTHING to cross, and in most the nearest enemy never came
+  // within three metres.
+  //
+  // The cause is arithmetic. The Dark Wolf runs 6.7 u/s. A slime does 1.2, a
+  // hound stalks at 1.8, a minion 2.0. Nothing could ever arrive.
+  //
+  // But he was explicit that the FIGHT is not the problem, so the melee numbers
+  // must not move: at close range this returns the tuned speed unchanged and
+  // everything at arm's length behaves exactly as it did. It only ramps with
+  // DISTANCE — a foe eight metres away closes at up to 5.6, which still lets a
+  // wolf outrun it in the open, and inside a sealed encounter room means it
+  // arrives. Fights feel the same; the walk between them stops being free.
+  pursueSpeed(base, d) {
+    const CAP = 5.6;                         // under the Dark Wolf's 6.7, on purpose
+    if (d <= 3.5) return base;               // melee: untouched
+    const t = Math.min(1, (d - 3.5) / 5.5);  // full ramp by 9u out
+    return base + (Math.max(base, CAP) - base) * t;
+  }
+
   holdOrbit(dt, dx, dz, d) {
     const H = CONFIG.ENGAGE;
     if (d < 0.01) return;
@@ -692,7 +716,7 @@ export class Hound extends Enemy {
         if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
           this.holdOrbit(dt, dx, dz, d); // circles, red eyes on Kael, waiting
         } else {
-          const speed = 1.8; // playtest bump: stalks with intent
+          const speed = this.pursueSpeed(1.8, d); // stalks with intent, and CLOSES
           const nx = this.x + (dx / d) * speed * dt;
           const nz = this.z + (dz / d) * speed * dt;
           const solved = this._moveSolved(nx, nz);
@@ -814,7 +838,7 @@ export class Slime extends Enemy {
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // no token: prowl the ring, wait
       } else {
-        const speed = this.speed;
+        const speed = this.pursueSpeed(this.speed, d);
         const solved = this._moveSolved(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt);
         this.root.position.x = solved.x;
         this.root.position.z = solved.z;

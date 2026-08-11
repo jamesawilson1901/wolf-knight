@@ -1815,6 +1815,23 @@ async function start() {
       // effects.timeScale bends it further (the surge morph's slow-motion).
       const edt = (state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale;
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
+      // THE SEAL. A room with real enemies in it does not let you leave until
+      // they are dealt with — dad's own instruction, and the answer to seven of
+      // eight rooms costing nothing to cross at a run.
+      // SAY IT ONCE, the first frame a child is standing in a shut room.
+      if (world.sealed && !world._sealSaid) {
+        world._sealSaid = true;
+        audio.play('growl', { volume: 0.5, rate: 0.7 });
+        narration.say('room_sealed');
+      }
+      const seal = world.updateSeal ? world.updateSeal(edt) : null;
+      if (seal === 'cleared') {
+        audio.play('pup-chime', { volume: 0.7 });
+        narration.say('room_cleared');
+      } else if (seal === 'released') {
+        // should never happen; see World.updateSeal
+        narration.say('room_released');
+      }
       if (world.updatePups) world.updatePups(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games

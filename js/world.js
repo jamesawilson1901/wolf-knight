@@ -23,6 +23,8 @@ export class World {
     this.geysers = [];         // {x, z, r, active} — managed by room animate
     this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
+    this.sealed = false;       // an encounter room shuts until it is cleared
+    this.sealTimer = 0;
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
     // Where this room ANNOUNCES ITSELF: every landmark instance that says
@@ -548,10 +550,93 @@ export class World {
   }
 
   doorAt(x, z) {
+    // AN ENCOUNTER ROOM DOES NOT LET YOU LEAVE.
+    //
+    // Dad, having played: "its easy because I can literally run straight through
+    // each level without getting hurt. the terranigma games that was near
+    // impossible on most levels." Measured with tools/probe-sprint.mjs, seven of
+    // eight rooms cost NOTHING to cross at a run, and in most of them the
+    // nearest enemy never came within three metres.
+    //
+    // He asked for this directly: lock encounter rooms until they are cleared.
+    // It is the one change that makes a room a place you have to deal with
+    // rather than a corridor with decorations in it.
+    if (this.sealed) return null;
     for (const d of this.doors) {
       if (d.when && !d.when()) continue;
       if (x >= d.minX && x <= d.maxX && z >= d.minZ && z <= d.maxZ) return d;
     }
+    return null;
+  }
+
+  // Arm the seal, if this room is an encounter at all. `count` foes or more and
+  // the way out shuts behind you until the floor is clear.
+  //
+  // Chokes and grant rooms hold one or two and must NOT lock — a rest camp you
+  // have to fight your way out of is not a rest camp, and the room where a
+  // spirit hands you a wolf should be quiet. Three is the line.
+  armEncounter(count = 3) {
+    const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
+    if (live.length < count || this.boss || this.warden) return false;
+    this.sealed = true;
+    this.sealTimer = 0;
+    this._sealFoes = live.length;
+    this._buildSealBars();
+    return true;
+  }
+
+  // A CHILD HAS TO SEE WHY THEY CANNOT LEAVE.
+  //
+  // Dad wants the world to read as continuous — no door furniture between
+  // rooms, just an invisible line enemies cannot cross. That is exactly what
+  // this is for all of normal play. It only becomes a THING when it matters:
+  // while a room is sealed a haze stands in each opening, so "I can't get out"
+  // is a picture rather than a mystery. A locked door a child cannot see is
+  // indistinguishable from a broken game — which is the report that started
+  // this whole night.
+  _buildSealBars() {
+    if (this._sealBars) { for (const m of this._sealBars) m.visible = true; return; }
+    this._sealBars = [];
+    for (const d of this.doors) {
+      const w = Math.max(d.maxX - d.minX, 0.4), h = Math.max(d.maxZ - d.minZ, 0.4);
+      const acrossX = w >= h;                        // which way the opening runs
+      const geo = new THREE.PlaneGeometry(acrossX ? w : h, 3.0);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x8f7bff, transparent: true, opacity: 0.34,
+        depthWrite: false, side: THREE.DoubleSide,
+      });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set((d.minX + d.maxX) / 2, (this.deckY || 0) + 1.5, (d.minZ + d.maxZ) / 2);
+      if (!acrossX) m.rotation.y = Math.PI / 2;
+      m.name = 'sealBar';
+      this.add(m);
+      this.keepLoose(m);
+      this._sealBars.push(m);
+    }
+    this.onAnimate((t) => {
+      for (const m of this._sealBars) {
+        m.visible = !!this.sealed;
+        if (m.visible) m.material.opacity = 0.26 + Math.sin(t * 3.1) * 0.10;
+      }
+    });
+  }
+
+  // Called every frame while a room is sealed. Returns 'cleared', 'released' or
+  // null so the caller can say the right thing.
+  updateSeal(dt) {
+    if (!this.sealed) return null;
+    const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
+    if (!live.length) { this.sealed = false; return 'cleared'; }
+    // THE RELEASE VALVE, and it should never fire.
+    //
+    // A hard lock is correct right up until one enemy ends up somewhere it
+    // cannot be reached — over a hazard, wedged in geometry, flying beyond a
+    // ledge — and then a five-year-old is shut in a room with no way out and no
+    // way to understand why. Two minutes of game time and the way opens, with a
+    // line saying so. If this ever fires in play it is a bug worth chasing, not
+    // a feature working.
+    this.sealTimer = (this.sealTimer || 0) + dt;
+    if (this.sealTimer > 120) { this.sealed = false; return 'released'; }
     return null;
   }
 
