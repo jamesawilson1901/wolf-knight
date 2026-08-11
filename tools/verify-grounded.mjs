@@ -11,6 +11,15 @@
 // This measures the bottom of every rendered thing against the floor it stands
 // on, and reports what does not touch. Things that are MEANT to be off the
 // ground are listed by name.
+//
+// IT MUST RUN BEFORE THE ROOM IS BATCHED. flattenStatic merges scenery by
+// material and cell, so forty rocks become one mesh — and the lowest corner of
+// that mesh is whichever rock sits lowest. A single rock hanging in the air
+// hides behind its grounded neighbours and the room measures clean, which is
+// precisely what happened on the first pass: dad could see floating rocks on a
+// screen while this file reported all fourteen Ember Hollow rooms fine.
+//
+// So it sets window.__noBatch before building, and every prop stays separate.
 import { chromium } from 'playwright';
 
 const errors = [];
@@ -33,12 +42,14 @@ await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
 await page.fill('#t-name', 'GROUND');
 await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
-await page.evaluate(() => {
+await page.evaluate((GAPENV) => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false;
   g.state.settings.musicVol = 0; g.state.settings.greybox = false;
   g.player.iframes = 999999;
-});
+  window.__noBatch = true;   // build rooms unmerged, so every prop can be seen
+  window.__gapThreshold = Number(GAPENV) || 0.12;
+}, process.env.GROUND_GAP || '');
 
 const ROOMS = process.argv.slice(2).length ? process.argv.slice(2)
   : ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le'];
@@ -59,13 +70,24 @@ const go = async (room) => {
 
 console.log('\n── everything rests on something ─────────────────────');
 let worstAll = null;
+let checkedUnmerged = false;
 for (const room of ROOMS) {
   if (!(await go(room))) { check(`${room} builds`, false); continue; }
+  // Prove the switch took hold on a room built AFTER it was set. Asserting it
+  // up front tested the boot room, which was already merged — the check failed
+  // on its first run for that reason, which is the point of having it.
+  if (!checkedUnmerged) {
+    checkedUnmerged = true;
+    check('flattenStatic is switched off, so props are separate',
+      await page.evaluate(() => !!window.__game.world._batchSkipped),
+      { note: 'without this a hovering prop hides inside its batch' });
+  }
   const floaters = await page.evaluate((allowedSrc) => {
     const allowed = new RegExp(allowedSrc.slice(1, allowedSrc.lastIndexOf('/')),
       allowedSrc.slice(allowedSrc.lastIndexOf('/') + 1));
     const g = window.__game, w = g.world;
     const deck = w.deckY || 0;
+    const GAP = window.__gapThreshold || 0.12;
 
     // MEASURE THE PROP, NOT ITS PARTS.
     //
@@ -114,7 +136,7 @@ for (const room of ROOMS) {
       })) continue;
       const gap = rec.minY - deck;
       const h = rec.maxY - rec.minY;
-      if (gap > 0.12 && h < 3.0 && rec.minY < deck + 3.0) {
+      if (gap > GAP && h < 3.0 && rec.minY < deck + 3.0) {
         out.push({ name: rec.name, gap: +gap.toFixed(2), h: +h.toFixed(2),
           at: [+cx.toFixed(1), +cz.toFixed(1)] });
       }

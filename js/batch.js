@@ -50,7 +50,39 @@ function bakeGeometry(source, matrix) {
 }
 
 export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
+  // A WAY TO SEE THE ROOM BEFORE IT IS GLUED TOGETHER.
+  //
+  // Merging is what makes the draw-call budget possible, and it is also what
+  // makes a room impossible to inspect afterwards: forty rocks become one mesh,
+  // so a check asking "does this rock touch the floor" can only ever see the
+  // lowest corner of the whole batch. A single hovering rock hides behind its
+  // grounded neighbours, which is exactly how dad could see floating rocks on a
+  // screen while a headless measurement reported the room clean.
+  //
+  // So tooling can ask for the room unmerged. Off unless something sets it, and
+  // nothing in the game ever does — it costs one property read per room build.
+  if (typeof window !== 'undefined' && window.__noBatch) {
+    world._batchSkipped = true;
+    return;
+  }
   const root = world.root;
+
+  // CONTACT SHADOWS FOR THE THINGS THAT CAST NONE.
+  //
+  // Dad, on a screenshot: "image 1 shows floating rocks." Measured, nothing in
+  // Ember Hollow is off the floor — not by three centimetres. The rocks are
+  // exactly where they should be. What they have not got is a SHADOW.
+  //
+  // Small clutter opts out of shadow casting a few lines below, because a
+  // shadow-map redraw per pebble is what took r1 to 173 draw calls. But on a
+  // flat floor under a fixed camera, an object with no shadow has nothing
+  // joining it to the ground, and the eye reads it as hovering. The geometry
+  // was innocent and the lighting was lying.
+  //
+  // So each of them gets a soft dark disc on the floor beneath it, and ALL of
+  // them go into ONE merged mesh: one draw call for the whole room, no shadow
+  // map involved. The cheap fix and the correct-looking one are the same fix.
+  contactShadows(world, root);
 
   // Things gameplay holds a handle on, and everything under them.
   const held = new Set(world._keepLoose || []);
@@ -193,4 +225,48 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   world._batchSourceGeometries = sourceGeos;
   world._batchStats = stats;
   return stats;
+}
+
+
+// One merged mesh of soft floor discs, under every prop that casts no shadow.
+// Built before the static merge so it can still see the props individually.
+function contactShadows(world, root) {
+  const discs = [];
+  const box = new THREE.Box3();
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry || o.castShadow !== false) return;
+    const m = o.material;
+    const mats = Array.isArray(m) ? m : [m];
+    // a glow or a decal is not a thing standing on the floor
+    if (mats.some((x) => x && (x.transparent || (x.emissive
+      && (x.emissive.r + x.emissive.g + x.emissive.b) > 0.05)))) return;
+    o.updateWorldMatrix(true, false);
+    box.setFromObject(o);
+    const w = box.max.x - box.min.x, d = box.max.z - box.min.z;
+    const h = box.max.y - box.min.y;
+    // clutter only: bigger things cast real shadows and do not need this
+    if (h > 1.4 || w > 3 || d > 3 || box.min.y > (world.deckY || 0) + 0.6) return;
+    discs.push({ x: (box.min.x + box.max.x) / 2, z: (box.min.z + box.max.z) / 2,
+      r: Math.max(0.18, Math.max(w, d) * 0.52) });
+  });
+  if (!discs.length) return;
+
+  const geos = discs.map((c) => {
+    const g = new THREE.CircleGeometry(c.r, 10);
+    g.rotateX(-Math.PI / 2);
+    g.translate(c.x, (world.deckY || 0) + 0.012, c.z);
+    return g;
+  });
+  const merged = mergeGeometries(geos, false);
+  geos.forEach((g) => g.dispose());
+  if (!merged) return;
+  const mesh = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({
+    color: 0x000000, transparent: true, opacity: 0.26,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
+  }));
+  mesh.name = 'contactShadows';
+  mesh.renderOrder = -1;
+  mesh.castShadow = false; mesh.receiveShadow = false;
+  world.keepLoose(mesh);      // never fold this into the static merge
+  root.add(mesh);
 }
