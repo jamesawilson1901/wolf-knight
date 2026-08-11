@@ -515,8 +515,14 @@ export async function buildD1b(scene) {
   // a pack of three — and it came in at 126 draw calls against a 125 ceiling.
   // It loses clutter, not content: 127 things in the arrival frame against a
   // bar of 32 means there is a great deal of clutter to lose.
+  //
+  // AND IT NEEDS MORE THAN ONE CALL OF HEADROOM. Trimmed once to 123 it has
+  // measured anywhere from 123 to 126 run to run, which is not a pass, it is a
+  // coin toss that lands on dad's phone. One shore home fewer and four fewer
+  // loose pieces put it in the high teens, where a stray call cannot reach the
+  // ceiling. Nothing a child can interact with is touched.
   scatter(world, halfW, halfD, D, 602, 4, { spin: 1, kinds: ['rockLB', 'rockSA'] });
-  dressShore(world, halfW, halfD, D, 6021, { homes: 2, loose: 10 });
+  dressShore(world, halfW, halfD, D, 6021, { homes: 1, loose: 6 });
   world.markers.breakables = potSpots(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
