@@ -152,9 +152,16 @@ check('a save that cannot write SHOUTS (no silent catch)', loud.shouted, loud);
 // ---------------------------------------------------------------------------
 console.log('\n── 7. twenty hub entries must not grow memory ───────────');
 await setStage(2);
-await go('vh');
-await go('va1');
-await go('vh');                                  // caches warm
+// WARM THE ROOMS THE LOOP ACTUALLY USES, NOT SOME OTHER ROOMS.
+//
+// This warmed vh and va1 and then measured a vh <-> VGA loop, so the first
+// entry into vga inside the measured window loaded that room's models for the
+// first time — and a one-time cache fill was reported as a leak of exactly
+// that many geometries. It went off the day vga gained bats and a dungeon
+// crate, which is a true statement about the assets and a false one about
+// memory. Both ends of the round trip get warmed now, twice, so what is
+// measured is only what recurs.
+for (const r of ['vh', 'vga', 'vh', 'vga', 'vh']) await go(r);
 const mem = () => page.evaluate(() => {
   const i = window.__game.renderer.info;
   return { geometries: i.memory.geometries, textures: i.memory.textures,
