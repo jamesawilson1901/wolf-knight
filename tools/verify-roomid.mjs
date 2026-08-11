@@ -92,6 +92,13 @@ const park = async (room) => {
 const walkThrough = async (x, z, from) => {
   await page.evaluate(([px, pz]) => {
     const g = window.__game;
+    // CLEAR THE ROOM FIRST — this file is about room IDENTITY, not combat.
+    // Encounter rooms shut until cleared (World.armEncounter), so standing on a
+    // door in a room with three shadows in it will never open it. That is the
+    // feature; the question here is where a door LEADS.
+    for (const e of (g.world.enemies || [])) e.dead = true;
+    g.world.enemies = [];
+    if (g.world.updateSeal) g.world.updateSeal(0);
     g.player.root.position.x = px; g.player.root.position.z = pz;
   }, [x, z]);
   try {

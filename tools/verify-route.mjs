@@ -54,6 +54,16 @@ const stepTo = async (to) => {
     const g = window.__game;
     g.player.iframes = 999999;                       // no dying mid-route
     if (g.narration) g.narration.blocking = false;   // a blocking line freezes the world
+    // CLEAR THE ROOM FIRST — this file is about the door GRAPH, not combat.
+    //
+    // Encounter rooms now shut until they are cleared (World.armEncounter), so
+    // walking the spine without fighting stops dead at the first room with three
+    // shadows in it. That is the feature working; it is not a route fault, and
+    // this suite has no business fighting. verify-playthrough already does
+    // exactly this for the same reason.
+    for (const e of (g.world.enemies || [])) e.dead = true;
+    g.world.enemies = [];
+    if (g.world.updateSeal) g.world.updateSeal(0);
     const d = (g.world.doors || []).find((x) => x.to === t);
     if (!d) return null;
     g.player.root.position.x = (d.minX + d.maxX) / 2;
