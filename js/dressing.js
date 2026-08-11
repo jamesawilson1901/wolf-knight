@@ -182,7 +182,13 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       // knocked over: a barrel lying on its side says "left in a hurry" in a way
       // an upright one never does
       const down = r() < 0.5;
-      place(world, g, gltf, 'ruinGoods', px, down ? 0.28 : 0, pz,
+      // THE LIFT IS FOR ROUND THINGS ONLY. Rolling a barrel or a vase onto its
+      // side puts it on its curved face, so it needs raising by its radius. A
+      // CRATE rolled ninety degrees is still a box sitting flat — lifting it
+      // leaves it hanging 0.28 above the floor, which is what the Court's
+      // pockets were doing.
+      const round = gltf !== K().crate;
+      place(world, g, gltf, 'ruinGoods', px, down && round ? 0.28 : 0, pz,
         sc, r() * 6.28, down ? Math.PI / 2 : 0, P, false);
     }
     // brick spill from the fallen courses — small, so you walk through it
@@ -289,8 +295,15 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     place(world, g, K().logStack, 'cart', 0.9, 0.35, -0.6, 0.8, 0.7, 0.5, P);
     for (let i = 0; i < 4; i++) {
       const gl = r() < 0.5 ? K().barrel : K().crate;
-      place(world, g, gl, 'cart', (r() - 0.5) * 3.4, r() < 0.6 ? 0.28 : 0, (r() - 0.5) * 2.8,
-        1.0, r() * 6.28, r() < 0.6 ? Math.PI / 2 : 0, P, false);
+      // ONE decision about whether this thing fell over, not two. The lift and
+      // the tip were separate random draws, so a crate could be raised 0.28
+      // without being rotated at all — a box hanging in the air beside a
+      // wrecked cart. And the lift is for ROUND things: a barrel on its side
+      // rests on its curve, a crate stays a box.
+      const down = r() < 0.6;
+      const round = gl !== K().crate;
+      place(world, g, gl, 'cart', (r() - 0.5) * 3.4, down && round ? 0.28 : 0, (r() - 0.5) * 2.8,
+        1.0, r() * 6.28, down ? Math.PI / 2 : 0, P, false);
     }
     world.addCircle(x, z, 1.0, 'decor');        // the wreck itself blocks; the spill does not
     g.position.set(x, 0, z);

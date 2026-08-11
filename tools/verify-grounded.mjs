@@ -29,7 +29,7 @@ const check = (n, ok, d) => {
 };
 
 // Things that hang, hover or fly on purpose.
-const ALLOWED = /banner|torch|cobweb|flame|fire|light|glow|coin|shard|moth|wisp|bat|spark|veil|wind|water|decal|threshold|arch|lintel|bridge|vane|relic|eye|socket|mirror|sky|cloud|rain|snow|bar|hud/i;
+const ALLOWED = /banner|torch|cobweb|flame|fire|light|glow|coin|shard|moth|wisp|bat|spark|veil|wind|water|decal|threshold|arch|lintel|bridge|vane|relic|eye|socket|mirror|sky|cloud|rain|snow|bar|hud|hanging/i;
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -104,8 +104,12 @@ for (const room of ROOMS) {
 
     w.root.traverse((o) => {
       if (!o.isMesh || !o.geometry) return;
-      const name = ((o.name || '') + ' ' + ((o.material && o.material.name) || '')
-        + ' ' + ((o.parent && o.parent.name) || ''));
+      // Read the WHOLE ancestry, not just the immediate parent. A model's meshes
+      // are named by the artist (Mesh_log_stack_1); the name that says what the
+      // thing IS lives on a node further up, which is where `hangingLog` was
+      // and why the filter could not see it.
+      let name = (o.material && o.material.name) || '';
+      for (let n = o; n && n !== w.root; n = n.parent) name += ' ' + (n.name || '');
       if (allowed.test(name)) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       // flames, glows and decals are meant to hang

@@ -348,7 +348,11 @@ function logBridge(world, id, x, z) {
     return null;
   }
 
-  // upright, off to the side, obviously not yet a bridge
+  // upright, off to the side, obviously not yet a bridge — and HELD UP by the
+  // rope below it, so it is meant to be off the ground until that rope is cut.
+  // Named so the grounding check knows the difference between hanging and
+  // hovering.
+  log.name = 'hangingLog';
   log.position.set(x + GAP_W / 2 - 2, 1.4, z - 2.4);
   log.rotation.set(0, 0.3, 0.5);
   world.add(log);

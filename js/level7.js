@@ -438,6 +438,7 @@ export async function buildXh(scene) {
           emissive: lit ? COL : 0x000000, emissiveIntensity: lit ? 2.4 : 0, roughness: 1,
         })
       );
+      socket.name = 'relicSocket';   // mounted on the arch, not resting on the floor
       socket.position.set(-2.4 + i * 1.6, 2.9, -13);
       g.add(socket);
       if (lit) { const l = new THREE.PointLight(COL, 2.2, 6, 1.8); l.position.copy(socket.position); g.add(l); }
