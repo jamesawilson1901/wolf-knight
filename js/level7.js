@@ -837,7 +837,13 @@ export async function buildXth(scene) {
   if (!GREY()) {
     const g = new THREE.Group();
     place(world, g, courtKit.pedestal, 'pedestal', 0, 0, -9.5, 2.4, 0, 0, D.propTint);
-    place(world, g, courtKit.horse, 'horse', 0, 1.3, -9.5, 1.3, 0, 0, 0x1a1226);
+    // CENTRED. Statue_Horse.glb is modelled 5.85u off its own origin in Z
+    // (tools/probe-modelsize.mjs), so at this scale the statue was DRAWN metres
+    // from the pedestal placed for it — floating at head height over open floor
+    // with its collider back on the empty plinth. Same fault as the vase, an
+    // order of magnitude worse, and nothing had ever measured a model against
+    // its own pivot until tonight.
+    place(world, g, courtKit.horse, 'horse', 0, 1.3, -9.5, 1.3, 0, 0, 0x1a1226, true, true);
     for (let i = 0; i < 10; i++) {
       const a = i * Math.PI * 2 / 10;
       const px = Math.cos(a) * 10.6, pz = Math.sin(a) * 10.6;

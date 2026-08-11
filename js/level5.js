@@ -307,7 +307,13 @@ function heroProp(world, x, z, kind, D) {
     // THE SKY SHRINE — a pedestal, a horse the wind has worn smooth, and four
     // torches that are still lit because someone still climbs up here.
     place(world, g, skyKit.pedestal, 'pedestal', x, 0, z, 2.0, 0, 0, P);
-    place(world, g, skyKit.horse, 'horse', x, 1.05, z, 1.2, 0.6, 0, D.tint);
+    // CENTRED. Statue_Horse.glb is modelled 5.85u off its own origin in Z
+    // (tools/probe-modelsize.mjs), so at this scale the statue was DRAWN metres
+    // from the pedestal placed for it — floating at head height over open floor
+    // with its collider back on the empty plinth. Same fault as the vase, an
+    // order of magnitude worse, and nothing had ever measured a model against
+    // its own pivot until tonight.
+    place(world, g, skyKit.horse, 'horse', x, 1.05, z, 1.2, 0.6, 0, D.tint, true, true);
     for (let i = 0; i < 4; i++) {
       const a = i * Math.PI / 2 + 0.78;
       place(world, g, skyKit.torch, 'torch', x + Math.cos(a) * 2.6, 0, z + Math.sin(a) * 2.6, 1.5, -a, 0, P, false);

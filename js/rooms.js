@@ -2579,6 +2579,14 @@ async function buildE3(scene) {
   // marble horse statues guard Petra's shrine
   for (const [x, ry] of [[-2.6, 0.6], [2.6, -0.6]]) {
     const s = prepareModel(dkit.statue.scene.clone());
+    // Statue_Horse.glb sits 5.85u off its own origin in Z — at 0.34 scale that
+    // put these two guardians two metres adrift of Petra's shrine, and of the
+    // colliders added for them below.
+    const sb = new THREE.Box3().setFromObject(s);
+    for (const c of s.children) {
+      c.position.x -= (sb.min.x + sb.max.x) / 2;
+      c.position.z -= (sb.min.z + sb.max.z) / 2;
+    }
     s.position.set(x, 0, -4.2);
     s.rotation.y = ry;
     s.scale.setScalar(0.34);
