@@ -166,7 +166,16 @@ export function applySave(profileId, profileName, data) {
   state.maxHearts = data.maxHearts || 5;
   state.potions = data.potions !== undefined ? data.potions : 2;
   state.shards = data.shards || 0;
-  if (data.inventory && data.inventory.gear) state.inventory = data.inventory;
+  if (data.inventory && data.inventory.gear) {
+    state.inventory = data.inventory;
+    // SAVES ARE ADDITIVE FOREVER. The armour slot arrived after these profiles
+    // were written, so a save from before it existed has no `armour` key and
+    // must still load and still be equippable — not crash, and not silently
+    // strand the child in a slot the menu cannot show.
+    state.inventory.equipped = state.inventory.equipped || {};
+    if (!state.inventory.equipped.armour) state.inventory.equipped.armour = 'plain';
+    if (!state.inventory.armours) state.inventory.armours = ['plain'];
+  }
   state.moonGauge = data.moonGauge || 0; // additive: old saves start empty
   state.xp = data.xp || 0;
   state.level = data.level || 1;

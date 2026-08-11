@@ -23,7 +23,7 @@ import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
-import { addGear } from './items.js';
+import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
@@ -1140,7 +1140,17 @@ function giveLoot(chest) {
   }
   if (L.gear) {
     addGear(L.gear);
-    lines.push('🗡️ new gear');
+    // NAME THE THING. "new gear" tells a child nothing about what they just
+    // found; the whole point of a chest is the moment you learn what was in it.
+    const gd = WEAPONS[L.gear] || SHIELDS[L.gear];
+    lines.push(gd ? `${gd.icon} ${gd.name}` : '🗡️ new gear');
+  }
+  // ARMOUR is found, not only bought — dad: "different weapons and armour that
+  // you can find and equip".
+  if (L.armour && ARMOURS[L.armour]) {
+    state.inventory.armours = state.inventory.armours || ['plain'];
+    if (!state.inventory.armours.includes(L.armour)) state.inventory.armours.push(L.armour);
+    lines.push(`${ARMOURS[L.armour].icon} ${ARMOURS[L.armour].name}`);
   }
   if (L.key) {
     state.flags.keys[L.key] = true;

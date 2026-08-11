@@ -554,7 +554,9 @@ export async function buildLa1(scene) {
   aftermath(world, 5.5, -5.5, 2.0, D, 3);
   coldHearth(world, -7.5, -5.5, D);
   scatter(world, halfW, halfD, D, 12, 5);
-  visibleReward(world, 7, 5, 'l1_warrens', { shards: 16 });
+  // A PRIZE, NOT JUST COINS. Dad: gear "that you can find and equip". Ember's
+  // warrens hold the axe — the first weapon that is a different SHAPE of swing.
+  visibleReward(world, 7, 5, 'l1_warrens', { shards: 16, gear: 'axe_b' });
   return finish(world, spec, D);
 }
 
@@ -804,7 +806,7 @@ export async function buildLc1(scene) {
   rubbleField(world, 8, 3, 2.8, D, 13);
   rubbleField(world, -1, -6.5, 2.4, D, 10);
   aftermath(world, 5, 2, 2.0, D, 12);
-  visibleReward(world, 6, -2, 'l1_drowned_forge', { shards: 22, heartPiece: 1 });
+  visibleReward(world, 6, -2, 'l1_drowned_forge', { shards: 22, heartPiece: 1, armour: 'ember' });
   scatter(world, halfW, halfD, D, 32, 5);
   return finish(world, spec, D);
 }

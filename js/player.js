@@ -7,7 +7,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
-import { weaponDef, shieldDef } from './items.js';
+import { weaponDef, shieldDef, armourDef } from './items.js';
 import { CONFIG } from './config.js';
 import { WATER } from './water.js';
 import { juice } from './juice.js';
@@ -607,13 +607,27 @@ export class Player {
   // Mount the equipped weapon + shield on the knight's hands (call after any
   // equipment change). Models are shared from the loader cache, so each mount
   // uses a clone.
+  // RECOLOUR A CLONE, NEVER THE CACHE. loadGLB hands back one shared scene, so
+  // painting its materials would repaint every skeleton carrying that sword.
+  _tintGear(model, tint) {
+    if (!tint) return model;
+    model.traverse((n) => {
+      if (!n.isMesh || !n.material) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      const cloned = mats.map((m) => { const c = m.clone(); if (c.color) c.color.setHex(tint); return c; });
+      n.material = Array.isArray(n.material) ? cloned : cloned[0];
+    });
+    return model;
+  }
+
   async equipGear() {
     if (!this._handR) return;
     const [w, s] = await Promise.all([loadGLB(weaponDef().file), loadGLB(shieldDef().file)]);
     this._handR.clear();
     this._handL.clear();
-    this._handR.add(prepareCharacter(w.scene.clone()));
-    const shield = prepareCharacter(s.scene.clone());
+    this._handR.add(this._tintGear(prepareCharacter(w.scene.clone()), weaponDef().tint));
+    this.equipArmour();
+    const shield = this._tintGear(prepareCharacter(s.scene.clone()), shieldDef().tint);
     // C4 — the parry window needs somewhere to SHOW itself, and the shield is
     // the honest place. Its materials come out of the shared loader cache, so
     // they are cloned here: tinting the cache would light up every shield in
@@ -632,6 +646,47 @@ export class Player {
       n.material = Array.isArray(n.material) ? cloned : cloned[0];
     });
     this._handL.add(shield);
+  }
+
+  // ARMOUR, WITHOUT AN ARMOUR MODEL.
+  //
+  // Nothing in any vendored pack is a suit of armour, and inventing one is not
+  // on the table. Kael already wears plate, so a suit IS that plate in another
+  // colour with another number behind it — dad's own suggestion, and the only
+  // honest way to have armour here.
+  //
+  // The knight's materials are cached and shared with the title-screen and
+  // portrait clones, so the ORIGINALS are kept the first time round and the
+  // tint is applied to clones. Equipping Squire Plate puts every original back,
+  // which is what makes this reversible rather than a one-way paint job.
+  equipArmour() {
+    const model = this.forms && this.forms.knight && this.forms.knight.model;
+    if (!model) return;
+    const def = armourDef();
+    if (!this._plateOrig) {
+      this._plateOrig = [];
+      model.traverse((n) => {
+        if (!n.isMesh || !n.material) return;
+        this._plateOrig.push({ node: n, material: n.material });
+      });
+    }
+    for (const rec of this._plateOrig) {
+      if (!def.tint) { rec.node.material = rec.material; continue; }
+      const mats = Array.isArray(rec.material) ? rec.material : [rec.material];
+      const cloned = mats.map((m) => {
+        const c = m.clone();
+        // MULTIPLY, do not replace. The knight's plate, tabard and skin are
+        // separate materials at different values; setting them all to one hex
+        // turns him into a flat silhouette. Scaling keeps the shading and the
+        // face, and reads as the same boy in different armour.
+        if (c.color) {
+          const t = new THREE.Color(def.tint);
+          c.color.set(rec.material.color || c.color).lerp(t, 0.72);
+        }
+        return c;
+      });
+      rec.node.material = Array.isArray(rec.material) ? cloned : cloned[0];
+    }
   }
 
   // The parry window, made visible. PARRY_WINDOW is 0.3s from the frame the
@@ -1421,6 +1476,10 @@ export class Player {
     // speed. Applied BEFORE the kid-difficulty softening so Gentle still
     // protects exactly as much.
     n *= this.form.def.hurtMult || 1;
+    // ARMOUR SOAKS A FLAT AMOUNT, and only in knight form — a wolf is not
+    // wearing the plate. Floored at half a heart so a hit always costs
+    // something: armour you cannot be hurt through is armour that ends the game.
+    if (state.form === 'knight') n = Math.max(0.5, n - (armourDef().soak || 0));
     // Cozy mode (default) halves incoming hits; the rubber-band does the
     // same after repeated defeats at one checkpoint. Both round to halves.
     let soften = 1;
@@ -2020,6 +2079,10 @@ export class Player {
     const move = input.getMove();
     const mag = Math.hypot(move.x, move.z);
     let speedMult = (this.defending ? DEFEND_SPEED_MULT : 1) * (1 + (state.perks.speed || 0) * 0.05);
+    // ARMOUR WEIGHS SOMETHING, so heavy plate is a trade and not a free upgrade
+    // — and Greenweave's negative weight makes it genuinely quicker. Knight
+    // only: a wolf is not wearing it.
+    if (state.form === 'knight') speedMult *= 1 - (armourDef().weight || 0);
     if (this.buffs.star > 0) speedMult *= 1.4;
     const top = f.def.speed * speedMult * lockMove;
 

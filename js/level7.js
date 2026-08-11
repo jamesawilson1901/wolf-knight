@@ -784,7 +784,7 @@ export async function buildXp2(scene) {
   });
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'xh', { x: 10, z: 8, angle: Math.PI });
-  world.markers.chestDefs = [{ id: 'c_xp2', tier: 'gold', x: 0, z: -4.2, ry: 0.3, loot: { shards: 40, heartPiece: 1 } }];
+  world.markers.chestDefs = [{ id: 'c_xp2', tier: 'gold', x: 0, z: -4.2, ry: 0.3, loot: { shards: 40, heartPiece: 1, armour: 'moon' } }];
   world.reserve(0, -4.2, 2.6, 'chest');
   world.markers.houndSpots = [{ x: -5, z: 1, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 752, 4, { spin: 1, kinds: ['coins', 'vase'] });

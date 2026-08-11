@@ -884,7 +884,7 @@ export async function buildD4p(scene) {
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'd4b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'd4a', { x: 7.5, z: 0, angle: Math.PI / 2 });
-  world.markers.chestDefs = [{ id: 'c_d4p', tier: 'gold', x: 0, z: -4.4, ry: -0.3, loot: { shards: 34, heartPiece: 1 } }];
+  world.markers.chestDefs = [{ id: 'c_d4p', tier: 'gold', x: 0, z: -4.4, ry: -0.3, loot: { shards: 34, heartPiece: 1, gear: 'spear_tide' } }];
   world.reserve(0, -4.4, 2.6, 'chest');
   scatter(world, halfW, halfD, D, 633, 4, { spin: 1, kinds: ['rockSA', 'skull'] });
   dressShore(world, halfW, halfD, D, 6331, { homes: 1, loose: 18 });

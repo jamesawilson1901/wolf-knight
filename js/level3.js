@@ -670,7 +670,7 @@ export async function buildT1b(scene) {
   wallRun(world, -16, -8.5, -11, -8.5, D);
   wallRun(world, -16, -3.5, -11, -3.5, D);
   bramble(world, 'w3_thorn_wall', -11, -6, 2.0, 5.0);
-  visibleReward(world, -13.5, -6, 'l3_t1b_bramble', { shards: 20 });
+  visibleReward(world, -13.5, -6, 'l3_t1b_bramble', { shards: 20, gear: 'sword_verdant' });
   world.markers.thornPromise = { x: -11, z: -6 };
   // GATE — the ICE-SEALED SPRING. Level 4's tool, a whole level early.
   wallRun(world, 11, 2, 16, 2, D);

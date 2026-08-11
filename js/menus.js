@@ -4,7 +4,7 @@
 
 import { state, regionCleared } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 
@@ -92,6 +92,12 @@ export class Menus {
       if (WEAPONS[id]) addCard(id, WEAPONS[id], 'weapon');
       if (SHIELDS[id]) addCard(id, SHIELDS[id], 'shield');
     }
+    // ARMOUR sits in the same grid on the same rule — tap it and Kael changes
+    // colour on the spot. `armours` arrived after some profiles were written, so
+    // it is defaulted rather than assumed (js/save.js).
+    for (const id of (state.inventory.armours || ['plain'])) {
+      if (ARMOURS[id]) addCard(id, ARMOURS[id], 'armour');
+    }
     el.appendChild(grid);
 
     const foot = document.createElement('div');
@@ -116,8 +122,15 @@ export class Menus {
     const grid = document.createElement('div');
     grid.className = 'grid';
     for (const s of shopStock()) {
-      const def = s.kind === 'potion' ? s : (s.kind === 'weapon' ? WEAPONS[s.id] : SHIELDS[s.id]);
-      if (s.kind !== 'potion' && ownsGear(s.id)) continue; // sold
+      const def = s.kind === 'potion' ? s
+        : s.kind === 'weapon' ? WEAPONS[s.id]
+        : s.kind === 'armour' ? ARMOURS[s.id] : SHIELDS[s.id];
+      if (!def) continue;                                  // a stock line naming nothing
+      // ARMOUR lives in its own owned-list, so "sold" is a different question
+      // for it than for a weapon.
+      const owned = s.kind === 'armour'
+        ? (state.inventory.armours || ['plain']).includes(s.id) : ownsGear(s.id);
+      if (s.kind !== 'potion' && owned) continue;          // sold
       const afford = state.shards >= s.price;
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');
@@ -133,6 +146,11 @@ export class Menus {
         if (s.kind === 'potion') {
           state.potions = Math.min(3, state.potions + 1);
           if (this.player.onPotionsChanged) this.player.onPotionsChanged();
+        } else if (s.kind === 'armour') {
+          state.inventory.armours = state.inventory.armours || ['plain'];
+          if (!state.inventory.armours.includes(s.id)) state.inventory.armours.push(s.id);
+          state.inventory.equipped.armour = s.id;
+          this.player.equipArmour();
         } else {
           addGear(s.id);
           state.inventory.equipped[s.kind] = s.id; // auto-equip new toys
@@ -331,6 +349,14 @@ function statLine(id, def, kind) {
   }
   if (kind === 'shield') {
     return def.parryBonus > 0 ? '✨ easier parries' : def.blunt <= 0.25 ? '🛡️ super block' : '🛡️ block';
+  }
+  if (kind === 'armour') {
+    // Said in hearts and in feet, because "soak 1.0, weight 0.08" means nothing
+    // to a six-year-old. A shield count for how much it eats, and a plain word
+    // for what it costs you.
+    const soak = def.soak > 0 ? '🛡️'.repeat(Math.min(3, Math.round(def.soak * 2))) : '';
+    const feet = def.weight > 0.05 ? '🐢 heavy' : def.weight < 0 ? '⚡ quicker' : '';
+    return `${soak} ${feet}`.trim() || 'plain and honest';
   }
   return def.blurb || '';
 }

@@ -43,6 +43,80 @@ export const WEAPONS = {
     dmg: 3, lock: 0.85, range: 1.9, price: 300, arc: 82, stun: 0.6,
     blurb: 'Slow… but WHAM. Leaves them dizzy!',
   },
+
+  // -------------------------------------------------------------------------
+  // THE REST OF THE RACK — and the oldest trick in the book.
+  //
+  // Dad: "add different weapons and armour that you can find and equip. use
+  // whatever weapon assets you have, swords, axes, bows and arrows... use the
+  // old developer trick of recolouring the same asset, give it a different name
+  // and stats and call it a day."
+  //
+  // Four models in assets/gear were vendored, licence-cleared and never used at
+  // all: axe_B, sword_C, sword_E and staff_A (and shield_B). They are real
+  // weapons now — and then each one is worn twice more in a different colour
+  // with different numbers, which is exactly the trick he asked for and the same
+  // asset-multiplication law the environment kit already runs on.
+  //
+  // `tint` recolours the model at equip time. The materials come out of the
+  // shared loader cache, so player.js clones them before touching them —
+  // tinting the cache would repaint every skeleton's sword in the game.
+  // -------------------------------------------------------------------------
+  axe_b: {
+    name: 'Woodcutter Axe', icon: '🪓', file: './assets/gear/axe_B.gltf',
+    dmg: 1.8, lock: 0.66, range: 1.9, price: 140, arc: 78, stun: 0.25,
+    blurb: 'Heavy and wide. Chops through a crowd.',
+  },
+  axe_ember: {
+    name: 'Cinder Axe', icon: '🔥', file: './assets/gear/axe_B.gltf', tint: 0xff6a2a,
+    dmg: 2.0, lock: 0.66, range: 1.9, price: 260, arc: 78, stun: 0.25, element: 'fire',
+    blurb: 'Still warm from the Kiln.',
+  },
+  axe_frost: {
+    name: 'Rimebite Axe', icon: '❄️', file: './assets/gear/axe_B.gltf', tint: 0x8fd8ff,
+    dmg: 2.0, lock: 0.72, range: 1.9, price: 280, arc: 78, stun: 0.55, element: 'frost',
+    blurb: 'The cold makes them slow.',
+  },
+  sword_c: {
+    name: 'Broadblade', icon: '🗡️', file: './assets/gear/sword_C.gltf',
+    dmg: 1.6, lock: 0.6, range: 2.2, price: 150, arc: 78,
+    blurb: 'A wide, honest swing.',
+  },
+  sword_e: {
+    name: 'Twin Fang', icon: '⚔️', file: './assets/gear/sword_E.gltf',
+    dmg: 1.2, lock: 0.4, range: 2.0, price: 170,
+    blurb: 'Quick as the dagger, long as a sword.',
+  },
+  sword_verdant: {
+    name: 'Thornblade', icon: '🌿', file: './assets/gear/sword_E.gltf', tint: 0x7ad46a,
+    dmg: 1.4, lock: 0.4, range: 2.0, price: 240, element: 'verdant',
+    blurb: "Sylva's green edge — it BITES the corrupted.",
+  },
+  sword_storm: {
+    name: 'Stormfang', icon: '🌩️', file: './assets/gear/sword_C.gltf', tint: 0xc8b4ff,
+    dmg: 2.2, lock: 0.6, range: 2.2, price: 320, arc: 78, element: 'storm', stun: 0.3,
+    blurb: 'It cracks like thunder.',
+  },
+  staff_a: {
+    name: 'Old Staff', icon: '🪄', file: './assets/gear/staff_A.gltf',
+    dmg: 1.1, lock: 0.5, range: 2.6, price: 130, arc: 60, stun: 0.35,
+    blurb: 'Long reach, and a good sharp KNOCK.',
+  },
+  staff_moon: {
+    name: 'Moonwood Staff', icon: '🌙', file: './assets/gear/staff_A.gltf', tint: 0xbfa8ff,
+    dmg: 1.6, lock: 0.5, range: 2.8, price: 300, arc: 60, stun: 0.5, element: 'moon',
+    blurb: 'Luna lit the tip of it.',
+  },
+  spear_tide: {
+    name: 'Deepwater Pike', icon: '🌊', file: './assets/gear/spear_A.gltf', tint: 0x4fd0d8,
+    dmg: 1.5, lock: 0.6, range: 2.9, price: 290, arc: 36, element: 'tide',
+    blurb: 'Reaches further than anything.',
+  },
+  hammer_earth: {
+    name: 'Petra’s Maul', icon: '🪨', file: './assets/gear/hammer_A.gltf', tint: 0xd8b06a,
+    dmg: 3.4, lock: 0.85, range: 1.9, price: 420, arc: 82, stun: 0.9, element: 'earth',
+    blurb: 'The ground itself complains.',
+  },
 };
 
 export const SHIELDS = {
@@ -61,7 +135,61 @@ export const SHIELDS = {
     blunt: 0.25, parryBonus: 0, price: 180,
     blurb: 'Blocks almost everything.',
   },
+  shield_b: {
+    name: 'Kite Shield', icon: '🔶', file: './assets/gear/shield_B.gltf',
+    blunt: 0.4, parryBonus: 0.06, price: 130,
+    blurb: 'A bit of both.',
+  },
+  shield_moon: {
+    name: 'Moonguard', icon: '🌙', file: './assets/gear/shield_B.gltf', tint: 0xbfa8ff,
+    blunt: 0.3, parryBonus: 0.18, price: 340,
+    blurb: 'It KNOWS when to catch a blow.',
+  },
 };
+
+// ---------------------------------------------------------------------------
+// ARMOUR — the same trick, on Kael himself.
+//
+// There is no armour model in any vendored pack, and inventing one is not on
+// the table. But the knight already wears plate, so a suit of armour is that
+// plate in a different colour with a different number against it — which is
+// precisely the trick dad named, and it is the ONLY honest way to have armour
+// here at all.
+//
+// `soak` is flat damage taken off every hit before anything else, floored so a
+// hit always costs something; `weight` slows Kael a touch, so heavy armour is a
+// real trade rather than a straight upgrade.
+// ---------------------------------------------------------------------------
+export const ARMOURS = {
+  plain: {
+    name: 'Squire Plate', icon: '🩶', tint: null, soak: 0, weight: 0, price: 0,
+    blurb: 'What you set out in.',
+  },
+  ember: {
+    name: 'Kiln Plate', icon: '🟠', tint: 0xd8763a, soak: 0.5, weight: 0.03, price: 110,
+    blurb: 'Beaten out over the forge. Warm to touch.',
+  },
+  stone: {
+    name: 'Vault Plate', icon: '🪨', tint: 0x9aa4b0, soak: 1.0, weight: 0.08, price: 220,
+    blurb: 'Heavy as the stone it came from.',
+  },
+  verdant: {
+    name: 'Greenweave', icon: '🌿', tint: 0x6fae5c, soak: 0.5, weight: -0.04, price: 260,
+    blurb: 'Light as leaves — you move QUICKER.',
+  },
+  frost: {
+    name: 'Rime Plate', icon: '❄️', tint: 0x9fd4ee, soak: 1.0, weight: 0.03, price: 300,
+    blurb: 'Cold, and it does not care.',
+  },
+  moon: {
+    name: 'Moonplate', icon: '🌙', tint: 0xc4b0ff, soak: 1.5, weight: 0, price: 480,
+    blurb: "Luna's own. Nothing weighs it down.",
+  },
+};
+
+export function armourDef() {
+  return ARMOURS[state.inventory.equipped.armour] || ARMOURS.plain;
+}
 
 export function weaponDef() {
   return WEAPONS[state.inventory.equipped.weapon] || WEAPONS.sword_knight;
@@ -96,6 +224,25 @@ export const SHOP_STOCK = [
   { kind: 'shield', id: 'shield_c', price: 180, tier: 3 },
   { kind: 'weapon', id: 'sword_d', price: 200, tier: 3 },
   { kind: 'weapon', id: 'hammer_a', price: 300, tier: 4 },
+  // THE FULL RACK, spread up Maren's ladder so the shop keeps changing. Armour
+  // is bought here too — the ones a child does not find in a chest.
+  { kind: 'weapon', id: 'staff_a', price: 130, tier: 1 },
+  { kind: 'shield', id: 'shield_b', price: 130, tier: 1 },
+  { kind: 'armour', id: 'ember', price: 110, tier: 1 },
+  { kind: 'weapon', id: 'axe_b', price: 140, tier: 2 },
+  { kind: 'weapon', id: 'sword_c', price: 150, tier: 2 },
+  { kind: 'armour', id: 'stone', price: 220, tier: 2 },
+  { kind: 'weapon', id: 'sword_e', price: 170, tier: 3 },
+  { kind: 'weapon', id: 'axe_ember', price: 260, tier: 3 },
+  { kind: 'armour', id: 'verdant', price: 260, tier: 3 },
+  { kind: 'weapon', id: 'axe_frost', price: 280, tier: 4 },
+  { kind: 'weapon', id: 'spear_tide', price: 290, tier: 4 },
+  { kind: 'armour', id: 'frost', price: 300, tier: 4 },
+  { kind: 'weapon', id: 'staff_moon', price: 300, tier: 5 },
+  { kind: 'weapon', id: 'sword_storm', price: 320, tier: 5 },
+  { kind: 'shield', id: 'shield_moon', price: 340, tier: 5 },
+  { kind: 'weapon', id: 'hammer_earth', price: 420, tier: 5 },
+  { kind: 'armour', id: 'moon', price: 480, tier: 5 },
 ];
 
 // Has this rung of the ladder arrived? Tier 1 (and anything with no `after`)

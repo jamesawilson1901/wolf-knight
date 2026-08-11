@@ -62,6 +62,7 @@ case "$1" in
     run verify-story-beats.mjs
     run verify-grounded.mjs
     run verify-loot.mjs
+    run verify-gear.mjs
     run verify-level2-progress.mjs
     # then everything else, per region and per system
     run verify-level1.mjs

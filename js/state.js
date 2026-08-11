@@ -24,7 +24,10 @@ export const state = {
   shards: 0,                    // ember shards (currency)
   inventory: {
     gear: ['sword_knight', 'shield_badge'],
-    equipped: { weapon: 'sword_knight', shield: 'shield_badge' },
+    armours: ['plain'],
+    // `armour` joined the slots later; save.js defaults it, so a profile written
+    // before armour existed still loads (saves are additive forever).
+    equipped: { weapon: 'sword_knight', shield: 'shield_badge', armour: 'plain' },
     treasures: [],
     heartPieces: 0,
   },

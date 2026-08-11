@@ -1038,7 +1038,7 @@ export async function buildS4p(scene) {
   });
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 's4b', { x: 0, z: -10, angle: 0 });
-  world.markers.chestDefs = [{ id: 'c_s4p', tier: 'gold', x: 0, z: -4.2, ry: -0.3, loot: { shards: 34, heartPiece: 1 } }];
+  world.markers.chestDefs = [{ id: 'c_s4p', tier: 'gold', x: 0, z: -4.2, ry: -0.3, loot: { shards: 34, heartPiece: 1, gear: 'sword_storm' } }];
   world.reserve(0, -4.2, 2.6, 'chest');
   scatter(world, halfW, halfD, D, 533, 5, { spin: 1, kinds: ['rockSA', 'flowerA', 'flowerB'] });
   wayshrine(world, -6, 2, 0.4, D);
