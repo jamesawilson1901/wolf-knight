@@ -69,7 +69,7 @@ for (const room of ROOMS) {
       if (dd > best) { best = dd; far = d; }
     }
     if (!far) return null;
-    const foes = (w.enemies || []).filter((e) => !e.dead && !e.scenery).length;
+    const foes = (w.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun).length;
     // HOLD THE STICK FORWARD AND NOTHING ELSE. No attack, no dodge, no defend.
     let closest = Infinity, elapsed = 0;
     const t0 = performance.now();
@@ -88,19 +88,33 @@ for (const room of ROOMS) {
     }
     elapsed = (performance.now() - t0) / 1000;
     if (g.input) { g.input.move.x = 0; g.input.move.z = 0; }
+    // AND CAN YOU ACTUALLY LEAVE?
+    //
+    // The first version of this walked to the doorway and stopped, so a SEALED
+    // room measured exactly like an open one — it reported the encounter lock as
+    // having changed nothing, when what it had really done was fail to look. The
+    // question is not "did I reach the doorway", it is "did the doorway let me
+    // through", and world.doorAt is the game's own answer to that.
+    const p = g.player.root.position;
+    const canLeave = !!(w.doorAt && w.doorAt(far.x, far.z));
     return { foes, lost: +(start - g.player.hearts).toFixed(2),
       closest: closest === Infinity ? null : +closest.toFixed(2),
-      secs: +elapsed.toFixed(1), reached: Math.hypot(far.x - g.player.root.position.x,
-        far.z - g.player.root.position.z) < 1.6, to: far.to };
+      secs: +elapsed.toFixed(1), sealed: !!w.sealed, canLeave,
+      reached: Math.hypot(far.x - p.x, far.z - p.z) < 1.6, to: far.to };
   });
   if (!r) { console.log(room.padEnd(6), 'no door'); continue; }
   rows.push({ room, ...r });
-  const verdict = r.lost === 0 ? 'FREE — walked past everything'
+  const verdict = r.sealed && !r.canLeave ? 'SEALED — cannot leave until cleared'
+    : r.lost === 0 ? 'FREE — walked past everything'
     : r.lost < 0.5 ? 'nearly free' : 'costs something';
   console.log(room.padEnd(6), String(r.foes).padEnd(5), String(r.lost).padEnd(11),
     String(r.closest).padEnd(12), String(r.secs).padEnd(7), verdict);
 }
-const free = rows.filter((r) => r.lost === 0);
-console.log(`\n${free.length}/${rows.length} rooms cost NOTHING to cross at a run.`);
-if (free.length) console.log('free: ' + free.map((r) => r.room).join(' '));
+// FREE means you crossed it AND walked out the other side untouched. A room you
+// cannot leave is not free, whatever the crossing cost.
+const free = rows.filter((r) => r.lost === 0 && r.canLeave);
+const sealed = rows.filter((r) => r.sealed);
+console.log(`\n${free.length}/${rows.length} rooms can be crossed AND left for nothing.`);
+console.log(`${sealed.length}/${rows.length} rooms sealed on entry.`);
+if (free.length) console.log('free: ' + free.map((r) => `${r.room}(${r.foes} foes)`).join(' '));
 await b.close();
