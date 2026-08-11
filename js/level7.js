@@ -14,7 +14,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpots} from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -353,7 +353,7 @@ export async function buildX1(scene) {
   world.markers.houndSpots = [{ x: 7, z: -5, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 701, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressCourt(world, halfW, halfD, D, 7011, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -389,7 +389,7 @@ export async function buildXsh(scene) {
   }
   scatter(world, halfW, halfD, D, 702, 4, { spin: 1, kinds: ['brick', 'rockSB'] });
   dressCourt(world, halfW, halfD, D, 7021, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -478,7 +478,7 @@ export async function buildXh(scene) {
   world.markers.houndSpots = [{ x: -4, z: 8, variant: 'shadewalker' }, { x: 5, z: -8, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 703, 7, { spin: 1, kinds: ['rockLA', 'brick', 'column'] });
   dressCourt(world, halfW, halfD, D, 7031, { homes: 3, loose: 18 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -515,7 +515,7 @@ export async function buildXa1(scene) {
   world.markers.houndSpots = [{ x: -8, z: -5, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 711, 5, { spin: 1, kinds: ['brick', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7111, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -535,7 +535,7 @@ export async function buildXa2(scene) {
   world.markers.slimeSpots = [{ x: 3, z: -4, variant: 'gloomblob' }];
   scatter(world, halfW, halfD, D, 712, 4, { spin: 1, kinds: ['brick', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7121, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -551,7 +551,7 @@ export async function buildXa3(scene) {
   world.markers.houndSpots = [{ x: 2, z: 5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 713, 5, { spin: 1, kinds: ['brick', 'coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7131, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -570,7 +570,7 @@ export async function buildXr1(scene) {
   world.markers.houndSpots = [{ x: -8, z: 5, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 721, 5, { spin: 1, kinds: ['stump', 'treeA', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7211, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -589,7 +589,7 @@ export async function buildXr2(scene) {
   world.markers.slimeSpots = [{ x: 3, z: 4, variant: 'gloomblob' }];
   scatter(world, halfW, halfD, D, 722, 4, { spin: 1, kinds: ['rockSB', 'stump'] });
   dressCourt(world, halfW, halfD, D, 7221, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -605,7 +605,7 @@ export async function buildXr3(scene) {
   world.markers.houndSpots = [{ x: 2, z: -5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 723, 5, { spin: 1, kinds: ['treeB', 'bush', 'flowerA'] });
   dressCourt(world, halfW, halfD, D, 7231, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -625,7 +625,7 @@ export async function buildXg1(scene) {
   world.markers.batSpots = [{ x: -6, z: -5, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 731, 5, { spin: 1, kinds: ['rockLC', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7311, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -666,7 +666,7 @@ export async function buildXg2(scene) {
   }
   scatter(world, halfW, halfD, D, 732, 4, { spin: 1, kinds: ['brick', 'barrel'] });
   dressCourt(world, halfW, halfD, D, 7321, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -681,7 +681,7 @@ export async function buildXg3(scene) {
   world.markers.houndSpots = [{ x: -2, z: 5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 733, 5, { spin: 1, kinds: ['rockLB', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7331, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -698,7 +698,7 @@ export async function buildXm1(scene) {
   world.markers.wingLock = { x: 2, z: 0, needs: 'ghost_wolf' };
   scatter(world, halfW, halfD, D, 741, 5, { spin: 1, kinds: ['column', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7411, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -744,7 +744,7 @@ export async function buildXm2(scene) {
   world.markers.houndSpots = [{ x: -9, z: 7, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 742, 5, { spin: 1, kinds: ['column2', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7421, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -759,7 +759,7 @@ export async function buildXm3(scene) {
   world.markers.houndSpots = [{ x: -2, z: -5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 743, 5, { spin: 1, kinds: ['column', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7431, { homes: 2, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -773,7 +773,7 @@ export async function buildXp1(scene) {
   world.markers.pupSpot = { x: 0, z: -4, id: 'pup_x1' };
   scatter(world, halfW, halfD, D, 751, 4, { spin: 1, kinds: ['brick', 'skull'] });
   dressCourt(world, halfW, halfD, D, 7511, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -789,7 +789,7 @@ export async function buildXp2(scene) {
   world.markers.houndSpots = [{ x: -5, z: 1, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 752, 4, { spin: 1, kinds: ['coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7521, { homes: 1, loose: 14 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -817,7 +817,7 @@ export async function buildXst(scene) {
   }
   scatter(world, halfW, halfD, D, 753, 4, { spin: 1, kinds: ['brick', 'column'] });
   dressCourt(world, halfW, halfD, D, 7531, { homes: 1, loose: 16 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -883,7 +883,7 @@ export async function buildXth(scene) {
   }
   fallenColumn(world, -8, 2, 1, aged(D, 0.4), 5);
   fallenColumn(world, 8, 2, 1, aged(D, 0.7), 5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 

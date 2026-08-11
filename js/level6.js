@@ -19,7 +19,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpots} from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -490,7 +490,7 @@ export async function buildD1a(scene) {
   world.markers.slimeSpots = [{ x: 7, z: -5, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -523,7 +523,7 @@ export async function buildD1b(scene) {
   // ceiling. Nothing a child can interact with is touched.
   scatter(world, halfW, halfD, D, 602, 4, { spin: 1, kinds: ['rockLB', 'rockSA'] });
   dressShore(world, halfW, halfD, D, 6021, { homes: 1, loose: 6 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -539,7 +539,7 @@ export async function buildD1p(scene) {
   waterZone(world, { x: 6, z: 4, w: 8, d: 6, deep: false });
   scatter(world, halfW, halfD, D, 603, 4, { spin: 1, kinds: ['rockSA', 'barrel'] });
   dressShore(world, halfW, halfD, D, 6031, { homes: 1, loose: 18 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -556,7 +556,7 @@ export async function buildDg1(scene) {
   waterZone(world, { x: -8, z: 0, w: 5, d: 13, deep: false });
   scatter(world, halfW, halfD, D, 604, 4, { spin: 1, kinds: ['rockSA', 'bush'] });
   rimSides(world, halfW, halfD, D, 6041);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -585,7 +585,7 @@ export async function buildD2a(scene) {
   world.markers.slimeSpots = [{ x: -7, z: 5, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 611, 6, { spin: 1, kinds: ['rockLA', 'bush', 'stump'] });
   dressShore(world, halfW, halfD, D, 6111, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -604,7 +604,7 @@ export async function buildD2b(scene) {
     { x: -7, z: -4, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 612, 6, { spin: 1, kinds: ['rockLB', 'rockSB', 'bush'] });
   dressShore(world, halfW, halfD, D, 6121, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -621,7 +621,7 @@ export async function buildD2p(scene) {
   world.markers.slimeSpots = [{ x: -5, z: 1, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 613, 4, { spin: 1, kinds: ['rockSA', 'crate'] });
   dressShore(world, halfW, halfD, D, 6131, { homes: 1, loose: 18 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -662,7 +662,7 @@ export async function buildDsh(scene) {
   }
   scatter(world, halfW, halfD, D, 614, 4, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6141, { homes: 1, loose: 16 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -704,7 +704,7 @@ export async function buildDg2(scene) {
       i * 0.9, 0.05, washed(D, (i % 3) / 2).propTint);
     world.add(g);
   }
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -731,7 +731,7 @@ export async function buildD3a(scene) {
   world.markers.minionSpots = [{ x: -6, z: -5, variant: 'drowned' }, { x: 5, z: -6, variant: 'drowned' }];
   scatter(world, halfW, halfD, D, 621, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6211, { homes: 3 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -756,7 +756,7 @@ export async function buildD3b(scene) {
   world.markers.slimeSpots = [{ x: 8, z: 6, variant: 'deeptide' }];
   scatter(world, halfW, halfD, D, 622, 6, { spin: 1, kinds: ['brick', 'rockSA', 'rockLC'] });
   dressShore(world, halfW, halfD, D, 6221, { homes: 3 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -771,7 +771,7 @@ export async function buildD3p(scene) {
   world.markers.minionSpots = [{ x: -5, z: -1, variant: 'drowned' }];
   scatter(world, halfW, halfD, D, 623, 4, { spin: 1, kinds: ['coins', 'brick', 'vase'] });
   dressShore(world, halfW, halfD, D, 6231, { homes: 1, loose: 18 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -805,7 +805,7 @@ export async function buildDtp(scene) {
   world.markers.slimeSpots = [{ x: -10, z: 6, variant: 'tide' }, { x: 10, z: 6, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 624, 5, { spin: 1, kinds: ['rockSA', 'rockSB', 'brick'] });
   dressShore(world, halfW, halfD, D, 6241, { homes: 2, loose: 20 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -822,7 +822,7 @@ export async function buildDg3(scene) {
   waterZone(world, { x: 8, z: 0, w: 5, d: 13, deep: false });
   scatter(world, halfW, halfD, D, 625, 4, { spin: 1, kinds: ['brick', 'rockSB'] });
   rimSides(world, halfW, halfD, D, 6251);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -850,7 +850,7 @@ export async function buildD4a(scene) {
   world.markers.batSpots = [{ x: 7, z: -5, variant: 'gull' }];
   scatter(world, halfW, halfD, D, 631, 6, { spin: 1, kinds: ['rockLC', 'rockSA', 'skull'] });
   dressShore(world, halfW, halfD, D, 6311, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -872,7 +872,7 @@ export async function buildD4b(scene) {
   world.markers.minionSpots = [{ x: -12, z: 0, variant: 'drowned' }];
   scatter(world, halfW, halfD, D, 632, 6, { spin: 1, kinds: ['rockLB', 'skull', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6321, { homes: 2 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -888,7 +888,7 @@ export async function buildD4p(scene) {
   world.reserve(0, -4.4, 2.6, 'chest');
   scatter(world, halfW, halfD, D, 633, 4, { spin: 1, kinds: ['rockSA', 'skull'] });
   dressShore(world, halfW, halfD, D, 6331, { homes: 1, loose: 18 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -907,7 +907,7 @@ export async function buildDg4(scene) {
   world.reserve(7, 3.5, 2.6, 'chest');
   scatter(world, halfW, halfD, D, 634, 4, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -954,7 +954,7 @@ export async function buildDlg(scene) {
       world.add(g);
     }
   }
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1008,7 +1008,7 @@ export async function buildDdp(scene) {
   fallenColumn(world, 11, 2, 1, washed(D, 0.15), 5);
   cartWreck(world, -6, 9.5, 0.8, washed(D, 0.85));
   lowWall(world, 6, 9.5, 0, washed(D, 0.3), 4.5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 

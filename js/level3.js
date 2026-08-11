@@ -22,7 +22,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, potSpots,
+import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, potSpotsOrFewer,
   spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
@@ -646,7 +646,7 @@ export async function buildT1a(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -689,7 +689,7 @@ export async function buildT1b(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -711,7 +711,7 @@ export async function buildT1p(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.1 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 6);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -732,7 +732,7 @@ export async function buildTc1(scene) {
   thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.15 });
   blight(world, -4.4, -2.6, 1.8, D);
   aftermath(world, 0, 2.2, 1.5, D, 3);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -776,7 +776,7 @@ export async function buildT2a(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 6);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -808,7 +808,7 @@ export async function buildT2b(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -835,7 +835,7 @@ export async function buildT2p(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.3 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -873,7 +873,7 @@ export async function buildTsh(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.25 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 7);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -905,7 +905,7 @@ export async function buildTc2(scene) {
   thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.35 });
   blight(world, -4.4, -2.6, 1.8, D);
   aftermath(world, 0, 2.2, 1.5, D, 5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -958,7 +958,7 @@ export async function buildT3a(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -989,7 +989,7 @@ export async function buildT3b(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 6);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1012,7 +1012,7 @@ export async function buildT3p(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.55 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 3);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1085,7 +1085,7 @@ export async function buildTkn(scene) {
   blight(world, -12.5, -9.5, 3.0, D);
   blight(world, 12.5, -9.5, 3.0, D);
   thicket(world, 0, 10.5, 4.0, D, { sick: 0.6 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1106,7 +1106,7 @@ export async function buildTc3(scene) {
   thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.6 });
   blight(world, -4.4, -2.6, 1.8, D);
   aftermath(world, 0, 2.2, 1.5, D, 5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1188,7 +1188,7 @@ export async function buildT4a(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1233,7 +1233,7 @@ export async function buildT4b(scene) {
   mossyRuin(world, -10, 0, 0.5, D, { w: 6, d: 4.5, keep: 0.4, door: false });
   lowWall(world, 4, 5, 0.4, D, 3.2);
   aftermath(world, -11, 1.5, 2.0, D, 6);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1260,7 +1260,7 @@ export async function buildT4p(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.78 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 4);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1289,7 +1289,7 @@ export async function buildTc4(scene) {
   thicket(world, 4.2, 2.4, 2.0, D, { sick: 0.82 });
   blight(world, -4.4, -2.6, 1.8, D);
   aftermath(world, 0, 2.2, 1.5, D, 3);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1328,7 +1328,7 @@ export async function buildTgl(scene) {
   blight(world, -10, -10, 3.0, D);
   blight(world, 10, -10, 3.0, D);
   thicket(world, 0, 11, 3.4, D, { sick: 0.9 });
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1362,7 +1362,7 @@ export async function buildTsA(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.45 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 5);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 
@@ -1383,7 +1383,7 @@ export async function buildTsB(scene) {
   thicket(world, 3, 5, 2.6, D, { sick: 0.45 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 6);
-  world.markers.breakables = potSpots(world, halfW, halfD, spec);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
 

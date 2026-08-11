@@ -149,7 +149,9 @@ export const wallTintMap = (D) => ({
 // SEVEN SHAPES, NOT THREE. Dad asked twice for "chests, jars, crates, barrels
 // etc". Three kinds across a hundred and eight rooms is why every room read the
 // same; the kit in js/loot.js has seven now and this is what spends them.
-export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase', 'jar', 'box', 'cask']) {
+export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase', 'jar', 'box', 'cask'], relax = {}) {
+  const CLEAR = relax.clearance !== undefined ? relax.clearance : 1.4;
+  const PAD = relax.pad !== undefined ? relax.pad : 0.85;
   const label = (spec && spec.label) || '';
   let s0 = 7;
   for (let i = 0; i < label.length; i++) s0 = (s0 * 31 + label.charCodeAt(i)) % 233280;
@@ -181,7 +183,7 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
       z = (r() * 2 - 1) * (halfD - 2.6);
     }
     if (z > halfD - 3.0) continue;                       // the blind strip
-    if (world.blocked(x, z, 0.85)) continue;             // doors, spawns, markers
+    if (world.blocked(x, z, PAD)) continue;              // doors, spawns, markers
     const c = world.resolveCircle ? world.resolveCircle(x, z, 0.5) : { x, z };
     if (Math.abs(c.x - x) > 1e-6 || Math.abs(c.z - z) > 1e-6) continue;   // inside a prop
     if (world.hazardAt && world.hazardAt(x, z)) continue;
@@ -192,7 +194,7 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
     // the Kiln's forge. Open floor on all four sides or it does not go there:
     // pots belong in the middle of a room, not in a pinch point.
     let penned = false;
-    for (const [ox, oz] of [[1.4, 0], [-1.4, 0], [0, 1.4], [0, -1.4]]) {
+    for (const [ox, oz] of [[CLEAR, 0], [-CLEAR, 0], [0, CLEAR], [0, -CLEAR]]) {
       const q = world.resolveCircle ? world.resolveCircle(x + ox, z + oz, 0.4) : null;
       if (q && (Math.abs(q.x - (x + ox)) > 1e-6 || Math.abs(q.z - (z + oz)) > 1e-6)) { penned = true; break; }
     }
@@ -207,6 +209,27 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
     out[out.length - 1].kind = r() < 0.22 ? 'goldchest' : 'chest';
   }
   return out;
+}
+
+// A PLACER THAT GIVES UP SILENTLY IS HOW ROOMS END UP EMPTY.
+//
+// probe-emptyrooms found EIGHTEEN rooms with nothing to break in them — nine of
+// them in the Shadow Court — and every one of those rooms asks for pots. The
+// rules above are all individually right and together they are unsatisfiable in
+// a heavily dressed room: no candidate clears a 1.4u gap on all four sides when
+// two ruined homes and fourteen loose pieces are already down, so the loop runs
+// out of attempts and returns an empty array. Nothing said so. The room built,
+// the suites passed, and a child walked into a hall with nothing to hit.
+//
+// So: ask strictly first, and if the room gives back nothing, ask again with the
+// elbow room reduced rather than accept nothing. A pot slightly closer to a wall
+// than ideal is worth having; no pot at all is the bug.
+export function potSpotsOrFewer(world, halfW, halfD, spec, kinds) {
+  let out = potSpots(world, halfW, halfD, spec, kinds);
+  if (out.length) return out;
+  out = potSpots(world, halfW, halfD, spec, kinds, { clearance: 1.0, pad: 0.7 });
+  if (out.length) return out;
+  return potSpots(world, halfW, halfD, spec, kinds, { clearance: 0.75, pad: 0.55 });
 }
 
 // ---------------------------------------------------------------------------
