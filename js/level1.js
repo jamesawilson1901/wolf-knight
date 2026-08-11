@@ -24,7 +24,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, DOOR_HALF } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine } from './levelkit.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
@@ -873,6 +873,20 @@ export async function buildLd(scene) {
   world.markers.gutterSpots = [{ x: 9.5, z: 8 }, { x: 9.5, z: 5 }, { x: 9.5, z: 2 }];
   teachBraziers(world, [world.markers.teachBrazier], 'ld_teach');
   teachBraziers(world, world.markers.gutterSpots, 'ld_gutter');
+  // CINDER'S SHRINE — the place the whole region walks toward.
+  //
+  // Dad, on a screenshot of standing right at it: "remove the lantern in this
+  // image and replace it with an epic looking shrine or something epic that
+  // makes you want to walk up to it and touch it. make it glow bright as well."
+  //
+  // He was standing ON the spot where the Fire Wolf is granted and reading it as
+  // a lantern, because that is what it looked like: one small brazier among the
+  // several this room already has. The single most important object in Ember
+  // Hollow was dressed the same as its scenery. It gets the spirit shrine now —
+  // a heart of light, a turning halo, a column visible from the doorway and
+  // motes climbing out of it — the same treatment Petra's and Sylva's carry, in
+  // forge-orange.
+  spiritShrine(world, 0, -3, 0xff8a2b, 1.5);
   // THE KILN DISTRICT — the works, and the shrine at the heart of them. The
   // richest room in the level because it is the one the whole level walks
   // toward. Nothing sits in the gutter channel (x 6..13, z 2..10) or within

@@ -200,25 +200,35 @@ export function updateShards(world, dt, t, player) {
 // load, and each is scaled so its LARGEST dimension is `size` — height alone
 // would have quietly turned that plank stack into a four-metre pancake, which is
 // what the first version of this did.
+// CHARACTER SIZED. Dad, with a screenshot: "remove the breakables that look
+// like the small one in the image. replace all the breakables with character
+// sized chests, barrels, crates etc."
+//
+// Kael measures 1.9u tall (tools/probe-modelsize.mjs against the player), so
+// these run 1.2 to 1.7 — chest-height to shoulder-height on him. A smashable is
+// meant to be spotted from the far side of a room and run at; the thing in his
+// screenshot was a nine-centimetre plank stack, and even the honest crate that
+// replaced it stood barely past Kael's knee. `size` is the model's largest
+// dimension, so these are real furniture.
 const BREAK_KINDS = {
-  crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.10, shards: 2 },
+  crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.55, shards: 2 },
   // the same crate, low and wide: a supply box rather than a shipping one
-  box:    { url: './assets/env/dungeon/Crate.glb',        size: 0.85, shards: 2, squash: 1.25 },
-  barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.15, shards: 3 },
+  box:    { url: './assets/env/dungeon/Crate.glb',        size: 1.25, shards: 2, squash: 1.25 },
+  barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.70, shards: 3 },
   // the survival pack's barrel is slimmer and lighter — a different outline
-  cask:   { url: './assets/loot/survival/barrel.glb',     size: 0.95, shards: 2 },
-  vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.00, shards: 2 },
+  cask:   { url: './assets/loot/survival/barrel.glb',     size: 1.40, shards: 2 },
+  vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.50, shards: 2 },
   // a squat clay jar: the vase again, shorter, wider and browner. Same mesh, and
   // the asset-multiplication law says that is a feature.
-  jar:    { url: './assets/env/dungeon/Vase.glb',         size: 0.80, shards: 1,
+  jar:    { url: './assets/env/dungeon/Vase.glb',         size: 1.20, shards: 1,
     tint: 0xb07a4e, squash: 1.35 },
-  // AND CHESTS. Small, and they burst rather than open — the standing chests are
-  // a different thing with a different promise. This is the one a child hopes
+  // AND CHESTS. They burst rather than open — the standing chests are a
+  // different thing with a different promise. This is the one a child hopes
   // for: five coins, and a potion better than half the time.
-  chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.00, shards: 5,
+  chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.45, shards: 5,
     potion: 0.55 },
   // and the rare one, worth running across a room for
-  goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.05, shards: 12,
+  goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.45, shards: 12,
     potion: 0.75 },
 };
 const breakGltf = {};

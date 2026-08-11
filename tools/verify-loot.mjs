@@ -149,19 +149,23 @@ const kit = await page.evaluate(async () => {
 });
 check('every kind in the kit actually loads', kit.every((k) => k.built), kit.filter((k) => !k.built));
 check('there are at least seven of them', kit.length >= 7, { kinds: kit.map((k) => k.kind) });
-// 0.65 is roughly knee-high on Kael and 0.55 was ankle-high clutter; nothing
-// should tower over him either.
-check('none is too small to see', kit.every((k) => !k.built || k.h >= 0.65),
-  kit.filter((k) => k.built && k.h < 0.65));
-check('...and none is a monolith', kit.every((k) => !k.built || k.h <= 1.4),
-  kit.filter((k) => k.built && k.h > 1.4));
+// MEASURED AGAINST KAEL, WHO IS 1.9u TALL. Dad asked for "character sized"
+// smashables, so the floor is 1.0 — waist-high on him — and the ceiling is his
+// own height, because a crate taller than the boy hides the room behind it.
+check('every one is character sized', kit.every((k) => !k.built || k.h >= 1.0),
+  kit.filter((k) => k.built && k.h < 1.0));
+check('...and none is taller than Kael', kit.every((k) => !k.built || k.h <= 1.9),
+  kit.filter((k) => k.built && k.h > 1.9));
 // AN ABSOLUTE BOUND, NOT A RATIO. The first version of this check compared the
 // collider to the model's own width, so it happily passed a `crate` that had
 // come out SEVEN METRES ACROSS — the model under that name is a stack of planks
 // nine centimetres tall, and scaling it to a sensible height made a pancake. A
 // relative check cannot catch a thing that is uniformly wrong.
-check('nothing is wider than a doorway', kit.every((k) => !k.built || k.wide <= 1.6),
-  kit.filter((k) => k.built && k.wide > 1.6));
+// A doorway is 2.4u. Character-sized furniture is genuinely wide now, so the
+// bound is what actually matters — it still catches a model that is uniformly
+// wrong, which is the job it was added for.
+check('nothing is wider than a doorway', kit.every((k) => !k.built || k.wide <= 2.2),
+  kit.filter((k) => k.built && k.wide > 2.2));
 check('...and nothing is a smear on the floor',
   kit.every((k) => !k.built || k.h > k.wide * 0.4),
   kit.filter((k) => k.built && k.h <= k.wide * 0.4));

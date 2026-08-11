@@ -528,6 +528,15 @@ function sayThrottled(id, t, wait) {
 const GATE_HINTS = [
   { marker: 'firePromise',       form: 'fire_wolf',    line: 'burn_prompt' },
   { marker: 'crackPromise',      form: 'earth_wolf',   line: 'crack_prompt' },
+  // THE PILES A CHILD ACTUALLY MEETS. The rebuilt regions publish these three,
+  // and not one of them had a hint — so standing at the very rock the level
+  // wants you to break, the game said nothing at all. Only `crackPromise`, a
+  // marker from a retired Level 1 room, was ever covered.
+  { marker: 'teachCrack',        form: 'earth_wolf',   line: 'crack_prompt' },
+  { marker: 'practiceCracks',    form: 'earth_wolf',   line: 'crack_prompt' },
+  { marker: 'developCracks',     form: 'earth_wolf',   line: 'crack_prompt' },
+  { marker: 'pinSpot',           form: 'earth_wolf',   line: 'crack_prompt' },
+  { marker: 'rattlePlate',       form: 'earth_wolf',   line: 'rattle_hint' },
   { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
   { marker: 'thornPromise',      form: 'verdant_wolf', line: 'thornknot_hint' },
   { marker: 'rootWallPromise',   form: 'verdant_wolf', line: 'rootwall_hint' },
@@ -885,9 +894,27 @@ function narrationTriggers(dt, t) {
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
       narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant', ghost_wolf: 'ghost_grant' }[gift] || 'earthwolf_grant');
-      if (gift === 'storm_wolf') narration.say('storm_howto');
-      if (gift === 'tide_wolf') narration.say('tide_howto');
-      if (gift === 'ghost_wolf') narration.say('ghost_howto');
+      // AND HOW TO HOLD IT. Dad, an adult, on Stoneroot: "tell me how I'm meant
+      // to get through level two. I honestly don't know how or what to do."
+      //
+      // This was three `if`s naming three forms. Storm, tide and ghost were
+      // told how their wolf works; EARTH AND VERDANT WERE NOT — and the earth
+      // line is the only place in the entire game that says the thing you
+      // cannot play without: HOLD THE SCREEN TO CHANGE FORM. It existed, it was
+      // written, and it was wired to the retired Bone-Warden path, which on the
+      // rebuilt route you reach after the boss you needed it to get to.
+      //
+      // So Stoneroot handed a child the Earth Wolf, said "The Earth Wolf
+      // awakens!", and never mentioned that they could become it, that the
+      // round button was now a stomp, or that a stomp breaks cracked rock —
+      // which is the whole region. A table, so a form cannot be added without
+      // one, and every grant teaches its own verb.
+      const HOWTO = {
+        fire_wolf: 'firewolf_howto', earth_wolf: 'earthwolf_howto',
+        verdant_wolf: 'verdant_howto', frost_wolf: 'frost_howto',
+        storm_wolf: 'storm_howto', tide_wolf: 'tide_howto', ghost_wolf: 'ghost_howto',
+      };
+      if (HOWTO[gift]) narration.say(HOWTO[gift]);
       persist();
     }
   }

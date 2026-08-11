@@ -623,50 +623,89 @@ function thresholdTexture() {
 // It is drawn from primitives on purpose. This is LIGHT, not a creature, and
 // the no-code-built-creatures law is about creatures.
 export function spiritShrine(world, x, z, colour = 0xd8b06a, top = 1.35) {
-  const g = new THREE.Group();
+  const deck = world.deckY || 0;
 
+  // THE HEART. Big enough to read as a THING from across a room, not a spark.
   const heart = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.42, 1),
+    new THREE.IcosahedronGeometry(0.62, 1),
     new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colour,
-      emissiveIntensity: 3.2, roughness: 1 })
+      emissiveIntensity: 4.2, roughness: 1 })
   );
-  heart.position.set(x, top + 0.5, z);
+  heart.position.set(x, top + 0.7, z);
   world.add(heart);
   world.keepLoose(heart);
 
+  // A HALO around it, tilted, turning the other way — the thing that makes a
+  // glowing rock look built rather than dropped.
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.05, 0.055, 8, 40),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colour,
+      emissiveIntensity: 3.0, roughness: 1 })
+  );
+  halo.position.set(x, top + 0.7, z);
+  halo.rotation.x = 1.15;
+  world.add(halo);
+  world.keepLoose(halo);
+
   // the column: a tall cone of light, drawn from inside so it never occludes
   const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 1.25, 9, 16, 1, true),
-    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.17,
+    new THREE.CylinderGeometry(0.8, 2.0, 15, 20, 1, true),
+    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.26,
       depthWrite: false, side: THREE.DoubleSide })
   );
-  beam.position.set(x, top + 3.0, z);
+  beam.position.set(x, top + 6.0, z);
   world.add(beam);
   world.keepLoose(beam);
 
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(1.5, 2.3, 32),
-    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.34,
+    new THREE.RingGeometry(1.8, 3.1, 40),
+    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.46,
       depthWrite: false, side: THREE.DoubleSide })
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, (world.deckY || 0) + 0.05, z);
+  ring.position.set(x, deck + 0.05, z);
   world.add(ring);
   world.keepLoose(ring);
 
-  const lamp = new THREE.PointLight(colour, 22, 26, 1.6);
-  lamp.position.set(x, top + 1.0, z);
+  // MOTES rising out of it. One instanced mesh, so the whole flourish is a
+  // single draw call — a shrine should not cost a room its budget.
+  const N = 18;
+  const motes = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.075, 6, 5),
+    new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.9,
+      depthWrite: false }),
+    N
+  );
+  const dm = new THREE.Object3D();
+  world.add(motes);
+  world.keepLoose(motes);
+
+  const lamp = new THREE.PointLight(colour, 46, 34, 1.5);
+  lamp.position.set(x, top + 1.2, z);
   world.add(lamp);
 
   world.onAnimate((t) => {
-    heart.position.y = top + 0.5 + Math.sin(t * 1.5) * 0.16;
+    heart.position.y = top + 0.7 + Math.sin(t * 1.5) * 0.18;
     heart.rotation.y = t * 0.6;
-    const p = 0.9 + Math.sin(t * 2.2) * 0.1;
-    lamp.intensity = 22 * p;
-    beam.material.opacity = 0.17 * p;
-    ring.material.opacity = 0.34 * p;
+    halo.position.y = heart.position.y;
+    halo.rotation.y = -t * 0.85;
+    halo.rotation.z = Math.sin(t * 0.4) * 0.25;
+    const p = 0.86 + Math.sin(t * 2.2) * 0.14;
+    lamp.intensity = 46 * p;
+    beam.material.opacity = 0.26 * p;
+    ring.material.opacity = 0.46 * p;
+    for (let i = 0; i < N; i++) {
+      const a = i * 2.39 + t * 0.5;
+      const climb = (t * 0.55 + i / N) % 1;             // 0..1, each on its own phase
+      const rr = 1.5 * (1 - climb * 0.75);
+      dm.position.set(x + Math.cos(a) * rr, deck + 0.15 + climb * 4.4, z + Math.sin(a) * rr);
+      dm.scale.setScalar(1 - climb * 0.7);
+      dm.updateMatrix();
+      motes.setMatrixAt(i, dm.matrix);
+    }
+    motes.instanceMatrix.needsUpdate = true;
   });
-  return g;
+  return heart;
 }
 
 export function thresholdGlow(world) {
