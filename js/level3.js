@@ -23,6 +23,7 @@ import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, potSpotsOrFewer,
+  reserveLandings,
   spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
@@ -570,6 +571,8 @@ function base(scene, id) {
   const spec = L3[id];
   const world = new World(scene);
   world.bgColor = 0x0d1410;
+  world.roomId = id;
+  reserveLandings(world, id);
   return { world, spec, D: DISTRICTS[spec.district] };
 }
 

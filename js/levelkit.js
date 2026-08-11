@@ -149,6 +149,18 @@ export const wallTintMap = (D) => ({
 // SEVEN SHAPES, NOT THREE. Dad asked twice for "chests, jars, crates, barrels
 // etc". Three kinds across a hundred and eight rooms is why every room read the
 // same; the kit in js/loot.js has seven now and this is what spends them.
+// Landing spots, keyed by the room they are IN. Filled by sideDoor as rooms
+// build, and monotonic — it only ever learns more. Every room in the game is
+// reached through a neighbour, so by the time a child stands in one, the door
+// that put them there has been built and has declared its landing.
+export const LANDINGS = {};
+
+// Reserve this room's landings, so nothing is ever placed on the spot a door
+// drops a child. Called from every level's finish().
+export function reserveLandings(world, roomId) {
+  for (const p of LANDINGS[roomId] || []) world.reserve(p.x, p.z, 1.9, 'landing');
+}
+
 export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase', 'jar', 'box', 'cask'], relax = {}) {
   const CLEAR = relax.clearance !== undefined ? relax.clearance : 1.4;
   // THE PAD HAS TO COVER THE POT, NOT JUST ITS CENTRE.
@@ -366,6 +378,24 @@ export function makeBuilders({ kit, isGrey }) {
 
   // A door on a wall side, in the gap the shell already cut.
   function sideDoor(world, side, halfW, halfD, to, entry, opts = {}) {
+    // WHERE THIS DOOR PUTS YOU DOWN IS THE OTHER ROOM'S BUSINESS, AND IT HAD NO
+    // WAY TO KNOW.
+    //
+    // The landing sweep found a jar sitting exactly on the spot xm1 → xm2 drops
+    // a child. The keep-clear register never rejected it because a room's
+    // `blocked()` knows its own markers and its own doorways — and the landing
+    // was declared over in xm1, eight metres from any wall of xm2. The room it
+    // lands in has never been told. Widening the pot's pad could not fix that,
+    // and I widened it before checking, which cost a run.
+    //
+    // So every landing a door declares is remembered against the room it lands
+    // IN, and that room reserves them when it builds (see `finish`).
+    if (entry && to) {
+      const list = LANDINGS[to] || (LANDINGS[to] = []);
+      if (!list.some((p) => Math.hypot(p.x - entry.x, p.z - entry.z) < 0.2)) {
+        list.push({ x: entry.x, z: entry.z });
+      }
+    }
     const T = DOOR_ZONE;
     // the mouth of the door, and room to walk out of it
     const rc = opts.centre || 0;

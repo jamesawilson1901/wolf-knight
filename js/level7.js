@@ -14,7 +14,8 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
+  reserveLandings } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -143,6 +144,8 @@ const has = (form) => state.formsUnlocked.includes(form);
 function base(scene, id) {
   const spec = L7[id];
   const world = new World(scene);
+  world.roomId = id;
+  reserveLandings(world, id);
   world.bgColor = 0x171128;
   return { world, spec, D: DISTRICTS[spec.district] };
 }

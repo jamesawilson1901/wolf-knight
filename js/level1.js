@@ -24,7 +24,8 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate,
+  reserveLandings } from './levelkit.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
@@ -390,6 +391,8 @@ function base(scene, id) {
   const spec = L1[id];
   const world = new World(scene);
   world.bgColor = 0x17101f;
+  world.roomId = id;
+  reserveLandings(world, id);
   return { world, spec, D: DISTRICTS[spec.district] };
 }
 

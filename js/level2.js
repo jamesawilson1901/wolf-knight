@@ -21,7 +21,7 @@ import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
-  wallTintMap, spiritShrine, bossGate } from './levelkit.js';
+  wallTintMap, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -368,6 +368,8 @@ function base(scene, id) {
   const spec = L2[id];
   const world = new World(scene);
   world.bgColor = 0x0e1218;
+  world.roomId = id;
+  reserveLandings(world, id);
   const D = spec.district === 'vault' ? vaultDistrict() : DISTRICTS[spec.district];
   return { world, spec, D };
 }

@@ -19,7 +19,8 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
+  reserveLandings } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -211,6 +212,8 @@ function base(scene, id) {
   const spec = L6[id];
   const world = new World(scene);
   world.bgColor = 0x0e2530;
+  world.roomId = id;
+  reserveLandings(world, id);
   return { world, spec, D: DISTRICTS[spec.district] };
 }
 
