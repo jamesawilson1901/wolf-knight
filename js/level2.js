@@ -21,7 +21,7 @@ import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
-  wallTintMap, spiritShrine } from './levelkit.js';
+  wallTintMap, spiritShrine, bossGate } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -436,6 +436,20 @@ export async function buildVh(scene) {
   if (stage >= 3) {
     sideDoor(world, 'n', halfW, halfD, 'vz', { x: 0, z: 9.5, angle: Math.PI },
       { centre: 9, half: BOSS_DOOR_HALF });
+  }
+  // THE CRYPT GATE, AND IT IS THERE FROM THE FIRST VISIT.
+  //
+  // Dad: "make them a intimadatingly big door that opens up infront of the user
+  // when they unlock it." A gate that only appears once it is already open has
+  // no ceremony in it — the moment is the OPENING, and you cannot have that
+  // moment unless the child has walked past the shut thing wondering about it.
+  //
+  // So it stands in the north wall from the first time a child enters the
+  // vault, twice their height and closed, with nothing behind it. The hand
+  // comes down, the wall opens, and this swings back while they watch.
+  if (!GREY()) {
+    bossGate(world, 9, -halfD, 0, caveKit.archDoor, D.wallTint,
+      { open: stage >= 3, portal: 0x8f7bff, height: 3.4, halfGap: BOSS_DOOR_HALF });
   }
 
   // ▲ THE STONE TITAN, slumped against the north wall. The level's anchor.

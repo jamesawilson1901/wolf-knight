@@ -708,6 +708,123 @@ export function spiritShrine(world, x, z, colour = 0xd8b06a, top = 1.35) {
   return heart;
 }
 
+// THE BOSS GATE.
+//
+// Dad: "keep boss doors. make them a intimadatingly big door that opens up
+// infront of the user when they unlock it. make the inside of the doorway look
+// like smoke haze or a portal the player enters into the boss arena."
+//
+// The rebuilt regions had no boss door at all — the way into every arena was an
+// ordinary 2.4u gap in a wall with a narration marker beside it, identical to
+// the doorway into a store cupboard. The one room in a region a child should
+// hesitate outside of looked exactly like the fourteen they had already walked
+// through without thinking.
+//
+// So: two leaves nearly twice Kael's height, a heavy lintel across the top, a
+// pillar either side, and a portal standing in the gap. Shut, the leaves meet in
+// the middle and a collider says no. Open, they swing back over about a second —
+// IN FRONT OF THE CHILD if they are standing there when it unlocks, which is the
+// whole point of a ceremony — and the haze behind them is the thing you step
+// into.
+//
+// `facing` is the direction you walk THROUGH the gate, in radians about Y.
+export function bossGate(world, x, z, facing, gltf, tint, opts = {}) {
+  const H = opts.height || 3.4;          // Kael is 1.9; this looms
+  const halfGap = opts.halfGap || 1.3;   // BOSS_DOOR_HALF
+  const open0 = !!opts.open;
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = facing;
+  world.add(g);
+  world.keepLoose(g);
+
+  const stone = (w, h, d, px, py, pz) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({ color: tint, roughness: 0.9 }));
+    m.position.set(px, py, pz);
+    m.castShadow = false;
+    g.add(m);
+    return m;
+  };
+  // frame: a pillar each side and a lintel over the top
+  stone(0.7, H + 0.5, 0.9, -(halfGap + 0.35), (H + 0.5) / 2, 0);
+  stone(0.7, H + 0.5, 0.9, halfGap + 0.35, (H + 0.5) / 2, 0);
+  stone(halfGap * 2 + 1.9, 0.8, 1.1, 0, H + 0.75, 0);
+
+  // THE PORTAL. Two layers drifting opposite ways at different speeds, which is
+  // what stops a flat translucent quad reading as a pane of glass.
+  const haze = [];
+  for (let i = 0; i < 2; i++) {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(halfGap * 2, H),
+      new THREE.MeshBasicMaterial({ color: opts.portal || 0x9a6cff, transparent: true,
+        opacity: 0.30, depthWrite: false, side: THREE.DoubleSide })
+    );
+    m.position.set(0, H / 2, i ? 0.06 : -0.06);
+    g.add(m);
+    haze.push(m);
+  }
+
+  // the leaves, hinged at the pillars
+  const leaves = [];
+  for (const side of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(side * halfGap, 0, 0);
+    g.add(hinge);
+    let leaf;
+    if (gltf) {
+      leaf = tintedModel(gltf, 'bossleaf', tint, 0.8);
+      // measured, then scaled — the arch models are ~3.2u tall in their own
+      // units and none of them agree with each other
+      const bb = new THREE.Box3().setFromObject(leaf);
+      const s = H / Math.max(0.01, bb.max.y - bb.min.y);
+      leaf.scale.set(s * (halfGap / 1.3), s, s);
+      leaf.position.set(-side * halfGap * 0.5, 0, 0);
+    } else {
+      leaf = new THREE.Mesh(new THREE.BoxGeometry(halfGap, H, 0.34),
+        new THREE.MeshStandardMaterial({ color: tint, roughness: 0.85 }));
+      leaf.position.set(-side * halfGap * 0.5, H / 2, 0);
+    }
+    hinge.add(leaf);
+    leaves.push({ hinge, side });
+  }
+
+  // shut, the gate is a wall
+  const blocker = { minX: x - halfGap - 0.2, maxX: x + halfGap + 0.2,
+    minZ: z - 0.5, maxZ: z + 0.5 };
+  if (Math.abs(Math.sin(facing)) > 0.5) {          // gate runs along Z
+    blocker.minX = x - 0.5; blocker.maxX = x + 0.5;
+    blocker.minZ = z - halfGap - 0.2; blocker.maxZ = z + halfGap + 0.2;
+  }
+  let shut = !open0;
+  if (shut) world.boxColliders.push(blocker);
+
+  let swing = open0 ? 1 : 0;                        // 0 shut, 1 wide
+  world.onAnimate((t, dt) => {
+    if (!shut && swing < 1) swing = Math.min(1, swing + dt * 0.9);
+    const a = swing * 1.95;                         // ~112 degrees
+    for (const l of leaves) l.hinge.rotation.y = -l.side * a;
+    for (let i = 0; i < haze.length; i++) {
+      const m = haze[i];
+      m.material.opacity = (0.16 + 0.14 * Math.sin(t * (1.3 + i * 0.7) + i)) * swing;
+      m.position.y = H / 2 + Math.sin(t * (0.6 + i * 0.4)) * 0.08;
+    }
+  });
+
+  // Called the moment the region says the way is earned. The leaves move while
+  // the child watches, which is the difference between a door opening and a
+  // door having been open.
+  world.openBossDoor = () => {
+    if (!shut) return;
+    shut = false;
+    const i = world.boxColliders.indexOf(blocker);
+    if (i >= 0) world.boxColliders.splice(i, 1);
+    audio.play('checkpoint', { volume: 1, rate: 0.75 });
+  };
+  world.markers.bossGateSpot = { x, z };
+  return g;
+}
+
 export function thresholdGlow(world) {
   const list = world._thresholds;
   if (!list || !list.length) return null;

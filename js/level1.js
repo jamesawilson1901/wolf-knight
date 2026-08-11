@@ -24,7 +24,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate } from './levelkit.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
@@ -967,6 +967,12 @@ export async function buildLg4(scene) {
   world.markers.restSpot = { x: -2, z: 0 };
   world.markers.potionSpot = { x: 2, z: 0 };
   world.markers.bossDoorSpot = { x: 0, z: -3 };
+  // THE GATE INTO CINDER'S CAGE. Twice Kael's height, shut until the region
+  // says otherwise, with the arena showing through it as haze.
+  if (!GREY()) {
+    bossGate(world, 0, -halfD, 0, emberKit.archDoorB, D.wallTint,
+      { open: true, portal: 0xff8a3a, height: 3.4 });
+  }
   wayshrine(world, -4.6, -2.6, 0.6, D);
   coldHearth(world, 3.8, 2.2, D);
   fallenColumn(world, 4.8, -2.4, -0.9, D, 2.2);
