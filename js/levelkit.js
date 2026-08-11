@@ -151,7 +151,15 @@ export const wallTintMap = (D) => ({
 // same; the kit in js/loot.js has seven now and this is what spends them.
 export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 'vase', 'jar', 'box', 'cask'], relax = {}) {
   const CLEAR = relax.clearance !== undefined ? relax.clearance : 1.4;
-  const PAD = relax.pad !== undefined ? relax.pad : 0.85;
+  // THE PAD HAS TO COVER THE POT, NOT JUST ITS CENTRE.
+  //
+  // 0.85 was chosen when a smashable was a knee-high crate. They are character
+  // sized now — a collider around 0.85 across on its own — so a pot whose CENTRE
+  // cleared the keep-clear register still had a body that reached into it. The
+  // landing sweep caught it: xm1 → xm2 put a child down inside a barrel.
+  //
+  // The register is asked about the space the pot will actually occupy.
+  const PAD = relax.pad !== undefined ? relax.pad : 1.7;
   const label = (spec && spec.label) || '';
   let s0 = 7;
   for (let i = 0; i < label.length; i++) s0 = (s0 * 31 + label.charCodeAt(i)) % 233280;
@@ -250,9 +258,9 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
 export function potSpotsOrFewer(world, halfW, halfD, spec, kinds) {
   let out = potSpots(world, halfW, halfD, spec, kinds);
   if (out.length) return out;
-  out = potSpots(world, halfW, halfD, spec, kinds, { clearance: 1.0, pad: 0.7 });
+  out = potSpots(world, halfW, halfD, spec, kinds, { clearance: 1.0, pad: 1.3 });
   if (out.length) return out;
-  return potSpots(world, halfW, halfD, spec, kinds, { clearance: 0.75, pad: 0.55 });
+  return potSpots(world, halfW, halfD, spec, kinds, { clearance: 0.75, pad: 1.0 });
 }
 
 // ---------------------------------------------------------------------------
