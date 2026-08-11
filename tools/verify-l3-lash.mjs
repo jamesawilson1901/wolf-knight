@@ -105,29 +105,50 @@ check('the gap becomes walkable only after the log lands',
   !bridged.stillBlocked && bridged.safe > gapBefore.safe, bridged);
 
 console.log('\n── A3: the shrine grants the RIGHT wolf ────────────────');
-const grant = await page.evaluate(() => {
+// STAND ON THE SHRINE THE ROOM ACTUALLY HAS.
+//
+// This used to walk to a hardcoded (0,-3) and (0,-2). Petra's shrine moved to
+// the middle of va3 — onto the line between its two doors, because a child was
+// crossing that room without ever touching it and locking the whole region into
+// a loop — and this file went red for a grant that works perfectly. A test that
+// pins coordinates fails the day the level is improved, and says nothing true
+// about the game either way. It reads the marker now.
+//
+// AND IT WAITS ON THE GAME, NOT THE CLOCK. 600ms of wall time is about three
+// frames under SwiftShader, so this was already a coin toss before anything
+// moved.
+const standOnSpark = async (room) => {
+  await go(room);
+  return page.evaluate(async (r) => {
+    const g = window.__game;
+    const s = g.world.markers.sparkSpot;
+    if (!s) return { err: 'no sparkSpot in ' + r };
+    g.player.root.position.set(s.x, g.player.root.position.y, s.z);
+    // up to eight seconds of GAME time for the grant to fire
+    const t0 = g.state.clock !== undefined ? g.state.clock : 0;
+    for (let i = 0; i < 600; i++) {
+      g.player.iframes = 9999;
+      await new Promise((res) => requestAnimationFrame(res));
+      if (g.state.formsUnlocked.length > 2) break;
+      if (g.state.clock !== undefined && g.state.clock - t0 > 8) break;
+    }
+    return { at: { x: s.x, z: s.z }, forms: [...g.state.formsUnlocked],
+      vault: g.WS.stage('vault'), wild: g.WS.stage('wild3') };
+  }, room);
+};
+
+await page.evaluate(() => {
   const g = window.__game;
   g.state.formsUnlocked = ['knight','dark_wolf'];
   g.state.flags.world = {};
-  return { l2: g.world.markers.sparkSpot };
 });
-await go('va3');   // Level 2's shrine
-await page.evaluate(() => { const g=window.__game;
-  g.player.root.position.set(0, g.player.root.position.y, -3); });
-await page.waitForTimeout(600);
-const afterL2 = await page.evaluate(() => ({ forms: [...window.__game.state.formsUnlocked],
-  vault: window.__game.WS.stage('vault'), wild: window.__game.WS.stage('wild3') }));
+const afterL2 = await standOnSpark('va3');   // Level 2's shrine
 check("Level 2's shrine grants the EARTH wolf", afterL2.forms.includes('earth_wolf'), afterL2);
 check("...and advances the VAULT, not the woods", afterL2.vault === 1 && afterL2.wild === 0, afterL2);
 
 await page.evaluate(() => { const g=window.__game;
   g.state.formsUnlocked = ['knight','dark_wolf','fire_wolf','earth_wolf']; });
-await go('tsh');
-await page.evaluate(() => { const g=window.__game;
-  g.player.root.position.set(0, g.player.root.position.y, -2); });
-await page.waitForTimeout(600);
-const afterL3 = await page.evaluate(() => ({ forms: [...window.__game.state.formsUnlocked],
-  wild: window.__game.WS.stage('wild3') }));
+const afterL3 = await standOnSpark('tsh');
 check("Level 3's shrine grants the VERDANT wolf, not the Earth wolf",
   afterL3.forms.includes('verdant_wolf'), afterL3);
 
