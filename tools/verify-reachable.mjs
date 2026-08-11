@@ -115,9 +115,24 @@ const reachReport = async () => page.evaluate(([step, rad, limit, near]) => {
         if (seen.has(key(ci(x), ci(z)))) reachable++;
       }
     }
-    return { to: d.to, open, reachable, x: +cx.toFixed(1), z: +cz.toFixed(1) };
+    // AND WHERE YOU LAND ON THE OTHER SIDE.
+    //
+    // A door carries an `entry`: the exact spot the player is put down in the
+    // room it leads to. Nothing had ever checked one. Moving the Stone Titan
+    // 1.5u to make room for the vault's pool slid its collider over the point
+    // where Stoneroot's third shortcut drops you — so a child taking that
+    // shortcut arrived INSIDE the statue, and the walk to the crypt door failed
+    // with "no walkable floor reaches the doorway" because the walk began in
+    // solid rock. Every other suite was green: the door worked, the doorway was
+    // clear, the room was reachable, and the landing spot was inside a prop.
+    const e = d.entry;
+    return { to: d.to, open, reachable, x: +cx.toFixed(1), z: +cz.toFixed(1),
+      entry: e ? { x: e.x, z: e.z } : null };
   });
-  return { spawn: sp, cells: seen.size, doors };
+  return { spawn: sp, cells: seen.size, doors,
+    // measured in the room this fill belongs to, keyed by the door that leads
+    // here from elsewhere — the caller matches them up
+    landing: (w.doors || []).map((d) => d.to) };
 }, [STEP, R, LIMIT, NEAR]);
 
 // DOORS THAT ARE MEANT TO BE SHUT.
@@ -151,6 +166,53 @@ for (const room of ROOMS) {
   }
 }
 check(`all ${checked} doors across ${ROOMS.length} rooms are walkable-to`, errors.length === 0);
+
+// ── AND YOU LAND ON FLOOR AT THE OTHER END ────────────────────────────────
+//
+// The doorway being clear says nothing about where you are PUT DOWN in the room
+// beyond it. Those two are separate numbers written in separate files, and the
+// day the Stone Titan moved 1.5u to make room for the vault's pool, its collider
+// swallowed the spot Stoneroot's third shortcut lands on. The door was fine. The
+// doorway was fine. The room was reachable. A child taking that shortcut arrived
+// inside a statue, and the only symptom was the walk to the boss failing.
+console.log('\n── and every door puts you down on floor, not inside a prop ──');
+const entries = new Map();          // room -> [{from, to, x, z}]
+for (const room of ROOMS) {
+  if (!(await go(room))) continue;
+  for (const d of await page.evaluate(() => (window.__game.world.doors || [])
+    .map((q) => ({ to: q.to, entry: q.entry ? { x: q.entry.x, z: q.entry.z } : null })))) {
+    if (!d.entry) continue;
+    if (!entries.has(d.to)) entries.set(d.to, []);
+    entries.get(d.to).push({ from: room, ...d.entry });
+  }
+}
+let landings = 0;
+for (const [room, list] of entries) {
+  if (!ROOMS.includes(room)) continue;   // the den and the like build elsewhere
+  if (!(await go(room))) continue;
+  const bad = await page.evaluate((spots) => {
+    const w = window.__game.world;
+    const out = [];
+    for (const s of spots) {
+      const r = w.resolveCircle(s.x, s.z, 0.32);
+      const push = Math.hypot(r.x - s.x, r.z - s.z);
+      const hazard = w.hazardAt ? !!w.hazardAt(s.x, s.z) : false;
+      if (push > 1e-6 || hazard) {
+        out.push({ ...s, pushedBy: +push.toFixed(2), hazard,
+          to: [+r.x.toFixed(1), +r.z.toFixed(1)] });
+      }
+    }
+    return out;
+  }, list);
+  landings += list.length;
+  for (const bd of bad) {
+    check(`${bd.from} → ${room}: you land on floor`, false,
+      { landsAt: { x: bd.x, z: bd.z }, pushedTo: bd.to, by: bd.pushedBy,
+        why: bd.hazard ? 'the landing spot is a hazard' : 'the landing spot is inside a collider' });
+  }
+}
+check(`all ${landings} door landings are on open floor`,
+  !errors.some((e) => e.includes('you land on floor')));
 
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')

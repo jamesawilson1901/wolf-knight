@@ -1200,7 +1200,13 @@ export async function buildVc3(scene) {
   });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc2', { x: 0, z: -10.5, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -11.5, angle: Math.PI });
+  // LANDS IN FRONT OF THE TITAN, NOT INSIDE IT. This shortcut used to put the
+  // child down at (0,-11.5) — which is where the Stone Titan's collider moved to
+  // when it was slid back to make room for the vault's pool. Arriving inside a
+  // statue meant the flood fill for the walk to the crypt began in solid rock,
+  // and the only symptom anywhere was the boss becoming unwalkable-to. The spot
+  // is clear whether the pool is still flooded or drained.
+  sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -8.4, angle: Math.PI });
 
   world.markers.pinSpot = { x: 0, z: -3 };
   crackedPile(world, 'l2_vc3_pin', 0, -3, true);
