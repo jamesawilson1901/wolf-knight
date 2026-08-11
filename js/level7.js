@@ -545,7 +545,8 @@ export async function buildXa3(scene) {
     patches: [{ x: 0, z: -2, r: 5.0, kind: 'scorch' }],
   });
   world.spawn = { x: 11, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'xa2', { x: -8, z: 0, angle: -Math.PI / 2 });
+  // LANDS ON FLOOR — see verify-reachable's landing sweep.
+  sideDoor(world, 'e', halfW, halfD, 'xa2', { x: -7.1, z: 3.3, angle: -Math.PI / 2 });
   relic(world, -6, 0, 'ember', D);
   world.markers.houndSpots = [{ x: 2, z: 5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 713, 5, { spin: 1, kinds: ['brick', 'coins', 'vase'] });
@@ -598,7 +599,8 @@ export async function buildXr3(scene) {
     patches: [{ x: 0, z: -2, r: 5.0, kind: 'grass' }],
   });
   world.spawn = { x: 11, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'xr2', { x: -8, z: 0, angle: -Math.PI / 2 });
+  // LANDS ON FLOOR — see verify-reachable's landing sweep.
+  sideDoor(world, 'e', halfW, halfD, 'xr2', { x: -7.1, z: 3.3, angle: -Math.PI / 2 });
   relic(world, -6, 0, 'thorn', D);
   world.markers.houndSpots = [{ x: 2, z: -5, variant: 'courtwarden' }];
   scatter(world, halfW, halfD, D, 723, 5, { spin: 1, kinds: ['treeB', 'bush', 'flowerA'] });

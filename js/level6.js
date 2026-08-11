@@ -899,7 +899,8 @@ export async function buildDg4(scene) {
   });
   world.spawn = { x: 9, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'd4b', { x: -9, z: 0, angle: -Math.PI / 2 });
-  sideDoor(world, 'n', halfW, halfD, 'ddp', { x: 0, z: 10, angle: Math.PI });
+  // LANDS ON FLOOR — see verify-reachable's landing sweep.
+  sideDoor(world, 'n', halfW, halfD, 'ddp', { x: 1.7, z: 10.7, angle: Math.PI });
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.potionSpot = { x: -6, z: -3 };
   world.markers.chestDefs = [{ id: 'c_dg4', tier: 'silver', x: 7, z: 3.5, ry: 0.2, loot: { potion: 2 } }];
