@@ -716,15 +716,30 @@ export async function buildVap(scene) {
 // timer, nothing else in the room to do.
 export async function buildVa3(scene) {
   const { world, spec, D } = base(scene, 'va3');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+  const homeOpen = !!WS.get('vault', 'spark');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), ...(homeOpen ? [gap('w')] : [])], D, {
     patches: [{ x: 0, z: -3, r: 4.0, kind: 'gravel' }, { x: -7, z: 4, r: 2.8, kind: 'water' },
               { x: 7, z: 4, r: 2.8, kind: 'rubble' }],
     paths: [[[10, 0], [3, 1], [-3, 1], [-10, 0]], [[0, 1], [0, -2]]],
   });
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'va2', { x: -13.5, z: 0, angle: Math.PI / 2 });
-  // THE SHORTCUT HOME — a walked gallery, not a teleport (dad's law).
-  sideDoor(world, 'w', halfW, halfD, 'vh', { x: -13, z: -9, angle: Math.PI / 2 });
+  // THE SHORTCUT HOME IS EARNED, NOT GIVEN.
+  //
+  // Dad, from play: "Level two does not work. The rooms loop back to the start
+  // and there's nothing you can do." He was exactly right, and this is why.
+  //
+  // Each spoke ends with ONE thing that moves the region on, and each of these
+  // rooms also had a door straight back to the hub on the far wall. The worn
+  // path runs across the room; the thing sits a few units off it. So a child
+  // walks in, walks out the other side, arrives at a hub that has not changed,
+  // and goes round again — forever, with no way to know what was missed. Every
+  // suite passed the whole time, because every door worked perfectly.
+  //
+  // A shortcut is something you have earned the right to. Until the spoke's
+  // milestone lands, the only way out is the way you came in — not a dead end,
+  // and it leaves the room's one feature as the only thing left to try.
+  if (homeOpen) sideDoor(world, 'w', halfW, halfD, 'vh', { x: -13, z: -9, angle: Math.PI / 2 });
 
   world.markers.shrineSpot = { x: 0, z: -3 };
   world.markers.sparkSpot = { x: 0, z: -3, spirit: 'petra', grants: 'earth_wolf' };
@@ -888,7 +903,8 @@ export async function buildVbp(scene) {
 // change 2. One room, one idea, one consequence.
 export async function buildVb3(scene) {
   const { world, spec, D } = base(scene, 'vb3');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('e')], D, {
+  const homeOpen = !!WS.get('vault', 'drained');
+  const { halfW, halfD } = shell(world, spec, [gap('w'), ...(homeOpen ? [gap('e')] : [])], D, {
     patches: [{ x: 0, z: 2, r: 3.6, kind: 'sand' }, { x: 0, z: -6, r: 4.0, kind: 'water' },
               { x: -8, z: 5, r: 2.8, kind: 'rubble' }, { x: 8, z: 5, r: 2.8, kind: 'gravel' }],
     paths: [[[-10, 0], [-3, 1.5], [0, 2]], [[0, 2], [4, -2], [7, -5]]],
@@ -896,7 +912,7 @@ export async function buildVb3(scene) {
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'vb2', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE SHORTCUT HOME, opened by the dam breaking.
-  sideDoor(world, 'e', halfW, halfD, 'vh', { x: 13, z: -9, angle: -Math.PI / 2 });
+  if (homeOpen) sideDoor(world, 'e', halfW, halfD, 'vh', { x: 13, z: -9, angle: -Math.PI / 2 });
 
   // The resonant plate: stomp HERE and the whole chamber answers.
   world.markers.rattlePlate = { x: 0, z: 2 };
@@ -1113,7 +1129,8 @@ export async function buildVcp(scene) {
 // THE SHOULDER PIN — the last thing holding the titan's arm up.
 export async function buildVc3(scene) {
   const { world, spec, D } = base(scene, 'vc3');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  const homeOpen = !!WS.get('vault', 'handDown');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), ...(homeOpen ? [gap('n')] : [])], D, {
     patches: [{ x: 0, z: -3, r: 3.8, kind: 'water' }, { x: -6, z: 4, r: 3.0, kind: 'moss' },
               { x: 6, z: 3, r: 2.8, kind: 'mud' }],
     paths: [[[0, 8], [0, 1], [0, -8]]],
@@ -1121,7 +1138,7 @@ export async function buildVc3(scene) {
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc2', { x: 0, z: -10.5, angle: 0 });
   // THE SHORTCUT HOME.
-  sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -11.5, angle: Math.PI });
+  if (homeOpen) sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -11.5, angle: Math.PI });
 
   world.markers.pinSpot = { x: 0, z: -3 };
   crackedPile(world, 'l2_vc3_pin', 0, -3, true);

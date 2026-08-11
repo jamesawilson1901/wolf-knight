@@ -9,7 +9,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
 
-export const lootEvents = { onShards: null, onLoot: null }; // main.js wires HUD
+export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null }; // main.js wires HUD
 
 // ---------------------------------------------------------------------------
 // Shards
@@ -57,9 +57,60 @@ export function spawnShards(world, x, z, n) {
       y: 0.4,
       settled: false,
       life: 25,
+      // A COIN HAS TO BE SEEN BEFORE IT CAN BE TAKEN.
+      //
+      // Dad, from play: "There is no coin appearing when you smash things.
+      // Sometimes you'll smash it and you'll hear the coin sound and the counter
+      // will go up but nothing is visible."
+      //
+      // Shards spawn AT the pot, and the child is standing next to the pot they
+      // just hit — so the pickup test, which runs on the very first frame, found
+      // them inside its 0.45u radius and swallowed the lot instantly. The reward
+      // existed, was counted, was heard, and was never once drawn.
+      //
+      // Half a second of being uncollectable is exactly the arc: up at 3 u/s,
+      // gravity 12, apex at a quarter second, landing at a half. It flies out,
+      // it lands, THEN it is yours.
+      arm: 0.5,
       taken: false,
     });
   }
+}
+
+// A POTION, DROPPED. There is no potion model in the pack — the HUD draws an
+// emoji — so this is the dungeon VASE, shrunk and lit teal from inside. It is
+// the same trick the whole game runs on: one kit, many meanings. It rides the
+// shard physics so it arcs, lands and waits exactly as a coin does.
+let vaseGltf = null;
+export async function preloadPotionDrop() {
+  if (!vaseGltf) vaseGltf = await loadGLB('./assets/env/dungeon/Vase.glb');
+  return vaseGltf;
+}
+
+export function spawnPotionDrop(world, x, z) {
+  if (!vaseGltf) return false;
+  if (!world.shards) world.shards = [];
+  const m = prepareModel(vaseGltf.scene.clone(), { castShadow: false });
+  m.traverse((n) => {
+    if (!n.isMesh || !n.material) return;
+    const mats = Array.isArray(n.material) ? n.material : [n.material];
+    n.material = mats.map((mm) => {
+      const c = mm.clone();
+      if (c.color) c.color.setHex(0x2fe0c0);
+      if (c.emissive) { c.emissive.setHex(0x1fbfa4); c.emissiveIntensity = 0.9; }
+      return c;
+    });
+    if (!Array.isArray(n.material)) n.material = n.material[0];
+  });
+  m.scale.setScalar(1.5);
+  m.position.set(x, 0.4, z);
+  world.add(m);
+  world.shards.push({
+    mesh: m, kind: 'potion',
+    x, z, vx: 0, vz: 0, vy: 3.4, y: 0.4,
+    settled: false, life: 40, arm: 0.5, taken: false,
+  });
+  return true;
 }
 
 export function updateShards(world, dt, t, player) {
@@ -68,6 +119,7 @@ export function updateShards(world, dt, t, player) {
   for (const s of world.shards) {
     if (s.taken) continue;
     s.life -= dt;
+    if (s.arm > 0) s.arm -= dt;
     if (!s.settled) {
       s.x += s.vx * dt;
       s.z += s.vz * dt;
@@ -81,20 +133,24 @@ export function updateShards(world, dt, t, player) {
     const dz = player.root.position.z - s.z;
     const d2 = dx * dx + dz * dz;
     const pullR = magnet ? 8 : 2.2;
-    if (s.settled && d2 < pullR * pullR && d2 > 0.3 * 0.3) {
+    if (s.arm <= 0 && s.settled && d2 < pullR * pullR && d2 > 0.3 * 0.3) {
       const d = Math.sqrt(d2);
       const pull = (magnet ? 10 : 6) * dt;
       s.x += (dx / d) * pull;
       s.z += (dz / d) * pull;
     }
-    if (d2 < 0.45 * 0.45 || s.life <= 0) {
+    if ((s.arm <= 0 && d2 < 0.45 * 0.45) || s.life <= 0) {
       s.taken = true;
       world.root.remove(s.mesh);
       if (s.life > 0) {
-        state.shards++;
-        bumpCounter('shardsEarned');
-        audio.play('coin', { volume: 0.35, rate: 1.5, vary: 0.2 });
-        if (lootEvents.onShards) lootEvents.onShards();
+        if (s.kind === 'potion') {
+          if (lootEvents.onPotion) lootEvents.onPotion();
+        } else {
+          state.shards++;
+          bumpCounter('shardsEarned');
+          audio.play('coin', { volume: 0.35, rate: 1.5, vary: 0.2 });
+          if (lootEvents.onShards) lootEvents.onShards();
+        }
       }
       continue;
     }
@@ -167,6 +223,12 @@ export class Breakable {
     const i = this.world.circleColliders.indexOf(this._collider);
     if (i >= 0) this.world.circleColliders.splice(i, 1);
     spawnShards(this.world, this.x, this.z, this.shardCount);
+    // ...AND SOMETIMES A POTION. Dad: breakables should be "filled with not only
+    // coins but the occasional potion to heal". One in seven, and only when the
+    // child has room to carry it — a potion that vanishes because the belt is
+    // full teaches that breaking things is pointless. It arcs out like the
+    // coins do and waits to be walked over.
+    if (lootEvents.onPotionDrop && Math.random() < 0.14) lootEvents.onPotionDrop(this.x, this.z);
     // rare bonus: a power-up pops out (wired by powerups.js via hook)
     if (this.world.onBreakableSmashed) this.world.onBreakableSmashed(this.x, this.z);
   }

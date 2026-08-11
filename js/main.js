@@ -20,7 +20,7 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
-import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents } from './loot.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear } from './items.js';
@@ -1235,6 +1235,7 @@ async function setupRoomExtras() {
     persist(); // form unlock + healed caverns is a save point
   };
   await preloadLoot();
+  await preloadPotionDrop();
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
@@ -1661,6 +1662,13 @@ async function start() {
   });
   menus.onHudChanged = () => { renderShards(); renderPotions(player); };
   lootEvents.onShards = () => renderShards();
+  // A breakable can drop a potion — but only if the child has room for it, or
+  // the reward vanishes on pickup and teaches that smashing things is pointless.
+  lootEvents.onPotionDrop = (x, z) => {
+    if (player.potions >= 3) return;
+    spawnPotionDrop(world, x, z);
+  };
+  lootEvents.onPotion = () => { player.addPotion(); renderPotions(player); };
   progressEvents.onXp = () => renderLevel();
   progressEvents.onLevelUp = (level) => {
     audio.fanfare(); // C-E-G-C — a real moment, not a chime
