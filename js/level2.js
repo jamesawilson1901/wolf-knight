@@ -1169,7 +1169,9 @@ export async function buildVcp(scene) {
     paths: [[[-10, 0], [-3, 2], [3, -1], [6, -3]]],
   });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 13.5, z: 0, angle: -Math.PI / 2 });  // LOOPS BACK
+  // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
+  // why nothing had ever measured these.
+  sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 14.1, z: 1.5, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, 0, -4, 0, 3, D);
   visibleReward(world, 6, -3, 'l2_vcp_chest', { shards: 20, heartPiece: 1 }, 'gold');
   world.markers.slimeSpots = [{ x: 5, z: 4 }];

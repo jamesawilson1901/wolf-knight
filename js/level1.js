@@ -784,7 +784,10 @@ export async function buildLc1(scene) {
     paths: [[[-10, 0], [-3, 1.5], [3, 0], [6, -2]]],
   });
   world.spawn = { x: -7, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 'lc', { x: 13.5, z: 0, angle: -Math.PI / 2 });   // LOOPS BACK
+  // LANDED IN THE FIRE. This loop-back dropped the child at (13.5,0) in lc,
+  // which is a hazard tile — walk back through the door and take a hit for it,
+  // every time, with nothing to dodge. Nothing had ever checked a landing.
+  sideDoor(world, 'w', halfW, halfD, 'lc', { x: 12.2, z: 1.7, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, -2, -5, 6, -5, D);
   // THE DROWNED FORGE: the one place in the Hollow where the fire lost. Water
   // took the floor, the stacks went over, and the heart piece is at the back

@@ -623,7 +623,9 @@ export async function buildT1a(scene) {
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 't1b', { x: 0, z: 10, angle: Math.PI });
-  sideDoor(world, 'e', halfW, halfD, 'tgl', { x: -10, z: 9, angle: Math.PI / 2 });
+  // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
+  // why nothing had ever measured these.
+  sideDoor(world, 'e', halfW, halfD, 'tgl', { x: -9.6, z: 8.5, angle: Math.PI / 2 });
   if (logDown) sideDoor(world, 'w', halfW, halfD, 'tsA', { x: 10, z: 0, angle: -Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'leaningShrine', D);
@@ -885,7 +887,9 @@ export async function buildTc2(scene) {
               { x: -2, z: -1, r: 1.7, kind: 'mud' }],
   });
   world.spawn = { x: 0, z: 7, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'tsh', { x: 0, z: -5.5, angle: 0 });
+  // NOT IN THE BRAMBLE. This put the child down at (0,-5.5) — half a metre from
+  // the teaching bramble at (0,-5), which is a collider until it is cut.
+  sideDoor(world, 's', halfW, halfD, 'tsh', { x: -0.5, z: -6.6, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't3a', { x: 0, z: 10, angle: Math.PI });
 
   // Three tangles across the way out, each of which grows back if you dawdle.
@@ -920,7 +924,9 @@ export async function buildT3a(scene) {
               { x: 11, z: 9, r: 3.6, kind: 'grass' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'tc2', { x: 0, z: -7, angle: 0 });
+  // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
+  // why nothing had ever measured these.
+  sideDoor(world, 's', halfW, halfD, 'tc2', { x: -0.2, z: -8.6, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't3b', { x: 0, z: 10, angle: Math.PI });
   if (rootCut) sideDoor(world, 'w', halfW, halfD, 'tsB', { x: 10, z: 0, angle: -Math.PI / 2 });
 
@@ -1307,7 +1313,9 @@ export async function buildTgl(scene) {
   });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'tc4', { x: 0, z: -7, angle: 0 }, { half: BOSS_DOOR_HALF });
-  sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10, z: 9, angle: -Math.PI / 2 });
+  // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
+  // why nothing had ever measured these.
+  sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10.9, z: 9.4, angle: -Math.PI / 2 });
   if (beaten) sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 4.2, angle: Math.PI });
 
   heroProp(world, 0, -2, 'standingStones', D);
