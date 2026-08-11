@@ -162,6 +162,9 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
   // run, which is not a pass, it is a coin toss. Four gives it real headroom.
   const want = Math.max(2, Math.min(4, Math.round((halfW * halfD) / 34)));
   const out = [];
+  // WHY a candidate was thrown out, so a room that ends up with nothing can say
+  // what stopped it instead of just returning an empty array (probe-potspots).
+  const why = relax.stats || { edge: 0, blind: 0, blocked: 0, inside: 0, hazard: 0, huddle: 0, penned: 0, want };
   // MOST OF THEM WHERE THE CHILD IS LOOKING. The camera is a fixed offset, so
   // "the room" on arrival is a known box: 12.9u ahead of the spawn along its own
   // heading, 4.5 behind, 22.2 wide. Scattering uniformly put none at all in the
@@ -171,23 +174,43 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
   const a = sp.angle === undefined ? Math.PI : sp.angle;
   const fx = Math.sin(a), fz = Math.cos(a), rx = fz, rz = -fx;
   const inFrame = Math.ceil(want * 0.66);
+  // AND THE ARRIVAL FRAME MUST NOT EAT THE WHOLE BUDGET.
+  //
+  // probe-potspots asked this loop why seven rooms came out with nothing, and
+  // the answer was one number: `edge` threw out between 111 and 224 candidates
+  // while every other reason was in single figures.
+  //
+  // The frame sampler aims up to 12u ahead and 9u across, which is the right box
+  // for a 32x26 island and LARGER THAN THE WHOLE ROOM in a 20x16 pocket — so
+  // nearly every candidate landed outside the walls. And because nothing was
+  // ever placed, `out.length < inFrame` stayed true and the uniform fallback
+  // below never ran even once. The loop spent its entire budget sampling a box
+  // that does not fit, then returned empty.
+  //
+  // The frame is a PREFERENCE, not a requirement. It gets the first third of the
+  // attempts; after that the room is sampled whole.
+  const FRAME_TRIES = want * 20;
   for (let t = 0; t < want * 60 && out.length < want; t++) {
     let x, z;
-    if (out.length < inFrame) {
-      const ahead = -2 + r() * 12, across = (r() * 2 - 1) * 9;
+    if (out.length < inFrame && t < FRAME_TRIES) {
+      // ...and the box is clipped to the room, so a small room samples its own
+      // arrival frame rather than mostly empty space beyond its walls
+      const reach = Math.max(3, Math.min(12, halfD * 1.6));
+      const wide = Math.max(3, Math.min(9, halfW * 0.8));
+      const ahead = -2 + r() * reach, across = (r() * 2 - 1) * wide;
       x = sp.x + fx * ahead + rx * across;
       z = sp.z + fz * ahead + rz * across;
-      if (Math.abs(x) > halfW - 2.6 || Math.abs(z) > halfD - 2.6) continue;
+      if (Math.abs(x) > halfW - 2.6 || Math.abs(z) > halfD - 2.6) { why.edge++; continue; }
     } else {
       x = (r() * 2 - 1) * (halfW - 2.6);
       z = (r() * 2 - 1) * (halfD - 2.6);
     }
-    if (z > halfD - 3.0) continue;                       // the blind strip
-    if (world.blocked(x, z, PAD)) continue;              // doors, spawns, markers
+    if (z > halfD - 3.0) { why.blind++; continue; }      // the blind strip
+    if (world.blocked(x, z, PAD)) { why.blocked++; continue; }   // doors, spawns, markers
     const c = world.resolveCircle ? world.resolveCircle(x, z, 0.5) : { x, z };
-    if (Math.abs(c.x - x) > 1e-6 || Math.abs(c.z - z) > 1e-6) continue;   // inside a prop
-    if (world.hazardAt && world.hazardAt(x, z)) continue;
-    if (out.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 9)) continue;   // no huddles
+    if (Math.abs(c.x - x) > 1e-6 || Math.abs(c.z - z) > 1e-6) { why.inside++; continue; }  // inside a prop
+    if (world.hazardAt && world.hazardAt(x, z)) { why.hazard++; continue; }
+    if (out.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 9)) { why.huddle++; continue; }  // no huddles
     // AND IT MUST NOT PLUG A GAP. A breakable is a collider, so one dropped in
     // a corridor the width of a doorway seals it — which is how a pot came to
     // wall off the Ash Wing's way round its own gate, the same shape of bug as
@@ -198,7 +221,7 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
       const q = world.resolveCircle ? world.resolveCircle(x + ox, z + oz, 0.4) : null;
       if (q && (Math.abs(q.x - (x + ox)) > 1e-6 || Math.abs(q.z - (z + oz)) > 1e-6)) { penned = true; break; }
     }
-    if (penned) continue;
+    if (penned) { why.penned++; continue; }
     out.push({ x: +x.toFixed(2), z: +z.toFixed(2), kind: kinds[Math.floor(r() * kinds.length)] });
   }
   // AND ROUGHLY EVERY THIRD ROOM HIDES A CHEST. Not every room — a reward you
