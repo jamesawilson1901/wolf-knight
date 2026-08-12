@@ -9,6 +9,38 @@ import { isShared } from './assets.js';
 
 const _rollAxis = new THREE.Vector3();
 
+// The solid volume of a shut doorway: as wide as the opening, and 1.4 deep
+// across it so a body running flat at it is stopped rather than tunnelling
+// through on a slow frame.
+function doorwayBox(d) {
+  const w = Math.max(d.maxX - d.minX, 0.4), h = Math.max(d.maxZ - d.minZ, 0.4);
+  const acrossX = w >= h;                          // which way the opening runs
+  const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+  const halfW = (acrossX ? w : 1.4) / 2, halfD = (acrossX ? 1.4 : h) / 2;
+  return { minX: cx - halfW, maxX: cx + halfW, minZ: cz - halfD, maxZ: cz + halfD };
+}
+
+// Axis-of-least-penetration push-out, lifted out of resolveCircle so a doorway
+// and a wall are stopped by the same arithmetic rather than by two copies of it.
+function pushOutOfBox(x, z, r, b) {
+  const nx = Math.max(b.minX, Math.min(x, b.maxX));
+  const nz = Math.max(b.minZ, Math.min(z, b.maxZ));
+  const dx = x - nx, dz = z - nz;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= r * r) return { x, z };
+  if (d2 > 1e-9) {
+    const d = Math.sqrt(d2);
+    return { x: nx + (dx / d) * r, z: nz + (dz / d) * r };
+  }
+  const left = x - b.minX, right = b.maxX - x;
+  const top = z - b.minZ, bottom = b.maxZ - z;
+  const m = Math.min(left, right, top, bottom);
+  if (m === left) return { x: b.minX - r, z };
+  if (m === right) return { x: b.maxX + r, z };
+  if (m === top) return { x, z: b.minZ - r };
+  return { x, z: b.maxZ + r };
+}
+
 export class World {
   constructor(scene) {
     this.scene = scene;
@@ -637,15 +669,9 @@ export class World {
     for (const d of this.doors) {
       const w = Math.max(d.maxX - d.minX, 0.4), h = Math.max(d.maxZ - d.minZ, 0.4);
       const acrossX = w >= h;                        // which way the opening runs
-      // The box is as wide as the opening and 1.4 deep across it, so a child
-      // running at it is stopped well before the trigger zone rather than
-      // tunnelling through on a slow frame.
-      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
-      const halfW = (acrossX ? w : 1.4) / 2, halfD = (acrossX ? 1.4 : h) / 2;
-      this.boxColliders.push({
-        minX: cx - halfW, maxX: cx + halfW,
-        minZ: cz - halfD, maxZ: cz + halfD, seal: true,
-      });
+      // Same solid volume a permanently-shut doorway gets — one definition of
+      // "this opening is closed", used by both.
+      this.boxColliders.push({ ...doorwayBox(d), seal: true });
       const geo = new THREE.PlaneGeometry(acrossX ? w : h, 3.0);
       const mat = new THREE.MeshBasicMaterial({
         color: 0x8f7bff, transparent: true, opacity: 0.34,
@@ -758,6 +784,27 @@ export class World {
   // resolved position. Axis-of-least-penetration for boxes keeps sliding
   // along walls smooth; no impulses, no knockback — this is a kids' game.
   resolveCircle(x, z, r) {
+    // A DOOR THAT WILL NOT OPEN IS A WALL, NOT A GAP.
+    //
+    // tools/probe-openholes.mjs swept all 218 doorways asking the general form
+    // of dad's bug — "if the trigger will not fire here, is there something
+    // solid instead?" — and found two that predate the seal entirely: the Knot's
+    // way on to tc3, and tc4's way to the Grove. Both are `when()` doors that
+    // stay shut until their puzzle is solved, and a doorway has no wall in it,
+    // so a child who had not solved the Knot could stroll out of the opening and
+    // into the void exactly as dad described.
+    //
+    // Rather than wall those two by hand, the rule the probe checks becomes the
+    // rule the world keeps: while a door's condition is unmet, its opening is
+    // solid. It costs at most four box tests, the boxes are built once and
+    // cached on the door, and the day someone adds a nineteenth gated door it is
+    // already handled.
+    for (const d of this.doors) {
+      if (!d.when || d.when()) continue;
+      const b = d._shutBox || (d._shutBox = doorwayBox(d));
+      const p = pushOutOfBox(x, z, r, b);
+      x = p.x; z = p.z;
+    }
     for (const b of this.boxColliders) {
       // A seal box only exists while the room is shut. It is added once, when
       // the encounter arms, and stops being solid the frame the last enemy
