@@ -79,6 +79,11 @@ case "$1" in
     run verify-completion.mjs
     run verify-promises.mjs
     run verify-spawn-clear.mjs
+    # A LOCKED ROOM HAS TO BE MADE OF SOMETHING. Cheap (under a minute) and it
+    # guards the shape of bug that let dad walk out of a sealed room and into
+    # the void — a doorway whose trigger declines to fire while the opening
+    # stays passable.
+    run verify-seal.mjs
     run verify-den.mjs
     run verify-minigame.mjs
     run verify-shop.mjs
