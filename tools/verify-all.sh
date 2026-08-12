@@ -83,6 +83,14 @@ case "$1" in
     # cannot see this one: it asks whether anything solid is at the landing, and
     # a point two metres outside a wall has nothing solid at it either.
     run verify-landings.mjs
+    # A METHOD THAT DOES NOT EXIST IS A ROOM THAT CANNOT BE FINISHED. One second,
+    # no browser, and it is the only thing in the suite that would have caught
+    # juice.shake() — the typo that made Stoneroot's dam unreachable.
+    run verify-callable.mjs
+    # ...and the two regions whose end state nothing had ever PLAYED: the Court's
+    # relics (the last boss was unreachable) and the vault's hub milestones.
+    run verify-court.mjs
+    run verify-vault.mjs
     # A LOCKED ROOM HAS TO BE MADE OF SOMETHING. Cheap (under a minute) and it
     # guards the shape of bug that let dad walk out of a sealed room and into
     # the void — a doorway whose trigger declines to fire while the opening
