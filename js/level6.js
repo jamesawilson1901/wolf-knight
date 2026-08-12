@@ -723,7 +723,13 @@ export async function buildD3a(scene) {
     patches: [{ x: -12, z: -8, r: 4.6, kind: 'water' }, { x: 12, z: 8, r: 4.2, kind: 'rubble' }],
   });
   world.spawn = { x: 13, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'dg2', { x: -13, z: 0, angle: -Math.PI / 2 });
+  // -9, NOT -13. dg2 is a RIM (22 x 14), so its half-width is 11 — this landing
+  // was written with an ISLAND's 13 and put the child a metre and a half beyond
+  // dg2's own west wall, on the apron with the void past it. Walking back east
+  // re-crossed dg2's west trigger and dumped them straight back here, so dg2
+  // could not be entered from this side at all. dg2's door home sits at
+  // x[-12.35,-10.85]; -9 clears it by 1.85 and faces into the room.
+  sideDoor(world, 'e', halfW, halfD, 'dg2', { x: -9, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'd3b', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'd3p', { x: 0, z: 6, angle: Math.PI });
   if (wade) sideDoor(world, 's', halfW, halfD, 'dlg', { x: 0, z: -13, angle: 0 });
@@ -926,10 +932,20 @@ export async function buildDlg(scene) {
   // so the arrival frame showed a wall and the density check read ONE thing in
   // it. A spawn angle is not decoration: it is where the camera looks.
   world.spawn = { x: 14, z: 0, angle: -Math.PI / 2 };
+  // THREE OF THESE FOUR LANDED YOU BACK IN THE LAGOON.
+  //
+  // Each of the three was written in the LAGOON's coordinates, mirrored — the
+  // spot opposite dlg's own doorway — instead of "just inside the matching door
+  // in the room you are going to". Every one of them came down exactly on the
+  // destination's own door line, so the door fired again on the next frame:
+  // north sent the child to the Eel Pool instead of the Reedbeds, west and south
+  // bounced them straight back into the water. d4a was unreachable from here.
+  // Only the east exit was ever right, and it is the one that shows the shape:
+  // land beside the door you came through, facing in.
   sideDoor(world, 'e', halfW, halfD, 'd1a', { x: -14, z: 0, angle: -Math.PI / 2 });
-  sideDoor(world, 'n', halfW, halfD, 'd2a', { x: 0, z: -13, angle: 0 });
-  sideDoor(world, 'w', halfW, halfD, 'd3a', { x: 0, z: 13, angle: Math.PI });
-  sideDoor(world, 's', halfW, halfD, 'd4a', { x: 0, z: -13, angle: 0 });
+  sideDoor(world, 'n', halfW, halfD, 'd2a', { x: 13, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'd3a', { x: 0, z: 10, angle: Math.PI });
+  sideDoor(world, 's', halfW, halfD, 'd4a', { x: 0, z: -10, angle: 0 });
   // The whole floor is deep, except a ring of shallow at each doorway so a
   // child always arrives standing on something.
   waterZone(world, { x: 0, z: 0, w: 30, d: 26, deep: true, id: 'lagoon' });

@@ -413,7 +413,18 @@ export async function buildXh(scene) {
               { x: 14, z: -9, r: 4.6, kind: 'rubble' }],
   });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'xsh', { x: 0, z: -8, angle: 0 });
+  // NOT -8, AND NOT ON THE CENTRE LINE EITHER. xsh is a pocket, half-depth 8, so
+  // -8 is its north wall line — exactly where xsh's own door back to the Great
+  // Hall lives. The child was put down standing inside that trigger and bounced
+  // back on the next frame, and since xh has no travel stone the Court could be
+  // entered and not left.
+  //
+  // The obvious repair, (0, -6), is also wrong: xsh's watcher stands at (0, -5.5)
+  // with a 1.5u body, deliberately ACROSS THE WAY OUT — that is the whole lesson
+  // of the room. Between the wall and the watcher there is a gap of 0.15u on the
+  // centre line, which is no gap at all. So the landing steps aside instead:
+  // 2.4 to the east, 2.5u clear of the watcher, still inside the north wall.
+  sideDoor(world, 's', halfW, halfD, 'xsh', { x: 2.4, z: -6.2, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'xa1', { x: 11, z: 0, angle: Math.PI / 2 }, { centre: -8 });
   sideDoor(world, 'w', halfW, halfD, 'xr1', { x: 11, z: 0, angle: Math.PI / 2 }, { centre: 8 });
   sideDoor(world, 'e', halfW, halfD, 'xg1', { x: -11, z: 0, angle: -Math.PI / 2 }, { centre: -8 });
