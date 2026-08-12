@@ -55,9 +55,22 @@ const walk = (mx, mz, secs, from) => page.evaluate(async (a) => {
   if (a.from) g.player.root.position.set(a.from.x, 0, a.from.z);
   g.player._vel.x = 0; g.player._vel.z = 0;
   const start = { x: g.player.root.position.x, z: g.player.root.position.z };
-  const until = performance.now() + a.secs * 1000;
   window.__stick = { x: a.mx, z: a.mz };
-  while (performance.now() < until) await new Promise((r) => requestAnimationFrame(r));
+  // SIMULATED seconds, not wall-clock ones. js/main.js clamps its own step to
+  // Math.min(realDt, 0.05), so under SwiftShader — where one frame can take
+  // 200ms — 1.6 seconds on the clock is barely 0.4 seconds of game time, and
+  // how much of it Kael actually gets depends on how many frames the machine
+  // happened to render. That is why this check went red on one run and green
+  // on the next while the game itself never changed. Counting the same clamped
+  // step the game counts makes the distance a fact about the movement code
+  // instead of a fact about the CPU.
+  let simmed = 0, last = performance.now(), guard = 0;
+  while (simmed < a.secs && guard++ < 1200) {
+    await new Promise((r) => requestAnimationFrame(r));
+    const now = performance.now();
+    simmed += Math.min((now - last) / 1000, 0.05);
+    last = now;
+  }
   window.__stick = null;
   const end = { x: g.player.root.position.x, z: g.player.root.position.z };
   return { start, end, dx: +(end.x - start.x).toFixed(2), dz: +(end.z - start.z).toFixed(2) };
