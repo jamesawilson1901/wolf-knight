@@ -617,12 +617,35 @@ export class World {
   // is a picture rather than a mystery. A locked door a child cannot see is
   // indistinguishable from a broken game — which is the report that started
   // this whole night.
+  // AND THE HAZE HAS TO BE SOLID.
+  //
+  // Dad, on v3.47.1: "door ways don't take you to the next room in the level.
+  // they just let you wonder around in the black nothing."
+  //
+  // He was walking out of a SEALED room. A doorway is a hole in the wall with
+  // no collider in it — the door trigger is the only thing that catches a child
+  // standing there, and doorAt() returns null while a room is sealed. So the
+  // seal did not lock the room; it deleted the only thing guarding the gap and
+  // let a five-year-old stroll off the edge of the world.
+  //
+  // A lock you can walk through is not a lock, and a lock made of light is not
+  // a lock either. Each opening gets a real box for as long as the room is
+  // shut, and resolveCircle skips it the moment the fight is over.
   _buildSealBars() {
     if (this._sealBars) { for (const m of this._sealBars) m.visible = true; return; }
     this._sealBars = [];
     for (const d of this.doors) {
       const w = Math.max(d.maxX - d.minX, 0.4), h = Math.max(d.maxZ - d.minZ, 0.4);
       const acrossX = w >= h;                        // which way the opening runs
+      // The box is as wide as the opening and 1.4 deep across it, so a child
+      // running at it is stopped well before the trigger zone rather than
+      // tunnelling through on a slow frame.
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      const halfW = (acrossX ? w : 1.4) / 2, halfD = (acrossX ? 1.4 : h) / 2;
+      this.boxColliders.push({
+        minX: cx - halfW, maxX: cx + halfW,
+        minZ: cz - halfD, maxZ: cz + halfD, seal: true,
+      });
       const geo = new THREE.PlaneGeometry(acrossX ? w : h, 3.0);
       const mat = new THREE.MeshBasicMaterial({
         color: 0x8f7bff, transparent: true, opacity: 0.34,
@@ -736,6 +759,10 @@ export class World {
   // along walls smooth; no impulses, no knockback — this is a kids' game.
   resolveCircle(x, z, r) {
     for (const b of this.boxColliders) {
+      // A seal box only exists while the room is shut. It is added once, when
+      // the encounter arms, and stops being solid the frame the last enemy
+      // falls — so clearing the room opens the way with nothing to rebuild.
+      if (b.seal && !this.sealed) continue;
       const nx = Math.max(b.minX, Math.min(x, b.maxX));
       const nz = Math.max(b.minZ, Math.min(z, b.maxZ));
       const dx = x - nx;

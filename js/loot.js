@@ -215,8 +215,14 @@ const BREAK_KINDS = {
   // the same crate, low and wide: a supply box rather than a shipping one
   box:    { url: './assets/env/dungeon/Crate.glb',        size: 1.25, shards: 2, squash: 1.25 },
   barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.70, shards: 3 },
-  // the survival pack's barrel is slimmer and lighter — a different outline
-  cask:   { url: './assets/loot/survival/barrel.glb',     size: 1.40, shards: 2 },
+  // A CASK, NOT AN OIL DRUM. This pointed at the survival pack's barrel, which
+  // is a red steel drum with a ring lid — dad spotted it in the Den at a glance:
+  // "replace industrial barrels with wooden ones or something that fits the
+  // ascetic of the game." He is right, and no amount of tinting makes a pressed
+  // steel rim read as a cooper's cask. It is the dungeon barrel again, shorter
+  // and darker: same mesh, different silhouette, one more draw call saved.
+  cask:   { url: './assets/env/dungeon/Barrel.glb',       size: 1.30, shards: 2,
+    tint: 0x6b4a2f, squash: 1.30 },
   vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.50, shards: 2 },
   // a squat clay jar: the vase again, shorter, wider and browner. Same mesh, and
   // the asset-multiplication law says that is a feature.
