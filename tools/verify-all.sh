@@ -79,6 +79,10 @@ case "$1" in
     run verify-completion.mjs
     run verify-promises.mjs
     run verify-spawn-clear.mjs
+    # WHERE A DOOR PUTS YOU DOWN HAS TO BE A PLACE IN THE ROOM. verify-reachable
+    # cannot see this one: it asks whether anything solid is at the landing, and
+    # a point two metres outside a wall has nothing solid at it either.
+    run verify-landings.mjs
     # A LOCKED ROOM HAS TO BE MADE OF SOMETHING. Cheap (under a minute) and it
     # guards the shape of bug that let dad walk out of a sealed room and into
     # the void — a doorway whose trigger declines to fire while the opening

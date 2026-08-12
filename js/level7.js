@@ -413,7 +413,11 @@ export async function buildXh(scene) {
               { x: 14, z: -9, r: 4.6, kind: 'rubble' }],
   });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'xsh', { x: 0, z: -8, angle: 0 });
+  // -6, NOT -8. xsh is a pocket, half-depth 8, so -8 is its north wall line —
+  // exactly where xsh's own door back to the Great Hall lives. The child was put
+  // down standing inside that trigger and bounced back on the next frame, and
+  // since xh has no travel stone the Court could be entered and not left.
+  sideDoor(world, 's', halfW, halfD, 'xsh', { x: 0, z: -6, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'xa1', { x: 11, z: 0, angle: Math.PI / 2 }, { centre: -8 });
   sideDoor(world, 'w', halfW, halfD, 'xr1', { x: 11, z: 0, angle: Math.PI / 2 }, { centre: 8 });
   sideDoor(world, 'e', halfW, halfD, 'xg1', { x: -11, z: 0, angle: -Math.PI / 2 }, { centre: -8 });

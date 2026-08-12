@@ -458,21 +458,53 @@ export async function spawnChests(world, defs) {
     const opened = !!state.flags.chests[def.id];
     const gltf = def.tier === 'gold' ? gold : wood;
     const mesh = prepareModel(gltf.scene.clone());
+    // MEASURE THE MODEL. DO NOT TYPE A NUMBER AT IT.
+    //
+    // This was scale 0.85 for gold and 0.75 for everything else — one pair of
+    // constants for two models that are 4.6x apart. chest-wood.glb is 0.391u
+    // along its longest side, so 0.75 rendered it at TWENTY-NINE CENTIMETRES
+    // against Kael's 1.9u: nineteen of the game's forty-seven chests were
+    // ankle-high in rooms thirty metres across, and since the opening radius is
+    // 1.1u the fanfare fired for something no child ever saw. chest-gold.glb is
+    // 1.785u and came out fine, which is why it was never noticed.
+    //
+    // The same mistake has now been found four times in this codebase — the
+    // crate that was a stack of planks, the vase modelled a metre off its own
+    // origin, the horse statue floating in the boss arena. Nothing measured a
+    // model against itself. This does.
+    const bb = new THREE.Box3().setFromObject(mesh);
+    const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
+    const want = def.tier === 'gold' ? 1.35 : 1.10;   // a chest a child walks up to
+    const s = want / Math.max(0.01, dx, dy, dz);
     mesh.position.set(def.x, 0, def.z);
     mesh.rotation.y = def.ry || 0;
-    mesh.scale.setScalar(def.tier === 'gold' ? 0.85 : 0.75);
+    mesh.scale.setScalar(s);
     world.add(mesh);
-    world.addCircle(def.x, def.z, 0.45);
+    // ...and the collider comes from the measurement too. 0.45 was hard-coded,
+    // which is three times too wide for a 29cm chest — an invisible wall around
+    // nothing — and too narrow for a gold one, so a child clipped into its
+    // corners. Half the larger footprint, with a floor so it is always catchable.
+    world.addCircle(def.x, def.z, Math.max(0.42, Math.max(dx, dz) * s * 0.55));
     if (opened) {
       // already-looted chests sit open and dark
       mesh.traverse((n) => {
         if (n.isMesh) { n.material = n.material.clone(); n.material.color.multiplyScalar(0.55); }
       });
-    } else if (def.tier === 'gold') {
-      const glow = new THREE.PointLight(0xffd76a, 3, 5, 1.9);
+    } else {
+      // EVERY UNOPENED CHEST GLOWS, not just the gold ones. A reward you cannot
+      // see is not a reward, and this is the exact promise the cracked-wall
+      // gates make: the thing behind them was an unlit box a child had to walk
+      // into by accident. Wood and silver get a cooler, quieter light so gold
+      // still reads as the good one.
+      const gold = def.tier === 'gold';
+      const glow = new THREE.PointLight(gold ? 0xffd76a : 0xbfe6ff, gold ? 3 : 1.7,
+        gold ? 5 : 3.6, 1.9);
       glow.position.set(def.x, 0.8, def.z);
       world.add(glow);
-      world.onAnimate((t) => { glow.intensity = 2.4 + Math.sin(t * 2.6) * 0.8; });
+      // the pulse rides the chest's OWN brightness — a hard-coded 2.4 here would
+      // have made a wooden chest breathe up to gold's intensity every two seconds
+      const base = glow.intensity * 0.8, swing = glow.intensity * 0.27;
+      world.onAnimate((t) => { glow.intensity = base + Math.sin(t * 2.6) * swing; });
     }
     world.chests.push({ ...def, mesh, opened });
   }
