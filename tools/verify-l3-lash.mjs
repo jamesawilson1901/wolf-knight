@@ -124,12 +124,21 @@ const standOnSpark = async (room) => {
     const s = g.world.markers.sparkSpot;
     if (!s) return { err: 'no sparkSpot in ' + r };
     g.player.root.position.set(s.x, g.player.root.position.y, s.z);
-    // up to eight seconds of GAME time for the grant to fire
+    // up to eight seconds of GAME time for the grant to fire.
+    //
+    // WAIT FOR A FORM TO ARRIVE, not for the list to reach a magic length. The
+    // exit used to be `formsUnlocked.length > 2`, which is true the instant the
+    // Level 3 case starts — it is seeded with four forms so that Kael can even
+    // reach the Wild Woods. So this stood on the shrine for exactly one frame,
+    // read the list back unchanged and reported a broken grant. Counting from
+    // wherever the list happens to start asks the real question: did standing
+    // here give Kael something he did not have.
+    const n0 = g.state.formsUnlocked.length;
     const t0 = g.state.clock !== undefined ? g.state.clock : 0;
     for (let i = 0; i < 600; i++) {
       g.player.iframes = 9999;
       await new Promise((res) => requestAnimationFrame(res));
-      if (g.state.formsUnlocked.length > 2) break;
+      if (g.state.formsUnlocked.length > n0) break;
       if (g.state.clock !== undefined && g.state.clock - t0 > 8) break;
     }
     return { at: { x: s.x, z: s.z }, forms: [...g.state.formsUnlocked],
