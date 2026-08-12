@@ -129,6 +129,39 @@ for (const [from, r] of Object.entries(rooms)) {
 for (const o of onDoor) check(`${o.leg}: you do not land standing on ${o.onto}`, false, o);
 check('no door puts a child down inside another door', onDoor.length === 0);
 
-console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, clear of every other door.');
+console.log('\n── 3. ...and not inside a prop ───────────────────────');
+// verify-reachable already asks this, and it is the check that caught the first
+// repair of xh → xsh: (0, -6) is inside the room and clear of every door, and it
+// is also standing inside the watcher xsh deliberately parks across the way out.
+// Three questions, three different answers — but reachable takes twenty minutes
+// and this takes five, so asking all three here means a wrong landing is caught
+// in one pass instead of three.
+// Grouped by DESTINATION, one build per room rather than one per door — the
+// naive loop rebuilds a room for each of the 218 legs and turns a five-minute
+// suite into half an hour.
+const byDest = new Map();
+for (const [from, r] of Object.entries(rooms)) {
+  for (const e of r.exits) {
+    if (!rooms[e.to] || e.x === undefined || e.x === null) continue;
+    if (!byDest.has(e.to)) byDest.set(e.to, []);
+    byDest.get(e.to).push({ from, x: e.x, z: e.z });
+  }
+}
+const inProp = [];
+for (const [dest, list] of byDest) {
+  if (!(await go(dest))) continue;
+  const bad = await page.evaluate((spots) => {
+    const w = window.__game.world;
+    return spots.map((s) => {
+      const p = w.resolveCircle(s.x, s.z, 0.32);
+      return { ...s, push: +Math.hypot(p.x - s.x, p.z - s.z).toFixed(2) };
+    }).filter((s) => s.push > 0);
+  }, list);
+  for (const s of bad) inProp.push({ leg: `${s.from} → ${dest}`, lands: { x: s.x, z: s.z }, pushedBy: s.push });
+}
+for (const o of inProp) check(`${o.leg}: the landing is on open floor`, false, o);
+check('no door puts a child down inside a prop', inProp.length === 0);
+
+console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, on floor, clear of every other door.');
 await b.close();
 process.exit(errors.length ? 1 : 0);
