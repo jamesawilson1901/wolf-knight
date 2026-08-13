@@ -37,11 +37,17 @@ async function fightNear(maxMs = 60000) {
   return (await d.wk('foes')).length === 0;
 }
 
-// walk a leg: to the door mid for `to`, expecting to arrive in `to`
-async function leg(to, expectMusic) {
+// walk a leg: to the door mid for `to`, expecting to arrive in `to`.
+// `via` = waypoints first — the honest route a player's eyes pick (lava slabs).
+async function leg(to, via = []) {
   const doors = await d.wk('doors');
   const door = doors.find((x) => x.to === to);
   if (!door) { say(`!! no door to ${to} from ${(await d.wk()).room}`, JSON.stringify(doors)); return false; }
+  for (const [wx, wz] of via) {
+    const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.0 });
+    if (w.roomChanged) break;
+    if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.2 }); }
+  }
   let r = await d.walkTo(door.x, door.z, { timeout: 60 });
   if (!r.ok && r.why === 'stuck') {
     // fight whatever is in the way, then try again
@@ -72,12 +78,19 @@ async function leg(to, expectMusic) {
   return true;
 }
 
+// waypoints where the level demands routing a player does by eye:
+// lc's lava channel is crossed on the EAST slab (x 3..7), never up the middle.
+const VIA = {
+  'lc:lg3': [[5, -4.5], [5, 2.6], [2, 5]],
+  'lc:lg2': [[5, 2.6], [5, -4.5]],
+};
 const ROUTE = ['lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'];
 let okAll = true;
 for (const to of ROUTE) {
   // clear engagers first so the door walk is honest but survivable
   await fightNear(30000);
-  const ok = await leg(to);
+  const from = (await d.wk()).room;
+  const ok = await leg(to, VIA[`${from}:${to}`] || []);
   okAll = okAll && ok;
   if (!ok) break;
   const h = await d.wk('hearts');
