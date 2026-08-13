@@ -105,7 +105,7 @@ for (let hops = 0; hops < 20; hops++) {
   if (now.hearts < 2) { await d.tap('h'); await d.page.waitForTimeout(400); }
 }
 okAll = okAll && (await d.wk()).room === 'le';
-const end = await d.wk();const end = await d.wk();
+const end = await d.wk();
 say('END:', JSON.stringify(end));
 await d.shot('end-' + end.room);
 d.saveLog('route');
