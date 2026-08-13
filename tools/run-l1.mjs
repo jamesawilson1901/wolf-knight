@@ -74,7 +74,6 @@ async function leg(to, via = []) {
   say(`leg → ${to}:`, JSON.stringify(r), 'room now', now.room, 'music', now.music);
   if (now.room !== to) return false;
   await d.shot(`enter-${to}`);
-  if (expectMusic && now.music !== expectMusic) say(`!! MUSIC in ${to}: ${now.music} expected ${expectMusic}`);
   return true;
 }
 
