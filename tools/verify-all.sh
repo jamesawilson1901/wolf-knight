@@ -91,11 +91,9 @@ case "$1" in
     # relics (the last boss was unreachable) and the vault's hub milestones.
     run verify-court.mjs
     run verify-vault.mjs
-    # A LOCKED ROOM HAS TO BE MADE OF SOMETHING. Cheap (under a minute) and it
-    # guards the shape of bug that let dad walk out of a sealed room and into
-    # the void — a doorway whose trigger declines to fire while the opening
-    # stays passable.
-    run verify-seal.mjs
+    # NO DOOR EVER LOCKS, AND NO FIGHT IS FREE TO SPRINT THROUGH. The seal is
+    # gone by dad's order; the gauntlet holds both halves of what replaced it.
+    run verify-gauntlet.mjs
     run verify-den.mjs
     run verify-minigame.mjs
     run verify-shop.mjs

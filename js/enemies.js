@@ -576,13 +576,41 @@ class Enemy {
   // must not move: at close range this returns the tuned speed unchanged and
   // everything at arm's length behaves exactly as it did. It only ramps with
   // DISTANCE — a foe eight metres away closes at up to 5.6, which still lets a
-  // wolf outrun it in the open, and inside a sealed encounter room means it
-  // arrives. Fights feel the same; the walk between them stops being free.
+  // wolf outrun it in the open. Fights feel the same; the walk between them
+  // stops being free. Paired with interceptDir below, "outrun" now means
+  // actually turning, not just holding a direction.
   pursueSpeed(base, d) {
     const CAP = 5.6;                         // under the Dark Wolf's 6.7, on purpose
     if (d <= 3.5) return base;               // melee: untouched
     const t = Math.min(1, (d - 3.5) / 5.5);  // full ramp by 9u out
     return base + (Math.max(base, CAP) - base) * t;
+  }
+
+  // WHERE KAEL WILL BE, NOT WHERE HE IS.
+  //
+  // Dad, having played the room lock: "no, thats not what was asked for. I
+  // wanted not to be able to cross the room without being attacked at all. I
+  // wanted enemies to be able to close in quicker." The lock is gone; this is
+  // the thing that replaces it.
+  //
+  // An enemy that runs at Kael's current position trails a moving child the
+  // whole width of the room — by the time it arrives he has left, forever.
+  // This aims at his position PLUS his velocity carried forward, so a child
+  // sprinting a straight line finds the shadow arriving at the far end of that
+  // line. Standing still or turning collapses the lead to nothing, which is
+  // the Terranigma bargain: crossing is dangerous, DODGING still works.
+  //
+  // The lead never exceeds a second, and at melee range it vanishes — close
+  // combat is tuned and stays exactly as it was.
+  interceptDir(player, d) {
+    const px = player.root.position.x, pz = player.root.position.z;
+    const vx = (player._vel && player._vel.x) || 0;
+    const vz = (player._vel && player._vel.z) || 0;
+    const lead = Math.max(0, Math.min(1.0, (d - 2.0) / 6));
+    const tx = px + vx * lead - this.x, tz = pz + vz * lead - this.z;
+    const td = Math.hypot(tx, tz);
+    if (td < 0.01) return { x: 0, z: 0, d: 0 };
+    return { x: tx / td, z: tz / td, d: td };
   }
 
   holdOrbit(dt, dx, dz, d) {
@@ -717,19 +745,26 @@ export class Hound extends Enemy {
           this.holdOrbit(dt, dx, dz, d); // circles, red eyes on Kael, waiting
         } else {
           const speed = this.pursueSpeed(1.8, d); // stalks with intent, and CLOSES
-          const nx = this.x + (dx / d) * speed * dt;
-          const nz = this.z + (dz / d) * speed * dt;
-          const solved = this._moveSolved(nx, nz);
+          const iv = this.interceptDir(player, d); // ...along Kael's line, not behind it
+          const solved = this._moveSolved(this.x + iv.x * speed * dt, this.z + iv.z * speed * dt);
           this.root.position.x = solved.x;
           this.root.position.z = solved.z;
           this.root.rotation.y = Math.atan2(dx, dz);
         }
       }
-      if (d < 4.4 && this.stateT > 1.2 && this.engaged !== false) {
+      // A SPRINTING CHILD TRIGGERS THE POUNCE FROM FURTHER OUT. 4.4 was tuned
+      // for a child who has stopped to fight; one running past at full speed
+      // crossed the whole window before the crouch finished. The hound reads
+      // the run and winds up early — and the charge aims at the INTERCEPT
+      // point, so a straight line is punished and a turn still dodges it.
+      const spd = player._vel ? Math.hypot(player._vel.x, player._vel.z) : 0;
+      const pounceAt = spd > 3.4 ? 7.0 : 4.4;
+      if (d < pounceAt && this.stateT > 1.2 && this.engaged !== false) {
         this.state = 'crouch';
         this.stateT = 0;
-        const dd = Math.max(d, 0.01);
-        this.chargeDir = { x: dx / dd, z: dz / dd };
+        const iv = this.interceptDir(player, d);
+        this.chargeDir = iv.d > 0.01 ? { x: iv.x, z: iv.z }
+          : { x: dx / Math.max(d, 0.01), z: dz / Math.max(d, 0.01) };
         this.root.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
         audio.play('growl', { volume: 0.5, rate: 0.42, vary: 0.05 }); // low GROWL
       }
@@ -839,7 +874,8 @@ export class Slime extends Enemy {
         this.holdOrbit(dt, dx, dz, d); // no token: prowl the ring, wait
       } else {
         const speed = this.pursueSpeed(this.speed, d);
-        const solved = this._moveSolved(this.x + (dx / d) * speed * dt, this.z + (dz / d) * speed * dt);
+        const iv = this.interceptDir(player, d);   // cut the corner, don't trail
+        const solved = this._moveSolved(this.x + iv.x * speed * dt, this.z + iv.z * speed * dt);
         this.root.position.x = solved.x;
         this.root.position.z = solved.z;
         this.root.rotation.y = Math.atan2(dx, dz);
@@ -930,7 +966,13 @@ export class Shade extends Slime {
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // waiting shades skip AROUND, not in
       } else {
-        const sv = this._moveSolved(this.x + (dx / d) * this.speed * dt, this.z + (dz / d) * this.speed * dt);
+        // THE SKIP IS THE BURST. At range the 0.4s skip flies at 7.2 — over the
+        // Dark Wolf's 6.7 for that beat only, so a shade can genuinely catch a
+        // sprinter, but only in pulses with a rest between them: the rest IS
+        // the telegraph, and the melee-range skip stays the tuned 3.3.
+        const skip = d > 4 ? 7.2 : this.speed;
+        const iv = this.interceptDir(player, d);
+        const sv = this._moveSolved(this.x + iv.x * skip * dt, this.z + iv.z * skip * dt);
         this.root.position.x = sv.x;
         this.root.position.z = sv.z;
         this.root.rotation.y = Math.atan2(dx, dz);
@@ -939,6 +981,135 @@ export class Shade extends Slime {
       this._play('idle');
     }
     this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ember Spitter — the slime again, scorched, and it SHOOTS. Dad: "I wanted
+// enemies to be able to close in quicker or more enemies or ranged attacks."
+// This is the ranged one, and it is what actually punishes a straight-line
+// sprint: nothing on legs has to catch you if something can reach across the
+// room. Same GLB as the slime — the old recolour trick, exactly as the
+// weapons and the armour do it.
+//
+// Kid-fair by construction: it holds still to shoot, the wind-up is 0.6s of
+// visible swelling glow, the glob flies slow enough to see coming and is
+// aimed at where Kael IS — so a child who keeps moving sideways is never
+// hit, and a child who stands still or runs straight through the open eats
+// one. Gentle mode slows the glob and stretches the cooldown further.
+// ---------------------------------------------------------------------------
+
+export class Spitter extends Slime {
+  constructor(world, x, z, gltf) {
+    super(world, x, z, gltf);
+    this.puffTint = 0xff8a3a;
+    this.splits = false;                 // scorched through — nothing left to split
+    this.aggroRange = 13;
+    this.speed = 1.0;                    // it would rather not walk at all
+    this.model.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => {
+        const c = m.clone();
+        if (m.name === 'Eyes') {
+          c.color.setHex(0x000000);
+          c.emissive = new THREE.Color(0xffb03a);
+          c.emissiveIntensity = 2.2;
+        } else {
+          c.color.setHex(0x4a2418);
+          c.emissive = new THREE.Color(0x8a2d0c);
+          c.emissiveIntensity = 0.5;
+        }
+        return c;
+      });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+    this._flashMats = [];
+    this.registerFlashMats(this.root);
+    this._spitT = 1.2;                   // first shot comes late enough to be seen
+    this._windup = 0;
+    this._globs = [];
+  }
+
+  _spawnGlob(player) {
+    const px = player.root.position.x, pz = player.root.position.z;
+    const dx = px - this.x, dz = pz - this.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff7a2d, emissiveIntensity: 2.8, roughness: 1 })
+    );
+    mesh.position.set(this.x, 0.75, this.z);
+    this.world.add(mesh);
+    this.world.keepLoose(mesh);
+    const speed = state.settings.easy ? 4.0 : 5.2;
+    this._globs.push({ mesh, x: this.x, z: this.z,
+      vx: (dx / d) * speed, vz: (dz / d) * speed, life: 2.6 });
+    audio.play('growl', { volume: 0.4, rate: 1.6, vary: 0.1 });
+  }
+
+  _updateGlobs(dt, player) {
+    for (const g of this._globs) {
+      if (g.life <= 0) continue;
+      g.life -= dt;
+      g.x += g.vx * dt; g.z += g.vz * dt;
+      // a wall stops it — resolveCircle is the same truth the player runs on
+      const s = this.world.resolveCircle(g.x, g.z, 0.2);
+      const hitWall = Math.hypot(s.x - g.x, s.z - g.z) > 0.01;
+      const pdx = player.root.position.x - g.x, pdz = player.root.position.z - g.z;
+      const hitKael = pdx * pdx + pdz * pdz < 0.55 * 0.55;
+      if (hitKael) player.hurt(1, { attacker: this, groundAttack: true });
+      if (hitWall || hitKael || g.life <= 0) {
+        g.life = 0;
+        juice.burst(g.x, 0.6, g.z, 0xff7a2d, 5);
+        g.mesh.visible = false;
+      } else {
+        g.mesh.position.set(g.x, 0.75, g.z);
+      }
+    }
+    this._globs = this._globs.filter((g) => g.life > 0 || g.mesh.visible);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) { this._updateGlobs(dt, player); return; }
+    if (this.stunUpdate(dt)) { this._updateGlobs(dt, player); this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x;
+    const dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this.root.rotation.y = Math.atan2(dx, dz);
+
+    if (this._windup > 0) {
+      // THE TELL: it stops dead and swells with ember light. Interrupt it with
+      // anything, or simply step off the line it is drawing to you.
+      this._play('attack');
+      this._windup -= dt;
+      const f = 1 - Math.max(0, this._windup) / 0.6;
+      this.model.scale.setScalar(0.26 * (1 + f * 0.35));
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.5 + f * 2.2;
+      if (this._windup <= 0) {
+        this.model.scale.setScalar(0.26);
+        this._spawnGlob(player);
+        this._spitT = state.settings.easy ? 3.2 : 2.2;
+      }
+    } else if (d < this.aggroRange && d > 0.01) {
+      this._spitT -= dt;
+      if (d < 4) {
+        // too close for comfort: waddle back, keep the gun range open
+        this._play('walk');
+        const sv = this._moveSolved(this.x - (dx / d) * 1.6 * dt, this.z - (dz / d) * 1.6 * dt);
+        this.root.position.x = sv.x;
+        this.root.position.z = sv.z;
+      } else {
+        this._play('idle');
+      }
+      if (this._spitT <= 0 && d > 3) this._windup = 0.6;
+    } else {
+      this._play('idle');
+    }
+    this.contact(player);
+    this._updateGlobs(dt, player);
     this.flashUpdate(dt);
     this.mixer.update(dt);
   }
@@ -1267,7 +1438,8 @@ export class SkeletonMinion extends SkeletonBase {
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // bones queue up too
       } else {
-        this.chaseToward(dt, dx, dz, d, this.speed || 1.5); // brutes lumber (VARIANTS)
+        const iv = this.interceptDir(player, d);            // bones cut corners too
+        this.chaseToward(dt, iv.x, iv.z, 1, this.pursueSpeed(this.speed || 1.5, d));
       }
       this.lungeTimer -= dt;
       if (d < 1.6 && this.lungeTimer <= 0 && this.engaged !== false) {
@@ -1833,6 +2005,13 @@ export async function spawnEnemies(world) {
     const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
     for (const s of mk.slimeSpots) {
       world.enemies.push(applyVariant(new Slime(world, s.x, s.z, slimeGltf), s.variant));
+    }
+  }
+  // the ranged one — same GLB as the slime, scorched (see class Spitter)
+  if (mk.spitterSpots && mk.spitterSpots.length) {
+    const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
+    for (const s of mk.spitterSpots) {
+      world.enemies.push(applyVariant(new Spitter(world, s.x, s.z, slimeGltf), s.variant));
     }
   }
   if (mk.batSpots && mk.batSpots.length) {
