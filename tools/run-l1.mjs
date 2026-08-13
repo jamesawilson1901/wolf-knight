@@ -71,10 +71,8 @@ async function leg(to, via = []) {
     }
   }
   const now = await d.wk();
-  say(`leg → ${to}:`, JSON.stringify(r), 'room now', now.room, 'music', now.music);
-  if (now.room !== to) return false;
-  await d.shot(`enter-${to}`);
-  return true;
+  say(`leg → ${to}:`, JSON.stringify(r), 'room now', now.room);
+  return now.room !== r.room;   // ANY room change is progress — the loop routes
 }
 
 // waypoints where the level demands routing a player does by eye:
@@ -83,21 +81,31 @@ const VIA = {
   'lc:lg3': [[5, -4.5], [5, 2.6], [2, 5]],
   'lc:lg2': [[5, 2.6], [5, -4.5]],
 };
-const ROUTE = ['lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'];
+// STATE-DRIVEN, NOT SEQUENCE-DRIVEN. Walking through a short gate room can
+// carry the bot two rooms in one leg; a fixed list then loses its place. The
+// route is a map from wherever-we-are to the next room toward the boss.
+const NEXT = { la: 'lg1', lg1: 'lb', lb: 'lg2', lg2: 'lc', lc: 'lg3',
+  lg3: 'ld', ld: 'lg4', lg4: 'le' };
 let okAll = true;
-for (const to of ROUTE) {
-  // clear engagers first so the door walk is honest but survivable
+for (let hops = 0; hops < 20; hops++) {
+  const cur = (await d.wk()).room;
+  if (cur === 'le') break;
+  const to = NEXT[cur];
+  if (!to) { say(`!! off the route in ${cur}`); okAll = false; break; }
   await fightNear(30000);
-  const from = (await d.wk()).room;
-  const ok = await leg(to, VIA[`${from}:${to}`] || []);
-  okAll = okAll && ok;
-  if (!ok) break;
-  const h = await d.wk('hearts');
-  say('   hearts:', h);
-  if (h < 2) { await d.tap('h'); await d.page.waitForTimeout(400); } // potion via real key
+  const before = cur;
+  await leg(to, VIA[`${cur}:${to}`] || []);
+  const now = await d.wk();
+  // settled music read: the track loads async, an instant read races it
+  await d.page.waitForTimeout(1600);
+  const music = await d.wk('music');
+  say(`hop ${before} → ${now.room}  hearts ${now.hearts}  music(settled) ${music}`);
+  if (now.room === before) { say(`!! no progress from ${before} toward ${to}`); okAll = false; break; }
+  await d.shot(`enter-${now.room}`);
+  if (now.hearts < 2) { await d.tap('h'); await d.page.waitForTimeout(400); }
 }
-
-const end = await d.wk();
+okAll = okAll && (await d.wk()).room === 'le';
+const end = await d.wk();const end = await d.wk();
 say('END:', JSON.stringify(end));
 await d.shot('end-' + end.room);
 d.saveLog('route');

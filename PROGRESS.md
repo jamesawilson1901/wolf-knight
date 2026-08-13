@@ -24,7 +24,11 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 7. Shadow Court (x-rooms) — ghost from xsh shrine; relics; Shadow-Grimm
 
 ## Levels
-- L1 Ember Hollow: IN PROGRESS — next action (11:20 UTC): render proof shot, then full played run from new game.
+- L1 Ember Hollow: IN PROGRESS — route runs 1-5 walked la→lg1→lb→lg2→lc with real
+  fights (hearts lost in lb), one honest lava death + correct respawn in lc,
+  zero uncaught errors every run. Bot iterations: eye-on-boot, live-target
+  fighting, door dwell, slab waypoints, state-driven routing. No game defects
+  yet. Next action (13:00 UTC): full route to le, then Shadowgrip per boss ladder.
 - L2 Stoneroot: NOT STARTED
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
@@ -33,7 +37,11 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 - L7 Shadow Court: NOT STARTED
 
 ## Intermittents flagged
-(none yet)
+- lb music: read 'causeway' on run 3, 'region-ember' on run 5 immediately after
+  entry. main.js:1149 intends causeway; audio.playMusic is async and sets
+  _musicName when the track actually starts, so an instant read races it. Runner
+  now uses a settled (1.6s) read; if the settled read ever shows region-ember in
+  lb, THAT is a defect. Watch across remaining runs.
 
 ## Next action
 2026-08-13 11:20 UTC — commit harness; render-proof screenshot via driver; begin L1 played run (new game, no jump, real inputs).
