@@ -11,3 +11,4 @@ node_modules
 mermaid/node_modules/
 mermaid/assets-source/
 # mermaid/dist is committed: it is the deployable static build
+test-evidence/
