@@ -1517,7 +1517,7 @@ function initDevHarness() {
     get pos() { const p = player.root.position; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2) }; },
     get hearts() { return player.hearts; },
     get maxHearts() { return player.maxHearts; },
-    get room() { return state.room; },
+    get room() { return resolveRoom(state.room); },   // retired ids resolve — the eye reports the room actually built
     get form() { return state.form; },
     get forms() { return [...state.formsUnlocked]; },
     get music() { return audio._musicName; },

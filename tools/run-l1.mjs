@@ -15,7 +15,7 @@ say('spawned:', JSON.stringify(s0));
 await d.shot('spawn-' + s0.room);
 
 // kill whatever engages us, via real inputs: face it by walking, tap J
-async function fightNear(maxMs = 45000) {
+async function fightNear(maxMs = 60000) {
   const t0 = Date.now();
   while (Date.now() - t0 < maxMs) {
     const foes = await d.wk('foes');
@@ -24,10 +24,15 @@ async function fightNear(maxMs = 45000) {
     foes.sort((a, b2) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b2.x - me.x, b2.z - me.z));
     const f = foes[0];
     const dd = Math.hypot(f.x - me.x, f.z - me.z);
-    if (dd > 1.3) await d.walkTo(f.x, f.z, { timeout: 4, arrive: 1.1 });
-    await d.tap('j');
-    await d.page.waitForTimeout(260);
-    await d.tap('j');
+    if (dd > 1.35) {
+      // chase the CURRENT position for a short beat only — spitters retreat,
+      // so a long walk to a stale point just follows where they were
+      await d.walkTo(f.x, f.z, { timeout: 2.5, arrive: 1.1 });
+    } else {
+      // in reach: swing continuously, the way a thumb mashes
+      await d.tap('j');
+      await d.page.waitForTimeout(240);
+    }
   }
   return (await d.wk('foes')).length === 0;
 }

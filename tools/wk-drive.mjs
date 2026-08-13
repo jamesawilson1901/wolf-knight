@@ -67,7 +67,14 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
-          if (stuck > 14) return { ok: false, why: 'stuck', at: s.pos, room: s.room };
+          if (stuck === 7 || stuck === 18) {
+            // sidestep: walk perpendicular for a beat, the way a thumb does
+            const side = stuck === 7 ? 1 : -1;
+            const px = Math.abs(dx) > Math.abs(dz) ? (side > 0 ? 'w' : 's') : (side > 0 ? 'a' : 'd');
+            for (const k of held) { await page.keyboard.up(k); held.delete(k); }
+            await page.keyboard.down(px); await page.waitForTimeout(700); await page.keyboard.up(px);
+          }
+          if (stuck > 30) return { ok: false, why: 'stuck', at: s.pos, room: s.room };
           const r = await api.wk('room');
           if (r !== s.room) return { ok: true, roomChanged: r, at: s.pos };
           await page.waitForTimeout(140);
