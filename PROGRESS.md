@@ -1,3 +1,23 @@
+# END-OF-RUN SUMMARY (22:58 UTC — run overshot 9h wind-down; see Incomplete)
+
+PASSED: Level 1 (played route + full-speed Shadowgrip kill, composition flagged
+in the L1 entry). GAME DEFECTS FOUND: none in L1 — seven driver iterations.
+NOT PUSHED TO MAIN: the L1 PASS push never ran — main is still v3.48.0
+(223d2ab), all overnight work is on the dev branch only. Rollback point:
+`git reset --hard 5bb90c3` (tag pre-overnight-run).
+
+INCOMPLETE, morning order of work:
+1. l1-doors spot re-run crashed mid-suite (browser closed, environment — 15/27
+   legs green before the crash, zero game failures; earlier full runs green).
+   Re-run: `sh tools/verify-all.sh verify-l1-doors.mjs`.
+2. Full 44-suite validation post-harness never ran: `sh tools/verify-all.sh`.
+3. Decide the main push: branch head carries the dev harness (gated), L1
+   evidence trail, PROGRESS/MORNING-REVIEW. Merge = v3.48.1 + SW cache bump.
+4. Levels 2-7: NOT STARTED tonight. The harness makes L2 cheap: run-l1 pattern
+   + jump('vh', knight/dark/fire forms) + Warden fight script.
+5. MORNING-REVIEW.md has 5 design questions (Shadowgrip phase vocabulary,
+   DEV_HARNESS shipping policy, r1 alias, L3+ re-key, la spitter).
+
 # OVERNIGHT RUN — PROGRESS
 
 Start: 2026-08-13 11:02 UTC · Rollback point: commit `5bb90c3` (tag `pre-overnight-run`, local; remote tag push reports up-to-date but does not list — the HASH is the rollback truth: `git reset --hard 5bb90c3`).
