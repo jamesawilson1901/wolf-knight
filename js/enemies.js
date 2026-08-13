@@ -632,6 +632,40 @@ class Enemy {
     return Math.hypot(vx, vz) > 3.4 ? Math.max(quiet, 14) : quiet;
   }
 
+  // THE TRUE INTERCEPT, for anything that flies in a straight line.
+  //
+  // interceptDir's fixed lead is fine for legs that re-aim every frame; a
+  // projectile aims ONCE, and the gauntlet showed what an estimated lead does
+  // there: the glob landed half a metre behind a crossing runner, every shot,
+  // forever — an error that looks close and never, ever hits. This solves the
+  // actual quadratic — where must a shot at `speed` be aimed so that shot and
+  // runner arrive together — and clamps the answer to `cap` seconds so a
+  // distant target does not produce an absurd lead into a wall. If the child
+  // outruns the shot entirely (no positive root), it fires at where they are,
+  // which is the honest miss.
+  interceptPoint(player, speed, cap = 1.6) {
+    const px = player.root.position.x, pz = player.root.position.z;
+    const vx = (player._vel && player._vel.x) || 0;
+    const vz = (player._vel && player._vel.z) || 0;
+    const rx = px - this.x, rz = pz - this.z;
+    const a = vx * vx + vz * vz - speed * speed;
+    const b = 2 * (rx * vx + rz * vz);
+    const c = rx * rx + rz * rz;
+    let t = 0;
+    if (Math.abs(a) < 1e-6) {
+      if (Math.abs(b) > 1e-6) t = -c / b;
+    } else {
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0) {
+        const sq = Math.sqrt(disc);
+        const roots = [(-b - sq) / (2 * a), (-b + sq) / (2 * a)].filter((x) => x > 0);
+        if (roots.length) t = Math.min(...roots);
+      }
+    }
+    t = Math.max(0, Math.min(cap, t));
+    return { x: px + vx * t, z: pz + vz * t };
+  }
+
   holdOrbit(dt, dx, dz, d) {
     const H = CONFIG.ENGAGE;
     if (d < 0.01) return;
@@ -1066,17 +1100,17 @@ export class Spitter extends Slime {
   }
 
   _spawnGlob(player) {
-    // AIMED ALONG KAEL'S LINE, not at his heels. A glob aimed at where he
-    // stands can never touch a child who is already running — it lands where
-    // they were. The lead assumes they keep going the way they are going, so a
-    // straight sprint is met mid-stride and ANY change of direction after the
-    // glob leaves beats it clean. Standing still collapses the lead to zero:
-    // the shot comes straight at you, slow enough to step aside.
-    const d0 = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
-    const lead = Math.min(0.9, d0 / 5.2);
-    const px = player.root.position.x + ((player._vel && player._vel.x) || 0) * lead;
-    const pz = player.root.position.z + ((player._vel && player._vel.z) || 0) * lead;
-    const dx = px - this.x, dz = pz - this.z;
+    // AIMED ALONG KAEL'S LINE, not at his heels — and with the REAL solve, not
+    // an estimate. The first lead here was min(0.9, d/5.2), which against a
+    // crossing runner is always a fraction short: the gauntlet measured globs
+    // landing half a metre behind the runner on every shot in every room. A
+    // shot that is aimed once must solve for where shot and runner actually
+    // meet. Any change of direction after the glob leaves still beats it
+    // clean, and standing still collapses the lead to zero: a slow straight
+    // ball you step aside from.
+    const speed0 = state.settings.easy ? 4.0 : 5.2;
+    const aim = this.interceptPoint(player, speed0, 1.6);
+    const dx = aim.x - this.x, dz = aim.z - this.z;
     const d = Math.hypot(dx, dz) || 1;
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.22, 8, 6),
@@ -1085,9 +1119,8 @@ export class Spitter extends Slime {
     mesh.position.set(this.x, 0.75, this.z);
     this.world.add(mesh);
     this.world.keepLoose(mesh);
-    const speed = state.settings.easy ? 4.0 : 5.2;
     this._globs.push({ mesh, x: this.x, z: this.z,
-      vx: (dx / d) * speed, vz: (dz / d) * speed, life: 2.6 });
+      vx: (dx / d) * speed0, vz: (dz / d) * speed0, life: 2.6 });
     audio.play('growl', { volume: 0.4, rate: 1.6, vary: 0.1 });
   }
 
@@ -1210,7 +1243,12 @@ export class Bat extends Enemy {
       this.root.position.y = 1.4 + Math.sin(t * 2.6 + this._seed) * 0.15;
       this.root.rotation.y = Math.atan2(dx, dz);
       // only a token-holder may wind up a dive — the rest keep hovering
-      if (d < 4.6 && this.stateT > 1.0 && this.engaged !== false) { this.state = 'telegraph'; this.stateT = 0; }
+      // ...and a RUNNER triggers it from further out: a bat that waits for a
+      // sprinter to come within 4.6 watches them leave instead. The dive that
+      // follows is led (see below), so the wider window is a threat, not a gift.
+      const pv = player._vel ? Math.hypot(player._vel.x, player._vel.z) : 0;
+      const trig = pv > 3.4 ? 8.5 : 4.6;
+      if (d < trig && this.stateT > 1.0 && this.engaged !== false) { this.state = 'telegraph'; this.stateT = 0; }
     } else if (this.state === 'telegraph') {
       // fast flap + rising pitch flutter (~0.8s) before the swoop
       if (this.flyAction) this.flyAction.timeScale = 2.6;
@@ -1222,7 +1260,14 @@ export class Bat extends Enemy {
         this.state = 'dive';
         this.stateT = 0;
         const dd = Math.max(d, 0.01);
-        this.diveDir = { x: dx / dd, z: dz / dd };
+        // the dive is aimed at the INTERCEPT, not the afterimage — the
+        // gauntlet showed wisp rooms crossed clean because every dive hit
+        // where the runner had been. Aimed at launch, led at dive speed:
+        // a turn after the wings fold still dodges it.
+        const ip = this.interceptPoint(player, 7.2, 0.9);
+        const ix = ip.x - this.root.position.x, iz = ip.z - this.root.position.z;
+        const idd = Math.hypot(ix, iz) || dd;
+        this.diveDir = { x: ix / idd, z: iz / idd };
         audio.play('form-switch', { volume: 0.4, rate: 2.0 }); // screech-whoosh
       }
     } else if (this.state === 'dive') {

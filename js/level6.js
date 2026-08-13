@@ -604,7 +604,10 @@ export async function buildD2b(scene) {
   // waist deep across the middle: you CAN cross it, and it slows you while
   // things that live in it do not slow at all
   waterZone(world, { x: 0, z: 0, w: 20, d: 12, deep: false });
-  world.markers.spitterSpots = [{ x: 2.5, z: 3 }];
+  // beside the MIDPOINT OF THE DIAGONAL the room is actually crossed on —
+  // east door (16.6, 0) to south door (0, -13.6). The first placement sat by
+  // the room centre, 11u off that line, and never even ranged a runner.
+  world.markers.spitterSpots = [{ x: 6.8, z: -5.2 }];
   world.markers.slimeSpots = [{ x: -2, z: 2, variant: 'tide' }, { x: 4, z: -3, variant: 'deeptide' },
     { x: -7, z: -4, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 612, 6, { spin: 1, kinds: ['rockLB', 'rockSB', 'bush'] });
@@ -764,7 +767,7 @@ export async function buildD3b(scene) {
   visibleReward(world, -13, -7.2, 'd6_ghost', { shards: 28 });
   world.markers.ghostPromise = { x: -10, z: -7.2 };
   world.markers.minionSpots = [{ x: -4, z: -3, variant: 'drowned' }, { x: 6, z: -6, variant: 'drowned' }];
-  world.markers.spitterSpots = [{ x: 3, z: 2.4 }];
+  world.markers.spitterSpots = [{ x: 6.8, z: -5.2 }]; // on the east-south diagonal, like d2b
   world.markers.slimeSpots = [{ x: 8, z: 6, variant: 'deeptide' }];
   scatter(world, halfW, halfD, D, 622, 6, { spin: 1, kinds: ['brick', 'rockSA', 'rockLC'] });
   dressShore(world, halfW, halfD, D, 6221, { homes: 3 });
