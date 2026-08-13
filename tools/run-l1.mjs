@@ -48,6 +48,22 @@ async function leg(to, expectMusic) {
     await fightNear(30000);
     r = await d.walkTo(door.x, door.z, { timeout: 60 });
   }
+  // DWELL. Under SwiftShader the game runs ~5fps: the walker can arrive inside
+  // the trigger band and ask "did the room change" before the game has run a
+  // single frame with the player standing there. Give the loop up to four
+  // seconds — and if the door still has not fired, walk THROUGH the mid rather
+  // than to it, because a trigger is crossed by motion in real play.
+  if (!r.roomChanged) {
+    for (let i = 0; i < 20 && (await d.wk('room')) === (door && r.room || (await d.wk('room'))); i++) {
+      await d.page.waitForTimeout(200);
+      if ((await d.wk('room')) === to) break;
+    }
+    if ((await d.wk('room')) !== to) {
+      const over = { x: door.x * 1.12, z: door.z * 1.12 };
+      await d.walkTo(over.x, over.z, { timeout: 10, arrive: 0.4 });
+      await d.page.waitForTimeout(1200);
+    }
+  }
   const now = await d.wk();
   say(`leg → ${to}:`, JSON.stringify(r), 'room now', now.room, 'music', now.music);
   if (now.room !== to) return false;
@@ -60,7 +76,7 @@ const ROUTE = ['lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'];
 let okAll = true;
 for (const to of ROUTE) {
   // clear engagers first so the door walk is honest but survivable
-  await fightNear(40000);
+  await fightNear(30000);
   const ok = await leg(to);
   okAll = okAll && ok;
   if (!ok) break;
