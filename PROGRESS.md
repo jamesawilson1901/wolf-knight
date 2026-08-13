@@ -65,9 +65,11 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Defects found in the GAME: none. Seven bot iterations, all driver-side.
   * Intermittents: lb music race — RESOLVED (async load; settled read correct).
   * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
-- L2 Stoneroot: IN PROGRESS — run 1 launched (jump to vh with knight/dark/fire;
-  spoke A lantern slam, spoke B plate, spoke C pin, then the Bone Warden).
-  Next action: read /tmp/l2run.log verdict, iterate per L1 discipline.
+- L2 Stoneroot: IN PROGRESS — runs 1-4: spoke A fully played (crystal narrows
+  via waypoints, va2, va3) and PETRA'S LANTERN LIT BY THE FIRE SLAM, vault
+  stage 0→1 live — first boss-earned-forms milestone proven by play. Ring
+  orbit added for hub crossings. Run 4 froze in vgb (see Intermittents).
+  Run 5 in flight with freeze tripwire. Next: plate, pin, Bone Warden.
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
@@ -75,6 +77,11 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 - L7 Shadow Court: NOT STARTED
 
 ## Intermittents flagged
+- L2/vgb FROZEN BOT (run 4, 1 occurrence, unreproduced): zero movement at
+  (0.04,-1.08) across 3x60s tries incl. sidesteps; live probe walked the exact
+  spot freely (push 0, keys registered, vel 4.6). Not geometry/input/narration/
+  lock. Tripwire added to run-l2: zero-movement tries dump input+player guts.
+  MUST be re-examined if it fires again; cannot be dropped from any L2 PASS.
 - lb music: RESOLVED run 6 — settled read shows 'causeway' as intended
   (main.js:1149). The earlier region-ember reads raced the async track load.
   Not a defect.
