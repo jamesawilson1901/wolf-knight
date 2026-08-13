@@ -37,11 +37,9 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 - L7 Shadow Court: NOT STARTED
 
 ## Intermittents flagged
-- lb music: read 'causeway' on run 3, 'region-ember' on run 5 immediately after
-  entry. main.js:1149 intends causeway; audio.playMusic is async and sets
-  _musicName when the track actually starts, so an instant read races it. Runner
-  now uses a settled (1.6s) read; if the settled read ever shows region-ember in
-  lb, THAT is a defect. Watch across remaining runs.
+- lb music: RESOLVED run 6 — settled read shows 'causeway' as intended
+  (main.js:1149). The earlier region-ember reads raced the async track load.
+  Not a defect.
 
 ## Next action
 2026-08-13 11:20 UTC — commit harness; render-proof screenshot via driver; begin L1 played run (new game, no jump, real inputs).

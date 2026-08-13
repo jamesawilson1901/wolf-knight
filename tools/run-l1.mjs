@@ -43,7 +43,13 @@ async function leg(to, via = []) {
   const doors = await d.wk('doors');
   const door = doors.find((x) => x.to === to);
   if (!door) { say(`!! no door to ${to} from ${(await d.wk()).room}`, JSON.stringify(doors)); return false; }
+  const me0 = (await d.wk()).pos;
+  const dTo = (p) => Math.hypot(door.x - p.x, door.z - p.z);
   for (const [wx, wz] of via) {
+    // a waypoint that takes us FURTHER from the door than we already are is
+    // for a different entry — entering lc from the north must not walk back
+    // south through the lava to touch the southern slab waypoint
+    if (dTo({ x: wx, z: wz }) > dTo((await d.wk()).pos) + 2) continue;
     const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.0 });
     if (w.roomChanged) break;
     if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.2 }); }
@@ -59,12 +65,15 @@ async function leg(to, via = []) {
   // single frame with the player standing there. Give the loop up to four
   // seconds — and if the door still has not fired, walk THROUGH the mid rather
   // than to it, because a trigger is crossed by motion in real play.
-  if (!r.roomChanged) {
-    for (let i = 0; i < 20 && (await d.wk('room')) === (door && r.room || (await d.wk('room'))); i++) {
+  if (!r.roomChanged && (await d.wk('room')) === r.room) {
+    for (let i = 0; i < 20; i++) {
       await d.page.waitForTimeout(200);
-      if ((await d.wk('room')) === to) break;
+      if ((await d.wk('room')) !== r.room) break;
     }
-    if ((await d.wk('room')) !== to) {
+    // overshoot ONLY if we are still in the room we started in — running this
+    // after a transition walks blind in the NEW room's coordinates, which is
+    // how the bot marched itself into lc's lava
+    if ((await d.wk('room')) === r.room) {
       const over = { x: door.x * 1.12, z: door.z * 1.12 };
       await d.walkTo(over.x, over.z, { timeout: 10, arrive: 0.4 });
       await d.page.waitForTimeout(1200);
