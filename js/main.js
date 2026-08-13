@@ -1531,7 +1531,8 @@ function initDevHarness() {
       const b = world.boss || world.warden;
       if (!b) return null;
       return { name: b.name || b.skin || 'boss', hp: b.hp, maxHp: b.maxHp,
-        state: b.state || null, phase: b.phase !== undefined ? b.phase : null,
+        state: b.state || null, action: b.action || null,
+        phase: b.phase !== undefined ? b.phase : null,
         x: b.x !== undefined ? +b.x.toFixed(2) : null,
         z: b.z !== undefined ? +b.z.toFixed(2) : null };
     },
