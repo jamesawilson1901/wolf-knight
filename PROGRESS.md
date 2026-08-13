@@ -2,8 +2,10 @@
 
 PASSED: Level 1 (played route + full-speed Shadowgrip kill, composition flagged
 in the L1 entry). GAME DEFECTS FOUND: none in L1 — seven driver iterations.
-NOT PUSHED TO MAIN: the L1 PASS push never ran — main is still v3.48.0
-(223d2ab), all overnight work is on the dev branch only. Rollback point:
+PUSHED: L1 PASS shipped as v3.48.1 (main 688a258) after the l1-doors gate
+re-ran green (27/27 doors, 406s). The earlier gap: the gate suite's browser
+died mid-run with the static server, the waiter watched for a verdict that
+was never printed, and no one re-ran the six-minute check until morning. Rollback point:
 `git reset --hard 5bb90c3` (tag pre-overnight-run).
 
 INCOMPLETE, morning order of work:
@@ -63,7 +65,9 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Defects found in the GAME: none. Seven bot iterations, all driver-side.
   * Intermittents: lb music race — RESOLVED (async load; settled read correct).
   * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
-- L2 Stoneroot: NOT STARTED
+- L2 Stoneroot: IN PROGRESS — run 1 launched (jump to vh with knight/dark/fire;
+  spoke A lantern slam, spoke B plate, spoke C pin, then the Bone Warden).
+  Next action: read /tmp/l2run.log verdict, iterate per L1 discipline.
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
