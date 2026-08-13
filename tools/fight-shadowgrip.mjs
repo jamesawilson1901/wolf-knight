@@ -32,7 +32,8 @@ const face = async (b) => {
 };
 const hold = async (k) => { if (held !== k) { if (held) await d.page.keyboard.up(held); held = k; if (k) await d.page.keyboard.down(k); } };
 
-while ((Date.now() - t0) / 1000 < 45 * 60) {
+let shielded = false;
+while ((Date.now() - t0) / 1000 < 80 * 60) {
   const s = await d.wk();
   const b = s.boss;
   if (!b) {
@@ -59,6 +60,10 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
   }
   lastHearts = s.hearts;
 
+  if (shielded && b.action !== 'windup' && b.action !== 'swipe') {
+    await d.page.keyboard.up('i'); shielded = false;
+  }
+  if (s.hearts <= 1.5 && s.hearts > 0.5) { await d.tap('h'); }
   const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
   const dist = Math.hypot(dx, dz);
   if (b.action === 'crouch' || b.action === 'charge') {
@@ -67,8 +72,11 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     const perp = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
     await d.page.keyboard.down(perp); await d.page.waitForTimeout(600); await d.page.keyboard.up(perp);
   } else if (b.action === 'windup' || b.action === 'swipe') {
+    // HOLD THE SHIELD THROUGH THE WHOLE WINDOW. Timed 900ms bursts leaked
+    // swipes at 5fps polling latency — three deaths, all during swipe.
     await hold(null);
-    await d.holdShield(900);
+    if (!shielded) { await d.page.keyboard.down('i'); shielded = true; }
+    await d.page.waitForTimeout(250);
   } else if (b.action === 'tired') {
     await hold(null);
     if (dist > 1.4) await d.walkTo(b.x, b.z, { timeout: 3, arrive: 1.2 });
