@@ -162,6 +162,38 @@ for (const [dest, list] of byDest) {
 for (const o of inProp) check(`${o.leg}: the landing is on open floor`, false, o);
 check('no door puts a child down inside a prop', inProp.length === 0);
 
-console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, on floor, clear of every other door.');
+console.log('\n── 4. and you can stand in front of it without burning ─');
+// THE APPROACH, NOT JUST THE ARRIVAL. Ember Hollow's lava room laid its channel
+// across the full width of the room — and its east doorway sits inside that
+// band, with both crossing slabs twenty metres away. A child could only reach
+// that door by standing in lava, so the pocket behind it (a pup and a chest)
+// could not be entered at all.
+//
+// verify-reachable never saw it because it checks the landing in the room you
+// are GOING TO. This checks the doorway in the room you are LEAVING.
+const burning = [];
+for (const room of ROOMS) {
+  if (!rooms[room] || !rooms[room].triggers.length) continue;
+  if (!(await go(room))) continue;
+  const bad = await page.evaluate(() => {
+    const w = window.__game.world;
+    if (!w.hazardAt) return [];
+    const out = [];
+    for (const d of (w.doors || [])) {
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      // the doorway itself, and the metre and a half of floor in front of it
+      const inx = Math.sign(-cx) || 0, inz = Math.sign(-cz) || 0;
+      const pts = [[cx, cz], [cx + inx * 1.5, cz + inz * 1.5]];
+      const hot = pts.filter((p) => w.hazardAt(p[0], p[1]));
+      if (hot.length) out.push({ to: d.to, at: pts[0].map((n) => +n.toFixed(1)), hot: hot.length });
+    }
+    return out;
+  });
+  for (const x of bad) burning.push({ leg: `${room} → ${x.to}`, ...x });
+}
+for (const x of burning) check(`${x.leg}: you can stand in the doorway without burning`, false, x);
+check('no doorway in the game stands in a hazard', burning.length === 0);
+
+console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, on floor, clear of every other door, and can be reached without burning.');
 await b.close();
 process.exit(errors.length ? 1 : 0);

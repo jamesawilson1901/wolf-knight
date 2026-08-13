@@ -328,7 +328,10 @@ function relic(world, x, z, name, D) {
   world.addCircle(x, z, 0.7, 'relic');
   world.reserve(x, z, 2.8, 'relic');
   world.onAnimate((t) => { gem.position.y = 1.5 + Math.sin(t * 1.6) * 0.13; gem.rotation.y = t * 1.2; });
-  (world.markers.relicSpots || (world.markers.relicSpots = [])).push({ x, z, name });
+  // `gem` and `l` travel with the marker so the thing a child just picked up can
+  // stop glowing on its pedestal the moment they pick it up, rather than on the
+  // next visit to the room.
+  (world.markers.relicSpots || (world.markers.relicSpots = [])).push({ x, z, name, gem, light: l });
   return g;
 }
 
@@ -401,7 +404,14 @@ export async function buildXsh(scene) {
 export async function buildXh(scene) {
   const { world, spec, D } = base(scene, 'xh');
   const open = relicCount() >= 4;
-  const gaps = [gap('s'), gap('w', undefined, -8), gap('w', undefined, 8),
+  // TWO ROOMS NOBODY COULD GET INTO. The Undercroft and the Long Gallery each
+  // declare a south door home to this hall — and this hall declared no door to
+  // either of them, so the only way in was not to exist. One holds a pup; the
+  // other holds a gold chest with a heart piece and the moon armour in it. Every
+  // other region's pocket rooms have their inbound door; the Court's did not,
+  // and no suite noticed because a test reaches a room by naming it.
+  const gaps = [gap('s'), gap('s', undefined, -10), gap('s', undefined, 10),
+    gap('w', undefined, -8), gap('w', undefined, 8),
     gap('e', undefined, -8), gap('e', undefined, 8)];
   if (open) gaps.push(gap('n'));
   // `hub` is the POINT the worn paths bow through, not a flag — passing `true`
@@ -429,6 +439,9 @@ export async function buildXh(scene) {
   sideDoor(world, 'w', halfW, halfD, 'xr1', { x: 11, z: 0, angle: Math.PI / 2 }, { centre: 8 });
   sideDoor(world, 'e', halfW, halfD, 'xg1', { x: -11, z: 0, angle: -Math.PI / 2 }, { centre: -8 });
   sideDoor(world, 'e', halfW, halfD, 'xm1', { x: -11, z: 0, angle: -Math.PI / 2 }, { centre: 8 });
+  // ...and the way in to each pocket, landing where its own spawn already sits.
+  sideDoor(world, 's', halfW, halfD, 'xp1', { x: 0, z: 6, angle: Math.PI }, { centre: -10 });
+  sideDoor(world, 's', halfW, halfD, 'xp2', { x: 0, z: 6, angle: Math.PI }, { centre: 10 });
   if (open) sideDoor(world, 'n', halfW, halfD, 'xst', { x: 0, z: 5, angle: Math.PI });
 
   world.markers.heroSpot = { x: 0, z: 0 };

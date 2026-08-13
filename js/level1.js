@@ -746,13 +746,30 @@ export async function buildLc(scene) {
   heroProp(world, -9, -7, 'span', D.tint, D);            // ▲ THE BROKEN SPAN
   world.markers.heroSpot = { x: -9, z: -7 };
   // the lava channel: two walkable slab routes with a gap of hazard between
-  world.addLava(-16, 16, -3, 1);
+  //
+  // AND IT STOPS SHORT OF THE EAST DOORWAY. Dad, on v3.47.3: "unable to go
+  // through doors in this room." The channel used to run the full width of the
+  // room — x -16 to 16 — and the door to lc1 sits at x 16.6, z 0, which is
+  // INSIDE that band. Both crossing slabs are at x -5 and x 5, so there was no
+  // standing room in front of that doorway at all: a child could only reach it
+  // by standing in lava, and lc1 — a pup and a chest — was behind it.
+  //
+  // Nothing ever cools this. `lava_cooled` is a narration line and nothing more;
+  // no code removes a hazard when the boss falls. So the room was not saving
+  // that pocket for later, it was simply walling it off.
+  //
+  // The band now ends at 12.5, leaving a stone shore in front of the door. The
+  // SURFACE moves with it — a picture that shows lava where the collision says
+  // floor is worse than either, because a child believes the picture.
+  world.addLava(-16, 12.5, -3, 1);
   world.addSafe(-7, -3, -3, 1); world.addSafe(3, 7, -3, 1);
-  protoDecal(world, 0, -1, 32, 4, 0xff5a2b, 0.5);
+  protoDecal(world, -1.75, -1, 28.5, 4, 0xff5a2b, 0.5);
   protoDecal(world, -5, -1, 4, 4, 0x8a8a8a, 0.9);
   protoDecal(world, 5, -1, 4, 4, 0x8a8a8a, 0.9);
-  lavaSurface(world, 0, -1, 32, 4);
+  protoDecal(world, 14.25, -1, 3.5, 4, 0x8a8a8a, 0.9);   // the east shore
+  lavaSurface(world, -1.75, -1, 28.5, 4);
   slab(world, -5, -1, 4, 4, D); slab(world, 5, -1, 4, 4, D);
+  slab(world, 14.25, -1, 3.5, 4, D);                     // ...and its stone
   // CINDER BRIDGES — the industrial edge. Not homes: the works. Columns that
   // carried the span, the stacks that fed it, and what the heat left. Nothing
   // is placed in the lava band z -3..1 or on the two safe slabs.

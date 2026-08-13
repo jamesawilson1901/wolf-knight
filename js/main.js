@@ -918,6 +918,38 @@ function narrationTriggers(dt, t) {
       persist();
     }
   }
+  // THE FOUR RELICS OF THE SHADOW COURT — and the reason the game could not be
+  // finished.
+  //
+  // js/level7.js builds a relic on its pedestal at the end of each of the four
+  // wings, pushes it on to `world.markers.relicSpots`, and that is where it
+  // stopped: nothing in the game ever read that marker, and nothing anywhere
+  // ever wrote `relic_*` into the Court's world state. So `relicCount()` was
+  // permanently zero, `buildXh` never cut its north gap (level7.js:404), never
+  // built the door to the throne stair (:421) and walled the arch instead
+  // (:451) — which means `xst` was unreachable, and `xth` with Shadow-Grimm in
+  // it is a door target from `xst` alone. The last boss of the game could not
+  // be walked to by any route.
+  //
+  // Every suite passed because every suite that visits a room goes there by id.
+  // Walking is what nobody did.
+  if (m.relicSpots) {
+    for (const r of m.relicSpots) {
+      if (WS.get('court', 'relic_' + r.name)) continue;
+      if (!nearSpot(r, 1.9)) continue;
+      WS.set('court', 'relic_' + r.name, true);
+      if (r.gem) r.gem.visible = false;
+      if (r.light) r.light.intensity = 0;
+      effects.warmFlood();
+      effects.shake(0.4, 0.45);
+      audio.play('checkpoint', { volume: 0.9 });
+      const LEFT = 4 - ['ember', 'thorn', 'tide', 'moon']
+        .filter((n) => WS.get('court', 'relic_' + n)).length;
+      bigToast(LEFT ? `🔮 A relic! ${4 - LEFT} of 4.` : '🔮 The last relic! The throne stair opens…');
+      narration.say(LEFT ? 'court_relic' : 'court_relic_last');
+      persist();
+    }
+  }
   // THE RATTLE: the stomp is not a hammer, it is a SOUND. Standing on the
   // resonant plate and stomping rings the chamber — the bell-stone answers and
   // the dam gives way, which is hub change 2.
@@ -925,7 +957,13 @@ function narrationTriggers(dt, t) {
     narration.say('rattle_hint');
     if (player.stompedAt && performance.now() - player.stompedAt < 400) {
       player.stompedAt = 0;
-      juice.shake(0.5, 0.5);
+      // effects.shake, NOT juice.shake — juice has no shake and never has. This
+      // line threw every time a child stomped on the rattle plate, and it threw
+      // BEFORE the milestone below it, so Stoneroot's dam could not be brought
+      // down by playing the game: stage 2 of the hub was unreachable. It is the
+      // sort of typo that cannot survive being run once, which is exactly what
+      // it never was — every suite that needed `drained` set the flag directly.
+      effects.shake(0.5, 0.5);
       audio.play('slam', { volume: 1, rate: 0.7 });
       if (WS.complete('vault', 'drained')) bigToast('🔔 Something far away answers…');
       persist();
