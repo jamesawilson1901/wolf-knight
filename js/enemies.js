@@ -613,6 +613,25 @@ class Enemy {
     return { x: tx / td, z: tz / td, d: td };
   }
 
+  // A SPRINTING CHILD IS LOUD.
+  //
+  // The gauntlet's first run proved the interceptors were not enough on their
+  // own: 18 of 23 fight rooms could still be crossed for free, and the data
+  // said why — nothing ever WOKE. A slime notices at 6.5u; a runner is through
+  // that bubble in under two seconds and gone before pursuit starts. The
+  // intercept maths only matters to an enemy that is already moving.
+  //
+  // So running carries. Above a walk (3.4 u/s — between the knight's 4.6 and
+  // the careful stick-half-tilt a sneaking child actually uses), the whole
+  // room hears you. Move slowly and every quiet range is exactly what it was:
+  // sneaking past a sleeping skeleton is still a thing a patient child can do,
+  // which is the Zelda bargain — speed or safety, pick one.
+  senseRange(player, quiet) {
+    const vx = (player._vel && player._vel.x) || 0;
+    const vz = (player._vel && player._vel.z) || 0;
+    return Math.hypot(vx, vz) > 3.4 ? Math.max(quiet, 14) : quiet;
+  }
+
   holdOrbit(dt, dx, dz, d) {
     const H = CONFIG.ENGAGE;
     if (d < 0.01) return;
@@ -781,7 +800,20 @@ export class Hound extends Enemy {
         this._scrapeAcc = 0;
         juice.burst(this.x - this.chargeDir.x * 0.35, 0.18, this.z - this.chargeDir.z * 0.35, 0x6a5a48, 3);
       }
-      if (this.stateT >= 1.0) { this.state = 'charge'; this.stateT = 0; }
+      if (this.stateT >= 1.0) {
+        this.state = 'charge';
+        this.stateT = 0;
+        // AIM AT LAUNCH, NOT AT CROUCH. The charge direction was fixed the
+        // moment the crouch began — a full second stale by lift-off, which a
+        // walking child never noticed and a running child made a fool of: the
+        // gauntlet showed hound rooms crossed for free because every pounce
+        // landed where the runner had been a second ago. The wind-up is still
+        // the tell; the direction is honest to the moment it actually fires,
+        // and it leads the runner, so the dodge is a TURN, not just more speed.
+        const iv = this.interceptDir(player, d);
+        if (iv.d > 0.01) this.chargeDir = { x: iv.x, z: iv.z };
+        this.root.rotation.y = Math.atan2(this.chargeDir.x, this.chargeDir.z);
+      }
     } else if (this.state === 'charge') {
       this._play('charge', 0.08);
       this.model.scale.y = 0.35;
@@ -868,7 +900,7 @@ export class Slime extends Enemy {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
-    if (d < this.aggroRange && d > 0.01) {
+    if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
       this._play('walk');
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // no token: prowl the ring, wait
@@ -961,7 +993,7 @@ export class Shade extends Slime {
     if (d < 1.05) this._retreatT = 1.1; // struck home — dart back out
     this._lurchT -= dt;
     if (this._lurchT <= -0.8) this._lurchT = 0.4;
-    if (d < this.aggroRange && d > 0.01 && this._lurchT > 0) {
+    if (d < this.senseRange(player, this.aggroRange) && d > 0.01 && this._lurchT > 0) {
       this._play('walk');
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d); // waiting shades skip AROUND, not in
@@ -1034,7 +1066,16 @@ export class Spitter extends Slime {
   }
 
   _spawnGlob(player) {
-    const px = player.root.position.x, pz = player.root.position.z;
+    // AIMED ALONG KAEL'S LINE, not at his heels. A glob aimed at where he
+    // stands can never touch a child who is already running — it lands where
+    // they were. The lead assumes they keep going the way they are going, so a
+    // straight sprint is met mid-stride and ANY change of direction after the
+    // glob leaves beats it clean. Standing still collapses the lead to zero:
+    // the shot comes straight at you, slow enough to step aside.
+    const d0 = Math.hypot(player.root.position.x - this.x, player.root.position.z - this.z);
+    const lead = Math.min(0.9, d0 / 5.2);
+    const px = player.root.position.x + ((player._vel && player._vel.x) || 0) * lead;
+    const pz = player.root.position.z + ((player._vel && player._vel.z) || 0) * lead;
     const dx = px - this.x, dz = pz - this.z;
     const d = Math.hypot(dx, dz) || 1;
     const mesh = new THREE.Mesh(
@@ -1431,7 +1472,7 @@ export class SkeletonMinion extends SkeletonBase {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
-    if (this.awakenUpdate(dt, d, 3.4)) return;
+    if (this.awakenUpdate(dt, d, this.senseRange(player, 3.4))) return;
 
     if (this.state === 'chase') {
       this._play('walk');
@@ -1505,7 +1546,7 @@ export class SkeletonRogue extends SkeletonBase {
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
     const d = Math.hypot(dx, dz);
-    if (this.awakenUpdate(dt, d, 4.2)) return;
+    if (this.awakenUpdate(dt, d, this.senseRange(player, 4.2))) return;
 
     if (this.state === 'chase') {
       // orbit at ~2.6, closing slowly
@@ -1618,7 +1659,7 @@ export class SkeletonShield extends SkeletonBase {
     const dx = player.root.position.x - this.x;
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
-    if (this.awakenUpdate(dt, d, 3.6)) return;
+    if (this.awakenUpdate(dt, d, this.senseRange(player, 3.6))) return;
 
     if (this.state === 'chase') {
       // a slow, deliberate shield-wall shuffle — menace, not speed. It
@@ -1773,7 +1814,7 @@ export class BoneWarden extends SkeletonBase {
     const dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
     this._pp = { x: player.root.position.x, z: player.root.position.z };
-    if (this.awakenUpdate(dt, d, 5.2)) return;
+    if (this.awakenUpdate(dt, d, this.senseRange(player, 5.2))) return;
     this.stateT += dt;
 
     if (this.state === 'chase') {

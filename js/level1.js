@@ -472,6 +472,8 @@ export async function buildLa(scene) {
     { x: 9.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.shadeSpots = [{ x: -6, z: 2 }, { x: 6, z: -1 }];
+  // the ranged lesson, from the very first room: open ground is never free
+  world.markers.spitterSpots = [{ x: 3.4, z: -0.5 }];
   world.markers.crackPromise = { x: -11, z: -4 };
   ruinedHome(world, -11.5, 7, 0.28, D, { w: 6, d: 5 });
   ruinedHome(world, -9.5, -10, -0.5, D, { w: 6.5, d: 4.5, keep: 0.5 });
@@ -619,6 +621,7 @@ export async function buildLb(scene) {
     { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'jar' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }, { x: 4, z: 2 }];
+  world.markers.spitterSpots = [{ x: -3, z: -3.4 }, { x: 5, z: 3.6 }];
   world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
   ruinedHome(world, -11, 6.5, -0.35, D, { w: 6.5, d: 5, keep: 0.68 });
   ruinedHome(world, -12.5, -7.5, 0.6, D, { w: 6, d: 4.5, keep: 0.5 });
