@@ -727,6 +727,7 @@ export async function buildVa2(scene) {
   heroProp(world, -9, -8, 'geode', D);          // ▲ THE GEODE
   world.markers.heroSpot = { x: -9, z: -8 };
   world.markers.batSpots = [{ x: 4, z: -6 }, { x: -3, z: 3 }];
+  world.markers.spitterSpots = [{ x: 2.6, z: 1.5 }];
 
   // Optional practice, NOT the teach step (that is vb1, which cannot be
   // skipped). A child who walks back out through here instead of taking the
@@ -884,6 +885,7 @@ export async function buildVb1(scene) {
   world.markers.minionSpots = state.formsUnlocked.includes('earth_wolf')
     ? [{ x: 2, z: -3 }, { x: 8, z: 6 }, { x: -7, z: 5 }]
     : [{ x: 2, z: -3 }, { x: 8, z: 6 }];
+  world.markers.spitterSpots = [{ x: -3, z: 1.8 }];
   // THE BONE QUARRY. Cut stone, and what the cutting left. The terraces are
   // the room's shape and the dressing sits off them, so the two levels stay
   // legible from the fixed camera.
@@ -919,6 +921,7 @@ export async function buildVb2(scene) {
   heroProp(world, 4, -8, 'ribcage', D);          // ▲ THE RIBCAGE
   world.markers.heroSpot = { x: 4, z: -8 };
   world.markers.shieldSpots = [{ x: -2, z: 2 }];
+  world.markers.spitterSpots = [{ x: 4, z: -2.5 }];
   world.markers.minionSpots = [{ x: 9, z: 4 }, { x: -7, z: -4 }];
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
@@ -994,6 +997,7 @@ export async function buildVb3(scene) {
   world.markers.rattlePlate = { x: 0, z: 0 };
   // What answers: stalactites drop on whatever stands beneath them...
   world.markers.stalactiteSpots = [{ x: -5, z: -2 }, { x: 0, z: -4 }, { x: 5, z: -2 }];
+  world.markers.spitterSpots = [{ x: 2.8, z: 2.6 }];
   // ...and a bell-stone you cannot see from the plate rings, opening the dam.
   world.markers.bellStone = { x: 7, z: -5 };
   world.markers.damSpot = { x: 0, z: -6 };
@@ -1098,6 +1102,7 @@ export async function buildVc1(scene) {
   // better fight — two raised shields at once is a wall for a five-year-old,
   // where a shield plus a minion teaches "deal with the one you can hurt".
   world.markers.shieldSpots = [{ x: 5, z: 6 }];
+  world.markers.spitterSpots = [{ x: -2.6, z: 2.2 }];
   world.markers.minionSpots = [{ x: -6, z: -1 }];
   // and no third body. Dropping one shield-bearer took this room 106 -> 102,
   // still over; a character costs far more than the room's own geometry here
@@ -1146,6 +1151,7 @@ export async function buildVc2(scene) {
   heroProp(world, -8, -7, 'drownedDoor', D);     // ▲ THE DROWNED DOOR
   world.markers.heroSpot = { x: -8, z: -7 };
   world.markers.shieldSpots = [{ x: 4, z: 2 }];
+  world.markers.spitterSpots = [{ x: -3, z: -2.2 }];
   world.markers.batSpots = [{ x: -4, z: 5 }];
 
   // FORESHADOWED GATE — Level 3's tool, a whole level early. Green and alive

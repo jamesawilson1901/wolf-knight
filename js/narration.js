@@ -116,9 +116,6 @@ export const LINES = {
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
   // The encounter seal (js/world.js). A room with real foes in it shuts behind
   // you; these are the two ways it opens again.
-  room_sealed: { voice: 'pip', text: 'They saw us! The way out is blocked — beat them all!' },
-  room_cleared: { voice: 'pip', text: 'That\u2019s all of them! The way is open again.' },
-  room_released: { voice: 'pip', text: 'Hmm — the way opened on its own. Let\u2019s go!' },
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
   bramble_teach: { voice: 'pip', text: 'Thorns in the way! Be the Verdant Wolf and LASH them — they snap right open.' },
   bramble_regrow: { voice: 'pip', text: 'Careful — these ones grow back! Cut and RUN, Kael.' },

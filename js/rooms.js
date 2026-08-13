@@ -3950,10 +3950,6 @@ export async function buildRoom(rawId, scene) {
   setRoomSeed(id);          // the ground painter seeds off the room id
   const world = await ROOMS[id](scene);
   await spawnEnemies(world);
-  // THE ROOM SHUTS BEHIND YOU IF IT IS AN ENCOUNTER (World.armEncounter). One
-  // place, after every room in the game has its enemies, so no level file can
-  // forget and no new region has to remember.
-  world.armEncounter();
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
     if (bs.kind === 'meri') {

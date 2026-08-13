@@ -55,8 +55,6 @@ export class World {
     this.geysers = [];         // {x, z, r, active} — managed by room animate
     this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
-    this.sealed = false;       // an encounter room shuts until it is cleared
-    this.sealTimer = 0;
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
     // Where this room ANNOUNCES ITSELF: every landmark instance that says
@@ -582,18 +580,14 @@ export class World {
   }
 
   doorAt(x, z) {
-    // AN ENCOUNTER ROOM DOES NOT LET YOU LEAVE.
-    //
-    // Dad, having played: "its easy because I can literally run straight through
-    // each level without getting hurt. the terranigma games that was near
-    // impossible on most levels." Measured with tools/probe-sprint.mjs, seven of
-    // eight rooms cost NOTHING to cross at a run, and in most of them the
-    // nearest enemy never came within three metres.
-    //
-    // He asked for this directly: lock encounter rooms until they are cleared.
-    // It is the one change that makes a room a place you have to deal with
-    // rather than a corridor with decorations in it.
-    if (this.sealed) return null;
+    // DOORS ARE ALWAYS OPEN. The encounter seal lived here for one version —
+    // rooms with a fight in them locked until it was won — and dad pulled it
+    // after playing it: "don't force the player by locking them in the room
+    // until all enemies are defeated. terranigma and Zelda never did that and
+    // that's what we've been modelling this off of." He is right about both
+    // games. The difficulty he asked for lives in the enemies now — they
+    // intercept, lunge and shoot — and the only doors with conditions on them
+    // are boss doors and puzzle gates, which is what `when` is for.
     for (const d of this.doors) {
       if (d.when && !d.when()) continue;
       if (x >= d.minX && x <= d.maxX && z >= d.minZ && z <= d.maxZ) return d;
@@ -601,116 +595,12 @@ export class World {
     return null;
   }
 
-  // Arm the seal, if this room is an encounter at all.
-  //
-  // THE LINE IS TWO, NOT THREE, AND IT IS DRAWN BY WHAT A ROOM IS FOR.
-  //
-  // Three was a guess and the measurement caught it: with the seal live,
-  // tools/probe-sprint.mjs showed every 3-foe room correctly shut and every
-  // 2-foe room still free to stroll through — la, lb and va2, all of them big
-  // island rooms with two enemies rattling around in them. Two foes in a 32x26
-  // room is not "not an encounter", it is a thin encounter, and a child walked
-  // past it exactly as dad described.
-  //
-  // But a count alone cannot tell a fight from a campfire, so the exemption is
-  // by PURPOSE rather than by number: a room with a rest camp in it, or a
-  // spirit's shrine, never seals. A rest camp you have to fight your way out of
-  // is not a rest camp, and the moment a spirit hands a child a wolf should be
-  // quiet.
-  armEncounter(count = 2) {
-    const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
-    const m = this.markers || {};
-    if (m.restSpot || m.sparkSpot || m.shrineSpot) return false;
-    // AND THE WAY HOME IS NEVER BARRED.
-    //
-    // The first full run with the seal live shut `la` — the FIRST ROOM OF THE
-    // GAME, which holds the door back to the Den. A five-year-old's opening
-    // thirty seconds would have been "you are locked in with two shadows", and
-    // the one place they can save, shop and rest would have been on the far side
-    // of a fight they had not been taught to have yet.
-    //
-    // A room you can walk home from is a room a frightened child can leave. That
-    // is worth more than the encounter.
-    if ((this.doors || []).some((d) => d.to === 'den')) return false;
-    if (live.length < count || this.boss || this.warden) return false;
-    this.sealed = true;
-    this.sealTimer = 0;
-    this._sealFoes = live.length;
-    this._buildSealBars();
-    return true;
-  }
-
-  // A CHILD HAS TO SEE WHY THEY CANNOT LEAVE.
-  //
-  // Dad wants the world to read as continuous — no door furniture between
-  // rooms, just an invisible line enemies cannot cross. That is exactly what
-  // this is for all of normal play. It only becomes a THING when it matters:
-  // while a room is sealed a haze stands in each opening, so "I can't get out"
-  // is a picture rather than a mystery. A locked door a child cannot see is
-  // indistinguishable from a broken game — which is the report that started
-  // this whole night.
-  // AND THE HAZE HAS TO BE SOLID.
-  //
-  // Dad, on v3.47.1: "door ways don't take you to the next room in the level.
-  // they just let you wonder around in the black nothing."
-  //
-  // He was walking out of a SEALED room. A doorway is a hole in the wall with
-  // no collider in it — the door trigger is the only thing that catches a child
-  // standing there, and doorAt() returns null while a room is sealed. So the
-  // seal did not lock the room; it deleted the only thing guarding the gap and
-  // let a five-year-old stroll off the edge of the world.
-  //
-  // A lock you can walk through is not a lock, and a lock made of light is not
-  // a lock either. Each opening gets a real box for as long as the room is
-  // shut, and resolveCircle skips it the moment the fight is over.
-  _buildSealBars() {
-    if (this._sealBars) { for (const m of this._sealBars) m.visible = true; return; }
-    this._sealBars = [];
-    for (const d of this.doors) {
-      const w = Math.max(d.maxX - d.minX, 0.4), h = Math.max(d.maxZ - d.minZ, 0.4);
-      const acrossX = w >= h;                        // which way the opening runs
-      // Same solid volume a permanently-shut doorway gets — one definition of
-      // "this opening is closed", used by both.
-      this.boxColliders.push({ ...doorwayBox(d), seal: true });
-      const geo = new THREE.PlaneGeometry(acrossX ? w : h, 3.0);
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0x8f7bff, transparent: true, opacity: 0.34,
-        depthWrite: false, side: THREE.DoubleSide,
-      });
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set((d.minX + d.maxX) / 2, (this.deckY || 0) + 1.5, (d.minZ + d.maxZ) / 2);
-      if (!acrossX) m.rotation.y = Math.PI / 2;
-      m.name = 'sealBar';
-      this.add(m);
-      this.keepLoose(m);
-      this._sealBars.push(m);
-    }
-    this.onAnimate((t) => {
-      for (const m of this._sealBars) {
-        m.visible = !!this.sealed;
-        if (m.visible) m.material.opacity = 0.26 + Math.sin(t * 3.1) * 0.10;
-      }
-    });
-  }
-
-  // Called every frame while a room is sealed. Returns 'cleared', 'released' or
-  // null so the caller can say the right thing.
-  updateSeal(dt) {
-    if (!this.sealed) return null;
-    const live = (this.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun);
-    if (!live.length) { this.sealed = false; return 'cleared'; }
-    // THE RELEASE VALVE, and it should never fire.
-    //
-    // A hard lock is correct right up until one enemy ends up somewhere it
-    // cannot be reached — over a hazard, wedged in geometry, flying beyond a
-    // ledge — and then a five-year-old is shut in a room with no way out and no
-    // way to understand why. Two minutes of game time and the way opens, with a
-    // line saying so. If this ever fires in play it is a bug worth chasing, not
-    // a feature working.
-    this.sealTimer = (this.sealTimer || 0) + dt;
-    if (this.sealTimer > 120) { this.sealed = false; return 'released'; }
-    return null;
-  }
+  // THE ENCOUNTER SEAL LIVED HERE, for exactly one version. Rooms with a fight
+  // in them locked their doors until it was won. Dad pulled it after playing
+  // it: "don't force the player by locking them in the room until all enemies
+  // are defeated. terranigma and Zelda never did that and that's what we've
+  // been modelling this off of." The difficulty he wanted is in the enemies
+  // now — interception, lunges, spitters — and doors stay open, always.
 
   // The wind at a point, in units per second, summed over every lane covering
   // it. Summed rather than "the strongest wins" because two lanes crossing is a
@@ -806,10 +696,6 @@ export class World {
       x = p.x; z = p.z;
     }
     for (const b of this.boxColliders) {
-      // A seal box only exists while the room is shut. It is added once, when
-      // the encounter arms, and stops being solid the frame the last enemy
-      // falls — so clearing the room opens the way with nothing to rebuild.
-      if (b.seal && !this.sealed) continue;
       const nx = Math.max(b.minX, Math.min(x, b.maxX));
       const nz = Math.max(b.minZ, Math.min(z, b.maxZ));
       const dx = x - nx;

@@ -74,9 +74,12 @@ export const CONFIG = {
   // around Kael, visibly waiting their turn. Difficulty moves the cap:
   // Gentle duels one at a time, Brave lets a third join.
   ENGAGE: {
-    MAX: 2,
-    MAX_GENTLE: 1,
-    MAX_BRAVE: 3,
+    // Raised one across the board when the encounter seal came out — dad wants
+    // the danger in the crossing, not in a locked door, and two pressers could
+    // not make a room dangerous to walk. Gentle keeps a real duel feel at two.
+    MAX: 3,
+    MAX_GENTLE: 2,
+    MAX_BRAVE: 4,
     HOLD_DIST: 3.0,      // u, the waiting ring around Kael
     HOLD_SPEED: 0.95,    // u/s sideways prowl while waiting
   },
