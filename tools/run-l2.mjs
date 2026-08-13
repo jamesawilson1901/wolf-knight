@@ -72,6 +72,15 @@ async function goRoom(to, via = []) {
     }
     const now = await d.wk('room');
     say(`  try${tries} end room ${now}`);
+    if (!r.ok && r.at && here.pos && Math.hypot(r.at.x - here.pos.x, r.at.z - here.pos.z) < 0.1) {
+      // ZERO movement over a whole try — the frozen-bot signature seen once in
+      // vgb on ground later proven free. Capture the guts while it is live.
+      const guts = await d.page.evaluate(() => { const g = window.__game;
+        return { keys: [...g.input._keys], move: g.input.getMove(),
+          vel: g.player._vel, lock: g.player.lockTime,
+          blocking: g.narration.blocking, paused: !!document.querySelector('.pause-open') }; });
+      say('  FROZEN-BOT DIAGNOSTICS:', JSON.stringify(guts));
+    }
     if (now === to) return true;
     if (now !== here.room) { say(`   passed through to ${now} en route to ${to}`); continue; }
     await fightNear(20000);
