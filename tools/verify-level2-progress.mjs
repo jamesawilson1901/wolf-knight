@@ -106,7 +106,8 @@ console.log('\n── 2. the spoke leads to Petra, and she is reachable ──')
 await go('va3');
 const shrine = await page.evaluate(() => {
   const g = window.__game, w = g.world;
-  const s = w.markers.sparkSpot;
+  // the lantern, not a grant — earth is the Warden's reward now
+  const s = w.markers.relightSpot;
   if (!s) return null;
   // can a child stand close enough for the grant to fire? it needs 2.4u
   const solid = (x, z) => {
@@ -121,10 +122,10 @@ const shrine = await page.evaluate(() => {
       if (d < closest) { closest = d; spot = { x: +x.toFixed(2), z: +z.toFixed(2) }; }
     }
   }
-  return { shrine: { x: s.x, z: s.z }, grants: s.grants, closest: +closest.toFixed(2), spot };
+  return { shrine: { x: s.x, z: s.z }, closest: +closest.toFixed(2), spot };
 });
-check('va3 has Petra\'s shrine', !!shrine, shrine);
-check('a child can stand within the 2.4u the grant needs',
+check('va3 has Petra\'s lantern', !!shrine, shrine);
+check('a child can stand within slam range of it',
   shrine && shrine.closest <= 2.4, shrine);
 
 // AND IT MUST BE ON THE WAY, NOT BESIDE IT.
@@ -140,7 +141,7 @@ check('a child can stand within the 2.4u the grant needs',
 // comes, WITHOUT ever aiming at the shrine.
 const online = await page.evaluate(() => {
   const g = window.__game, w = g.world;
-  const s = w.markers.sparkSpot;
+  const s = w.markers.relightSpot;
   const doors = (w.doors || []);
   const sp = w.spawn;
   if (!s || !sp || doors.length < 2) return null;
@@ -177,16 +178,26 @@ check('va3 is not a dead end — it has both its doors',
 check('walking straight across the room passes inside the shrine\'s 2.4u',
   online && online.closest <= 2.4, online);
 
-console.log('\n── 3. standing there actually gives the Earth Wolf ────');
+console.log('\n── 3. the FIRE slam lights it, and that is the milestone ──');
+// Boss-earned forms: a child arrives here with the wolf the LAST boss gave
+// them. The slam lights Petra's lantern; the Earth Wolf stays behind the
+// Warden, where dad asked for it to be.
 const granted = await page.evaluate(async (spot) => {
   const g = window.__game;
+  g.state.form = 'fire_wolf';
   g.player.root.position.set(spot.x, g.player.root.position.y, spot.z);
-  for (let i = 0; i < 90; i++) { g.player.iframes = 9999; await new Promise((r) => requestAnimationFrame(r)); }
+  for (let i = 0; i < 300; i++) {
+    g.player.iframes = 9999;
+    if (i % 40 === 0) g.player.trySpecial(g.effects, g.world);
+    await new Promise((r) => requestAnimationFrame(r));
+    if (g.WS.get('vault', 'spark')) break;
+  }
   return { forms: g.state.formsUnlocked.slice(), spark: !!g.WS.get('vault', 'spark'),
     stage: g.WS.stage('vault') };
 }, (shrine && shrine.spot) || { x: 0, z: -1 });
-check('the Earth Wolf is granted', granted.forms.includes('earth_wolf'), granted);
-check('...and the vault records its first milestone', granted.spark, granted);
+check('the slam completes the spark milestone', granted.spark, granted);
+check('...and the Earth Wolf is NOT handed out here',
+  !granted.forms.includes('earth_wolf'), granted);
 
 console.log('\n── 4. so the hub has changed when you walk back ───────');
 await go('vh');

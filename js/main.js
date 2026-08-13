@@ -535,8 +535,10 @@ const GATE_HINTS = [
   { marker: 'teachCrack',        form: 'earth_wolf',   line: 'crack_prompt' },
   { marker: 'practiceCracks',    form: 'earth_wolf',   line: 'crack_prompt' },
   { marker: 'developCracks',     form: 'earth_wolf',   line: 'crack_prompt' },
-  { marker: 'pinSpot',           form: 'earth_wolf',   line: 'crack_prompt' },
-  { marker: 'rattlePlate',       form: 'earth_wolf',   line: 'rattle_hint' },
+  // Stoneroot is played with FIRE now — earth is its boss's reward.
+  { marker: 'pinSpot',           form: 'fire_wolf',    line: 'burn_prompt' },
+  { marker: 'rattlePlate',       form: 'fire_wolf',    line: 'rattle_hint' },
+  { marker: 'relightSpot',       form: 'fire_wolf',    line: 'brazier_hint' },
   { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
   { marker: 'thornPromise',      form: 'verdant_wolf', line: 'thornknot_hint' },
   { marker: 'rootWallPromise',   form: 'verdant_wolf', line: 'rootwall_hint' },
@@ -854,17 +856,30 @@ function narrationTriggers(dt, t) {
   // The Kiln
   if (state.room === 'ld') narration.say('kiln_enter');
   if (state.room === 'ld' && m.shrineSpot) {
+    // THE SHRINE PROMISES; THE BOSS PAYS. Dad: "each wolf form should be
+    // locked behind a boss battle. you complete the boss battle and get
+    // awarded the new wolf transformation." The Kiln's shrine granted fire the
+    // moment a child brushed it, three rooms before the Shadowgrip — so the
+    // grant moved to the boss (see the watcher below) and the shrine is the
+    // promise of it: cold, waiting, naming the fight ahead.
     if (nearSpot(m.shrineSpot, 2.4) && !state.formsUnlocked.includes('fire_wolf')) {
-      state.formsUnlocked.push('fire_wolf');
-      effects.warmFlood();
       narration.say('kiln_shrine');
-      narration.say('firewolf_grant');
-      narration.say('firewolf_howto');
-      ui.refreshBadge();
-      bigToast('🔥 The Fire Wolf awakens!');
-      persist();
     }
     if (state.formsUnlocked.includes('fire_wolf') && nearXZ(1.8, -2.6, 3)) narration.say('brazier_hint');
+  }
+  // FIRE IS THE SHADOWGRIP'S REWARD. boss.js sets the flag; the ceremony lives
+  // here where the toast, the narration and the HOWTO all are — and because it
+  // watches the FLAG rather than the kill frame, a save from the shrine era
+  // (which already has fire) passes straight through, and an old save that
+  // somehow beat the boss without fire is repaired the moment it loads.
+  if (state.flags.bossDefeated && !state.formsUnlocked.includes('fire_wolf')) {
+    state.formsUnlocked.push('fire_wolf');
+    effects.warmFlood();
+    narration.say('firewolf_grant');
+    narration.say('firewolf_howto');
+    ui.refreshBadge();
+    bigToast('🔥 The Fire Wolf awakens!');
+    persist();
   }
   if (state.room === 'ld1' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
 
@@ -879,8 +894,11 @@ function narrationTriggers(dt, t) {
   // the Earth Wolf and the vault's milestone, so walking into Sylva's shrine in
   // Level 3 handed the child the wrong wolf and advanced Level 2's state
   // (fix plan A3). The marker has carried `grants` all along; now it is read.
-  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4)) {
-    const gift = m.sparkSpot.grants || 'earth_wolf';
+  if (m.sparkSpot && nearSpot(m.sparkSpot, 2.4) && m.sparkSpot.grants) {
+    // NO DEFAULT. `grants` used to fall back to 'earth_wolf', which is exactly
+    // how a marker with a typo would quietly hand out the wrong wolf. A shrine
+    // that grants nothing says nothing.
+    const gift = m.sparkSpot.grants;
     if (!state.formsUnlocked.includes(gift)) {
       state.formsUnlocked.push(gift);
       effects.warmFlood();
@@ -950,6 +968,18 @@ function narrationTriggers(dt, t) {
       persist();
     }
   }
+  // PETRA'S LANTERN: the fire slam lights it, and the vault wakes. This is
+  // Stoneroot's first milestone under boss-earned forms — solved with the wolf
+  // the LAST boss gave you. The brazier machinery does the lighting; this is
+  // only the ceremony, in the one file where toast and narration live.
+  if (m.relightSpot && !WS.get('vault', 'spark')) {
+    const lb = (world.braziers || []).find((b2) => b2.id === 'l2_lantern');
+    if (lb && lb.lit) {
+      if (WS.complete('vault', 'spark')) bigToast('\u{1F3EE} The lantern blazes! Far away, doors grind open\u2026');
+      narration.say('lantern_lit');
+      persist();
+    }
+  }
   // THE RATTLE: the stomp is not a hammer, it is a SOUND. Standing on the
   // resonant plate and stomping rings the chamber — the bell-stone answers and
   // the dam gives way, which is hub change 2.
@@ -970,7 +1000,7 @@ function narrationTriggers(dt, t) {
     }
   }
   // THE SHOULDER PIN: the last thing holding the titan's arm up.
-  if (m.pinSpot && !WS.get('vault', 'handDown') && state.flags.cracked.l2_vc3_pin) {
+  if (m.pinSpot && !WS.get('vault', 'handDown') && state.flags.burned.l2_vc3_pin) {
     if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
     persist();
   }

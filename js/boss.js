@@ -419,7 +419,8 @@ export class Shadowgrip {
       state.flags.bossDefeated = true;
       state.flags.bossProgress = 0;
       state.flags.shortcutOpen = true;
-      if (!state.formsUnlocked.includes('fire_wolf')) state.formsUnlocked.push('fire_wolf');
+      // the Fire Wolf grant lives in main.js now, watching this flag — with
+      // the toast, the narration and the HOWTO a silent push here would skip
     } else if (this.skin === SKINS.sylva) {
       state.flags.sylvaDefeated = true;
       if (!state.formsUnlocked.includes('verdant_wolf')) state.formsUnlocked.push('verdant_wolf');

@@ -1845,6 +1845,12 @@ export class Player {
     // ring and refuse to light.
     if (world.burnAt(x, z, SLAM_RADIUS) > 0) audio.play('burn');
     if (world.igniteAt) world.igniteAt(x, z, SLAM_RADIUS);
+    // THE SLAM IS ALSO A STOMP. Stoneroot's resonant plate listens for
+    // `stompedAt`, and under boss-earned forms a child reaches that plate with
+    // the FIRE wolf — the region is played with the previous region's gift.
+    // Both verbs are a body hitting the ground; the plate cannot tell granite
+    // from flame and should not try.
+    this.stompedAt = performance.now();
     this.specialCooldown = this.specialMax;
     return true;
   }
