@@ -24,11 +24,16 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 7. Shadow Court (x-rooms) — ghost from xsh shrine; relics; Shadow-Grimm
 
 ## Levels
-- L1 Ember Hollow: IN PROGRESS — route runs 1-5 walked la→lg1→lb→lg2→lc with real
-  fights (hearts lost in lb), one honest lava death + correct respawn in lc,
-  zero uncaught errors every run. Bot iterations: eye-on-boot, live-target
-  fighting, door dwell, slab waypoints, state-driven routing. No game defects
-  yet. Next action (13:00 UTC): full route to le, then Shadowgrip per boss ladder.
+- L1 Ember Hollow: IN PROGRESS — ROUTE COMPLETE CLEAN run 7 (la→le, real fights,
+  hearts 5→2.5, music correct per zone incl. causeway/kiln/boss-loop, slab
+  crossing, 0 errors; evidence test-evidence/level-1/). Shadowgrip: fight 1
+  (45m) no damage — bot faced wrong way; fight 2 (45m) 20→1.6hp, 3 deaths all
+  swipe-through-shield-burst, respawns correct, all 8 actions + wounds-
+  remembered verified. Fight 3 running: shield held across whole window,
+  potion sip, 80m clock. No game defects in L1 yet; phase field stays 1 for
+  Shadowgrip (actions are his machine — check spec before calling defect).
+  Next action (17:10 UTC): read fight-3 verdict; on kill verify bossDefeated,
+  fire grant ceremony, onward door; then canary + suites + evidence + PASS.
 - L2 Stoneroot: NOT STARTED
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
