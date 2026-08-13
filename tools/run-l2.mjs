@@ -41,10 +41,18 @@ async function toForm(want) {
 }
 
 async function goRoom(to, via = []) {
-  for (const [wx, wz] of via) {
-    const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
-    if (w.roomChanged) break;
-    if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
+  // same filter as L1: a waypoint farther from the goal than we stand is for
+  // a different entry — skip it rather than backtrack through hazards
+  {
+    const doors0 = await d.wk('doors');
+    const door0 = doors0.find((x) => x.to === to);
+    const dTo = (p) => door0 ? Math.hypot(door0.x - p.x, door0.z - p.z) : 0;
+    for (const [wx, wz] of via) {
+      if (door0 && dTo({ x: wx, z: wz }) > dTo((await d.wk()).pos) + 2) continue;
+      const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
+      if (w.roomChanged) break;
+      if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
+    }
   }
   for (let tries = 0; tries < 3; tries++) {
     const here = await d.wk();
@@ -92,6 +100,11 @@ let ok = true;
 const VIA = {
   'va1:va2': [[8, 9.5], [-2, 10], [-10, 5]],
   'va1:vga': [[-10, 5], [-2, 10], [8, 9.5]],
+  // the hub's flooded ring (centre 0,-1, r 6) is solid until drained — every
+  // east-side leg orbits it on the south, the way a child walks the shore
+  'vh:vgb': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
+  'vh:vgc': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
+  'vh:vz': [[-8, -9.5], [0, -10.5], [7, -9]],
 };
 const route = async (rooms) => { for (const r of rooms) {
   await fightNear(30000);
