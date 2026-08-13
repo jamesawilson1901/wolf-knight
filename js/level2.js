@@ -284,6 +284,22 @@ function crackedPile(world, id, x, z, big = false) {
 // dark with an ember glint instead of gold: burn, not smash.
 function burnPin(world, id, x, z) {
   if (state.flags.burned[id]) return null;
+  if (GREY()) {
+    // same shape crackedPile's grey branch pushes — the kit is not loaded here
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 1.6, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x2c211a, roughness: 0.95,
+        emissive: 0xff7a2d, emissiveIntensity: 0.2 })
+    );
+    m.position.set(x, 0.8, z);
+    const gg = new THREE.Group();
+    gg.add(m);
+    world.add(gg);
+    world.addCircle(x, z, 1.2);
+    const col = world.circleColliders[world.circleColliders.length - 1];
+    world.burnables.push({ id, x, z, hitR: 1.3, group: gg, collider: col });
+    return gg;
+  }
   const g = new THREE.Group();
   for (let i = 0; i < 3; i++) {
     const p = tinted(caveKit[i ? 'rockSA' : 'rockLB'], 'burnpin', 0x2c211a, 0.9 + i * 0.05);
