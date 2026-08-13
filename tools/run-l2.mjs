@@ -42,10 +42,13 @@ async function toForm(want) {
 
 async function goRoom(to) {
   for (let tries = 0; tries < 3; tries++) {
+    const here = await d.wk();
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
-    if (!door) { say(`!! no door to ${to} from ${(await d.wk()).room}`); return false; }
+    if (!door) { say(`!! no door to ${to} from ${here.room}`); return false; }
+    say(`  try${tries} ${here.room}@(${here.pos.x},${here.pos.z}) -> door ${to}@(${door.x},${door.z})`);
     let r = await d.walkTo(door.x, door.z, { timeout: 60 });
+    say(`  try${tries} walk:`, JSON.stringify(r));
     if (!r.ok && r.why === 'stuck') { await fightNear(25000); r = await d.walkTo(door.x, door.z, { timeout: 40 }); }
     if (!r.roomChanged && (await d.wk('room')) === r.room) {
       for (let i = 0; i < 20; i++) { await d.page.waitForTimeout(200); if ((await d.wk('room')) !== r.room) break; }
@@ -55,8 +58,9 @@ async function goRoom(to) {
       }
     }
     const now = await d.wk('room');
+    say(`  try${tries} end room ${now}`);
     if (now === to) return true;
-    if (now !== r.room) { say(`   passed through to ${now} en route to ${to}`); if (now === to) return true; continue; }
+    if (now !== here.room) { say(`   passed through to ${now} en route to ${to}`); continue; }
     await fightNear(20000);
   }
   return (await d.wk('room')) === to;
@@ -102,8 +106,7 @@ if (ok) {
 }
 // ---- the crypt
 ok = ok && await route(['vh', 'vz']);
-say('pre-boss state:', JSON.stringify(await d.wk()));
-if (ok) await d.shot('warden-arena');
+if (ok) { say('pre-boss state:', JSON.stringify(await d.wk())); await d.shot('warden-arena'); }
 
 // ---- THE BONE WARDEN: chase/lunge machine — shield the lunge, poke the chase
 if (ok) {
