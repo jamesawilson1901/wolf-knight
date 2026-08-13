@@ -24,16 +24,25 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 7. Shadow Court (x-rooms) — ghost from xsh shrine; relics; Shadow-Grimm
 
 ## Levels
-- L1 Ember Hollow: IN PROGRESS — ROUTE COMPLETE CLEAN run 7 (la→le, real fights,
-  hearts 5→2.5, music correct per zone incl. causeway/kiln/boss-loop, slab
-  crossing, 0 errors; evidence test-evidence/level-1/). Shadowgrip: fight 1
-  (45m) no damage — bot faced wrong way; fight 2 (45m) 20→1.6hp, 3 deaths all
-  swipe-through-shield-burst, respawns correct, all 8 actions + wounds-
-  remembered verified. Fight 3 running: shield held across whole window,
-  potion sip, 80m clock. No game defects in L1 yet; phase field stays 1 for
-  Shadowgrip (actions are his machine — check spec before calling defect).
-  Next action (17:10 UTC): read fight-3 verdict; on kill verify bossDefeated,
-  fire grant ceremony, onward door; then canary + suites + evidence + PASS.
+- L1 Ember Hollow: **PASS** (composition below, 19:05 UTC)
+  * Route: run 7, contiguous new-game la→lg1→lb→lg2→lc→lg3→ld→lg4→le via real
+    inputs, no jump. Real fights (hearts 5→2.5), lava crossed on slabs, music
+    correct per zone (region-ember / causeway / kiln / boss-loop), 0 errors.
+  * Boss: fight 3, FULL SPEED kill. 20→0 hp, all 8 actions, 2 deaths with
+    correct arena respawns (plus 3 in fight 2 — wounds-remembered verified),
+    potions used, post-boss: bossDefeated set, FIRE WOLF granted by the boss
+    (the new boss-earned chain, live), music → ember-calm. Entered via dev
+    jump to le — flagged: route and boss were separate runs. No game-code
+    changes happened between or after them, so the build both runs played is
+    the build that ships.
+  * Gates: canary GREEN (fresh boot, 60s, 0 errors). Spot suites green (boot,
+    level1, callable, l1-doors). Full 44-suite run: green at the pre-harness
+    commit that contains ALL game logic; harness delta since is dev-gated and
+    inert without ?dev=1 (verified by callable+boot+level1 green post-harness).
+    Full re-run queued post-push; result lands in /tmp/v-full-final.log.
+  * Defects found in the GAME: none. Seven bot iterations, all driver-side.
+  * Intermittents: lb music race — RESOLVED (async load; settled read correct).
+  * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
 - L2 Stoneroot: NOT STARTED
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
