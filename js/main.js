@@ -1530,7 +1530,9 @@ function initDevHarness() {
     get boss() {
       const b = world.boss || world.warden;
       if (!b) return null;
-      return { name: b.name || b.skin || 'boss', hp: b.hp, maxHp: b.maxHp,
+      return { name: b.name || b.skin || 'boss',
+        hp: b.hp !== undefined ? b.hp : (b.coreHp !== undefined ? b.coreHp : null),
+        maxHp: b.maxHp,
         state: b.state || null, action: b.action || null,
         phase: b.phase !== undefined ? b.phase : null,
         x: b.x !== undefined ? +b.x.toFixed(2) : null,

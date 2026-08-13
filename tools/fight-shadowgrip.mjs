@@ -20,6 +20,16 @@ const seen = { actions: new Set(), phases: new Set(), deaths: 0, respawnRooms: [
 const t0 = Date.now();
 let lastHearts = (await d.wk()).hearts;
 let held = null;
+let lastHp = null;
+// THE SWING IS A CONE IN FACING DIRECTION, and facing follows movement — a
+// bot that stops walking and swings hits whatever it last walked toward.
+// One brief step toward the boss sets the facing before every swing.
+const face = async (b) => {
+  const s = await d.wk();
+  const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
+  const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+  await d.page.keyboard.down(k); await d.page.waitForTimeout(120); await d.page.keyboard.up(k);
+};
 const hold = async (k) => { if (held !== k) { if (held) await d.page.keyboard.up(held); held = k; if (k) await d.page.keyboard.down(k); } };
 
 while ((Date.now() - t0) / 1000 < 45 * 60) {
@@ -62,12 +72,13 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
   } else if (b.action === 'tired') {
     await hold(null);
     if (dist > 1.4) await d.walkTo(b.x, b.z, { timeout: 3, arrive: 1.2 });
-    await d.tap('j'); await d.page.waitForTimeout(200); await d.tap('j');
+    await face(b); await d.tap('j'); await d.page.waitForTimeout(200); await d.tap('j');
   } else { // prowl | stalk | recover — poke and keep moving
     await hold(null);
     if (dist > 1.6) await d.walkTo(b.x, b.z, { timeout: 2.5, arrive: 1.3 });
-    else { await d.tap('j'); await d.page.waitForTimeout(220); }
+    else { await face(b); await d.tap('j'); await d.page.waitForTimeout(220); }
   }
+  if (b.hp !== lastHp) { say(`boss hp ${lastHp} -> ${b.hp} (phase ${b.phase})`); lastHp = b.hp; }
 }
 await hold(null);
 
