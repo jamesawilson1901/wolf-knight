@@ -1477,6 +1477,7 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom }; // debug/testing hook
+  initDevHarness();
   await fadeTo(0, ms);
   transitioning = false;
 }
@@ -1488,6 +1489,69 @@ async function loadRoom(rawId, entry, handoff = null) {
 // is the single place that knows the mapping — it used to be duplicated as two
 // slightly different inline ternaries, one of which had never learned about
 // Wild Woods or Frostpeak at all.
+// ---------------------------------------------------------------------------
+// DEV HARNESS (overnight play-testing). Two-part gate: CONFIG.DEV_HARNESS at
+// build time AND ?dev=1 on the URL. With either half missing this whole block
+// is three inert constants — no listeners, no globals, no behaviour change.
+//
+// The contract, and why it is shaped this way:
+//   * window.__wk is a READ-ONLY view. Every getter returns a copy. The test
+//     driver reads it to steer, and drives the game ONLY through real input
+//     events (keyboard/pointer) — the input layer is part of what is under
+//     test, so nothing here moves the player.
+//   * window.__wkJump(room, forms?) is the one allowed mutation: entering a
+//     level directly with an appropriate save state, because "play level 4"
+//     cannot mean "first play levels 1-3 for an hour".
+//   * DEV_TIMESCALE (?timescale=0.5) scales the already-clamped delta step and
+//     nothing else — the whole game slows together, for boss verification at
+//     reduced speed per the run brief.
+// ---------------------------------------------------------------------------
+const DEV_ON = CONFIG.DEV_HARNESS && new URLSearchParams(location.search).has('dev');
+const DEV_TIMESCALE = DEV_ON
+  ? Math.max(0.1, Math.min(1, parseFloat(new URLSearchParams(location.search).get('timescale')) || 1))
+  : 1;
+
+function initDevHarness() {
+  if (!DEV_ON || window.__wk) return;
+  window.__wk = {
+    get pos() { const p = player.root.position; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2) }; },
+    get hearts() { return player.hearts; },
+    get maxHearts() { return player.maxHearts; },
+    get room() { return state.room; },
+    get form() { return state.form; },
+    get forms() { return [...state.formsUnlocked]; },
+    get music() { return audio._musicName; },
+    get timescale() { return DEV_TIMESCALE; },
+    get doors() {
+      return (world.doors || []).map((d) => ({ to: d.to,
+        x: +((d.minX + d.maxX) / 2).toFixed(1), z: +((d.minZ + d.maxZ) / 2).toFixed(1),
+        open: !d.when || !!d.when() }));
+    },
+    get boss() {
+      const b = world.boss || world.warden;
+      if (!b) return null;
+      return { name: b.name || b.skin || 'boss', hp: b.hp, maxHp: b.maxHp,
+        state: b.state || null, phase: b.phase !== undefined ? b.phase : null,
+        x: b.x !== undefined ? +b.x.toFixed(2) : null,
+        z: b.z !== undefined ? +b.z.toFixed(2) : null };
+    },
+    get foes() {
+      return (world.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun)
+        .map((e) => ({ x: +e.x.toFixed(1), z: +e.z.toFixed(1), hp: e.hp,
+          kind: e.constructor.name, state: e.state || null }));
+    },
+    get flags() { return JSON.parse(JSON.stringify(state.flags)); },
+    get ws() { return { vault: WS.stage('vault'), wild3: WS.stage('wild3') }; },
+  };
+  window.__wkJump = (room, forms) => {
+    if (forms) state.formsUnlocked = forms;
+    state.room = room;
+    player.iframes = 0;
+    player.hearts = 0.5;
+    player.hurt(99, { pierceDefend: true });   // the respawn path IS the loader
+  };
+}
+
 function regionOf(id) {
   const r = resolveRoom(id);
   if (r[0] === 'v') return 'stoneroot';
@@ -1819,7 +1883,7 @@ async function start() {
   renderer.setAnimationLoop(() => {
     timer.update();
     const realDt = timer.getDelta();
-    const dt = Math.min(realDt, 0.05);
+    const dt = Math.min(realDt, 0.05) * DEV_TIMESCALE;
     const t = timer.getElapsed();
     if (!world) {
       if (titleScene) titleScene.render(dt); // the campfire lives behind the menu

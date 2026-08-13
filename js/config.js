@@ -2,6 +2,14 @@
 // the systems. Units: px = CSS pixels, u = world units, s = seconds.
 
 export const CONFIG = {
+  // ---- dev harness (overnight play-testing) ----
+  // Build-time half of the gate: the harness also needs ?dev=1 on the URL.
+  // With this false, or without the query flag, nothing initialises and the
+  // game is byte-for-byte the kids' game. The harness itself lives in main.js:
+  // a READ-ONLY state view (window.__wk), a level jump, and a timescale — all
+  // three inert without both halves of the gate.
+  DEV_HARNESS: true,
+
   // ---- joystick (floating, left 40% of screen) ----
   JOY_RADIUS: 70,        // px, knob travel (magnitude clamps here)
   JOY_DEADZONE: 0.10,    // fraction of radius ignored (resting-thumb wobble)
