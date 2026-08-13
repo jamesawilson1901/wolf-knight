@@ -146,17 +146,13 @@ const standOnSpark = async (room) => {
   }, room);
 };
 
-await page.evaluate(() => {
-  const g = window.__game;
-  g.state.formsUnlocked = ['knight','dark_wolf'];
-  g.state.flags.world = {};
-});
-const afterL2 = await standOnSpark('va3');   // Level 2's shrine
-check("Level 2's shrine grants the EARTH wolf", afterL2.forms.includes('earth_wolf'), afterL2);
-check("...and advances the VAULT, not the woods", afterL2.vault === 1 && afterL2.wild === 0, afterL2);
-
+// Level 2's shrine grants NOTHING any more — the Earth Wolf is the Bone
+// Warden's reward under boss-earned forms, and va3 holds Petra's lantern
+// instead (verify-level2-progress owns that room now). So the only shrine
+// grant this file still checks is the one in its own region:
 await page.evaluate(() => { const g=window.__game;
-  g.state.formsUnlocked = ['knight','dark_wolf','fire_wolf','earth_wolf']; });
+  g.state.formsUnlocked = ['knight','dark_wolf','fire_wolf','earth_wolf'];
+  g.state.flags.world = {}; });
 const afterL3 = await standOnSpark('tsh');
 check("Level 3's shrine grants the VERDANT wolf, not the Earth wolf",
   afterL3.forms.includes('verdant_wolf'), afterL3);

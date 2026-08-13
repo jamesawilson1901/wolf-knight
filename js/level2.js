@@ -27,6 +27,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, restorationOf } from './worldstate.js';
+import { brazier } from './gates.js';
 
 let forceGrey = false;
 let caveKit = null;
@@ -237,10 +238,13 @@ function crackedPile(world, id, x, z, big = false) {
         emissive: 0xd8c07a, emissiveIntensity: 0.22 })
     );
     m.position.set(x, 0.75 * s, z);
-    world.add(m);
+    const gg = new THREE.Group();
+    gg.add(m);
+    world.add(gg);
     world.addCircle(x, z, 0.8 * s);
-    world.crackables.push({ id, x, z, r: 0.9 * s, mesh: m });
-    return m;
+    const col = world.circleColliders[world.circleColliders.length - 1];
+    world.crackables.push({ id, x, z, hitR: 0.9 * s, group: gg, collider: col });
+    return gg;
   }
   const g = new THREE.Group();
   for (let i = 0; i < 3; i++) {
@@ -261,7 +265,66 @@ function crackedPile(world, id, x, z, big = false) {
   world.add(glint);
   world.add(g);
   world.addCircle(x, z, 0.8 * s);
-  world.crackables.push({ id, x, z, r: 0.9 * s, mesh: g, glint });
+  // THE SHAPE _shatter ACTUALLY READS. This pushed {mesh, r} and world.crackAt
+  // walks {group, hitR, collider} — so every stomped pile in Stoneroot set its
+  // flag, then THREW on b.group.children, killing the rest of that frame. The
+  // flag landing first is the only reason the region seemed to work.
+  const col = world.circleColliders[world.circleColliders.length - 1];
+  world.crackables.push({ id, x, z, hitR: 0.9 * s, group: g, collider: col,
+    clear: () => {
+      const i = world.circleColliders.indexOf(col);
+      if (i >= 0) world.circleColliders.splice(i, 1);
+      glint.visible = false;
+    } });
+  return g;
+}
+
+// A scorched timber wedge — the thing the fire slam takes. Same silhouette
+// family as crackedPile so a child reads "breakable" at a glance, but charred
+// dark with an ember glint instead of gold: burn, not smash.
+function burnPin(world, id, x, z) {
+  if (state.flags.burned[id]) return null;
+  if (GREY()) {
+    // same shape crackedPile's grey branch pushes — the kit is not loaded here
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 1.6, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x2c211a, roughness: 0.95,
+        emissive: 0xff7a2d, emissiveIntensity: 0.2 })
+    );
+    m.position.set(x, 0.8, z);
+    const gg = new THREE.Group();
+    gg.add(m);
+    world.add(gg);
+    world.addCircle(x, z, 1.2);
+    const col = world.circleColliders[world.circleColliders.length - 1];
+    world.burnables.push({ id, x, z, hitR: 1.3, group: gg, collider: col });
+    return gg;
+  }
+  const g = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const p = tinted(caveKit[i ? 'rockSA' : 'rockLB'], 'burnpin', 0x2c211a, 0.9 + i * 0.05);
+    p.position.set(x + (i - 1) * 0.6, i * 0.32, z + ((i % 2) - 0.5) * 0.55);
+    p.rotation.y = i * 1.7 + 0.4;
+    p.scale.setScalar((i ? 0.75 : 1.1) * 1.4);
+    g.add(p);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.RingGeometry(1.0, 1.3, 18),
+    new THREE.MeshBasicMaterial({ color: 0xff7a2d, transparent: true, opacity: 0.34,
+      side: THREE.DoubleSide, depthWrite: false })
+  );
+  glint.rotation.x = -Math.PI / 2;
+  glint.position.set(x, world.deckY + 0.04, z);
+  world.add(glint);
+  world.add(g);
+  world.addCircle(x, z, 1.2);
+  const col = world.circleColliders[world.circleColliders.length - 1];
+  world.burnables.push({ id, x, z, hitR: 1.3, group: g, collider: col,
+    clear: () => {
+      const i = world.circleColliders.indexOf(col);
+      if (i >= 0) world.circleColliders.splice(i, 1);
+      glint.visible = false;
+    } });
   return g;
 }
 
@@ -313,12 +376,21 @@ function heroProp(world, x, z, kind, D) {
   };
 
   if (kind === 'titan') {
-    // A real humanoid model at 3.4x, granite grey, tipped back and slumped —
-    // the asset-multiplication law doing the work a bespoke model would.
+    // A real humanoid model at 3.4x, tipped back and slumped — the
+    // asset-multiplication law doing the work a bespoke model would.
+    //
+    // AND IT IS STONE, WHICH MEANS NO TEXTURE. tinted() multiplies the colour
+    // into the material's map, and granite grey times barbarian hide is still
+    // warm brown — so the level's anchor read as a giant BEAR standing on the
+    // crypt gate, which is exactly what dad sent a screenshot of. Stone has no
+    // skin: one flat granite material across every mesh, and the deeper slump
+    // takes its head out of the sky above the gate.
     const t = tinted(caveKit.titan, 'titan', 0x8d8f94);
+    const granite = new THREE.MeshStandardMaterial({ color: 0x7e8288, roughness: 0.96 });
+    t.traverse((n) => { if (n.isMesh) n.material = granite; });
     t.scale.setScalar(3.4);
-    t.rotation.set(-0.34, 0, 0);         // slumped back against the wall
-    t.position.set(0, 0, 0);
+    t.rotation.set(-0.62, 0, 0.10);      // properly slumped, head down and aside
+    t.position.set(0, -0.5, 0.6);        // settled into the rubble, not standing on it
     g.add(t);
     world.addBox(x - 3.4, x + 3.4, z - 1.9, z + 1.9);
   } else if (kind === 'geode') {
@@ -810,8 +882,20 @@ export async function buildVa3(scene) {
   sideDoor(world, 'e', halfW, halfD, 'va2', { x: -13.5, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'vh', { x: -13, z: -9, angle: Math.PI / 2 });
 
+  // NO GRANT HERE ANY MORE. Dad: "each wolf form should be locked behind a boss
+  // battle... if I get the fire wolf at the end of level one, level two should
+  // use the fire wolf skills to get through the second level." The Earth Wolf
+  // is the Bone Warden's reward now (main.js onWardenDefeated has granted it
+  // there all along); this room's job is the region's first MILESTONE instead:
+  // Petra's lantern stands cold on the shrine, and the FIRE WOLF lights it.
+  // That is what completes 'spark' — the titan's lantern relights, and the hub
+  // opens its other two spokes — so Stoneroot is entered and solved with the
+  // wolf the last boss gave you, exactly as asked.
   world.markers.shrineSpot = { x: 0, z: 0 };
-  world.markers.sparkSpot = { x: 0, z: 0, spirit: 'petra', grants: 'earth_wolf' };
+  world.markers.relightSpot = { x: 0, z: 0 };
+  // Greybox skips the brazier exactly as Level 1's teachBraziers does — the
+  // kit is not loaded there, and greybox suites drive milestones through WS.
+  if (!GREY()) brazier(world, prepareModel, caveKit.torch, 'l2_lantern', 0, -1.1);
   world.markers.teachCrack = { x: 0, z: 4 };
   crackedPile(world, 'l2_va3_teach', 0, 4, true);
   if (!GREY()) {
@@ -1233,7 +1317,11 @@ export async function buildVc3(scene) {
   sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -8.4, angle: Math.PI });
 
   world.markers.pinSpot = { x: 0, z: -3 };
-  crackedPile(world, 'l2_vc3_pin', 0, -3, true);
+  // THE PIN BURNS. It was a cracked pile — an EARTH verb — standing between a
+  // child and the boss that AWARDS earth. Under boss-earned forms that is a
+  // door locked with the key behind it. The wedged timber is scorched black
+  // and the Fire Wolf's slam takes it, same as every burnable since Level 1.
+  burnPin(world, 'l2_vc3_pin', 0, -3);
   world.markers.shieldSpots = [{ x: -4, z: 2 }];
   world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'jar' }];
   fallenColumn(world, -7.5, -4.5, 0.6, D, 2.6);

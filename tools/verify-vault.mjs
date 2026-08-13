@@ -37,7 +37,11 @@ await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false;
   g.state.settings.sfxVol = 0; g.state.settings.musicVol = 0; g.state.settings.greybox = false;
-  g.state.formsUnlocked = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'];
+  // FIRE ONLY. Under boss-earned forms a child reaches every pre-boss room of
+  // Stoneroot with the wolf the LAST boss gave them — if any milestone here
+  // needs earth, the region is a door locked with the key behind it, and this
+  // suite must be the thing that says so.
+  g.state.formsUnlocked = ['knight', 'dark_wolf', 'fire_wolf'];
   g.player.iframes = 999999;
 });
 const go = async (room) => {
@@ -61,7 +65,7 @@ const rattle = await page.evaluate(async () => {
   const g = window.__game, w = g.world;
   const p = w.markers.rattlePlate;
   if (!p) return { err: 'no rattlePlate marker' };
-  g.state.form = 'earth_wolf';
+  g.state.form = 'fire_wolf';   // the slam is also a stomp — player.js says why
   g.player.root.position.set(p.x, g.player.root.position.y, p.z);
   // THE REAL BUTTON. trySpecial is what the round action button calls, and for
   // the Earth Wolf it is the stomp — the same path a child's thumb takes.
@@ -78,6 +82,28 @@ const rattle = await page.evaluate(async () => {
 check('standing on the plate and stomping drains the vault', rattle.drained === true, rattle);
 check('...and nothing threw while it happened',
   !pageErrors.some((e) => /shake|is not a function/.test(e)), pageErrors.slice(0, 3));
+
+console.log('\n── 1b. the shoulder pin BURNS — no earth required ────');
+await page.evaluate(() => { const g = window.__game;
+  g.WS.set('vault', 'handDown', false);
+  delete g.state.flags.burned.l2_vc3_pin; });
+check('the Pin builds', await go('vc3'));
+const pin = await page.evaluate(async () => {
+  const g = window.__game, w = g.world;
+  const b = (w.burnables || []).find((x) => x.id === 'l2_vc3_pin');
+  if (!b) return { err: 'no burnable pin in vc3' };
+  g.state.form = 'fire_wolf';
+  g.player.root.position.set(b.x + 1.2, g.player.root.position.y, b.z);
+  for (let i = 0; i < 300; i++) {
+    g.player.iframes = 9999;
+    if (i % 40 === 0) g.player.trySpecial(g.effects, w);
+    await new Promise((r) => requestAnimationFrame(r));
+    if (g.state.flags.burned.l2_vc3_pin) break;
+  }
+  return { burned: !!g.state.flags.burned.l2_vc3_pin,
+    handDown: !!g.WS.get('vault', 'handDown') };
+});
+check('the fire slam burns the pin', pin.burned === true, pin);
 
 console.log('\n── 2. the hub opens as its milestones are earned ─────');
 const stages = [];
