@@ -25,3 +25,10 @@
 5. **Spitter in `la` (the very first room).** Deliberate per the difficulty
    rework — but it is the first thing a 5-year-old meets. Gentle mode softens
    it; consider whether room one should teach before it shoots.
+
+6. **va1's worn path runs through the crystal narrows wall.** The room's
+   painted trail (paths polyline) crosses x=4 inside the wall's z-span — the
+   line a child's eye follows walks them into the rock, and the real route is
+   around the top. If the "old trail, now cut" read is intended, fine; if the
+   trail should bend around the narrows like lc's lava path bends to the
+   slabs, it is a one-line polyline edit in buildVa1.

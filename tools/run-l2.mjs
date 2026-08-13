@@ -40,7 +40,12 @@ async function toForm(want) {
   return (await d.wk('form')) === want;
 }
 
-async function goRoom(to) {
+async function goRoom(to, via = []) {
+  for (const [wx, wz] of via) {
+    const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
+    if (w.roomChanged) break;
+    if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
+  }
   for (let tries = 0; tries < 3; tries++) {
     const here = await d.wk();
     const doors = await d.wk('doors');
@@ -82,7 +87,17 @@ async function slamAt(x, z, label, wsCheck) {
 const vaultStage = async () => (await d.wk('ws')).vault;
 
 let ok = true;
-const route = async (rooms) => { for (const r of rooms) { await fightNear(30000); if (!(await goRoom(r))) { say(`!! blocked before ${r}`); return false; } await d.shot(`enter-${r}`); } return true; };
+// va1 is "the crystal narrows" — an L of rock splits the island (wall x=4
+// z-3..7, wall z=-3 x-6..4). A child routes around the top; the bot does too.
+const VIA = {
+  'va1:va2': [[8, 9.5], [-2, 10], [-10, 5]],
+  'va1:vga': [[-10, 5], [-2, 10], [8, 9.5]],
+};
+const route = async (rooms) => { for (const r of rooms) {
+  await fightNear(30000);
+  const from = (await d.wk()).room;
+  if (!(await goRoom(r, VIA[`${from}:${r}`] || []))) { say(`!! blocked before ${r}`); return false; }
+  await d.shot(`enter-${r}`); } return true; };
 
 // ---- spoke A: the lantern
 ok = ok && await route(['vga', 'va1', 'va2', 'va3']);
