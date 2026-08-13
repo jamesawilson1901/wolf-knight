@@ -1,0 +1,10 @@
+[warning] [regions] gate 'w2b_cracked': lock and key both in 'stoneroot' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 'f2b_alcove': lock and key both in 'stoneroot' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 's_gale_stair': lock and key both in 'stormreach' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 's_sail': lock and key both in 'stormreach' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 's3b_crack': lock and key both in 'stoneroot' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 'd_deep_channel': lock and key both in 'sunkenvale' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 'd_shrine': lock and key both in 'sunkenvale' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 'd_lagoon': lock and key both in 'sunkenvale' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] [regions] gate 'ddp_out': lock and key both in 'sunkenvale' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early
+[warning] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
