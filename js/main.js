@@ -1640,6 +1640,7 @@ async function respawnAtCheckpoint() {
   updateMusic();
   narration.say('respawn');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
+  initDevHarness();
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -2167,6 +2168,7 @@ async function buildRoomInitial() {
   updateMusic();
   narration.say('intro_arrival');
   window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
+  initDevHarness();
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.
