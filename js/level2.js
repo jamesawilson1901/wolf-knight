@@ -877,7 +877,9 @@ export async function buildVa3(scene) {
   // wolf the last boss gave you, exactly as asked.
   world.markers.shrineSpot = { x: 0, z: 0 };
   world.markers.relightSpot = { x: 0, z: 0 };
-  brazier(world, prepareModel, caveKit.torch, 'l2_lantern', 0, -1.1);
+  // Greybox skips the brazier exactly as Level 1's teachBraziers does — the
+  // kit is not loaded there, and greybox suites drive milestones through WS.
+  if (!GREY()) brazier(world, prepareModel, caveKit.torch, 'l2_lantern', 0, -1.1);
   world.markers.teachCrack = { x: 0, z: 4 };
   crackedPile(world, 'l2_va3_teach', 0, 4, true);
   if (!GREY()) {

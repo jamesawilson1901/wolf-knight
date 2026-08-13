@@ -675,6 +675,9 @@ export async function buildS2b(scene) {
 
   world.markers.houndSpots = [{ x: -3, z: 6, variant: 'gale' }, { x: 3, z: -7, variant: 'gale' }];
   world.markers.batSpots = [{ x: 10, z: 6, variant: 'stormbat' }];
+  // the gauntlet flaked here — two pounces sometimes both missed a sprinter —
+  // so the crossing gets the ranged answer too, just off the s2a → ssh line
+  world.markers.spitterSpots = [{ x: -2.6, z: -2 }];
   scatter(world, halfW, halfD, D, 512, 7, { spin: 1, kinds: ['rockLB', 'rockSA', 'crate', 'barrel'] });
   // DRESSED INTO THE ARRIVAL FRAME. Kael walks in at x 13 facing west, so the
   // camera shows x 13 down to about x 0 — and the first pass put this room's
