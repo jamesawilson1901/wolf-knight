@@ -165,6 +165,10 @@ const VIA = {
   // x 3..7. Thread east gap, then the middle gap, then north.
   'vc1:vc2': [[10, -6.5], [10, 0], [5, 1], [5, 5.5], [0, 9]],
   'vc1:vgc': [[5, 5.5], [5, 1], [10, 0], [10, -6.5], [0, -9]],
+  // va3 centres its shrine cluster ON the route by design — leaving west
+  // after the lantern, step south around the pedestal instead of coin-
+  // flipping the sidestep against it (passed 4 runs, jammed 3).
+  'va3:vh': [[2, -3.2], [-4, -3.2], [-8, -1]],
 };
 const route = async (rooms) => { for (const r of rooms) {
   if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
