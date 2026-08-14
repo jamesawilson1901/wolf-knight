@@ -41,3 +41,13 @@
    world is still wedged (now loudly) — needs a recovery path (rebuild
    checkpoint room, or an error screen with a retry button). Evidence:
    test-evidence/level-2 console logs + PROGRESS intermittents entry.
+
+8. **Warden cross-session wound parity (follow-up to a fixed defect).** The
+   Bone Warden now persists wounds across DEATHS via in-memory
+   state.flags.wardenHp (fixed tonight — he was the only boss that reset to
+   full, violating the universal "wounds persist" spec). Every OTHER boss also
+   persists across app-CLOSE by serialising its Hp field in save.js
+   (bossHp/sylvaHp/borealHp/…). Adding `wardenHp` to save.js is the additive,
+   old-save-safe change that would give the Warden full parity. NOT done
+   tonight because it touches the save format (run rule). One-line additive
+   add in save.js save+load when you're ready.
