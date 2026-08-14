@@ -67,6 +67,25 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
+          if (stuck === 10) {
+            // WHO FROZE THE WORLD? The pause flags are closured and unreadable,
+            // but a menu that is open is open in the DOM, and a halted loop
+            // cannot advance the game clock. Read both while it is happening.
+            const guts = await page.evaluate(async () => {
+              const g = window.__game;
+              const c1 = g.state.clock;
+              await new Promise((r2) => setTimeout(r2, 600));
+              const vis = (id) => { const el = document.getElementById(id);
+                return el ? getComputedStyle(el).display !== 'none' : null; };
+              return { clockMoved: g.state.clock !== c1,
+                inv: vis('inv-menu'), shop: vis('shop-menu'), map: vis('map-menu'),
+                mg: vis('mg-tap'), pausePanel: vis('pause-menu'),
+                caption: !!document.querySelector('#caption.show, .caption.show'),
+                speaking: g.narration.speaking, queue: (g.narration.queue || []).length,
+                vel: { ...g.player._vel }, lock: g.player.lockTime };
+            }).catch((e) => ({ err: String(e) }));
+            console.log('  [walkTo stuck-guts]', JSON.stringify(guts));
+          }
           if (stuck === 7 || stuck === 18) {
             // sidestep: walk perpendicular for a beat, the way a thumb does
             const side = stuck === 7 ? 1 : -1;
