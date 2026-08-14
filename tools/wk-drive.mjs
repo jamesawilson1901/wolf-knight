@@ -86,7 +86,10 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
               return g.player._time === t1 ? 'dead' : 'geometry';
             }).catch(() => 'geometry');
             if (verdict === 'narration') stuck = 0;
-            else if (verdict === 'dead') console.log('  [walkTo] world not ticking — real wedge');
+            else if (verdict === 'dead') {
+              const gates = await page.evaluate(() => window.__wk.gates).catch(() => null);
+              console.log('  [walkTo] world not ticking — real wedge, gates:', JSON.stringify(gates));
+            }
           }
           if (stuck === 10) {
             // WHO FROZE THE WORLD? The pause flags are closured and unreadable,

@@ -1545,6 +1545,14 @@ function initDevHarness() {
     },
     get flags() { return JSON.parse(JSON.stringify(state.flags)); },
     get ws() { return { vault: WS.stage('vault'), wild3: WS.stage('wild3') }; },
+    // THE GATES OF THE FROZEN WORLD. Every flag that can make the main loop
+    // skip updates, read from inside the module where they are closured —
+    // findable in one read instead of a night of inference.
+    get gates() {
+      return { transitioning, paused, menuPaused, harness: harness.active,
+        hitStop: effects.hitStopTime, blocking: narration.blocking,
+        speaking: narration.speaking };
+    },
   };
   window.__wkJump = (room, forms) => {
     if (forms) state.formsUnlocked = forms;
