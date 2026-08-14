@@ -54,9 +54,13 @@ async function recoverIfFrozen() {
     // narration is never a wedge: wait it out (they cap at ~7s each).
     for (let i = 0; i < 40 && g.narration.speaking; i++) await new Promise((r) => setTimeout(r, 500));
     if (g.narration.speaking) return { frozen: false, talking: true };
-    const c1 = g.state.clock, f1 = g.renderer.info.render.frame;
+    // player._time increments ONLY inside player.update — the exact thing a
+    // wedge stops. state.clock, which this probe read before, DOES NOT EXIST:
+    // undefined === undefined called every healthy world frozen, and runs 7-10
+    // reloaded a working game on every single probe.
+    const c1 = g.player._time, f1 = g.renderer.info.render.frame;
     await new Promise((r) => setTimeout(r, 700));
-    return { frozen: g.state.clock === c1 && !g.narration.speaking,
+    return { frozen: g.player._time === c1 && !g.narration.speaking,
       // frames advancing while the clock stands still = the loop is ALIVE and
       // bailing early (a wedged flag). Frames static too = rAF itself is dead
       // — the environment, not the game.
