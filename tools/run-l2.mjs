@@ -84,20 +84,22 @@ async function recoverIfFrozen() {
 
 async function goRoom(to, via = []) {
   if ((await d.wk('room')) === to) return true;   // recovery can land us inside
-  // same filter as L1: a waypoint farther from the goal than we stand is for
-  // a different entry — skip it rather than backtrack through hazards
-  {
-    const doors0 = await d.wk('doors');
-    const door0 = doors0.find((x) => x.to === to);
-    const dTo = (p) => door0 ? Math.hypot(door0.x - p.x, door0.z - p.z) : 0;
-    for (const [wx, wz] of via) {
-      if (door0 && dTo({ x: wx, z: wz }) > dTo((await d.wk()).pos) + 2) continue;
-      const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
-      if (w.roomChanged) break;
-      if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
-    }
-  }
   for (let tries = 0; tries < 3; tries++) {
+    // the via list runs EVERY try: a mid-leg fight drags the bot off-route,
+    // and a retry that walks straight at the door jams on the maze walls the
+    // waypoints exist to round. The farther-than-we-stand filter drops the
+    // points already behind us on each pass.
+    {
+      const doors0 = await d.wk('doors');
+      const door0 = doors0.find((x) => x.to === to);
+      const dTo = (p) => door0 ? Math.hypot(door0.x - p.x, door0.z - p.z) : 0;
+      for (const [wx, wz] of via) {
+        if (door0 && dTo({ x: wx, z: wz }) > dTo((await d.wk()).pos) + 2) continue;
+        const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
+        if (w.roomChanged) break;
+        if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
+      }
+    }
     const here = await d.wk();
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
