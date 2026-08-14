@@ -167,6 +167,10 @@ const route = async (rooms) => { for (const r of rooms) {
   await fightNear(30000);
   const from = (await d.wk()).room;
   if (!(await goRoom(r, VIA[`${from}:${r}`] || []))) { say(`!! blocked before ${r}`); return false; }
+  // the door fade is 300-400ms of legitimate black — a shot mid-fade is a
+  // false flat. Settle first; a frame still flat AFTER the fade is a real
+  // render failure and the rule still throws.
+  await d.page.waitForTimeout(1600);
   await d.shot(`enter-${r}`); } return true; };
 
 // ---- spoke A: the lantern
