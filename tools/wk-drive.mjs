@@ -87,6 +87,7 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
             }).catch(() => 'geometry');
             if (verdict === 'narration') stuck = 0;
             else if (verdict === 'dead') {
+              if (await api.pickPerkIfOffered()) { stuck = 0; continue; }
               const gates = await page.evaluate(() => window.__wk.gates).catch(() => null);
               console.log('  [walkTo] world not ticking — real wedge, gates:', JSON.stringify(gates));
             }
@@ -128,6 +129,20 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       }
     },
     async tap(key) { await page.keyboard.press(key); },      // j/k/l/Tab/Space/h
+    // THE PERK CHOOSER BLOCKS UNTIL CHOSEN — that is its design, and it was
+    // the whole overnight wedge: level up mid-fight, the world pauses for a
+    // choice, and a bot that never taps stands frozen forever. A real child
+    // taps a card; so does the driver, through a real pointer event. Returns
+    // true if a choice was made.
+    async pickPerkIfOffered() {
+      const card = page.locator('#perk-menu .perk-card').first();
+      if (!(await card.isVisible().catch(() => false))) return false;
+      const name = await card.locator('.nm').textContent().catch(() => '?');
+      await card.dispatchEvent('pointerdown');
+      console.log(`  [driver] level up — picked perk: ${name}`);
+      await page.waitForTimeout(400);
+      return true;
+    },
     async holdShield(ms) { await page.keyboard.down('i'); await page.waitForTimeout(ms); await page.keyboard.up('i'); },
     // Real pointer joystick: down in the left zone, drag, hold `ms`, release.
     async joystick(dirX, dirZ, ms) {
