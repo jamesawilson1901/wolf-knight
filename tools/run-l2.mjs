@@ -8,8 +8,9 @@
 // Real inputs throughout: WASD walk, Tab cycles form, K is the special.
 import { launch } from './wk-drive.mjs';
 
-const DIR = process.argv[2] || 'test-evidence/level-2';
-const d = await launch({ evidenceDir: DIR });
+const TIMESCALE = parseFloat(process.env.WK_TIMESCALE || '1');
+const DIR = process.argv[2] || (TIMESCALE !== 1 ? `test-evidence/level-2-${TIMESCALE}x` : 'test-evidence/level-2');
+const d = await launch({ evidenceDir: DIR, timescale: TIMESCALE });
 const say = (...a) => console.log(...a);
 
 await d.newGame('L2BOT');
@@ -255,14 +256,13 @@ if (ok) {
     const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
     const dist = Math.hypot(dx, dz);
     if (b.state === 'spin_tele' || b.state === 'spin') {
-      // out past the ring, but NEVER toward the crypt door (south, high +z,
-      // entry ~z 9.5). Flee to the nearest safe point on the north arc so a
-      // dodge cannot walk the bot out of its own boss fight.
-      let ang = Math.atan2(-dx, -dz);            // straight away from the warden
-      let tx = b.x + Math.sin(ang) * 4.5, tz = b.z + Math.cos(ang) * 4.5;
-      if (tz > 6) { tx = b.x + (s.pos.x >= b.x ? 4.5 : -4.5); tz = b.z - 1; } // sideways instead
-      await d.walkTo(Math.max(-11, Math.min(11, tx)), Math.max(-11, Math.min(6, tz)),
-        { timeout: 2, arrive: 0.6 });
+      // the straight-away sprint that got ZERO deaths — only its target is
+      // clamped north of z=4 so it can never reach the south crypt door.
+      const nx = dist < 0.01 ? 1 : -dx / dist, nz = dist < 0.01 ? 0 : -dz / dist;
+      let tx = s.pos.x + nx * 5, tz = s.pos.z + nz * 5;
+      if (tz > 4) { tz = -6; tx = b.x + (s.pos.x >= b.x ? 5 : -5); }  // door lies south — go north
+      await d.walkTo(Math.max(-11, Math.min(11, tx)), Math.max(-11, Math.min(4, tz)),
+        { timeout: 2.2, arrive: 0.7 });
     } else if (b.state === 'chop_tele' || b.state === 'chop') {
       // sidestep the cone: strafe perpendicular
       const px = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
