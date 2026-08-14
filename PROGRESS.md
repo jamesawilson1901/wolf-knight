@@ -65,11 +65,18 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Defects found in the GAME: none. Seven bot iterations, all driver-side.
   * Intermittents: lb music race — RESOLVED (async load; settled read correct).
   * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
-- L2 Stoneroot: IN PROGRESS — runs 1-4: spoke A fully played (crystal narrows
-  via waypoints, va2, va3) and PETRA'S LANTERN LIT BY THE FIRE SLAM, vault
-  stage 0→1 live — first boss-earned-forms milestone proven by play. Ring
-  orbit added for hub crossings. Run 4 froze in vgb (see Intermittents).
-  Run 5 in flight with freeze tripwire. Next: plate, pin, Bone Warden.
+- L2 Stoneroot: IN PROGRESS — WHOLE SPINE NAVIGATED in live play (state-driven
+  route, ~23 runs; every deliberately-shaped room learned as waypoints: crystal
+  narrows, flooded ring, quarry terraces, vc1 switchback, shrine cluster,
+  shield-bearer post). ALL THREE FIRE MILESTONES proven by playing: Petra's
+  lantern lit + dam rung + shoulder pin burned, vault 0→3. Warden REACHED;
+  fight rewritten to his real machine (chop_tele cone / spin_tele ring / tired
+  window) after 38 deaths on a wrong 'lunge' key. Kill attempt in flight.
+  OPEN: Warden rebuilds to full HP on death — verify vs spec (Shadowgrip
+  remembered wounds) AFTER a clean win. Overnight wedge = level-up perk
+  chooser (design, not a defect) + loadGLB now has deadline+retry (real
+  robustness win). Next: read kill verdict; if won, post-boss earth grant +
+  canary + suites + PASS; if not, boss ladder to 0.5x.
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
