@@ -1,3 +1,9 @@
+# RUN 2 RESUME — 2026-08-14 05:27 UTC
+Rollback point THIS run: tag `pre-overnight-run-2` = `git reset --hard af7a69b`.
+Prior rollback (run 1): `5bb90c3` (tag pre-overnight-run).
+Main is at v3.48.1 (688a258) — L1 PASS already SHIPPED. Working branch ahead with harness + L2 work.
+Resume state: L2 Warden kill attempt at 0.5x IN FLIGHT (single instance — do not start a second rendered job alongside it, pacing rule). After its verdict: L1 gate sweep (l1-doors + full verify-all) + harness-inertness played-check are the outstanding run-2 prerequisites before any new ship. Then finish L2.
+
 # END-OF-RUN SUMMARY (22:58 UTC — run overshot 9h wind-down; see Incomplete)
 
 PASSED: Level 1 (played route + full-speed Shadowgrip kill, composition flagged
