@@ -173,16 +173,27 @@ const VIA = {
   // flipping the sidestep against it (passed 4 runs, jammed 3).
   'va3:vh': [[2, -3.2], [-4, -3.2], [-8, -1]],
 };
-const route = async (rooms) => { for (const r of rooms) {
-  if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
-  await fightNear(30000);
-  const from = (await d.wk()).room;
-  if (!(await goRoom(r, VIA[`${from}:${r}`] || []))) { say(`!! blocked before ${r}`); return false; }
-  // the door fade is 300-400ms of legitimate black — a shot mid-fade is a
-  // false flat. Settle first; a frame still flat AFTER the fade is a real
-  // render failure and the rule still throws.
-  await d.page.waitForTimeout(1600);
-  await d.shot(`enter-${r}`); } return true; };
+// STATE-DRIVEN, like L1 learned: a fight beside a doorway can carry the bot
+// BACKWARDS through it, and a fixed list then asks for doors that do not
+// exist. From wherever we actually stand, walk the chain toward the goal.
+const route = async (rooms) => {
+  const goal = rooms[rooms.length - 1];
+  for (let hops = 0; hops < rooms.length * 3; hops++) {
+    const cur = (await d.wk()).room;
+    if (cur === goal) { await d.page.waitForTimeout(1600); await d.shot(`enter-${goal}`); return true; }
+    const idx = rooms.indexOf(cur);
+    const next = idx >= 0 ? rooms[idx + 1] : rooms[0];
+    await fightNear(30000);
+    const from = (await d.wk()).room;
+    const ok = await goRoom(next, VIA[`${from}:${next}`] || []);
+    const now = (await d.wk()).room;
+    say(`  route hop ${from} → ${now} (wanted ${next})`);
+    if (!ok && now === from) { say(`!! blocked before ${next}`); return false; }
+    await d.page.waitForTimeout(1600);
+    await d.shot(`enter-${now}`).catch(() => {});
+  }
+  return (await d.wk()).room === goal;
+};
 
 // ---- spoke A: the lantern
 ok = ok && await route(['vga', 'va1', 'va2', 'va3']);
