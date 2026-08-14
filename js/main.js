@@ -1760,7 +1760,17 @@ async function start() {
   player.healFull();
   player.setForm(state.form, { silent: true });
 
-  player.onDefeated = () => { if (!transitioning) respawnAtCheckpoint(); };
+  // LOUD ON FAILURE. These two async paths set `transitioning = true` and are
+  // called fire-and-forget: if buildRoom ever rejects mid-flight, the flag
+  // wedges true forever and the world freezes silently — renders, never
+  // updates, no message. The overnight bot hit exactly that signature twice in
+  // vgb (game clock halted, no menu, no caption). A catch cannot un-wedge the
+  // world safely, but it CAN say what broke, which turns the next silent
+  // freeze into a diagnosable error.
+  player.onDefeated = () => {
+    if (!transitioning) respawnAtCheckpoint()
+      .catch((e) => console.error('[respawn] room rebuild failed — world wedged:', e));
+  };
   player.onPotionsChanged = () => renderPotions(player);
   player.onParry = (attacker) => {
     juice.onHit('heavy', {
@@ -2054,7 +2064,8 @@ async function start() {
 
       // Door transitions
       const door = world.doorAt(player.root.position.x, player.root.position.z);
-      if (door) loadRoom(door.to, door.entry, handoffAt(door));
+      if (door) loadRoom(door.to, door.entry, handoffAt(door))
+        .catch((e) => console.error('[door] room load failed — world wedged:', e));
 
       // (v3.18: the Echo Chasm drop-hole teleports are gone — dad's law:
       // nothing moves the player without a door they walked through.)

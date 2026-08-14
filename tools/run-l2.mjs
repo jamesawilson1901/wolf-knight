@@ -40,6 +40,34 @@ async function toForm(want) {
   return (await d.wk('form')) === want;
 }
 
+// FREEZE RECOVERY: when the world wedges (clock stopped, nothing open), the
+// only way forward tonight is a fresh page — reload, re-enter the room with
+// the same forms, and carry on. Each occurrence is logged; the loud catches
+// in main.js should now name the cause in the console log.
+let frozenRecoveries = 0;
+async function recoverIfFrozen() {
+  const frozen = await d.page.evaluate(async () => {
+    const g = window.__game;
+    if (!g || !g.state) return false;
+    const c1 = g.state.clock;
+    await new Promise((r) => setTimeout(r, 700));
+    return g.state.clock === c1;
+  }).catch(() => true);
+  if (!frozen) return false;
+  frozenRecoveries++;
+  const wk = await d.wk().catch(() => null);
+  say(`  !! WORLD WEDGED (recovery #${frozenRecoveries}) in ${wk && wk.room} — reloading`);
+  d.saveLog(`pre-recovery-${frozenRecoveries}`);
+  const room = (wk && wk.room) || 'vh';
+  const forms = (wk && (await d.wk('forms').catch(() => null))) || ['knight', 'dark_wolf', 'fire_wolf'];
+  await d.page.goto('http://localhost:8901/index.html?dev=1', { waitUntil: 'load' });
+  await d.page.waitForSelector('#title', { state: 'visible', timeout: 30000 });
+  await d.newGame('L2BOT' + frozenRecoveries);
+  await d.jump(room, forms);
+  say('  recovered into', JSON.stringify(await d.wk()));
+  return true;
+}
+
 async function goRoom(to, via = []) {
   // same filter as L1: a waypoint farther from the goal than we stand is for
   // a different entry — skip it rather than backtrack through hazards
@@ -70,6 +98,7 @@ async function goRoom(to, via = []) {
         await d.page.waitForTimeout(1200);
       }
     }
+    if (await recoverIfFrozen()) continue;
     const now = await d.wk('room');
     say(`  try${tries} end room ${now}`);
     if (!r.ok && r.at && here.pos && Math.hypot(r.at.x - here.pos.x, r.at.z - here.pos.z) < 0.1) {
