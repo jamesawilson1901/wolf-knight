@@ -224,19 +224,39 @@ if (ok) {
   await toForm('knight');
   const t0 = Date.now();
   let lastHp = null, deaths = 0, lastHearts = (await d.wk()).hearts;
-  while ((Date.now() - t0) / 1000 < 50 * 60) {
+  // THE WARDEN'S REAL MACHINE (js/enemies.js BoneWarden):
+  //   chop_tele  ~0.7s → chop, a 130° cone reaching 2.9u — STEP SIDEWAYS out
+  //   spin_tele  → spin, the whole-circle ring you cannot dodge sideways —
+  //               RUN OUT past ~2.6u, the ring's edge
+  //   tired      ~2.6s wide open — pile in, every swing counts double-ish
+  while ((Date.now() - t0) / 1000 < 45 * 60) {
     const s = await d.wk();
     const b = s.boss;
     if (!b) { say('warden gone — defeated?'); break; }
-    if (s.hearts <= 0.5 && lastHearts > 0.5) { deaths++; say(`DEATH #${deaths}`); await d.page.waitForTimeout(5000);
-      const back = await d.wk(); say('respawn:', JSON.stringify(back)); if (back.room !== 'vz') await goRoom('vz'); }
+    if (s.hearts <= 0.5 && lastHearts > 0.5) { deaths++; say(`DEATH #${deaths}`); await d.page.waitForTimeout(4500);
+      const back = await d.wk(); if (back.room !== 'vz') await goRoom('vz'); await toForm('knight'); }
     lastHearts = s.hearts;
-    if (s.hearts <= 1.5 && s.hearts > 0.5) await d.tap('h');
-    const dist = Math.hypot(b.x - s.pos.x, b.z - s.pos.z);
-    if (b.state === 'lunge') { await d.page.keyboard.down('i'); await d.page.waitForTimeout(700); await d.page.keyboard.up('i'); }
-    else if (dist > 1.5) await d.walkTo(b.x, b.z, { timeout: 2.5, arrive: 1.3 });
-    else { await d.tap('j'); await d.page.waitForTimeout(230); }
-    if (b.hp !== lastHp) { say(`warden hp ${lastHp} -> ${b.hp}`); lastHp = b.hp; }
+    if (s.hearts <= 2 && s.hearts > 0.5) await d.tap('h');
+    const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (b.state === 'spin_tele' || b.state === 'spin') {
+      // sprint straight away from him, out past the ring
+      const nx = dist < 0.01 ? 1 : -dx / dist, nz = dist < 0.01 ? 0 : -dz / dist;
+      await d.walkTo(s.pos.x + nx * 4, s.pos.z + nz * 4, { timeout: 2, arrive: 0.5 });
+    } else if (b.state === 'chop_tele' || b.state === 'chop') {
+      // sidestep the cone: strafe perpendicular
+      const px = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
+      await d.page.keyboard.down(px); await d.page.waitForTimeout(500); await d.page.keyboard.up(px);
+    } else if (b.state === 'tired') {
+      if (dist > 1.5) await d.walkTo(b.x, b.z, { timeout: 2, arrive: 1.3 });
+      else { const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+        await d.page.keyboard.down(k); await d.page.waitForTimeout(120); await d.page.keyboard.up(k);
+        await d.tap('j'); await d.page.waitForTimeout(180); await d.tap('j'); }
+    } else { // chase — close, and poke when in reach, ready to react
+      if (dist > 2.2) await d.walkTo(b.x, b.z, { timeout: 1.5, arrive: 2 });
+      else { await d.tap('j'); await d.page.waitForTimeout(200); }
+    }
+    if (b.hp !== lastHp) { say(`warden hp ${lastHp} -> ${b.hp} [${b.state}]`); lastHp = b.hp; }
   }
   const flags = await d.page.evaluate(() => ({ warden: !!window.__wk.flags.wardenDefeated, forms: window.__wk.forms }));
   say('WARDEN FLAGS:', JSON.stringify(flags));
