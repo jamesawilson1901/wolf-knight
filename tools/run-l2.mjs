@@ -157,6 +157,10 @@ const VIA = {
   'vh:vgb': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
   'vh:vgc': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
   'vh:vz': [[-8, -9.5], [0, -10.5], [7, -9]],
+  // vb1, the Bone Quarry: terraces make an L (wall x=-4 z-6..4, wall z=4
+  // x-4..10). The route a child's eye picks runs under the southern edge.
+  'vb1:vb2': [[-8, -8.5], [4, -8.5], [13, -3]],
+  'vb1:vgb': [[13, -3], [4, -8.5], [-8, -8.5]],
 };
 const route = async (rooms) => { for (const r of rooms) {
   if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
