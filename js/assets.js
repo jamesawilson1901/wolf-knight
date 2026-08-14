@@ -34,10 +34,36 @@ function markShared(gltf) {
   return gltf;
 }
 
+// A LOAD THAT HANGS WEDGES THE WHOLE GAME. Room transitions await this
+// function with `transitioning = true`; a fetch that neither resolves nor
+// rejects — one stalled socket on flaky wifi is enough — leaves the world
+// rendering but never updating, silently, forever. The overnight play-test
+// hit exactly that three times: room built, player placed, then frozen with
+// the old room's music still playing because setupRoomExtras never returned.
+//
+// So every load gets a deadline and one retry. 20 seconds is geological for
+// a local file and generous for bad wifi; the retry gets its own 20. A load
+// that fails BOTH times rejects loudly — the door handler's catch names it —
+// which is a diagnosable error instead of a silent freeze.
+function loadOnce(url, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`asset load timed out: ${url}`)), timeoutMs);
+    gltfLoader.load(url,
+      (g) => { clearTimeout(timer); resolve(markShared(g)); },
+      undefined,
+      (e) => { clearTimeout(timer); reject(e); });
+  });
+}
 export function loadGLB(url) {
   if (!gltfCache.has(url)) {
-    gltfCache.set(url, new Promise((resolve, reject) => {
-      gltfLoader.load(url, (g) => resolve(markShared(g)), undefined, reject);
+    gltfCache.set(url, loadOnce(url).catch((e) => {
+      console.warn('[assets] retrying after', String(e && e.message || e));
+      return loadOnce(url);
+    }).catch((e) => {
+      // a failed promise must not poison the cache forever — the next room
+      // that needs this model deserves a fresh attempt
+      gltfCache.delete(url);
+      throw e;
     }));
   }
   return gltfCache.get(url);
