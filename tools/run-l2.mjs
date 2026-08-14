@@ -231,8 +231,23 @@ if (ok) {
   //   tired      ~2.6s wide open — pile in, every swing counts double-ish
   while ((Date.now() - t0) / 1000 < 45 * 60) {
     const s = await d.wk();
+    if (s.room !== 'vz') {
+      // a dodge carried us out the crypt door — the fight is not over, the bot
+      // just left the room. Walk back in and keep going. Only a set flag ends it.
+      const won = await d.page.evaluate(() => !!window.__wk.flags.wardenDefeated);
+      if (won) { say('warden defeated — left arena after the kill'); break; }
+      say('  left the arena mid-fight — returning');
+      await goRoom('vz'); await toForm('knight');
+      continue;
+    }
     const b = s.boss;
-    if (!b) { say('warden gone — defeated?'); break; }
+    if (!b) {
+      const won = await d.page.evaluate(() => !!window.__wk.flags.wardenDefeated);
+      say(won ? 'warden DEFEATED' : 'warden gone but no flag — reassessing');
+      if (won) break;
+      await d.page.waitForTimeout(800);
+      continue;
+    }
     if (s.hearts <= 0.5 && lastHearts > 0.5) { deaths++; say(`DEATH #${deaths}`); await d.page.waitForTimeout(4500);
       const back = await d.wk(); if (back.room !== 'vz') await goRoom('vz'); await toForm('knight'); }
     lastHearts = s.hearts;
@@ -240,9 +255,14 @@ if (ok) {
     const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
     const dist = Math.hypot(dx, dz);
     if (b.state === 'spin_tele' || b.state === 'spin') {
-      // sprint straight away from him, out past the ring
-      const nx = dist < 0.01 ? 1 : -dx / dist, nz = dist < 0.01 ? 0 : -dz / dist;
-      await d.walkTo(s.pos.x + nx * 4, s.pos.z + nz * 4, { timeout: 2, arrive: 0.5 });
+      // out past the ring, but NEVER toward the crypt door (south, high +z,
+      // entry ~z 9.5). Flee to the nearest safe point on the north arc so a
+      // dodge cannot walk the bot out of its own boss fight.
+      let ang = Math.atan2(-dx, -dz);            // straight away from the warden
+      let tx = b.x + Math.sin(ang) * 4.5, tz = b.z + Math.cos(ang) * 4.5;
+      if (tz > 6) { tx = b.x + (s.pos.x >= b.x ? 4.5 : -4.5); tz = b.z - 1; } // sideways instead
+      await d.walkTo(Math.max(-11, Math.min(11, tx)), Math.max(-11, Math.min(6, tz)),
+        { timeout: 2, arrive: 0.6 });
     } else if (b.state === 'chop_tele' || b.state === 'chop') {
       // sidestep the cone: strafe perpendicular
       const px = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
