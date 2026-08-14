@@ -46,14 +46,19 @@ async function toForm(want) {
 // in main.js should now name the cause in the console log.
 let frozenRecoveries = 0;
 async function recoverIfFrozen() {
-  const frozen = await d.page.evaluate(async () => {
+  const probe = await d.page.evaluate(async () => {
     const g = window.__game;
-    if (!g || !g.state) return false;
-    const c1 = g.state.clock;
+    if (!g || !g.state) return { frozen: false };
+    const c1 = g.state.clock, f1 = g.renderer.info.render.frame;
     await new Promise((r) => setTimeout(r, 700));
-    return g.state.clock === c1;
-  }).catch(() => true);
-  if (!frozen) return false;
+    return { frozen: g.state.clock === c1,
+      // frames advancing while the clock stands still = the loop is ALIVE and
+      // bailing early (a wedged flag). Frames static too = rAF itself is dead
+      // — the environment, not the game.
+      framesAdvanced: g.renderer.info.render.frame !== f1 };
+  }).catch(() => ({ frozen: true, framesAdvanced: null }));
+  if (!probe.frozen) return false;
+  say(`  !! wedge signature: framesAdvanced=${probe.framesAdvanced}`);
   frozenRecoveries++;
   const wk = await d.wk().catch(() => null);
   say(`  !! WORLD WEDGED (recovery #${frozenRecoveries}) in ${wk && wk.room} — reloading`);
@@ -69,6 +74,7 @@ async function recoverIfFrozen() {
 }
 
 async function goRoom(to, via = []) {
+  if ((await d.wk('room')) === to) return true;   // recovery can land us inside
   // same filter as L1: a waypoint farther from the goal than we stand is for
   // a different entry — skip it rather than backtrack through hazards
   {
@@ -145,6 +151,8 @@ const VIA = {
   'vh:vz': [[-8, -9.5], [0, -10.5], [7, -9]],
 };
 const route = async (rooms) => { for (const r of rooms) {
+  if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
+  await recoverIfFrozen();
   await fightNear(30000);
   const from = (await d.wk()).room;
   if (!(await goRoom(r, VIA[`${from}:${r}`] || []))) { say(`!! blocked before ${r}`); return false; }
