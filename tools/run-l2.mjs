@@ -161,6 +161,10 @@ const VIA = {
   // x-4..10). The route a child's eye picks runs under the southern edge.
   'vb1:vb2': [[-8, -8.5], [4, -8.5], [13, -3]],
   'vb1:vgb': [[13, -3], [4, -8.5], [-8, -8.5]],
+  // vc1's switchback: wall z=-4 gaps in the east (x>6), wall z=3 gaps at
+  // x 3..7. Thread east gap, then the middle gap, then north.
+  'vc1:vc2': [[10, -6.5], [10, 0], [5, 1], [5, 5.5], [0, 9]],
+  'vc1:vgc': [[5, 5.5], [5, 1], [10, 0], [10, -6.5], [0, -9]],
 };
 const route = async (rooms) => { for (const r of rooms) {
   if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
