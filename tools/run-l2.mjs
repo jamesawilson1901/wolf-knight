@@ -101,6 +101,7 @@ async function goRoom(to, via = []) {
       }
     }
     const here = await d.wk();
+    if (here.room === to) return true;   // the via walk can carry us across
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
     if (!door) { say(`!! no door to ${to} from ${here.room}`); return false; }
