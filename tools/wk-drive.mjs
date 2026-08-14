@@ -67,6 +67,26 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
+          if (stuck === 5) {
+            // Patience beats recovery: a blocking story line or a SwiftShader
+            // shader-compile hitch both stall the world legitimately. Wait for
+            // the world to actually tick again before counting more stuckness.
+            const talking = await page.evaluate(async () => {
+              const g = window.__game;
+              for (let i = 0; i < 40; i++) {
+                if (!g.narration.speaking) break;
+                await new Promise((r2) => setTimeout(r2, 500));
+              }
+              const t1 = g.player._time;
+              for (let i = 0; i < 20; i++) {
+                await new Promise((r2) => setTimeout(r2, 500));
+                if (g.player._time !== t1) return { waited: true, ticking: true };
+              }
+              return { waited: true, ticking: false };
+            }).catch(() => ({ waited: false }));
+            if (talking.ticking) stuck = 0;
+            else if (talking.ticking === false) console.log('  [walkTo] world not ticking after 10s wait');
+          }
           if (stuck === 10) {
             // WHO FROZE THE WORLD? The pause flags are closured and unreadable,
             // but a menu that is open is open in the DOM, and a halted loop

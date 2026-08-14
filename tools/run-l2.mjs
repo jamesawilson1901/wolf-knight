@@ -113,7 +113,6 @@ async function goRoom(to, via = []) {
         await d.page.waitForTimeout(1200);
       }
     }
-    if (await recoverIfFrozen()) continue;
     const now = await d.wk('room');
     say(`  try${tries} end room ${now}`);
     if (!r.ok && r.at && here.pos && Math.hypot(r.at.x - here.pos.x, r.at.z - here.pos.z) < 0.1) {
@@ -161,7 +160,6 @@ const VIA = {
 };
 const route = async (rooms) => { for (const r of rooms) {
   if ((await d.wk('room')) === r) { await d.shot(`enter-${r}`); continue; }
-  await recoverIfFrozen();
   await fightNear(30000);
   const from = (await d.wk()).room;
   if (!(await goRoom(r, VIA[`${from}:${r}`] || []))) { say(`!! blocked before ${r}`); return false; }
