@@ -32,3 +32,12 @@
    around the top. If the "old trail, now cut" read is intended, fine; if the
    trail should bend around the narrows like lc's lava path bends to the
    slabs, it is a one-line polyline edit in buildVa1.
+
+7. **Room-transition wedge (the overnight intermittent, root strongly
+   indicated).** A hung asset fetch during loadRoom/respawn leaves
+   `transitioning` true forever: world renders, never updates, no error.
+   Landed fix: loadGLB deadline (20s) + one retry + loud rejection.
+   REMAINING morning surgery: when a load fails twice mid-transition the
+   world is still wedged (now loudly) — needs a recovery path (rebuild
+   checkpoint room, or an error screen with a retry button). Evidence:
+   test-evidence/level-2 console logs + PROGRESS intermittents entry.
