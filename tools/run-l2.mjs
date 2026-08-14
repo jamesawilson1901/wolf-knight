@@ -163,7 +163,7 @@ const VIA = {
   'vb1:vgb': [[13, -3], [4, -8.5], [-8, -8.5]],
   // vc1's switchback: wall z=-4 gaps in the east (x>6), wall z=3 gaps at
   // x 3..7. Thread east gap, then the middle gap, then north.
-  'vc1:vc2': [[10, -6.5], [10, 0], [5, 1], [5, 5.5], [0, 9]],
+  'vc1:vc2': [[10, -6.5], [10, 0], [4.5, 1], [4.5, 4.2], [1, 6.5], [0, 9.5]],  // veer west after the gap — a shield-bearer posts at (5,6)
   'vc1:vgc': [[5, 5.5], [5, 1], [10, 0], [10, -6.5], [0, -9]],
   // va3 centres its shrine cluster ON the route by design — leaving west
   // after the lantern, step south around the pedestal instead of coin-
