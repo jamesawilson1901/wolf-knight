@@ -1773,6 +1773,18 @@ export class BoneWarden extends SkeletonBase {
     });
     this.awakenTime = 1.3;
     this.dropChance = 1;
+    // WOUNDS PERSIST ACROSS DEATHS — the spec is explicit and universal:
+    // COMBAT-SPEC.md ("wounds PERSIST across deaths, flags.bossHp, saved") and
+    // LEVEL-DESIGN-5/6/7 ("her wounds persist across deaths, like every boss
+    // since v3.18"). Every boss.js boss reads state.flags[saveKey] at build and
+    // writes it on every hit; the Warden — the one boss that lives in
+    // enemies.js — did neither, so he reset to full on every death and a child
+    // (or a play-test bot) who chipped him to a sliver lost all of it on one
+    // fall. Restored here, saved in takeDamage below. In-memory flag only: this
+    // is the across-deaths persistence the spec names, and it touches no save
+    // format. (Cross-session parity — adding wardenHp to save.js — is logged in
+    // MORNING-REVIEW as an additive follow-up.)
+    if (state.flags.wardenHp > 0) this.hp = Math.min(state.flags.wardenHp, this.maxHp);
     if (axeGltf) this.mount('r', axeGltf);
     if (shieldGltf) this.mount('l', shieldGltf);
     this.swings = 0;
@@ -1805,6 +1817,7 @@ export class BoneWarden extends SkeletonBase {
   die() {
     this.world.root.remove(this.dangerRing);
     this.world.root.remove(this.spinRing);
+    state.flags.wardenHp = 0;   // the duel is over — no stale wound to restore
     if (this.world.onWardenDefeated) this.world.onWardenDefeated(this);
     super.die();
   }
@@ -1826,6 +1839,9 @@ export class BoneWarden extends SkeletonBase {
       }
     }
     super.takeDamage(n, element, kind);
+    // ...and the wound is remembered (see constructor). Written after super so
+    // it reflects the blow that actually landed, exactly as boss.js does.
+    if (!this.dead) state.flags.wardenHp = Math.max(0, this.hp);
   }
 
   _swingDamage(player, arcDeg, range, dmg) {
