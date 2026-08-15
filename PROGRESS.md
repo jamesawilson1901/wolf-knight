@@ -1,3 +1,6 @@
+# SHIPPING v3.48.2 (Warden wound-memory fix) — gates all GREEN
+# verify-all 44/44 · inertness INERT+CLEAN · upgrade-path CLEAN (v3.48.1 save intact) · canary GREEN
+
 # RUN 2 RESUME — 2026-08-14 05:27 UTC
 Rollback point THIS run: tag `pre-overnight-run-2` = `git reset --hard af7a69b`.
 Prior rollback (run 1): `5bb90c3` (tag pre-overnight-run).
