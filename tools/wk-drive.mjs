@@ -5,18 +5,23 @@
 // events into the floating-joystick zone. It never calls a gameplay API.
 //
 // Evidence discipline: every screenshot is checked against the flat-frame rule
-// (a PNG of a single colour compresses far below any real world frame — the
-// threshold here is generous at 45KB) and a flat frame THROWS: it is a render
-// failure, never evidence.
+// (a PNG of a single colour compresses far below any real world frame) and a
+// flat frame THROWS: it is a render failure, never evidence. FLAT_KB is
+// calibrated to the 740x360 viewport — recalibrate if the viewport changes.
 import { chromium } from 'playwright';
 import { mkdirSync, statSync, appendFileSync } from 'fs';
+
+// 740x360 matches every verify-* suite; the old 960x480 drew 73% more pixels
+// through SwiftShader for no fidelity gain (RUN2-REPORT discovery #3).
+const VW = 740, VH = 360;
+const FLAT_KB = 26; // calibrated: a real in-game frame at 740x360 measures ~200KB; single-colour frames compress under 10
 
 export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
       '--autoplay-policy=no-user-gesture-required'] });
   // FRESH CONTEXT, ALWAYS: no storage, no service worker, no cached build.
-  const ctx = await b.newContext({ viewport: { width: 960, height: 480 } });
+  const ctx = await b.newContext({ viewport: { width: VW, height: VH } });
   const page = await ctx.newPage();
   const consoleLog = [];
   const errors = [];
@@ -146,8 +151,7 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
     async holdShield(ms) { await page.keyboard.down('i'); await page.waitForTimeout(ms); await page.keyboard.up('i'); },
     // Real pointer joystick: down in the left zone, drag, hold `ms`, release.
     async joystick(dirX, dirZ, ms) {
-      const vw = 960, vh = 480;
-      const ox = vw * 0.18, oy = vh * 0.62;
+      const ox = VW * 0.18, oy = VH * 0.62;
       await page.mouse.move(ox, oy);
       await page.mouse.down();
       await page.mouse.move(ox + dirX * 60, oy + dirZ * 60, { steps: 4 });
@@ -158,7 +162,7 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       const p = `${evidenceDir}/${String(++shotN).padStart(2, '0')}-${label}.png`;
       await page.screenshot({ path: p });
       const kb = statSync(p).size / 1024;
-      if (kb < 45) throw new Error(`RENDER FAILURE: ${p} is ${kb.toFixed(0)}KB — flat frame, not evidence`);
+      if (kb < FLAT_KB) throw new Error(`RENDER FAILURE: ${p} is ${kb.toFixed(0)}KB — flat frame, not evidence`);
       return p;
     },
     saveLog(label) {

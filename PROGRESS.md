@@ -1,3 +1,40 @@
+# RUN 3 — LIVE. Started 2026-08-15 ~11:45 UTC.
+Brief: RUN3-BRIEF.md (in repo). Dad's amendments in chat, 2026-08-15:
+  * DEADLINE FLEXIBLE — continue until L3-L7 are finished. Heartbeats still ~40min.
+  * MORNING-REVIEW #8 APPROVED — wardenHp save parity lands this run (v3.49).
+Rollback: tag `pre-overnight-run-3` = 1071d55. Never force-push.
+Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
+
+## RUN 3 LEDGER (every item ends DONE / DROPPED-because / BLOCKED)
+1. Step-0 harness prep — DONE, probe green (tools/probe-run3-step0.mjs):
+   a. dev timescale ceiling 4 (3->3, 9->4, ladder 0.5->0.5, dev-off inert, 0 errors)
+   b. driver viewport 740x360, FLAT_KB 26 (real frame measures 203KB)
+   c. verify-all --par mode (3 jobs, timing-sensitive suites serial tail)
+   d. ladder rungs confirmed after ceiling change
+   e. server = node tools/serve.mjs
+2. wardenHp save parity (#8, APPROVED) — CODE DONE, probe round-trip 7->7; full sweep validates
+3. Profile-isolation check (once, early) — TODO after baseline sweep
+4. L3 Wild Woods: recon / route / boss / close / touch-leg — IN PROGRESS (recon)
+5. L4 Frostpeak — TODO
+6. L5 Stormreach — TODO
+7. L6 Sunken Vale — TODO
+8. L7 Shadow Court — TODO
+9. Ship events per protocol (batch ~2 levels per ship) — TODO
+10. Intermittents watch (vgb tripwire armed in run-l2) — STANDING
+11. Phone-check lines per ship — STANDING
+
+## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
+* Baseline parallel sweep: `sh tools/verify-all.sh --par > /tmp/v-par-baseline.log 2>&1`
+  Done when the log ends "passed N, failed M" (expect 44 pass). Any --par FAIL
+  is re-run serially before being believed. If the job dies: read the log,
+  re-run the command.
+
+## Speed baselines (RUN2-REPORT levers, measured tonight)
+* Traversal at 3x = 0.60 game-s/wall-s (was 0.25 at 1x) -> ~2.4x faster routes.
+* Gate sweep serial = 2h39m (run 2). Parallel baseline: PENDING this sweep.
+
+---- history below ----
+
 # SHIPPED v3.48.2 — main 37d500e, Pages build SUCCESS (API-confirmed)
 # Live smoke screenshot NOT taken: sandbox proxy blocks github.io in-browser (ERR_TUNNEL). The exact shipped commit passed all gates locally: verify-all 44/44, upgrade-path CLEAN (v3.48.1 save loads intact), inertness INERT+CLEAN, canary GREEN. Phone-check item: open the live link, confirm badge reads v3.48.2.
 

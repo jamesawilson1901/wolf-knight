@@ -125,6 +125,7 @@ export function persist() {
       sylvaDefeated: !!state.flags.sylvaDefeated,
       borealHp: state.flags.borealHp || 0,    // v3.21: Boreal's duel remembers too
       borealDefeated: !!state.flags.borealDefeated,
+      wardenHp: state.flags.wardenHp || 0,    // v3.49: the Warden's duel remembers across app-close, like every boss since v3.18
     },
     spoken: { ...state.spoken },
     form: state.form,
@@ -211,6 +212,9 @@ export function applySave(profileId, profileName, data) {
     // and `|| 0` / `!!undefined` give exactly the fresh-mountain state
     state.flags.borealHp = data.flags.borealHp || 0;
     state.flags.borealDefeated = !!data.flags.borealDefeated;
+    // v3.49 — additive, same law: a pre-Stoneroot-fix profile has no wardenHp
+    // key, `|| 0` gives the untouched-crypt state, and old builds ignore it
+    state.flags.wardenHp = data.flags.wardenHp || 0;
     // v3.18: the "dead machinery" mystery was retired with the mill fiction —
     // old saves that logged it get it quietly marked found (additive law:
     // old profiles must always load clean)

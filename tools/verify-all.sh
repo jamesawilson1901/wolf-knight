@@ -1,7 +1,7 @@
 #!/bin/sh
 # THE WHOLE SUITE. All of it, by default.
 #
-# There are thirty-two verifiers in this directory and this script used to run
+# There are dozens of verifiers in this directory and this script used to run
 # three. That is not a detail — it is the reason four separate things rotted
 # without anyone noticing:
 #
@@ -17,11 +17,18 @@
 # order that fails fastest, and `--quick` when you genuinely only want a smoke
 # test. Naming suites explicitly still runs just those, after boot.
 #
-#   sh tools/verify-all.sh                    everything (slow: hours)
+#   sh tools/verify-all.sh                    everything, serial (~2h40m measured)
+#   sh tools/verify-all.sh --par              everything, 3 suites at a time
 #   sh tools/verify-all.sh --quick            boot, density, music
 #   sh tools/verify-all.sh verify-level3.mjs  boot + that one
 #
-# The static server must be up: (nohup python3 -m http.server 8901 &)
+# --par exists because the serial sweep measured 2h39m (run-2 report) on a
+# 4-core box where each suite is its own browser. Three at once contend for
+# CPU, so a suite CAN flake under load that would pass alone: any --par FAIL
+# must be re-run serially before it is believed (gate-triage rule). The three
+# frame-timing-sensitive suites always run serial, after the parallel batch.
+#
+# The static server must be up: (nohup node tools/serve.mjs &)
 cd "$(dirname "$0")/.."
 PASS=0; FAIL=0; FAILED=""
 run() {
@@ -39,6 +46,18 @@ run() {
   fi
 }
 
+# --one is --par's worker: same pass rule as run(), verdict to a result file.
+if [ "$1" = "--one" ]; then
+  t="$2"; RDIR="$3"
+  START=$(date +%s)
+  if node "tools/$t" > "/tmp/vall-$t.log" 2>&1 || grep -q "ALL CLEAN" "/tmp/vall-$t.log" 2>/dev/null; then
+    echo "PASS $(( $(date +%s) - START ))" > "$RDIR/$t"
+  else
+    echo "FAIL $(( $(date +%s) - START ))" > "$RDIR/$t"
+  fi
+  exit 0
+fi
+
 # Boot first, always: twenty seconds, and it catches the errors that make every
 # other result meaningless.
 run verify-boot.mjs
@@ -47,6 +66,30 @@ case "$1" in
   --quick)
     run verify-density.mjs
     run verify-music.mjs
+    ;;
+  --par)
+    # The suite list is PARSED FROM THE SERIAL BLOCK BELOW — one list, no rot.
+    ALL=$(grep -oE '^ *run verify-[a-z0-9-]+\.mjs' "$0" | awk '{print $2}' | awk '!s[$0]++' | grep -v '^verify-boot')
+    # Longest suites first so a 17-minute giant never starts last and runs alone.
+    HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs"
+    # Frame-timing measurements flake under CPU contention — these run serial, last.
+    TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
+    PARLIST=""
+    for t in $HEAVY; do echo "$ALL" | grep -qx "$t" && PARLIST="$PARLIST $t"; done
+    for t in $ALL; do
+      case " $HEAVY $TAIL " in *" $t "*) ;; *) PARLIST="$PARLIST $t" ;; esac
+    done
+    RDIR="/tmp/vall-par.$$"; mkdir -p "$RDIR"
+    printf '%s\n' $PARLIST | xargs -P 3 -n 1 -I{} sh "$0" --one {} "$RDIR"
+    for t in $PARLIST; do
+      if [ -f "$RDIR/$t" ]; then read -r V S < "$RDIR/$t"; else V=FAIL; S='?'; fi
+      printf '%-26s %s  %ss\n' "$t" "$V" "$S"
+      if [ "$V" = "PASS" ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); FAILED="$FAILED $t"; fi
+    done
+    for t in $TAIL; do
+      echo "$ALL" | grep -qx "$t" && run "$t"
+    done
+    rm -rf "$RDIR"
     ;;
   '')
     # THE ONES THAT ANSWER "IS IT A GAME" come first, because a failure here
@@ -117,7 +160,9 @@ esac
 
 # AND A GUARD AGAINST THIS FILE ROTTING THE SAME WAY. A verifier that exists
 # but is not listed here is a verifier nobody runs, which is where this started.
-if [ -z "$1" ]; then
+# --par parses its list from the serial block, so guarding the serial block
+# guards both modes.
+if [ -z "$1" ] || [ "$1" = "--par" ]; then
   MISSING=""
   for f in tools/verify-*.mjs; do
     b=$(basename "$f")
