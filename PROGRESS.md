@@ -1,4 +1,7 @@
-# SHIPPING v3.48.2 (Warden wound-memory fix) — gates all GREEN
+# SHIPPED v3.48.2 — main 37d500e, Pages build SUCCESS (API-confirmed)
+# Live smoke screenshot NOT taken: sandbox proxy blocks github.io in-browser (ERR_TUNNEL). The exact shipped commit passed all gates locally: verify-all 44/44, upgrade-path CLEAN (v3.48.1 save loads intact), inertness INERT+CLEAN, canary GREEN. Phone-check item: open the live link, confirm badge reads v3.48.2.
+
+# was: SHIPPING v3.48.2 (Warden wound-memory fix) — gates all GREEN
 # verify-all 44/44 · inertness INERT+CLEAN · upgrade-path CLEAN (v3.48.1 save intact) · canary GREEN
 
 # RUN 2 RESUME — 2026-08-14 05:27 UTC
