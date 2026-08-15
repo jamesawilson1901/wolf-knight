@@ -71,18 +71,18 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Defects found in the GAME: none. Seven bot iterations, all driver-side.
   * Intermittents: lb music race — RESOLVED (async load; settled read correct).
   * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
-- L2 Stoneroot: IN PROGRESS — WHOLE SPINE NAVIGATED in live play (state-driven
-  route, ~23 runs; every deliberately-shaped room learned as waypoints: crystal
-  narrows, flooded ring, quarry terraces, vc1 switchback, shrine cluster,
-  shield-bearer post). ALL THREE FIRE MILESTONES proven by playing: Petra's
-  lantern lit + dam rung + shoulder pin burned, vault 0→3. Warden REACHED;
-  fight rewritten to his real machine (chop_tele cone / spin_tele ring / tired
-  window) after 38 deaths on a wrong 'lunge' key. Kill attempt in flight.
-  OPEN: Warden rebuilds to full HP on death — verify vs spec (Shadowgrip
-  remembered wounds) AFTER a clean win. Overnight wedge = level-up perk
-  chooser (design, not a defect) + loadGLB now has deadline+retry (real
-  robustness win). Next: read kill verdict; if won, post-boss earth grant +
-  canary + suites + PASS; if not, boss ladder to 0.5x.
+- L2 Stoneroot: BOSS CHAIN PROVEN, SHIPPING (v3.48.2 gates in progress)
+  * Whole spine navigated in live play (state-driven route); all three fire
+    milestones fired: Petra's lantern + rattle plate + shoulder pin, vault 0→3.
+  * DEFECT FOUND BY PLAY + FIXED: Bone Warden reset to full HP on death,
+    violating universal spec ("wounds persist across deaths, every boss since
+    v3.18"). Fix 9099978: restores from state.flags.wardenHp, saves per hit,
+    clears on defeat; no save-format change. Confirmed: WARDEN DEFEATED at 1x,
+    1 death w/ correct vz respawn, all 8 states, EARTH WOLF granted, 0 errors.
+    Cross-session save parity → MORNING-REVIEW #8.
+  * Evidence: test-evidence/level-2/warden*.
+  * Next action: run full verify-all + harness-inertness + upgrade-path +
+    canary; if green, ship v3.48.2 (merge + version + SW bump), smoke live.
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
