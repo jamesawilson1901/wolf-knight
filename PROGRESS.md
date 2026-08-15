@@ -1,9 +1,20 @@
+# SHIPPING v3.48.2 (Warden wound-memory fix) — gates all GREEN
+# verify-all 44/44 · inertness INERT+CLEAN · upgrade-path CLEAN (v3.48.1 save intact) · canary GREEN
+
+# RUN 2 RESUME — 2026-08-14 05:27 UTC
+Rollback point THIS run: tag `pre-overnight-run-2` = `git reset --hard af7a69b`.
+Prior rollback (run 1): `5bb90c3` (tag pre-overnight-run).
+Main is at v3.48.1 (688a258) — L1 PASS already SHIPPED. Working branch ahead with harness + L2 work.
+Resume state: L2 Warden kill attempt at 0.5x IN FLIGHT (single instance — do not start a second rendered job alongside it, pacing rule). After its verdict: L1 gate sweep (l1-doors + full verify-all) + harness-inertness played-check are the outstanding run-2 prerequisites before any new ship. Then finish L2.
+
 # END-OF-RUN SUMMARY (22:58 UTC — run overshot 9h wind-down; see Incomplete)
 
 PASSED: Level 1 (played route + full-speed Shadowgrip kill, composition flagged
 in the L1 entry). GAME DEFECTS FOUND: none in L1 — seven driver iterations.
-NOT PUSHED TO MAIN: the L1 PASS push never ran — main is still v3.48.0
-(223d2ab), all overnight work is on the dev branch only. Rollback point:
+PUSHED: L1 PASS shipped as v3.48.1 (main 688a258) after the l1-doors gate
+re-ran green (27/27 doors, 406s). The earlier gap: the gate suite's browser
+died mid-run with the static server, the waiter watched for a verdict that
+was never printed, and no one re-ran the six-minute check until morning. Rollback point:
 `git reset --hard 5bb90c3` (tag pre-overnight-run).
 
 INCOMPLETE, morning order of work:
@@ -63,7 +74,18 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Defects found in the GAME: none. Seven bot iterations, all driver-side.
   * Intermittents: lb music race — RESOLVED (async load; settled read correct).
   * Evidence: test-evidence branch, 2026-08-13/level-1/ (route + boss + canary).
-- L2 Stoneroot: NOT STARTED
+- L2 Stoneroot: BOSS CHAIN PROVEN, SHIPPING (v3.48.2 gates in progress)
+  * Whole spine navigated in live play (state-driven route); all three fire
+    milestones fired: Petra's lantern + rattle plate + shoulder pin, vault 0→3.
+  * DEFECT FOUND BY PLAY + FIXED: Bone Warden reset to full HP on death,
+    violating universal spec ("wounds persist across deaths, every boss since
+    v3.18"). Fix 9099978: restores from state.flags.wardenHp, saves per hit,
+    clears on defeat; no save-format change. Confirmed: WARDEN DEFEATED at 1x,
+    1 death w/ correct vz respawn, all 8 states, EARTH WOLF granted, 0 errors.
+    Cross-session save parity → MORNING-REVIEW #8.
+  * Evidence: test-evidence/level-2/warden*.
+  * Next action: run full verify-all + harness-inertness + upgrade-path +
+    canary; if green, ship v3.48.2 (merge + version + SW bump), smoke live.
 - L3 Wild Woods: NOT STARTED
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
@@ -71,6 +93,11 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
 - L7 Shadow Court: NOT STARTED
 
 ## Intermittents flagged
+- L2/vgb FROZEN BOT (run 4, 1 occurrence, unreproduced): zero movement at
+  (0.04,-1.08) across 3x60s tries incl. sidesteps; live probe walked the exact
+  spot freely (push 0, keys registered, vel 4.6). Not geometry/input/narration/
+  lock. Tripwire added to run-l2: zero-movement tries dump input+player guts.
+  MUST be re-examined if it fires again; cannot be dropped from any L2 PASS.
 - lb music: RESOLVED run 6 — settled read shows 'causeway' as intended
   (main.js:1149). The earlier region-ember reads raced the async track load.
   Not a defect.

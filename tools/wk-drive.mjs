@@ -67,6 +67,50 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
+          if (stuck === 5) {
+            // Patience is only for NARRATION and dead worlds. A blocking story
+            // line stalls the world on purpose — wait it out and absolve the
+            // stuckness. But a ticking world with a motionless player is
+            // GEOMETRY, and absolving that starved the sidesteps forever: the
+            // bot jammed on va3's shrine because stuck could never reach 7.
+            const verdict = await page.evaluate(async () => {
+              const g = window.__game;
+              if (g.narration.speaking) {
+                for (let i = 0; i < 40 && g.narration.speaking; i++) {
+                  await new Promise((r2) => setTimeout(r2, 500));
+                }
+                return 'narration';
+              }
+              const t1 = g.player._time;
+              await new Promise((r2) => setTimeout(r2, 900));
+              return g.player._time === t1 ? 'dead' : 'geometry';
+            }).catch(() => 'geometry');
+            if (verdict === 'narration') stuck = 0;
+            else if (verdict === 'dead') {
+              if (await api.pickPerkIfOffered()) { stuck = 0; continue; }
+              const gates = await page.evaluate(() => window.__wk.gates).catch(() => null);
+              console.log('  [walkTo] world not ticking — real wedge, gates:', JSON.stringify(gates));
+            }
+          }
+          if (stuck === 10) {
+            // WHO FROZE THE WORLD? The pause flags are closured and unreadable,
+            // but a menu that is open is open in the DOM, and a halted loop
+            // cannot advance the game clock. Read both while it is happening.
+            const guts = await page.evaluate(async () => {
+              const g = window.__game;
+              const c1 = g.state.clock;
+              await new Promise((r2) => setTimeout(r2, 600));
+              const vis = (id) => { const el = document.getElementById(id);
+                return el ? getComputedStyle(el).display !== 'none' : null; };
+              return { clockMoved: g.state.clock !== c1,
+                inv: vis('inv-menu'), shop: vis('shop-menu'), map: vis('map-menu'),
+                mg: vis('mg-tap'), pausePanel: vis('pause-menu'),
+                caption: !!document.querySelector('#caption.show, .caption.show'),
+                speaking: g.narration.speaking, queue: (g.narration.queue || []).length,
+                vel: { ...g.player._vel }, lock: g.player.lockTime };
+            }).catch((e) => ({ err: String(e) }));
+            console.log('  [walkTo stuck-guts]', JSON.stringify(guts));
+          }
           if (stuck === 7 || stuck === 18) {
             // sidestep: walk perpendicular for a beat, the way a thumb does
             const side = stuck === 7 ? 1 : -1;
@@ -85,6 +129,20 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       }
     },
     async tap(key) { await page.keyboard.press(key); },      // j/k/l/Tab/Space/h
+    // THE PERK CHOOSER BLOCKS UNTIL CHOSEN — that is its design, and it was
+    // the whole overnight wedge: level up mid-fight, the world pauses for a
+    // choice, and a bot that never taps stands frozen forever. A real child
+    // taps a card; so does the driver, through a real pointer event. Returns
+    // true if a choice was made.
+    async pickPerkIfOffered() {
+      const card = page.locator('#perk-menu .perk-card').first();
+      if (!(await card.isVisible().catch(() => false))) return false;
+      const name = await card.locator('.nm').textContent().catch(() => '?');
+      await card.dispatchEvent('pointerdown');
+      console.log(`  [driver] level up — picked perk: ${name}`);
+      await page.waitForTimeout(400);
+      return true;
+    },
     async holdShield(ms) { await page.keyboard.down('i'); await page.waitForTimeout(ms); await page.keyboard.up('i'); },
     // Real pointer joystick: down in the left zone, drag, hold `ms`, release.
     async joystick(dirX, dirZ, ms) {

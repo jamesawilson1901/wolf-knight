@@ -8,8 +8,9 @@
 // Real inputs throughout: WASD walk, Tab cycles form, K is the special.
 import { launch } from './wk-drive.mjs';
 
-const DIR = process.argv[2] || 'test-evidence/level-2';
-const d = await launch({ evidenceDir: DIR });
+const TIMESCALE = parseFloat(process.env.WK_TIMESCALE || '1');
+const DIR = process.argv[2] || (TIMESCALE !== 1 ? `test-evidence/level-2-${TIMESCALE}x` : 'test-evidence/level-2');
+const d = await launch({ evidenceDir: DIR, timescale: TIMESCALE });
 const say = (...a) => console.log(...a);
 
 await d.newGame('L2BOT');
@@ -40,12 +41,74 @@ async function toForm(want) {
   return (await d.wk('form')) === want;
 }
 
-async function goRoom(to) {
+// FREEZE RECOVERY: when the world wedges (clock stopped, nothing open), the
+// only way forward tonight is a fresh page — reload, re-enter the room with
+// the same forms, and carry on. Each occurrence is logged; the loud catches
+// in main.js should now name the cause in the console log.
+let frozenRecoveries = 0;
+async function recoverIfFrozen() {
+  const probe = await d.page.evaluate(async () => {
+    const g = window.__game;
+    if (!g || !g.state) return { frozen: false };
+    // A STORY LINE FREEZES THE CLOCK ON PURPOSE. Runs 8-9 "wedged" right where
+    // Petra talks — the probe was reloading the game mid-sentence. Speaking
+    // narration is never a wedge: wait it out (they cap at ~7s each).
+    for (let i = 0; i < 40 && g.narration.speaking; i++) await new Promise((r) => setTimeout(r, 500));
+    if (g.narration.speaking) return { frozen: false, talking: true };
+    // player._time increments ONLY inside player.update — the exact thing a
+    // wedge stops. state.clock, which this probe read before, DOES NOT EXIST:
+    // undefined === undefined called every healthy world frozen, and runs 7-10
+    // reloaded a working game on every single probe.
+    const c1 = g.player._time, f1 = g.renderer.info.render.frame;
+    await new Promise((r) => setTimeout(r, 700));
+    return { frozen: g.player._time === c1 && !g.narration.speaking,
+      // frames advancing while the clock stands still = the loop is ALIVE and
+      // bailing early (a wedged flag). Frames static too = rAF itself is dead
+      // — the environment, not the game.
+      framesAdvanced: g.renderer.info.render.frame !== f1 };
+  }).catch(() => ({ frozen: true, framesAdvanced: null }));
+  if (!probe.frozen) return false;
+  say(`  !! wedge signature: framesAdvanced=${probe.framesAdvanced}`);
+  frozenRecoveries++;
+  const wk = await d.wk().catch(() => null);
+  say(`  !! WORLD WEDGED (recovery #${frozenRecoveries}) in ${wk && wk.room} — reloading`);
+  d.saveLog(`pre-recovery-${frozenRecoveries}`);
+  const room = (wk && wk.room) || 'vh';
+  const forms = (wk && (await d.wk('forms').catch(() => null))) || ['knight', 'dark_wolf', 'fire_wolf'];
+  await d.page.goto('http://localhost:8901/index.html?dev=1', { waitUntil: 'load' });
+  await d.page.waitForSelector('#title', { state: 'visible', timeout: 30000 });
+  await d.newGame('L2BOT' + frozenRecoveries);
+  await d.jump(room, forms);
+  say('  recovered into', JSON.stringify(await d.wk()));
+  return true;
+}
+
+async function goRoom(to, via = []) {
+  if ((await d.wk('room')) === to) return true;   // recovery can land us inside
   for (let tries = 0; tries < 3; tries++) {
+    // the via list runs EVERY try: a mid-leg fight drags the bot off-route,
+    // and a retry that walks straight at the door jams on the maze walls the
+    // waypoints exist to round. The farther-than-we-stand filter drops the
+    // points already behind us on each pass.
+    {
+      const doors0 = await d.wk('doors');
+      const door0 = doors0.find((x) => x.to === to);
+      const dTo = (p) => door0 ? Math.hypot(door0.x - p.x, door0.z - p.z) : 0;
+      for (const [wx, wz] of via) {
+        if (door0 && dTo({ x: wx, z: wz }) > dTo((await d.wk()).pos) + 2) continue;
+        const w = await d.walkTo(wx, wz, { timeout: 30, arrive: 1.2 });
+        if (w.roomChanged) break;
+        if (!w.ok) { await fightNear(20000); await d.walkTo(wx, wz, { timeout: 20, arrive: 1.4 }); }
+      }
+    }
+    const here = await d.wk();
+    if (here.room === to) return true;   // the via walk can carry us across
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
-    if (!door) { say(`!! no door to ${to} from ${(await d.wk()).room}`); return false; }
+    if (!door) { say(`!! no door to ${to} from ${here.room}`); return false; }
+    say(`  try${tries} ${here.room}@(${here.pos.x},${here.pos.z}) -> door ${to}@(${door.x},${door.z})`);
     let r = await d.walkTo(door.x, door.z, { timeout: 60 });
+    say(`  try${tries} walk:`, JSON.stringify(r));
     if (!r.ok && r.why === 'stuck') { await fightNear(25000); r = await d.walkTo(door.x, door.z, { timeout: 40 }); }
     if (!r.roomChanged && (await d.wk('room')) === r.room) {
       for (let i = 0; i < 20; i++) { await d.page.waitForTimeout(200); if ((await d.wk('room')) !== r.room) break; }
@@ -55,8 +118,18 @@ async function goRoom(to) {
       }
     }
     const now = await d.wk('room');
+    say(`  try${tries} end room ${now}`);
+    if (!r.ok && r.at && here.pos && Math.hypot(r.at.x - here.pos.x, r.at.z - here.pos.z) < 0.1) {
+      // ZERO movement over a whole try — the frozen-bot signature seen once in
+      // vgb on ground later proven free. Capture the guts while it is live.
+      const guts = await d.page.evaluate(() => { const g = window.__game;
+        return { keys: [...g.input._keys], move: g.input.getMove(),
+          vel: g.player._vel, lock: g.player.lockTime,
+          blocking: g.narration.blocking, paused: !!document.querySelector('.pause-open') }; });
+      say('  FROZEN-BOT DIAGNOSTICS:', JSON.stringify(guts));
+    }
     if (now === to) return true;
-    if (now !== r.room) { say(`   passed through to ${now} en route to ${to}`); if (now === to) return true; continue; }
+    if (now !== here.room) { say(`   passed through to ${now} en route to ${to}`); continue; }
     await fightNear(20000);
   }
   return (await d.wk('room')) === to;
@@ -78,7 +151,50 @@ async function slamAt(x, z, label, wsCheck) {
 const vaultStage = async () => (await d.wk('ws')).vault;
 
 let ok = true;
-const route = async (rooms) => { for (const r of rooms) { await fightNear(30000); if (!(await goRoom(r))) { say(`!! blocked before ${r}`); return false; } await d.shot(`enter-${r}`); } return true; };
+// va1 is "the crystal narrows" — an L of rock splits the island (wall x=4
+// z-3..7, wall z=-3 x-6..4). A child routes around the top; the bot does too.
+const VIA = {
+  'va1:va2': [[8, 9.5], [-2, 10], [-10, 5]],
+  'va1:vga': [[-10, 5], [-2, 10], [8, 9.5]],
+  // the hub's flooded ring (centre 0,-1, r 6) is solid until drained — every
+  // east-side leg orbits it on the south, the way a child walks the shore
+  'vh:vgb': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
+  'vh:vgc': [[-8, -9.5], [0, -10.5], [9, -7], [13, 0]],
+  'vh:vz': [[-8, -9.5], [0, -10.5], [7, -9]],
+  // vb1, the Bone Quarry: terraces make an L (wall x=-4 z-6..4, wall z=4
+  // x-4..10). The route a child's eye picks runs under the southern edge.
+  'vb1:vb2': [[-8, -8.5], [4, -8.5], [13, -3]],
+  'vb1:vgb': [[13, -3], [4, -8.5], [-8, -8.5]],
+  // vc1's switchback: wall z=-4 gaps in the east (x>6), wall z=3 gaps at
+  // x 3..7. Thread east gap, then the middle gap, then north.
+  'vc1:vc2': [[10, -6.5], [10, 0], [4.5, 1], [4.5, 4.2], [1, 6.5], [0, 9.5]],  // veer west after the gap — a shield-bearer posts at (5,6)
+  'vc1:vgc': [[5, 5.5], [5, 1], [10, 0], [10, -6.5], [0, -9]],
+  // va3 centres its shrine cluster ON the route by design — leaving west
+  // after the lantern, step south around the pedestal instead of coin-
+  // flipping the sidestep against it (passed 4 runs, jammed 3).
+  'va3:vh': [[2, -3.2], [-4, -3.2], [-8, -1]],
+};
+// STATE-DRIVEN, like L1 learned: a fight beside a doorway can carry the bot
+// BACKWARDS through it, and a fixed list then asks for doors that do not
+// exist. From wherever we actually stand, walk the chain toward the goal.
+const route = async (rooms) => {
+  const goal = rooms[rooms.length - 1];
+  for (let hops = 0; hops < rooms.length * 3; hops++) {
+    const cur = (await d.wk()).room;
+    if (cur === goal) { await d.page.waitForTimeout(1600); await d.shot(`enter-${goal}`); return true; }
+    const idx = rooms.indexOf(cur);
+    const next = idx >= 0 ? rooms[idx + 1] : rooms[0];
+    await fightNear(30000);
+    const from = (await d.wk()).room;
+    const ok = await goRoom(next, VIA[`${from}:${next}`] || []);
+    const now = (await d.wk()).room;
+    say(`  route hop ${from} → ${now} (wanted ${next})`);
+    if (!ok && now === from) { say(`!! blocked before ${next}`); return false; }
+    await d.page.waitForTimeout(1600);
+    await d.shot(`enter-${now}`).catch(() => {});
+  }
+  return (await d.wk()).room === goal;
+};
 
 // ---- spoke A: the lantern
 ok = ok && await route(['vga', 'va1', 'va2', 'va3']);
@@ -102,27 +218,65 @@ if (ok) {
 }
 // ---- the crypt
 ok = ok && await route(['vh', 'vz']);
-say('pre-boss state:', JSON.stringify(await d.wk()));
-if (ok) await d.shot('warden-arena');
+if (ok) { say('pre-boss state:', JSON.stringify(await d.wk())); await d.shot('warden-arena'); }
 
 // ---- THE BONE WARDEN: chase/lunge machine — shield the lunge, poke the chase
 if (ok) {
   await toForm('knight');
   const t0 = Date.now();
   let lastHp = null, deaths = 0, lastHearts = (await d.wk()).hearts;
-  while ((Date.now() - t0) / 1000 < 50 * 60) {
+  // THE WARDEN'S REAL MACHINE (js/enemies.js BoneWarden):
+  //   chop_tele  ~0.7s → chop, a 130° cone reaching 2.9u — STEP SIDEWAYS out
+  //   spin_tele  → spin, the whole-circle ring you cannot dodge sideways —
+  //               RUN OUT past ~2.6u, the ring's edge
+  //   tired      ~2.6s wide open — pile in, every swing counts double-ish
+  while ((Date.now() - t0) / 1000 < 45 * 60) {
     const s = await d.wk();
+    if (s.room !== 'vz') {
+      // a dodge carried us out the crypt door — the fight is not over, the bot
+      // just left the room. Walk back in and keep going. Only a set flag ends it.
+      const won = await d.page.evaluate(() => !!window.__wk.flags.wardenDefeated);
+      if (won) { say('warden defeated — left arena after the kill'); break; }
+      say('  left the arena mid-fight — returning');
+      await goRoom('vz'); await toForm('knight');
+      continue;
+    }
     const b = s.boss;
-    if (!b) { say('warden gone — defeated?'); break; }
-    if (s.hearts <= 0.5 && lastHearts > 0.5) { deaths++; say(`DEATH #${deaths}`); await d.page.waitForTimeout(5000);
-      const back = await d.wk(); say('respawn:', JSON.stringify(back)); if (back.room !== 'vz') await goRoom('vz'); }
+    if (!b) {
+      const won = await d.page.evaluate(() => !!window.__wk.flags.wardenDefeated);
+      say(won ? 'warden DEFEATED' : 'warden gone but no flag — reassessing');
+      if (won) break;
+      await d.page.waitForTimeout(800);
+      continue;
+    }
+    if (s.hearts <= 0.5 && lastHearts > 0.5) { deaths++; say(`DEATH #${deaths}`); await d.page.waitForTimeout(4500);
+      const back = await d.wk(); if (back.room !== 'vz') await goRoom('vz'); await toForm('knight'); }
     lastHearts = s.hearts;
-    if (s.hearts <= 1.5 && s.hearts > 0.5) await d.tap('h');
-    const dist = Math.hypot(b.x - s.pos.x, b.z - s.pos.z);
-    if (b.state === 'lunge') { await d.page.keyboard.down('i'); await d.page.waitForTimeout(700); await d.page.keyboard.up('i'); }
-    else if (dist > 1.5) await d.walkTo(b.x, b.z, { timeout: 2.5, arrive: 1.3 });
-    else { await d.tap('j'); await d.page.waitForTimeout(230); }
-    if (b.hp !== lastHp) { say(`warden hp ${lastHp} -> ${b.hp}`); lastHp = b.hp; }
+    if (s.hearts <= 2 && s.hearts > 0.5) await d.tap('h');
+    const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (b.state === 'spin_tele' || b.state === 'spin') {
+      // the straight-away sprint that got ZERO deaths — only its target is
+      // clamped north of z=4 so it can never reach the south crypt door.
+      const nx = dist < 0.01 ? 1 : -dx / dist, nz = dist < 0.01 ? 0 : -dz / dist;
+      let tx = s.pos.x + nx * 5, tz = s.pos.z + nz * 5;
+      if (tz > 4) { tz = -6; tx = b.x + (s.pos.x >= b.x ? 5 : -5); }  // door lies south — go north
+      await d.walkTo(Math.max(-11, Math.min(11, tx)), Math.max(-11, Math.min(4, tz)),
+        { timeout: 2.2, arrive: 0.7 });
+    } else if (b.state === 'chop_tele' || b.state === 'chop') {
+      // sidestep the cone: strafe perpendicular
+      const px = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
+      await d.page.keyboard.down(px); await d.page.waitForTimeout(500); await d.page.keyboard.up(px);
+    } else if (b.state === 'tired') {
+      if (dist > 1.5) await d.walkTo(b.x, b.z, { timeout: 2, arrive: 1.3 });
+      else { const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+        await d.page.keyboard.down(k); await d.page.waitForTimeout(120); await d.page.keyboard.up(k);
+        await d.tap('j'); await d.page.waitForTimeout(180); await d.tap('j'); }
+    } else { // chase — close, and poke when in reach, ready to react
+      if (dist > 2.2) await d.walkTo(b.x, b.z, { timeout: 1.5, arrive: 2 });
+      else { await d.tap('j'); await d.page.waitForTimeout(200); }
+    }
+    if (b.hp !== lastHp) { say(`warden hp ${lastHp} -> ${b.hp} [${b.state}]`); lastHp = b.hp; }
   }
   const flags = await d.page.evaluate(() => ({ warden: !!window.__wk.flags.wardenDefeated, forms: window.__wk.forms }));
   say('WARDEN FLAGS:', JSON.stringify(flags));

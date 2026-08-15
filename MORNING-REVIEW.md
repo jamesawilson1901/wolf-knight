@@ -25,3 +25,29 @@
 5. **Spitter in `la` (the very first room).** Deliberate per the difficulty
    rework — but it is the first thing a 5-year-old meets. Gentle mode softens
    it; consider whether room one should teach before it shoots.
+
+6. **va1's worn path runs through the crystal narrows wall.** The room's
+   painted trail (paths polyline) crosses x=4 inside the wall's z-span — the
+   line a child's eye follows walks them into the rock, and the real route is
+   around the top. If the "old trail, now cut" read is intended, fine; if the
+   trail should bend around the narrows like lc's lava path bends to the
+   slabs, it is a one-line polyline edit in buildVa1.
+
+7. **Room-transition wedge (the overnight intermittent, root strongly
+   indicated).** A hung asset fetch during loadRoom/respawn leaves
+   `transitioning` true forever: world renders, never updates, no error.
+   Landed fix: loadGLB deadline (20s) + one retry + loud rejection.
+   REMAINING morning surgery: when a load fails twice mid-transition the
+   world is still wedged (now loudly) — needs a recovery path (rebuild
+   checkpoint room, or an error screen with a retry button). Evidence:
+   test-evidence/level-2 console logs + PROGRESS intermittents entry.
+
+8. **Warden cross-session wound parity (follow-up to a fixed defect).** The
+   Bone Warden now persists wounds across DEATHS via in-memory
+   state.flags.wardenHp (fixed tonight — he was the only boss that reset to
+   full, violating the universal "wounds persist" spec). Every OTHER boss also
+   persists across app-CLOSE by serialising its Hp field in save.js
+   (bossHp/sylvaHp/borealHp/…). Adding `wardenHp` to save.js is the additive,
+   old-save-safe change that would give the Warden full parity. NOT done
+   tonight because it touches the save format (run rule). One-line additive
+   add in save.js save+load when you're ready.
