@@ -38,20 +38,29 @@ async function form(want) {
 // Stand near (x,z), face it, lash — then PROVE the cut landed via `check`
 // (WorldState or cuttable ground truth). Brambles are walk-aroundable, so
 // "we got past" proves nothing. Retries respect the 7 game-s lash cooldown.
+//
+// FACING IS A HELD KEY, NEVER A NUDGE: at 4.5fps a 130ms tap lives inside one
+// frame and samples unreliably — half the run-6 lashes fired sideways. 600ms
+// spans ~3 frames; facing follows movement, and the target's collider stops
+// the walk-in harmlessly.
+async function faceToward(x, z) {
+  const s = await d.wk();
+  const dx = x - s.pos.x, dz = z - s.pos.z;
+  const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+  await d.page.keyboard.down(key); await d.page.waitForTimeout(600); await d.page.keyboard.up(key);
+}
 async function lashAt(x, z, standX, standZ, check = null) {
-  for (let a = 0; a < 3; a++) {
+  for (let a = 0; a < 4; a++) {
     if (!(await form('verdant_wolf'))) return false;
-    const sx = standX + (a === 2 ? 0.6 : 0), sz = standZ + (a === 1 ? 0.6 : 0);
-    const r = await d.walkTo(sx, sz, { timeout: 25, arrive: 0.7 });
-    if (!r.ok && !r.roomChanged) { say(`    (lash stand point (${sx},${sz}) unreachable)`); continue; }
-    const s = await d.wk();
-    const dx = x - s.pos.x, dz = z - s.pos.z;
-    const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
-    await d.page.keyboard.down(key); await d.page.waitForTimeout(130); await d.page.keyboard.up(key);
+    const sx = standX + (a === 2 ? 0.7 : a === 3 ? -0.7 : 0), sz = standZ + (a === 1 ? 0.7 : 0);
+    await d.walkTo(sx, sz, { timeout: 25, arrive: 0.7 });
+    await faceToward(x, z);
     await d.tap('k');
-    await d.page.waitForTimeout(900 / TS);
     if (!check) return true;
-    if (await check()) return true;
+    for (let w = 0; w < 7; w++) {                 // the cut lands on the K frame —
+      if (await check()) return true;            // an immediate read races it
+      await d.page.waitForTimeout(450);
+    }
     say(`    (lash ${a + 1} at (${x},${z}) missed — cooldown, retry)`);
     await d.page.waitForTimeout(7600 / TS);
   }
@@ -216,28 +225,34 @@ await goRoom('tkn', [[0, -6]]);
   });
   let b = await boulder();
   if (!b) bad('no boulder in tkn');
+  // PHASE A — TETHER ONLY while it is in the channel. There is no useful push
+  // from inside (the room's whole lesson); run 6's pathing walked INTO the
+  // boulder chasing a west-side stand point and shoved it 7u the wrong way.
   let guard = 0;
-  while (b && b.x < -3.6 && guard++ < 8) {        // phase A: tether it east
-    await lashAt(b.x, b.z, Math.min(b.x + 3.1, -1.0), b.z);
-    await d.page.waitForTimeout(7600 / TS);       // lash cooldown (7 game-s)
+  while (b && b.x < -3.4 && guard++ < 14) {
+    await form('verdant_wolf');
+    await d.walkTo(Math.min(b.x + 3.4, 2.5), 2, { timeout: 15, arrive: 0.5 });
+    await d.page.keyboard.down('a'); await d.page.waitForTimeout(550); await d.page.keyboard.up('a');
+    await d.tap('k');
+    await d.page.waitForTimeout(8000 / TS);       // pull + lash cooldown
     const nb = await boulder();
-    say(`  tether: boulder ${b.x.toFixed(1)} -> ${nb.x.toFixed(1)}`);
-    if (Math.abs(nb.x - b.x) < 0.15 && Math.abs(nb.z - b.z) < 0.15) {
-      say('  (tether did not move it — repositioning)');
-    }
+    say(`  tether: ${b.x.toFixed(1)} -> ${nb.x.toFixed(1)}${Math.abs(nb.x - b.x) < 0.15 ? ' (no pull — re-aim)' : ''}`);
     b = nb;
   }
+  // PHASE B — on open floor the player can finally get BEHIND it: contact-push
+  // east onto the plate with long holds (never pathing walks near the stone).
   guard = 0;
-  while (b && b.x < 5.2 && guard++ < 14) {        // phase B: push it to the plate
-    await d.walkTo(b.x - 1.05, b.z, { timeout: 12, arrive: 0.35 });
-    await d.page.keyboard.down('d'); await d.page.waitForTimeout(1100 / TS); await d.page.keyboard.up('d');
-    const nb = await boulder();
+  while (b && b.x > -3.4 && b.x < 5.2 && guard++ < 16) {
+    await d.walkTo(b.x - 1.5, b.z, { timeout: 12, arrive: 0.4 });
+    await d.page.keyboard.down('d'); await d.page.waitForTimeout(900); await d.page.keyboard.up('d');
+    let nb = await boulder();
     if (Math.abs(nb.z - 2) > 0.8) {               // drifted off the plate line
-      await d.walkTo(nb.x, nb.z + (nb.z > 2 ? 1.05 : -1.05), { timeout: 10, arrive: 0.35 });
+      await d.walkTo(nb.x, nb.z + (nb.z > 2 ? 1.6 : -1.6), { timeout: 10, arrive: 0.4 });
       const k = nb.z > 2 ? 'w' : 's';
-      await d.page.keyboard.down(k); await d.page.waitForTimeout(700 / TS); await d.page.keyboard.up(k);
+      await d.page.keyboard.down(k); await d.page.waitForTimeout(650); await d.page.keyboard.up(k);
+      nb = await boulder();
     }
-    b = await boulder();
+    b = nb;
     say(`  push: boulder at (${b.x.toFixed(1)},${b.z.toFixed(1)})`);
   }
   await d.page.waitForTimeout(900 / TS);
