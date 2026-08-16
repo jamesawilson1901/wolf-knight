@@ -71,21 +71,27 @@ async function clearFoes(radius = 5, capS = 90) {
 async function goRoom(to, via = []) {
   for (let t = 0; t < 4; t++) {
     let s = await d.wk();
-    if (s.room === to) return true;
+    if (s.room === to) { say(`  -> ${to}`); return true; }
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
     if (!door) { bad(`no door to ${to} from ${s.room} (doors: ${doors.map((x) => x.to).join(',')})`); return false; }
     if (door.open === false) { bad(`door ${s.room}->${to} is CLOSED`); return false; }
     for (const p of via) {
-      const r = await d.walkTo(p[0], p[1], { timeout: 22 });
+      const rv = await d.walkTo(p[0], p[1], { timeout: 22 });
+      say(`    via (${p[0]},${p[1]}): ${rv.ok ? 'ok' : rv.why} at ${JSON.stringify(rv.at)}${rv.roomChanged ? ' room->' + rv.roomChanged : ''}`);
       const now = await d.wk('room');
       if (now === to) return true;               // a leg that arrives mid-via arrived
       if (now !== s.room) break;                 // dragged off-room: restart try
     }
     if ((await d.wk('room')) === to) return true;
-    const r = await d.walkTo(door.x, door.z, { timeout: 45, arrive: 1.1 });
+    // OVERSHOOT past the door centre into the gap — the trigger box straddles
+    // the wall line, and stopping short of centre leaves you outside it
+    // (the run-l1 lesson, relearned at t1a's north door).
+    const ox = Math.abs(door.x) > Math.abs(door.z) ? Math.sign(door.x) : 0;
+    const oz = ox === 0 ? Math.sign(door.z) : 0;
+    const r = await d.walkTo(door.x + ox * 1.0, door.z + oz * 1.0, { timeout: 45, arrive: 0.45 });
+    say(`  try ${t + 1} to ${to}: door(${door.x},${door.z}) -> ${JSON.stringify(r)}`);
     if (r.roomChanged === to || (await d.wk('room')) === to) return true;
-    say(`  try ${t + 1} to ${to}: at ${JSON.stringify(r.at)} why=${r.why || 'arrived-not-through'}`);
     await clearFoes(5, 40);
     s = await d.wk();
     if (s.room === to) return true;

@@ -24,10 +24,11 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 11. Phone-check lines per ship — STANDING
 
 ## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
-* Baseline parallel sweep: `sh tools/verify-all.sh --par > /tmp/v-par-baseline.log 2>&1`
-  Done when the log ends "passed N, failed M" (expect 44 pass). Any --par FAIL
-  is re-run serially before being believed. If the job dies: read the log,
-  re-run the command.
+* L3 ring route: `node tools/run-l3.mjs` (3x traversal). Done when it prints
+  "FAILS: ..." + "errors: ...". Evidence test-evidence/level-3/route-3x.
+  If the job dies: read the partial log, re-run — the router is state-driven
+  and a rerun walks from wherever things stand after a fresh newGame.
+* DONE: baseline --par sweep 44/44 (~88min), log /tmp/v-par-baseline.log.
 
 ## Speed baselines (RUN2-REPORT levers, measured tonight)
 * Traversal at 3x = 0.60 game-s/wall-s (was 0.25 at 1x) -> ~2.4x faster routes.
