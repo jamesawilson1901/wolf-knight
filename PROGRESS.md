@@ -14,12 +14,9 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    e. server = node tools/serve.mjs
 2. wardenHp save parity (#8, APPROVED) — CODE DONE, probe round-trip 7->7; full sweep validates
 3. Profile-isolation check (once, early) — TODO after baseline sweep
-4. L3 Wild Woods: recon DONE / route PASS / BOSS KILLED 1x zero deaths /
-   close IN PROGRESS: level3+lash+knot+chords+callable PASS; D1/D2 fixed and
-   re-proven by play (round trip + narration); D3 cleared (boss-loop confirmed
-   — entry reads race the track load); freed glade proven (f1 open, no boss);
-   landings rerun + touch leg IN FLIGHT (vz landing moved off the throne;
-   touch joystick is dynamic — closed-loop steering added). Canary after.
+4. L3 Wild Woods — DONE, PASS (full composition in the Levels section):
+   route by play at 3x, Sylva 1x zero deaths, 2 defects fixed + re-proven,
+   touch leg by thumb, suites green, canary GREEN.
 5. L4 Frostpeak — RECON DONE (below); route driver + fight-boreal NEXT
    L4 RECON: old-style rooms in rooms.js (builders buildF1..F5, ~3600-3920).
    LINEAR spine f1>f2>f3>f4>f5; pockets f1b (e of f1), f2b (e of f2).
@@ -55,9 +52,10 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 11. Phone-check lines per ship — STANDING
 
 ## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
-* NEXT UP: Sylva duel 1x: `node tools/fight-sylva.mjs > /tmp/fight-sylva.log`.
-  Win = sylvaDefeated + f1 door open on tgl rebuild + boss gone. Ladder on
-  loss: WK_TIMESCALE=0.5 then 0.25, every loss diagnosed vs the machine.
+* NEXT UP: L4 — write run-l4.mjs + fight-boreal.mjs from the ledger-5 recon
+  (chassis: copy run-l3 helpers; braziers = L breath then K slam per spot;
+  lake = slick L-approach pushes; Boreal = bolts while circling, dodge the
+  red lane, punish grounded). Then the L3+L4 batched SHIP event.
 * DONE: L3 ring route PASS (iteration 8) — FAILS none, 0 console errors.
   Full spine + shrine grant + 4 WS-proven cuts + log bridge + KNOT solved by
   play + pack + thorn-knot + boss door + ring close + both chords. Evidence
