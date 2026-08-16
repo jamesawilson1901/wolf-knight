@@ -177,7 +177,9 @@ for (const [p, host] of Object.entries(POCKETS)) {
 }
 const dead = SPACES.filter((id) => S[id] && S[id].doors.length === 0);
 check('no space is a dead end', dead.length === 0, { dead });
-const ALL = new Set([...SPACES, 'den']);
+// the level's OUTSIDE edges: south through the vine to the crypt (vz — the
+// den door was the run-3 stranding trap, D1), north to Frostpeak once freed
+const ALL = new Set([...SPACES, 'vz', 'f1']);
 const dangling = [];
 for (const id of SPACES) for (const d of (S[id] ? S[id].doors : [])) if (!ALL.has(d.to)) dangling.push(`${id}→${d.to}`);
 check('no door leads to a room that does not exist', dangling.length === 0, { dangling });
