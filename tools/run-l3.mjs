@@ -84,14 +84,21 @@ async function goRoom(to, via = []) {
       if (now !== s.room) break;                 // dragged off-room: restart try
     }
     if ((await d.wk('room')) === to) return true;
-    // OVERSHOOT past the door centre into the gap — the trigger box straddles
-    // the wall line, and stopping short of centre leaves you outside it
-    // (the run-l1 lesson, relearned at t1a's north door).
-    const ox = Math.abs(door.x) > Math.abs(door.z) ? Math.sign(door.x) : 0;
-    const oz = ox === 0 ? Math.sign(door.z) : 0;
-    const r = await d.walkTo(door.x + ox * 1.0, door.z + oz * 1.0, { timeout: 45, arrive: 0.45 });
+    // AIM AT THE BOX CENTRE AND STOP INSIDE IT. At 3x and ~4.5fps one frame
+    // steps ~0.97u and the trigger box is ~1.05u deep: crossing it at speed
+    // TUNNELS (walk out into the void, fall, silent respawn — measured at
+    // t1a's north door). A player standing IN the box fires the transition
+    // on the next frame at any timescale. arrive 0.4 < the box half-depth.
+    const r = await d.walkTo(door.x, door.z, { timeout: 30, arrive: 0.4 });
     say(`  try ${t + 1} to ${to}: door(${door.x},${door.z}) -> ${JSON.stringify(r)}`);
     if (r.roomChanged === to || (await d.wk('room')) === to) return true;
+    if (r.ok) {                                   // standing at centre, no fire: nudge
+      const ox = Math.abs(door.x) > Math.abs(door.z) ? Math.sign(door.x) : 0;
+      const oz = ox === 0 ? Math.sign(door.z) : 0;
+      const n = await d.walkTo(door.x + ox * 0.7, door.z + oz * 0.7, { timeout: 8, arrive: 0.25 });
+      say(`    nudge -> ${JSON.stringify(n)}`);
+      if (n.roomChanged === to || (await d.wk('room')) === to) return true;
+    }
     await clearFoes(5, 40);
     s = await d.wk();
     if (s.room === to) return true;
