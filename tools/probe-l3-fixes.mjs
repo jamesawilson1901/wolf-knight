@@ -88,6 +88,30 @@ await d.page.waitForTimeout(2500);
   say('  tgl settled music with Sylva live:', music);
 }
 
+// THE FREED GLADE — the duel's post-kill asserts, via the same code path a
+// rebuild takes after a real kill (the 1x kill itself is in the fight log:
+// 24 -> -0.7, zero deaths; the script idled on the corpse getter afterwards).
+{
+  await d.page.evaluate(() => { window.__game.state.flags.sylvaDefeated = true; });
+  await d.jump('tc4', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']);
+  const g = (await d.wk('doors')).find((x) => x.to === 'tgl');
+  if (g) {
+    await d.walkTo(g.x, g.z, { timeout: 40, arrive: 0.4 });
+    if ((await d.wk('room')) !== 'tgl') await d.walkTo(g.x, g.z - 0.8, { timeout: 8, arrive: 0.25 });
+    await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
+  }
+  if ((await d.wk('room')) === 'tgl') {
+    const doors = await d.wk('doors');
+    const f1 = doors.find((x) => x.to === 'f1');
+    const boss = await d.wk('boss');
+    say('  freed tgl doors:', doors.map((x) => x.to).join(','), '· boss:', boss && boss.name);
+    if (!f1 || f1.open === false) bad('freed tgl has no open f1 door');
+    if (boss) bad('freed tgl still spawns Sylva');
+    if (f1 && !boss) say('  FREED GLADE: the way to Frostpeak is open, Sylva at rest');
+    await d.shot('tgl-freed');
+  } else bad('could not re-enter tgl for the freed asserts');
+}
+
 say('FAILS:', fails.length ? JSON.stringify(fails) : 'none');
 say('errors:', JSON.stringify(d.errors));
 await d.close();
