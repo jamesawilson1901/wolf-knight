@@ -184,7 +184,24 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Evidence: test-evidence/level-2/warden*.
   * Next action: run full verify-all + harness-inertness + upgrade-path +
     canary; if green, ship v3.48.2 (merge + version + SW bump), smoke live.
-- L3 Wild Woods: NOT STARTED
+- L3 Wild Woods: **PASS** (run 3, 2026-08-15)
+  * Route: iteration 8, contiguous ring at 3x on real inputs — full spine
+    t1a>...>tgl, ring closed west, both chords walked, FAILS none, 0 errors.
+    Verdant GRANTED at the shrine in play; all four lash teaches proven by
+    WS/cuttable ground truth; log bridge crossed both ways; THE KNOT solved
+    by play (tether out of the channel, pushed onto the plate); pack fought.
+  * Boss: Sylva 1x FULL SPEED, ZERO DEATHS, 24 -> 0, machine read clean
+    (windup/swipe shielded, charges dodged, tired punished). tc2 regrow
+    proven at 1x same session. Freed glade: f1 door open, Sylva at rest.
+    Evidence: test-evidence/level-3/ (route, knot probe, fight log, shots).
+  * DEFECTS found by play, FIXED, re-proven by play: D1 den stranding trap
+    (t1a s-door now returns to vz; round trip walked; landing clear of the
+    throne per verify-landings); D2 dead region narration (t-prefix; both
+    lines now speak). D3 boss music cleared — boss-loop confirmed settled.
+  * Touch leg: t1a->t1b walked BY THUMB (dynamic joystick, closed-loop) with
+    a mid-stride two-finger swing. Multi-touch item DONE for L3.
+  * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
+    chords, callable, landings — all PASS post-fix. Canary: see ledger.
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
 - L6 Sunken Vale: NOT STARTED
