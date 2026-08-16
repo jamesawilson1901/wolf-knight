@@ -23,7 +23,7 @@ await d.page.evaluate(() => {
 });
 
 // ---- 1x TC2 PROOF: cut-and-go under the real clock ------------------------
-await d.jump('tc2', ['fire_wolf', 'earth_wolf', 'verdant_wolf']);
+await d.jump('tc2', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']);
 {
   const form = async (want) => {
     for (let i = 0; i < 12; i++) {
@@ -44,7 +44,7 @@ await d.jump('tc2', ['fire_wolf', 'earth_wolf', 'verdant_wolf']);
 }
 
 // ---- THE DUEL -------------------------------------------------------------
-await d.jump('tgl', ['fire_wolf', 'earth_wolf', 'verdant_wolf']);
+await d.jump('tgl', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']);
 await d.page.evaluate(() => { window.__game.state.form = 'knight'; });
 say('arena:', JSON.stringify(await d.wk()), 'timescale', TS);
 await d.shot('arena');

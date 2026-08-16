@@ -132,7 +132,9 @@ async function goRoom(to, via = []) {
 const JVIA = [[3.2, 5], [3.2, -4], [0, -8]];
 
 await d.newGame('RING');
-await d.jump('t1a', ['fire_wolf', 'earth_wolf']);
+// __wkJump REPLACES formsUnlocked (main.js:1562) — pass the real kid loadout,
+// not just the region gifts, or the profile arrives without knight/dark.
+await d.jump('t1a', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf']);
 say('start:', JSON.stringify(await d.wk()), 'timescale', TS);
 await d.shot('t1a-arrival');
 
@@ -155,11 +157,21 @@ await goRoom('tsh', [[0, 4]]);
 
 // THE SHRINE: verdant from the spark, then the first cut is the way out.
 {
-  await d.walkTo(0, -0.5, { timeout: 20, arrive: 1.4 });   // inside grant range
-  await d.page.waitForTimeout(2500 / TS);
+  // the pedestal collider (r0.9 at (0,-2)) stops the walk ~1.3u from the spark
+  // spot — well inside the 2.4u grant radius. WAIT for the grant, then nudge
+  // closer once if it hasn't fired (arrive-slack jitter cost run 5 the grant).
+  const granted = async () => d.page
+    .waitForFunction(() => window.__wk.forms.includes('verdant_wolf'), null, { timeout: 9000 })
+    .then(() => true).catch(() => false);
+  await d.walkTo(0, -0.9, { timeout: 20, arrive: 0.7 });
+  let got = await granted();
+  if (!got) {
+    await d.walkTo(0.5, -1.5, { timeout: 10, arrive: 0.4 });
+    got = await granted();
+  }
   await d.pickPerkIfOffered();
   const forms = await d.wk('forms');
-  if (!forms.includes('verdant_wolf')) bad(`shrine did not grant verdant (forms: ${forms})`);
+  if (!got) bad(`shrine did not grant verdant (forms: ${forms})`);
   else say('  VERDANT GRANTED at the shrine');
   if (!(await ws('spark'))) bad('WS wild3.spark not set by shrine');
   await d.shot('tsh-verdant');
