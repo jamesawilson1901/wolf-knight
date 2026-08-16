@@ -71,6 +71,11 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     if (won) { say('DEFEATED'); break; }
     await d.page.waitForTimeout(500); continue;
   }
+  // the boss getter keeps returning the DISSOLVING corpse — hp<=0 is the win,
+  // not boss-gone (learned from this fight: the kill idled to the 45-min cap)
+  if (b.hp <= 0 && (await d.page.evaluate(() => !!window.__wk.flags.sylvaDefeated))) {
+    say('DEFEATED (corpse still dissolving)'); break;
+  }
   seen.actions.add(b.action);
   if (s.hearts <= 0.5 && lastHearts > 0.5) {
     seen.deaths++; say(`DEATH #${seen.deaths} [hp ${b.hp} action ${b.action}]`);
