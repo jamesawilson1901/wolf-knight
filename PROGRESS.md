@@ -227,7 +227,7 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Touch leg: t1a->t1b walked BY THUMB (dynamic joystick, closed-loop) with
     a mid-stride two-finger swing. Multi-touch item DONE for L3.
   * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
-    chords, callable, landings — all PASS post-fix. Canary: see ledger.
+    chords, callable, landings — all PASS post-fix. Canary GREEN (fresh boot, 60s, 0 errors).
 - L4 Frostpeak: NOT STARTED
 - L5 Stormreach: NOT STARTED
 - L6 Sunken Vale: NOT STARTED
