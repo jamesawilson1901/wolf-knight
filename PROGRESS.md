@@ -52,7 +52,15 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 11. Phone-check lines per ship — STANDING
 
 ## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
-* NEXT UP (dad's order, 2026-08-15): PS5 DUALSENSE SUPPORT before L4.
+* DONE (dad's order): PS5 DUALSENSE SUPPORT — js/input.js polls standard-
+  mapping pads from getMove() (cross attack, square special, triangle form,
+  circle jump, L1 bolt, R1/R2 shield hold, dpad-up potion, options pause,
+  left stick analog move, deadzone 0.18; adaptive triggers out by order).
+  PROVEN by probe-gamepad.mjs through the real poll path: stick walks, cross
+  swings, R1 holds/releases, triangle cycles, keyboard clean with no pad.
+  NOTE: probe first raced the new wild_enter narration freeze — waits it out.
+  Boot+callable spot green; full sweep covers it at ship. PHONE-CHECK: pair a
+  real DualSense over Bluetooth and feel it. (was: NEXT UP plan)
   No adaptive triggers (needs its own API). Plan:
   - js/input.js: poll navigator.getGamepads() once per frame (Gamepad API has
     no events). Standard mapping: left stick -> the touch-joystick vector path
