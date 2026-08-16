@@ -80,7 +80,7 @@ case "$1" in
       case " $HEAVY $TAIL " in *" $t "*) ;; *) PARLIST="$PARLIST $t" ;; esac
     done
     RDIR="/tmp/vall-par.$$"; mkdir -p "$RDIR"
-    printf '%s\n' $PARLIST | xargs -P 3 -n 1 -I{} sh "$0" --one {} "$RDIR"
+    printf '%s\n' $PARLIST | xargs -P 3 -I{} sh "$0" --one {} "$RDIR"
     for t in $PARLIST; do
       if [ -f "$RDIR/$t" ]; then read -r V S < "$RDIR/$t"; else V=FAIL; S='?'; fi
       printf '%-26s %s  %ss\n' "$t" "$V" "$S"

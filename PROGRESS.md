@@ -31,7 +31,44 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 
 ## Speed baselines (RUN2-REPORT levers, measured tonight)
 * Traversal at 3x = 0.60 game-s/wall-s (was 0.25 at 1x) -> ~2.4x faster routes.
-* Gate sweep serial = 2h39m (run 2). Parallel baseline: PENDING this sweep.
+* Gate sweep serial = 2h39m (run 2). Parallel --par baseline: ~88min, 44/44 PASS
+  (validates step-0 tree). Contention is real: playthrough 58m vs 21m serial.
+
+## L3 RECON (complete, from code — play verifies next)
+* Build: the t-ring in level3.js (regions.js's w1-w5 spec is STALE — MR note).
+  Spine: t1a>t1b>tc1>t2a>t2b>tsh>tc2>t3a>t3b>tkn>tc3>t4a>t4b>tc4>tgl>(w)>t1a.
+  Pockets t1p/t2p/t3p/t4p (single door each). Chords: tsA (t4a<->t1a, opens
+  on WS wild3 logDown), tsB (t3a<->t2a, opens on rootCut).
+* ENTRY: vz north door -> t1a, exists only when wardenDefeated (level2.js:1351).
+* VERDANT: granted at tsh sparkSpot (0,-2), NOT from Sylva. Lash = K special in
+  verdant form: 3.8x0.9 corridor, CUTS (world.cutAt), TETHERS boulders (pulls
+  toward player), SNARES square-on 2.6s. Cooldown 7 game-s.
+* TEACH: tsh one bramble across n exit; tc2 3 regrow brambles (6.5s) + log
+  bridge (rope at (5,-9.2), gap walkable around its ends); tkn KNOT: boulder
+  (-8,2) in E-facing channel (walls z=-1,5), tether it out, push to plate
+  (6,2) -> plates.l3_knot_p1 -> n door opens; t4b great thorn-knot (0,-7),
+  7u wide, MANDATORY cut -> WS knotCut -> tc4 boss door opens.
+* Shortcut cuts: t3a rootwall (-13,0) -> rootCut; t4a great log bramble
+  (10.4,0) -> logDown.
+* BOSS: Sylva = Shadowgrip class, skin sylva (boss.js:34): 24hp, 1.08x speed,
+  saveKey sylvaHp (in save.js since v3.19 — wound memory already correct).
+  Same action machine: prowl/stalk/windup/swipe/crouch/charge/tired/recover.
+  Kill sets sylvaDefeated + tgl party (main.js:2047). f1 door appears on tgl
+  REBUILD (re-enter after kill). Arena hazard: standing-stones pillar ring
+  r=6.2 around (0,-2).
+* Hero-prop junctions (t1a/t2a/t3a/t4a): center collider ~r2 + gate props at
+  (+/-3.6,-11.2) — route via x=3.2 bypass lane. t2a/t2b are DARK (state-read
+  driving unaffected). Music: all t-rooms = 'causeway' by design (main.js:1135).
+* CANDIDATE DEFECTS (verify by play, then fix):
+  D1 DEN TRAP: t1a s-door -> den; den's ONLY door is 'la' (rooms.js:810).
+     Stepping south out of t1a strands a kid two regions from the woods.
+     Likely fix: t1a s-door returns to vz (symmetric with the vine entry).
+  D2 wild_enter/thornhound_intro narration DEAD: gated on state.room[0]==='w'
+     (main.js:763) but rebuilt rooms are t-prefixed. Region 3 gets no Pip
+     intro. thornhound_intro also checks room==='t1a' while hounds live in t1b.
+  MR-notes: regions.js wildwoods block stale (w-rooms); jump wildDone sets
+  stale keys (WS 'wild', plates.w3_*); WS('wild','restored') is write-only in
+  live code; buildE3/w-room builders in rooms.js are dead code.
 
 ---- history below ----
 
