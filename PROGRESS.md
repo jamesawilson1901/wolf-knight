@@ -14,7 +14,7 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    e. server = node tools/serve.mjs
 2. wardenHp save parity (#8, APPROVED) — CODE DONE, probe round-trip 7->7; full sweep validates
 3. Profile-isolation check (once, early) — TODO after baseline sweep
-4. L3 Wild Woods: recon / route / boss / close / touch-leg — IN PROGRESS (recon)
+4. L3 Wild Woods: recon DONE / route PASS (see below) / boss NEXT / close / touch-leg
 5. L4 Frostpeak — TODO
 6. L5 Stormreach — TODO
 7. L6 Sunken Vale — TODO
@@ -24,11 +24,26 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 11. Phone-check lines per ship — STANDING
 
 ## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
-* L3 ring route: `node tools/run-l3.mjs` (3x traversal). Done when it prints
-  "FAILS: ..." + "errors: ...". Evidence test-evidence/level-3/route-3x.
-  If the job dies: read the partial log, re-run — the router is state-driven
-  and a rerun walks from wherever things stand after a fresh newGame.
+* NEXT UP: Sylva duel 1x: `node tools/fight-sylva.mjs > /tmp/fight-sylva.log`.
+  Win = sylvaDefeated + f1 door open on tgl rebuild + boss gone. Ladder on
+  loss: WK_TIMESCALE=0.5 then 0.25, every loss diagnosed vs the machine.
+* DONE: L3 ring route PASS (iteration 8) — FAILS none, 0 console errors.
+  Full spine + shrine grant + 4 WS-proven cuts + log bridge + KNOT solved by
+  play + pack + thorn-knot + boss door + ring close + both chords. Evidence
+  test-evidence/level-3/route-3x. Driver iterations 1-7 were all HARNESS bugs
+  (door-box tunneling, walkTo room anchor, form-cycle race, jump loadout wipe,
+  facing sub-frame taps, wall-clock cooldown math) — logged for the run report.
 * DONE: baseline --par sweep 44/44 (~88min), log /tmp/v-par-baseline.log.
+
+## L3 GAME DEFECTS (found by play tonight)
+* D1 CONFIRMED (route iter 8): t1a s-door -> den; den's only exit is la.
+  A kid stepping south out of the FIRST Wild Woods room is stranded two
+  regions back. FIX QUEUED: t1a s-door returns to vz (the vine entry's twin).
+* D2 code-certain: wild_enter/thornhound_intro gated on state.room[0]==='w' —
+  logically dead for t-rooms (and the hound check names t1a while hounds live
+  in t1b). Region 3 has NO Pip intro today. FIX QUEUED with D1.
+* D3 candidate: tgl plays 'causeway' with Sylva live — L1/L2 boss arenas have
+  boss music. Verify with a settled read during the fight session.
 
 ## Speed baselines (RUN2-REPORT levers, measured tonight)
 * Traversal at 3x = 0.60 game-s/wall-s (was 0.25 at 1x) -> ~2.4x faster routes.
