@@ -759,10 +759,12 @@ function narrationTriggers(dt, t) {
     if (narration.say('wild_complete')) persist();
   }
 
-  // The Wild Woods (region 3)
-  if (state.room[0] === 'w') {
+  // The Wild Woods (region 3). The rebuilt rooms are t-prefixed; this block
+  // gated on the RETIRED 'w' prefix, so Pip never introduced region 3 at all
+  // (and the hound line watched t1a while the first hounds live in t1b).
+  if (state.room[0] === 't') {
     narration.say('wild_enter');
-    if (state.room === 't1a') {
+    if (state.room === 't1b') {
       const th = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
       if (th && nearXZ(th.x, th.z, 6)) narration.say('thornhound_intro');
     }
