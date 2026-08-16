@@ -52,7 +52,22 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 11. Phone-check lines per ship — STANDING
 
 ## IN-FLIGHT JOBS (resume commands — never wait twice on a dead waiter)
-* NEXT UP: L4 — write run-l4.mjs + fight-boreal.mjs from the ledger-5 recon
+* NEXT UP (dad's order, 2026-08-15): PS5 DUALSENSE SUPPORT before L4.
+  No adaptive triggers (needs its own API). Plan:
+  - js/input.js: poll navigator.getGamepads() once per frame (Gamepad API has
+    no events). Standard mapping: left stick -> the touch-joystick vector path
+    (analog move, same fields the thumb joystick sets); edge-detect buttons ->
+    the SAME queued flags keydown sets: cross(0)=attack, square(2)=special,
+    triangle(3)=form cycle, circle(1)=jump, R1(5)=shield HOLD (mimic KeyI in
+    _keys), L1(4)=ranged, dpad-up(12)=potion, options(9)=pause. Deadzone 0.18.
+  - Menus/title: cross activates the focused/first button (profile flow),
+    dpad moves focus — MINIMAL: cross = pointerdown on #t-continue/#t-start
+    path can come later if time; core in-game control first.
+  - Verify WITHOUT hardware: probe injects a fake navigator.getGamepads
+    (crafted axes/buttons frames) -> assert player moves + swings + shields
+    via __wk; plus verify-callable + boot + inertness stay green.
+  - SW cache bump at the L3+L4 ship (input.js is precached).
+  THEN: L4 — write run-l4.mjs + fight-boreal.mjs from the ledger-5 recon
   (chassis: copy run-l3 helpers; braziers = L breath then K slam per spot;
   lake = slick L-approach pushes; Boreal = bolts while circling, dodge the
   red lane, punish grounded). Then the L3+L4 batched SHIP event.
