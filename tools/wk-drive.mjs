@@ -58,9 +58,15 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       const want = new Set();
       const t0 = Date.now();
       let lastPos = null, stuck = 0;
+      // ANCHOR THE START ROOM ONCE. The old check compared two reads inside
+      // the same iteration, so a transition completing during the inter-tick
+      // wait was invisible — and the walk carried on BLIND in the new room
+      // toward old-room coordinates (the t1a door cascade, run 3).
+      const startRoom = await api.wk('room');
       try {
         while ((Date.now() - t0) / 1000 < timeout) {
           const s = await api.wk();
+          if (s.room !== startRoom) return { ok: true, roomChanged: s.room, at: s.pos };
           if (onTick) await onTick(s);
           const dx = tx - s.pos.x, dz = tz - s.pos.z;
           if (Math.hypot(dx, dz) < arrive) return { ok: true, at: s.pos, room: s.room };
@@ -72,6 +78,12 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
+          if (stuck >= 3) {
+            // A DOOR FADE freezes the player in place for seconds (measured
+            // ~5s at 3x/4.5fps): motionless is not stuck while transitioning.
+            const fading = await page.evaluate(() => window.__wk.gates.transitioning).catch(() => false);
+            if (fading) { stuck = 0; await page.waitForTimeout(400); continue; }
+          }
           if (stuck === 5) {
             // Patience is only for NARRATION and dead worlds. A blocking story
             // line stalls the world on purpose — wait it out and absolve the
@@ -124,8 +136,6 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
             await page.keyboard.down(px); await page.waitForTimeout(700); await page.keyboard.up(px);
           }
           if (stuck > 30) return { ok: false, why: 'stuck', at: s.pos, room: s.room };
-          const r = await api.wk('room');
-          if (r !== s.room) return { ok: true, roomChanged: r, at: s.pos };
           await page.waitForTimeout(140);
         }
         return { ok: false, why: 'timeout', at: (await api.wk()).pos };

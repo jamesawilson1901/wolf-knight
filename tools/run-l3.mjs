@@ -68,10 +68,17 @@ async function clearFoes(radius = 5, capS = 90) {
   return false;
 }
 
+// A transition returns mid-fade: wait it out before the next read or input.
+const settle = () =>
+  d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 })
+    .then(() => d.page.waitForTimeout(300)).catch(() => {});
+
 async function goRoom(to, via = []) {
+  const arrived = async () => { await settle(); say(`  -> ${to}`); return true; };
+  const here = async () => (await d.wk('room')) === to;
   for (let t = 0; t < 4; t++) {
     let s = await d.wk();
-    if (s.room === to) { say(`  -> ${to}`); return true; }
+    if (s.room === to) return arrived();
     const doors = await d.wk('doors');
     const door = doors.find((x) => x.to === to);
     if (!door) { bad(`no door to ${to} from ${s.room} (doors: ${doors.map((x) => x.to).join(',')})`); return false; }
@@ -79,29 +86,24 @@ async function goRoom(to, via = []) {
     for (const p of via) {
       const rv = await d.walkTo(p[0], p[1], { timeout: 22 });
       say(`    via (${p[0]},${p[1]}): ${rv.ok ? 'ok' : rv.why} at ${JSON.stringify(rv.at)}${rv.roomChanged ? ' room->' + rv.roomChanged : ''}`);
-      const now = await d.wk('room');
-      if (now === to) return true;               // a leg that arrives mid-via arrived
-      if (now !== s.room) break;                 // dragged off-room: restart try
+      if (await here()) return arrived();
+      if ((await d.wk('room')) !== s.room) break; // dragged off-room: restart try
     }
-    if ((await d.wk('room')) === to) return true;
-    // AIM AT THE BOX CENTRE AND STOP INSIDE IT. At 3x and ~4.5fps one frame
-    // steps ~0.97u and the trigger box is ~1.05u deep: crossing it at speed
-    // TUNNELS (walk out into the void, fall, silent respawn — measured at
-    // t1a's north door). A player standing IN the box fires the transition
-    // on the next frame at any timescale. arrive 0.4 < the box half-depth.
+    if (await here()) return arrived();
+    // Walk INTO the trigger box and let it fire — the walkTo start-room anchor
+    // returns the moment the room flips, even mid-fade.
     const r = await d.walkTo(door.x, door.z, { timeout: 30, arrive: 0.4 });
     say(`  try ${t + 1} to ${to}: door(${door.x},${door.z}) -> ${JSON.stringify(r)}`);
-    if (r.roomChanged === to || (await d.wk('room')) === to) return true;
+    if (r.roomChanged === to || (await here())) return arrived();
     if (r.ok) {                                   // standing at centre, no fire: nudge
       const ox = Math.abs(door.x) > Math.abs(door.z) ? Math.sign(door.x) : 0;
       const oz = ox === 0 ? Math.sign(door.z) : 0;
       const n = await d.walkTo(door.x + ox * 0.7, door.z + oz * 0.7, { timeout: 8, arrive: 0.25 });
       say(`    nudge -> ${JSON.stringify(n)}`);
-      if (n.roomChanged === to || (await d.wk('room')) === to) return true;
+      if (n.roomChanged === to || (await here())) return arrived();
     }
     await clearFoes(5, 40);
-    s = await d.wk();
-    if (s.room === to) return true;
+    if (await here()) return arrived();
   }
   bad(`could not reach ${to}`);
   return false;
