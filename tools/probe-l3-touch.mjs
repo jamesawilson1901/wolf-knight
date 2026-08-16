@@ -27,42 +27,60 @@ await page.waitForTimeout(1200);
 const rects = await page.evaluate(() => {
   const r = (id) => { const el = document.getElementById(id); if (!el) return null;
     const q = el.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; };
-  return { joy: r('joy-base'), attack: r('btn-attack') };
+  return { attack: r('btn-attack') };
 });
-say('controls:', JSON.stringify(rects));
-if (!rects.joy || !rects.attack) { bad('touch controls missing'); }
+say('attack button:', JSON.stringify(rects.attack));
+if (!rects.attack) bad('attack button missing');
 
 const cdp = await ctx.newCDPSession(page);
 const touch = (type, touchPoints) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
 
-const start = await page.evaluate(() => ({ ...window.__wk.pos }));
-// finger 1 down on the joystick, dragged north, HELD
-await touch('touchStart', [{ x: rects.joy.x, y: rects.joy.y, id: 1 }]);
-await touch('touchMove', [{ x: rects.joy.x, y: rects.joy.y - 40, id: 1 }]);
-await page.waitForTimeout(1500);
-const moved = await page.evaluate(() => ({ ...window.__wk.pos }));
-say('joystick hold: z', start.z, '->', moved.z);
-if (!(moved.z < start.z - 0.5)) bad('joystick hold did not move the player north');
+// THE JOYSTICK IS DYNAMIC — it anchors wherever the thumb first lands (the
+// element rect reads 0x0 until then). Anchor at a natural left-thumb spot and
+// steer CLOSED-LOOP: drag point = anchor + unit(world direction) * 42px.
+// Screen y maps to world +z, so north (−z) is a drag upward.
+const ORIGIN = { x: 120, y: 260 };
+let fingerAt = { ...ORIGIN };
+async function thumbSteer(tx, tz, timeoutS, midStride = null) {
+  await touch('touchStart', [{ ...ORIGIN, id: 1 }]);
+  const t0 = Date.now();
+  let struck = false;
+  try {
+    while ((Date.now() - t0) / 1000 < timeoutS) {
+      const s = await page.evaluate(() => ({ pos: window.__wk.pos, room: window.__wk.room }));
+      if (s.room !== 't1a') return s.room;
+      const dx = tx - s.pos.x, dz = tz - s.pos.z;
+      if (Math.hypot(dx, dz) < 0.9) return 'arrived';
+      const m = Math.hypot(dx, dz) || 1;
+      fingerAt = { x: ORIGIN.x + (dx / m) * 42, y: ORIGIN.y + (dz / m) * 42 };
+      await touch('touchMove', [{ ...fingerAt, id: 1 }]);
+      if (midStride && !struck && (Date.now() - t0) > 1500) {
+        struck = true;
+        await touch('touchStart', [{ ...fingerAt, id: 1 }, { x: rects.attack.x, y: rects.attack.y, id: 2 }]);
+        await touch('touchEnd', [{ x: rects.attack.x, y: rects.attack.y, id: 2 }]);
+        midStride.swing = await page.waitForFunction(() =>
+          window.__game.player._current && /attack|slash|thrust/i.test(window.__game.player._current),
+          null, { timeout: 4000 }).then(() => true).catch(() => false);
+      }
+      await page.waitForTimeout(180);
+    }
+    return null;
+  } finally {
+    await touch('touchEnd', [{ ...fingerAt, id: 1 }]);
+  }
+}
 
-// finger 2 taps ATTACK while finger 1 keeps steering — the two-pointer moment
-await touch('touchStart', [{ x: rects.joy.x, y: rects.joy.y - 40, id: 1 }, { x: rects.attack.x, y: rects.attack.y, id: 2 }]);
-await touch('touchEnd', [{ x: rects.attack.x, y: rects.attack.y, id: 2 }]);
-const swing = await page.waitForFunction(() =>
-  window.__game.player._current && /attack|slash|thrust/i.test(window.__game.player._current),
-  null, { timeout: 4000 }).then(() => true).catch(() => false);
-const stillMoving = await page.evaluate(() => ({ ...window.__wk.pos }));
-say('mid-stride attack:', swing, '· pos z', stillMoving.z);
-if (!swing) bad('attack tap during joystick hold produced no swing');
-
-// keep the hold — the leg is t1a's junction bypass to the north door by thumb
-await touch('touchMove', [{ x: rects.joy.x + 22, y: rects.joy.y - 32, id: 1 }]);  // NE, skirt the statue
-await page.waitForTimeout(2600);
-await touch('touchMove', [{ x: rects.joy.x - 6, y: rects.joy.y - 42, id: 1 }]);   // back north
-const reached = await page.waitForFunction(() => window.__wk.room === 't1b', null, { timeout: 90000 })
-  .then(() => true).catch(() => false);
-await touch('touchEnd', [{ x: rects.joy.x - 6, y: rects.joy.y - 42, id: 1 }]);
-if (!reached) bad(`touch leg never reached t1b (at ${await page.evaluate(() => window.__wk.room)} ${JSON.stringify(await page.evaluate(() => window.__wk.pos))})`);
+const mid = { swing: false };
+const r1 = await thumbSteer(3.2, 5, 25, mid);            // the junction bypass, by thumb
+say('leg 1:', r1, '· mid-stride swing:', mid.swing);
+if (!mid.swing) bad('attack tap during joystick hold produced no swing');
+await thumbSteer(3.2, -4, 25);
+await thumbSteer(0, -8, 25);
+const end = await thumbSteer(0, -13.6, 45);              // into the door box
+const room = await page.evaluate(() => window.__wk.room);
+if (room !== 't1b') bad(`touch leg never reached t1b (at ${room} ${JSON.stringify(await page.evaluate(() => window.__wk.pos))})`);
 else say('TOUCH LEG: t1a -> t1b walked by thumb, with a mid-stride swing');
+void end;
 
 say('FAILS:', fails.length ? JSON.stringify(fails) : 'none');
 say('errors:', JSON.stringify(errors));

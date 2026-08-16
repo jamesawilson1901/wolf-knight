@@ -628,7 +628,9 @@ export async function buildT1a(scene) {
   // pointed at the DEN, whose only exit is Ember Hollow: one step south out of
   // the first Wild Woods room stranded a kid two regions from the forest
   // (found by the run-3 played route; the den has no door back).
-  sideDoor(world, 's', halfW, halfD, 'vz', { x: 0, z: -10, angle: 0 });
+  // landing offset beside the crypt's doorway: dead-centre (0,-10) is inside
+  // the throne's collider (verify-landings caught it — pushedBy 1.42)
+  sideDoor(world, 's', halfW, halfD, 'vz', { x: 1.6, z: -11.1, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 't1b', { x: 0, z: 10, angle: Math.PI });
   // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
   // why nothing had ever measured these.
