@@ -14,7 +14,12 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    e. server = node tools/serve.mjs
 2. wardenHp save parity (#8, APPROVED) — CODE DONE, probe round-trip 7->7; full sweep validates
 3. Profile-isolation check (once, early) — TODO after baseline sweep
-4. L3 Wild Woods: recon DONE / route PASS (see below) / boss NEXT / close / touch-leg
+4. L3 Wild Woods: recon DONE / route PASS / BOSS KILLED 1x zero deaths /
+   close IN PROGRESS: level3+lash+knot+chords+callable PASS; D1/D2 fixed and
+   re-proven by play (round trip + narration); D3 cleared (boss-loop confirmed
+   — entry reads race the track load); freed glade proven (f1 open, no boss);
+   landings rerun + touch leg IN FLIGHT (vz landing moved off the throne;
+   touch joystick is dynamic — closed-loop steering added). Canary after.
 5. L4 Frostpeak — TODO
 6. L5 Stormreach — TODO
 7. L6 Sunken Vale — TODO
