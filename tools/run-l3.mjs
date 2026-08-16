@@ -62,10 +62,17 @@ async function lashAt(x, z, standX, standZ, check = null) {
       await d.page.waitForTimeout(450);
     }
     say(`    (lash ${a + 1} at (${x},${z}) missed — cooldown, retry)`);
-    await d.page.waitForTimeout(7600 / TS);
+    await gameWait(7.4);
   }
   return false;
 }
+// Wait in GAME seconds. /TS wall math was backwards: at 3x the game advances
+// ~0.6 game-s per wall-s, so 8000/TS waited 1.6 game-s against the lash's
+// 7 game-s cooldown — half of every run's lashes were silently swallowed.
+const gameWait = (gs) => d.page.evaluate(async (g) => {
+  const t0 = window.__game.player._time;
+  while (window.__game.player._time < t0 + g) await new Promise((r) => setTimeout(r, 120));
+}, gs);
 const cutFlag = (id) => async () =>
   !!(await d.page.evaluate((i) => window.__game.WS.get('wild3', 'cut_' + i), id));
 const cuttableCut = (id) => async () =>
@@ -258,7 +265,7 @@ await goRoom('tkn', [[0, -6]]);
     const p = await d.wk('pos');
     if (p.x < b.x + 2.0 || p.x > b.x + 5.6) { say(`  (bad lash spot ${JSON.stringify(p)} — restage)`); continue; }
     await d.tap('k');
-    await d.page.waitForTimeout(8000 / TS);
+    await gameWait(7.4);                          // pull slide + full cooldown
     const nb = await boulder();
     say(`  tether: ${b.x} -> ${nb.x}  (from ${p.x},${p.z})`);
     b = nb;
