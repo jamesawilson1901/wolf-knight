@@ -216,46 +216,80 @@ await goRoom('t3a', [[0, -8]]);
 await goRoom('t3b', JVIA);
 await goRoom('tkn', [[0, -6]]);
 
-// THE KNOT: tether the boulder out of its channel, push it onto the plate.
+// THE KNOT — the probe-proven solution (tools/probe-knot.mjs, 3 iterations):
+// tether the stone east with CLOSED-LOOP aim until it fully clears the
+// channel, then 1u contact pushes from L-approaches that never cross its line.
 {
   await clearFoes(7);
   const boulder = () => d.page.evaluate(() => {
     const b = (window.__game.world.boulders || [])[0];
-    return b ? { x: b.x ?? b.collider.x, z: b.z ?? b.collider.z } : null;
+    return b ? { x: +(b.x ?? b.collider.x).toFixed(2), z: +(b.z ?? b.collider.z).toFixed(2) } : null;
   });
+  const pressed = () => d.page.evaluate(() => !!window.__game.state.flags.plates.l3_knot_p1);
+  async function aimAt(x, z) {
+    for (let i = 0; i < 5; i++) {
+      const p = await d.wk('pos');
+      const ry = await d.page.evaluate(() => window.__game.player.root.rotation.y);
+      let diff = Math.atan2(x - p.x, z - p.z) - ry;
+      while (diff > Math.PI) diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      if (Math.abs(diff) < 0.6) return true;
+      const dx = x - p.x, dz = z - p.z;
+      const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+      await d.page.keyboard.down(key); await d.page.waitForTimeout(270); await d.page.keyboard.up(key);
+    }
+    return false;
+  }
+  async function standBeside(bx, bz, dx, dz) {
+    const lane = bz + 2.6;
+    await d.walkTo(bx + dx * 0.1, lane, { timeout: 12, arrive: 0.6 });
+    await d.walkTo(bx + dx, lane, { timeout: 8, arrive: 0.5 });
+    await d.walkTo(bx + dx, bz + dz, { timeout: 8, arrive: 0.45 });
+    return d.wk('pos');
+  }
   let b = await boulder();
   if (!b) bad('no boulder in tkn');
-  // PHASE A — TETHER ONLY while it is in the channel. There is no useful push
-  // from inside (the room's whole lesson); run 6's pathing walked INTO the
-  // boulder chasing a west-side stand point and shoved it 7u the wrong way.
   let guard = 0;
-  while (b && b.x < -3.4 && guard++ < 14) {
+  while (b && b.x < -2.4 && guard++ < 16) {
     await form('verdant_wolf');
-    await d.walkTo(Math.min(b.x + 3.4, 2.5), 2, { timeout: 15, arrive: 0.5 });
-    await d.page.keyboard.down('a'); await d.page.waitForTimeout(550); await d.page.keyboard.up('a');
+    await d.walkTo(3.0, 2, { timeout: 18, arrive: 0.7 });
+    await d.walkTo(b.x + 4.4, 2, { timeout: 15, arrive: 0.5 });
+    await aimAt(b.x, b.z);
+    const p = await d.wk('pos');
+    if (p.x < b.x + 2.0 || p.x > b.x + 5.6) { say(`  (bad lash spot ${JSON.stringify(p)} — restage)`); continue; }
     await d.tap('k');
-    await d.page.waitForTimeout(8000 / TS);       // pull + lash cooldown
+    await d.page.waitForTimeout(8000 / TS);
     const nb = await boulder();
-    say(`  tether: ${b.x.toFixed(1)} -> ${nb.x.toFixed(1)}${Math.abs(nb.x - b.x) < 0.15 ? ' (no pull — re-aim)' : ''}`);
+    say(`  tether: ${b.x} -> ${nb.x}  (from ${p.x},${p.z})`);
     b = nb;
   }
-  // PHASE B — on open floor the player can finally get BEHIND it: contact-push
-  // east onto the plate with long holds (never pathing walks near the stone).
   guard = 0;
-  while (b && b.x > -3.4 && b.x < 5.2 && guard++ < 16) {
-    await d.walkTo(b.x - 1.5, b.z, { timeout: 12, arrive: 0.4 });
-    await d.page.keyboard.down('d'); await d.page.waitForTimeout(900); await d.page.keyboard.up('d');
+  while (b && b.x > -2.6 && guard++ < 26) {
+    if (await pressed()) break;
+    const p = await standBeside(b.x, b.z, -1.5, 0);
+    if (p.x > b.x - 0.7) { say(`  (push stand failed: ${JSON.stringify(p)})`); continue; }
+    await d.page.keyboard.down('d'); await d.page.waitForTimeout(320); await d.page.keyboard.up('d');
     let nb = await boulder();
-    if (Math.abs(nb.z - 2) > 0.8) {               // drifted off the plate line
-      await d.walkTo(nb.x, nb.z + (nb.z > 2 ? 1.6 : -1.6), { timeout: 10, arrive: 0.4 });
-      const k = nb.z > 2 ? 'w' : 's';
-      await d.page.keyboard.down(k); await d.page.waitForTimeout(650); await d.page.keyboard.up(k);
+    if (Math.abs(nb.z - 2) > 0.8 && !(await pressed())) {
+      const side = nb.z > 2 ? 1 : -1;
+      await d.walkTo(nb.x - 1.6, nb.z + side * 1.5, { timeout: 8, arrive: 0.5 });
+      await d.walkTo(nb.x, nb.z + side * 1.5, { timeout: 8, arrive: 0.45 });
+      const k = side > 0 ? 'w' : 's';
+      await d.page.keyboard.down(k); await d.page.waitForTimeout(300); await d.page.keyboard.up(k);
       nb = await boulder();
     }
     b = nb;
-    say(`  push: boulder at (${b.x.toFixed(1)},${b.z.toFixed(1)})`);
+    say(`  push: (${b.x},${b.z})  plate=${await pressed()}`);
+    if (b.x > 7.5 && !(await pressed())) {
+      say('  (overshot — pushing back west)');
+      const p2 = await standBeside(b.x, b.z, 1.5, 0);
+      if (p2.x > b.x + 0.7) {
+        await d.page.keyboard.down('a'); await d.page.waitForTimeout(300); await d.page.keyboard.up('a');
+        b = await boulder();
+      }
+    }
   }
-  await d.page.waitForTimeout(900 / TS);
+  await d.page.waitForTimeout(1200 / TS);
   if (!(await plate('l3_knot_p1'))) bad('knot plate never pressed');
   else say('  KNOT SOLVED — plate pressed');
   const nDoor = (await d.wk('doors')).find((x) => x.to === 'tc3');
