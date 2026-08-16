@@ -22,29 +22,48 @@ const ws = (k) => d.page.evaluate((k2) => window.__game.WS.get('wild3', k2), k);
 const flag = (k) => d.page.evaluate((k2) => window.__game.state.flags[k2], k);
 const plate = (k) => d.page.evaluate((k2) => !!window.__game.state.flags.plates[k2], k);
 
+// Tab-cycle to a form, WAITING for each cycle to land: a read raced one frame
+// behind the tap at 4.5fps and could miss the wanted form on every pass.
 async function form(want) {
-  for (let i = 0; i < 10; i++) {
-    if ((await d.wk('form')) === want) return true;
+  for (let i = 0; i < 12; i++) {
+    const cur = await d.wk('form');
+    if (cur === want) return true;
     await d.tap('Tab');
-    await d.page.waitForTimeout(260);
+    await d.page.waitForFunction((c) => window.__wk.form !== c, cur, { timeout: 2000 }).catch(() => {});
   }
-  bad(`could not cycle to ${want}`);
+  bad(`could not cycle to ${want} (at ${await d.wk('form')})`);
   return false;
 }
 
-// Stand near (x,z), nudge to face it, lash. The lash is a forward corridor.
-async function lashAt(x, z, standX, standZ) {
-  await form('verdant_wolf');
-  const r = await d.walkTo(standX, standZ, { timeout: 25, arrive: 0.7 });
-  if (!r.ok) { bad(`lashAt could not reach stand point (${standX},${standZ})`); return false; }
-  const s = await d.wk();
-  const dx = x - s.pos.x, dz = z - s.pos.z;
-  const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
-  await d.page.keyboard.down(key); await d.page.waitForTimeout(130); await d.page.keyboard.up(key);
-  await d.tap('k');
-  await d.page.waitForTimeout(700 / TS);
-  return true;
+// Stand near (x,z), face it, lash — then PROVE the cut landed via `check`
+// (WorldState or cuttable ground truth). Brambles are walk-aroundable, so
+// "we got past" proves nothing. Retries respect the 7 game-s lash cooldown.
+async function lashAt(x, z, standX, standZ, check = null) {
+  for (let a = 0; a < 3; a++) {
+    if (!(await form('verdant_wolf'))) return false;
+    const sx = standX + (a === 2 ? 0.6 : 0), sz = standZ + (a === 1 ? 0.6 : 0);
+    const r = await d.walkTo(sx, sz, { timeout: 25, arrive: 0.7 });
+    if (!r.ok && !r.roomChanged) { say(`    (lash stand point (${sx},${sz}) unreachable)`); continue; }
+    const s = await d.wk();
+    const dx = x - s.pos.x, dz = z - s.pos.z;
+    const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+    await d.page.keyboard.down(key); await d.page.waitForTimeout(130); await d.page.keyboard.up(key);
+    await d.tap('k');
+    await d.page.waitForTimeout(900 / TS);
+    if (!check) return true;
+    if (await check()) return true;
+    say(`    (lash ${a + 1} at (${x},${z}) missed — cooldown, retry)`);
+    await d.page.waitForTimeout(7600 / TS);
+  }
+  return false;
 }
+const cutFlag = (id) => async () =>
+  !!(await d.page.evaluate((i) => window.__game.WS.get('wild3', 'cut_' + i), id));
+const cuttableCut = (id) => async () =>
+  !!(await d.page.evaluate((i) => {
+    const c = (window.__game.world.cuttables || []).find((e) => e.id === i);
+    return c && c.cut;
+  }, id));
 
 // Fight everything close by with real swings until the radius is clear.
 async function clearFoes(radius = 5, capS = 90) {
@@ -144,24 +163,20 @@ await goRoom('tsh', [[0, 4]]);
   else say('  VERDANT GRANTED at the shrine');
   if (!(await ws('spark'))) bad('WS wild3.spark not set by shrine');
   await d.shot('tsh-verdant');
-  await lashAt(0, -5, 0, -3.2);
-  const r = await d.walkTo(0, -6, { timeout: 12, arrive: 0.6 });
-  if (!r.ok && !r.roomChanged) bad('teach bramble still blocks after lash');
-  else say('  teach bramble cut, way out open');
+  if (!(await lashAt(0, -5, 0, -3.2, cutFlag('l3_tsh_teach')))) bad('teach bramble never cut (WS)');
+  else say('  teach bramble CUT (WS ground truth)');
 }
 await goRoom('tc2', [[0, -6]]);
 
 // TC2 at 3x: prove the MECHANISMS (cut opens, rope drops the log, bridge
 // carries). The 1x timing-feel proof runs in fight-sylva.mjs.
 {
-  await lashAt(0, -1, 0, 0.9);                    // middle regrow bramble
-  const r = await d.walkTo(0, -2.4, { timeout: 10, arrive: 0.6 });
-  if (!r.ok && !r.roomChanged) bad('tc2 regrow bramble still blocks right after cut');
-  else say('  regrow bramble cut and crossed');
+  if (!(await lashAt(0, -1, 0, 0.9, cuttableCut('l3_tc2_2')))) bad('tc2 regrow bramble never cut');
+  else say('  regrow bramble CUT (cuttable ground truth)');
   // round the gap's east end to the rope, lash, then cross the landed log
   await d.walkTo(10, -2, { timeout: 20 });
   await d.walkTo(9.5, -8.6, { timeout: 20 });
-  await lashAt(5, -9.2, 6.8, -9.0);
+  if (!(await lashAt(5, -9.2, 6.8, -9.0, cutFlag('l3_tc2_bridge')))) bad('log-bridge rope never cut (WS)');
   await d.page.waitForTimeout(1600 / TS);         // the log swings
   const back = await d.walkTo(0, -3.2, { timeout: 16 });   // south across the gap
   const forth = await d.walkTo(0, -8.6, { timeout: 16 });  // and north again
@@ -174,9 +189,8 @@ await goRoom('t3a', [[0, -8]]);
 // T3A: cut the root-wall — the tsB chord's far-side unlock.
 {
   await clearFoes(6);
-  await lashAt(-13, 0, -10.6, 0);
-  if (!(await ws('rootCut'))) bad('rootwall lash did not set WS wild3.rootCut');
-  else say('  root-wall cut (tsB chord unlocked for next build)');
+  if (!(await lashAt(-13, 0, -10.6, 0, () => ws('rootCut')))) bad('rootwall never cut (WS rootCut)');
+  else say('  root-wall CUT (tsB chord unlocked for next build)');
 }
 await goRoom('t3b', JVIA);
 await goRoom('tkn', [[0, -6]]);
@@ -227,8 +241,7 @@ await goRoom('t4a', [[0, 5]]);
 // T4A: the pack, then the great log — the tsA chord's far-side unlock.
 {
   await clearFoes(12, 150);                       // two elders + three of the pack
-  await lashAt(10.4, 0, 10.4, 2.5);
-  if (!(await ws('logDown'))) bad('great log lash did not set WS wild3.logDown');
+  if (!(await lashAt(10.4, 0, 10.4, 2.5, () => ws('logDown')))) bad('great log never cut (WS logDown)');
   else say('  GREAT LOG DOWN (tsA chord unlocked for next build)');
   await d.shot('t4a-log');
 }
@@ -237,8 +250,7 @@ await goRoom('t4b', JVIA);
 // T4B: the great thorn-knot — the MANDATORY cut that opens the glade.
 {
   await clearFoes(7);
-  await lashAt(0, -7, 0, -5.2);
-  if (!(await ws('knotCut'))) bad('thorn-knot lash did not set WS wild3.knotCut');
+  if (!(await lashAt(0, -7, 0, -5.2, () => ws('knotCut')))) bad('thorn-knot never cut (WS knotCut)');
   else say('  THORN-KNOT CUT — the glade opens');
   const r = await d.walkTo(0, -8.4, { timeout: 12 });
   if (!r.ok && !r.roomChanged) bad('thorn-knot still blocks after cut');

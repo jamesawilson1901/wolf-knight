@@ -25,7 +25,14 @@ await d.page.evaluate(() => {
 // ---- 1x TC2 PROOF: cut-and-go under the real clock ------------------------
 await d.jump('tc2', ['fire_wolf', 'earth_wolf', 'verdant_wolf']);
 {
-  const form = async (want) => { for (let i = 0; i < 10 && (await d.wk('form')) !== want; i++) { await d.tap('Tab'); await d.page.waitForTimeout(260); } };
+  const form = async (want) => {
+    for (let i = 0; i < 12; i++) {
+      const cur = await d.wk('form');
+      if (cur === want) return;
+      await d.tap('Tab');
+      await d.page.waitForFunction((c) => window.__wk.form !== c, cur, { timeout: 2000 }).catch(() => {});
+    }
+  };
   await form('verdant_wolf');
   await d.walkTo(0, 0.9, { timeout: 20, arrive: 0.6 });
   await d.page.keyboard.down('w'); await d.page.waitForTimeout(130); await d.page.keyboard.up('w');
