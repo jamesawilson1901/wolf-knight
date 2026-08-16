@@ -20,7 +20,33 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    — entry reads race the track load); freed glade proven (f1 open, no boss);
    landings rerun + touch leg IN FLIGHT (vz landing moved off the throne;
    touch joystick is dynamic — closed-loop steering added). Canary after.
-5. L4 Frostpeak — TODO
+5. L4 Frostpeak — RECON DONE (below); route driver + fight-boreal NEXT
+   L4 RECON: old-style rooms in rooms.js (builders buildF1..F5, ~3600-3920).
+   LINEAR spine f1>f2>f3>f4>f5; pockets f1b (e of f1), f2b (e of f2).
+   ENTRY tgl n-door (sylvaDefeated) -> f1; f1 s-door -> 'w5' (resolves tgl).
+   EXIT f5 n-door -> s1a when borealDefeated (Stormreach).
+   * f2 ICEBOUND HALL: 3 frozen braziers (-5.4,-1.2)(0,-4.2)(5.4,-1.2).
+     FIRE FORM: L = breath MELTS shell, K = slam LIGHTS bowl. Melted-unlit
+     reseals after 26 game-s (45 easy). All 3 lit -> WS('frost','braziers')
+     -> frostGate at (0,-7.05) opens (n door to f3). run-l2 slamAt pattern.
+   * f3 FROZEN LAKE: slickFloor — pushes/tethers SLIDE until stopped.
+     Boulders (+/-7,1.6); stoppers (-/+1.6,1.6) catch them at lane x=-/+3;
+     ridge at z=-1.5 with gaps at x=+/-3; plates f3_p1(-3,-4.6) f3_p2(3,-4.6)
+     open the frostGate. UNKNOWN: what stops the northward slide ON the
+     plate (verify by play; L4 has NO suite of its own — least-verified).
+     NOTE verdant tether on slick slides 26u (world.js:415).
+   * f4 pack (2 rime + elderrime + snowblob + frostmoth), cp+potion pre-boss.
+   * f5 BOREAL (boss.js:742, class Boreal, Dragon.glb, 22hp, borealHp wound
+     memory OK): machine circle|windup|dive|grounded|rise. Wheels AROUND THE
+     PLAYER r2.5 hover 1.9; windup shows red lane 8.5x3.2 (step >1.6u off);
+     grounded = gold ring punish (also triggered by PARRY takeStun!). BOLTS
+     (L, knight) hit flyers FULL — the intended answer. Kill: borealDefeated
+     + frost_wolf push (boss.js:910) + f5 party (main.js:2007) + n door on
+     rebuild. Enemies: rime hounds fire-weak, elderrime, snowblobs, frostmoths.
+   * Jump loadout: knight,dark,fire,earth,verdant + set sylvaDefeated.
+   * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
+     timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
+     3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
 6. L5 Stormreach — TODO
 7. L6 Sunken Vale — TODO
 8. L7 Shadow Court — TODO
