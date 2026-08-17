@@ -65,7 +65,20 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
      timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
      3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
-6. L5 Stormreach — TODO
+6. L5 Stormreach — SKELETON RECON (level5.js read; deepen before the route):
+   SWITCHBACK climb, CLIMB chain: s1a>s1b>sc1>s2a>s2b>ssh>sc2>s3a>s3b>svn>
+   sc3>s4a>s4b>sc4>scr. Pockets s1p/s2p/s3p/s4p; shortcut ssA (s4a<->s1a,
+   opens on WS storm windBridge). ENTRY f5 n-door -> s1a (borealDefeated).
+   STORM WOLF from ssh shrine (sparkSpot grants storm_wolf; K special =
+   tryThunderDash). TEACH: ssh intro (one gale between spark and door);
+   sc2 develop (gust crossable / gale not / breeze carries); svn twist
+   (THE VANES — the dash PUSHES, turnVane); s4b conclude (WIND GATE, two
+   vanes at once). BOSS scr: Aria = Shadowgrip class skin aria (26hp, 1.14x,
+   saveKey ariaHp) + at HALF HP raises two gales squeezing the arena
+   (boss.js SKINS.aria.gales; walking out of the charge lane stops working,
+   DASHING still does). Wind mechanics live in js/wind.js (galeLane,
+   buildWindField, turnVane, WIND) — read before the route. Music/verify:
+   verify-storm suite exists and passes.
 7. L6 Sunken Vale — TODO
 8. L7 Shadow Court — TODO
 9. Ship events per protocol (batch ~2 levels per ship) — TODO
