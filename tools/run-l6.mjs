@@ -169,6 +169,12 @@ await narrWait();
   else say('  TIDE GRANTED at the shrine');
   if (!(await wsVale('spark'))) bad('WS vale.spark not set');
   await d.shot('dsh-tide');
+  // canWade is read at BUILD: dsh was built BEFORE the grant, so its deep
+  // water (which bars the west exit to dg2) is a stale collider. Leave and
+  // re-enter so dsh rebuilds with wading on — the same step a kid takes.
+  say('  re-entering dsh so the deep clears (canWade rebuild)');
+  await goRoom('d2b', [[0, -4]]);
+  await goRoom('dsh', [[0, 4]]);
 }
 await goRoom('dg2', [[0, 4]]);
 await narrWait();
