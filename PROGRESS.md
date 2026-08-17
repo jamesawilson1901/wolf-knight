@@ -22,7 +22,9 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    Lake then SOLVED by focused probe (probe-lake.mjs): stopper catches at
    +/-2.97, THE PLATE STOPS THE LANE SLIDE (open question answered), bad
    slides recover by re-entry (stones reset, plates persist). Solver ported;
-   route iter 2 IN FLIGHT. HARNESS ARTIFACT (run-report note): at 3x a ~1u
+   route iter 2 PASS — FAILS none, 0 errors: pockets, braziers (2nd clean
+   solve), LAKE in 4 clean pushes, pack, Boreal sighted (boss-loop). BOSS
+   NEXT: node tools/fight-boreal.mjs (1x, ladder on loss). HARNESS ARTIFACT (run-report note): at 3x a ~1u
    frame-step can land inside a solid gate collider AND the door trigger
    before pushback — iter 1 crossed the CLOSED ice gate that way; at kid
    speed (0.33u steps) the ice holds. Assert gates by collider/flag, never
