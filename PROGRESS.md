@@ -118,7 +118,7 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    DASHING still does). Wind mechanics live in js/wind.js (galeLane,
    buildWindField, turnVane, WIND) — read before the route. Music/verify:
    verify-storm suite exists and passes.
-7. L6 Sunken Vale — TODO
+7. L6 Sunken Vale — DONE, PASS (composition in Levels). Boss 1x zero deaths.
 8. L7 Shadow Court — TODO
 7b. L6 Sunken Vale — NEXT: run-l6.mjs + fight-meri.mjs are DRAFTED (tide
     splash puzzle, frost-shatter gate, deep crossings, Meri floods). Recon
@@ -328,6 +328,22 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
     a mid-stride two-finger swing. Multi-touch item DONE for L3.
   * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
     chords, callable, landings — all PASS post-fix. Canary GREEN (fresh boot, 60s, 0 errors).
+- L6 Sunken Vale: **PASS** (run 3, 2026-08-17)
+  * Route: full RIM spine d1a..ddp by play at 3x, 0 console errors. TIDE wolf
+    granted at dsh; BOTH deep-water crossings (dg2, d4b) walked as tide; all
+    three pools QUENCHED by splash. Meri sighted (28hp, boss-loop).
+  * Boss: MERI FREED at 1x FULL SPEED, ZERO DEATHS — all 8 actions, floods
+    survived in tide form; the drained deep opens the way to x1 (Shadow
+    Court). Evidence: test-evidence/level-6/.
+  * Lagoon (dlg) verified: enter/exit works, NOT a trap (D6-1 cosmetic).
+  * NO js/ changes -> the v3.49.0 ship's 44/44 gates still hold; full sweep +
+    canary run at the batched L5+L6+L7 ship.
+  * DEFECTS -> MORNING REVIEW (RECON-L6.md), none overnight-fixable: D6-RE-
+    ENTRY (tide-grant leaves a deep wall until dsh is re-entered — soft-lock
+    risk, wants a hint), D6-6 (Vale plays Stoneroot's music — needs an asset/
+    decision), D6-2/D6-DTP (tide-quench twist is decorative — the door is
+    ungated and poolsQuenched has no readers).
+
 - L5 Stormreach: **PASS** (run 3, 2026-08-17)
   * Route: iter 11, full switchback climb by play at 3x, FAILS none, 0
     errors. Storm wolf granted at ssh; teach gale DASHED; sc2 develop crossed
