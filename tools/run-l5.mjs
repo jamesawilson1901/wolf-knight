@@ -138,11 +138,13 @@ await d.shot('s1a-arrival');
 }
 await goRoom('s1b');
 await clearFoes(7);
+await goRoom('s1b');                                 // a chase can shove us through a door
 await goRoom('s1p'); say('s1p doors:', (await d.wk('doors')).map((x) => x.to).join(','));
 await goRoom('s1b');
 await goRoom('sc1');
 await goRoom('s2a', [[0, 5]]);
 await clearFoes(7);
+await goRoom('s2a', [[0, 5]]);
 await goRoom('s2p'); await goRoom('s2a');
 await goRoom('s2b', [[-6, 0]]);
 await clearFoes(7);
@@ -189,6 +191,7 @@ await narrWait();
 }
 await goRoom('s3a', [[0, -5]]);
 await clearFoes(7);
+await goRoom('s3a', [[0, -5]]);
 await goRoom('s3p'); await goRoom('s3a');
 await goRoom('s3b', [[6, 0]]);
 await clearFoes(7);
@@ -202,11 +205,10 @@ await narrWait();
   while (!(await ws('storm', 'vanesTurned')) && dashes < 16) {
     const vs = await vanes();
     const v = vs[dashes % vs.length];
-    // approach from DOWNWIND of the vane's own lane, dash into the post
-    const ls = await lanes();
-    const lane = ls.find((l) => Math.abs(l.x - v.x) < 2.5 && l.s === 'gale');
-    const push = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[lane ? lane.dir : 'n'];
-    await dashAt(v.x, v.z, v.x + push[0] * 2.8, v.z + push[1] * 2.8);
+    // a stand INSIDE a gale cannot be held (walking against 7.2 nets -2.2):
+    // stand in the inter-lane gap WEST of the vane, outside its lane, and
+    // dash EAST along the x-axis into the post
+    await dashAt(v.x, v.z, v.x - 2.9, v.z);
     dashes++;
     say(`  dash ${dashes}: vanes now ${JSON.stringify(await vanes())} turned=${await ws('storm', 'vanesTurned')}`);
     await gameWait(7.6);
@@ -234,10 +236,8 @@ await clearFoes(9);
   while ((await westBarred()) && dashes < 12) {
     const vs = await vanes();
     const v = vs[dashes % vs.length];
-    const ls = await lanes();
-    const lane = ls.find((l) => Math.abs(l.x - (-10)) < 2.5 && Math.abs(l.z - v.z) < 5 && l.s === 'gale');
-    const push = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[lane ? lane.dir : 'n'];
-    await dashAt(v.x, v.z, v.x + push[0] * 2.8, v.z + push[1] * 2.8);
+    // the gate lanes sit at x=-10 (edge -6.5): stand just east, dash west in
+    await dashAt(v.x, v.z, v.x + 3.4, v.z);
     dashes++;
     say(`  gate dash ${dashes}: vanes ${JSON.stringify(await vanes())}`);
     await gameWait(7.6);
