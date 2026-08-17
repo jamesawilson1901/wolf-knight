@@ -1,0 +1,128 @@
+// BOREAL, THE RIMEBOUND — the first boss that FLIES (boss.js:742, read whole).
+// Machine: circle | windup | dive | grounded | rise. She wheels AROUND KAEL
+// (r2.5, hover 1.9). Windup paints the red lane (8.5x3.2 — step >1.6u off the
+// line); the dive ends grounded under the gold ring: the punish. BOLTS (L,
+// knight) hit flyers for FULL damage — the region-1 law's payoff — so the
+// rhythm is: bolt while she wheels, sidestep the lane, maul her on the ground.
+// A parry also swats her down (takeStun) — not scripted, the ring is enough.
+// 22 hp, wounds persist via borealHp. Kill: borealDefeated + frost_wolf push.
+import { launch } from './wk-drive.mjs';
+
+const TS = parseFloat(process.env.WK_TIMESCALE || '1');
+const DIR = `test-evidence/level-4/boreal${TS !== 1 ? '-' + TS + 'x' : ''}`;
+const d = await launch({ evidenceDir: DIR, timescale: TS });
+const say = (...a) => console.log(...a);
+
+await d.newGame('BOREAL');
+await d.page.evaluate(() => {
+  const g = window.__game;
+  g.state.flags.sylvaDefeated = true;
+  g.WS.set('frost', 'braziers', true);
+  g.state.flags.plates.f3_p1 = true;
+  g.state.flags.plates.f3_p2 = true;
+});
+await d.jump('f5', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']);
+await d.page.evaluate(() => { window.__game.state.form = 'knight'; });
+await d.page.waitForFunction(() => !window.__game.narration.speaking && !window.__wk.gates.blocking,
+  null, { timeout: 30000 }).catch(() => {});
+say('eyrie:', JSON.stringify(await d.wk()), 'timescale', TS);
+await d.shot('eyrie');
+
+const seen = { actions: new Set(), deaths: 0, respawns: [], bolts: 0 };
+const t0 = Date.now();
+let lastHp = null, lastHearts = (await d.wk()).hearts, lastBolt = 0;
+
+while ((Date.now() - t0) / 1000 < 45 * 60) {
+  await d.pickPerkIfOffered();
+  const s = await d.wk();
+  if (s.room !== 'f5') {
+    const won = await d.page.evaluate(() => !!window.__wk.flags.borealDefeated);
+    if (won) { say('DEFEATED (left eyrie after kill)'); break; }
+    const door = (await d.wk('doors')).find((x) => x.to === 'f5');
+    if (door) await d.walkTo(door.x, door.z, { timeout: 30 });
+    await d.page.evaluate(() => { window.__game.state.form = 'knight'; });
+    continue;
+  }
+  const b = s.boss;
+  if (!b) {
+    const won = await d.page.evaluate(() => !!window.__wk.flags.borealDefeated);
+    if (won) { say('DEFEATED'); break; }
+    await d.page.waitForTimeout(500); continue;
+  }
+  if (b.hp <= 0 && (await d.page.evaluate(() => !!window.__wk.flags.borealDefeated))) {
+    say('DEFEATED (corpse dissolving)'); break;
+  }
+  seen.actions.add(b.action);
+  if (s.hearts <= 0.5 && lastHearts > 0.5) {
+    seen.deaths++; say(`DEATH #${seen.deaths} [hp ${b.hp} action ${b.action}]`);
+    await d.page.waitForTimeout(4500 / TS);
+    seen.respawns.push(await d.wk('room'));
+    await d.page.evaluate(() => { window.__game.state.form = 'knight'; });
+  }
+  lastHearts = s.hearts;
+  if (s.hearts <= 2 && s.hearts > 0.5) await d.tap('h');
+
+  const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
+  const dist = Math.hypot(dx, dz);
+  if (b.action === 'windup' || b.action === 'dive') {
+    // the red lane runs boss->Kael: step OUT of it, perpendicular, hard
+    const px = -dz / (dist || 1), pz = dx / (dist || 1);
+    const side = ((s.pos.x * pz - s.pos.z * px) > 0) ? 1 : -1;
+    const tx = Math.max(-8, Math.min(8, s.pos.x + px * 4.2 * side));
+    const tz = Math.max(-8, Math.min(8, s.pos.z + pz * 4.2 * side));
+    await d.walkTo(tx, tz, { timeout: 1.6, arrive: 0.8 });
+  } else if (b.action === 'grounded') {
+    if (dist > 1.7) await d.walkTo(b.x, b.z, { timeout: 2, arrive: 1.4 });
+    else {
+      const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+      await d.page.keyboard.down(k); await d.page.waitForTimeout(120); await d.page.keyboard.up(k);
+      await d.tap('j'); await d.page.waitForTimeout(180 / TS); await d.tap('j');
+    }
+  } else {                                   // circle / rise: the bolt's moment
+    if (Date.now() - lastBolt > 900) {
+      // face her, then throw
+      const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+      await d.page.keyboard.down(key); await d.page.waitForTimeout(150); await d.page.keyboard.up(key);
+      await d.tap('l');
+      seen.bolts++; lastBolt = Date.now();
+    }
+    if (dist > 5.5) await d.walkTo(b.x, b.z, { timeout: 1.2, arrive: 4 });
+    await d.page.waitForTimeout(160);
+  }
+  if (b.hp !== lastHp) { say(`hp ${lastHp} -> ${b.hp} [${b.action}]`); lastHp = b.hp; }
+}
+
+const flags = await d.page.evaluate(() => ({
+  boreal: !!window.__wk.flags.borealDefeated,
+  frost: window.__wk.forms.includes('frost_wolf'),
+}));
+say('FLAGS:', JSON.stringify(flags));
+say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, bolts: seen.bolts }));
+await d.shot('post');
+
+// the way to Stormreach appears on the rebuild
+let onward = false, bossGone = false;
+if (flags.boreal) {
+  const sDoor = (await d.wk('doors')).find((x) => x.to === 'f4');
+  if (sDoor) { await d.walkTo(sDoor.x, sDoor.z, { timeout: 40, arrive: 0.4 }); }
+  await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
+  if ((await d.wk('room')) === 'f4') {
+    const back = (await d.wk('doors')).find((x) => x.to === 'f5');
+    if (back) await d.walkTo(back.x, back.z, { timeout: 40, arrive: 0.4 });
+    await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
+  }
+  if ((await d.wk('room')) === 'f5') {
+    const doors = await d.wk('doors');
+    onward = !!doors.find((x) => x.to === 's1a' && x.open !== false);
+    bossGone = !(await d.wk('boss'));
+    say('calmed summit doors:', doors.map((x) => x.to).join(','), '· boss gone:', bossGone);
+    await d.shot('f5-calmed');
+  }
+}
+say('music:', await d.wk('music'));
+d.saveLog('boreal');
+const won = flags.boreal && flags.frost && onward && bossGone;
+say(won ? `BOREAL CALMED at ${TS}x — FROST WOLF earned, the sea cliffs open` : 'NOT COMPLETE');
+say('errors:', JSON.stringify(d.errors));
+await d.close();
+process.exit(won && d.errors.length === 0 ? 0 : 1);

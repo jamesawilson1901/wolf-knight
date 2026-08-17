@@ -182,9 +182,47 @@ export class Input {
   }
 
   // Combined joystick + keyboard move vector, length clamped to 1.
+  // PS5 DUALSENSE / any standard-mapping pad (v3.49). The Gamepad API has no
+  // events, so the pad is POLLED from getMove() — the one input call every
+  // living frame already makes; no new wiring anywhere else. Buttons feed the
+  // SAME queues the keys feed; the left stick joins the same movement sum the
+  // thumb joystick uses. Adaptive triggers deliberately out (their own API).
+  // Cross=attack · Square=special · Triangle=form · Circle=jump ·
+  // L1=ranged bolt · R1/R2=shield (hold) · D-pad up=potion · Options=pause.
+  _pollPad() {
+    const pads = (typeof navigator !== 'undefined' && navigator.getGamepads) ? navigator.getGamepads() : [];
+    let pad = null;
+    for (const p of pads) if (p && p.connected && p.mapping === 'standard') { pad = p; break; }
+    if (!pad) {
+      this._padMove = null;
+      if (this._padShield) { this.defending = false; this._padShield = false; }
+      this._padPrev = null;
+      return;
+    }
+    const dz = 0.18;
+    const ax = Math.abs(pad.axes[0]) > dz ? pad.axes[0] : 0;
+    const az = Math.abs(pad.axes[1]) > dz ? pad.axes[1] : 0;
+    this._padMove = (ax || az) ? { x: ax, z: az } : null;
+    const prev = this._padPrev || [];
+    const now = pad.buttons.map((b) => !!(b && b.pressed));
+    const edge = (i) => now[i] && !prev[i];
+    if (edge(0)) this._attackQueued = true;        // cross
+    if (edge(2)) this._specialQueued = true;       // square
+    if (edge(3)) this._formCycleQueued = true;     // triangle
+    if (edge(1)) this._jumpQueued = true;          // circle
+    if (edge(4)) this._rangedQueued = true;        // L1
+    if (edge(12)) this._potionQueued = true;       // d-pad up
+    if (edge(9)) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' })); // options
+    const shield = now[5] || now[7];               // R1 or R2, held
+    if (shield !== !!this._padShield) { this.defending = shield; this._padShield = shield; }
+    this._padPrev = now;
+  }
+
   getMove() {
+    this._pollPad();
     let x = this.move.x;
     let z = this.move.z;
+    if (this._padMove) { x += this._padMove.x; z += this._padMove.z; }
     if (this._keys.has('KeyA') || this._keys.has('ArrowLeft')) x -= 1;
     if (this._keys.has('KeyD') || this._keys.has('ArrowRight')) x += 1;
     if (this._keys.has('KeyW') || this._keys.has('ArrowUp')) z -= 1;

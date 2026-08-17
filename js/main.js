@@ -759,10 +759,12 @@ function narrationTriggers(dt, t) {
     if (narration.say('wild_complete')) persist();
   }
 
-  // The Wild Woods (region 3)
-  if (state.room[0] === 'w') {
+  // The Wild Woods (region 3). The rebuilt rooms are t-prefixed; this block
+  // gated on the RETIRED 'w' prefix, so Pip never introduced region 3 at all
+  // (and the hound line watched t1a while the first hounds live in t1b).
+  if (state.room[0] === 't') {
     narration.say('wild_enter');
-    if (state.room === 't1a') {
+    if (state.room === 't1b') {
       const th = (world.enemies || []).find((e) => e.constructor.name === 'Hound' && !e.dead);
       if (th && nearXZ(th.x, th.z, 6)) narration.say('thornhound_intro');
     }
@@ -1502,13 +1504,17 @@ async function loadRoom(rawId, entry, handoff = null) {
 //   * window.__wkJump(room, forms?) is the one allowed mutation: entering a
 //     level directly with an appropriate save state, because "play level 4"
 //     cannot mean "first play levels 1-3 for an hour".
-//   * DEV_TIMESCALE (?timescale=0.5) scales the already-clamped delta step and
-//     nothing else — the whole game slows together, for boss verification at
-//     reduced speed per the run brief.
+//   * DEV_TIMESCALE (?timescale=) scales the already-clamped delta step and
+//     nothing else — the whole game slows or quickens together. Below 1 is the
+//     boss ladder (0.5/0.25 verification rungs). Above 1 exists because the
+//     headless test renderer draws ~5fps and the 0.05s step clamp then runs the
+//     game at quarter speed; 3-4x restores traversal to real time. Ceiling 4:
+//     above that a sprint step exceeds a thin wall's depth and can tunnel.
+//     Fights, hazard rooms, and timing checks are driven at 1x per the brief.
 // ---------------------------------------------------------------------------
 const DEV_ON = CONFIG.DEV_HARNESS && new URLSearchParams(location.search).has('dev');
 const DEV_TIMESCALE = DEV_ON
-  ? Math.max(0.1, Math.min(1, parseFloat(new URLSearchParams(location.search).get('timescale')) || 1))
+  ? Math.max(0.1, Math.min(4, parseFloat(new URLSearchParams(location.search).get('timescale')) || 1))
   : 1;
 
 function initDevHarness() {

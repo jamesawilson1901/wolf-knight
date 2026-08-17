@@ -5,18 +5,23 @@
 // events into the floating-joystick zone. It never calls a gameplay API.
 //
 // Evidence discipline: every screenshot is checked against the flat-frame rule
-// (a PNG of a single colour compresses far below any real world frame — the
-// threshold here is generous at 45KB) and a flat frame THROWS: it is a render
-// failure, never evidence.
+// (a PNG of a single colour compresses far below any real world frame) and a
+// flat frame THROWS: it is a render failure, never evidence. FLAT_KB is
+// calibrated to the 740x360 viewport — recalibrate if the viewport changes.
 import { chromium } from 'playwright';
 import { mkdirSync, statSync, appendFileSync } from 'fs';
+
+// 740x360 matches every verify-* suite; the old 960x480 drew 73% more pixels
+// through SwiftShader for no fidelity gain (RUN2-REPORT discovery #3).
+const VW = 740, VH = 360;
+const FLAT_KB = 26; // calibrated: a real in-game frame at 740x360 measures ~200KB; single-colour frames compress under 10
 
 export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
       '--autoplay-policy=no-user-gesture-required'] });
   // FRESH CONTEXT, ALWAYS: no storage, no service worker, no cached build.
-  const ctx = await b.newContext({ viewport: { width: 960, height: 480 } });
+  const ctx = await b.newContext({ viewport: { width: VW, height: VH } });
   const page = await ctx.newPage();
   const consoleLog = [];
   const errors = [];
@@ -53,9 +58,15 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       const want = new Set();
       const t0 = Date.now();
       let lastPos = null, stuck = 0;
+      // ANCHOR THE START ROOM ONCE. The old check compared two reads inside
+      // the same iteration, so a transition completing during the inter-tick
+      // wait was invisible — and the walk carried on BLIND in the new room
+      // toward old-room coordinates (the t1a door cascade, run 3).
+      const startRoom = await api.wk('room');
       try {
         while ((Date.now() - t0) / 1000 < timeout) {
           const s = await api.wk();
+          if (s.room !== startRoom) return { ok: true, roomChanged: s.room, at: s.pos };
           if (onTick) await onTick(s);
           const dx = tx - s.pos.x, dz = tz - s.pos.z;
           if (Math.hypot(dx, dz) < arrive) return { ok: true, at: s.pos, room: s.room };
@@ -67,6 +78,12 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
           if (lastPos && Math.hypot(s.pos.x - lastPos.x, s.pos.z - lastPos.z) < 0.05) stuck++;
           else stuck = 0;
           lastPos = s.pos;
+          if (stuck >= 3) {
+            // A DOOR FADE freezes the player in place for seconds (measured
+            // ~5s at 3x/4.5fps): motionless is not stuck while transitioning.
+            const fading = await page.evaluate(() => window.__wk.gates.transitioning).catch(() => false);
+            if (fading) { stuck = 0; await page.waitForTimeout(400); continue; }
+          }
           if (stuck === 5) {
             // Patience is only for NARRATION and dead worlds. A blocking story
             // line stalls the world on purpose — wait it out and absolve the
@@ -119,8 +136,6 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
             await page.keyboard.down(px); await page.waitForTimeout(700); await page.keyboard.up(px);
           }
           if (stuck > 30) return { ok: false, why: 'stuck', at: s.pos, room: s.room };
-          const r = await api.wk('room');
-          if (r !== s.room) return { ok: true, roomChanged: r, at: s.pos };
           await page.waitForTimeout(140);
         }
         return { ok: false, why: 'timeout', at: (await api.wk()).pos };
@@ -146,8 +161,7 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
     async holdShield(ms) { await page.keyboard.down('i'); await page.waitForTimeout(ms); await page.keyboard.up('i'); },
     // Real pointer joystick: down in the left zone, drag, hold `ms`, release.
     async joystick(dirX, dirZ, ms) {
-      const vw = 960, vh = 480;
-      const ox = vw * 0.18, oy = vh * 0.62;
+      const ox = VW * 0.18, oy = VH * 0.62;
       await page.mouse.move(ox, oy);
       await page.mouse.down();
       await page.mouse.move(ox + dirX * 60, oy + dirZ * 60, { steps: 4 });
@@ -158,7 +172,7 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
       const p = `${evidenceDir}/${String(++shotN).padStart(2, '0')}-${label}.png`;
       await page.screenshot({ path: p });
       const kb = statSync(p).size / 1024;
-      if (kb < 45) throw new Error(`RENDER FAILURE: ${p} is ${kb.toFixed(0)}KB — flat frame, not evidence`);
+      if (kb < FLAT_KB) throw new Error(`RENDER FAILURE: ${p} is ${kb.toFixed(0)}KB — flat frame, not evidence`);
       return p;
     },
     saveLog(label) {
