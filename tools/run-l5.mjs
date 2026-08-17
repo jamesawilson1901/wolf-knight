@@ -108,10 +108,15 @@ async function goRoom(to, via = []) {
 // step at 3x and walked the bot into the gale before K fired (run-1 lesson).
 async function dashAt(x, z, standX, standZ) {
   if (!(await form('storm_wolf'))) return false;
+  // FACING FOLLOWS NET VELOCITY, and a walkTo's arrival can face any way (the
+  // sc2/teach lesson — an aimed dash flew EAST into the payoff gale). So:
+  // stage at the stand point, then HOLD the cardinal key toward the target
+  // for a beat — from OUTSIDE the gale that hold nets cleanly toward it and
+  // sets facing — then dash. The stand point must be chosen gale-clear.
+  await d.walkTo(standX, standZ, { timeout: 16, arrive: 0.6 });
   const dx = x - standX, dz = z - standZ;
-  const m = Math.hypot(dx, dz) || 1;
-  await d.walkTo(standX - (dx / m) * 2.4, standZ - (dz / m) * 2.4, { timeout: 16, arrive: 0.7 });
-  await d.walkTo(standX, standZ, { timeout: 8, arrive: 0.45 });
+  const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
+  await d.page.keyboard.down(key); await d.page.waitForTimeout(260); await d.page.keyboard.up(key);
   await d.tap('k');
   await gameWait(1.0);
   return true;
