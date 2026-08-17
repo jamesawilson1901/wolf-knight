@@ -61,3 +61,30 @@ brazier verb; melee J + shield + walk; floods passable in tide). 1x.
    falls back to region-stone — the Vale plays Stoneroot's music.
 7. WS 'vale' restoration never defineRestoration'd (keys unregistered).
 8. dg2 e->dsh landing x=-9 only 0.85u from dsh's west trigger (bounce risk).
+
+## PLAY FINDINGS (run 3, 2026-08-17 — verified by the L6 route)
+* SPINE WALKS end to end, Meri reachable, 0 console errors. Tide granted at
+  dsh; both deep-water crossings (dg2, d4b) work as tide; all 3 pools quench
+  by splash. Meri 28hp, boss-loop music.
+* D6-RE-ENTRY (soft-lock RISK): canWade is read at BUILD, so after the tide
+  grant dsh's own deep water STILL bars the west exit until the room is
+  RE-ENTERED (leave to d2b, come back). A kid who doesn't backtrack faces a
+  water wall with no obvious teach. MORNING: verify there's an in-game hint
+  (Pip line / visible recede); if not, add one, or clear dsh's deep live on
+  grant. The driver handles it by re-entering.
+* D6-6 CONFIRMED: the Vale plays 'region-stone' (Stoneroot's theme). No
+  dedicated Vale/water track exists (audio.js has region-ember/region-stone/
+  stone-deep/causeway/ember-calm/kiln/den/boss-loop). MORNING: needs a track
+  or a decision (stone-deep is a closer submerged feel than region-stone).
+  NOT changed overnight — a design/audio call.
+* D6-2 + D6-DTP CONFIRMED: dtp north door is UNGATED (open regardless), and
+  `poolsQuenched` has ZERO readers repo-wide — the whole tide-quench "twist"
+  is decorative. Fixing = gate the door on the quench AND fix the `out`
+  aggregate (all 3 quench_ set but poolsQuenched never fired). MORNING call —
+  making it a real gate risks a soft-lock if the counter stays buggy; leaving
+  it makes the level easier, which is safe. NOT changed overnight.
+* d3b frost-shatter ghost gate (D6-4): OPTIONAL reward chest, off-spine. The
+  driver's breath didn't connect (aim) — not a blocker; improve for L7's
+  shared frost-shatter (xr2).
+* Lagoon (dlg, D6-1 mismatched landings): NOT yet tested by play — verify at
+  close (does entering the lagoon strand the player?).
