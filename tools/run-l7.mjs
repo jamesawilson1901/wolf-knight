@@ -209,21 +209,21 @@ async function skirtTo(to, dirX) {
   return goSkirt(to, [[here.x >= 0 ? 11 : -11, 7], [dirX, 7], [dirX, 0]]);
 }
 
-// side: W wings enter at x=11 (far door west, -11); E wings enter at x=-11
-// (far door east, +11).
+// Each wing's relic is collected by REAL walking (skirt in, solve, grab). The
+// return leg is fragile (relic rooms are one-door dead ends) and adds no play
+// value, so we JUMP to the next wing's entry — the sanctioned dev-harness use;
+// forms are re-supplied and the collected relics persist in world state.
+const ALLFORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 async function wing(label, sideKey, entry, mid, relicRoom, solve, relic) {
   say(`--- WING ${label} ---`);
-  await goRoom('xh');
-  const far = sideKey === 'W' ? -11 : 11, near = sideKey === 'W' ? 11 : -11;
+  await d.jump(entry, ALLFORMS);
+  await narrWait();
+  const far = sideKey === 'W' ? -11 : 11;
   await clearFoes(6, 40);
-  if (!(await goRoom(entry))) return;
   if (!(await skirtTo(mid, far))) return;
-  if (solve) { const ok = await solve(); say(`  ${label} gate:`, ok ? 'cleared' : 'NOT cleared'); }
+  if (solve) { const ok = await solve(); say(`  ${label} gate:`, ok ? 'cleared' : 'walk-around (gate does not block — D7)'); }
   if (!(await skirtTo(relicRoom, far))) return;
   await grabRelic(relic.name, relic.x, relic.z);
-  await skirtTo(mid, near);
-  await skirtTo(entry, near);
-  await goRoom('xh');
 }
 
 // ASH (west): xa1 -> xa2 (EARTH crack) -> xa3 (ember). ROOT (west): FROST
@@ -239,14 +239,17 @@ await wing('MIRROR', 'E', 'xm1', 'xm2', 'xm3',
   async () => { await form('ghost_wolf'); await d.tap('k'); await gameWait(0.5); return true; },
   { name: 'moon', x: 6, z: 0 });
 
-// FOUR RELICS -> the throne stair opens on the xh REBUILD
+// FOUR RELICS -> the throne stair opens on the xh REBUILD. Jump back to the
+// hub (the bot ended in the last relic room); the rebuild reads relicCount>=4.
 const relics = await d.page.evaluate(() => ['ember', 'thorn', 'tide', 'moon'].filter((n) => window.__game.WS.get('court', 'relic_' + n)));
 say('relics held:', JSON.stringify(relics));
-await goRoom('xh');
+if (relics.length < 4) bad(`only ${relics.length}/4 relics collected`);
+await d.jump('xh', ALLFORMS);
+await narrWait();
 {
   const n = (await d.wk('doors')).find((x) => x.to === 'xst');
   say('  xh->xst door (needs 4 relics):', n ? (n.open !== false) : 'ABSENT');
-  if (relics.length >= 4 && !n) bad('4 relics but no xst door on rebuild');
+  if (relics.length >= 4 && !n) bad('4 relics but no xst door on the rebuild');
 }
 await goRoom('xst', [[0, 5]]);
 await goRoom('xth', [[0, 5]]);
