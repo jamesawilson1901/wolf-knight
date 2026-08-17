@@ -17,7 +17,16 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 4. L3 Wild Woods — DONE, PASS (full composition in the Levels section):
    route by play at 3x, Sylva 1x zero deaths, 2 defects fixed + re-proven,
    touch leg by thumb, suites green, canary GREEN.
-5. L4 Frostpeak — RECON DONE (below); route driver + fight-boreal NEXT
+5. L4 Frostpeak — route iter 1: braziers SOLVED first pass, pockets walked,
+   pack fought, Boreal sighted (boss-loop music OK), ONE fail: the lake.
+   Lake then SOLVED by focused probe (probe-lake.mjs): stopper catches at
+   +/-2.97, THE PLATE STOPS THE LANE SLIDE (open question answered), bad
+   slides recover by re-entry (stones reset, plates persist). Solver ported;
+   route iter 2 IN FLIGHT. HARNESS ARTIFACT (run-report note): at 3x a ~1u
+   frame-step can land inside a solid gate collider AND the door trigger
+   before pushback — iter 1 crossed the CLOSED ice gate that way; at kid
+   speed (0.33u steps) the ice holds. Assert gates by collider/flag, never
+   by crossing. RECON (kept):
    L4 RECON: old-style rooms in rooms.js (builders buildF1..F5, ~3600-3920).
    LINEAR spine f1>f2>f3>f4>f5; pockets f1b (e of f1), f2b (e of f2).
    ENTRY tgl n-door (sylvaDefeated) -> f1; f1 s-door -> 'w5' (resolves tgl).
