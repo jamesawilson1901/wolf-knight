@@ -102,11 +102,16 @@ async function goRoom(to, via = []) {
   return false;
 }
 
-// dash INTO a target from a stand point, storm form, aimed closed-loop
+// dash toward (x,z) from a stand point. FACING IS THE FINAL APPROACH: the
+// bot walks to the stand FROM the side opposite the target, so its last
+// movement vector aims the dash — aimAt's correction holds drifted ~1u per
+// step at 3x and walked the bot into the gale before K fired (run-1 lesson).
 async function dashAt(x, z, standX, standZ) {
   if (!(await form('storm_wolf'))) return false;
-  await d.walkTo(standX, standZ, { timeout: 16, arrive: 0.6 });
-  await aimAt(x, z);
+  const dx = x - standX, dz = z - standZ;
+  const m = Math.hypot(dx, dz) || 1;
+  await d.walkTo(standX - (dx / m) * 2.4, standZ - (dz / m) * 2.4, { timeout: 16, arrive: 0.7 });
+  await d.walkTo(standX, standZ, { timeout: 8, arrive: 0.45 });
   await d.tap('k');
   await gameWait(1.0);
   return true;
@@ -156,13 +161,13 @@ await narrWait();
   if (!got) bad(`shrine did not grant storm (forms: ${await d.wk('forms')})`);
   else say('  STORM GRANTED at the shrine');
   await d.shot('ssh-storm');
-  // the teach gale bars the way west — dash it
-  await dashAt(-7, 0, -2.6, 0);
-  const p = await d.wk('pos');
+  // the teach gale bars the way west — dash it from the lane's NORTH end so
+  // even a slightly short landing sits at the far edge, clear of the sweep
+  await dashAt(-8, -5.5, -2.4, -5.5);
+  let p = await d.wk('pos');
   say('  after teach dash:', JSON.stringify(p));
-  if (p.x > -5.6) { await dashAt(-8, 0, Math.min(p.x, -2.2), p.z); }
-  const p2 = await d.wk('pos');
-  if (p2.x > -5.6) bad(`teach gale not crossed (at ${JSON.stringify(p2)})`);
+  if (p.x > -5.6) { await gameWait(7.6); await dashAt(-8.5, p.z, Math.min(p.x, -2.2), p.z); p = await d.wk('pos'); }
+  if (p.x > -5.6) bad(`teach gale not crossed (at ${JSON.stringify(p)})`);
   else say('  TEACH GALE CROSSED by dash');
 }
 await goRoom('sc2');
@@ -174,9 +179,9 @@ await narrWait();
   say('sc2 lanes:', JSON.stringify(await lanes()));
   await d.walkTo(8, 2.5, { timeout: 16 });
   await d.walkTo(2.6, 0.5, { timeout: 16 });         // shoulder through the gust
-  await dashAt(-4.5, 0, 1.0, 0);                     // dash the gale
-  const p = await d.wk('pos');
-  if (p.x > -2.8) { await dashAt(-5.5, p.z, Math.min(p.x, 0.8), p.z); }
+  await dashAt(-5.5, 0.5, 1.0, 0.5);                 // dash the gale
+  let p = await d.wk('pos');
+  if (p.x > -2.8) { await gameWait(7.6); await dashAt(-6, p.z, Math.min(p.x, 0.8), p.z); p = await d.wk('pos'); }
   say('  after develop dash:', JSON.stringify(await d.wk('pos')));
   await d.walkTo(-8, 2, { timeout: 14 });            // into the breeze
   await d.walkTo(-8, -3.5, { timeout: 14 });         // ride it north
