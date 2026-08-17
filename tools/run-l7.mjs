@@ -112,10 +112,14 @@ async function aimHold(x, z) {                   // face (x,z), timescale-aware
 }
 const flagCracked = (id) => d.page.evaluate((i) => !!window.__game.state.flags.cracked[i], id);
 const wsCourt = (k) => d.page.evaluate((k2) => window.__game.WS.get('court', k2), k);
+// The west-wing gates sit at x=-6.5 with a wall behind them at x=-9; the bot
+// arrives from the EAST. STAND OFF the gate (x+2) and let the AoE/cone reach
+// it — walking ONTO the gate jams on it (probe-l7-wing: (-4.5,0) cracks first
+// try, the gate position itself does not).
 async function crackGate(x, z, id) {             // earth STOMP (K) — AoE, no facing
-  for (let a = 0; a < 4; a++) {
+  for (let a = 0; a < 5; a++) {
     if (!(await form('earth_wolf'))) return false;
-    await d.walkTo(x, z + 1.6, { timeout: 16, arrive: 1.0 });
+    await d.walkTo(x + 2, z, { timeout: 16, arrive: 1.0 });
     await d.tap('k'); await gameWait(1.0);
     if (await flagCracked(id)) return true;
     await gameWait(3.2);
@@ -123,10 +127,10 @@ async function crackGate(x, z, id) {             // earth STOMP (K) — AoE, no 
   return false;
 }
 async function shatterGate(x, z, id) {           // frost BREATH (L) — 3.6u cone
-  for (let a = 0; a < 5; a++) {
+  for (let a = 0; a < 6; a++) {
     if (!(await form('frost_wolf'))) return false;
-    await d.walkTo(x, z + 2.0, { timeout: 16, arrive: 0.8 });
-    await aimHold(x, z);
+    await d.walkTo(x + 2.4, z, { timeout: 16, arrive: 0.8 });   // east of the gate
+    await aimHold(x, z);                                        // face WEST at it
     await d.tap('l'); await gameWait(1.2);
     if (await wsCourt('ice_' + id) || await d.page.evaluate((i) => !!window.__game.state.flags.cracked[i], id)) return true;
     await gameWait(1.5);
