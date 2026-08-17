@@ -175,23 +175,42 @@ await narrWait();
 await goRoom('sc2');
 await narrWait();
 
-// DEVELOP — three winds, three answers: shoulder the gust, dash the gale,
-// ride the breeze
+// DEVELOP — three winds. Shoulder the gust, then EXIT by dashing north up
+// through the door: the door x[-1.2,1.2] caps the gale lane (x=-1.5), and
+// facing follows NET velocity, so we stage at x=1.0 (east of the gale, still
+// under the door) where 'w' nets clean north, and dash up. The thin strip
+// north of the lanes is un-walkable at any timescale (probe-sc2 proved it).
+async function dashNorth() {
+  await form('storm_wolf');
+  await d.page.keyboard.down('w'); await d.page.waitForTimeout(400); await d.page.keyboard.up('w');
+  await d.tap('k'); await gameWait(1.0);
+}
+async function exitNorthDoor(to) {
+  await d.walkTo(3, -1, { timeout: 16, arrive: 1.0 });          // shoulder the gust
+  await d.walkTo(1.0, -2, { timeout: 12, arrive: 0.7 });        // east edge of the door
+  for (let a = 0; a < 6 && (await d.wk('room')) !== to; a++) {
+    const p = await d.wk('pos');
+    if (p.x < 0.4 || p.x > 1.6 || p.z < -5 || p.z > 1) await d.walkTo(1.0, -2, { timeout: 10, arrive: 0.6 });
+    if ((await d.wk('room')) === to) break;
+    await dashNorth();
+    say(`  dash-north ${a} -> ${JSON.stringify(await d.wk('pos'))} room=${await d.wk('room')}`);
+    await gameWait(7.6);
+  }
+  await settle();
+}
 {
   say('sc2 lanes:', JSON.stringify(await lanes()));
   await d.walkTo(8, 2.5, { timeout: 16 });
   await d.walkTo(2.6, 0.5, { timeout: 16 });         // shoulder through the gust
-  await dashAt(-5.5, 0.5, 1.0, 0.5);                 // dash the gale
+  await dashAt(-5.5, 0.5, 1.0, 0.5);                 // demonstrate the gale dash
   let p = await d.wk('pos');
-  if (p.x > -2.8) { await gameWait(7.6); await dashAt(-6, p.z, Math.min(p.x, 0.8), p.z); p = await d.wk('pos'); }
-  say('  after develop dash:', JSON.stringify(await d.wk('pos')));
-  await d.walkTo(-8, 2, { timeout: 14 });            // into the breeze
-  await d.walkTo(-8, -3.5, { timeout: 14 });         // ride it north
-  say('  DEVELOP crossed (gust shouldered, gale dashed, breeze ridden)');
+  if (p.x > -2.8) { await gameWait(7.6); await dashAt(-6, p.z, Math.min(p.x, 0.8), p.z); }
+  say('  develop crossing shown; exiting north by dash');
+  await exitNorthDoor('s3a');
+  if ((await d.wk('room')) !== 's3a') bad('sc2 develop: could not reach s3a');
+  else say('  DEVELOP done -> s3a');
 }
-await goRoom('s3a', [[0, -5]]);
 await clearFoes(7);
-await goRoom('s3a', [[0, -5]]);
 await goRoom('s3p'); await goRoom('s3a');
 await goRoom('s3b', [[6, 0]]);
 await clearFoes(7);
