@@ -1,3 +1,12 @@
+# SHIPPING v3.49.0 (L3 Wild Woods + L4 Frostpeak + DualSense) — GATES RUNNING
+# Sequence (re-entrant; resume from whichever step is unproven):
+#  1. short gates: node tools/probe-inertness.mjs / probe-upgrade.mjs / canary.mjs
+#  2. full sweep: sh tools/verify-all.sh --par > /tmp/v-par-ship.log (44 expected)
+#  3. merge: git checkout main (fetch first) && git merge origin/claude/wolfknight-reassemble-extract-5p9m8b
+#  4. bump ON MAIN: index.html badge + sw.js CACHE_NAME -> v3.49.0; commit "Bump to v3.49.0"
+#  5. push main; confirm Pages build via GitHub API; SHIPPED marker + phone-check
+# Any FAIL: triage game-vs-test before touching game code. Never force-push.
+
 # RUN 3 — LIVE. Started 2026-08-15 ~11:45 UTC.
 Brief: RUN3-BRIEF.md (in repo). Dad's amendments in chat, 2026-08-15:
   * DEADLINE FLEXIBLE — continue until L3-L7 are finished. Heartbeats still ~40min.
