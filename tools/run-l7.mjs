@@ -181,37 +181,59 @@ await narrWait();
 await goRoom('xh', [[0, 5]]);
 await narrWait();
 
-// THE FOUR WINGS. Each: out from the hub, solve the mid gate, grab the relic,
-// return to the hub. Wing door chains from the recon door graph.
-async function wing(label, chain, solve, relic) {
+// THE FOUR WINGS. Each wing room is 26x20 with entry walls at x=±6, z[-4,4];
+// the doors are on the far x-edges. Straight walks jam on the walls (the
+// run-1 failure), so every hop SKIRTS NORTH at z=7 (above z=4) to the far
+// side, then drops to the door line — proven by probe-l7-wing (ASH first try).
+async function goSkirt(to, skirt) {
+  for (let t = 0; t < 3; t++) {
+    if ((await d.wk('room')) === to) { await settle(); say(`  -> ${to}`); return true; }
+    for (const w of skirt) { await d.walkTo(w[0], w[1], { timeout: 16 }); if ((await d.wk('room')) === to) { await settle(); say(`  -> ${to}`); return true; } }
+    const door = (await d.wk('doors')).find((x) => x.to === to);
+    if (!door) { bad(`no door to ${to} from ${await d.wk('room')}`); return false; }
+    const r = await d.walkTo(door.x, door.z, { timeout: 20, arrive: 0.4 });
+    if (r.roomChanged === to || (await d.wk('room')) === to) { await settle(); say(`  -> ${to}`); return true; }
+    if (r.ok) { const ox = Math.abs(door.x) > Math.abs(door.z) ? Math.sign(door.x) : 0, oz = ox === 0 ? Math.sign(door.z) : 0;
+      await d.walkTo(door.x + ox * 0.7, door.z + oz * 0.7, { timeout: 8, arrive: 0.25 }); }
+    if ((await d.wk('room')) === to) { await settle(); say(`  -> ${to}`); return true; }
+  }
+  bad(`could not reach ${to} (at ${JSON.stringify(await d.wk('pos'))})`); return false;
+}
+// skirt toward x-edge `dirX`: current-side top corner, cross north, drop down
+async function skirtTo(to, dirX) {
+  const here = await d.wk('pos');
+  return goSkirt(to, [[here.x >= 0 ? 11 : -11, 7], [dirX, 7], [dirX, 0]]);
+}
+
+// side: W wings enter at x=11 (far door west, -11); E wings enter at x=-11
+// (far door east, +11).
+async function wing(label, sideKey, entry, mid, relicRoom, solve, relic) {
   say(`--- WING ${label} ---`);
-  for (const r of chain) { await clearFoes(6, 40); if (!(await goRoom(r))) return; }
+  await goRoom('xh');
+  const far = sideKey === 'W' ? -11 : 11, near = sideKey === 'W' ? 11 : -11;
+  await clearFoes(6, 40);
+  if (!(await goRoom(entry))) return;
+  if (!(await skirtTo(mid, far))) return;
   if (solve) { const ok = await solve(); say(`  ${label} gate:`, ok ? 'cleared' : 'NOT cleared'); }
-  if (!(await goRoom(relic.room))) return;
+  if (!(await skirtTo(relicRoom, far))) return;
   await grabRelic(relic.name, relic.x, relic.z);
-  // walk back out to the hub
-  const back = [...chain].reverse();
-  for (const r of back) { await goRoom(r); }
+  await skirtTo(mid, near);
+  await skirtTo(entry, near);
   await goRoom('xh');
 }
 
-// ASH wing (west-inner): xa1 -> xa2 (EARTH crack) -> xa3 (ember relic)
-await wing('ASH', ['xa1', 'xa2'],
-  () => crackGate(-6.5, 0, 'x_ash_vault'),
-  { room: 'xa3', name: 'ember', x: -6, z: 0 });
-// ROOT wing (west-outer): xr1 -> xr2 (FROST shatter) -> xr3 (thorn relic)
-await wing('ROOT', ['xr1', 'xr2'],
-  () => shatterGate(-6.5, 0, 'x_root_ice'),
-  { room: 'xr3', name: 'thorn', x: -6, z: 0 });
-// GALE wing (east-inner): xg1 -> xg2 (TIDE quench, ungated) -> xg3 (tide relic)
-await wing('GALE', ['xg1', 'xg2'],
+// ASH (west): xa1 -> xa2 (EARTH crack) -> xa3 (ember). ROOT (west): FROST
+// shatter. GALE (east): TIDE quench (ungated). MIRROR (east): ghost-walk.
+await wing('ASH', 'W', 'xa1', 'xa2', 'xa3',
+  () => crackGate(-6.5, 0, 'x_ash_vault'), { name: 'ember', x: -6, z: 0 });
+await wing('ROOT', 'W', 'xr1', 'xr2', 'xr3',
+  () => shatterGate(-6.5, 0, 'x_root_ice'), { name: 'thorn', x: -6, z: 0 });
+await wing('GALE', 'E', 'xg1', 'xg2', 'xg3',
   async () => { let n = 0; for (const [bx, bz] of [[-3, -3], [0, 0], [3, 3]]) { if (await quenchPool(bx, bz, `${bx}_${bz}`)) n++; } say(`  quenched ${n}/3 pools`); return true; },
-  { room: 'xg3', name: 'tide', x: 6, z: 0 });
-// MIRROR wing (east-outer): xm1 -> xm2 -> xm3 (moon relic). Ghost-walk past
-// the watchers/mirrors (defect: walk-aroundable, but drive the verb anyway).
-await wing('MIRROR', ['xm1', 'xm2'],
+  { name: 'tide', x: 6, z: 0 });
+await wing('MIRROR', 'E', 'xm1', 'xm2', 'xm3',
   async () => { await form('ghost_wolf'); await d.tap('k'); await gameWait(0.5); return true; },
-  { room: 'xm3', name: 'moon', x: 6, z: 0 });
+  { name: 'moon', x: 6, z: 0 });
 
 // FOUR RELICS -> the throne stair opens on the xh REBUILD
 const relics = await d.page.evaluate(() => ['ember', 'thorn', 'tide', 'moon'].filter((n) => window.__game.WS.get('court', 'relic_' + n)));
