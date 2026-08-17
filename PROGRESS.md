@@ -74,7 +74,18 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
      timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
      3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
-6. L5 Stormreach — ROUTE IN FLIGHT (iter 8, all blocks probe-proven).
+6. L5 Stormreach — ROUTE PASS (iter 11, FAILS none, 0 errors): storm
+   granted, teach gale dashed, sc2 develop crossed (north-door dash), svn
+   VANES TURNED, s4b wind gate opened, Aria sighted (boss-loop). BOSS NEXT:
+   node tools/fight-aria.mjs (1x). D-L5-1 RESOLVED by play: the ssA bridge
+   door is created at s4a UNCONDITIONALLY (level5.js:983) but at s1a only
+   `if (bridged=WS windBridge)` (level5.js:504) — nothing sets windBridge, so
+   the bridge is ENTERABLE from the top (s4a) yet the s1a return never opens.
+   Whether that is one-way-by-design or a defect: the bridge's PURPOSE is a
+   shortcut DOWN (top->bottom), so s4a-entry + ssA->s1a exit would suffice IF
+   ssA has a west door to s1a — verify in the Aria/close pass. If the down
+   route works, D-L5-1 is a cosmetic dead flag; if not, s4a's ssA door leads
+   into a room with no exit to s1a = real trap. RESOLVE at close.
    DRIVER LESSONS (for the run report): (a) dash facing follows NET velocity,
    not input — inside a gale 'w' nets south and dashes south; stage OUTSIDE
    the gale to aim; (b) the thin strip north of the lanes (0.5u) is
