@@ -17,7 +17,8 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
 4. L3 Wild Woods — DONE, PASS (full composition in the Levels section):
    route by play at 3x, Sylva 1x zero deaths, 2 defects fixed + re-proven,
    touch leg by thumb, suites green, canary GREEN.
-5. L4 Frostpeak — route iter 1: braziers SOLVED first pass, pockets walked,
+5. L4 Frostpeak — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+   (history) route iter 1: braziers SOLVED first pass, pockets walked,
    pack fought, Boreal sighted (boss-loop music OK), ONE fail: the lake.
    Lake then SOLVED by focused probe (probe-lake.mjs): stopper catches at
    +/-2.97, THE PLATE STOPS THE LANE SLIDE (open question answered), bad
@@ -260,7 +261,19 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
     a mid-stride two-finger swing. Multi-touch item DONE for L3.
   * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
     chords, callable, landings — all PASS post-fix. Canary GREEN (fresh boot, 60s, 0 errors).
-- L4 Frostpeak: NOT STARTED
+- L4 Frostpeak: **PASS** (run 3, 2026-08-15)
+  * Route: iter 2, contiguous f1>f5 + both pockets at 3x, FAILS none, 0
+    errors. ICEBOUND HALL solved by the fire verbs (breath melt + slam
+    light, twice proven); FROZEN LAKE solved by play in 4 clean pushes —
+    stopper catches at +/-2.97, THE PLATE stops the lane slide; rime pack
+    fought; boss-loop music in the eyrie.
+  * Boss: BOREAL CALMED at 1x FULL SPEED, ZERO DEATHS — all five actions
+    (circle/windup/dive/grounded/rise), 242 bolts (the flyer law's payoff),
+    frost wolf earned, calmed summit doors f4+s1a, boss gone. Evidence:
+    test-evidence/level-4/.
+  * Notes: 3x gate-tunnel harness artifact documented (assert gates by
+    flag/collider, never by crossing). L4 has no suite of its own — the
+    played route is its deepest verification to date.
 - L5 Stormreach: NOT STARTED
 - L6 Sunken Vale: NOT STARTED
 - L7 Shadow Court: NOT STARTED
