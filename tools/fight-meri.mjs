@@ -94,8 +94,8 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
 }
 
 const flags = await d.page.evaluate(() => ({
-  aria: !!window.__wk.flags.meriDefeated,
-  ariaHp: window.__game.state.flags.ariaHp,
+  meri: !!window.__wk.flags.meriDefeated,
+  meriHp: window.__game.state.flags.meriHp,
 }));
 say('FLAGS:', JSON.stringify(flags));
 say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, dashes: seen.dashes }));
