@@ -74,7 +74,25 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
      timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
      3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
-6. L5 Stormreach — SKELETON RECON (level5.js read; deepen before the route):
+6. L5 Stormreach — ROUTE IN FLIGHT (iter 8, all blocks probe-proven).
+   DRIVER LESSONS (for the run report): (a) dash facing follows NET velocity,
+   not input — inside a gale 'w' nets south and dashes south; stage OUTSIDE
+   the gale to aim; (b) the thin strip north of the lanes (0.5u) is
+   un-walkable at ANY timescale — the breeze only pins to the lane's own
+   north edge (-5.2), still inside it; (c) sc2 exit SOLVED by dashing NORTH
+   up through the door from x=1.0 (east of the gale x-range, under the door
+   width) — retry+re-stage loop converges (probe-sc2, 2/2 crossed); (d) vanes
+   turn one clockwise step when DASHED INTO from OUTSIDE their lane; solve
+   MINIMUM turns (each rebuilds the weather mesh — hammering rebuilds killed
+   the renderer twice); rightmost vane dashes from the open EAST floor;
+   (e) svn exit-check crosses z=-2.2 every frame → set vanesTurned.
+   DEFECT D-L5-1: WS 'windBridge' has a read site (ssA shortcut s4a<->s1a)
+   but NO setter anywhere — the wind-bridge shortcut is dead. Not a blocker
+   (spine completes). FIX QUEUED: s4b solve-detection sets windBridge when its
+   vanes align (mirrors svn's vanesTurned), an additive shortcut restore.
+   One ENV CRASH mid-run (page closed under walkTo) — discarded + retried.
+   SKELETON RECON
+   (was skeleton) 6. L5 Stormreach (level5.js read; deepen before the route):
    SWITCHBACK climb, CLIMB chain: s1a>s1b>sc1>s2a>s2b>ssh>sc2>s3a>s3b>svn>
    sc3>s4a>s4b>sc4>scr. Pockets s1p/s2p/s3p/s4p; shortcut ssA (s4a<->s1a,
    opens on WS storm windBridge). ENTRY f5 n-door -> s1a (borealDefeated).
