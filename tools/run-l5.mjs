@@ -217,24 +217,29 @@ await clearFoes(7);
 await goRoom('svn', [[0, 4]]);
 await narrWait();
 
-// TWIST — THE VANES: dash into each until no gale crosses the way east
+// TWIST — THE VANES (probe-vanes proven): one vane at a time until ITS lane
+// lies e/w, then never touch it again — every turn rebuilds the weather mesh,
+// and hammering rebuilds killed the renderer twice. Rightmost vane dashes
+// from the open EAST floor; the others from the WEST gap.
 {
   say('svn vanes:', JSON.stringify(await vanes()), 'lanes:', JSON.stringify(await lanes()));
-  let dashes = 0;
-  while (!(await ws('storm', 'vanesTurned')) && dashes < 16) {
-    const vs = await vanes();
-    const v = vs[dashes % vs.length];
-    // a stand INSIDE a gale cannot be held (walking against 7.2 nets -2.2):
-    // stand in the inter-lane gap WEST of the vane, outside its lane, and
-    // dash EAST along the x-axis into the post
-    await dashAt(v.x, v.z, v.x - 2.9, v.z);
-    dashes++;
-    say(`  dash ${dashes}: vanes now ${JSON.stringify(await vanes())} turned=${await ws('storm', 'vanesTurned')}`);
-    await gameWait(7.6);
+  if ((await d.wk('room')) !== 'svn') bad('not in svn for the vane twist');
+  else {
+    for (let vi = 0; vi < 3; vi++) {
+      for (let attempt = 0; attempt < 6 && !(await ws('storm', 'vanesTurned')); attempt++) {
+        const v = (await vanes())[vi];
+        if (!v || v.dir === 'e' || v.dir === 'w') { say(`  vane ${vi} lies ${v && v.dir}`); break; }
+        const side = v.x >= 6 ? 2.9 : -2.9;       // rightmost from the east floor
+        await dashAt(v.x, v.z, v.x + side, v.z);
+        say(`  vane ${vi}: ${v.dir} -> ${(await vanes())[vi].dir} turned=${await ws('storm', 'vanesTurned')}`);
+        await gameWait(7.6);
+      }
+    }
+    await gameWait(1.5);
+    if (!(await ws('storm', 'vanesTurned'))) bad('vanes never satisfied the exit check');
+    else say('  VANES TURNED — the way east opens');
+    await d.shot('svn-turned');
   }
-  if (!(await ws('storm', 'vanesTurned'))) bad('vanes never satisfied the exit check');
-  else say('  VANES TURNED — the way east opens');
-  await d.shot('svn-turned');
 }
 await goRoom('sc3', [[6, 0]]);
 await goRoom('s4a', [[0, -5]]);
