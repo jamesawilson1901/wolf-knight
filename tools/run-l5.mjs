@@ -233,15 +233,17 @@ await clearFoes(9);
   let dashes = 0;
   const westBarred = async () =>
     (await lanes()).some((l) => l.s === 'gale' && l.x < -6 && (l.dir === 'n' || l.dir === 's'));
-  while ((await westBarred()) && dashes < 12) {
-    const vs = await vanes();
-    const v = vs[dashes % vs.length];
-    // the gate lanes sit at x=-10 (edge -6.5): stand just east, dash west in
-    await dashAt(v.x, v.z, v.x + 3.4, v.z);
-    dashes++;
-    say(`  gate dash ${dashes}: vanes ${JSON.stringify(await vanes())}`);
-    await gameWait(7.6);
+  for (let vi = 0; vi < 2; vi++) {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const v = (await vanes())[vi];
+      if (!v || v.dir === 'e' || v.dir === 'w') { say(`  gate vane ${vi} lies ${v && v.dir}`); break; }
+      await dashAt(v.x, v.z, v.x + 3.4, v.z);   // lanes at x=-10: stand east, dash west
+      say(`  gate vane ${vi}: ${v.dir} -> ${(await vanes())[vi].dir}`);
+      await gameWait(7.6);
+    }
   }
+  await gameWait(1.5);
+  void dashes;
   if (await westBarred()) bad('wind gate never cleared the west way');
   else say('  WIND GATE OPEN — the crossing gale is gone');
   say('  WS storm after gate:', JSON.stringify(await d.page.evaluate(() => window.__game.WS.get('storm'))));
