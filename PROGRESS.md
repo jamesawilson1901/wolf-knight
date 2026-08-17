@@ -74,7 +74,8 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
      timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
      3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
-6. L5 Stormreach — ROUTE PASS (iter 11, FAILS none, 0 errors): storm
+6. L5 Stormreach — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+   (history) ROUTE PASS (iter 11, FAILS none, 0 errors): storm
    granted, teach gale dashed, sc2 develop crossed (north-door dash), svn
    VANES TURNED, s4b wind gate opened, Aria sighted (boss-loop). BOSS NEXT:
    node tools/fight-aria.mjs (1x). D-L5-1 RESOLVED by play: the ssA bridge
@@ -119,7 +120,13 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    verify-storm suite exists and passes.
 7. L6 Sunken Vale — TODO
 8. L7 Shadow Court — TODO
-9. Ship events per protocol (batch ~2 levels per ship) — TODO
+7b. L6 Sunken Vale — NEXT: run-l6.mjs + fight-meri.mjs are DRAFTED (tide
+    splash puzzle, frost-shatter gate, deep crossings, Meri floods). Recon
+    RECON-L6.md (8 defect candidates). Route at 3x, Meri 1x.
+7c. L7 Shadow Court — after L6. Recon RECON-L7.md (Grimm resists steel+moon
+    below 16hp, rotate elemental forms below ~11hp; ending blocks pointer).
+9. Ship events per protocol (batch ~2 levels per ship) — TODO. L5 shippable
+   now; will BATCH L5+L6 (and maybe L7) into one ship to save gate cycles.
 10. Intermittents watch (vgb tripwire armed in run-l2) — STANDING
 11. Phone-check lines per ship — STANDING
 
@@ -321,6 +328,23 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
     a mid-stride two-finger swing. Multi-touch item DONE for L3.
   * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
     chords, callable, landings — all PASS post-fix. Canary GREEN (fresh boot, 60s, 0 errors).
+- L5 Stormreach: **PASS** (run 3, 2026-08-17)
+  * Route: iter 11, full switchback climb by play at 3x, FAILS none, 0
+    errors. Storm wolf granted at ssh; teach gale DASHED; sc2 develop crossed
+    by dashing NORTH up through the door; svn VANES TURNED (minimum-turn,
+    timescale-aware facing); s4b wind gate opened; Aria sighted (boss-loop).
+  * Boss: ARIA FREED at 1x FULL SPEED, ZERO DEATHS — all 8 actions, 16
+    dashes to answer her half-health gales, fought entirely in storm form.
+    Way to the Vale (d1a) opens on the rebuild. Evidence: test-evidence/level-5/.
+  * D-L5-1 RESOLVED (not a defect): the ssA wind-bridge is a working one-way-
+    DOWN shortcut (s4a->ssA->s1a walks; probe-l5-bridge OK). The windBridge WS
+    flag is vestigial (gates only the never-needed s1a->ssA up-entry).
+  * Suites: verify-storm, callable, boot PASS. Canary GREEN.
+  * DRIVER LESSONS (run report): dash facing follows NET velocity; keyboard
+    holds scale with timescale (200/TS); the thin lane-strip is un-walkable;
+    vanes solved minimum-turn from outside their lane. ~11 route iters + 4
+    focused probes (sc2, vanes x2, bridge) + 2 env crashes retried.
+
 - L4 Frostpeak: **PASS** (run 3, 2026-08-15)
   * Route: iter 2, contiguous f1>f5 + both pockets at 3x, FAILS none, 0
     errors. ICEBOUND HALL solved by the fire verbs (breath melt + slam
