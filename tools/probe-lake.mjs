@@ -42,9 +42,13 @@ async function push(i, dx, dz, key) {
   for (let a = 0; a < 3; a++) {
     const b = (await stones())[i];
     if (!b) return null;
-    const sx = Math.max(-8.2, Math.min(8.2, b.x + dx * 1.35));
+    const sx = Math.max(-8.3, Math.min(8.3, b.x + dx * 1.35));
     const sz = Math.max(-6.2, Math.min(5.8, b.z + dz * 1.35));
-    await d.walkTo(sx + dx * 0.9, sz + dz * 0.9, { timeout: 10, arrive: 0.6 }).catch(() => {});
+    // the knot's L-approach: side lane, far corner, contact row — a straight
+    // walk at a wall-side stand point jams and turns the contact diagonal
+    const lane = b.z + 2.6 <= 5.8 ? b.z + 2.6 : b.z - 2.6;
+    await d.walkTo(b.x + (dx ? 0 : dz * 0.1), lane, { timeout: 12, arrive: 0.6 }).catch(() => {});
+    await d.walkTo(sx, lane, { timeout: 10, arrive: 0.5 }).catch(() => {});
     await d.walkTo(sx, sz, { timeout: 10, arrive: 0.3 });
     await d.page.keyboard.down(key); await d.page.waitForTimeout(430); await d.page.keyboard.up(key);
     await d.page.evaluate(async () => {         // wait until nothing slides
