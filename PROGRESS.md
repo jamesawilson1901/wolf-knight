@@ -1,4 +1,13 @@
-# SHIPPING v3.49.0 (L3 Wild Woods + L4 Frostpeak + DualSense) — GATES RUNNING
+# SHIPPED v3.49.0 — main 6356d80, Pages build SUCCESS (API-confirmed 02:11Z)
+# L3 Wild Woods + L4 Frostpeak + PS5 DualSense. Gates at ship: verify-all
+# 44/44 --par, INERT+CLEAN, UPGRADE PATH CLEAN (v3.48.2 save loads intact
+# under the new build, SW purge proven), CANARY GREEN.
+# PHONE-CHECK: live badge reads v3.49.0 (force-refresh once for the SW swap);
+# pair a DualSense over Bluetooth; play the Wild Woods entry for Pip's line.
+# DAD'S OVERNIGHT ORDER (2026-08-17): L5 then L6 then L7, autonomous, no time
+# constraint, keep going until all complete.
+
+# was: SHIPPING v3.49.0 — GATES RAN GREEN
 # Sequence (re-entrant; resume from whichever step is unproven):
 #  1. short gates: node tools/probe-inertness.mjs / probe-upgrade.mjs / canary.mjs
 #  2. full sweep: sh tools/verify-all.sh --par > /tmp/v-par-ship.log (44 expected)
