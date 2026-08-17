@@ -116,7 +116,11 @@ async function dashAt(x, z, standX, standZ) {
   await d.walkTo(standX, standZ, { timeout: 16, arrive: 0.6 });
   const dx = x - standX, dz = z - standZ;
   const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
-  await d.page.keyboard.down(key); await d.page.waitForTimeout(260); await d.page.keyboard.up(key);
+  // TIMESCALE-AWARE HOLD: a keyboard hold advances GAME time by wall*TS, so at
+  // 3x a "brief" 260ms hold moves ~4.4u — deep into the gale that then flips
+  // the facing. Scale by 1/TS so the orient-nudge is ~1u of game-space at any
+  // timescale: enough to set facing, short enough to stay gale-clear.
+  await d.page.keyboard.down(key); await d.page.waitForTimeout(200 / TS); await d.page.keyboard.up(key);
   await d.tap('k');
   await gameWait(1.0);
   return true;
@@ -231,7 +235,7 @@ await narrWait();
   if ((await d.wk('room')) !== 'svn') bad('not in svn for the vane twist');
   else {
     for (let vi = 0; vi < 3; vi++) {
-      for (let attempt = 0; attempt < 6 && !(await ws('storm', 'vanesTurned')); attempt++) {
+      for (let attempt = 0; attempt < 10 && !(await ws('storm', 'vanesTurned')); attempt++) {
         const v = (await vanes())[vi];
         if (!v || v.dir === 'e' || v.dir === 'w') { say(`  vane ${vi} lies ${v && v.dir}`); break; }
         const side = v.x >= 6 ? 2.9 : -2.9;       // rightmost from the east floor
