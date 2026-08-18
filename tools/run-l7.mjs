@@ -214,12 +214,32 @@ async function skirtTo(to, dirX) {
 // value, so we JUMP to the next wing's entry — the sanctioned dev-harness use;
 // forms are re-supplied and the collected relics persist in world state.
 const ALLFORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
-async function wing(label, sideKey, entry, mid, relicRoom, solve, relic) {
+// storm-dash east across a gale lane: stage WEST of it (holding 'd' there nets
+// east, so facing is east — inside the gale it would net west and mis-aim),
+// hold to face east, then K. The dash is i-framed + wind-immune and covers
+// 5.2u; xg1's gale is x[0.1,3.9], so one dash from x~=-1 lands past it (~4.3).
+async function dashEast(fromX, fromZ) {
+  await form('storm_wolf');
+  await d.walkTo(fromX, fromZ, { timeout: 16, arrive: 0.6 });
+  await d.page.keyboard.down('d'); await d.page.waitForTimeout(200 / TS); await d.page.keyboard.up('d');
+  await d.tap('k'); await gameWait(1.0);
+}
+// cross xg1's storm-gale: re-stage west and dash until clear of x=3.9.
+async function crossGale() {
+  for (let a = 0; a < 4; a++) {
+    if ((await d.wk('pos')).x > 4.5) return true;
+    await dashEast(-1, 0);
+    say(`  gale dash ${a}: at ${JSON.stringify(await d.wk('pos'))}`);
+  }
+  return (await d.wk('pos')).x > 4.5;
+}
+async function wing(label, sideKey, entry, mid, relicRoom, solve, relic, preCross) {
   say(`--- WING ${label} ---`);
   await d.jump(entry, ALLFORMS);
   await narrWait();
   const far = sideKey === 'W' ? -11 : 11;
   await clearFoes(6, 40);
+  if (preCross) { await preCross(); say(`  ${label} pre-cross done, at ${JSON.stringify(await d.wk('pos'))}`); }
   if (!(await skirtTo(mid, far))) return;
   if (solve) { const ok = await solve(); say(`  ${label} gate:`, ok ? 'cleared' : 'walk-around (gate does not block — D7)'); }
   if (!(await skirtTo(relicRoom, far))) return;
@@ -232,9 +252,23 @@ await wing('ASH', 'W', 'xa1', 'xa2', 'xa3',
   () => crackGate(-6.5, 0, 'x_ash_vault'), { name: 'ember', x: -6, z: 0 });
 await wing('ROOT', 'W', 'xr1', 'xr2', 'xr3',
   () => shatterGate(-6.5, 0, 'x_root_ice'), { name: 'thorn', x: -6, z: 0 });
+// GALE: the gale in xg1 is the only real barrier (dash it, preCross). The
+// xg2 fires are quenched by the tide splash — narrative, ungated — verified
+// via the real galeQuenched flag; the walk to xg3 proceeds regardless.
 await wing('GALE', 'E', 'xg1', 'xg2', 'xg3',
-  async () => { let n = 0; for (const [bx, bz] of [[-3, -3], [0, 0], [3, 3]]) { if (await quenchPool(bx, bz, `${bx}_${bz}`)) n++; } say(`  quenched ${n}/3 pools`); return true; },
-  { name: 'tide', x: 6, z: 0 });
+  async () => {
+    await form('tide_wolf');
+    const ready = () => d.page.evaluate(() => window.__game.player.specialCooldown <= 0);
+    for (const [bx, bz] of [[-3, -3], [0, 0], [3, 3]]) {   // splash has a 6s cd
+      await d.walkTo(bx, bz + 1.0, { timeout: 12, arrive: 0.9 });
+      for (let w = 0; w < 30 && !(await ready()); w++) await gameWait(0.3);
+      await d.tap('k'); await gameWait(0.6);
+    }
+    const done = await ws('court', 'galeQuenched');
+    say(`  gale fires: ${done ? 'all out' : 'some still lit'}`);
+    return done;
+  },
+  { name: 'tide', x: 6, z: 0 }, crossGale);
 await wing('MIRROR', 'E', 'xm1', 'xm2', 'xm3',
   async () => { await form('ghost_wolf'); await d.tap('k'); await gameWait(0.5); return true; },
   { name: 'moon', x: 6, z: 0 });

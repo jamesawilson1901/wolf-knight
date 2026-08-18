@@ -119,7 +119,9 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    buildWindField, turnVane, WIND) — read before the route. Music/verify:
    verify-storm suite exists and passes.
 7. L6 Sunken Vale — DONE, PASS (composition in Levels). Boss 1x zero deaths.
-8. L7 Shadow Court — TODO
+8. L7 Shadow Court — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+   Two ship-blocking game bugs found+fixed (element-drop made Grimm unbeatable
+   <16hp; hp residual left him immortal at ~0hp) — see the Levels L7 entry.
 7b. L6 Sunken Vale — NEXT: run-l6.mjs + fight-meri.mjs are DRAFTED (tide
     splash puzzle, frost-shatter gate, deep crossings, Meri floods). Recon
     RECON-L6.md (8 defect candidates). Route at 3x, Meri 1x.
@@ -374,9 +376,35 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Notes: 3x gate-tunnel harness artifact documented (assert gates by
     flag/collider, never by crossing). L4 has no suite of its own — the
     played route is its deepest verification to date.
-- L5 Stormreach: NOT STARTED
-- L6 Sunken Vale: NOT STARTED
-- L7 Shadow Court: NOT STARTED
+- L7 Shadow Court: **PASS** (run 3, 2026-08-18)
+  * Route: hub xh + all 4 relic wings + throne by play at 3x, FAILS none, 0
+    errors. GHOST wolf granted at xsh; four relics by real walking + the wing
+    verb — ASH earth-crack (ember), ROOT frost/skirt (thorn), GALE storm-DASH
+    across the gale + tide-quench all 3 fires (tide), MIRROR ghost-walk (moon).
+    Four relics -> the throne stair (xst) opens on the xh rebuild; Shadow-Grimm
+    at the throne (32hp, boss-loop). Evidence: test-evidence/level-7/.
+  * Boss: SHADOW-GRIMM FREED at 1x FULL SPEED, ZERO DEATHS — aim at the moving
+    CORE (world.boss.coreHittable, not the __wk root); armour answered by
+    elemental melee + forward rotation (steel/moon dead <16, last-element dead
+    <=10.67); low-hp FINISHER piles in when clean windows go scarce; ending
+    cinematic + gameComplete + credits + music 'den' ("the game is complete").
+  * TWO CRITICAL GAME-CODE FIXES (final boss was UNWINNABLE, ship-blocking):
+    (1) js/boss.js Shadowgrip coreHittable dropped the damage ELEMENT ->
+        every hit read as 'steel' -> Grimm resists steel below half health ->
+        a kid's fire/earth/etc. all counted as the one thing he shrugs off.
+        Now forwards the element. (No-op for Sylva/Aria/Meri — they never
+        resist.)
+    (2) js/boss.js floating-point residual: elemental damage (1.5, 2.2, ...)
+        left coreHp at ~1e-15 instead of 0, so `coreHp <= 0` never fired and
+        he survived on an invisible sliver. Now snaps <1e-6 -> 0.
+  * DEFECTS -> MORNING REVIEW: D7 wing gates are DECORATIVE (wingLock/wingSolve/
+    puzzleSolved set but read by no door logic — every gate walk-aroundable);
+    court/throne music is the stone-deep/boss-loop placeholder (no dedicated
+    Court track); the tide-quench needs the 6s splash cadence (not a bug).
+  * DRIVER LESSONS: __wk.boss.x/z is the ROOT, the hittable rides
+    core.position and wanders metres out — swing at the CORE; reliable FACING
+    (aimAt bearing loop) is the whole ballgame for the ±70° bite; gameWait must
+    cap real-time (the ending freezes player._time).
 
 ## Intermittents flagged
 - L2/vgb FROZEN BOT (run 4, 1 occurrence, unreproduced): zero movement at
