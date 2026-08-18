@@ -1,3 +1,15 @@
+# SHIPPED v3.50.0 — main 16e07c0, Pages build SUCCESS (API-confirmed 11:22Z)
+# L5 Stormreach + L6 Sunken Vale + L7 Shadow Court — THE GAME IS COMPLETABLE
+# END TO END (playthrough suite walks all 7 regions + frees Grimm). Boss 1x
+# ZERO DEATHS each: Aria, Meri, Shadow-Grimm. Gates at ship: verify-all 44/44
+# --par, INERT+CLEAN, UPGRADE PATH CLEAN (v3.49.0 save loads intact), CANARY
+# GREEN. TWO SHIP-BLOCKING BOSS FIXES (Grimm was UNBEATABLE for any player):
+#   1. boss.js Shadowgrip coreHittable dropped the damage ELEMENT -> every hit
+#      read as 'steel', which Grimm resists below half health. Now forwarded.
+#   2. boss.js float residual left coreHp at ~1e-15 (immortal at ~0hp). Snapped.
+# PHONE-CHECK: open the live link, force-refresh once for the SW swap, confirm
+# badge reads v3.50.0; play to the Shadow Court and free Grimm for the ending.
+#
 # SHIPPED v3.49.0 — main 6356d80, Pages build SUCCESS (API-confirmed 02:11Z)
 # L3 Wild Woods + L4 Frostpeak + PS5 DualSense. Gates at ship: verify-all
 # 44/44 --par, INERT+CLEAN, UPGRADE PATH CLEAN (v3.48.2 save loads intact
