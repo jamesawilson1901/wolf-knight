@@ -243,8 +243,12 @@ export class Shadowgrip {
     this.tiredRing.visible = false;
     world.add(this.tiredRing);
 
-    // the wolf's body is ALWAYS a real target — like every other wolf
-    this.coreHittable = new Hittable(x, z - 1.4, 1.45, (n) => this._hitCore(n));
+    // the wolf's body is ALWAYS a real target — like every other wolf. FORWARD
+    // THE ELEMENT: Hittable.takeDamage passes it, but this callback used to drop
+    // it, so every hit read as 'steel' — and Shadow-Grimm resists steel below
+    // half health, which made the final boss UNBEATABLE (a kid's fire/earth/etc.
+    // all counted as the one thing he shrugs off). His whole armour is elemental.
+    this.coreHittable = new Hittable(x, z - 1.4, 1.45, (n, element) => this._hitCore(n, element));
     world.enemies.push(this.coreHittable);
     this.coreExposed = true; // legacy readers: there is no armor anymore
 
@@ -292,6 +296,10 @@ export class Shadowgrip {
     }
     this._lastElement = element;
     this.coreHp -= n;
+    // SNAP the floating-point residual: elemental damage (1.5, 2.2, ...) leaves
+    // coreHp at ~1e-15 instead of 0, so `coreHp <= 0` below never fired and the
+    // boss survived on an invisible sliver — the fight looked won but wasn't.
+    if (this.coreHp < 1e-6) this.coreHp = 0;
     state.flags[this.skin.saveKey] = Math.max(0, this.coreHp); // wounds are remembered
     const wx = this.x + this.core.position.x, wz = this.z + this.core.position.z;
     if (this.world.onDmgNum) this.world.onDmgNum(wx, 2.2, wz, n);

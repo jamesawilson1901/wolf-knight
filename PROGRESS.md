@@ -1,4 +1,13 @@
-# SHIPPING v3.49.0 (L3 Wild Woods + L4 Frostpeak + DualSense) — GATES RUNNING
+# SHIPPED v3.49.0 — main 6356d80, Pages build SUCCESS (API-confirmed 02:11Z)
+# L3 Wild Woods + L4 Frostpeak + PS5 DualSense. Gates at ship: verify-all
+# 44/44 --par, INERT+CLEAN, UPGRADE PATH CLEAN (v3.48.2 save loads intact
+# under the new build, SW purge proven), CANARY GREEN.
+# PHONE-CHECK: live badge reads v3.49.0 (force-refresh once for the SW swap);
+# pair a DualSense over Bluetooth; play the Wild Woods entry for Pip's line.
+# DAD'S OVERNIGHT ORDER (2026-08-17): L5 then L6 then L7, autonomous, no time
+# constraint, keep going until all complete.
+
+# was: SHIPPING v3.49.0 — GATES RAN GREEN
 # Sequence (re-entrant; resume from whichever step is unproven):
 #  1. short gates: node tools/probe-inertness.mjs / probe-upgrade.mjs / canary.mjs
 #  2. full sweep: sh tools/verify-all.sh --par > /tmp/v-par-ship.log (44 expected)
@@ -65,7 +74,37 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    * Timescale: 3x traversal; f2 braziers 1x?? (refreeze 26 game-s is
      timescale-invariant vs cooldowns; driver wall-speed at 3x is FASTER —
      3x fine); f3 lake at 3x fine (slides are physics, not timing); Boreal 1x.
-6. L5 Stormreach — SKELETON RECON (level5.js read; deepen before the route):
+6. L5 Stormreach — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+   (history) ROUTE PASS (iter 11, FAILS none, 0 errors): storm
+   granted, teach gale dashed, sc2 develop crossed (north-door dash), svn
+   VANES TURNED, s4b wind gate opened, Aria sighted (boss-loop). BOSS NEXT:
+   node tools/fight-aria.mjs (1x). D-L5-1 RESOLVED by play: the ssA bridge
+   door is created at s4a UNCONDITIONALLY (level5.js:983) but at s1a only
+   `if (bridged=WS windBridge)` (level5.js:504) — nothing sets windBridge, so
+   the bridge is ENTERABLE from the top (s4a) yet the s1a return never opens.
+   Whether that is one-way-by-design or a defect: the bridge's PURPOSE is a
+   shortcut DOWN (top->bottom), so s4a-entry + ssA->s1a exit would suffice IF
+   ssA has a west door to s1a — verify in the Aria/close pass. If the down
+   route works, D-L5-1 is a cosmetic dead flag; if not, s4a's ssA door leads
+   into a room with no exit to s1a = real trap. RESOLVE at close.
+   DRIVER LESSONS (for the run report): (a) dash facing follows NET velocity,
+   not input — inside a gale 'w' nets south and dashes south; stage OUTSIDE
+   the gale to aim; (b) the thin strip north of the lanes (0.5u) is
+   un-walkable at ANY timescale — the breeze only pins to the lane's own
+   north edge (-5.2), still inside it; (c) sc2 exit SOLVED by dashing NORTH
+   up through the door from x=1.0 (east of the gale x-range, under the door
+   width) — retry+re-stage loop converges (probe-sc2, 2/2 crossed); (d) vanes
+   turn one clockwise step when DASHED INTO from OUTSIDE their lane; solve
+   MINIMUM turns (each rebuilds the weather mesh — hammering rebuilds killed
+   the renderer twice); rightmost vane dashes from the open EAST floor;
+   (e) svn exit-check crosses z=-2.2 every frame → set vanesTurned.
+   DEFECT D-L5-1: WS 'windBridge' has a read site (ssA shortcut s4a<->s1a)
+   but NO setter anywhere — the wind-bridge shortcut is dead. Not a blocker
+   (spine completes). FIX QUEUED: s4b solve-detection sets windBridge when its
+   vanes align (mirrors svn's vanesTurned), an additive shortcut restore.
+   One ENV CRASH mid-run (page closed under walkTo) — discarded + retried.
+   SKELETON RECON
+   (was skeleton) 6. L5 Stormreach (level5.js read; deepen before the route):
    SWITCHBACK climb, CLIMB chain: s1a>s1b>sc1>s2a>s2b>ssh>sc2>s3a>s3b>svn>
    sc3>s4a>s4b>sc4>scr. Pockets s1p/s2p/s3p/s4p; shortcut ssA (s4a<->s1a,
    opens on WS storm windBridge). ENTRY f5 n-door -> s1a (borealDefeated).
@@ -79,9 +118,17 @@ Static server: `nohup node tools/serve.mjs > /tmp/serve.log 2>&1 &` (port 8901).
    DASHING still does). Wind mechanics live in js/wind.js (galeLane,
    buildWindField, turnVane, WIND) — read before the route. Music/verify:
    verify-storm suite exists and passes.
-7. L6 Sunken Vale — TODO
-8. L7 Shadow Court — TODO
-9. Ship events per protocol (batch ~2 levels per ship) — TODO
+7. L6 Sunken Vale — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+8. L7 Shadow Court — DONE, PASS (composition in Levels). Boss 1x zero deaths.
+   Two ship-blocking game bugs found+fixed (element-drop made Grimm unbeatable
+   <16hp; hp residual left him immortal at ~0hp) — see the Levels L7 entry.
+7b. L6 Sunken Vale — NEXT: run-l6.mjs + fight-meri.mjs are DRAFTED (tide
+    splash puzzle, frost-shatter gate, deep crossings, Meri floods). Recon
+    RECON-L6.md (8 defect candidates). Route at 3x, Meri 1x.
+7c. L7 Shadow Court — after L6. Recon RECON-L7.md (Grimm resists steel+moon
+    below 16hp, rotate elemental forms below ~11hp; ending blocks pointer).
+9. Ship events per protocol (batch ~2 levels per ship) — TODO. L5 shippable
+   now; will BATCH L5+L6 (and maybe L7) into one ship to save gate cycles.
 10. Intermittents watch (vgb tripwire armed in run-l2) — STANDING
 11. Phone-check lines per ship — STANDING
 
@@ -283,6 +330,39 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
     a mid-stride two-finger swing. Multi-touch item DONE for L3.
   * Suites: level3 (whitelist fixed to the new outside edges), l3-lash/knot/
     chords, callable, landings — all PASS post-fix. Canary GREEN (fresh boot, 60s, 0 errors).
+- L6 Sunken Vale: **PASS** (run 3, 2026-08-17)
+  * Route: full RIM spine d1a..ddp by play at 3x, 0 console errors. TIDE wolf
+    granted at dsh; BOTH deep-water crossings (dg2, d4b) walked as tide; all
+    three pools QUENCHED by splash. Meri sighted (28hp, boss-loop).
+  * Boss: MERI FREED at 1x FULL SPEED, ZERO DEATHS — all 8 actions, floods
+    survived in tide form; the drained deep opens the way to x1 (Shadow
+    Court). Evidence: test-evidence/level-6/.
+  * Lagoon (dlg) verified: enter/exit works, NOT a trap (D6-1 cosmetic).
+  * NO js/ changes -> the v3.49.0 ship's 44/44 gates still hold; full sweep +
+    canary run at the batched L5+L6+L7 ship.
+  * DEFECTS -> MORNING REVIEW (RECON-L6.md), none overnight-fixable: D6-RE-
+    ENTRY (tide-grant leaves a deep wall until dsh is re-entered — soft-lock
+    risk, wants a hint), D6-6 (Vale plays Stoneroot's music — needs an asset/
+    decision), D6-2/D6-DTP (tide-quench twist is decorative — the door is
+    ungated and poolsQuenched has no readers).
+
+- L5 Stormreach: **PASS** (run 3, 2026-08-17)
+  * Route: iter 11, full switchback climb by play at 3x, FAILS none, 0
+    errors. Storm wolf granted at ssh; teach gale DASHED; sc2 develop crossed
+    by dashing NORTH up through the door; svn VANES TURNED (minimum-turn,
+    timescale-aware facing); s4b wind gate opened; Aria sighted (boss-loop).
+  * Boss: ARIA FREED at 1x FULL SPEED, ZERO DEATHS — all 8 actions, 16
+    dashes to answer her half-health gales, fought entirely in storm form.
+    Way to the Vale (d1a) opens on the rebuild. Evidence: test-evidence/level-5/.
+  * D-L5-1 RESOLVED (not a defect): the ssA wind-bridge is a working one-way-
+    DOWN shortcut (s4a->ssA->s1a walks; probe-l5-bridge OK). The windBridge WS
+    flag is vestigial (gates only the never-needed s1a->ssA up-entry).
+  * Suites: verify-storm, callable, boot PASS. Canary GREEN.
+  * DRIVER LESSONS (run report): dash facing follows NET velocity; keyboard
+    holds scale with timescale (200/TS); the thin lane-strip is un-walkable;
+    vanes solved minimum-turn from outside their lane. ~11 route iters + 4
+    focused probes (sc2, vanes x2, bridge) + 2 env crashes retried.
+
 - L4 Frostpeak: **PASS** (run 3, 2026-08-15)
   * Route: iter 2, contiguous f1>f5 + both pockets at 3x, FAILS none, 0
     errors. ICEBOUND HALL solved by the fire verbs (breath melt + slam
@@ -296,9 +376,35 @@ real inputs with evidence, zero console errors, suites green — or it is BLOCKE
   * Notes: 3x gate-tunnel harness artifact documented (assert gates by
     flag/collider, never by crossing). L4 has no suite of its own — the
     played route is its deepest verification to date.
-- L5 Stormreach: NOT STARTED
-- L6 Sunken Vale: NOT STARTED
-- L7 Shadow Court: NOT STARTED
+- L7 Shadow Court: **PASS** (run 3, 2026-08-18)
+  * Route: hub xh + all 4 relic wings + throne by play at 3x, FAILS none, 0
+    errors. GHOST wolf granted at xsh; four relics by real walking + the wing
+    verb — ASH earth-crack (ember), ROOT frost/skirt (thorn), GALE storm-DASH
+    across the gale + tide-quench all 3 fires (tide), MIRROR ghost-walk (moon).
+    Four relics -> the throne stair (xst) opens on the xh rebuild; Shadow-Grimm
+    at the throne (32hp, boss-loop). Evidence: test-evidence/level-7/.
+  * Boss: SHADOW-GRIMM FREED at 1x FULL SPEED, ZERO DEATHS — aim at the moving
+    CORE (world.boss.coreHittable, not the __wk root); armour answered by
+    elemental melee + forward rotation (steel/moon dead <16, last-element dead
+    <=10.67); low-hp FINISHER piles in when clean windows go scarce; ending
+    cinematic + gameComplete + credits + music 'den' ("the game is complete").
+  * TWO CRITICAL GAME-CODE FIXES (final boss was UNWINNABLE, ship-blocking):
+    (1) js/boss.js Shadowgrip coreHittable dropped the damage ELEMENT ->
+        every hit read as 'steel' -> Grimm resists steel below half health ->
+        a kid's fire/earth/etc. all counted as the one thing he shrugs off.
+        Now forwards the element. (No-op for Sylva/Aria/Meri — they never
+        resist.)
+    (2) js/boss.js floating-point residual: elemental damage (1.5, 2.2, ...)
+        left coreHp at ~1e-15 instead of 0, so `coreHp <= 0` never fired and
+        he survived on an invisible sliver. Now snaps <1e-6 -> 0.
+  * DEFECTS -> MORNING REVIEW: D7 wing gates are DECORATIVE (wingLock/wingSolve/
+    puzzleSolved set but read by no door logic — every gate walk-aroundable);
+    court/throne music is the stone-deep/boss-loop placeholder (no dedicated
+    Court track); the tide-quench needs the 6s splash cadence (not a bug).
+  * DRIVER LESSONS: __wk.boss.x/z is the ROOT, the hittable rides
+    core.position and wanders metres out — swing at the CORE; reliable FACING
+    (aimAt bearing loop) is the whole ballgame for the ±70° bite; gameWait must
+    cap real-time (the ending freezes player._time).
 
 ## Intermittents flagged
 - L2/vgb FROZEN BOT (run 4, 1 occurrence, unreproduced): zero movement at
