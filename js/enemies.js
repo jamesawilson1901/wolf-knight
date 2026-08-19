@@ -69,6 +69,14 @@ const TRAITS = {
   Moth: { weakness: 'moon' },
   Hound: { weakness: 'moon' },
   Slime: { weakness: 'fire' },
+  // THE FIRE-SPITTER, which had no elemental identity at all — it looked like
+  // a slime (whose lesson is "slimes fear fire"), so a child hit it with fire
+  // and got nothing: no SUPER!, no RESIST, no lesson either way. Dad's call:
+  // a thing that spits fire SHRUGS OFF fire and fears WATER and ICE. That
+  // makes it the game's clearest RESIST teacher — in Stoneroot, where fire is
+  // the child's whole toolkit, this one says "not that, switch" — and it
+  // turns a later return with Frost or Tide into a real payoff.
+  Spitter: { weakness: ['tide', 'frost'], resist: 'fire' },
   Bat: { weakness: 'fire' },
   SkeletonMinion: { weakness: 'fire', armored: true },
   SkeletonRogue: { weakness: 'fire', armored: true },
@@ -361,6 +369,13 @@ class Enemy {
     this._flashMats = [];
     const tr = TRAITS[this.constructor.name] || {};
     this.weakness = tr.weakness || null;
+    // ...AND ITS RESISTANCE. TRAITS has always been read for weakness and
+    // armour but never for `resist`, so a base family could not shrug off an
+    // element at all — only VARIANTS could (applyVariant sets it directly).
+    // The fire-spitter is the first family that needs one, and it silently
+    // did nothing until a probe measured the multiplier instead of trusting
+    // the table.
+    this.resist = tr.resist || null;
     this.armored = !!tr.armored;
     // AWARENESS (region 7). Everything in the game before the Shadow Court is
     // born aware and nothing ever changes that, so six regions of behaviour are
@@ -531,11 +546,15 @@ class Enemy {
         mult *= 1.35; // ...but magic bites deep
       }
     }
-    const weak = this.weakness && element === this.weakness;
+    // weakness is an element OR a list of them — the fire-spitter fears both
+    // water and ice, and one field should not force a designer to pick.
+    const weak = this.weakness && (Array.isArray(this.weakness)
+      ? this.weakness.includes(element) : element === this.weakness);
     if (weak) mult *= 1.5;
     // variant RESISTANCE: the wrong element fizzles (0.4x + grey callout) —
     // the counterpart lesson to SUPER!: "this one shrugs that off, switch!"
-    if (this.resist && element === this.resist) {
+    if (this.resist && (Array.isArray(this.resist)
+      ? this.resist.includes(element) : element === this.resist)) {
       mult *= 0.4;
       audio.play('puff', { volume: 0.4, rate: 1.7 });
       if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'RESIST');

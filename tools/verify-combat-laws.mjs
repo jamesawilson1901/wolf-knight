@@ -83,6 +83,27 @@ for (const [id, a] of Object.entries(ATTACK)) {
 }
 if (!problems.some((p) => p.includes('drift') || p.includes('stale'))) ok('table and source agree');
 
+console.log('\n── 6b. TRAITS elements are real, and teachable ──────');
+{
+  const n = problems.length;
+  const e = read('js/enemies.js');
+  const block = (e.match(/const TRAITS = \{[\s\S]*?\n\};/) || [''])[0];
+  for (const m of block.matchAll(/(\w+):\s*\{([^}]*)\}/g)) {
+    const [, owner, body] = m;
+    for (const f of ['weakness', 'resist']) {
+      const hit = body.match(new RegExp(f + ":\\s*(\\[[^\\]]*\\]|'[a-z]+')"));
+      if (!hit) continue;
+      const els = [...hit[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]);
+      for (const el of els) {
+        if (!ELEMENTS.includes(el)) bad(`TRAITS ${owner}.${f} names unknown element '${el}'`);
+      }
+      // an enemy that fears nothing the player can ever emit teaches nothing
+      if (f === 'weakness' && !els.length) bad(`TRAITS ${owner}.weakness is empty`);
+    }
+  }
+  if (problems.length === n) ok('every TRAITS weakness/resist uses a real element');
+}
+
 console.log('\n── 7. no ground decals under regular enemies (LAW 4) ──');
 {
   const e = read('js/enemies.js');
