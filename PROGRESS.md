@@ -1,4 +1,13 @@
-# FIXING (dev, unshipped) — DAD'S TWO PLAY REPORTS ON THE LIVE v3.50.0 BUILD:
+# SHIPPED v3.51.0 — main b65cc85, Pages build (deploy run 32214150293).
+# DAD'S TWO PLAY REPORTS ON THE LIVE v3.50.0 BUILD, both fixed + verified by
+# REAL play (probe-l2-guide.mjs / probe-map-close.mjs) and the greybox L2/guide
+# suites; gates at ship: verify-all 43/44 --par + gauntlet CONFIRMED PASS serially
+# (s2b was a --par CPU-contention flake), INERT+CLEAN, UPGRADE CLEAN, CANARY GREEN.
+# PHONE-CHECK: live badge reads v3.51.0 (force-refresh once for the SW swap);
+# Level 2 — after the plate, follow Pip to the north spoke's burnt post, be the
+# Fire Wolf and slam it; the crypt opens. Map — ✓ Done always closes it now.
+#
+# ORIGINAL REPORTS (kept for the record):
 #   BUG 1 (map soft-lock): opening the map had no way back — the ✓ Done button
 #     sat below a non-scrolling centered .panel on a phone screen, so the only
 #     escape was to kill the game. FIX index.html .panel: overflow-y:auto +
