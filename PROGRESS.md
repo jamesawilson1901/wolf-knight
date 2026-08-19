@@ -1,3 +1,44 @@
+# SHIPPED v3.53.0 — L3 REWORK: VERDANT IS SYLVA'S REWARD + SPITTER IDENTITY
+# DAD'S LAW: each elemental wolf is locked behind its own element's boss, and
+#   the level after runs on it. Wild Woods broke this — verdant came from
+#   touching tsh's shrine mid-level. Fixed to match Fire Wolf's pattern:
+#   Sylva's kill grants it (boss.js + a main.js ceremony), the shrine is now a
+#   promise, not a gate. The pre-boss spine (tc2's log-bridge rope, t4b's
+#   great thorn-knot) used to demand verdant before the child could have it —
+#   both re-verbed to fire, which the child already holds. tkn's boulder
+#   tether (whose "no floor behind it" fiction was never enforced) is gone,
+#   replaced by an honest push-and-plate room. Vine/thorn dressing was
+#   near-invisible bush-large.glb clones ("so tiny you can't see them and just
+#   think the game is glitching" — dad, from play); replaced with the
+#   Quaternius forest kit's real bushes and bare-branch canes.
+# SPITTER now has a real elemental identity (dad's call): weak to tide/frost,
+#   resists fire. Exposed and fixed a systemic gap — TRAITS.resist was never
+#   read by the Enemy constructor at all, so nothing in the game could resist
+#   anything before this.
+# FOUND BY ACTUALLY PLAYING IT, NOT TRUSTING DIRECT API CALLS: a room's own
+#   random breakable-prop placer could legally drop a pot straight into the
+#   Knot's boulder push lane, permanently deflecting it off the plate's
+#   capture radius — a softlock for a real child. Fixed by reserving the push
+#   corridor as gameplay ground before dressing runs.
+# HARNESS: a room-identity race (window.__wk.room, and every ad-hoc test's own
+#   go() helper, read state.room — which flips the INSTANT a jump is
+#   requested, before the async rebuild it triggers even starts) could report
+#   a room ready while `world` was still the PREVIOUS one. Traced beyond L3
+#   into verify-density/awareness/grounded/completion.mjs via a full
+#   verify-all --par sweep; fixed at the source (main.js's __wk.room getter,
+#   wk-drive.mjs's jump()) and in every file it touched. ~38 more tools/*.mjs
+#   files share the exact same pattern — noted for a future dedicated pass,
+#   not attempted here.
+# GATES: all 4 dedicated L3 suites ALL CLEAN, the full real-play walker
+#   (tools/run-l3.mjs) clean end to end including post-boss return content and
+#   both chords, verify-all --par 44 suites with every failure traced to
+#   either reconfirmed parallel-load flakiness or the harness race above (both
+#   resolved) — except vc3's floating-rock finding in verify-grounded, which
+#   is pre-existing and unrelated (js/level2.js untouched this pass).
+# OPEN FOR DAD: nothing new. The vc3 hovering "Mesh_rock_largeC" prop
+#   (Stoneroot, gap 1.27u) is a pre-existing cosmetic bug, unrelated to
+#   tonight's work — worth a look next pass but not blocking.
+#
 # SHIPPED v3.52.0 — DAD'S THREE-SCREENSHOT PLAY REPORT + COMBAT AUDIT PASS 1
 # FROSTPEAK WAS UNCOMPLETABLE BY ANYONE: f3's lake lanes left a 1.0u collider
 #   corridor for a 1.24u boulder, so the plates could never be pressed and the
