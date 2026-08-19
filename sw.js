@@ -70,6 +70,7 @@ const PRECACHE = [
   './assets/loot/survival/barrel.glb',
   './assets/loot/survival/Textures/colormap.png',
   './assets/loot/pirate/chest-gold.glb',
+  './assets/env/props/chest-kit.glb',
   './assets/loot/pirate/Textures/colormap.png',
   './assets/gear/dagger_A.gltf', './assets/gear/dagger_A.bin',
   './assets/gear/sword_B.gltf', './assets/gear/sword_B.bin',

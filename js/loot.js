@@ -4,8 +4,9 @@
 // respawn with the room (small change, not farming gold).
 
 import * as THREE from 'three';
-import { loadGLB, prepareModel, SHARED } from './assets.js';
+import { loadGLB, prepareModel, prepareCharacter, SHARED } from './assets.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
@@ -448,16 +449,53 @@ export async function spawnBreakables(world, spots) {
 // open; opened chests stay open forever (state.flags.chests).
 // ---------------------------------------------------------------------------
 
+// THE ANIMATED CHEST KIT (assets/env/props/chest-kit.glb, uploader-supplied).
+// One GLB holds three rigged chests — Golden, Silver, Wooden — each a clean
+// subtree with its own skeleton and an OpenChest clip that swings the lid on a
+// BoneCover bone. The game's chests used to be static models that only dimmed
+// when looted; now the lid actually opens. Same SkeletonUtils.clone + mixer
+// pattern the player and Pip already use, so nothing new is asked of the loader.
+let chestKit = null;
+const KIT_GROUP = { gold: 'GoldenChest', silver: 'SilverChest[', wood: 'WoodenChest' };
+const KIT_OPEN  = { gold: 'GoldenChest|OpenChest', silver: 'SilverChest[|OpenChest', wood: 'WoodenChest|OpenChest' };
+
+// Isolate ONE tier out of the three-chest kit: clone the whole rig (skeletons
+// and all), drop the two tiers we do not want, and centre what remains on the
+// floor at the origin so the caller can scale and place it like any other model.
+function buildKitChest(tier) {
+  const inner = prepareCharacter(SkeletonUtils.clone(chestKit.scene));
+  const keep = KIT_GROUP[tier] || KIT_GROUP.wood;
+  for (const name of ['GoldenChest', 'SilverChest[', 'WoodenChest']) {
+    if (name === keep) continue;
+    const g = inner.getObjectByName(name);
+    if (g && g.parent) g.parent.remove(g);
+  }
+  const box = new THREE.Box3().setFromObject(inner);
+  const size = box.getSize(new THREE.Vector3());
+  const ctr = box.getCenter(new THREE.Vector3());
+  inner.position.set(-ctr.x, -box.min.y, -ctr.z);   // centred on x/z, sitting on y=0
+  const group = new THREE.Group();
+  group.add(inner);
+  const mixer = new THREE.AnimationMixer(inner);
+  const clip = THREE.AnimationClip.findByName(chestKit.animations || [], KIT_OPEN[tier] || KIT_OPEN.wood);
+  let openAction = null;
+  if (clip) {
+    openAction = mixer.clipAction(clip);
+    openAction.loop = THREE.LoopOnce;
+    openAction.clampWhenFinished = true;   // the lid stays up once it has opened
+  }
+  return { group, mixer, openAction, clipDur: clip ? clip.duration : 0,
+    span: Math.max(0.01, size.x, size.y, size.z) };
+}
+
 export async function spawnChests(world, defs) {
-  const [wood, gold] = await Promise.all([
-    loadGLB('./assets/loot/survival/chest-wood.glb'),
-    loadGLB('./assets/loot/pirate/chest-gold.glb'),
-  ]);
+  if (!chestKit) chestKit = await loadGLB('./assets/env/props/chest-kit.glb');
   world.chests = [];
   for (const def of defs) {
     const opened = !!state.flags.chests[def.id];
-    const gltf = def.tier === 'gold' ? gold : wood;
-    const mesh = prepareModel(gltf.scene.clone());
+    const tier = def.tier === 'gold' ? 'gold' : def.tier === 'silver' ? 'silver' : 'wood';
+    const kit = buildKitChest(tier);
+    const mesh = kit.group;
     // MEASURE THE MODEL. DO NOT TYPE A NUMBER AT IT.
     //
     // This was scale 0.85 for gold and 0.75 for everything else — one pair of
@@ -485,11 +523,13 @@ export async function spawnChests(world, defs) {
     // nothing — and too narrow for a gold one, so a child clipped into its
     // corners. Half the larger footprint, with a floor so it is always catchable.
     world.addCircle(def.x, def.z, Math.max(0.42, Math.max(dx, dz) * s * 0.55));
+    // The lid is a real animation now — drive it from the mixer every frame.
+    world.onAnimate((t, dt) => kit.mixer.update(dt));
     if (opened) {
-      // already-looted chests sit open and dark
-      mesh.traverse((n) => {
-        if (n.isMesh) { n.material = n.material.clone(); n.material.color.multiplyScalar(0.55); }
-      });
+      // A chest a child already looted, coming back to a saved room, must show
+      // its lid UP — otherwise it reads as un-opened and the fanfare that will
+      // never fire again looks broken. Snap the open clip to its final frame.
+      if (kit.openAction) { kit.openAction.play(); kit.mixer.setTime(kit.clipDur); }
     } else {
       // EVERY UNOPENED CHEST GLOWS, not just the gold ones. A reward you cannot
       // see is not a reward, and this is the exact promise the cracked-wall
@@ -504,9 +544,11 @@ export async function spawnChests(world, defs) {
       // the pulse rides the chest's OWN brightness — a hard-coded 2.4 here would
       // have made a wooden chest breathe up to gold's intensity every two seconds
       const base = glow.intensity * 0.8, swing = glow.intensity * 0.27;
-      world.onAnimate((t) => { glow.intensity = base + Math.sin(t * 2.6) * swing; });
+      const pulse = (t) => { glow.intensity = base + Math.sin(t * 2.6) * swing; };
+      world.onAnimate(pulse);
+      def._glow = glow; def._pulse = pulse;
     }
-    world.chests.push({ ...def, mesh, opened });
+    world.chests.push({ ...def, mesh, opened, mixer: kit.mixer, openAction: kit.openAction, glow: def._glow });
   }
 }
 
@@ -522,15 +564,19 @@ export function updateChests(world, player, giveLoot) {
     bumpCounter('chests');
     audio.play('chest-open', { volume: 0.95 }); // the latch clicks...
     audio.play('checkpoint', { volume: 0.7, rate: 0.8 }); // ...then the chime
-    // celebratory hop + burst
+    // THE LID SWINGS OPEN — the kit's own animation, played once and clamped.
+    if (c.openAction) c.openAction.reset().play();
+    // and the glow that said "come here" has done its job
+    if (c.glow) c.glow.intensity = 0;
+    // a small celebratory hop rides UNDER the lid swing (position only, so it
+    // never fights the skinned lid bone)
     const mesh = c.mesh;
     let tPop = 0.45;
     world.onAnimate((t, dt) => {
       if (tPop <= 0) return;
       tPop -= dt;
       const f = 1 - Math.max(0, tPop) / 0.45;
-      mesh.position.y = Math.sin(f * Math.PI) * 0.35;
-      mesh.rotation.z = Math.sin(f * Math.PI * 2) * 0.12;
+      mesh.position.y = Math.sin(f * Math.PI) * 0.22;
     });
     if (c.loot.shards) spawnShards(world, c.x, c.z, c.loot.shards);
     giveLoot(c); // potions/gear/heart pieces/keys handled by main
