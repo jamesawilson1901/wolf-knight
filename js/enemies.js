@@ -6,6 +6,13 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
+// THE ATTACK CLOCK (js/attacks.js). Every telegraph/recovery below reads
+// from that one table, which tools/verify-combat-laws.mjs also reads — so a
+// windup can never quietly drift under the floor again (LAW 7, extended
+// from hitboxes to clocks). Four of them had.
+import { ATTACK as A, phase } from './attacks.js';
+const P_LUNGE = phase('minion_lunge');
+const P_SWING = phase('shield_swing');
 import { audio } from './audio.js';
 import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
@@ -497,7 +504,11 @@ class Enemy {
     return true;
   }
 
-  // element: 'steel' (knight sword) | 'spark' | 'moon' | 'fire' | 'earth'.
+  // element: 'steel' (knight sword) | 'spark' | 'moon' | 'fire' | 'earth' |
+  //          'verdant' | 'frost' | 'storm' | 'tide'.
+  // The list had gone stale at five while the player grew to nine forms —
+  // an enemy given a weakness outside this set would simply never trigger
+  // it, silently. tools/verify-combat-laws.mjs now checks the vocabulary.
   // kind: 'melee' | 'bolt' | 'aoe' — some enemies react per kind (dodges).
   takeDamage(n, element = 'steel', kind = 'melee') {
     this.notice('hit');       // being hit is the loudest way to be noticed
@@ -1159,13 +1170,13 @@ export class Spitter extends Slime {
       // anything, or simply step off the line it is drawing to you.
       this._play('attack');
       this._windup -= dt;
-      const f = 1 - Math.max(0, this._windup) / 0.6;
+      const f = 1 - Math.max(0, this._windup) / A.spitter_spit.windup;
       this.model.scale.setScalar(0.26 * (1 + f * 0.35));
       for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.5 + f * 2.2;
       if (this._windup <= 0) {
         this.model.scale.setScalar(0.26);
         this._spawnGlob(player);
-        this._spitT = state.settings.easy ? 3.2 : 2.2;
+        this._spitT = state.settings.easy ? 3.2 : A.spitter_spit.gap;
       }
     } else if (d < this.aggroRange && d > 0.01) {
       this._spitT -= dt;
@@ -1178,7 +1189,7 @@ export class Spitter extends Slime {
       } else {
         this._play('idle');
       }
-      if (this._spitT <= 0 && d > 3) this._windup = 0.6;
+      if (this._spitT <= 0 && d > 3) this._windup = A.spitter_spit.windup;
     } else {
       this._play('idle');
     }
@@ -1537,10 +1548,10 @@ export class SkeletonMinion extends SkeletonBase {
       }
     } else if (this.state === 'lunge') {
       this.stateT += dt;
-      if (this.stateT > 0.25 && this.stateT < 0.6) {
+      if (this.stateT > P_LUNGE.windupEnd && this.stateT < P_LUNGE.activeEnd) {
         this.chaseToward(dt, this.lungeDir.x, this.lungeDir.z, 1, 3.4);
       }
-      if (this.stateT > 0.9) { this.state = 'chase'; this.lungeTimer = 2.4; this._current = null; }
+      if (this.stateT > P_LUNGE.stateEnd) { this.state = 'chase'; this.lungeTimer = A.minion_lunge.gap; this._current = null; }
     }
     this.contact(player, this.contactDmg || 1); // brutes hit harder (VARIANTS)
     this.flashUpdate(dt);
@@ -1616,7 +1627,7 @@ export class SkeletonRogue extends SkeletonBase {
       // crouch low + rising hiss — the "block or jump NOW" beat
       this.stateT += dt;
       this.model.scale.y = 0.48 * (1 - 0.22 * Math.min(1, this.stateT * 2.4));
-      if (this.stateT >= 0.7) {
+      if (this.stateT >= A.rogue_dash.windup) {
         this.state = 'dash';
         this.stateT = 0;
         this.model.scale.y = 0.48;
@@ -1632,10 +1643,10 @@ export class SkeletonRogue extends SkeletonBase {
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
       this.contact(player);
-      if (this.stateT > 0.5 || blocked) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
+      if (this.stateT > A.rogue_dash.active || blocked) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
     } else { // recover — open to punishment
       this.stateT += dt;
-      if (this.stateT > 1.3) { this.state = 'chase'; this.dashTimer = 2.2 + Math.random(); }
+      if (this.stateT > A.rogue_dash.recover) { this.state = 'chase'; this.dashTimer = A.rogue_dash.gap + Math.random(); }
     }
 
     if (this.state === 'chase' || this.state === 'telegraph') this.contact(player);
@@ -1736,7 +1747,7 @@ export class SkeletonShield extends SkeletonBase {
       }
     } else if (this.state === 'swing') {
       this.stateT += dt;
-      if (this.stateT > 0.55 && this.stateT < 0.75) {
+      if (this.stateT > P_SWING.windupEnd && this.stateT < P_SWING.activeEnd) {
         // the chop lands in a short frontal arc
         const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
         const px2 = player.root.position.x - this.x, pz2 = player.root.position.z - this.z;
@@ -1745,9 +1756,9 @@ export class SkeletonShield extends SkeletonBase {
           player.hurt(1, { attacker: this, groundAttack: true });
         }
       }
-      if (this.stateT > 1.7) { // long recovery — the punish window
+      if (this.stateT > P_SWING.stateEnd) { // long recovery — the punish window
         this.state = 'chase';
-        this.swingTimer = 3.2;
+        this.swingTimer = A.shield_swing.gap;
         this._current = null;
       }
     }

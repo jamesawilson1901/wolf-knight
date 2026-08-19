@@ -148,6 +148,7 @@ case "$1" in
     # EMBER HOLLOW, EVERY DOOR, WALKED. Dad could not get through a door in a
     # Level 1 room; the lava channel ran under one of them.
     run verify-l1-doors.mjs
+    run verify-combat-laws.mjs
     run verify-l2-warden.mjs
     run verify-l3-lash.mjs
     run verify-l3-knot.mjs

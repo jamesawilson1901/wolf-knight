@@ -38,8 +38,8 @@
   after 3 deaths in one room (respawn = that room's entrance). Never more
   than 3 simultaneous aggro enemies near a kid (spawn spacing must respect
   this).
-- ATTACK TOKENS (v3.14, CONFIG.ENGAGE): at most 1 (Gentle) / 2 (Cozy) /
-  3 (Brave) enemies press the attack at once; the rest PROWL a ~3u ring,
+- ATTACK TOKENS (CONFIG.ENGAGE): at most 2 (Gentle) / 3 (Cozy) /
+  4 (Brave) enemies press the attack at once; the rest PROWL a ~3u ring,
   visibly waiting. An attack in motion always finishes. Fights are turns,
   never pile-ons — pattern-reading is the skill, not mashing.
 - Telegraphs live ON THE BODY (crouches, eye flares, wind-ups, dust) —
