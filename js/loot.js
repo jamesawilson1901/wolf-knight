@@ -489,8 +489,14 @@ function buildKitChest(tier) {
 }
 
 export async function spawnChests(world, defs) {
-  if (!chestKit) chestKit = await loadGLB('./assets/env/props/chest-kit.glb');
   world.chests = [];
+  // ONLY LOAD THE KIT WHEN A ROOM ACTUALLY HAS CHESTS. spawnChests runs for
+  // EVERY room; loading the skinned 3-chest rig unconditionally made chestless
+  // rooms (all of the Wild Woods, say) pay a load they never use, which was
+  // enough to perturb verify-level3's timing/landmark checks. A room with no
+  // chests now does exactly nothing, as before.
+  if (!defs || !defs.length) return;
+  if (!chestKit) chestKit = await loadGLB('./assets/env/props/chest-kit.glb');
   for (const def of defs) {
     const opened = !!state.flags.chests[def.id];
     const tier = def.tier === 'gold' ? 'gold' : def.tier === 'silver' ? 'silver' : 'wood';
