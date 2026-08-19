@@ -446,8 +446,14 @@
     }
     .panel {
       position: fixed; inset: 0; z-index: 16; display: none;
-      flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+      flex-direction: column; align-items: center; justify-content: safe center; gap: 12px;
       background: rgba(13, 9, 20, .88); color: #e8ddd0;
+      /* SCROLLS on short/phone screens so the "✓ Done" button at the bottom is
+         always reachable — the map list can be taller than the viewport, and a
+         non-scrolling centered panel pushed Done off-screen (soft-lock: the only
+         way out was to restart the game). */
+      overflow-y: auto;
+      padding: calc(14px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
     }
     .panel h2 { margin: 0 0 6px; font-size: 26px; color: #ffe9c8; }
     .panel .grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 86vw; max-height: 55vh; overflow-y: auto; }
