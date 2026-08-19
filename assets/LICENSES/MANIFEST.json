@@ -238,6 +238,32 @@
       "note": "The only two tracks NOT from HydroGene, confirmed by md5 against both the HydroGene pack and every Kenney audio pack (no match). OGA hosts CC0, CC-BY and GPL side by side and licences are per submission, so each page must be checked: a CC-BY track needs visible credit in-game, a GPL track could not be used at all. NOTE: 'Boss Battle Music' by Juhani Junkala is credited in CREDITS.md but is NOT in the build — the boss music is HydroGene's Battle Theme II.",
       "accepted": "private-family-use 2026-08-09",
       "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
+    },
+    {
+      "pack": "Sketchfab — assorted free low-poly models (uploader-supplied)",
+      "licence": null,
+      "states": "Uploader verified 'free to use privately and commercially' at download; formal per-model Sketchfab licence files not captured (many free Sketchfab models are CC-BY and may require attribution)",
+      "evidence": "sketchfab-library-uploader-attestation.txt",
+      "source": "https://sketchfab.com (various authors)",
+      "covers": [
+        "assets/env/props",
+        "assets/env/town",
+        "assets/chars/monsters/dodo.glb",
+        "assets/chars/monsters/dragon.glb",
+        "assets/chars/monsters/kregger.glb",
+        "assets/chars/monsters/oceanic-juggernaut.glb",
+        "assets/chars/monsters/owl.glb",
+        "assets/chars/monsters/rat-pack.glb",
+        "assets/chars/monsters/robot-a8lot.glb",
+        "assets/chars/monsters/werewolf.glb",
+        "assets/gear/axe.glb",
+        "assets/gear/spear.glb",
+        "assets/gear/sword-fantasy.glb",
+        "assets/gear/sword-lowpoly.glb",
+        "assets/gear/sword-stylized.glb",
+        "assets/gear/weapon-props.glb"
+      ],
+      "note": "Web-optimized via gltf-transform (loader-safe: texture resize + mesh decimation only). PENDING until per-model licence files are added. Not yet wired into gameplay except where noted in the build log."
     }
   ],
   "distribution": {

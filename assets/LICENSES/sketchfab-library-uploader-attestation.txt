@@ -1,0 +1,20 @@
+SKETCHFAB LOW-POLY LIBRARY — UPLOADER ATTESTATION
+=================================================
+Recorded: 2026-08-19
+
+The repository owner supplied the .glb models listed under this pack in
+assets/LICENSES/MANIFEST.json and stated, in their own words, that every one
+was "free to use privately and commercially" and that they "personally checked
+while downloading."
+
+This file records that permission in plain words. It is NOT a formal licence
+grant: the individual per-model Sketchfab licence files (which for many free
+Sketchfab models are Creative Commons Attribution / CC-BY, and may therefore
+require crediting the original author) were not captured at download. This pack
+is therefore PENDING in the manifest until those per-model licence files are
+added here. Attribution to the original authors may be required before any
+public redistribution.
+
+The models were optimized for the web build with gltf-transform (loader-safe
+operations only — texture resize, mesh decimation on high-poly models; no
+Draco/meshopt/KTX2, which the game's plain GLTFLoader cannot decode).
