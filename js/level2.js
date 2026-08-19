@@ -300,14 +300,28 @@ function burnPin(world, id, x, z) {
     world.burnables.push({ id, x, z, hitR: 1.3, group: gg, collider: col });
     return gg;
   }
+  // TIMBER, NOT ROCK. This was three rock models tinted char-black — the same
+  // silhouette as crackedPile, i.e. an EARTH-stomp target — and dad read it
+  // exactly as drawn: "you just burn a random rock? whats that?" The wood the
+  // comments always claimed is now on screen: a charred log-stack strut with
+  // burnt logs at its foot (Woodfire.glb ships pre-charred), standing wedged
+  // under the titan's fist (titanArm, below). All measured floor-pivot models.
   const g = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
-    const p = tinted(caveKit[i ? 'rockSA' : 'rockLB'], 'burnpin', 0x2c211a, 0.9 + i * 0.05);
-    p.position.set(x + (i - 1) * 0.6, i * 0.32, z + ((i % 2) - 0.5) * 0.55);
-    p.rotation.y = i * 1.7 + 0.4;
-    p.scale.setScalar((i ? 0.75 : 1.1) * 1.4);
-    g.add(p);
-  }
+  const strut = tinted(caveKit.logStack, 'burnpin', 0x3a2a1c, 0.95);
+  strut.position.set(x, 0, z);
+  strut.rotation.y = 0.3;
+  strut.rotation.z = 0.10;                      // leaning under the load
+  strut.scale.set(2.2, 3.4, 2.2);               // a post, taller than wide
+  g.add(strut);
+  const brace = tinted(caveKit.logStack, 'burnpin', 0x2c211a, 0.9);
+  brace.position.set(x + 0.65, 0, z + 0.45);
+  brace.rotation.y = 1.4;
+  brace.scale.set(1.6, 1.5, 1.6);
+  g.add(brace);
+  const chars = tinted(caveKit.woodfire, 'burnpin', 0x2c211a, 0.85);
+  chars.position.set(x - 0.5, 0, z - 0.4);
+  chars.scale.setScalar(1.25);
+  g.add(chars);
   const glint = new THREE.Mesh(
     new THREE.RingGeometry(1.0, 1.3, 18),
     new THREE.MeshBasicMaterial({ color: 0xff7a2d, transparent: true, opacity: 0.34,
@@ -660,12 +674,42 @@ export async function buildVh(scene) {
       ramp.position.set(9, 0.25, -11);
       world.add(ramp);
     } else {
-      for (let i = 0; i < 4; i++) {
-        const st = tinted(caveKit.stairs, 'ramp', 0x8d8f94);
-        st.position.set(9, 0, -9.2 - i * 1.5);
-        st.scale.setScalar(2.0);
-        world.add(st);
+      // ONE low stair as door-trim, not four stacked staircases. The old loop
+      // put 4 full Stairs_Modular clones at scale 2.0, 1.5u apart — but the
+      // model is CENTRE-pivot (spans y −1.01..+1.01) and 2.05u deep, so at
+      // y=0 each clone stood half-buried yet 2.0u proud (taller than Kael),
+      // the four interpenetrated by ~2.6u into one 8.6u jumble through the
+      // north wall, and the vz door trigger sat INSIDE it. In a flat-plane
+      // game the child walked through solid-looking stone and vanished before
+      // the door fired — dad: "stairs don't work". Same fault class as the
+      // Statue_Horse (measure the model against its own pivot, always).
+      // Squashed to a sub-knee 0.7u rise and lifted by +halfHeight so it sits
+      // ON the floor; the model ascends toward −z, i.e. up toward the crypt.
+      // NO collider on purpose: a solid stair here would seal the only route
+      // into the boss room (levelkit's "prop plugs a gap" law).
+      const st = tinted(caveKit.stairs, 'ramp', 0x8d8f94);
+      st.scale.set(1.5, 0.35, 1.5);
+      st.position.set(9, 1.012 * 0.35, -12.4);
+      world.add(st);
+      // ...AND THE ARM THAT LOWERED IT. "The titan's hand lowers into a ramp"
+      // was never depicted: the stairs appeared 9 units from a statue that
+      // never moved. A granite arm now reaches from the titan's shoulder to a
+      // flat stone hand beside the stair head, so the vc3 fall (titanArm) and
+      // this ramp are visibly the same limb. Boulders, not rotated columns —
+      // floor-pivot models placed on the floor, nothing to mismeasure.
+      // placement law: everything stays WEST of x=7 — the door lane (x
+      // 7.7..10.3) and the crypt-return landing at (9,-10.2) must stay clear
+      for (const [px, pz, s, ry] of [[2.6, -11.6, 3.0, 0.7], [4.4, -11.4, 2.4, 2.1]]) {
+        const seg = tinted(caveKit.rockLB, 'titanarm', 0x8d8f94);
+        seg.position.set(px, 0, pz);
+        seg.rotation.y = ry;
+        seg.scale.setScalar(s);
+        world.add(seg);
       }
+      const palm = tinted(caveKit.rockLC, 'titanhand', 0x8d8f94);
+      palm.position.set(6.2, 0, -11.3);
+      palm.scale.set(1.7, 1.3, 1.7);
+      world.add(palm);
     }
   }
 
@@ -1295,6 +1339,65 @@ export async function buildVcp(scene) {
   return finish(world, spec, D);
 }
 
+// THE TITAN'S ARM, IN THE ROOM WITH THE PIN. Dad, from play: "in order to
+// unlock the door you just burn a random rock? whats that? it needs to be
+// something that makes sense, not an abstract action just because." The causal
+// chain — strut props the arm, burn the strut, the arm falls and its hand
+// becomes the crypt ramp — lived only in comments and a worldstate title; the
+// room showed a black rock. Now the limb physically reaches in from the north
+// wall (the wall whose door leads back to the hub where the titan slumps): a
+// line of granite boulders descending to a flat stone HAND that hovers over
+// the charred strut. Burn the strut and the hand falls to the floor in front
+// of the child; on re-entry the room reads the same flag burnPin uses, so the
+// arm is down forever after. Granite tint matches the hub titan (0x8d8f94).
+// All models measured floor-pivot (the stairs lesson: measure, never assume).
+function titanArm(world, dropped) {
+  if (GREY()) return;   // greybox suites drive the flag directly; no dressing
+  const GRANITE = 0x8d8f94;
+  // the arm: shoulder at the wall, two joints stepping down toward the pin
+  for (const [px, pz, s, ry] of [[-3.9, -7.3, 3.2, 0.4], [-2.8, -5.9, 2.5, 1.9], [-1.6, -4.4, 1.9, 0.9]]) {
+    const seg = tinted(caveKit.rockLB, 'titanarm', GRANITE);
+    seg.position.set(px, 0, pz);
+    seg.rotation.y = ry;
+    seg.scale.setScalar(s);
+    world.add(seg);
+    world.addCircle(px, pz, s * 0.42);   // a giant's arm is solid
+  }
+  // THE HAND — a flat granite palm with two knuckle stones, hovering directly
+  // over the strut. This is the thing the strut visibly holds up.
+  const hand = new THREE.Group();
+  const palm = tinted(caveKit.rockLC, 'titanfist', GRANITE);
+  palm.scale.set(1.9, 1.6, 1.9);
+  hand.add(palm);
+  for (const [kx, kz] of [[-0.35, 0.3], [0.4, -0.25]]) {
+    const kn = tinted(caveKit.rockSA, 'titanfist', GRANITE);
+    kn.position.set(kx, 0.5, kz);
+    kn.scale.setScalar(1.7);
+    hand.add(kn);
+  }
+  const UP = { x: -0.3, y: 1.35, z: -3.15 };   // hovering over the strut at (0,-3)
+  const DOWN = { x: 0.45, y: 0.06, z: -2.45 }; // fallen, just beside the ash
+  if (dropped) {
+    hand.position.set(DOWN.x, DOWN.y, DOWN.z);
+    world.add(hand);
+    world.addCircle(DOWN.x, DOWN.z, 0.85);
+    return;
+  }
+  hand.position.set(UP.x, UP.y, UP.z);
+  world.add(hand);
+  world.keepLoose(hand);   // flattenStatic must not freeze the falling hand
+  let fall = 0;
+  world.onAnimate((t, dt) => {
+    if (!state.flags.burned.l2_vc3_pin || fall >= 1) return;
+    fall = Math.min(1, fall + dt * 1.4);
+    const e = fall * fall;                      // ease-in: a heavy thing falls
+    hand.position.set(UP.x + (DOWN.x - UP.x) * e, UP.y + (DOWN.y - UP.y) * e,
+      UP.z + (DOWN.z - UP.z) * e);
+    // no collider on the live drop — a child standing there must not be
+    // trapped; the rebuild adds it (the flag persists, so next entry is DOWN)
+  });
+}
+
 // THE SHOULDER PIN — the last thing holding the titan's arm up.
 export async function buildVc3(scene) {
   const { world, spec, D } = base(scene, 'vc3');
@@ -1321,6 +1424,10 @@ export async function buildVc3(scene) {
   // child and the boss that AWARDS earth. Under boss-earned forms that is a
   // door locked with the key behind it. The wedged timber is scorched black
   // and the Fire Wolf's slam takes it, same as every burnable since Level 1.
+  // The ARM the strut props is in the room now (titanArm above): burn the
+  // strut and the granite hand falls in front of the child — the cause and
+  // the effect finally share a screen.
+  titanArm(world, !!state.flags.burned.l2_vc3_pin);
   burnPin(world, 'l2_vc3_pin', 0, -3);
   world.markers.shieldSpots = [{ x: -4, z: 2 }];
   world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'jar' }];
@@ -1347,7 +1454,10 @@ export async function buildVz(scene) {
     paths: [[[0, 13], [0, 6]]],
   });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -11.5, angle: 0 }, { half: BOSS_DOOR_HALF });
+  // Lands at the FOOT of the stair trim, not inside it: the old (9,-11.5) was
+  // the dead centre of the stair dressing, so leaving the crypt materialised
+  // the child inside the geometry.
+  sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -10.2, angle: 0 }, { half: BOSS_DOOR_HALF });
   if (beaten) sideDoor(world, 'n', halfW, halfD, 't1a', { x: 0, z: 9, angle: Math.PI });
 
   heroProp(world, 0, -9, 'throne', D);           // ▲ THE WARDEN'S THRONE

@@ -434,9 +434,11 @@ function heroProp(world, x, z, kind, D, scale = 1) {
       add(7.5, 1.2, 7.5, 0, 8.6, 0);
       circle(0, 0, 1.6);
     } else if (kind === 'standingStones') {
+      // rim ring + colliders, matching the dressed branch (arena law)
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        add(1.3, 4.6, 1.3, Math.cos(a) * 6.2, 2.3, Math.sin(a) * 6.2, a);
+        add(1.3, 4.6, 1.3, Math.cos(a) * 10.4, 2.3, Math.sin(a) * 10.4, a);
+        circle(Math.cos(a) * 10.4, Math.sin(a) * 10.4, 1.1);
       }
     }
     g.position.set(x, 0, z);
@@ -526,9 +528,17 @@ function heroProp(world, x, z, kind, D, scale = 1) {
     }
     circle(0, 0, 1.6);
   } else if (kind === 'standingStones') {
+    // AT THE RIM, WITH COLLIDERS — the arena law (level1 'le'). These stood in
+    // a r6.2 ring dead-centre of the fight space, inside Sylva's prowl radius
+    // and charge lane, and uniquely among heroProps had NO colliders: six
+    // walk-through ghost pillars mid-arena. Dad: "shit everywhere and can't
+    // see anything." r10.4 (scr's crownstone ring) puts them against the
+    // walls; the angle offset keeps the boss-door approach and the spawn
+    // corridor clear of stone.
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      put(woodKit.pillar, 'stones', Math.cos(a) * 6.2, 0, Math.sin(a) * 6.2, 2.2, a, 0, 0x8a9a7a);
+      put(woodKit.pillar, 'stones', Math.cos(a) * 10.4, 0, Math.sin(a) * 10.4, 2.2, a, 0, 0x8a9a7a);
+      circle(Math.cos(a) * 10.4, Math.sin(a) * 10.4, 1.1);
     }
   }
   g.position.set(x, 0, z);

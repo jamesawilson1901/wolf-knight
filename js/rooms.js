@@ -3556,6 +3556,15 @@ function snowRidge(world, x0, z0, x1, z1) {
 
 // A frost gate across a doorway: three ice spurs that burst when open() runs.
 // (The Wild Woods had thorns; the mountain has rime. Same grammar.)
+//
+// AND IT MUST NOT DRESS LIKE THE PROMISE ICE. This gate is only ever the
+// ANSWER to a puzzle in its own room (f2's bowls, f3's plates) — but it wore
+// the exact pale-ice look of the frost_wolf-only iceGates, one room after Pip
+// says "we'll come back" over one of those and logs an "Ice sealing a way"
+// mystery card. Dad read it precisely as taught: "you need the frost wolf to
+// proceed" — a trap made of costume. So the puzzle gate carries the game's
+// act-here grammar: a pulsing GOLD ring at its base, the same gold every
+// plate and stomp-target wears, saying "this room opens me".
 function frostGate(world, x, z, span = 2.8) {
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
@@ -3568,8 +3577,20 @@ function frostGate(world, x, z, span = 2.8) {
     spur.rotation.y = ry;
     group.add(spur);
   }
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(span * 0.42, span * 0.55, 26),
+    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5,
+      side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, (world.deckY || 0) + 0.06, z);
+  group.add(ring);
   world.add(group);
-  world.onAnimate((t) => { mat.emissiveIntensity = 0.35 + 0.15 * Math.sin(t * 1.7 + x); });
+  world.onAnimate((t) => {
+    mat.emissiveIntensity = 0.35 + 0.15 * Math.sin(t * 1.7 + x);
+    ring.material.opacity = 0.38 + 0.2 * Math.sin(t * 2.6);
+  });
+  world.markers.frostDoorSpot = { x, z };   // the "this door answers the room" line
   const collider = { minX: x - span / 2 - 0.4, maxX: x + span / 2 + 0.4, minZ: z - 0.8, maxZ: z + 0.8 };
   world.boxColliders.push(collider);
   return {
@@ -3776,10 +3797,21 @@ async function buildF3(scene) {
   // the lake itself — everything inside it slides (Kael excepted, always)
   iceSheet(world, -8.6, 8.6, -6.6, 4.2);
 
-  // THE RIDGE: no way north except the two lanes at x = ±3
-  snowRidge(world, -8.6, -1.5, -4.0, -1.5);
-  snowRidge(world, -2.0, -1.5, 2.0, -1.5);
-  snowRidge(world, 4.0, -1.5, 8.6, -1.5);
+  // THE RIDGE: no way north except the two lanes at x = ±3.
+  //
+  // LANE WIDTH IS A COLLIDER FACT, NOT A VISUAL ONE. These endpoints used to be
+  // ±4.0 and ±2.0 — a 2.0u visual gap — but snowRidge pads its box collider by
+  // 0.5u each side, so the real corridor was 1.0u while the pushable boulder's
+  // collider is 1.24u wide (r 0.62). The puzzle was GEOMETRICALLY UNSOLVABLE:
+  // every boulder wedged at the lane mouth, the plates could never be pressed,
+  // and the f4 gate never opened — dad hit exactly this and read the sealed ice
+  // as "I need the Frost Wolf" (which this level's boss awards; a perfect trap).
+  // Kael (0.64u) fit through, which is why walking the room never revealed it.
+  // Endpoints pulled back to leave a true 2.0u collider corridor — the metrics
+  // zoo's MIN CORRIDOR — centred on the ±3.0 stopper rest points.
+  snowRidge(world, -8.6, -1.5, -4.6, -1.5);
+  snowRidge(world, -1.6, -1.5, 1.6, -1.5);
+  snowRidge(world, 4.6, -1.5, 8.6, -1.5);
 
   // the STOPPERS: the rocks that catch a skidding boulder exactly in a lane
   // (boulder r 0.62 + rock r 0.75 → it comes to rest 1.37u short of centre,

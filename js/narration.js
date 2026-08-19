@@ -115,11 +115,10 @@ export const LINES = {
   guard_broken: { voice: 'pip', text: 'His guard is down — GET HIM!' },
   // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
-  // LEVEL 2 — Spoke C's shoulder pin. A CHARRED post, not a cracked pile: the
-  // child has the Fire Wolf, not the Earth Wolf, so the honest line names FIRE
-  // and says what it opens — dad's seven-year-old walked this room in a loop
-  // because nothing told them the black post was theirs to burn.
-  pin_hint: { voice: 'pip', text: 'That burnt black post is stuck fast! Be the Fire Wolf and SLAM it — then the giant’s door swings open!', repeat: true },
+  // LEVEL 2 — Spoke C's shoulder pin. The line names the MECHANISM the room
+  // now actually shows (titanArm in level2.js): a charred beam propping the
+  // stone giant's hand. Cause, verb, effect — nothing abstract left.
+  pin_hint: { voice: 'pip', text: 'Look — that black beam is holding the giant’s hand up! Be the Fire Wolf and SLAM the beam!', repeat: true },
   // The encounter seal (js/world.js). A room with real foes in it shuts behind
   // you; these are the two ways it opens again.
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
@@ -181,10 +180,17 @@ export const LINES = {
   frostpeak_open: { voice: 'pip', text: 'The trees stop up there, Kael. That white line above them? That’s Frostpeak. Wrap up warm — well, you’ve got fur.' },
   frost_enter: { voice: 'pip', text: 'Frostpeak! Brrr. Everything up here is frozen SOLID… and I don’t think it froze on its own.' },
   rimehound_intro: { voice: 'pip', text: 'A rime hound! Ice for a coat — and ice HATES fire. You know exactly which wolf to be.' },
-  icebrazier_hint: { voice: 'pip', text: 'Three fire bowls, all sealed in ice! BREATHE fire to melt the ice, then SLAM to light the bowl. Melt, then light!' },
-  icebrazier_thaw: { voice: 'pip', text: 'Quick, Kael — melted ice freezes back over if you leave the bowl unlit. Finish what you start!' },
+  // repeat: true on the two PUZZLE teaches — these used to fire once per save,
+  // so a child who missed the line stood in a mute room forever (the callers
+  // throttle re-says, so repeat is safe). Dad hit exactly this in f2.
+  icebrazier_hint: { voice: 'pip', text: 'Three fire bowls, all sealed in ice! BREATHE fire to melt the ice, then SLAM to light the bowl. Melt, then light!', repeat: true },
+  icebrazier_thaw: { voice: 'pip', text: 'Quick, Kael — melted ice freezes back over if you leave the bowl unlit. Finish what you start!', repeat: true },
   icebrazier_open: { voice: 'pip', text: 'All three burning! The frost gate cracks apart. Well done!' },
-  slide_hint: { voice: 'pip', text: 'Careful — the lake is SLIPPERY. Push a boulder and it slides until something stops it. Bump it sideways into a rock FIRST, then send it north!' },
+  slide_hint: { voice: 'pip', text: 'Careful — the lake is SLIPPERY. Push a boulder and it slides until something stops it. Bump it sideways into a rock FIRST, then send it north!', repeat: true },
+  // The puzzle doors say WHAT OPENS THEM — the antidote to "all ice needs the
+  // frost wolf", which the promise gates honestly teach elsewhere on the peak.
+  frostdoor_bowls: { voice: 'pip', text: 'See the gold ring? That door listens to THIS room — light all three fire bowls and it cracks open!', repeat: true },
+  frostdoor_plates: { voice: 'pip', text: 'See the gold ring? That door listens to the two floor plates — slide a boulder onto each one!', repeat: true },
   slide_open: { voice: 'pip', text: 'Both circles held! You planned that, Kael. That was proper clever.' },
   frost_boss_door: { voice: 'pip', text: 'Something huge is circling up there. Wings, Kael. Great big frozen wings. Keep your feet moving.' },
   boreal_intro: { voice: 'grimm', text: 'The sky-serpent of the peak, little knight. My frost sits deep in her bones. She will not even see you fall.' },

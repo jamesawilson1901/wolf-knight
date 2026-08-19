@@ -608,6 +608,16 @@ function guideTarget() {
   if (vm.relightSpot && !WS.get('vault', 'spark'))   return { x: 0, z: -1.1 };  // the cold lantern
   if (vm.rattlePlate && !WS.get('vault', 'drained')) return { x: vm.rattlePlate.x, z: vm.rattlePlate.z };
   if (vm.pinSpot && !WS.get('vault', 'handDown'))    return { x: vm.pinSpot.x, z: vm.pinSpot.z };
+  // FROSTPEAK'S PUZZLE ROOMS, same law. These two cases existed below the
+  // switch for years and were DEAD CODE: onwardSpot() answered first (route.js
+  // maps f2→f3, f3→f4), so a stuck child was walked to the SEALED ice gate —
+  // which, one room after "Ice sealing a way… we'll come back" taught them
+  // that ice means frost, manufactured dad's "you need the frost wolf to
+  // proceed" read. The action beats the door here too.
+  if (state.room === 'f2' && !WS.get('frost', 'braziers')) return { x: 0, z: -4.2 };  // the middle brazier
+  if (state.room === 'f3' && !(state.flags.plates.f3_p1 && state.flags.plates.f3_p2)) {
+    return { x: -7.0, z: 1.6 };                                                       // the west boulder
+  }
   const onward = onwardSpot(world);
   if (onward) return onward;
   const f = state.flags;
@@ -615,9 +625,9 @@ function guideTarget() {
     case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
     case 'f1': return { x: 0, z: -5.6 };    // deeper: the Icebound Hall
     case 'f1b': return { x: -2.2, z: -3.4 }; // the pup by the cairn
-    case 'f2': return WS.get('frost', 'braziers') ? { x: 0, z: -6.4 } : { x: 0, z: -4.2 }; // the middle brazier
+    case 'f2': return { x: 0, z: -6.4 };    // braziers lit → the opened gate
     case 'f2b': return { x: 4.4, z: -3.2 };
-    case 'f3': return (f.plates.f3_p1 && f.plates.f3_p2) ? { x: 0, z: -6.4 } : { x: -7.0, z: 1.6 };
+    case 'f3': return { x: 0, z: -6.4 };    // plates pressed → the opened gate
     case 'f4': return { x: 0, z: -5.6 };    // the summit door
     case 'f5': return f.borealDefeated ? { x: 6.4, z: -6.0 } : { x: 0, z: -1.0 };
     default: return null;
@@ -811,7 +821,12 @@ function narrationTriggers(dt, t) {
     if (state.room === 'f2') {
       const bs = m.brazierSpots || [];
       if (!WS.get('frost', 'braziers')) {
-        if (bs.some((b) => nearXZ(b.x, b.z, 4.2))) narration.say('icebrazier_hint');
+        // throttled, not once-per-save: the melt-then-light chain is the whole
+        // room, and a child who missed the line must hear it again (45s apart)
+        if (bs.some((b) => nearXZ(b.x, b.z, 4.2))) sayThrottled('icebrazier_hint', t, 45);
+        // ...and the sealed door itself explains what it answers to — the
+        // antidote to reading every ice wall as "come back with the frost wolf"
+        if (m.frostDoorSpot && nearSpot(m.frostDoorSpot, 3.4)) sayThrottled('frostdoor_bowls', t, 40);
         // the cold creeping back is the one thing a kid must be TOLD about
         if ((world.braziers || []).some((b) => !b.lit && !b.iced)) {
           sayThrottled('icebrazier_thaw', t, 30);
@@ -821,7 +836,9 @@ function narrationTriggers(dt, t) {
       }
     }
     if (state.room === 'f3') {
-      if (m.boulderSpot && nearSpot(m.boulderSpot, 4.6)) narration.say('slide_hint');
+      if (m.boulderSpot && nearSpot(m.boulderSpot, 4.6)) sayThrottled('slide_hint', t, 45);
+      if (m.frostDoorSpot && !(state.flags.plates.f3_p1 && state.flags.plates.f3_p2) &&
+          nearSpot(m.frostDoorSpot, 3.4)) sayThrottled('frostdoor_plates', t, 40);
       if (state.flags.plates.f3_p1 && state.flags.plates.f3_p2) narration.say('slide_open');
     }
     if (state.room === 'f4' && m.bossDoorSpot && nearSpot(m.bossDoorSpot, 3.2)) narration.say('frost_boss_door');

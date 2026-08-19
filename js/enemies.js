@@ -1760,10 +1760,16 @@ export class SkeletonShield extends SkeletonBase {
 export class BoneWarden extends SkeletonBase {
   constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
     super(world, x, z, {
-      // v3.18.2 (dad's call: "bigger, like the wolf boss"): a true GIANT of
-      // old bone — ~2.2x his minions (the same ratio the Shadowgrip has
-      // over the little wolves). Reach and rings scale with him below.
-      hp: 14, radius: 0.8, scale: 1.1, gltf, anims,
+      // Dad, twice now: "bigger, like the wolf boss" (v3.18.2) and again from
+      // play "bone warden needs to be bigger". Scale 1.1 CLAIMED the Shadowgrip
+      // ratio but only delivered 1.87x Kael — the comparison was scale-numbers
+      // vs minions, not measured height vs the player (Skeleton_Warrior.glb's
+      // raw mesh is 17% shorter than knight.glb's). 1.35 makes him ~2.9u,
+      // a true 2.3x over Kael's measured 1.27u — the Shadowgrip ratio, for
+      // real this time. Reach, damage and the danger rings are UNCHANGED:
+      // the rings are drawn at true reach, so a bigger body over the same
+      // hitboxes is strictly fairer.
+      hp: 14, radius: 0.9, scale: 1.35, gltf, anims,
       clips: {
         inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
@@ -1830,7 +1836,11 @@ export class BoneWarden extends SkeletonBase {
       const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
       const dd = Math.hypot(dx, dz);
       const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
-      if (dd > 0.05 && (dx * fx + dz * fz) / dd > 0.42) {
+      // 0.5 (±60°), was 0.42 (±65.2°). The old cone exactly matched the 130°
+      // chop arc, so the shield edge and the axe edge were the same line: a
+      // child who cleared the block was still inside the swing, zero margin.
+      // ±60° opens a real band where a flank lands and the chop cannot reach.
+      if (dd > 0.05 && (dx * fx + dz * fz) / dd > 0.5) {
         audio.play('parry', { volume: 0.45, rate: 0.55 }); // clank — blocked
         this._pop = 0.1;
         this._blockedOnce = true;
@@ -1880,9 +1890,30 @@ export class BoneWarden extends SkeletonBase {
 
     if (this.state === 'chase') {
       this._play('walk');
-      this.chaseToward(dt, dx, dz, d, 1.35);
+      // TURN-CLAMPED, NOT SNAP-FACED. chaseToward snaps rotation to the player
+      // every frame — infinite turn rate — and the Warden front-blocks a ±60°
+      // cone whenever his shield is up, which is ALL of chase and both
+      // telegraphs. Snap-facing + front-block meant every hit from every angle
+      // was "frontal": flanking him was mathematically impossible, which is
+      // exactly dad's "I as an adult had a hard time getting around to his
+      // back". He now turns like the old giant he is — 1.6 rad/s, slower than
+      // a Shieldling's 2.0 — and lumbers at 1.15 u/s, so a circling child
+      // genuinely gets behind the shield. (Pattern from SkeletonShield above;
+      // chaseToward itself is untouched — the minions share it.)
+      if (d > 0.01) {
+        const want = Math.atan2(dx, dz);
+        let delta = want - this.root.rotation.y;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        this.root.rotation.y += Math.max(-1.6 * dt, Math.min(1.6 * dt, delta));
+        const s = this._moveSolved(
+          this.x + Math.sin(this.root.rotation.y) * 1.15 * dt,
+          this.z + Math.cos(this.root.rotation.y) * 1.15 * dt);
+        this.root.position.x = s.x;
+        this.root.position.z = s.z;
+      }
       this.attackTimer -= dt;
-      if (this.attackTimer <= 0 && d < 3.0) { // giant reach (scale 1.1)
+      if (this.attackTimer <= 0 && d < 3.0) { // giant reach
         if (this.swings >= 3) {
           this.state = 'tired';
           this.stateT = 0;
@@ -1900,8 +1931,12 @@ export class BoneWarden extends SkeletonBase {
         }
       }
     } else if (this.state === 'chop_tele') {
-      // 0.9s: the danger arc fades in where the axe will land
-      const f = Math.min(1, this.stateT / 0.9);
+      // 1.1s: the danger arc fades in where the axe will land. Was 0.9s —
+      // lengthened with every other window (dad: "slightly slower") so a
+      // 7-year-old's read-then-move actually fits inside it; his facing is
+      // frozen from the moment the telegraph starts, so this IS the flank
+      // window.
+      const f = Math.min(1, this.stateT / 1.1);
       this.dangerRing.position.set(this.x, this.world.deckY + 0.02, this.z);
       // THE ARC POINTS WHERE THE AXE GOES. This was `-rotation.y + ...`, which
       // MIRRORS the heading instead of rotating it: the mesh is laid flat by
@@ -1913,7 +1948,7 @@ export class BoneWarden extends SkeletonBase {
       // from the swing. A child dodging by it was being sent INTO the axe.
       this.dangerRing.rotation.z = this.root.rotation.y - Math.PI / 2 - CHOP_ARC / 2;
       this.dangerRing.material.opacity = f * 0.55;
-      if (this.stateT >= 0.9) {
+      if (this.stateT >= 1.1) {
         this.state = 'chop';
         this.stateT = 0;
         this._play('chop', 0.06, { once: true });
@@ -1928,7 +1963,9 @@ export class BoneWarden extends SkeletonBase {
         this._swingDamage(player, 130, 2.9, 1.5); // giant's axe reach
         audio.play('slam', { volume: 0.5, rate: 1.4 });
       }
-      if (this.stateT > 0.8) { this.state = 'chase'; this._chopHit = false; this.swings++; this.attackTimer = 1.1; }
+      // recovery lengthened 0.8→1.15s and the gap to his next swing 1.1→1.5s:
+      // the post-chop opening is the punish a flanking child was promised
+      if (this.stateT > 1.15) { this.state = 'chase'; this._chopHit = false; this.swings++; this.attackTimer = 1.5; }
     } else if (this.state === 'spin_tele') {
       // 1.0s: full-circle warning ring
       const f = Math.min(1, this.stateT / 1.0);
@@ -1947,15 +1984,16 @@ export class BoneWarden extends SkeletonBase {
         this._spinHit = true;
         this._swingDamage(player, 360, 2.6, 1.5); // giant's full-circle sweep
       }
-      if (this.stateT > 1.1) {
+      if (this.stateT > 1.45) {
         this.state = 'chase'; this._spinHit = false; this.spinRing.material.opacity = 0;
-        this.swings++; this.attackTimer = 1.3;
+        this.swings++; this.attackTimer = 1.7;
       }
     } else if (this.state === 'tired') {
-      // ~2.6s wheeze — the punish window (double damage would need a stun;
-      // being wide open is reward enough for kids)
+      // ~3.4s wheeze — the punish window (double damage would need a stun;
+      // being wide open is reward enough for kids). Lengthened from 2.6s with
+      // the rest of dad's "slightly slower" pass.
       this.root.position.y = Math.sin(this.stateT * 18) * 0.01;
-      if (this.stateT > 2.6) { this.state = 'chase'; this.attackTimer = 0.8; this.root.position.y = 0; }
+      if (this.stateT > 3.4) { this.state = 'chase'; this.attackTimer = 1.1; this.root.position.y = 0; }
     }
 
     if (this.state === 'chase') this.contact(player, 1);
