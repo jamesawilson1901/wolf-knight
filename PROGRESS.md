@@ -1,3 +1,31 @@
+# FIXING (dev, unshipped) — DAD'S TWO PLAY REPORTS ON THE LIVE v3.50.0 BUILD:
+#   BUG 1 (map soft-lock): opening the map had no way back — the ✓ Done button
+#     sat below a non-scrolling centered .panel on a phone screen, so the only
+#     escape was to kill the game. FIX index.html .panel: overflow-y:auto +
+#     justify-content:safe center + safe-area padding. VERIFIED real-play at a
+#     220px viewport (probe-map-close.mjs): content overflows, Done reachable
+#     after scroll, click resumes the game (clock ticks). PASS.
+#   BUG 2 (Level 2 loops forever): "talk to the spirit, stomp the plate, then the
+#     new rooms just loop back with nothing to do." ROOT CAUSE: Spoke C's last
+#     room (vc3) ends in an ACTION (burn the shoulder pin), not a door — but the
+#     lost-child guide (route.js nextRoom) pointed Pip at the loop-back door,
+#     walking the child PAST the unburned pin and back to the hub; and unlike the
+#     rattle plate the pin had no immediate proximity nudge (only a 22s linger).
+#     A rock-pile silhouette also reads as an EARTH-stomp target — the one wolf
+#     the child does NOT have yet (it is this boss's reward). FIX:
+#       - main.js guideTarget(): in a spoke's last room, target the pending
+#         lantern/plate/pin while its milestone is undone; fall through to the
+#         door once done. Pip now leads TO the objective, not past it.
+#       - main.js: immediate pin_hint on approach (mirrors the rattle plate);
+#         narration.js pin_hint names the FIRE verb and what it opens.
+#       - menus.js map: Stoneroot list now the real vh/va3/vb3/vc3/vz ids so the
+#         "⭐ You are here" star works (retired e1/e2/e3 never matched).
+#     VERIFIED real-input (probe-l2-guide.mjs): guide → lantern/plate/pin (not a
+#     door), pin_hint speaks on approach, real fire slam burns the pin ->
+#     handDown, guide then leads back to the hub. PASS. Greybox: verify-guide,
+#     verify-vault, verify-level2-hub, verify-level2-progress all PASS.
+#     PENDING: run-l2 full real-play, verify-all --par, ship as v3.51.0.
+#
 # SHIPPED v3.50.0 — main 16e07c0, Pages build SUCCESS (API-confirmed 11:22Z)
 # L5 Stormreach + L6 Sunken Vale + L7 Shadow Court — THE GAME IS COMPLETABLE
 # END TO END (playthrough suite walks all 7 regions + frees Grimm). Boss 1x

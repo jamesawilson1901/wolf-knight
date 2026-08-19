@@ -286,10 +286,15 @@ export class Menus {
       { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
     ]);
     if (regionCleared('ember') || state.region === 'stoneroot') {
+      // The real Stoneroot: the Great Vault hub and its three spokes, then the
+      // Warden's Crypt. Room ids match the live rooms (js/level2.js) so "⭐ You
+      // are here" lights up — the retired e1/e2/e3 ids never matched anything.
       addRegion('⛰️ Stoneroot Caverns', [
-        { id: 'e1', name: 'Cavern Gate', icons: '💀🕯️' },
-        { id: 'e2', name: 'The Deep Hall', icons: '🪨⚙️' },
-        { id: 'e3', name: 'Warden’s Crypt', icons: state.flags.wardenDefeated ? '🪨✓' : '💀' },
+        { id: 'vh', name: 'The Great Vault', icons: '🏛️🔦' },
+        { id: 'va3', name: 'Petra’s Shrine', icons: '🔥🕯️' },
+        { id: 'vb3', name: 'The Bone Quarry', icons: '💀🔔' },
+        { id: 'vc3', name: 'The Sunken Stair', icons: '💧🪵' },
+        { id: 'vz', name: 'Warden’s Crypt', icons: state.flags.wardenDefeated ? '🪨✓' : '💀' },
       ]);
     }
     // the mystery log: promises the world made ("we'll come back")

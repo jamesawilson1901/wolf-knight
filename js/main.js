@@ -536,7 +536,7 @@ const GATE_HINTS = [
   { marker: 'practiceCracks',    form: 'earth_wolf',   line: 'crack_prompt' },
   { marker: 'developCracks',     form: 'earth_wolf',   line: 'crack_prompt' },
   // Stoneroot is played with FIRE now — earth is its boss's reward.
-  { marker: 'pinSpot',           form: 'fire_wolf',    line: 'burn_prompt' },
+  { marker: 'pinSpot',           form: 'fire_wolf',    line: 'pin_hint' },
   { marker: 'rattlePlate',       form: 'fire_wolf',    line: 'rattle_hint' },
   { marker: 'relightSpot',       form: 'fire_wolf',    line: 'brazier_hint' },
   { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
@@ -598,6 +598,16 @@ function progressSnapshot() {
 // switch is kept underneath for Frostpeak, which is still the old build, and
 // for the Den — and it will shrink to nothing as the last rooms are rebuilt.
 function guideTarget() {
+  // LEVEL 2 — the way on from a spoke's last room is an ACTION on an object, not
+  // a door. Until the lantern is lit / the plate rung / the pin burned, send Pip
+  // TO that object; `onwardSpot` would otherwise trot him back to the hub past
+  // the very thing the child came to do — and the trail LEADING AWAY from the
+  // objective is what turned dad's seven-year-old's Spoke C into a loop. Once the
+  // milestone lands, these fall through and the door target takes over.
+  const vm = world.markers || {};
+  if (vm.relightSpot && !WS.get('vault', 'spark'))   return { x: 0, z: -1.1 };  // the cold lantern
+  if (vm.rattlePlate && !WS.get('vault', 'drained')) return { x: vm.rattlePlate.x, z: vm.rattlePlate.z };
+  if (vm.pinSpot && !WS.get('vault', 'handDown'))    return { x: vm.pinSpot.x, z: vm.pinSpot.z };
   const onward = onwardSpot(world);
   if (onward) return onward;
   const f = state.flags;
@@ -1001,10 +1011,21 @@ function narrationTriggers(dt, t) {
       persist();
     }
   }
-  // THE SHOULDER PIN: the last thing holding the titan's arm up.
-  if (m.pinSpot && !WS.get('vault', 'handDown') && state.flags.burned.l2_vc3_pin) {
-    if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
-    persist();
+  // THE SHOULDER PIN: the last thing holding the titan's arm up. It is a CHARRED
+  // post standing dead-centre of Spoke C's last room, and burning it is what
+  // opens the crypt back in the hub — but a rock-pile silhouette reads as an
+  // EARTH-stomp target, the one wolf the child does NOT have yet (it is the
+  // boss's reward). So the moment they walk up to it, Pip names the fire verb —
+  // the same immediate nudge the rattle plate gets — instead of leaving them to
+  // linger 22 seconds for the stuck-hint. Without this a child does Spoke C,
+  // never realises the post is theirs to burn, and loops back to the hub: the
+  // exact "new rooms just loop back with nothing to do" dad reported.
+  if (m.pinSpot && !WS.get('vault', 'handDown')) {
+    if (state.formsUnlocked.includes('fire_wolf') && nearSpot(m.pinSpot, 3.2)) narration.say('pin_hint');
+    if (state.flags.burned.l2_vc3_pin) {
+      if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
+      persist();
+    }
   }
 
   // -------------------------------------------------------------------------

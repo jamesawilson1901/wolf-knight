@@ -115,6 +115,11 @@ export const LINES = {
   guard_broken: { voice: 'pip', text: 'His guard is down — GET HIM!' },
   // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
+  // LEVEL 2 — Spoke C's shoulder pin. A CHARRED post, not a cracked pile: the
+  // child has the Fire Wolf, not the Earth Wolf, so the honest line names FIRE
+  // and says what it opens — dad's seven-year-old walked this room in a loop
+  // because nothing told them the black post was theirs to burn.
+  pin_hint: { voice: 'pip', text: 'That burnt black post is stuck fast! Be the Fire Wolf and SLAM it — then the giant’s door swings open!', repeat: true },
   // The encounter seal (js/world.js). A room with real foes in it shuts behind
   // you; these are the two ways it opens again.
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
