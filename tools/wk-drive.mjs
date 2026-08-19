@@ -49,8 +49,14 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
     }, expr),
     async jump(room, forms) {
       await page.evaluate(({ room, forms }) => window.__wkJump(room, forms), { room, forms });
-      await page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1,
-        room, { timeout: 60000 });
+      // hearts>1 lands mid-fade: loadRoom() sets state.room/rebuilds world,
+      // heals the player, THEN fades the black overlay back out — hearts
+      // recovers before that fade-in finishes. A caller who screenshots the
+      // instant this resolves can catch the overlay still opaque: a flat
+      // frame that reads as a render failure when the render was fine. Wait
+      // for the same `gates.transitioning` flag walkTo() already respects.
+      await page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
+        && !window.__wk.gates.transitioning, room, { timeout: 60000 });
     },
     // Closed-loop walk to (x,z) via real keyboard events. Returns why it stopped.
     async walkTo(tx, tz, { timeout = 30, arrive = 0.9, onTick } = {}) {

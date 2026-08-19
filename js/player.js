@@ -1668,13 +1668,6 @@ export class Player {
     if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
       if (effects && effects.punch) effects.punch(0.18, 0.2);
     }
-    // ...and TETHER a boulder: the lash is a rope, so it PULLS. This is the
-    // Level 3 twist, and it is a permanent part of the tool once discovered —
-    // not a trick that only works in the room that taught it.
-    if (world.tetherAt(tip.x, tip.z, 1.9, px, pz) > 0) {
-      audio.play('gate-creak', { volume: 0.6, rate: 0.7 });
-      if (effects && effects.punch) effects.punch(0.22, 0.24);
-    }
     // the whip itself: a green arc of leaf-bursts down the line
     for (let i = 1; i <= 4; i++) {
       const f = i / 4;

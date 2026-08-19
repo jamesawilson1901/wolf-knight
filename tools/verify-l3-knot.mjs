@@ -1,8 +1,15 @@
-// A2b — THE KNOT: the lash HOLDS.
+// THE KNOT — now an honest push-and-plate room, same shared furniture as
+// Stoneroot and Frostpeak (js/gates.js pushableBoulder + plateSwitch).
 //
-// Drives the real verb (player.trySpecial as the Verdant Wolf) and the real
-// boulder physics (world.updateBoulders). Nothing here moves a boulder or
-// presses a plate by hand.
+// It used to be a lash-TETHER puzzle whose own fiction ("no floor behind the
+// boulder") was never enforced — the channel was open at its west end the
+// whole time, so a child could walk around and push it home regardless. Dad,
+// from play: "the lashing the boulder is weak and it doesn't work properly.
+// get rid of it." The tether verb also belonged to a wolf granted several
+// districts too early. Gone: tetherAt (world.js), the tether call in
+// player.js, the channel walls, and the false premise. What is left is what
+// was always physically true. Drives the real push (world.updateBoulders),
+// not a hand-set position.
 import { chromium } from 'playwright';
 const errors = [];
 const check = (n, ok, d) => { console.log((ok?'✓ ':'✗ ')+n, d!==undefined?JSON.stringify(d):''); if(!ok) errors.push(n); };
@@ -18,22 +25,29 @@ await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
 await page.evaluate(() => { const g=window.__game;
   g.state.settings.captions=false; g.state.settings.voice=false; g.state.settings.sfxVol=0;
-  g.state.formsUnlocked=['knight','dark_wolf','fire_wolf','earth_wolf','verdant_wolf'];
-  g.state.form='verdant_wolf'; g.player.iframes=99999; g.state.flags.plates={}; });
+  // KNIGHT ONLY — verdant is not required here any more, and the point of
+  // this room's redesign is that it never was physically. Prove it with a
+  // form that cannot lash at all.
+  g.state.formsUnlocked=['knight','dark_wolf','fire_wolf','earth_wolf'];
+  g.state.form='knight'; g.player.iframes=99999; g.state.flags.plates={}; });
 const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;
   g.state.room=r; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true});}, room);
-  try { await page.waitForFunction((r)=>window.__game.state.room===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
+  try { await page.waitForFunction((r)=>window.__game.world&&window.__game.world.roomId===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
 
-console.log('\n── the room sets up the twist ──────────────────────────');
+console.log('\n── the room sets up an honest push puzzle ──────────────');
 await page.evaluate(() => { window.__game.state.flags.plates = {}; });
 await go('tkn');
 const setup = await page.evaluate(() => {
   const w = window.__game.world;
   return { boulders: w.boulders.length, plates: (w.plates||[]).length,
-           doors: w.doors.map((d)=>({to:d.to, gated:!!d.when})) };
+           doors: w.doors.map((d)=>({to:d.to, gated:!!d.when})),
+           noTether: typeof w.tetherAt !== 'function',
+           noMarkers: !w.markers.knotTether && !w.markers.knotSnare };
 });
 check('the Knot has a boulder and a plate', setup.boulders === 1 && setup.plates === 1, setup);
 check('the way onward is GATED on the plate', setup.doors.some((d)=>d.to==='tc3' && d.gated), setup);
+check('the tether is gone entirely — no world.tetherAt, no leftover markers',
+  setup.noTether && setup.noMarkers, setup);
 const shut = await page.evaluate(() => {
   const w = window.__game.world;
   const d = w.doors.find((x)=>x.to==='tc3');
@@ -41,75 +55,36 @@ const shut = await page.evaluate(() => {
 });
 check('...and that gate is shut before the puzzle is solved', shut === false, { open: shut });
 
-console.log('\n── the lash PULLS the boulder (the twist) ──────────────');
-const pulled = await page.evaluate(async () => {
-  const g = window.__game;
-  const s = () => new Promise((r)=>requestAnimationFrame(r));
-  const bo = g.world.boulders[0];
-  const before = { x: bo.x, z: bo.z };
-  // stand EAST of the boulder, facing west at it — the only reachable side
-  g.player.root.position.set(bo.x + 2.6, g.player.root.position.y, bo.z);
-  g.player.root.rotation.y = -Math.PI / 2;      // forward = (sin, cos) = (-1, 0)
-  g.player.specialCooldown = 0; g.player.lockTime = 0;
-  g.state.form = 'verdant_wolf';
-  g.player.trySpecial(g.effects, g.world);
-  for (let i=0;i<4;i++) await s();
-  const slid = !!bo._slide;
-  for (let i=0;i<60;i++) g.world.updateBoulders(0.05, g.player);
-  return { before, after: { x: bo.x, z: bo.z }, slid };
-});
-check('lashing a boulder starts a slide', pulled.slid, pulled);
-check('the boulder moves TOWARD the lasher (east), not away',
-  pulled.after.x > pulled.before.x + 0.5, pulled);
-check('it moves on ONE axis — the same cardinal step as a push',
-  Math.abs(pulled.after.z - pulled.before.z) < 0.01, pulled);
-
-console.log('\n── pulling it onto the plate solves the room ───────────');
+console.log('\n── a KNIGHT (no verdant at all) can push it home ───────');
+// updateBoulders is the real physics: standing within reach for >0.12s
+// (b._lean) starts a cardinal step AWAY from the player, exactly the lean
+// mechanic a real walk into the boulder triggers. No lash, no form but
+// knight — proving the room never needed the tether. The boulder (-8,2) and
+// plate (6,2) share a Z — this is a straight EAST push, one axis, the whole
+// way; no 2D pathing needed, and inventing any adds ways to misfire it.
 const solved = await page.evaluate(async () => {
   const g = window.__game;
-  const s = () => new Promise((r)=>requestAnimationFrame(r));
-  const bo = g.world.boulders[0];
   const plate = g.world.plates[0];
-  // Follow it. The vine only reaches 3.8u, so a child pulls, steps back, and
-  // pulls again — standing at the plate and lashing from there reaches nothing.
-  for (let n = 0; n < 20 && !plate.pressed; n++) {
-    g.player.root.position.set(bo.x + 2.6, g.player.root.position.y, bo.z);
-    g.player.root.rotation.y = -Math.PI / 2;
-    g.player.specialCooldown = 0; g.player.lockTime = 0;
-    g.player.trySpecial(g.effects, g.world);
-    for (let i=0;i<3;i++) await s();
-    for (let i=0;i<60;i++) g.world.updateBoulders(0.05, g.player);
+  for (let n = 0; n < 40 && !plate.pressed; n++) {
+    const b = g.world.boulders[0];
+    // stand due WEST of the boulder, on its exact Z — dx>0, dz=0, so the
+    // cardinal-snap in updateBoulders can only choose +x (east)
+    g.player.root.position.set(b.x - 1.0, g.player.root.position.y, b.z);
+    // one full step (1.2u @ 2.4u/s = 0.5s game time) plus the 0.12s lean
+    // trigger — give each lean room to complete before repositioning
+    for (let i = 0; i < 5; i++) g.world.updateBoulders(0.15, g.player);
   }
+  const bo = g.world.boulders[0];
   return { pressed: plate.pressed, flag: !!g.state.flags.plates.l3_knot_p1,
            bx: +bo.x.toFixed(2), bz: +bo.z.toFixed(2) };
 });
-check('the boulder can be pulled onto the plate', solved.pressed, solved);
+check('the boulder can be pushed onto the plate with knight alone', solved.pressed, solved);
 check('...and the plate records itself in the save flags', solved.flag, solved);
 const nowOpen = await page.evaluate(() => {
   const d = window.__game.world.doors.find((x)=>x.to==='tc3');
   return d.when ? d.when() : true;
 });
 check('solving the puzzle OPENS the way onward', nowOpen === true, { open: nowOpen });
-
-console.log('\n── the lash SNARES (the other half) ────────────────────');
-await go('t3b');
-const snare = await page.evaluate(async () => {
-  const g = window.__game;
-  const s = () => new Promise((r)=>requestAnimationFrame(r));
-  const foe = (g.world.enemies||[]).find((e)=>!e.dead);
-  if (!foe) return { none: true };
-  foe.hp = 99; foe.maxHp = 99;
-  // square on: stand due south, face north straight at it
-  g.player.root.position.set(foe.x, g.player.root.position.y, foe.z + 2.2);
-  g.player.root.rotation.y = Math.PI;
-  g.player.specialCooldown = 0; g.player.lockTime = 0;
-  g.state.form = 'verdant_wolf';
-  g.player.trySpecial(g.effects, g.world);
-  for (let i=0;i<4;i++) await s();
-  return { stun: foe.stunned || 0, snared: !!foe.snaredUntil };
-});
-check('a square-on lash SNARES a foe (a long hold, not a graze)',
-  !snare.none && snare.snared && snare.stun > 1.5, snare);
 
 console.log(errors.length ? `\n${errors.length} PROBLEM(S):\n`+errors.join('\n') : '\nALL CLEAN.');
 await b.close();

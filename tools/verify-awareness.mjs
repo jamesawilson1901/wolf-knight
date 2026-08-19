@@ -39,7 +39,11 @@ for (let a = 0; a < 8; a++) {
   await page.evaluate(() => { const g = window.__game;
     g.state.room = 'xh'; g.player.iframes = 0; g.player.hearts = 0.5;
     g.player.hurt(99, { pierceDefend: true }); });
-  try { await page.waitForFunction(() => window.__game.state.room === 'xh'
+  // world.roomId (stamped by the room's own builder, the rebuild's last
+  // step) is the identity a race can't forge — state.room flips the instant
+  // a jump is requested, before that rebuild even starts. See
+  // verify-level3.mjs for the false failure this raced into once.
+  try { await page.waitForFunction(() => window.__game.world && window.__game.world.roomId === 'xh'
     && window.__game.player.hearts > 1, null, { timeout: 45000 }); break; } catch { /* retry */ }
 }
 

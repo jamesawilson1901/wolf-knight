@@ -159,16 +159,25 @@ export const RING_PATH = [
   'tgl', 't1a',
 ];
 
-// The four-step teach for the VERDANT WOLF's vine-lash.
+// LEVEL 3'S SPINE, told straight: verdant is no longer taught before Sylva —
+// it is HER reward (dad's law: each wolf is locked behind its own element's
+// boss, and the next level runs on it). tc2's log bridge and t4b's great
+// thorn-knot, both hard spine gates, now burn with the wolf the child already
+// holds from Ember Hollow. What verdant still teaches — the shrine promise,
+// the regrowing tangles, the vine-snare on a hound — moves to AFTER the fight,
+// optional return content on the way back through, same as every other
+// region's post-boss content.
 export const TEACH = [
-  { step: 'introduce', room: 'tsh', marker: 'teachBramble',
-    what: 'the shrine clearing — one bramble across a doorway, nothing else' },
-  { step: 'develop', room: 'tc2', marker: 'developBrambles',
-    what: 'the way out — brambles that grow back, and a log swung into a bridge' },
-  { step: 'twist', room: 'tkn', marker: 'knotTether',
-    what: 'THE KNOT — the lash does not only cut, it HOLDS' },
-  { step: 'conclude', room: 't4b', marker: 'thornKnot',
-    what: "the great thorn-knot that opens the Glade, then Sylva's own thorns" },
+  { step: 'promise', room: 'tsh', marker: 'sparkSpot',
+    what: "Sylva's shrine — cold stone naming the fight ahead, nothing to cut" },
+  { step: 'spine (fire)', room: 'tc2', marker: 'logBridge',
+    what: 'the way out — a scorched rope, burned same as any Level 1 tangle' },
+  { step: 'spine (push)', room: 'tkn', marker: 'plateSpots',
+    what: 'an honest push-and-plate room — no verb the child does not have' },
+  { step: 'spine (fire), boss door', room: 't4b', marker: 'thornKnot',
+    what: 'the great thorn-knot burns away — the glade, and Sylva, are ahead' },
+  { step: 'reward + return (verdant)', room: 'tgl → back through the ring',
+    what: "Sylva's grant, then the lash on tc2's regrow tangles and t3a/t4a's chords" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -283,14 +292,48 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = nul
     m.position.set(x, 0.8, z);
     g.add(m);
   } else {
-    const n = Math.max(2, Math.round(Math.max(w, d) / 1.1));
+    // A REAL TANGLE, NOT A ROW OF PEBBLES. This used to clone bush-large.glb
+    // (measured 0.37 x 0.24 x 0.34u) at scale 1.1 -> a 0.27u-tall row of ankle-
+    // high blobs standing in for a doorway-sized collider. Dad: "the vines
+    // look nothing like vines... so tiny you can't see them and just think the
+    // game is glitching." The Quaternius forest kit vendors real bushes and
+    // bare-branch trees (loadWoodKit above) that had been loaded and used
+    // ZERO times. Bush_2_C (1.32u) and Bush_4_B (0.99 x 0.74u) give body that
+    // actually fills the footprint; Tree_Bare pieces (2.6-3.8u, floor-pivot)
+    // laid low as thorny canes read at a glance as "this is not a tree, it is
+    // thorns across the door". Every piece measured against its own pivot
+    // first (the stairs lesson) — no guessing.
+    const along = w >= d;
+    const span = Math.max(w, d);
+    const n = Math.max(2, Math.round(span / 1.3));
     for (let i = 0; i < n; i++) {
       const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
-      const piece = tinted(woodKit.bush, 'bramble', colour, 0.85 + (i % 3) * 0.1);
-      piece.position.set(x + (w > d ? f * w : 0), 0, z + (d >= w ? f * d : 0));
+      const bushKey = i % 2 === 0 ? 'bushQ1' : 'bushQ2';   // Bush_2_C / Bush_4_B alternate
+      const bushScale = (bushKey === 'bushQ1' ? 1.35 : 1.75) * (0.85 + (i % 3) * 0.12);
+      const piece = tinted(woodKit[bushKey], 'bramble', colour, 0.85 + (i % 3) * 0.1);
+      piece.position.set(x + (along ? f * w : (i % 2 - 0.5) * 0.5),
+        0, z + (along ? (i % 2 - 0.5) * 0.5 : f * d));
       piece.rotation.y = i * 1.9;
-      piece.scale.setScalar(1.1);
+      piece.scale.setScalar(bushScale);
       g.add(piece);
+    }
+    // one or two bare-branch canes standing THROUGH the bushes, tinted
+    // thorn-dark — the silhouette that says "thorns", not "hedge", visible
+    // over the bush tops rather than buried in them. Kept upright (a small
+    // random lean, not laid flat) so the same code is correct whichever way
+    // the gate is long — no risk of a lay-down rotation being right for one
+    // orientation and wrong for the other.
+    const caneCount = span > 3.5 ? 2 : 1;
+    for (let i = 0; i < caneCount; i++) {
+      const f = caneCount === 1 ? 0 : (i - 0.5) * 0.6;
+      const caneKey = i % 2 === 0 ? 'bareQ1' : 'bareQ2';
+      const raw = caneKey === 'bareQ1' ? 2.86 : 3.84;
+      const cane = tinted(woodKit[caneKey], 'thornCane', 0x2f4a1e, 0.8);
+      cane.position.set(x + (along ? f * w : (i - 0.5) * 0.4),
+        0, z + (along ? (i - 0.5) * 0.4 : f * d));
+      cane.rotation.set(0.12 * (i ? -1 : 1), i * 2.1, 0.08 * (i ? 1 : -1));
+      cane.scale.setScalar(1.7 / raw);    // ~1.7u — over the bushes, under the canopy
+      g.add(cane);
     }
   }
   world.add(g);
@@ -317,15 +360,16 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = nul
   return g;
 }
 
-// THE LOG BRIDGE — the other half of DEVELOP. A gap you cannot walk, a log
-// lying beside it, and a bramble rope holding the log back. Lash the rope and
-// the log swings down into place and becomes the crossing.
-//
-// It is the same verb as cutting a tangle, used on something that is not a
-// tangle — which is the bridge (sorry) between "the lash cuts" and the Knot's
-// "the lash also HOLDS".
+// THE LOG BRIDGE — a gap you cannot walk, a log lying beside it, and a
+// holding-rope. It USED to be a verdant-lash cuttable, taught before the
+// child had earned the wolf that opens it. Sylva's grant now lands AFTER her
+// fight (see the ceremony in main.js), so the spine has to run on the form
+// the child actually holds this early: fire. The rope is a scorched hemp tie,
+// not a green vine — burn it and the log still swings the same way. WS
+// bookkeeping stays a 'cut_' key for save-compat with the region's other
+// chords (rootCut/logDown) that DO stay verdant-locked, post-boss content.
 function logBridge(world, id, x, z) {
-  const done = alreadyCut(REGION, id);
+  const done = state.flags.burned[id];
   const GAP_W = 14, GAP_D = 3.2;
 
   // the gap itself: impassable until the log lands
@@ -351,7 +395,7 @@ function logBridge(world, id, x, z) {
   }
 
   // upright, off to the side, obviously not yet a bridge — and HELD UP by the
-  // rope below it, so it is meant to be off the ground until that rope is cut.
+  // rope below it, so it is meant to be off the ground until that rope burns.
   // Named so the grounding check knows the difference between hanging and
   // hovering.
   log.name = 'hangingLog';
@@ -359,22 +403,43 @@ function logBridge(world, id, x, z) {
   log.rotation.set(0, 0.3, 0.5);
   world.add(log);
 
-  // the rope: a cuttable, standing where the lash can reach it from the safe side
+  // the rope: a scorched hemp-and-branch tie, burnable, standing where the
+  // slam can reach it from the safe side. Real timber (logStack), charred
+  // dark so fire reads — the same silhouette family as L2's burn pin.
   const ropeZ = z - GAP_D / 2 - 1.6;
-  const rope = GREY()
-    ? new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5),
-        new THREE.MeshStandardMaterial({ color: 0x6fae4a, emissive: 0x6fae4a, emissiveIntensity: 0.4 }))
-    : tinted(woodKit.bush, 'rope', 0x6fae4a);
-  rope.position.set(x + GAP_W / 2 - 2, GREY() ? 0.9 : 0, ropeZ);
-  world.add(rope);
+  const ropeX = x + GAP_W / 2 - 2;
+  const ropeGroup = new THREE.Group();
+  if (GREY()) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x2c211a, emissive: 0xff7a2d, emissiveIntensity: 0.2 }));
+    m.position.y = 0.9;
+    ropeGroup.add(m);
+  } else {
+    const strut = tinted(woodKit.logStack, 'rope', 0x3a2a1c, 0.9);
+    strut.rotation.z = 0.08;
+    strut.scale.set(1.6, 2.6, 1.6);
+    ropeGroup.add(strut);
+    const glint = new THREE.Mesh(
+      new THREE.RingGeometry(0.75, 1.0, 18),
+      new THREE.MeshBasicMaterial({ color: 0xff7a2d, transparent: true, opacity: 0.34,
+        side: THREE.DoubleSide, depthWrite: false })
+    );
+    glint.rotation.x = -Math.PI / 2;
+    glint.position.y = world.deckY + 0.04;
+    ropeGroup.add(glint);
+  }
+  ropeGroup.position.set(ropeX, 0, ropeZ);
+  world.add(ropeGroup);
 
-  const collider = { minX: rope.position.x - 0.6, maxX: rope.position.x + 0.6,
-    minZ: ropeZ - 0.6, maxZ: ropeZ + 0.6 };
+  const collider = { minX: ropeX - 0.7, maxX: ropeX + 0.7,
+    minZ: ropeZ - 0.7, maxZ: ropeZ + 0.7 };
   world.boxColliders.push(collider);
 
-  registerCuttable(world, {
-    id, x: rope.position.x, z: ropeZ, region: REGION, group: rope, collider,
-    onCut: () => {
+  world.burnables.push({
+    id, x: ropeX, z: ropeZ, hitR: 1.3, group: ropeGroup, collider,
+    clear: () => {
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
       // the log SWINGS — a second of movement, then it is the road
       const from = { y: log.position.y, rz: log.rotation.z, ry: log.rotation.y };
       let k = 0;
@@ -387,15 +452,16 @@ function logBridge(world, id, x, z) {
         if (k >= 1) {
           if (!GREY()) log.scale.set(2.2, 1.4, 5.2);
           // the gap becomes walkable at the moment the log lands, not before
-          const i = world.boxColliders.findIndex((b) =>
+          const gi = world.boxColliders.findIndex((b) =>
             b.minX === x - GAP_W / 2 && b.minZ === z - GAP_D / 2);
-          if (i >= 0) world.boxColliders.splice(i, 1);
+          if (gi >= 0) world.boxColliders.splice(gi, 1);
           world.addSafe(x - GAP_W / 2, x + GAP_W / 2, z - GAP_D / 2, z + GAP_D / 2);
         }
       });
+      if (WS.complete(REGION, 'cut_' + id)) bigToastSafe('🔥 The rope burns through — the log swings down!');
     },
   });
-  world.markers.logBridge = { x: rope.position.x, z: ropeZ };
+  world.markers.logBridge = { x: ropeX, z: ropeZ };
   return log;
 }
 
@@ -872,10 +938,15 @@ export async function buildTsh(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tc2', { x: 0, z: 7, angle: Math.PI });
 
   world.markers.shrineSpot = { x: 0, z: -2 };
-  world.markers.sparkSpot = { x: 0, z: -2, spirit: 'sylva', grants: 'verdant_wolf' };
-  // the one bramble, across the way OUT — so the first cut is also the exit
-  world.markers.teachBramble = { x: 0, z: -5 };
-  bramble(world, 'l3_tsh_teach', 0, -5, 3.0, 1.2);
+  // NO `grants` HERE ANY MORE (dad's law, applied region by region: "each
+  // elemental wolf is locked behind an elemental boss fight of that element").
+  // Sylva's shrine is a PROMISE now — cold stone naming the fight ahead,
+  // exactly like the Kiln shrine in Ember Hollow — and the real grant lives
+  // in main.js, watching state.flags.sylvaDefeated (mirrors the Fire Wolf's
+  // ceremony). The doorway bramble that used to gate this room is gone too:
+  // it was the child's ONLY verdant-locked obstacle before they had verdant,
+  // and its job (introduce the cut) no longer has anywhere to live pre-boss.
+  world.markers.sparkSpot = { x: 0, z: -2, spirit: 'sylva' };
   if (!GREY()) {
     const ped = tinted(woodKit.rockLC, 'shrine', 0x6f9e55);
     ped.position.set(0, 0, -2);
@@ -1056,26 +1127,18 @@ export async function buildTkn(scene) {
     { when: () => !!state.flags.plates.l3_knot_p1 });
 
   // ---------------------------------------------------------------------
-  // THE TWIST, in one room: the lash is a ROPE.
-  //
-  // The boulder sits on the FAR side of a channel from the plate, and the
-  // channel's mouth is where a Thorn Hound patrols. Pushing is useless —
-  // there is no floor behind the boulder to push from. The only way it moves
-  // is toward you, which means the answer is the tool they have been cutting
-  // with for two districts, used the other way round.
-  //
-  // The hound is the second half of the same idea: lash it square-on and it
-  // is HELD, long enough to work. A child who tries to fight it first still
-  // wins, slower — the snare is the elegant answer, never the only one.
+  // THE KNOT — an honest push-and-plate room, the same shared furniture as
+  // Stoneroot and Frostpeak. It used to be a LASH-TETHER puzzle told the
+  // child pushing was impossible ("no floor behind the boulder"), but the
+  // channel was open at its west end the whole time — the room's own fiction
+  // was never enforced, and the tether verb it demanded belonged to the wolf
+  // Sylva had not yet granted. Dad: "the lashing the boulder is weak and it
+  // doesn't work properly. get rid of it." Gone: the tether, the channel
+  // walls that manufactured the false "can't push" premise, and the framing
+  // around them. What is left is what was always physically true — push the
+  // boulder onto the plate — now honest about it.
   // ---------------------------------------------------------------------
-  world.markers.knotTether = { x: -8, z: 2 };
-  world.markers.knotSnare = { x: 3, z: 3 };
   world.markers.houndSpots = [{ x: 3, z: 3, variant: 'thorn' }];
-
-  // the channel walls: no standing room behind the boulder, so it cannot be
-  // pushed east — the room teaches by making the old verb physically impossible
-  wallRun(world, -13, -1, -4, -1, D, 1.2);
-  wallRun(world, -13, 5, -4, 5, D, 1.2);
 
   if (!GREY()) {
     pushableBoulder(world, prepareModel, woodKit.rockLB, -8, 2);
@@ -1096,6 +1159,17 @@ export async function buildTkn(scene) {
     state.flags.plates.l3_knot_p1 = true;
   });
   world.markers.plateSpots = [{ x: 6, z: 2, id: 'l3_knot_p1' }];
+
+  // THE LANE ITSELF MUST STAY CLEAR. The boulder only ever travels the
+  // straight line from its start to the plate — but `world.blocked()` (which
+  // scatter/potSpots consult) only knows the boulder's STARTING point, not
+  // the ground it rolls across to get to the plate. A random breakable
+  // dropped mid-lane deflects the roll sideways on contact and the boulder
+  // then tracks that new heading in a dead straight line forever, skimming
+  // past the plate's capture radius without ever landing on it — the exact
+  // "physically impossible puzzle" dad flagged at Frostpeak, just found here
+  // by walking the room for real instead of assuming honest geometry.
+  for (let x = -8; x <= 7; x += 2.2) world.reserve(x, 2, 1.6, 'boulderLane');
 
   scatter(world, halfW, halfD, D, 144, 6, { spin: 1, kinds: ['logStack', 'rockLA'] });
   // THE KNOT is the puzzle room — the mechanic must stay readable, so it is dressed at the WALLS and nowhere near the middle.
@@ -1232,14 +1306,65 @@ export async function buildT4b(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tc4', { x: 0, z: 7, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 't4p', { x: 7.5, z: 0, angle: -Math.PI / 2 });
 
-  // TEACH 4 — CONCLUDE. The same cut, at a scale that changes a district:
-  // parting the great knot blooms the Bloomfall and opens the way to the glade.
+  // THE GREAT THORN-KNOT — the last thing standing between here and Sylva.
+  // A whole district's worth of dry, choking thorn, and it gates the boss
+  // door itself (tc4's north door checks WS 'knotCut'). It used to be a
+  // verdant-lash cuttable taught before the child had verdant — the exact
+  // thing dad's law forbids. Fire burns thorn as readily as it burns
+  // anything else this level, and "burn the great tangle" is the oldest verb
+  // in the book. WS key unchanged so a save already past this point needs no
+  // migration.
   world.markers.thornKnot = { x: 0, z: -7 };
-  bramble(world, 'l3_thornknot', 0, -7, 7.0, 2.0, false, () => {
-    if (WS.complete(REGION, 'knotCut')) {
-      bigToastSafe('🌸 The Bloomfall opens — the glade is ahead!');
+  {
+    const done = state.flags.burned.l3_thornknot;
+    const KX = 0, KZ = -7, KW = 7.0, KD = 2.0;
+    if (!done) {
+      const g = new THREE.Group();
+      if (GREY()) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(KW, 1.8, KD),
+          new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.9,
+            emissive: 0xff7a2d, emissiveIntensity: 0.18 }));
+        m.position.set(KX, 0.9, KZ);
+        g.add(m);
+      } else {
+        const n = 6;
+        for (let i = 0; i < n; i++) {
+          const f = i / (n - 1) - 0.5;
+          const key = i % 2 === 0 ? 'bareQ1' : 'bareQ2';
+          const raw = key === 'bareQ1' ? 2.86 : 3.84;
+          const piece = tinted(woodKit[key], 'thornknot', 0x2a1c12, 0.85 + (i % 3) * 0.08);
+          piece.position.set(KX + f * KW, 0, KZ + (i % 2 - 0.5) * 0.6);
+          piece.rotation.set(0.15 * (i % 2 ? -1 : 1), i * 1.7, 0);
+          piece.scale.setScalar(1.9 / raw);
+          g.add(piece);
+        }
+        const glint = new THREE.Mesh(
+          new THREE.RingGeometry(KW * 0.32, KW * 0.42, 24),
+          new THREE.MeshBasicMaterial({ color: 0xff7a2d, transparent: true, opacity: 0.3,
+            side: THREE.DoubleSide, depthWrite: false })
+        );
+        glint.rotation.x = -Math.PI / 2;
+        glint.position.set(KX, world.deckY + 0.04, KZ);
+        g.add(glint);
+      }
+      world.add(g);
+      const collider = { minX: KX - KW / 2, maxX: KX + KW / 2, minZ: KZ - KD / 2, maxZ: KZ + KD / 2 };
+      world.boxColliders.push(collider);
+      world.burnables.push({
+        // half the width, not the full width — hitR pads the burn radius by
+        // the object's own extent (the crackedPile/burnPin convention), and
+        // using the FULL 7.0u width here would let a slam land from 10u away
+        id: 'l3_thornknot', x: KX, z: KZ, hitR: Math.max(KW, KD) / 2, group: g, collider,
+        clear: () => {
+          const i = world.boxColliders.indexOf(collider);
+          if (i >= 0) world.boxColliders.splice(i, 1);
+          if (WS.complete(REGION, 'knotCut')) {
+            bigToastSafe('🔥 The great thorn-knot burns away — the glade is ahead!');
+          }
+        },
+      });
     }
-  });
+  }
   world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' },
     { x: 7, z: 5, variant: 'thorn' }];
   scatter(world, halfW, halfD, D, 152, 6, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });

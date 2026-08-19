@@ -124,11 +124,7 @@ export const LINES = {
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.
   bramble_teach: { voice: 'pip', text: 'Thorns in the way! Be the Verdant Wolf and LASH them — they snap right open.' },
   bramble_regrow: { voice: 'pip', text: 'Careful — these ones grow back! Cut and RUN, Kael.' },
-  log_rope: { voice: 'pip', text: 'That big log is tied up. Lash the rope and see what happens!' },
-  // THE KNOT — the twist. Name the DISCOVERY, never the button, and never the
-  // solution: "it pulls" is the idea; working out what to pull is the puzzle.
-  knot_tether: { voice: 'pip', text: 'You cannot get behind it to push… but your vine can PULL, Kael. Lash the rock!' },
-  knot_snare: { voice: 'pip', text: 'Lash the hound straight on — the vine will hold it still for you!' },
+  log_rope: { voice: 'pip', text: 'That big log is tied up with a burnt rope! Be the Fire Wolf and SLAM it!' },
   // A2c — the conclude step and the two chords. Each names what a child can
   // SEE, never what to press.
   rootwall_hint: { voice: 'pip', text: 'Look — light through the roots! Cut them and we can get back that way.' },

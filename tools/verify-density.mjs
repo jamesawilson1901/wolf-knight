@@ -68,8 +68,12 @@ const go = async (room) => {
       g.state.room = r; g.player.iframes = 0; g.player.hearts = 0.5;
       g.player.hurt(99, { pierceDefend: true }); }, room);
     try {
-      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
-        room, { timeout: 45000 });
+      // world.roomId (stamped by the room's own builder, the last step of an
+      // async rebuild) is the identity a race can't forge — state.room flips
+      // the instant a jump is requested, before that rebuild even starts.
+      // See verify-level3.mjs for the false-failure this raced into once.
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+        && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }
   }

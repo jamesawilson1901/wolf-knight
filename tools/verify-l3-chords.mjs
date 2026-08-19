@@ -21,7 +21,7 @@ await page.evaluate(() => { const g=window.__game;
   g.state.form='verdant_wolf'; g.player.iframes=99999; g.state.flags.world={}; });
 const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;
   g.state.room=r; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true});}, room);
-  try { await page.waitForFunction((r)=>window.__game.state.room===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
+  try { await page.waitForFunction((r)=>window.__game.world&&window.__game.world.roomId===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
 // lash a named cuttable, standing south of it and facing north
 const lash = (id) => page.evaluate(async (cid) => {
   const g = window.__game;
@@ -35,6 +35,22 @@ const lash = (id) => page.evaluate(async (cid) => {
   g.player.trySpecial(g.effects, g.world);
   for (let i=0;i<6;i++) await s();
   return { cut: c.cut };
+}, id);
+
+// slam a named burnable — the great thorn-knot is fire's now, not the lash's
+// (dad's law: verdant is Sylva's reward, so the pre-boss spine cannot ask for
+// it — the knot burns instead, the verb the child already holds)
+const slam = (id) => page.evaluate(async (bid) => {
+  const g = window.__game;
+  const s = () => new Promise((r)=>requestAnimationFrame(r));
+  const c = g.world.burnables.find((x)=>x.id===bid);
+  if (!c) return { missing: true };
+  g.state.form='fire_wolf';
+  g.player.root.position.set(c.x, g.player.root.position.y, c.z + 1.5);
+  g.player.specialCooldown = 0; g.player.lockTime = 0;
+  g.player.trySpecial(g.effects, g.world);
+  for (let i=0;i<6;i++) await s();
+  return { cut: c.burned };
 }, id);
 
 console.log('\n── the chords are SHUT before they are earned ──────────');
@@ -74,8 +90,8 @@ let open = await page.evaluate(() => {
 });
 check('the glade door is SHUT before the knot is parted', open === false, { open });
 await go('t4b');
-r = await lash('l3_thornknot');
-check('the great thorn-knot can be cut', r.cut === true, r);
+r = await slam('l3_thornknot');
+check('the great thorn-knot can be burned away', r.cut === true, r);
 ws = await page.evaluate(() => window.__game.WS.get('wild3','knotCut'));
 check('...and that records knotCut', ws === true);
 await go('tc4');

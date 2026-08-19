@@ -775,6 +775,23 @@ function narrationTriggers(dt, t) {
       persist();
     }
   }
+  // VERDANT IS SYLVA'S REWARD, THE SAME PATTERN AS FIRE (main.js:~904). boss.js
+  // pushes verdant_wolf into formsUnlocked the moment she falls; the ceremony
+  // — toast, narration, HOWTO, badge — lives here, watching the FLAG rather
+  // than the kill frame. That means a save from the old shrine-grant era
+  // (which already has verdant) passes straight through unnoticed, and an old
+  // save that somehow reached sylvaDefeated without it (the L3 cheat-jump
+  // table, or a future save-format edge) is repaired the moment it loads —
+  // exactly the self-healing property the Fire Wolf's grant already has.
+  if (state.flags.sylvaDefeated && !state.formsUnlocked.includes('verdant_wolf')) {
+    state.formsUnlocked.push('verdant_wolf');
+    effects.warmFlood();
+    narration.say('verdant_grant');
+    narration.say('verdant_howto');
+    ui.refreshBadge();
+    bigToast('🌿 The Verdant Wolf awakens!');
+    persist();
+  }
   if (state.flags.sylvaDefeated && m.sylvaSpot && nearSpot(m.sylvaSpot, 3.0)) {
     if (narration.say('wild_complete')) persist();
   }
@@ -1046,25 +1063,18 @@ function narrationTriggers(dt, t) {
   }
 
   // -------------------------------------------------------------------------
-  // LEVEL 3 — THE LASH CUTS (fix plan A2a). Introduce, then develop.
-  // Prompts only: the cutting itself is world.cutAt, driven by the lash in
-  // player.js, so there is no second implementation of the verb here.
+  // LEVEL 3 — verdant is Sylva's reward now, not the shrine's (dad's law:
+  // wolves are locked behind their element's boss). tsh's teach bramble and
+  // tkn's tether are both gone with it — the spine runs on fire, which the
+  // child already holds. developBrambles (tc2's regrowing tangles) stay as
+  // OPTIONAL verdant content for a post-boss return, so their hint still
+  // fires once the child actually has the lash.
   // -------------------------------------------------------------------------
-  if (m.teachBramble && nearSpot(m.teachBramble, 4) &&
+  if ((m.developBrambles || []).some((b) => nearSpot(b, 4.5)) &&
       state.formsUnlocked.includes('verdant_wolf')) {
-    narration.say('bramble_teach');
-  }
-  if ((m.developBrambles || []).some((b) => nearSpot(b, 4.5))) {
     narration.say('bramble_regrow');
   }
   if (m.logBridge && nearSpot(m.logBridge, 4)) narration.say('log_rope');
-
-  // THE KNOT (A2b) — the lash HOLDS. Prompts only; tetherAt and the snare live
-  // in world.js and player.js, so the verb has exactly one implementation.
-  if (m.knotTether && nearSpot(m.knotTether, 5) && !state.flags.plates.l3_knot_p1) {
-    narration.say('knot_tether');
-  }
-  if (m.knotSnare && nearSpot(m.knotSnare, 5)) narration.say('knot_snare');
 
   // A8 — EVERY "come back later" gate in the rebuilt levels, as one table.
   //
@@ -1561,7 +1571,14 @@ function initDevHarness() {
     get pos() { const p = player.root.position; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2) }; },
     get hearts() { return player.hearts; },
     get maxHearts() { return player.maxHearts; },
-    get room() { return resolveRoom(state.room); },   // retired ids resolve — the eye reports the room actually built
+    // world.roomId is stamped by the room's own builder as the last step of
+    // an async rebuild; state.room is set the INSTANT a jump is requested,
+    // before that rebuild starts. A driver polling this getter for readiness
+    // (wk-drive.mjs's jump()) could see the target id here while `world` was
+    // still the PREVIOUS room — the exact bug verify-level3.mjs hit and
+    // fixed by reading world.roomId directly. Prefer it here too, so every
+    // consumer of window.__wk.room gets the already-rebuilt answer.
+    get room() { return resolveRoom(world.roomId || state.room); },
     get form() { return state.form; },
     get forms() { return [...state.formsUnlocked]; },
     get music() { return audio._musicName; },

@@ -97,6 +97,7 @@ const snap = () => page.evaluate(() => {
     heroMarks: w.heroMarks || [],
     interactive, southEdge,
     calls: i.render.calls, tris: i.render.triangles,
+    cuttables: w.cuttables.length, burnables: w.burnables.length,
   };
 });
 
@@ -206,19 +207,25 @@ check('every space is reachable from the entrance', SPACES.every((id) => reach.h
   { unreachable: SPACES.filter((id) => !reach.has(id)) });
 
 // ---------------------------------------------------------------------------
-console.log('\n── 5. the four-step teach, in order ────────────────────');
-const TEACH = [['introduce', 'tsh', 'teachBramble'], ['develop', 'tc2', 'developBrambles'],
-  ['twist', 'tkn', 'knotTether'], ['conclude', 't4b', 'thornKnot']];
-for (const [step, room, marker] of TEACH) {
-  check(`${step}: ${room} carries ${marker}`, !!S[room] && S[room].markers.includes(marker));
-}
-const pos = TEACH.map(([, r]) => RING_PATH.indexOf(r));
-check('the teach rooms are met in order round the ring',
-  pos.every((v, i) => i === 0 || v > pos[i - 1]), { positions: pos });
-check('the twist is ON the ring, not in an optional pocket', !POCKETS.tkn);
-const afterTwist = ['tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl'];
-const newAfter = afterTwist.filter((r) => S[r] && S[r].markers.some((m) => /teach|tether|snare/i.test(m)));
-check('nothing new is introduced after the twist', newAfter.length === 0, { newAfter });
+// verdant moved to Sylva's reward (dad's law): tsh's teach bramble and tkn's
+// tether are GONE, not relocated — the spine's hard gates (log bridge,
+// thorn-knot) burn with fire instead, which the child already holds. This
+// section now asserts the new shape rather than the old teach ladder.
+console.log('\n── 5. verdant is Sylva\'s reward; the spine runs on fire ─');
+check("tsh carries NO cuttable (the shrine is a promise, not a gate)",
+  !!S.tsh && S.tsh.cuttables === 0, S.tsh && { cuttables: S.tsh.cuttables });
+check('tc2 carries the log bridge as a marker, not a lash-only cuttable',
+  !!S.tc2 && S.tc2.markers.includes('logBridge'));
+check('tkn is a push room now: no tether/snare markers left anywhere on it',
+  !!S.tkn && !S.tkn.markers.includes('knotTether') && !S.tkn.markers.includes('knotSnare'));
+check('t4b still carries the great thorn-knot marker (now a burnable)',
+  !!S.t4b && S.t4b.markers.includes('thornKnot'));
+const spineRooms = ['tsh', 'tc2', 'tkn', 't4b'];
+const stillOnRing = spineRooms.every((r) => RING_PATH.includes(r));
+check('all four re-verbed rooms are still on the ring, not in optional pockets',
+  stillOnRing && spineRooms.every((r) => !POCKETS[r]), { spineRooms });
+const leftover = SPACES.filter((r) => S[r] && S[r].markers.some((m) => /teach|tether|snare/i.test(m)));
+check('no room anywhere still carries a teach/tether/snare marker', leftover.length === 0, { leftover });
 
 // critical path with zero optional content
 const criticalUsesPocket = RING_PATH.some((r) => POCKETS[r]);

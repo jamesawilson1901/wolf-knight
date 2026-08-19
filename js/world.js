@@ -392,34 +392,6 @@ export class World {
     return n;
   }
 
-  // Verdant Wolf TETHER — the Level 3 twist. The lash does not only cut: it
-  // HOLDS. Rope a boulder and it comes one clean step TOWARD you.
-  //
-  // Deliberately the exact inverse of the push above, and it reuses the same
-  // slide: cardinal-snapped, one 1.2u step, the same speed, the same click if
-  // it lands on a plate. The whole point of the twist is that the boulder a
-  // child already knows how to shove now answers to a rope, so it had better
-  // behave identically — a second movement rule would teach that boulders are
-  // unpredictable, which is the opposite of the v3.18 playtest law.
-  tetherAt(x, z, r, fromX, fromZ) {
-    let n = 0;
-    for (const b of this.boulders) {
-      if (b._locked || b._slide) continue;
-      const dx = b.x - x, dz = b.z - z;
-      if (dx * dx + dz * dz > r * r) continue;
-      // toward the LASHER, snapped to the dominant axis
-      const tx = fromX - b.x, tz = fromZ - b.z;
-      const dir = Math.abs(tx) > Math.abs(tz)
-        ? { dx: Math.sign(tx), dz: 0 }
-        : { dx: 0, dz: Math.sign(tz) };
-      b._slide = this.slickFloor
-        ? { ...dir, remaining: 26, speed: 5.5 }
-        : { ...dir, remaining: 1.2, speed: 2.4 };
-      n++;
-    }
-    return n;
-  }
-
   // Frost Wolf breath: shatter every unbroken ice mass in range. Like a
   // cuttable, an ice mass owns its own `clear()` — a frozen mound and an
   // ice-sealed spring want different things to happen when they break.

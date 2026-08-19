@@ -108,8 +108,14 @@ const go = async (room) => {
       g.player.hurt(99, { pierceDefend: true });
     }, room);
     try {
-      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
-        room, { timeout: 45000 });
+      // state.room flips the INSTANT a jump is requested, before the async
+      // rebuild that follows it even starts — world.roomId is stamped by the
+      // room's own builder as that rebuild's last step, so it is the one
+      // identity a race can't forge. Reading state.room here could pass
+      // while `world` was still the PREVIOUS room, exactly the false failure
+      // verify-level3.mjs diagnosed and fixed the same way.
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+        && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }
   }
