@@ -44,6 +44,20 @@ await page.evaluate((dressed) => {
   g.player.iframes = 99999;
 }, DRESSED);
 
+// ASK THE WORLD, NOT THE FLAG WE JUST SET.
+//
+// This waited on `state.room === r` — a value THIS FUNCTION had just assigned
+// one line earlier — so the condition was half-true before the game did
+// anything at all. When the respawn did not actually rebuild (a race against
+// the initial load), the wait still passed on `hearts > 1` and every check
+// downstream measured the PREVIOUS room while calling it `r`: the suite
+// reported t1a with Ember Hollow's doors ([den, lg1, la1]) and then failed the
+// ring, reachability and landmark checks it had itself corrupted. Six problems,
+// none of them real, pointing at innocent code.
+//
+// A verification tool with a broken ruler is worse than no tool: it reports and
+// is believed. `world.roomId` is stamped by the room's own builder, so it is
+// the one identity the harness cannot forge.
 const go = async (room) => {
   for (let a = 0; a < 8; a++) {
     await page.evaluate((r) => {
@@ -52,8 +66,8 @@ const go = async (room) => {
       g.player.hurt(99, { pierceDefend: true });
     }, room);
     try {
-      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
-        room, { timeout: 45000 });
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+        && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }
   }
