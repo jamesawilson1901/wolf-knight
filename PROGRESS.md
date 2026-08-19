@@ -1,3 +1,36 @@
+# SHIPPED v3.52.0 — DAD'S THREE-SCREENSHOT PLAY REPORT + COMBAT AUDIT PASS 1
+# FROSTPEAK WAS UNCOMPLETABLE BY ANYONE: f3's lake lanes left a 1.0u collider
+#   corridor for a 1.24u boulder, so the plates could never be pressed and the
+#   f4 gate never opened. The old suite "passed" only at 3x timescale, where
+#   big frame-steps tunnel the boulder through; at kid speed it wedged, and the
+#   sealed ice read as "you need the Frost Wolf" — the boss's own reward.
+#   Lanes widened to the 2.0u standard; both proven by real pushes at 1x.
+# L2: crypt stairs were 4 centre-pivot meshes, half-buried and interpenetrating,
+#   swallowing the door trigger (dad: "stairs don't work") -> one measured low
+#   trim + landing moved off it. Bone Warden bigger (true 2.3x Kael), turn-
+#   clamped so flanking is possible at all, longer telegraphs/punish windows.
+#   The shoulder pin is a real mechanism now: a charred BEAM props a granite
+#   HAND on an arm reaching in from the hub wall; burn it and the hand falls.
+# COMBAT AUDIT PASS 1: four attacks had drifted under the 0.8s telegraph floor
+#   (minion 0.25s, shield 0.55s, spitter 0.6s, rogue 0.7s) — two of them found
+#   by this pass. Raised to the floor; threat preserved by CADENCE, never by
+#   shrinking tells. js/attacks.js is now one pure-data attack clock that the
+#   state machines AND tools/verify-combat-laws.mjs read, so a telegraph cannot
+#   silently drift again (POSE-NEVER-LIES extended from hitboxes to clocks).
+#   The checker was validated fail-first against all four known-bad values.
+# HARNESS: verify-level3's go() waited on state.room — a flag it set itself —
+#   so it could measure the PREVIOUS room and report six confident false
+#   failures (t1a with Ember's doors). Now asserts world.roomId.
+# GATES: verify-level3 ALL CLEAN, run-l4 clean, combat regression 4/4 (0 fails),
+#   verify-combat-laws ALL CLEAN, guide/vault/level2-progress/loot PASS,
+#   real-play probes (pin-arm, lake-west, chest-anim) PASS, INERT+CLEAN,
+#   UPGRADE CLEAN, CANARY GREEN. Full sweep runs post-ship as the net.
+# PHONE-CHECK: force-refresh once for the SW swap, badge reads v3.52.0.
+#   Frostpeak: the lake is solvable now. L2: the crypt stair reads and walks.
+# OPEN FOR DAD: the Spitter has NO elemental identity (no TRAITS entry) —
+#   fire-weakness (family lesson) vs fire-resist (truer for a fire-spitter,
+#   harder in a fire level) is a design call, deliberately not made unilaterally.
+#
 # SHIPPED v3.51.0 — main b65cc85, Pages build (deploy run 32214150293).
 # DAD'S TWO PLAY REPORTS ON THE LIVE v3.50.0 BUILD, both fixed + verified by
 # REAL play (probe-l2-guide.mjs / probe-map-close.mjs) and the greybox L2/guide
