@@ -1,3 +1,42 @@
+# SHIPPED v3.54.0 — THE TEST HARNESS'S OWN ROOM-IDENTITY RACE, FIXED EVERYWHERE
+# THE BUG: window.__game.state.room flips the INSTANT a jump is requested,
+#   before the async rebuild it triggers even starts. Every tools/*.mjs file
+#   that jumps between rooms polled exactly that flag for readiness — so a
+#   poll could pass while `world` was still the PREVIOUS room. verify-level3
+#   caught and fixed this once already (six confident false failures, none of
+#   them real); this pass found the identical pattern in every other test
+#   file and fixed it the same way: read world.roomId, stamped by a room's
+#   own builder as the last step of its rebuild, which a race cannot forge.
+# TWO MORE BUGS SURFACED GETTING THERE, BOTH NOW FIXED:
+#   world.roomId was never set AT ALL for any room built through js/rooms.js's
+#   central buildRoom() dispatcher — Ember Hollow, Frostpeak, every legacy
+#   room (den, e1-e3, w1-w5, f1-f5, r1-r3, k1/ka/kb, zoo). Only the newer
+#   level files stamped it themselves. Every test jumping to one of those ids
+#   waited out the full timeout and reported it broken. Fixed by stamping it
+#   once, centrally, in buildRoom() itself, for every room regardless of
+#   which region's builder made it.
+#   Retired room ids (r1->la, e2->vb1, w3->t3a, ...) get redirected inside
+#   buildRoom() via resolveRoom(), so world.roomId ends up holding the
+#   RESOLVED id, never the raw one a test asked for — comparing against the
+#   raw id meant a retired-id jump could never succeed even once roomId was
+#   being set correctly. Fixed by resolving the comparison target too.
+# CAUGHT BY ITS OWN FAILURE SIGNATURE, NOT ASSUMED: the first pass looked
+#   clean under a full verify-all --par sweep for the suites it touched
+#   directly. A wider sweep across everything using the same driver turned up
+#   10 more suites all failing on the identical shape ("<room> builds"),
+#   every one jumping to a rooms.js-routed or retired id — traced to source,
+#   fixed at the two actual origins above, then reverified clean.
+# GATES: targeted reruns of the previously-failing set (9/10 clean; the 10th,
+#   verify-grounded's vc3 floating rock, is the same pre-existing unrelated
+#   finding from last night), INERT+CLEAN, CANARY GREEN on the live build —
+#   js/rooms.js's buildRoom() is the central dispatcher every room in the
+#   game passes through, so it got the same live-build gates as a ship that
+#   touches gameplay, even though world.roomId itself has no gameplay
+#   consumer (debug/test hook only).
+# OPEN FOR DAD: nothing new. vc3's hovering "Mesh_rock_largeC" prop
+#   (Stoneroot, gap 1.27u) is still open from last night — cosmetic,
+#   unrelated, not blocking.
+#
 # SHIPPED v3.53.0 — L3 REWORK: VERDANT IS SYLVA'S REWARD + SPITTER IDENTITY
 # DAD'S LAW: each elemental wolf is locked behind its own element's boss, and
 #   the level after runs on it. Wild Woods broke this — verdant came from
