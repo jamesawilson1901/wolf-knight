@@ -17,7 +17,7 @@ await page.evaluate(() => { const g=window.__game;
   g.WS.set('wild3','rootCut',true); g.WS.set('wild3','logDown',true); });
 const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;
   g.state.room=r; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true});}, room);
-  try { await page.waitForFunction((r)=>window.__game.state.room===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
+  try { await page.waitForFunction((r)=>window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r)&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
 const ROOMS=['t1a','t1b','t1p','tc1','t2a','t2b','t2p','tsh','tc2','t3a','t3b','t3p','tkn','tc3','t4a','t4b','t4p','tc4','tgl','tsA','tsB'];
 let bad=0, n=0;
 for (const id of ROOMS) {

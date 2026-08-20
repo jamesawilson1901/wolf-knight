@@ -72,7 +72,7 @@ const go = async (room) => {
       // async rebuild) is the identity a race can't forge — state.room flips
       // the instant a jump is requested, before that rebuild even starts.
       // See verify-level3.mjs for the false-failure this raced into once.
-      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r)
         && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }

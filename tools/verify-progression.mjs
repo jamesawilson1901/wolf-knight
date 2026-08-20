@@ -23,7 +23,7 @@ await page.evaluate(() => { const g=window.__game;
 
 const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;
   g.state.room=r; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true});}, room);
-  try { await page.waitForFunction((r)=>window.__game.state.room===r&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
+  try { await page.waitForFunction((r)=>window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r)&&window.__game.player.hearts>1, room,{timeout:45000}); return true;} catch{} } return false; };
 const doorsOf = () => page.evaluate(() => window.__game.world.doors.map((d)=>d.to));
 
 console.log('\n── A7: a child is never handed a checkerboard ──────────');

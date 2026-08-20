@@ -43,7 +43,7 @@ for (let a = 0; a < 8; a++) {
   // step) is the identity a race can't forge — state.room flips the instant
   // a jump is requested, before that rebuild even starts. See
   // verify-level3.mjs for the false failure this raced into once.
-  try { await page.waitForFunction(() => window.__game.world && window.__game.world.roomId === 'xh'
+  try { await page.waitForFunction(() => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom('xh')
     && window.__game.player.hearts > 1, null, { timeout: 45000 }); break; } catch { /* retry */ }
 }
 

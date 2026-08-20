@@ -11,7 +11,7 @@ await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
 await page.evaluate(() => { const g = window.__game; g.state.settings.greybox = false; g.player.iframes = 999999; });
 await page.evaluate(() => { const g = window.__game; g.state.room='den'; g.player.iframes=0; g.player.hearts=0.5; g.player.hurt(99,{pierceDefend:true}); });
-await page.waitForFunction(() => window.__game.state.room === 'den' && window.__game.player.hearts > 1, null, { timeout: 45000 });
+await page.waitForFunction(() => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom('den') && window.__game.player.hearts > 1, null, { timeout: 45000 });
 const r = await page.evaluate(() => {
   const out = [];
   window.__game.world.root.traverse((n) => {

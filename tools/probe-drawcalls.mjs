@@ -23,7 +23,7 @@ for (let a = 0; a < 8; a++) {
     g.state.room = 'den'; g.player.iframes = 0; g.player.hearts = 0.5;
     g.player.hurt(99, { pierceDefend: true }); });
   try {
-    await page.waitForFunction(() => window.__game.state.room === 'den' && window.__game.player.hearts > 1,
+    await page.waitForFunction(() => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom('den') && window.__game.player.hearts > 1,
       null, { timeout: 45000 }); break;
   } catch { /* retry */ }
 }

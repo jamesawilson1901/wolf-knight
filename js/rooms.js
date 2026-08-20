@@ -3981,6 +3981,14 @@ export async function buildRoom(rawId, scene) {
   }
   setRoomSeed(id);          // the ground painter seeds off the room id
   const world = await ROOMS[id](scene);
+  // js/level{1,2,3,5,6,7}.js's own base() already stamps this (harmless
+  // duplicate here) — but the legacy rooms defined directly in THIS file
+  // (den, e1-e3, w1-w5, f1-f5, r1-r3, k1/ka/kb, zoo) never did, so
+  // world.roomId sat undefined for all of them. Any reader that trusts it as
+  // "the room actually built" (window.__wk.room, every test harness's own
+  // go() helper) waited forever on those ids — stamping it here, once, for
+  // every room regardless of which builder made it, is the fix.
+  world.roomId = id;
   await spawnEnemies(world);
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
