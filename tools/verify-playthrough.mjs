@@ -170,7 +170,7 @@ const enterRegion = async (r) => {
   // than no harness.
   for (let a = 0; a < 6; a++) {
     try {
-      await page.waitForFunction((id) => window.__game.state.room === id && window.__game.player.hearts > 1,
+      await page.waitForFunction((id) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(id) && window.__game.player.hearts > 1,
         r.enter, { timeout: 45000 });
       await settle();
       return true;
@@ -399,7 +399,7 @@ for (const r of RUN) {
       await page.evaluate((r) => { const g = window.__game;
         g.state.room = r; g.player.iframes = 0; g.player.hearts = 0.5;
         g.player.hurt(99, { pierceDefend: true }); }, cur);
-      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r) && window.__game.player.hearts > 1,
         cur, { timeout: 60000 }).catch(() => {});
       await settle();
       console.log('  · the room is rebuilt around it');

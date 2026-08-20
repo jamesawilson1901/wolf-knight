@@ -52,7 +52,7 @@ const go = async (room) => {
       g.state.room = r; g.player.iframes = 0; g.player.hearts = 0.5;
       g.player.hurt(99, { pierceDefend: true }); }, room);
     try {
-      await page.waitForFunction((r) => window.__game.state.room === r && window.__game.player.hearts > 1,
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r) && window.__game.player.hearts > 1,
         room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }

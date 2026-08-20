@@ -114,7 +114,7 @@ const go = async (room) => {
       // identity a race can't forge. Reading state.room here could pass
       // while `world` was still the PREVIOUS room, exactly the false failure
       // verify-level3.mjs diagnosed and fixed the same way.
-      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r)
         && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }

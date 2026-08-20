@@ -66,7 +66,7 @@ const go = async (room) => {
       g.player.hurt(99, { pierceDefend: true });
     }, room);
     try {
-      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === r
+      await page.waitForFunction((r) => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom(r)
         && window.__game.player.hearts > 1, room, { timeout: 45000 });
       return true;
     } catch { /* retry */ }
