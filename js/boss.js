@@ -239,7 +239,7 @@ export class Shadowgrip {
       })
     );
     this.tiredRing.rotation.x = -Math.PI / 2;
-    this.tiredRing.position.y = 0.06;
+    this.tiredRing.position.y = world.deckY + 0.06;
     this.tiredRing.visible = false;
     world.add(this.tiredRing);
 
