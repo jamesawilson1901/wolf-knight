@@ -1602,7 +1602,9 @@ function initDevHarness() {
     get foes() {
       return (world.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun)
         .map((e) => ({ x: +e.x.toFixed(1), z: +e.z.toFixed(1), hp: e.hp,
-          kind: e.constructor.name, state: e.state || null }));
+          kind: e.constructor.name, state: e.state || null,
+          engaged: e.engaged !== undefined ? e.engaged : null,
+          windup: e._windup !== undefined ? +e._windup.toFixed(2) : null }));
     },
     get flags() { return JSON.parse(JSON.stringify(state.flags)); },
     get ws() { return { vault: WS.stage('vault'), wild3: WS.stage('wild3') }; },
