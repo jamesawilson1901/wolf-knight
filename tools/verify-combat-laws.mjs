@@ -124,6 +124,42 @@ console.log('\n── 8. every enemy family has TRAITS ────────�
   ok('TRAITS coverage checked (see notes)');
 }
 
+console.log('\n── 9. crowd enemies honor the attack-token cap (LAW 3) ──');
+{
+  // Pass 2 audit (2026-08-21): Spitter and SkeletonRogue each had a real,
+  // clocked attack (§3 of the combat context pack) that never once checked
+  // `this.engaged` — the one enemy able to ignore "only 2/3/4 press at
+  // once" per mode. Fixed, but nothing stopped the NEXT enemy from shipping
+  // the same gap silently, so: any `tier: 'enemy'` owner in the attack
+  // clock must reference `.engaged` somewhere in its own class body. This
+  // cannot prove the specific attack-trigger line is gated (that still
+  // wants a human/live check, as Pass 4 did), but it catches the exact
+  // failure mode found here — total omission — which is what actually
+  // shipped silently for however long these two went unaudited.
+  const n = problems.length;
+  const e = read('js/enemies.js');
+  // top-level `class Name` / `export class Name` declarations bound each
+  // class's body from its own declaration to the next one (or EOF).
+  const starts = [...e.matchAll(/^(?:export )?class (\w+)/gm)];
+  const bodies = {};
+  for (let i = 0; i < starts.length; i++) {
+    const from = starts[i].index;
+    const to = i + 1 < starts.length ? starts[i + 1].index : e.length;
+    bodies[starts[i][1]] = e.slice(from, to);
+  }
+  const crowdOwners = [...new Set(Object.values(ATTACK)
+    .filter((a) => a.tier === 'enemy' && a.source === 'js/enemies.js')
+    .map((a) => a.owner))];
+  for (const owner of crowdOwners) {
+    const body = bodies[owner];
+    if (!body) { bad(`${owner}: no class body found in js/enemies.js to check`); continue; }
+    if (!/\.engaged\b/.test(body)) {
+      bad(`${owner} has a real windup (attack clock) but never references .engaged — can attack regardless of the token cap`);
+    }
+  }
+  if (problems.length === n) ok(`every crowd owner (${crowdOwners.join(', ')}) references .engaged`);
+}
+
 if (notes.length) { console.log('\nNOTES:'); for (const n of notes) console.log('  · ' + n); }
 console.log(problems.length ? `\n${problems.length} PROBLEM(S):\n` + problems.join('\n') : '\nALL CLEAN — the telegraph floor holds.');
 process.exit(problems.length ? 1 : 0);

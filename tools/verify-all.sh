@@ -122,6 +122,10 @@ case "$1" in
     run verify-completion.mjs
     run verify-promises.mjs
     run verify-spawn-clear.mjs
+    # Pass 2 audit: applyVariant() fails silent on an unknown variant name —
+    # the whole Sunken Vale roster shipped unmodified for however long this
+    # went unaudited. One bad name should never ship quietly again.
+    run verify-variant-names.mjs
     # WHERE A DOOR PUTS YOU DOWN HAS TO BE A PLACE IN THE ROOM. verify-reachable
     # cannot see this one: it asks whether anything solid is at the landing, and
     # a point two metres outside a wall has nothing solid at it either.

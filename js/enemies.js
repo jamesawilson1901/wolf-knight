@@ -270,6 +270,46 @@ export const VARIANTS = {
       if (m.color) { m.color.setHex(0x9fd8a8); m.emissive && m.emissive.setHex(0x8fdc6a); m.emissiveIntensity = 0.7; }
     },
   },
+
+  // --- THE SUNKEN VALE (region 6): Pass 2 audit finding — every spawn site
+  // in js/level6.js asked for `variant: 'tide' | 'deeptide' | 'gull' |
+  // 'drowned'`, and none of those keys had ever existed here. applyVariant()
+  // fails silent on an unknown name (`if (!v) return e;`), so every creature
+  // in the whole region was quietly shipping as an unmodified base enemy —
+  // no tint, no size, no weakness lesson, indistinguishable from region 1.
+  // Dad's call: fire and steel-armor, the whole roster. Crusted in old
+  // barnacle-shell (`armored` — new to Slime/Bat, which are never armored
+  // otherwise) and, despite the water, still flammable enough to fear fire.
+  tide: {
+    label: 'Tide Slime',
+    hp: 4, weakness: 'fire', armored: true, puffTint: 0x1a3a3a,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x6affea); m.emissiveIntensity = 1.4; }
+      else if (m.color) { m.color.setHex(0x2a5a5a); m.emissive && m.emissive.setHex(0x123030); m.emissiveIntensity = 0.4; }
+    },
+  },
+  deeptide: {
+    label: 'Deep Tide',
+    scale: 1.3, hp: 6.5, weakness: 'fire', armored: true, dropChance: 1, puffTint: 0x0f2626,
+    tint: (m) => {
+      if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x9bfff0); m.emissiveIntensity = 2.0; }
+      else if (m.color) { m.color.setHex(0x163838); m.emissive && m.emissive.setHex(0x0a1c1c); m.emissiveIntensity = 0.5; }
+    },
+  },
+  gull: {
+    label: 'Storm Gull',
+    hp: 2, weakness: 'fire', armored: true, puffTint: 0xd8e8e0,
+    tint: (m) => {
+      if (m.color) { m.color.setHex(0x8fa8a0); m.emissive && m.emissive.setHex(0x6affea); m.emissiveIntensity = 0.9; }
+    },
+  },
+  drowned: {
+    label: 'Drowned Skeleton',
+    hp: 2.5, weakness: 'fire', armored: true, sharedMats: true, puffTint: 0x1a3a3a,
+    tint: (m) => {
+      if (m.color) m.color.setHex(0x2f4a48); // old bone gone waterlogged-green
+    },
+  },
 };
 
 function applyVariant(e, name) {
@@ -307,6 +347,12 @@ function applyVariant(e, name) {
   if (v.contactDmg !== undefined) e.contactDmg = v.contactDmg;
   if (v.resist) e.resist = v.resist;
   if (v.weakness) e.weakness = v.weakness;
+  // Pass 2 audit: no variant had ever asked for this before — every armored
+  // enemy got it from its own class's base TRAITS. The Sunken Vale roster
+  // (tide/deeptide/gull/drowned, below) is the first to hand it out through
+  // a variant instead, on classes (Slime, Bat) that are never armored
+  // otherwise — crusted shells and old barnacles, steel skitters off them.
+  if (v.armored !== undefined) e.armored = v.armored;
   // only a variant that says so can ever be unaware, and one that can starts
   // that way — a court full of shadows already hunting you is not a court you
   // can sneak through
@@ -1208,7 +1254,13 @@ export class Spitter extends Slime {
       } else {
         this._play('idle');
       }
-      if (this._spitT <= 0 && d > 3) this._windup = A.spitter_spit.windup;
+      // Pass 2 audit (combat context pack §3): Spitter never checked
+      // engagement at all — a ranged bolt attack with a real windup that
+      // could fire regardless of the attack-token cap, the one enemy able
+      // to ignore "only 2/3/4 press at once." Gated like every other
+      // attack in the roster; the cooldown still ticks while it waits, so
+      // it is not left flat-footed the moment its turn comes.
+      if (this._spitT <= 0 && d > 3 && this.engaged !== false) this._windup = A.spitter_spit.windup;
     } else {
       this._play('idle');
     }
@@ -1624,17 +1676,29 @@ export class SkeletonRogue extends SkeletonBase {
     if (this.awakenUpdate(dt, d, this.senseRange(player, 4.2))) return;
 
     if (this.state === 'chase') {
-      // orbit at ~2.6, closing slowly
-      const tangent = { x: -dz / Math.max(d, 0.01) * this.orbitDir, z: dx / Math.max(d, 0.01) * this.orbitDir };
-      const inward = d > 2.6 ? 0.8 : -0.3;
-      const mx = tangent.x * 1.6 + (dx / Math.max(d, 0.01)) * inward;
-      const mz = tangent.z * 1.6 + (dz / Math.max(d, 0.01)) * inward;
-      const mm = Math.hypot(mx, mz);
-      this._play('run');
-      this.chaseToward(dt, mx / mm, mz / mm, 1, 2.3);
-      this.root.rotation.y = Math.atan2(dx, dz);
+      // Pass 2 audit (combat context pack §3): the rogue's own ~2.6u orbit
+      // never checked engagement either — it closed and dashed on its own
+      // clock no matter how many other fighters already held a token. When
+      // un-engaged it now holds the SAME waiting ring every other prowler
+      // reads (CONFIG.ENGAGE.HOLD_DIST), so a child sees one consistent
+      // "not their turn yet" pose across the whole roster; the tighter
+      // 2.6u attack-approach orbit only starts once a token is actually held.
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this._play('run');
+        this.holdOrbit(dt, dx, dz, d);
+      } else {
+        // orbit at ~2.6, closing slowly
+        const tangent = { x: -dz / Math.max(d, 0.01) * this.orbitDir, z: dx / Math.max(d, 0.01) * this.orbitDir };
+        const inward = d > 2.6 ? 0.8 : -0.3;
+        const mx = tangent.x * 1.6 + (dx / Math.max(d, 0.01)) * inward;
+        const mz = tangent.z * 1.6 + (dz / Math.max(d, 0.01)) * inward;
+        const mm = Math.hypot(mx, mz);
+        this._play('run');
+        this.chaseToward(dt, mx / mm, mz / mm, 1, 2.3);
+        this.root.rotation.y = Math.atan2(dx, dz);
+      }
       this.dashTimer -= dt;
-      if (this.dashTimer <= 0 && d < 4.6) {
+      if (this.dashTimer <= 0 && d < 4.6 && this.engaged !== false) {
         this.state = 'telegraph';
         this.stateT = 0;
         this._play('idle', 0.08);
