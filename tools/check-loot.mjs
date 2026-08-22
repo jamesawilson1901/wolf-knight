@@ -124,5 +124,29 @@ async function buildFakeTrainingShards(scene) {
   else bad(`ruler logic broken: zz1Bad=${zz1Bad} zz2Good=${zz2Good} zz3Bad=${zz3Bad}`);
 }
 
+// LAW P5 — REWARD LEGIBILITY: potions have ONE canonical look everywhere
+// (director's ruling: the universal red beaker). Known-bad (§11.7,
+// confirmed live in the audit): three looks coexisted — a teal-lit
+// Vase.glb smashable drop, an independently-built glass/liquid/cork floor
+// pickup, and the HUD emoji — with `assets/env/props/potion.glb` sitting
+// unused on disk despite a comment claiming no potion model existed.
+// Mechanical proxy: the floor pickup (rooms.js's potionPickup) and the
+// smashable drop (loot.js's spawnPotionDrop) must both draw from the SAME
+// shared builder — one function, one look, checked by construction rather
+// than by eye every time either file changes.
+console.log('\n── LAW P5: one potion look everywhere ──────────────');
+{
+  const n0 = problems.length;
+  const loot = readFileSync('js/loot.js', 'utf8');
+  const rooms = readFileSync('js/rooms.js', 'utf8');
+  const sharedBuilderExists = /export function buildPotionMesh\s*\(/.test(loot);
+  const dropUsesShared = /spawnPotionDrop[\s\S]{0,300}buildPotionMesh\(/.test(loot);
+  const pickupUsesShared = /function potionPickup[\s\S]{0,300}buildPotionMesh\(/.test(rooms);
+  if (!sharedBuilderExists) bad('no shared buildPotionMesh() export in loot.js — the floor pickup and the smashable drop have no way to agree on a look');
+  if (sharedBuilderExists && !dropUsesShared) bad('spawnPotionDrop() does not call buildPotionMesh() — the smashable drop can still drift from the floor pickup');
+  if (sharedBuilderExists && !pickupUsesShared) bad('potionPickup() does not call buildPotionMesh() — the floor pickup can still drift from the smashable drop');
+  if (problems.length === n0) ok('both the floor pickup and the smashable drop draw from one shared buildPotionMesh()');
+}
+
 console.log(problems.length ? `\n${problems.length} PROBLEM(S)` : '\nALL CLEAN.');
 process.exit(problems.length ? 1 : 0);
