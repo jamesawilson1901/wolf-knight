@@ -26,6 +26,7 @@ import { LEVEL3_ROOMS, loadWoodKit } from './level3.js';
 import { LEVEL5_ROOMS, loadSkyKit } from './level5.js';
 import { LEVEL6_ROOMS, loadValeKit } from './level6.js';
 import { LEVEL7_ROOMS, loadCourtKit } from './level7.js';
+import { buildPotionMesh } from './loot.js';
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -431,23 +432,10 @@ function pathTiles(world, waypoints) {
 // Healing potion pickup: a little glowing ember flask (code-built). Touch to
 // take one (carry limit enforced by the player); respawns with the room.
 function potionPickup(world, x, z) {
-  const group = new THREE.Group();
-  const glass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.13, 0.16, 0.3, 10),
-    new THREE.MeshStandardMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0.45, roughness: 0.3 })
-  );
-  glass.position.y = 0.22;
-  const liquid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.13, 0.18, 10),
-    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff4a5a, emissiveIntensity: 1.8, roughness: 1 })
-  );
-  liquid.position.y = 0.17;
-  const cork = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8),
-    new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 1 })
-  );
-  cork.position.y = 0.41;
-  group.add(glass, liquid, cork);
+  // LAW P5: one potion look everywhere — loot.js's buildPotionMesh() is the
+  // single place a potion is drawn (this floor pickup, the smashable drop,
+  // both call it now).
+  const { group, liquid } = buildPotionMesh();
   group.position.set(x, 0, z);
   world.add(group);
   world.onAnimate((t) => {

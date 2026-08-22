@@ -79,40 +79,44 @@ export function spawnShards(world, x, z, n) {
   }
 }
 
-// A POTION, DROPPED. There is no potion model in the pack — the HUD draws an
-// emoji — so this is the dungeon VASE, shrunk and lit teal from inside. It is
-// the same trick the whole game runs on: one kit, many meanings. It rides the
-// shard physics so it arcs, lands and waits exactly as a coin does.
-let vaseGltf = null;
-export async function preloadPotionDrop() {
-  if (!vaseGltf) vaseGltf = await loadGLB('./assets/env/dungeon/Vase.glb');
-  return vaseGltf;
+// THE ONE POTION LOOK (LAW P5): a glass beaker with red liquid and a cork —
+// director's ruling, universal RED beaker, everywhere a potion appears. This
+// was three different looks (a teal-lit Vase.glb here, a matching-but-
+// independent glass/liquid/cork build in rooms.js's potionPickup, and the
+// HUD emoji) — "there is no potion model in the pack" was also simply
+// false, `assets/env/props/potion.glb` sits on disk unused, but the fix
+// that actually converges every LOOK is this shared builder, not swapping
+// which unused GLB gets loaded. rooms.js's potionPickup calls this too, so
+// there is exactly one place that draws a potion.
+export function buildPotionMesh() {
+  const group = new THREE.Group();
+  const glass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.16, 0.3, 10),
+    new THREE.MeshStandardMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0.45, roughness: 0.3 })
+  );
+  glass.position.y = 0.22;
+  const liquid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.13, 0.18, 10),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff4a5a, emissiveIntensity: 1.8, roughness: 1 })
+  );
+  liquid.position.y = 0.17;
+  const cork = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8),
+    new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 1 })
+  );
+  cork.position.y = 0.41;
+  group.add(glass, liquid, cork);
+  return { group, liquid };
 }
 
+// Nothing to preload anymore — buildPotionMesh() is code-built, not a GLB
+// load — kept as a no-op so main.js's existing `await preloadPotionDrop()`
+// call site needs no change.
+export async function preloadPotionDrop() {}
+
 export function spawnPotionDrop(world, x, z) {
-  if (!vaseGltf) return false;
   if (!world.shards) world.shards = [];
-  const m = prepareModel(vaseGltf.scene.clone(), { castShadow: false });
-  m.traverse((n) => {
-    if (!n.isMesh || !n.material) return;
-    const mats = Array.isArray(n.material) ? n.material : [n.material];
-    n.material = mats.map((mm) => {
-      const c = mm.clone();
-      if (c.color) c.color.setHex(0x2fe0c0);
-      if (c.emissive) { c.emissive.setHex(0x1fbfa4); c.emissiveIntensity = 0.9; }
-      return c;
-    });
-    if (!Array.isArray(n.material)) n.material = n.material[0];
-  });
-  // RECENTRED, because Vase.glb is modelled 1.09u off its own origin in Z — so
-  // the potion a child could see was over a metre from the potion they could
-  // pick up. Wrapped rather than nudged, so the shard physics keeps driving one
-  // object and this file keeps one rule about where a drop is.
-  const inner = new THREE.Group();
-  const bb = new THREE.Box3().setFromObject(m);
-  m.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
-  inner.add(m);
-  inner.scale.setScalar(0.55 / Math.max(0.01, bb.max.y - bb.min.y));   // 0.55m tall
+  const { group: inner } = buildPotionMesh();
   inner.position.set(x, 0.4, z);
   world.add(inner);
   world.shards.push({

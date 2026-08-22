@@ -142,7 +142,12 @@ The giant-wolf duel grammar in GREEN (the boss class is a skin system now):
 the forest's own guardian, wrapped and maddened by Grimm's thorns. 24 hp,
 ~8% quicker than the Shadowgrip, same honest reads — crouch+flare = charge
 (dodge; ends collapsed under gold), snarl+coil = swipe (shield/parry; a
-perfect parry staggers her). Her wounds persist across deaths
+perfect parry staggers her). Below half health (P7 unique-move law,
+`skin.snares`), she gains a THIRD tell 50% of the time instead of the
+swipe: she plants down, eyes flare green, thorns visibly grow from the
+ground at her own feet (~1s, on-body, no ground decal, same reading time
+as her charge crouch) — then a single ring check at 2.6u radius, once,
+never a grinder, exactly like the charge. Her wounds persist across deaths
 (flags.sylvaHp). Freed, she grants the VERDANT WOLF: vine-lash special
 (cuts brambles — the e2 promise pays out), rooting thorn bolt, leaf aura.
 

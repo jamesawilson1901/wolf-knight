@@ -102,6 +102,24 @@ export const ATTACK = {
     damage: 'contact', element: 'steel',
     counterplay: ['sidestep', 'dodge_roll', 'jump'],
   },
+  sylva_thornburst: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // P7 audit (2026-08-22): Sylva was a pure recolor of the L1 Shadowgrip
+    // — same class, same model, same moveset, no unique move — the exact
+    // "boss is nothing more than a reskinned normal enemy" failure this
+    // law exists to catch. She plants down and thorns erupt in a ring
+    // around her (skin.snares, below-half-health only) — telegraphed on
+    // the body (root+dust particles, no ground decal, LAW 4), single hit,
+    // never a grinder, same as her charge.
+    // gap matches _backToProwl()'s shared enraged-cooldown (2.2s) — every
+    // boss attack resets through that one function, so a bespoke longer
+    // cooldown here would drift from what the code actually does the
+    // moment anyone touched it. Rarity instead comes from a 50% pick
+    // chance against her other options at selection time.
+    windup: 1.0, active: 0.35, recover: 1.8, gap: 2.2,
+    damage: 'aoe', element: 'steel',
+    counterplay: ['back_off', 'dodge_roll'],
+  },
   boreal_dive: {
     owner: 'Boreal', tier: 'boss', source: 'js/boss.js',
     windup: 0.9, active: 0.9, recover: 1.4, gap: 1.6,
