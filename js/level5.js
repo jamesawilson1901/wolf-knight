@@ -32,6 +32,7 @@ import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField, turnVane, WIND } from './wind.js';
 import { canWade } from './water.js';
+import { registerCuttable, iceGate } from './gates.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -212,6 +213,39 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall, place } =
   makeDressers({ kit: () => skyKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
+
+// STORM BRAMBLE — Stormreach's reuse of verdant's own verb (js/gates.js's
+// registerCuttable(), the Verdant Wolf's vine-lash / world.cutAt). Built
+// from simple primitives rather than a kit bush model — same pattern as
+// stormRubble above, and gates.js's own ice block: a code-built obstacle
+// never checks GREY().
+function stormBramble(world, id, x, z, region = REGION) {
+  const group = new THREE.Group();
+  for (const [ox, oz, s, ry] of [[-0.4, 0, 1.0, 0.4], [0.4, -0.1, 1.1, 2.1], [0, 0.35, 0.9, 4.0]]) {
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.55 * s, 0),
+      new THREE.MeshStandardMaterial({ color: 0x2f4a26, roughness: 0.9 })
+    );
+    m.position.set(x + ox, 0.4 * s, z + oz);
+    m.rotation.y = ry;
+    group.add(m);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
+  );
+  glint.position.set(x, 0.95, z);
+  group.add(glint);
+  world.add(group);
+  world.onAnimate((t) => {
+    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.rotation.y = t * 1.4;
+  });
+  const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
+  world.boxColliders.push(collider);
+  registerCuttable(world, { id, x, z, region, group, collider });
+  return { id, collider };
+}
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -595,6 +629,19 @@ export async function buildS1p(scene) {
   sideDoor(world, 's', halfW, halfD, 's1b', { x: 0, z: -10, angle: 0 });
   world.markers.pupSpot = { x: 0, z: -3.5, id: 'pup_s1' };
   world.markers.restSpot = { x: -5, z: 2 };
+  // W5 audit (2026-08-22): Stormreach's critical path reused ZERO earlier
+  // forms despite four being available. Earth was the first candidate here
+  // but was dropped: L2-L4 already carry earth AND L6 now does too (this
+  // session's own L6 fix), so adding it to L5 would bridge them into a
+  // 5-consecutive-region run — worse than any option on the table. Frost's
+  // own verb (iceGate, js/gates.js — world.shatterAt, the Frost Wolf's
+  // breath) reused instead: L4 and L6 both carry frost already, so this
+  // does create a fresh L4-L5-L6 3-consecutive run, but that is the
+  // smallest cost of the four candidates weighed (fire/earth would each
+  // have reached 5-consecutive). A gold chest sealed behind the ice.
+  world.markers.chestDefs = [{ id: 'c_s1p_ice', tier: 'gold', x: 8.5, z: -2.2, ry: 0.4, loot: { shards: 20, heartPiece: 1 } }];
+  world.reserve(8.5, -2.2, 2.2, 'chest');
+  iceGate(world, 8.5, 0, 's1p_ice', REGION);
   scatter(world, halfW, halfD, D, 503, 5, { spin: 1, kinds: ['rockSA', 'rockSB', 'barrel', 'crate'] });
   ruinedHome(world, -5.5, -3.5, 0.6, D, { w: 6, d: 5, keep: 0.6, door: true });
   coldHearth(world, 4.5, 2.5, D);
@@ -879,6 +926,15 @@ export async function buildS3p(scene) {
   sideDoor(world, 's', halfW, halfD, 's3a', { x: 0, z: -10, angle: 0 });
   world.markers.pupSpot = { x: 0, z: -3.5, id: 'pup_s3' };
   world.markers.batSpots = [{ x: -5, z: -2, variant: 'stormbat' }, { x: 5, z: -1, variant: 'stormbat' }];
+  // W5 audit (2026-08-22): Stormreach's critical path reused ZERO earlier
+  // forms despite four being available. Verdant's own verb (stormBramble,
+  // above — world.cutAt, the Verdant Wolf's vine-lash) reused here, the
+  // second distinct earlier form on the critical path alongside frost's
+  // iceGate (s1p, above): a bramble tangle seals a bonus chest in this
+  // pocket room.
+  world.markers.chestDefs = [{ id: 'c_s3p_bramble', tier: 'silver', x: 8, z: -0.3, ry: -0.3, loot: { shards: 18, potion: 1 } }];
+  world.reserve(8, -0.3, 2.2, 'chest');
+  stormBramble(world, 's3p_bramble', 8, 2);
   scatter(world, halfW, halfD, D, 523, 5, { spin: 1, kinds: ['snowRockM', 'snowRockS', 'rockSB'] });
   fallenColumn(world, -6, -5, 0, D, 4);
   rubbleField(world, 6, -5, 2.6, D, 10);
