@@ -1364,8 +1364,13 @@ function titanArm(world, dropped) {
     world.addCircle(px, pz, s * 0.42);   // a giant's arm is solid
   }
   // THE HAND — a flat granite palm with two knuckle stones, hovering directly
-  // over the strut. This is the thing the strut visibly holds up.
+  // over the strut. This is the thing the strut visibly holds up. Named so
+  // verify-grounded.mjs's grounding check knows the difference between
+  // hanging and hovering, same fix as level3.js's hangingLog (found live,
+  // 2026-08-22 — the fist read as a floating-rock defect until this name
+  // was added; it was never a placement bug, just an unnamed exemption).
   const hand = new THREE.Group();
+  hand.name = 'hangingFist';
   const palm = tinted(caveKit.rockLC, 'titanfist', GRANITE);
   palm.scale.set(1.9, 1.6, 1.9);
   hand.add(palm);
