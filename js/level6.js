@@ -26,6 +26,7 @@ import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { waterZone, buildWaterField, quenchable, canWade } from './water.js';
+import { iceGate } from './gates.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -246,6 +247,40 @@ function washed(D, k) {
   const t = q * 0.55;
   const mix = (sh) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
   return { ...D, propTint: (mix(16) << 16) | (mix(8) << 8) | mix(0) };
+}
+
+// CRACKED RUBBLE, VALE STYLE — Sunken Vale's second reuse of an earlier
+// form (js/rooms.js's crackedRocks(), the Earth Wolf's own puzzle hook).
+// A same-file local like rooms.js's own version, but built from simple
+// primitives rather than valeKit's rock models — the pattern iceGate
+// already sets for a code-built architectural obstacle (never checks
+// GREY(), no kit needed). Ground Slam (world.crackAt) breaks it apart;
+// _shatter() (js/world.js) supplies the scatter animation and collider
+// cleanup, so this needs no clear() of its own — just a group and a
+// collider, exactly like crackedRocks' own return shape.
+function valeRubble(world, id, x, z) {
+  const group = new THREE.Group();
+  for (const p of [
+    { dx: 0, dz: 0, s: 0.62, ry: 0.6 },
+    { dx: 0.5, dz: 0.35, s: 0.5, ry: 2.1 },
+    { dx: -0.45, dz: 0.3, s: 0.46, ry: 3.8 },
+    { dx: 0.1, dz: -0.45, s: 0.4, ry: 1.2 },
+  ]) {
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(p.s, 0),
+      new THREE.MeshStandardMaterial({ color: 0x6a6f78, roughness: 0.95 })
+    );
+    m.position.set(p.dx, p.s * 0.7, p.dz);
+    m.rotation.y = p.ry;
+    group.add(m);
+  }
+  group.position.set(x, 0, z);
+  world.add(group);
+  const collider = { x, z, r: 0.95 };
+  world.circleColliders.push(collider);
+  const c = { id, x, z, group, collider, cracked: false };
+  world.crackables.push(c);
+  return c;
 }
 
 const JUNCTION_HERO = { x: 0, z: 0 };
@@ -623,8 +658,17 @@ export async function buildD2p(scene) {
   });
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'd2a', { x: 0, z: -10, angle: 0 });
-  world.markers.chestDefs = [{ id: 'c_d2p', tier: 'silver', x: 0, z: -5.0, ry: 0.3, loot: { shards: 24, potion: 1 } }];
+  world.markers.chestDefs = [
+    { id: 'c_d2p', tier: 'silver', x: 0, z: -5.0, ry: 0.3, loot: { shards: 24, potion: 1 } },
+    // W5 audit (2026-08-22): Sunken Vale's critical path reused ZERO
+    // earlier forms — the region's own new reward (tide) carried
+    // everything. A frost-sealed nook, same pattern as Frostpeak's own
+    // cairn (rooms.js:3667): the Frost Wolf's shatter opens it.
+    { id: 'c_d2p_ice', tier: 'gold', x: 5.5, z: 1.5, ry: -0.4, loot: { shards: 18, heartPiece: 1 } },
+  ];
   world.reserve(0, -5.0, 2.6, 'chest');
+  world.reserve(5.5, 1.5, 2.2, 'chest');
+  iceGate(world, 4.4, 2.0, 'd2p_ice', 'vale');
   waterZone(world, { x: 0, z: -1.5, w: 11, d: 5.5, deep: false });
   world.markers.slimeSpots = [{ x: -5, z: 1, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 613, 4, { spin: 1, kinds: ['rockSA', 'crate'] });
@@ -784,6 +828,17 @@ export async function buildD3p(scene) {
   sideDoor(world, 's', halfW, halfD, 'd3a', { x: 0, z: -10, angle: 0 });
   world.markers.pupSpot = { x: 0, z: -4, id: 'pup_d3' };
   world.markers.minionSpots = [{ x: -5, z: -1, variant: 'drowned' }];
+  // W5 audit (2026-08-22): Sunken Vale's critical path reused ZERO earlier
+  // forms. Earth's own verb (crackedRocks — js/rooms.js, the Earth Wolf's
+  // Ground Slam / world.crackAt) reused here as a same-file local
+  // (valeRubble, above): a clump of rubble sits square in the path to the
+  // chest and has to be smashed before it opens.
+  valeRubble(world, 'd3p_rubble', 5.5, 1.0);
+  world.markers.chestDefs = [
+    { id: 'c_d3p_rubble', tier: 'silver', x: 5.5, z: -1.5, ry: 0.6, loot: { shards: 20, potion: 1 } },
+  ];
+  world.reserve(5.5, 1.0, 1.3, 'rubble');
+  world.reserve(5.5, -1.5, 2.2, 'chest');
   scatter(world, halfW, halfD, D, 623, 4, { spin: 1, kinds: ['coins', 'brick', 'vase'] });
   dressShore(world, halfW, halfD, D, 6231, { homes: 1, loose: 18 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
