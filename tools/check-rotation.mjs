@@ -80,10 +80,19 @@ for (const r of matrix) console.log(`  ${r.id}      ${r.newForm.padEnd(8)}  [${[
 const n0 = problems.length;
 
 // W5(a): a region's critical path must reuse >=2 DISTINCT EARLIER forms,
-// not just its own new one (and not just fire alone).
+// not just its own new one (and not just fire alone). L1 has zero earlier
+// forms and L2 has exactly one (fire) — neither can mathematically reuse
+// ">=2 distinct earlier forms" no matter how the room is built, so the rule
+// only binds once >=2 earlier forms actually exist to be reused (from L3
+// on). Flagging L2 for this was a ruler bug, not a real W5(a) violation —
+// found live: the item-5 audit (2026-08-22) traced L2's fire-only critical
+// path straight to "Stoneroot is played with FIRE" (codified intent, L2's
+// own comment), which is a documented design choice this ruler was
+// wrongly contradicting.
 for (let i = 1; i < matrix.length; i++) {
   const r = matrix[i];
   const earlierForms = matrix.slice(0, i).map((x) => x.newForm);
+  if (earlierForms.length < 2) continue;
   const reused = [...r.elements].filter((e) => earlierForms.includes(e) && e !== r.newForm);
   if (reused.length < 2 && r.elements.size > 0) {
     bad(`W5(a): ${r.id} reuses only [${reused.join(', ') || 'none'}] of its earlier forms on the critical path (needs >=2 distinct)`);
