@@ -31,12 +31,20 @@ const SKINS = {
     maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
     cinder: 0xffb25a, // the caged fire spirit
   },
+  // P7 audit (2026-08-22): Sylva was the exact "same boss, no different
+  // moves, recoloured" pattern this law exists to catch — same class, same
+  // model, same moveset as the Shadowgrip, only `speedMult` set. `snares`
+  // gives her a genuine unique move (js/attacks.js sylva_thornburst): below
+  // half health she plants down and thorns erupt in a ring around her —
+  // foreshadows the Vine-Lash's own root effect, the exact form she's
+  // about to grant.
   sylva: {
     name: 'Sylva, Thornbound',
     body: 0x24381c, glow: 0x2e5220, eyes: 0xcaff8a, burst: 0x8fdc6a,
     maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
     speedMult: 1.08,  // the forest is quicker than the shadow
+    snares: { radius: 2.6 },
   },
   // ARIA, THE GALEBOUND — Stormreach's guardian (region 5).
   //
@@ -579,7 +587,13 @@ export class Shadowgrip {
       this.attackIn -= dt;
       if (this.attackIn <= 0) {
         if (Math.random() < 0.35) this.orbitSign *= -1; // keep the circling fresh
-        if (d < 3.2) {
+        if (this.skin.snares && enraged && Math.random() < 0.5) {
+          // HER UNIQUE MOVE (P7 tell): thorns erupt where she stands.
+          this.action = 'root';
+          this.actionT = 1.0; // js/attacks.js sylva_thornburst.windup
+          this._setAnim('idle');
+          audio.play('growl', { volume: 0.7, rate: 0.5 }); // lower, different growl — new pattern
+        } else if (d < 3.2) {
           // close enough: the SWIPE (shield lesson)
           this.action = 'windup';
           this.actionT = 0.9;
@@ -696,6 +710,43 @@ export class Shadowgrip {
           if (juice.effects.slow) juice.effects.slow(0.75, 0.6);
         }
         audio.play('slam', { volume: 0.95, rate: 0.6 }); // the THUD
+      }
+    } else if (A === 'root') {
+      // SYLVA'S UNIQUE MOVE — ON-BODY telegraph, no ground decal (LAW 4):
+      // she plants down, eyes flare green, thorns visibly grow up from the
+      // ground at her own feet. ~1s to back off, the same reading time as
+      // her charge crouch.
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / 1.0;
+      this.core.scale.y = 0.85 - 0.1 * f;
+      this.eyeMat.emissiveIntensity = 1.2 + f * 2.8;
+      this._scrapeAcc += dt;
+      if (this._scrapeAcc > 0.18) {
+        this._scrapeAcc = 0;
+        juice.burst(wx, 0.15, wz, 0x8fdc6a, 6); // thorns pushing up, not dust
+      }
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        this.action = 'rootburst';
+        this.actionT = 0.35; // js/attacks.js sylva_thornburst.active
+        this._rootHit = false;
+        audio.play('slam', { volume: 0.8, rate: 0.9 });
+      }
+    } else if (A === 'rootburst') {
+      // THE RESOLVE — a single ring check, once, exactly like the charge
+      // ("never a grinder"): caught inside the radius when the thorns snap
+      // up, or you got out in time.
+      if (!this._rootHit) {
+        this._rootHit = true;
+        juice.burst(wx, 0.4, wz, 0x8fdc6a, 16);
+        if (juice.effects) juice.effects.shake(0.2, 0.3);
+        if (d < this.skin.snares.radius) {
+          player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+        }
+      }
+      if (this.actionT <= 0) {
+        this.action = 'recover';
+        this.actionT = 1.8; // js/attacks.js sylva_thornburst.recover
       }
     } else if (A === 'tired') {
       // COLLAPSED under the gold ring: eyes dim — pile the hits on
