@@ -2304,6 +2304,12 @@ function wireSettings() {
     if (gentle.checked) { state.settings.brave = false; brave.checked = false; }
     persist();
   });
+  const reduceMotion = document.getElementById('reduce-motion-toggle');
+  reduceMotion.checked = !!state.settings.reduceMotion;
+  reduceMotion.addEventListener('change', () => {
+    state.settings.reduceMotion = reduceMotion.checked;
+    persist();
+  });
   // --- the voice chooser ---------------------------------------------------
   const vpick = document.getElementById('voice-pick');
   const vrow = document.getElementById('voice-pick-row');

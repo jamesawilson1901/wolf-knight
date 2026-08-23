@@ -40,7 +40,23 @@
   rumors that foreshadow the next region; Biscuit the den dog wanders;
   rescued pups play by the fire. A freed region's healing is WITNESSED
   (visible sequence, persistent, revisit rewards). [#5]
-- A reduce-motion setting tames shake/hitstop/flash. [polish list]
+- ✅ DONE 2026-08-23: A reduce-motion setting tames shake/hitstop/flash.
+  `state.settings.reduceMotion` (pause menu, "🎥 Reduce motion", persists
+  per profile like every other setting) gates three things through
+  `CONFIG.ACCESSIBILITY`: camera shake is cut to 0 (`Effects.shake()`,
+  every call site — juice hits, ground-slam/stomp, boss telegraphs, the
+  Surge impact — routes through this one method), the hit punch-in zoom
+  and the Surge ceremony's camera lean are both cut to 0, and hitstop/
+  light-burst flashes (ground-slam glow, the Surge's red wash/moon glow)
+  are dimmed to 40%/35% rather than removed — a hit still needs to read as
+  landing. Particles, audio and haptics are untouched: they aren't camera
+  motion, so `juice.onHit()`'s tiered feedback (see the entry above) still
+  reads as weighty with shake off. Verified live via the dev harness:
+  called `Effects.shake/hitStop/punch/groundSlam` directly with the
+  setting off then on and confirmed the exact scale factors applied, then
+  clicked the real pause-menu checkbox and confirmed it flips
+  `state.settings.reduceMotion`, updates the checkbox, and round-trips
+  through a real save (`localStorage`). [polish list]
 
 ## Combat grammar (already true — now law)
 - RED marks danger (rings/arcs/streaks), GOLD marks "act here" (strike
