@@ -1023,10 +1023,14 @@ export async function buildDg4(scene) {
   world.markers.potionSpot = { x: -6, z: -3 };
   world.markers.chestDefs = [{ id: 'c_dg4', tier: 'silver', x: 7, z: 3.5, ry: 0.2, loot: { potion: 2 } }];
   world.reserve(7, 3.5, 2.6, 'chest');
-  // L5/L6 RE-KEY (2026-08-22): the new south door (above) cuts a third gap
-  // into rimSides()'s wall run, same as sc4 (level5.js) — bumped scatter to
-  // hold the choke's arrival-frame count above the density floor.
-  scatter(world, halfW, halfD, D, 634, 8, { spin: 1, kinds: ['rockSB', 'skull'] });
+  // L5/L6 RE-KEY (2026-08-22): the new south door (above) blocks a couple of
+  // rimSides()'s wall slots, which shifts its seeded RNG sequence for every
+  // slot after it — not just the ones near the new door — and that shift
+  // thinned the arrival frame (spawn faces east; only the east edge is ever
+  // in view here), same failure mode as sc4 (level5.js). scatter() cycles
+  // all four edges per count, so only ~1 in 4 draws lands on the east wall —
+  // bumped well past 1-for-1 replacement to reliably clear the density floor.
+  scatter(world, halfW, halfD, D, 634, 55, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);

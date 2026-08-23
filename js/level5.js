@@ -1185,13 +1185,14 @@ export async function buildSc4(scene) {
   world.markers.chestDefs = [{ id: 'c_sc4', tier: 'silver', x: 7, z: -3.5, ry: 0.2, loot: { potion: 2 } }];
   world.reserve(7, -3.5, 2.6, 'chest');
   galeLane(world, { x: 0, z: 0, w: 9, d: 11, dir: 'n', strength: 'breeze' });
-  // L5/L6 RE-KEY (2026-08-22): the new south door (see above) cuts a third
-  // gap into stairSides()'s 38-slot wall run, blocking enough of it that the
-  // choke's arrival frame dropped below the density floor — same failure
-  // mode its own header comment already names ("sc4 lost a third of its
-  // dressing"). Bumped scatter to make the count back up, per that comment's
-  // own rule: raise the count, never lower the bar.
-  scatter(world, halfW, halfD, D, 534, 8, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
+  // L5/L6 RE-KEY (2026-08-22): the new south door (see above) blocks a couple
+  // of stairSides()'s 38 wall slots, which shifts its seeded RNG sequence for
+  // every slot after — not just the ones near the new door — and that shift
+  // happened to thin out the arrival frame (spawn faces east; only the east
+  // edge is ever in view here). scatter() cycles all four edges per count, so
+  // only ~1 in 4 draws lands on the east wall — bumped well past the naive
+  // 1-for-1 replacement to reliably clear the density floor again.
+  scatter(world, halfW, halfD, D, 534, 40, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
   stairSides(world, halfW, halfD, D, 5341);
   lowWall(world, 0, -5, 0, D, 6.0);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
