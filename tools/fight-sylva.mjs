@@ -122,11 +122,36 @@ await d.shot('post');
 // the way onward appears on the REBUILD: leave for tc4, walk back in
 let f1open = false, bossGone = false;
 if (flags.sylva) {
+  // task #32 root cause: onDefeated queues several narration.say() lines
+  // (Web Speech + captions), which hold gates.blocking/speaking for ~50s —
+  // walking to the door WHILE input is blocked timed out before ever
+  // leaving the room, so the "rebuild" below was reading the same
+  // never-rebuilt world the boss died in. Wait it out first.
+  const nt0 = Date.now();
+  let ntLast = null;
+  while ((Date.now() - nt0) / 1000 < 150) {
+    await d.pickPerkIfOffered();
+    const g = await d.wk('gates');
+    ntLast = g;
+    if (!g.blocking && !g.speaking && !g.transitioning) break;
+    await d.page.waitForTimeout(500);
+  }
+  say('post-defeat gates settled after', ((Date.now() - nt0) / 1000).toFixed(1) + 's:', JSON.stringify(ntLast));
+  // task #32 SECOND finding: the door's real trigger box is only ~0.5u deep
+  // (levelkit.js sideDoor's DOOR_ZONE), but walkTo's arrive radius (1.1)
+  // reported "ok" up to 1u short of it — the walk genuinely never crossed
+  // the threshold, silently. Aiming past the door's center (outward along
+  // the radial from room-origin), rather than exactly at it, guarantees the
+  // walk transits the trigger box regardless of exactly where arrive stops.
+  const past = (door) => {
+    const dd = Math.hypot(door.x, door.z) || 1;
+    return { x: door.x + (door.x / dd) * 1.4, z: door.z + (door.z / dd) * 1.4 };
+  };
   const sDoor = (await d.wk('doors')).find((x) => x.to === 'tc4');
-  if (sDoor) await d.walkTo(sDoor.x, sDoor.z, { timeout: 40, arrive: 1.1 });
+  if (sDoor) { const p = past(sDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   if ((await d.wk('room')) === 'tc4') {
     const back = (await d.wk('doors')).find((x) => x.to === 'tgl');
-    if (back) await d.walkTo(back.x, back.z, { timeout: 40, arrive: 1.1 });
+    if (back) { const p = past(back); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   }
   if ((await d.wk('room')) === 'tgl') {
     const doors = await d.wk('doors');
