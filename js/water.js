@@ -46,7 +46,7 @@ export const WATER = {
 // floor. Every other gate in the game is decided the same way.
 export const canWade = () => state.formsUnlocked.includes('tide_wolf');
 
-export function waterZone(world, { x, z, w, d, deep = false, id = null }) {
+export function waterZone(world, { x, z, w, d, deep = false, id = null, noCollide = false }) {
   const zone = {
     id, deep,
     minX: x - w / 2, maxX: x + w / 2,
@@ -57,7 +57,14 @@ export function waterZone(world, { x, z, w, d, deep = false, id = null }) {
   // DEEP WATER IS A WALL until the gift. Laid as a box collider, so it stops
   // Kael exactly the way the cliff walls do — no special case in movement, and
   // no chance of clipping into it from an odd angle.
-  if (deep && !canWade()) {
+  //
+  // noCollide exists for exactly one caller: Meri's own _flood() (boss.js). A
+  // zone that appears mid-room around wherever Kael happens to be standing
+  // cannot be a collider — "decided at BUILD time, once" (above) is the whole
+  // safety property, and a boss fight breaks that premise outright. Her flood
+  // stays a real, walkable, SLOW deep zone regardless of canWade(), the same
+  // shrunk-floor mechanic either way.
+  if (deep && !canWade() && !noCollide) {
     const c = { minX: zone.minX, maxX: zone.maxX, minZ: zone.minZ, maxZ: zone.maxZ };
     world.boxColliders.push(c);
     zone.collider = c;

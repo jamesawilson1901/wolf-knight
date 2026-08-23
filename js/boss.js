@@ -50,14 +50,17 @@ const SKINS = {
   //
   // BOSSES FIGHT LIKE THEIR FAMILY, so she wears the same class as the
   // Shadowgrip and Sylva: the crouch, the charge, the red lane and the gold
-  // collapse ring the kids have been reading since region one. Nothing about
-  // the fight is new EXCEPT the weather, and the weather is the thing they were
-  // given a tool for two districts ago.
+  // collapse ring the kids have been reading since region one.
   //
   // At half health she does not simply hunt harder — she raises two gales that
-  // squeeze the arena from both sides. Walking out of her charge lane stops
-  // working; dashing out still does. That is the whole design of the region,
-  // asked as a question, once, at the moment it matters.
+  // squeeze the arena from both sides (gale strength beats walking speed, so
+  // the flanks stop being usable escape room). L5/L6 RE-KEY (2026-08-22):
+  // storm_wolf is HER OWN reward (main.js grants it on ariaDefeated), so a
+  // child fighting her has never had the Thunder Dash and never needs it here
+  // — the crouch telegraph is the same ~1s hound tell every charge in the
+  // game already gives, and the open middle band (|x|<5) is room enough to
+  // clear it on foot (see tools/fight-aria.mjs). The gale is what the fight
+  // is FOR, not a lock only the reward can open.
   aria: {
     name: 'Aria, the Galebound',
     body: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
@@ -325,11 +328,10 @@ export class Shadowgrip {
     if (this.coreHp <= 0) this._defeat();
   }
 
-  // HER SECOND HALF. The arena narrows from both sides, and it narrows with
-  // the thing the child already knows how to cross. Nothing is added to the
-  // fight's grammar — the charge, the tell and the punish window are all
-  // unchanged — the FLOOR just gets smaller, and the answer to that is the
-  // verb Aria's own shrine handed over.
+  // HER SECOND HALF. The arena narrows from both sides. Nothing is added to
+  // the fight's grammar — the charge, the tell and the punish window are all
+  // unchanged — the FLOOR just gets smaller, and the open middle is still
+  // room enough to answer it on foot (see the aria SKINS comment above).
   _raiseGales() {
     if (!this.skin.gales || this._galesUp) return;
     this._galesUp = true;
@@ -352,14 +354,22 @@ export class Shadowgrip {
 
   // HER SECOND HALF. The arena does not narrow with wind, it narrows with
   // WATER: two channels open at the edges and the standing ground shrinks to
-  // the middle. A child who took the Tide Wolf twenty minutes ago finds that it
-  // was not a convenience.
+  // the middle.
+  //
+  // L5/L6 RE-KEY (2026-08-22): tide_wolf is HER OWN reward now (main.js grants
+  // it on meriDefeated) — a child fighting her has never had it. waterZone()'s
+  // normal rule (deep + no gift = a wall) would drop a hard collider wherever
+  // Kael happens to be standing the instant she crosses half health, which is
+  // exactly the "gate that changes state mid-room" water.js's own canWade()
+  // comment says never to build. noCollide keeps the flood a real, crossable,
+  // SLOW zone for everyone — the floor still visibly shrinks, nobody gets
+  // walled in by a form they haven't been given yet.
   _flood() {
     if (!this.skin.floods || this._flooded) return;
     this._flooded = true;
     for (const f of this.skin.floods) {
       waterZone(this.world, { x: this.x + f.x, z: this.z + f.z, w: f.w, d: f.d,
-        deep: true, id: 'meri' });
+        deep: true, id: 'meri', noCollide: true });
     }
     if (this.world._waterMeshes) {
       for (const m of this.world._waterMeshes) {

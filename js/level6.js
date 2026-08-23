@@ -20,7 +20,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -120,13 +120,23 @@ export const L6 = {
 registerDistrictTints(L6, DISTRICTS);
 
 // The rim, clockwise, as it must be walkable WITHOUT the gift.
+//
+// L5/L6 RE-KEY (2026-08-22): tide_wolf is Meri's reward now, not an early
+// spring grant (see main.js's ceremony block, matching Aria/storm_wolf and
+// Sylva/verdant_wolf), so the rim itself must be finishable without it.
+// dsh (the spring) and dg2 (DEVELOP — needs wading) are bypassed by the new
+// d2b→d3a door; d4b (the Lock Gate, a hard deep crossing) is bypassed by the
+// new d4a→d4p→dg4 chain. All three still exist, reachable from both of their
+// original doors, as optional detours (TIDE_DETOURS) that only do anything
+// once the fins are earned at the Deep.
 export const RIM_PATH = [
   'd1a', 'd1b', 'dg1',
-  'd2a', 'd2b', 'dsh', 'dg2',
+  'd2a', 'd2b',
   'd3a', 'd3b', 'dtp', 'dg3',
-  'd4a', 'd4b', 'dg4',
+  'd4a', 'd4p', 'dg4',
   'ddp',
 ];
+export const TIDE_DETOURS = ['dsh', 'dg2', 'd4b'];
 
 export const TEACH = [
   { step: 'introduce', room: 'dsh', marker: 'teachDeep',
@@ -138,6 +148,9 @@ export const TEACH = [
   { step: 'conclude', room: 'd4b', marker: 'lockGate',
     what: 'the lock gate — a deep crossing with the pack waiting on the far side' },
 ];
+// L5/L6 RE-KEY (2026-08-22): dsh, dg2 and d4b are TIDE_DETOURS now, not
+// mandatory rim stops — the TEACH beats above still live in these rooms, they
+// just play out on a second lap once the child has fins, same as Stormreach.
 
 // ---------------------------------------------------------------------------
 // THE VALE KIT. Every file already vendored. No new bytes, same deal as Levels
@@ -630,12 +643,17 @@ export async function buildD2a(scene) {
 
 export async function buildD2b(scene) {
   const { world, spec, D } = base(scene, 'd2b');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n'), gap('w')], D, {
     patches: [{ x: 0, z: 0, r: 6.0, kind: 'water' }, { x: -12, z: 8, r: 3.8, kind: 'moss' }],
   });
   world.spawn = { x: 13, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'd2a', { x: -13, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'dsh', { x: 0, z: 6, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): the RIM_PATH no longer runs through dsh or
+  // dg2 (tide_wolf now comes from Meri; dg2's deep channel has no walkable
+  // margin). Both keep their old doors and become an optional side-loop;
+  // this new door carries the RIM_PATH straight through to d3a.
+  sideDoor(world, 'w', halfW, halfD, 'd3a', { x: -12, z: 10, angle: -Math.PI / 2 });
   // waist deep across the middle: you CAN cross it, and it slows you while
   // things that live in it do not slow at all
   waterZone(world, { x: 0, z: 0, w: 20, d: 12, deep: false });
@@ -687,7 +705,14 @@ export async function buildDsh(scene) {
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'd2b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'dg2', { x: 9, z: 0, angle: Math.PI / 2 });
-  world.markers.sparkSpot = { x: 0, z: -4.6, grants: 'tide_wolf' };
+  // L5/L6 RE-KEY (2026-08-22): THE SPRING PROMISES; THE BOSS PAYS — same
+  // migration as ssh (js/level5.js). No `grants` field, so main.js's
+  // generic sparkSpot handler does not fire here; the marker stays (still
+  // reads as a camp/rest beat for verify-gauntlet's heuristic) and this
+  // room, dg2, and d4b are bypassed on the RIM_PATH now (see the new
+  // d2b/d3a/d4p doors) — optional "come back once you have the fins"
+  // detours instead.
+  world.markers.sparkSpot = { x: 0, z: -4.6 };
   world.markers.teachDeep = { x: -5.6, z: 0 };
   world.reserve(0, -4.6, 3.0, 'spark');
   // INTRODUCE — one channel, across the way out, and nothing else to think about
@@ -766,7 +791,11 @@ export async function buildDg2(scene) {
 export async function buildD3a(scene) {
   const { world, spec, D } = base(scene, 'd3a');
   const wade = canWade();
-  const gaps = [gap('e'), gap('w'), gap('n')];
+  // L5/L6 RE-KEY (2026-08-22): the new d2b door (centre -12) is unconditional
+  // — it's how the RIM_PATH reaches d3a before tide_wolf exists at all — and
+  // sits well clear of the wade-gated dlg door (centre 0, only cut once
+  // wade is true), so both can coexist on the same wall.
+  const gaps = [gap('e'), gap('w'), gap('n'), gap('s', DOOR_HALF, -12)];
   if (wade) gaps.push(gap('s'));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: -8, r: 4.6, kind: 'water' }, { x: 12, z: 8, r: 4.2, kind: 'rubble' }],
@@ -782,10 +811,18 @@ export async function buildD3a(scene) {
   sideDoor(world, 'w', halfW, halfD, 'd3b', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'd3p', { x: 0, z: 6, angle: Math.PI });
   if (wade) sideDoor(world, 's', halfW, halfD, 'dlg', { x: 0, z: -13, angle: 0 });
+  // L5/L6 RE-KEY (2026-08-22): the RIM_PATH no longer runs through dsh or
+  // dg2 (tide_wolf now comes from Meri, and dg2's deep channel has no
+  // walkable margin). This new door carries the RIM_PATH straight through
+  // to d2b instead, sharing the south wall with the wade-gated dlg door —
+  // offset west of it (centre -12), in the corner the d3a_edge water zone
+  // no longer covers (trimmed below). That corner never led to the lagoon
+  // anyway, so it was never true "uncrossable lagoon" flavor to begin with.
+  sideDoor(world, 's', halfW, halfD, 'd2b', { x: -13, z: 0, angle: Math.PI / 2 }, { centre: -12 });
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'sunkenhall', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: 8, z: 7 };
-  waterZone(world, { x: 0, z: 11.5, w: 30, d: 5, deep: true, id: 'd3a_edge' });
+  waterZone(world, { x: 3, z: 11.5, w: 24, d: 5, deep: true, id: 'd3a_edge' });
   world.markers.minionSpots = [{ x: -6, z: -5, variant: 'drowned' }, { x: 5, z: -6, variant: 'drowned' }];
   scatter(world, halfW, halfD, D, 621, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6211, { homes: 3 });
@@ -950,12 +987,17 @@ export async function buildD4b(scene) {
 
 export async function buildD4p(scene) {
   const { world, spec, D } = base(scene, 'd4p');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('w')], D, {
+  // L5/L6 RE-KEY (2026-08-22): d4p already sat between d4a and d4b, so it's the
+  // natural bypass around the Lock Gate — a new door out its north wall reaches
+  // dg4 directly, no d4b crossing required. d4b keeps both its original doors
+  // unchanged and stays reachable as an optional detour once the fins are in.
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('w'), gap('n')], D, {
     patches: [{ x: 0, z: -2, r: 3.6, kind: 'sand' }],
   });
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'd4b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'd4a', { x: 7.5, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'n', halfW, halfD, 'dg4', { x: -3, z: -4, angle: 0 });
   world.markers.chestDefs = [{ id: 'c_d4p', tier: 'gold', x: 0, z: -4.4, ry: -0.3, loot: { shards: 34, heartPiece: 1, gear: 'spear_tide' } }];
   world.reserve(0, -4.4, 2.6, 'chest');
   scatter(world, halfW, halfD, D, 633, 4, { spin: 1, kinds: ['rockSA', 'skull'] });
@@ -966,18 +1008,29 @@ export async function buildD4p(scene) {
 
 export async function buildDg4(scene) {
   const { world, spec, D } = base(scene, 'dg4');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+  // L5/L6 RE-KEY (2026-08-22): matching door back to d4p (see buildD4p) — the
+  // south rim is reached from 4A via the Salt Cellar now, not through the Lock
+  // Gate, so the rest stop and the boss door beyond it stay open without tide.
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n'), gap('s')], D, {
     patches: [{ x: 0, z: 0, r: 3.4, kind: 'sand' }],
   });
   world.spawn = { x: 9, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'd4b', { x: -9, z: 0, angle: -Math.PI / 2 });
   // LANDS ON FLOOR — see verify-reachable's landing sweep.
   sideDoor(world, 'n', halfW, halfD, 'ddp', { x: 1.7, z: 10.7, angle: Math.PI });
+  sideDoor(world, 's', halfW, halfD, 'd4p', { x: -5, z: 2, angle: 0 });
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.potionSpot = { x: -6, z: -3 };
   world.markers.chestDefs = [{ id: 'c_dg4', tier: 'silver', x: 7, z: 3.5, ry: 0.2, loot: { potion: 2 } }];
   world.reserve(7, 3.5, 2.6, 'chest');
-  scatter(world, halfW, halfD, D, 634, 4, { spin: 1, kinds: ['rockSB', 'skull'] });
+  // L5/L6 RE-KEY (2026-08-22): the new south door (above) blocks a couple of
+  // rimSides()'s wall slots, which shifts its seeded RNG sequence for every
+  // slot after it — not just the ones near the new door — and that shift
+  // thinned the arrival frame (spawn faces east; only the east edge is ever
+  // in view here), same failure mode as sc4 (level5.js). scatter() cycles
+  // all four edges per count, so only ~1 in 4 draws lands on the east wall —
+  // bumped well past 1-for-1 replacement to reliably clear the density floor.
+  scatter(world, halfW, halfD, D, 634, 55, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);

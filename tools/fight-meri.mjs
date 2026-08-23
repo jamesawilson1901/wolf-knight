@@ -2,8 +2,16 @@
 // SKINS.meri, Slime.glb): 28 hp, 0.92x speed, saveKey meriHp. Same action
 // machine: prowl/stalk/windup/swipe/crouch/charge/tired/recover. Her twist:
 // at hp<=14 she FLOODS the arena — two deep zones grow at world x[-13,-6] and
-// [6,13]; standing ground shrinks. Fought AS THE TIDE WOLF so the floods are
-// passable (canWade), the middle stays dry, and J/shield/dodge do the rest.
+// [6,13]; standing ground shrinks.
+//
+// L5/L6 RE-KEY (2026-08-22): tide_wolf is HER OWN reward now (main.js grants
+// it on meriDefeated) — a real child reaches this fight WITHOUT it, fighting
+// as whatever form they last carried. The flood is still real deep water
+// (visually, and it still slows), but water.js's noCollide keeps it walkable
+// for everyone precisely because nobody here can own the gift yet — see
+// boss.js's _flood(). This run deliberately does NOT pre-grant tide_wolf, so
+// it is also the regression test for that fix: if the flood ever regresses
+// back to a hard collider, this run gets a player stuck in a wall.
 import { launch } from './wk-drive.mjs';
 
 const TS = parseFloat(process.env.WK_TIMESCALE || '1');
@@ -18,8 +26,7 @@ await d.page.evaluate(() => {
   g.WS.set('vale', 'spark', true);
   g.WS.set('vale', 'poolsQuenched', true);
 });
-await d.jump('ddp', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf']);
-await d.page.evaluate(() => { window.__game.state.form = 'tide_wolf'; });
+await d.jump('ddp', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf']);
 await d.page.waitForFunction(() => !window.__game.narration.speaking && !window.__wk.gates.blocking,
   null, { timeout: 30000 }).catch(() => {});
 say('deep:', JSON.stringify(await d.wk()), 'timescale', TS);
@@ -44,7 +51,6 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     if (won) { say('DEFEATED (left the crown after kill)'); break; }
     const door = (await d.wk('doors')).find((x) => x.to === 'ddp');
     if (door) await d.walkTo(door.x, door.z, { timeout: 30 });
-    await d.page.evaluate(() => { window.__game.state.form = 'tide_wolf'; });
     continue;
   }
   const b = s.boss;
@@ -61,7 +67,6 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     seen.deaths++; say(`DEATH #${seen.deaths} [hp ${b.hp} action ${b.action}]`);
     await d.page.waitForTimeout(4500 / TS);
     seen.respawns.push(await d.wk('room'));
-    await d.page.evaluate(() => { window.__game.state.form = 'tide_wolf'; });
   }
   lastHearts = s.hearts;
   if (s.hearts <= 2 && s.hearts > 0.5) await d.tap('h');
@@ -71,8 +76,10 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
   if (b.action === 'windup' || b.action === 'swipe') {
     await d.holdShield(1000 / TS);
   } else if (b.action === 'crouch' || b.action === 'charge') {
-    // out of the red lane — step perpendicular, but stay in the DRY middle
-    // (|x|<6): the flanks flood at half health and only tide can stand there
+    // out of the red lane — step perpendicular, but stay in the DRY-ISH
+    // middle (|x|<6): the flanks flood at half health and, since noCollide
+    // keeps them walkable-but-slow rather than walled, straying into them
+    // just costs speed exactly when a wolf needs it least
     const px = -dz / (dist || 1), pz = dx / (dist || 1);
     const side = ((s.pos.x * pz - s.pos.z * px) > 0) ? 1 : -1;
     const tx = Math.max(-5.5, Math.min(5.5, s.pos.x + px * 4 * side));
@@ -96,8 +103,13 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
 const flags = await d.page.evaluate(() => ({
   meri: !!window.__wk.flags.meriDefeated,
   meriHp: window.__game.state.flags.meriHp,
+  tideGranted: window.__game.state.formsUnlocked.includes('tide_wolf'),
 }));
 say('FLAGS:', JSON.stringify(flags));
+if (flags.meri && !flags.tideGranted) {
+  say('FAIL: meriDefeated is set but tide_wolf was never granted — see main.js ceremony block');
+  d.errors.push('tide_wolf not granted on meriDefeated');
+}
 say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, dashes: seen.dashes }));
 await d.shot('post');
 

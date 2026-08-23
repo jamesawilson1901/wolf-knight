@@ -51,10 +51,18 @@ const go = async (room) => {
   return false;
 };
 
-const CLIMB = ['d1a', 'd1b', 'dg1', 'd2a', 'd2b', 'dsh', 'dg2',
-  'd3a', 'd3b', 'dtp', 'dg3', 'd4a', 'd4b', 'dg4', 'ddp'];
-const POCKETS = ['d1p', 'd2p', 'd3p', 'd4p'];
-const ALL = [...CLIMB, ...POCKETS, 'dlg'];
+// L5/L6 RE-KEY (2026-08-22): tide_wolf is Meri's reward now, not an early
+// spring grant, so the rim itself must be finishable without it. dsh (the
+// spring) and dg2 (DEVELOP — needs wading) are bypassed by the d2b→d3a door;
+// d4b (the Lock Gate, a hard deep crossing) is bypassed by the d4a→d4p→dg4
+// chain. All three still exist, reachable from both of their original doors,
+// as optional detours (TIDE_DETOURS) that only do anything once the fins are
+// earned at the Deep.
+const CLIMB = ['d1a', 'd1b', 'dg1', 'd2a', 'd2b',
+  'd3a', 'd3b', 'dtp', 'dg3', 'd4a', 'd4p', 'dg4', 'ddp'];
+const POCKETS = ['d1p', 'd2p', 'd3p'];
+const TIDE_DETOURS = ['dsh', 'dg2', 'd4b'];
+const ALL = [...CLIMB, ...POCKETS, ...TIDE_DETOURS, 'dlg'];
 
 console.log('\n── 1. every space builds ──────────────────────────────');
 const rooms = {};
@@ -69,12 +77,13 @@ for (const id of ALL) {
       water: w.waterZones.map((z) => (z.deep ? 'deep' : 'shallow')),
       fires: w.quenchables.length,
       markers: Object.keys(w.markers),
+      sparkGrants: w.markers.sparkSpot && w.markers.sparkSpot.grants,
       calls: window.__game.renderer.info.render.calls,
       hero: w.heroMarks.length,
     };
   });
 }
-check('all twenty spaces build', Object.keys(rooms).length === ALL.length,
+check('all spaces build', Object.keys(rooms).length === ALL.length,
   { built: Object.keys(rooms).length, of: ALL.length });
 
 console.log('\n── 2. the RIM is walkable without the gift ────────────');
@@ -102,8 +111,21 @@ const strays = POCKETS.filter((p) => {
 });
 check('every pocket door is answered from the other side', strays.length === 0, { strays });
 
+// L5/L6 RE-KEY (2026-08-22): the three tide-only detours are two-door LOOPS
+// off the rim now, not dead ends — both of a detour's original doors must
+// still be answered from the other side, in both directions.
+const detourGaps = TIDE_DETOURS.flatMap((d) => {
+  const r = rooms[d];
+  if (!r) return [`${d}: did not build`];
+  return r.doors.filter((to) => !rooms[to] || !rooms[to].doors.includes(d))
+    .map((to) => `${d}→${to} not answered back`);
+});
+check('every tide-detour door is answered from both rim-side rooms',
+  detourGaps.length === 0, { detourGaps });
+
 console.log('\n── 5. the teach is in order, and in the right rooms ───');
-check('the spring grants the form', !!(rooms.dsh && rooms.dsh.markers.includes('sparkSpot')));
+check('the spring no longer grants the form — Meri does (see boss.js)',
+  !!(rooms.dsh && rooms.dsh.markers.includes('sparkSpot') && !rooms.dsh.sparkGrants));
 check('INTRODUCE — the spring has deep water across its way out',
   !!(rooms.dsh && rooms.dsh.water.filter((w) => w === 'deep').length >= 1), rooms.dsh && rooms.dsh.water);
 check('GRANT+30s — and a second channel with a reward behind it',
@@ -118,11 +140,13 @@ check('CONCLUDE — the lock gate is a deep crossing',
 console.log('\n── 6. the lock is shown before the key is given ───────');
 // LEVEL-MAP's founding rule, and the reason region 1 puts a burnable cubby in
 // its first room: a child must SEE what the region's tool does before they are
-// handed it, or the gift lands as a shrug.
-const d1bIdx = CLIMB.indexOf('d1b'), dshIdx = CLIMB.indexOf('dsh');
-check('deep water is shown in d1b, four rooms before the spring gives the gift',
-  !!(rooms.d1b && rooms.d1b.water.includes('deep')) && d1bIdx < dshIdx,
-  { shownAt: d1bIdx, grantedAt: dshIdx });
+// handed it, or the gift lands as a shrug. L5/L6 RE-KEY (2026-08-22): the key
+// (tide_wolf) now comes from Meri at the Deep, so "shown before given" is
+// checked against the whole rim rather than the old spring's position.
+const d1bIdx = CLIMB.indexOf('d1b'), ddpIdx = CLIMB.indexOf('ddp');
+check('deep water is shown in d1b, long before Meri grants the fins at the Deep',
+  !!(rooms.d1b && rooms.d1b.water.includes('deep')) && d1bIdx < ddpIdx,
+  { shownAt: d1bIdx, grantedAt: ddpIdx });
 
 console.log('\n── 7. junctions carry their landmark ──────────────────');
 const junctions = ['d1a', 'd2a', 'd3a', 'd4a', 'ddp'];
