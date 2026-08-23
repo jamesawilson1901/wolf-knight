@@ -49,10 +49,16 @@ const go = async (room) => {
   return false;
 };
 
-const CLIMB = ['s1a', 's1b', 'sc1', 's2a', 's2b', 'ssh', 'sc2',
-  's3a', 's3b', 'svn', 'sc3', 's4a', 's4b', 'sc4', 'scr'];
+// L5/L6 RE-KEY (2026-08-22): ssh/svn/s4b dropped off the mandatory climb —
+// storm_wolf is Aria's reward now, not an early shrine grant, so the climb
+// itself must be finishable without it. All three still exist, reachable
+// from both of their original doors, as optional detours (STORM_DETOURS)
+// that only do anything once the dash is earned at the crown.
+const CLIMB = ['s1a', 's1b', 'sc1', 's2a', 's2b', 'sc2',
+  's3a', 's3b', 'sc3', 's4a', 'sc4', 'scr'];
 const POCKETS = ['s1p', 's2p', 's3p', 's4p'];
-const ALL = [...CLIMB, ...POCKETS, 'ssA'];
+const STORM_DETOURS = ['ssh', 'svn', 's4b'];
+const ALL = [...CLIMB, ...POCKETS, ...STORM_DETOURS, 'ssA'];
 
 console.log('\n── 1. every space builds ──────────────────────────────');
 const rooms = {};
@@ -67,6 +73,7 @@ for (const id of ALL) {
       lanes: w.galeLanes.map((l) => ({ dir: l.dir, s: l.strength })),
       vanes: w.vanes.length,
       markers: Object.keys(w.markers),
+      sparkGrants: w.markers.sparkSpot && w.markers.sparkSpot.grants,
       calls: window.__game.renderer.info.render.calls,
       hero: w.heroMarks.length,
     };
@@ -100,8 +107,21 @@ const strays = POCKETS.filter((p) => {
 });
 check('every pocket door is answered from the other side', strays.length === 0, { strays });
 
+// L5/L6 RE-KEY (2026-08-22): the three storm-only detours are two-door
+// LOOPS off the climb now, not dead ends — both of a detour's original
+// doors must still be answered from the other side, in both directions.
+const detourGaps = STORM_DETOURS.flatMap((d) => {
+  const r = rooms[d];
+  if (!r) return [`${d}: did not build`];
+  return r.doors.filter((to) => !rooms[to] || !rooms[to].doors.includes(d))
+    .map((to) => `${d}→${to} not answered back`);
+});
+check('every storm-detour door is answered from both climb-side rooms',
+  detourGaps.length === 0, { detourGaps });
+
 console.log('\n── 5. the teach is in order, and in the right rooms ───');
-check('the shrine grants the form', !!(rooms.ssh && rooms.ssh.markers.includes('sparkSpot')));
+check('the shrine no longer grants the form — Aria does (see boss.js)',
+  !!(rooms.ssh && rooms.ssh.markers.includes('sparkSpot') && !rooms.ssh.sparkGrants));
 check('INTRODUCE — the shrine has a gale across its way out',
   !!(rooms.ssh && rooms.ssh.lanes.filter((l) => l.s === 'gale').length >= 1),
   rooms.ssh && rooms.ssh.lanes);
@@ -118,11 +138,13 @@ check('CONCLUDE — the wind gate has two', !!(rooms.s4b && rooms.s4b.vanes === 
 console.log('\n── 6. the lock is shown before the key is given ───────');
 // LEVEL-MAP's founding rule, and the reason region 1 puts a burnable cubby in
 // its first room: a child must SEE what the region's tool does before they are
-// handed it, or the gift lands as a shrug.
-const s1bIdx = CLIMB.indexOf('s1b'), sshIdx = CLIMB.indexOf('ssh');
-check('a gale is shown in s1b, four rooms before the shrine grants the dash',
-  !!(rooms.s1b && rooms.s1b.lanes.some((l) => l.s === 'gale')) && s1bIdx < sshIdx,
-  { shownAt: s1bIdx, grantedAt: sshIdx });
+// handed it, or the gift lands as a shrug. L5/L6 RE-KEY (2026-08-22): the key
+// (storm_wolf) now comes from Aria at the crown, so "shown before given" is
+// checked against the whole climb rather than the old shrine's position.
+const s1bIdx = CLIMB.indexOf('s1b'), scrIdx = CLIMB.indexOf('scr');
+check('a gale is shown in s1b, long before Aria grants the dash at the crown',
+  !!(rooms.s1b && rooms.s1b.lanes.some((l) => l.s === 'gale')) && s1bIdx < scrIdx,
+  { shownAt: s1bIdx, grantedAt: scrIdx });
 
 console.log('\n── 7. junctions carry their landmark ──────────────────');
 const junctions = ['s1a', 's2a', 's3a', 's4a', 'scr'];

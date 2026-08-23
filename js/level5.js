@@ -25,7 +25,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -122,16 +122,31 @@ export const L5 = {
 
 registerDistrictTints(L5, DISTRICTS);
 
-// The climb, bottom to top, as it must be walkable.
+// The climb, bottom to top, as it must be walkable — WITHOUT storm_wolf.
+// L5/L6 RE-KEY (2026-08-22): ssh/svn/s4b dropped off the mandatory climb.
+// Each still exists, still teaches its own lesson, and is still reachable
+// from both of its original doors — a child can walk in any time and see
+// the gale they cannot yet cross — but the climb itself now runs past
+// them via the new sc2/sc3/sc4 doors added this session, so Aria's grant
+// (not an early shrine) is what actually opens them.
 export const CLIMB = [
   's1a', 's1b', 'sc1',
-  's2a', 's2b', 'ssh', 'sc2',
-  's3a', 's3b', 'svn', 'sc3',
-  's4a', 's4b', 'sc4',
+  's2a', 's2b', 'sc2',
+  's3a', 's3b', 'sc3',
+  's4a', 'sc4',
   'scr',
 ];
 
-// The four-step teach for the STORM WOLF's thunder-dash.
+// Reachable at any time, but not required to finish the climb — the
+// storm-only twist/conclude rooms, plus the shrine that used to grant
+// early. All three take on their intended purpose only once storm_wolf
+// is earned from Aria.
+export const STORM_DETOURS = ['ssh', 'svn', 's4b'];
+
+// The four-step teach for the STORM WOLF's thunder-dash. All four rooms are
+// STORM_DETOURS or the shrine now (2026-08-22 re-key) — a child who wants
+// to see the whole lesson still can, any time, but nothing here is on the
+// mandatory CLIMB any more.
 export const TEACH = [
   { step: 'introduce', room: 'ssh', marker: 'teachGale',
     what: 'the shrine — the spark, and one gale between it and the door' },
@@ -707,12 +722,19 @@ export async function buildS2a(scene) {
 
 export async function buildS2b(scene) {
   const { world, spec, D } = base(scene, 's2b');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n'), gap('s')], D, {
     patches: [{ x: 12, z: -8, r: 4.6, kind: 'gravel' }, { x: -12, z: 8, r: 4.2, kind: 'rubble' }],
   });
   world.spawn = { x: 13, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 's2a', { x: -13, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'ssh', { x: 0, z: 6, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): the critical path no longer runs through
+  // ssh (its gale is un-crossable without storm_wolf, which now comes
+  // from Aria, not this shrine). ssh keeps both its old doors and becomes
+  // an optional detour; this new door carries the CLIMB straight through
+  // to sc2, threading the gap between the two existing gust lanes (x -8
+  // and x 7) so a child never spawns into either.
+  sideDoor(world, 's', halfW, halfD, 'sc2', { x: 2, z: -5.5, angle: 0 });
 
   // Two gusts crossing, so the floor between them is calm and the way round is
   // obvious. The room is the last one before the gift, and its job is to make a
@@ -778,7 +800,18 @@ export async function buildSsh(scene) {
   sideDoor(world, 's', halfW, halfD, 's2b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 'sc2', { x: 9, z: 0, angle: Math.PI / 2 });
 
-  world.markers.sparkSpot = { x: 0, z: -4.4, grants: 'storm_wolf' };
+  // L5/L6 RE-KEY (2026-08-22): THE SHRINE PROMISES; THE BOSS PAYS — same
+  // migration fire/earth/verdant/frost already made (main.js:905-910,
+  // main.js:778-794). The shrine granted storm the moment a child brushed
+  // it, two terraces before Aria — so the grant moved to her defeat (see
+  // main.js's ariaDefeated ceremony block) and the spark is the promise of
+  // it now: no `grants` field, so main.js's generic sparkSpot handler
+  // (main.js:943) does not fire here. The marker itself stays (still reads
+  // as a camp/rest beat for verify-gauntlet's heuristic) and the room's
+  // own gale (below) is no longer crossable from here — svn/s4b/this room
+  // are bypassed on the critical path now (see the new sc2/sc3/sc4 doors)
+  // and become optional "come back once you have the dash" detours.
+  world.markers.sparkSpot = { x: 0, z: -4.4 };
   world.markers.teachGale = { x: -5.4, z: 0 };
   world.reserve(0, -4.4, 3.0, 'spark');
 
@@ -820,12 +853,16 @@ export async function buildSsh(scene) {
 // you the rest of the way.
 export async function buildSc2(scene) {
   const { world, spec, D } = base(scene, 'sc2');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n'), gap('s', DOOR_HALF, 2)], D, {
     patches: [{ x: -6, z: 0, r: 3.0, kind: 'gravel' }, { x: 6, z: 2, r: 2.6, kind: 'rubble' }],
   });
   world.spawn = { x: 9, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'ssh', { x: -9, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 's3a', { x: 0, z: 10, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): matches the new door in s2b — the CLIMB now
+  // runs s2b -> sc2 directly. Offset (centre 2) threads between the gale
+  // lane (x -1.5 to 0.5) and the gust lane (x 3.5 to 7.5).
+  sideDoor(world, 's', halfW, halfD, 's2b', { x: 2, z: -10.5, angle: 0 }, { centre: 2 });
   world.markers.developGales = { x: 0, z: 0 };
 
   galeLane(world, { x: 5.5, z: 0, w: 4.0, d: 11, dir: 's', strength: 'gust' });   // shoulder through
@@ -882,12 +919,18 @@ export async function buildS3a(scene) {
 
 export async function buildS3b(scene) {
   const { world, spec, D } = base(scene, 's3b');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('n'), gap('e')], D, {
     patches: [{ x: 12, z: 8, r: 4.6, kind: 'scorch' }, { x: -12, z: -8, r: 4.4, kind: 'gravel' }],
   });
   world.spawn = { x: -13, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 's3a', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'svn', { x: 0, z: 10, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): the CLIMB no longer runs through svn (its
+  // vanes only turn from the Thunder Dash, which now comes from Aria).
+  // svn keeps both its old doors and becomes an optional detour; this new
+  // door carries the CLIMB straight through to sc3, at z 0 — clear of
+  // both gust bands (z -9..-3 and z 2..8).
+  sideDoor(world, 'e', halfW, halfD, 'sc3', { x: -12, z: 0, angle: -Math.PI / 2 });
 
   // LANES THAT CARRY THE FIGHT. Two gusts running opposite ways across the
   // floor, so the pack is dragged one way and Kael the other — the same tool
@@ -1006,12 +1049,14 @@ export async function buildSvn(scene) {
 
 export async function buildSc3(scene) {
   const { world, spec, D } = base(scene, 'sc3');
-  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('w'), gap('n'), gap('s')], D, {
     patches: [{ x: 0, z: 0, r: 3.2, kind: 'gravel' }],
   });
   world.spawn = { x: -9, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'svn', { x: 9, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 's4a', { x: 0, z: 10, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): matches the new door in s3b.
+  sideDoor(world, 's', halfW, halfD, 's3b', { x: -12, z: -10, angle: Math.PI / 2 });
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.potionSpot = { x: -7, z: -3 };
   galeLane(world, { x: 0, z: 0, w: 8, d: 11, dir: 'n', strength: 'breeze' });
@@ -1029,7 +1074,7 @@ export async function buildSc3(scene) {
 
 export async function buildS4a(scene) {
   const { world, spec, D } = base(scene, 's4a');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('w'), gap('e')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('w'), gap('e'), gap('n')], D, {
     patches: [{ x: -12, z: 8, r: 4.6, kind: 'sand' }, { x: 12, z: -8, r: 4.2, kind: 'gravel' },
               { x: 10, z: 8, r: 3.2, kind: 'blossom' }],
   });
@@ -1037,6 +1082,11 @@ export async function buildS4a(scene) {
   sideDoor(world, 's', halfW, halfD, 'sc3', { x: 0, z: -5, angle: 0 });
   sideDoor(world, 'w', halfW, halfD, 's4b', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'ssA', { x: -9, z: 0, angle: -Math.PI / 2 });
+  // L5/L6 RE-KEY (2026-08-22): the CLIMB no longer runs through s4b (its
+  // vanes only turn from the Thunder Dash, which now comes from Aria).
+  // s4b keeps both its old doors and becomes an optional detour; this new
+  // door carries the CLIMB straight through to sc4.
+  sideDoor(world, 'n', halfW, halfD, 'sc4', { x: 0, z: -5, angle: 0 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'skyshrine', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
@@ -1117,12 +1167,14 @@ export async function buildS4p(scene) {
 
 export async function buildSc4(scene) {
   const { world, spec, D } = base(scene, 'sc4');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n'), gap('s')], D, {
     patches: [{ x: 0, z: 0, r: 3.4, kind: 'sand' }],
   });
   world.spawn = { x: 9, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 's4b', { x: -9, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 'scr', { x: 0, z: 10, angle: Math.PI });
+  // L5/L6 RE-KEY (2026-08-22): matches the new door in s4a.
+  sideDoor(world, 's', halfW, halfD, 's4a', { x: 0, z: -10, angle: 0 });
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.potionSpot = { x: -6, z: 3 };
   world.markers.chestDefs = [{ id: 'c_sc4', tier: 'silver', x: 7, z: -3.5, ry: 0.2, loot: { potion: 2 } }];

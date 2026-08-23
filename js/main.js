@@ -796,6 +796,33 @@ function narrationTriggers(dt, t) {
     if (narration.say('wild_complete')) persist();
   }
 
+  // L5/L6 RE-KEY (2026-08-22): STORM AND TIDE ARE ARIA'S AND MERI'S REWARDS,
+  // the same pattern as verdant (main.js:~786) and fire (main.js:~921). Both
+  // shrines granted their form the moment a child brushed it — two terraces
+  // before the boss whose whole design assumes the tool is already in hand —
+  // so the grants moved here, watching the FLAGS boss.js already sets
+  // (ariaDefeated/meriDefeated), same self-healing property: an old save from
+  // the shrine era passes straight through unnoticed, and any save that
+  // somehow reached the flag without the form is repaired on load.
+  if (state.flags.ariaDefeated && !state.formsUnlocked.includes('storm_wolf')) {
+    state.formsUnlocked.push('storm_wolf');
+    effects.warmFlood();
+    narration.say('storm_grant');
+    narration.say('storm_howto');
+    ui.refreshBadge();
+    bigToast('🌩️ The Storm Wolf awakens!');
+    persist();
+  }
+  if (state.flags.meriDefeated && !state.formsUnlocked.includes('tide_wolf')) {
+    state.formsUnlocked.push('tide_wolf');
+    effects.warmFlood();
+    narration.say('tide_grant');
+    narration.say('tide_howto');
+    ui.refreshBadge();
+    bigToast('🌊 The Tide Wolf awakens!');
+    persist();
+  }
+
   // The Wild Woods (region 3). The rebuilt rooms are t-prefixed; this block
   // gated on the RETIRED 'w' prefix, so Pip never introduced region 3 at all
   // (and the hound line watched t1a while the first hounds live in t1b).
