@@ -733,8 +733,12 @@ export async function buildS2b(scene) {
   // from Aria, not this shrine). ssh keeps both its old doors and becomes
   // an optional detour; this new door carries the CLIMB straight through
   // to sc2, threading the gap between the two existing gust lanes (x -8
-  // and x 7) so a child never spawns into either.
-  sideDoor(world, 's', halfW, halfD, 'sc2', { x: 2, z: -5.5, angle: 0 });
+  // and x 7) so a child never spawns into either. Landing at z -2, not
+  // right against sc2's own south wall — sc2's `lowWall(0,-5,...)` cover
+  // sits exactly there, and this door's own landing isn't guaranteed to be
+  // registered in LANDINGS['sc2'] (see sideDoor's own comment) before sc2
+  // builds, so it can't rely on the keep-clear register to save it.
+  sideDoor(world, 's', halfW, halfD, 'sc2', { x: 2, z: -2, angle: 0 });
 
   // Two gusts crossing, so the floor between them is calm and the way round is
   // obvious. The room is the last one before the gift, and its job is to make a
@@ -928,9 +932,10 @@ export async function buildS3b(scene) {
   // L5/L6 RE-KEY (2026-08-22): the CLIMB no longer runs through svn (its
   // vanes only turn from the Thunder Dash, which now comes from Aria).
   // svn keeps both its old doors and becomes an optional detour; this new
-  // door carries the CLIMB straight through to sc3, at z 0 — clear of
-  // both gust bands (z -9..-3 and z 2..8).
-  sideDoor(world, 'e', halfW, halfD, 'sc3', { x: -12, z: 0, angle: -Math.PI / 2 });
+  // door carries the CLIMB straight through to sc3. Landing at x -6, clear
+  // of sc3's own west wall (halfW 12 — x -12 IS the wall) and clear of the
+  // sc3→svn door's trigger box sitting right there (x -13.35..-11.85).
+  sideDoor(world, 'e', halfW, halfD, 'sc3', { x: -6, z: 0, angle: -Math.PI / 2 });
 
   // LANES THAT CARRY THE FIGHT. Two gusts running opposite ways across the
   // floor, so the pack is dragged one way and Kael the other — the same tool
@@ -1180,7 +1185,13 @@ export async function buildSc4(scene) {
   world.markers.chestDefs = [{ id: 'c_sc4', tier: 'silver', x: 7, z: -3.5, ry: 0.2, loot: { potion: 2 } }];
   world.reserve(7, -3.5, 2.6, 'chest');
   galeLane(world, { x: 0, z: 0, w: 9, d: 11, dir: 'n', strength: 'breeze' });
-  scatter(world, halfW, halfD, D, 534, 4, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
+  // L5/L6 RE-KEY (2026-08-22): the new south door (see above) cuts a third
+  // gap into stairSides()'s 38-slot wall run, blocking enough of it that the
+  // choke's arrival frame dropped below the density floor — same failure
+  // mode its own header comment already names ("sc4 lost a third of its
+  // dressing"). Bumped scatter to make the count back up, per that comment's
+  // own rule: raise the count, never lower the bar.
+  scatter(world, halfW, halfD, D, 534, 8, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
   stairSides(world, halfW, halfD, D, 5341);
   lowWall(world, 0, -5, 0, D, 6.0);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

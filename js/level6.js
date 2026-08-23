@@ -1023,7 +1023,10 @@ export async function buildDg4(scene) {
   world.markers.potionSpot = { x: -6, z: -3 };
   world.markers.chestDefs = [{ id: 'c_dg4', tier: 'silver', x: 7, z: 3.5, ry: 0.2, loot: { potion: 2 } }];
   world.reserve(7, 3.5, 2.6, 'chest');
-  scatter(world, halfW, halfD, D, 634, 4, { spin: 1, kinds: ['rockSB', 'skull'] });
+  // L5/L6 RE-KEY (2026-08-22): the new south door (above) cuts a third gap
+  // into rimSides()'s wall run, same as sc4 (level5.js) — bumped scatter to
+  // hold the choke's arrival-frame count above the density floor.
+  scatter(world, halfW, halfD, D, 634, 8, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
