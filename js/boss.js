@@ -16,10 +16,16 @@ import { galeLane } from './wind.js';
 import { waterZone, buildWaterField } from './water.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
+import { bumpCounter } from './progress.js';
 
 const MAX_HP = 20;        // "a lot more health" — the little hounds have 3
 const HIT_CAP = 3;        // any single strike caps at 3 (surges stay strong, never trivial)
 const ATTACK_DMG = 1.5;   // "his attack is more" — hounds hit for 1
+
+// The clip lookup every SKIN uses unless it sets its own `clips` map. wolf.gltf
+// (shadowgrip/sylva/aria/grimm's body) happens to name its clips exactly
+// these five words, so this table doubles as "the wolf's own names."
+const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Attack', death: 'Death' };
 
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
@@ -30,6 +36,10 @@ const SKINS = {
     body: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
     maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
     cinder: 0xffb25a, // the caged fire spirit
+    // ELEMENT AUDIT (2026-08-23): matches Ember Hollow's own mook weakness
+    // (js/enemies.js TRAITS, region 1 = moon) — every boss now answers to the
+    // same tool its region has been teaching all along, not just its mooks.
+    weakness: 'moon',
   },
   // P7 audit (2026-08-22): Sylva was the exact "same boss, no different
   // moves, recoloured" pattern this law exists to catch — same class, same
@@ -45,6 +55,7 @@ const SKINS = {
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
     speedMult: 1.08,  // the forest is quicker than the shadow
     snares: { radius: 2.6 },
+    weakness: 'fire', // matches the Wild Woods' own mook weakness
   },
   // ARIA, THE GALEBOUND — Stormreach's guardian (region 5).
   //
@@ -71,6 +82,9 @@ const SKINS = {
       { x: -8.5, z: 0, w: 7.0, d: 24, dir: 'e', strength: 'gale' },
       { x: 8.5, z: 0, w: 7.0, d: 24, dir: 'w', strength: 'gale' },
     ],
+    // matches Stormreach's own mook weakness — the region's one deliberate
+    // pivot off fire (js/enemies.js, region 5 TRAITS comment)
+    weakness: 'earth',
   },
   // MERI, THE DROWNED — the Sunken Vale's guardian (region 6).
   //
@@ -93,6 +107,18 @@ const SKINS = {
       { x: -9.5, z: 0, w: 7.0, d: 24 },
       { x: 9.5, z: 0, w: 7.0, d: 24 },
     ],
+    weakness: 'fire', // matches the Sunken Vale's own mook weakness
+    // BOSS OVERHAUL (2026-08-23): she is the one SKINS entry whose body
+    // (Slime.glb) isn't wolf.gltf, and its clips are named
+    // 'Armature|Slime_Idle' etc, not the bare 'Idle'/'Walk'/... DEFAULT_CLIPS
+    // looks for — so every mixer.clipAction() lookup below was silently
+    // finding nothing and she has been fighting fully unanimated (frozen bind
+    // pose) since the day this class started taking a slimeGltf. No 'Gallop'
+    // equivalent exists on Slime.glb, so `run` reuses the walk cycle — a
+    // faster-paced walk during her charge, not a true gallop, but real motion
+    // instead of none.
+    clips: { idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk',
+      run: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack', death: 'Armature|Slime_Death' },
   },
   // SHADOW-GRIMM — the last fight (region 7).
   //
@@ -189,15 +215,20 @@ export class Shadowgrip {
     this.core.add(wolf);
     this.dragon = wolf; // legacy name kept: the boss's body
     this.mixer = new THREE.AnimationMixer(wolf);
-    const clip = (name) => wolfGltf.animations.find((c) => c.name === name);
-    this.flyAction = clip('Idle') ? this.mixer.clipAction(clip('Idle')) : null;
+    // BOSS OVERHAUL (2026-08-23): a skin can override DEFAULT_CLIPS with its
+    // own clip names — Meri's Slime.glb needs this (see her SKINS entry);
+    // every other skin still shares wolf.gltf, whose clips ARE named Idle/
+    // Walk/Gallop/Attack/Death, so they're unaffected by this indirection.
+    const clipNames = this.skin.clips || DEFAULT_CLIPS;
+    const clip = (key) => wolfGltf.animations.find((c) => c.name === clipNames[key]);
+    this.flyAction = clip('idle') ? this.mixer.clipAction(clip('idle')) : null;
     if (this.flyAction) this.flyAction.play();
-    this.walkAction = clip('Walk') ? this.mixer.clipAction(clip('Walk')) : null;
-    this.runAction = clip('Gallop') ? this.mixer.clipAction(clip('Gallop')) : null;
-    this.attackAction = clip('Attack') ? this.mixer.clipAction(clip('Attack')) : null;
+    this.walkAction = clip('walk') ? this.mixer.clipAction(clip('walk')) : null;
+    this.runAction = clip('run') ? this.mixer.clipAction(clip('run')) : null;
+    this.attackAction = clip('attack') ? this.mixer.clipAction(clip('attack')) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
     // THE COLLAPSE: the Death clip plays and HOLDS while the wolf lies tired
-    this.collapseAction = clip('Death') ? this.mixer.clipAction(clip('Death')) : null;
+    this.collapseAction = clip('death') ? this.mixer.clipAction(clip('death')) : null;
     if (this.collapseAction) {
       this.collapseAction.setLoop(THREE.LoopOnce);
       this.collapseAction.clampWhenFinished = true;
@@ -296,6 +327,18 @@ export class Shadowgrip {
     return false;
   }
 
+  // ELEMENT AUDIT (2026-08-23): every mook family has carried a weakness
+  // since region one (js/enemies.js TRAITS) — bosses never did, so any
+  // element dealt the same flat damage and the region's own lesson stopped
+  // mattering the moment the fight got big. `skin.weakness` closes that,
+  // reusing the exact SUPER!/gold-burst vocabulary takeDamage() already
+  // teaches on every mook (js/enemies.js:597-619).
+  _isWeak(element) {
+    const w = this.skin.weakness;
+    if (!w) return false;
+    return Array.isArray(w) ? w.includes(element) : element === w;
+  }
+
   _hitCore(n, element = 'steel') {
     if (this.defeated) return;
     if (this._resists(element)) {
@@ -305,6 +348,8 @@ export class Shadowgrip {
       juice.burst(bx, 1.4, bz, 0x8f7fc0, 5);
       return;
     }
+    const weak = this._isWeak(element);
+    if (weak) n *= 1.5;
     this._lastElement = element;
     this.coreHp -= n;
     // SNAP the floating-point residual: elemental damage (1.5, 2.2, ...) leaves
@@ -313,6 +358,14 @@ export class Shadowgrip {
     if (this.coreHp < 1e-6) this.coreHp = 0;
     state.flags[this.skin.saveKey] = Math.max(0, this.coreHp); // wounds are remembered
     const wx = this.x + this.core.position.x, wz = this.z + this.core.position.z;
+    if (weak) {
+      // same gold-flare + SUPER! callout every mook's weakness gives —
+      // a child should never learn "this element works" for the first time
+      // on a boss and be given a different signal than the one Pip taught
+      juice.burst(wx, 1.2, wz, 0xffe14a, 8);
+      if (this.world.onDmgNum) this.world.onDmgNum(wx, 2.5, wz, 'SUPER!');
+      bumpCounter('weakHits');
+    }
     if (this.world.onDmgNum) this.world.onDmgNum(wx, 2.2, wz, n);
     this._hurtFlash = 0.2;
     this.eyeMat.emissiveIntensity = 3;
@@ -794,6 +847,11 @@ export class Shadowgrip {
 // ---------------------------------------------------------------------------
 
 const BOREAL_HP = 22;
+// ELEMENT AUDIT (2026-08-23): matches Frostpeak's own mook weakness
+// (js/enemies.js TRAITS, region 4 = fire) — Boreal took flat damage
+// regardless of element until now, the one boss with zero elemental
+// handling of any kind (not even Grimm's more elaborate adapts system).
+const BOREAL_WEAKNESS = 'fire';
 const BOREAL_DMG = 1.5;
 // Cruising height + orbit radius (v3.21 sighting pass): the camera is pitched
 // 50° and only 11 units back, so a boss circling the ARENA centre at 2.6 up
@@ -884,7 +942,7 @@ export class Boreal {
 
     // ALWAYS hittable — hovering low enough for a brave melee, and bolts
     // hit flyers for full (the region-1 law finally pays off)
-    this.coreHittable = new Hittable(x, z, 1.5, (n) => this._hit(n));
+    this.coreHittable = new Hittable(x, z, 1.5, (n, element) => this._hit(n, element));
     this.coreHittable.flying = true;
     world.enemies.push(this.coreHittable);
     this.coreExposed = true;
@@ -914,13 +972,20 @@ export class Boreal {
     world.boss = this;
   }
 
-  _hit(n) {
+  _hit(n, element = 'steel') {
     if (this.defeated) return;
     // while airborne it is a hard target for a sword — bolts are the answer,
     // but the grounded window doubles up (that is where the fight is won)
+    const weak = element === BOREAL_WEAKNESS;
+    if (weak) n *= 1.5;
     this.coreHp -= n;
     state.flags.borealHp = Math.max(0, this.coreHp);
     const wx = this.x + this.off.x, wz = this.z + this.off.z;
+    if (weak) {
+      juice.burst(wx, HOVER_Y, wz, 0xffe14a, 8);
+      if (this.world.onDmgNum) this.world.onDmgNum(wx, HOVER_Y + 0.9, wz, 'SUPER!');
+      bumpCounter('weakHits');
+    }
     if (this.world.onDmgNum) this.world.onDmgNum(wx, HOVER_Y + 0.6, wz, n);
     this._hurtFlash = 0.2;
     if (this.hitAction && this.action !== 'grounded') this.hitAction.reset().play();

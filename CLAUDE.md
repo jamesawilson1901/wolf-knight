@@ -33,7 +33,18 @@ first: `node tools/serve.mjs &`.
 
 - **No code-built creatures.** Every enemy is a shipped asset-pack model,
   reskinned via `VARIANTS` (tint/scale/stat/element deltas) — never a new
-  model built in code.
+  model built in code. The point of this rule is visual consistency with the
+  low-poly Quaternius/Kenney-style asset packs already in the game, not the
+  sourcing method: a model added via a rigging/animation pipeline (2026-08-23
+  amendment) is allowed if it (a) is a real mesh asset, not geometry
+  constructed inline in JS, (b) matches the existing low-poly style —
+  proportions, material approach, scale — closely enough to sit unremarked
+  next to `wolf.gltf`/`Slime.glb`/etc., and (c) is properly rigged with the
+  same clip vocabulary existing character models use (idle/walk/attack/death
+  equivalents) so it animates to the same standard, not a static prop wearing
+  a monster's shape. Procedurally generated creature geometry is still
+  banned outright — this amendment covers rigging/animating *real* assets,
+  not building creatures out of code.
 - **Dev branch → main → GitHub Pages.** Work happens on a feature branch;
   shipping means merging to `main`, which deploys to
   https://jamesawilson1901.github.io/wolf-knight/. Never push straight to
