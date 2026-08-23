@@ -82,6 +82,27 @@ const TRAITS = {
   SkeletonRogue: { weakness: 'fire', armored: true },
   SkeletonShield: { weakness: 'fire', armored: true },
   BoneWarden: { weakness: 'fire', armored: true },
+
+  // --- Roster expansion (task #31). One class often serves several roster
+  // ids across different regions (e.g. Duellist is both the frost Visored
+  // Wight and the Shadow Court's Gilded Husk) — this is the CLASS DEFAULT,
+  // same as every family above; spawnEnemies() overrides `.weakness`/
+  // `.resist` per instance where a region disagrees, exactly like VARIANTS
+  // already does for Shade/Hound/Moth/Slime/Bat.
+  Flanker: { weakness: 'moon' },
+  Stalker: { weakness: 'moon' },
+  RangedKiter: { weakness: 'moon' },
+  RangedLobber: { weakness: 'fire' },
+  RangedBolter: { weakness: 'earth' },
+  DashStriker: { weakness: 'earth' },
+  Duellist: { weakness: 'fire', armored: true },
+  HeavySwinger: { weakness: 'fire', armored: true },
+  MirrorKael: { weakness: 'moon' },
+  Flurry: { weakness: 'moon' },
+  Commander: { weakness: 'fire', armored: true },
+  SlowStomper: { weakness: 'fire', armored: true },
+  Hopper: { weakness: 'fire' },
+  Dragonling: { weakness: 'frost' },
 };
 
 // ---------------------------------------------------------------------------
@@ -656,6 +677,10 @@ class Enemy {
   // stops being free. Paired with interceptDir below, "outrun" now means
   // actually turning, not just holding a direction.
   pursueSpeed(base, d) {
+    // Bonelord's rally (task #31, Commander): a temporary buff aura, applied
+    // uniformly here so every chase-speed call site benefits without each
+    // class having to know the rally even exists.
+    if (this._rallyT > 0) base *= this._rallySpeedBonus || 1;
     const CAP = 5.6;                         // under the Dark Wolf's 6.7, on purpose
     if (d <= 3.5) return base;               // melee: untouched
     const t = Math.min(1, (d - 3.5) / 5.5);  // full ramp by 9u out
@@ -764,11 +789,20 @@ class Enemy {
     const dz = player.root.position.z - this.z;
     const rr = this.radius + 0.32;
     if (dx * dx + dz * dz < rr * rr) {
+      if (this._rallyT > 0) dmg *= 1.25; // Bonelord's rally (task #31)
       player.hurt(dmg, { attacker: this, groundAttack: ground });
     }
   }
 
   flashUpdate(dt) {
+    // Bonelord's rally aura (task #31, Commander): decays here since every
+    // class already calls this once a frame — a gold pulse ON THE BODY
+    // while it lasts, no separate UI or timer plumbing needed per class.
+    if (this._rallyT > 0) {
+      this._rallyT -= dt;
+      const k = Math.min(1, this._rallyT / 1.2);
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = Math.max(m.emissiveIntensity, 0.5 + k * 0.8);
+    }
     if (this._pop > 0) {
       this._pop -= dt;
       const f = Math.max(0, this._pop) / 0.14;
@@ -1576,6 +1610,31 @@ class SkeletonBase extends Enemy {
     this.root.position.z = solved.z;
     this.root.rotation.y = Math.atan2(dx, dz);
   }
+
+  // TURN-CLAMPED FACING, shared. Snap-facing + a frontal guard/arc meant a
+  // heavy or shielded enemy could never be flanked (BoneWarden's own fix,
+  // v3.20) — every class below that advances slowly and hits hard reuses the
+  // exact same turn rate idiom instead of re-deriving it.
+  turnToward(dt, dx, dz, rate) {
+    if (Math.hypot(dx, dz) < 0.01) return;
+    const want = Math.atan2(dx, dz);
+    let delta = want - this.root.rotation.y;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    this.root.rotation.y += Math.max(-rate * dt, Math.min(rate * dt, delta));
+  }
+
+  // Frontal-arc melee hit test, lifted out of BoneWarden so every new swing
+  // (task #31) reads the SAME shape it draws — LAW 7, never re-derived twice.
+  _swingDamage(player, arcDeg, range, dmg) {
+    const px = player.root.position.x - this.x;
+    const pz = player.root.position.z - this.z;
+    const d = Math.hypot(px, pz);
+    if (d > range) return;
+    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+    if (arcDeg < 360 && d > 0.1 && (px * fx + pz * fz) / d < Math.cos(arcDeg * Math.PI / 360)) return;
+    player.hurt(dmg, { attacker: this, groundAttack: true });
+  }
 }
 
 // Skeleton Minion — the basic shuffler. Wakes from the floor, shambles in,
@@ -1948,16 +2007,6 @@ export class BoneWarden extends SkeletonBase {
     if (!this.dead) state.flags.wardenHp = Math.max(0, this.hp);
   }
 
-  _swingDamage(player, arcDeg, range, dmg) {
-    const px = player.root.position.x - this.x;
-    const pz = player.root.position.z - this.z;
-    const d = Math.hypot(px, pz);
-    if (d > range) return;
-    const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
-    if (arcDeg < 360 && d > 0.1 && (px * fx + pz * fz) / d < Math.cos(arcDeg * Math.PI / 360)) return;
-    player.hurt(dmg, { attacker: this, groundAttack: true });
-  }
-
   // his front-block law (takeDamage) in one place — the pose reads from the
   // SAME expression, so the shield can never lie about the hitbox
   get shieldUp() {
@@ -2097,6 +2146,1168 @@ export class BoneWarden extends SkeletonBase {
 }
 
 // ---------------------------------------------------------------------------
+// ROSTER EXPANSION (task #31) — 15 new AI behaviors for the 32-enemy roster.
+// Every class below loads ITS OWN generated body (assets/generated/enemies/
+// <id>.glb — the roster tool's baked recolor/part-swap output, reviewed
+// before wiring per the standing rule) and binds to the SAME shared
+// rig-medium clip library spawnEnemies() already loads for the Stoneroot
+// skeletons — no new animation assets, no code-built creatures. `opts`
+// carries the per-instance weakness/resist override, since one class often
+// answers for roster ids in different regions (Duellist is both the frost
+// Visored Wight and the Shadow Court's Gilded Husk) and TRAITS is a class
+// DEFAULT, not a verdict — same rule VARIANTS has always run by.
+//
+// None of these classes start asleep: they're alert guards/beasts, not
+// slumbering bone piles, so the sleep/awaken beat (SkeletonBase.state=
+// 'sleep') is skipped — `this.state` is set to each class's own first
+// active state right after construction instead.
+// ---------------------------------------------------------------------------
+
+function applyRosterWeak(e, opts) {
+  if (opts.weakness !== undefined) e.weakness = opts.weakness;
+  if (opts.resist !== undefined) e.resist = opts.resist;
+}
+
+// Maskbone / Emberfang — circles for an opening, then dashes in from the
+// side. Same orbit-then-commit shape as the Skeleton Rogue but without its
+// dodge gimmick (that's the Rogue's own identity) — a lighter, trash-tier
+// read: "it's circling, watch where it lands."
+export class Flanker extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 3, radius: 0.34, scale: 0.48, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', stab: 'Melee_1H_Attack_Slice_Diagonal' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.orbitDir = (x + z) % 2 < 1 ? 1 : -1;
+    this.dashTimer = 1.4;
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this._play('walk');
+        this.holdOrbit(dt, dx, dz, d);
+      } else {
+        const tangent = { x: -dz / Math.max(d, 0.01) * this.orbitDir, z: dx / Math.max(d, 0.01) * this.orbitDir };
+        const inward = d > 2.4 ? 0.9 : -0.4;
+        const mx = tangent.x * 1.8 + (dx / Math.max(d, 0.01)) * inward;
+        const mz = tangent.z * 1.8 + (dz / Math.max(d, 0.01)) * inward;
+        const mm = Math.hypot(mx, mz) || 1;
+        this._play('walk');
+        this.chaseToward(dt, mx / mm, mz / mm, 1, 2.1);
+        this.root.rotation.y = Math.atan2(dx, dz);
+      }
+      this.dashTimer -= dt;
+      if (this.dashTimer <= 0 && d < 4.2 && this.engaged !== false) {
+        this.state = 'telegraph';
+        this.stateT = 0;
+        this._play('idle', 0.08);
+        const dd = Math.max(d, 0.01);
+        this.dashDir = { x: dx / dd, z: dz / dd };
+        this.root.rotation.y = Math.atan2(this.dashDir.x, this.dashDir.z);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.48 * (1 - 0.2 * Math.min(1, this.stateT * 2.4));
+      if (this.stateT >= A.flanker_strike.windup) {
+        this.state = 'dash';
+        this.stateT = 0;
+        this.model.scale.y = 0.48;
+        this._play('stab', 0.06, { once: true });
+      }
+    } else if (this.state === 'dash') {
+      this.stateT += dt;
+      const nx = this.x + this.dashDir.x * 6.4 * dt, nz = this.z + this.dashDir.z * 6.4 * dt;
+      const solved = this._moveSolved(nx, nz);
+      this.root.position.x = solved.x; this.root.position.z = solved.z;
+      this.contact(player);
+      if (this.stateT > A.flanker_strike.active) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.flanker_strike.recover) { this.state = 'chase'; this.dashTimer = A.flanker_strike.gap + Math.random() * 0.6; }
+    }
+    if (this.state === 'chase' || this.state === 'telegraph') this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// The Lurker — an ambush predator. Starts UNAWARE (the awareness system is
+// built into the class itself, not opt-in per variant like the Shadow
+// Court): paces its spot, half-notices, and only pounces once it has fully
+// noticed — the same stalk-crouch-charge shape as the Shadow Hound, just
+// shorter and meaner: an ambush, not a chase.
+export class Stalker extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 4, radius: 0.36, scale: 0.5, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', crouch: 'Melee_Unarmed_Idle', charge: 'Running_B', pounce: 'Melee_Unarmed_Attack_Kick' },
+    });
+    applyRosterWeak(this, opts);
+    this._sleeps = true;
+    this.alert = 'unaware';
+    this.eyeMats = [];
+    this.model.traverse((n) => {
+      if (!n.isMesh) return;
+      for (const m of (Array.isArray(n.material) ? n.material : [n.material])) {
+        if (/eye/i.test(m.name || '')) this.eyeMats.push(m);
+      }
+    });
+    this.state = 'stalk';
+    this.stateT = 0;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    this._calm(dt, player);
+    this._senses(dt, player);
+    if (this._asleep(player)) { this._drowse(dt, t, player); this.mixer.update(dt); return; }
+    this.stateT += dt;
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'stalk') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        const speed = this.pursueSpeed(1.6, d);
+        const iv = this.interceptDir(player, d);
+        this.chaseToward(dt, iv.x, iv.z, 1, speed);
+      }
+      if (d < 3.6 && this.stateT > 0.6 && this.engaged !== false) {
+        this.state = 'crouch'; this.stateT = 0;
+        const dd = Math.max(d, 0.01);
+        this.chargeDir = { x: dx / dd, z: dz / dd };
+      }
+    } else if (this.state === 'crouch') {
+      this._play('crouch', 0.1);
+      this.model.scale.y = 0.5 * (1 - 0.15 * Math.min(1, this.stateT * 1.4));
+      for (const m of this.eyeMats) if (m.emissive) m.emissiveIntensity = 1.2 + (this.stateT / A.stalker_pounce.windup) * 2.4;
+      if (this.stateT >= A.stalker_pounce.windup) {
+        this.state = 'charge'; this.stateT = 0; this.model.scale.y = 0.5;
+        this._play('charge', 0.06); this._pounceHit = false;
+        audio.play('growl', { volume: 0.4, rate: 0.55 });
+      }
+    } else if (this.state === 'charge') {
+      const nx = this.x + this.chargeDir.x * 6.6 * dt, nz = this.z + this.chargeDir.z * 6.6 * dt;
+      const solved = this._moveSolved(nx, nz);
+      this.root.position.x = solved.x; this.root.position.z = solved.z;
+      this.contact(player);
+      if (this.stateT > A.stalker_pounce.active) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
+    } else { // recover
+      for (const m of this.eyeMats) if (m.emissive) m.emissiveIntensity = Math.max(0.3, m.emissiveIntensity - dt * 4);
+      if (this.stateT > A.stalker_pounce.recover) { this.state = 'stalk'; this.stateT = 0; }
+    }
+    if (this.state !== 'charge') this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Base for the three "stand off and shoot" roster ids (wraith-archer,
+// thornstalker, quiverbones) — same shape as Ember Spitter (hold range,
+// visible windup, interceptPoint-aimed shot) transplanted onto legs. The
+// windup itself carries the attack-token commitment (like Spitter, nothing
+// else checks `state` for it) so it can never fizzle mid-draw.
+export class RangedKiter extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 3, radius: 0.34, scale: 0.48, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', draw: 'Throw' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'kite';
+    this.holdRange = opts.holdRange ?? 5.5;
+    this.aggroRange = opts.aggroRange ?? 12;
+    this._shotT = 1.0;
+    this._windup = 0;
+    this._bolts = [];
+    this._boltColor = opts.boltColor ?? 0xdcd0b0;
+  }
+
+  _fire(player) {
+    const speed0 = state.settings.easy ? 6.0 : 8.0;
+    const aim = this.interceptPoint(player, speed0, 1.2);
+    const dx = aim.x - this.x, dz = aim.z - this.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.5, 5),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: this._boltColor, emissiveIntensity: 2.2, roughness: 1 }));
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.set(this.x, 0.9, this.z);
+    this.world.add(mesh);
+    this.world.keepLoose(mesh);
+    this._bolts.push({ mesh, x: this.x, z: this.z, vx: (dx / d) * speed0, vz: (dz / d) * speed0, life: 2.2 });
+    audio.play('form-switch', { volume: 0.3, rate: 1.8 });
+  }
+
+  _updateBolts(dt, player) {
+    for (const b of this._bolts) {
+      if (b.life <= 0) continue;
+      b.life -= dt;
+      b.x += b.vx * dt; b.z += b.vz * dt;
+      const s = this.world.resolveCircle(b.x, b.z, 0.1);
+      const hitWall = Math.hypot(s.x - b.x, s.z - b.z) > 0.01;
+      const pdx = player.root.position.x - b.x, pdz = player.root.position.z - b.z;
+      const hitKael = pdx * pdx + pdz * pdz < 0.5 * 0.5;
+      if (hitKael) player.hurt(1, { attacker: this, groundAttack: true });
+      if (hitWall || hitKael || b.life <= 0) { b.life = 0; juice.burst(b.x, 0.7, b.z, this._boltColor, 4); b.mesh.visible = false; }
+      else { b.mesh.position.set(b.x, 0.9, b.z); b.mesh.rotation.y = Math.atan2(b.vx, b.vz); }
+    }
+    this._bolts = this._bolts.filter((b) => b.life > 0 || b.mesh.visible);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) { this._updateBolts(dt, player); return; }
+    if (this.stunUpdate(dt)) { this._updateBolts(dt, player); this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this.root.rotation.y = Math.atan2(dx, dz);
+
+    if (this._windup > 0) {
+      this._play('draw', 0.06);
+      this._windup -= dt;
+      const f = 1 - Math.max(0, this._windup) / A.ranged_kite_shot.windup;
+      this.model.scale.setScalar(0.48 * (1 + f * 0.12));
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.3 + f * 1.6;
+      if (this._windup <= 0) {
+        this.model.scale.setScalar(0.48);
+        this._fire(player);
+        this._shotT = state.settings.easy ? 2.6 : A.ranged_kite_shot.gap;
+      }
+    } else if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
+      this._shotT -= dt;
+      if (d < this.holdRange) {
+        this._play('walk');
+        const sv = this._moveSolved(this.x - (dx / d) * 1.8 * dt, this.z - (dz / d) * 1.8 * dt);
+        this.root.position.x = sv.x; this.root.position.z = sv.z;
+      } else {
+        this._play('idle');
+      }
+      if (this._shotT <= 0 && d > 2.5 && this.engaged !== false) this._windup = A.ranged_kite_shot.windup;
+    } else {
+      this._play('idle');
+    }
+    this.contact(player, 0.5);
+    this._updateBolts(dt, player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Rotcaster — an arcing lob rather than an aimed shot: less precise (it
+// throws at where Kael IS, not an intercept), which is the whole point —
+// the counterplay is "keep moving", not "read the exact line".
+export class RangedLobber extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 3, radius: 0.34, scale: 0.48, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', draw: 'Throw' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'kite';
+    this.holdRange = opts.holdRange ?? 5.0;
+    this.aggroRange = opts.aggroRange ?? 11;
+    this._shotT = 1.2;
+    this._windup = 0;
+    this._lobs = [];
+  }
+
+  _fire(player) {
+    const px = player.root.position.x, pz = player.root.position.z;
+    const dx = px - this.x, dz = pz - this.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const flight = Math.min(1.4, 0.4 + d / 6);
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 7, 5),
+      new THREE.MeshStandardMaterial({ color: 0x2a3a10, emissive: 0x9bd63c, emissiveIntensity: 1.6, roughness: 1 }));
+    mesh.position.set(this.x, 0.9, this.z);
+    this.world.add(mesh);
+    this.world.keepLoose(mesh);
+    this._lobs.push({ mesh, x0: this.x, z0: this.z, x1: px, z1: pz, t: 0, flight });
+    audio.play('growl', { volume: 0.35, rate: 1.3 });
+  }
+
+  _updateLobs(dt, player) {
+    for (const l of this._lobs) {
+      if (l.done) continue;
+      l.t += dt;
+      const f = Math.min(1, l.t / l.flight);
+      const x = l.x0 + (l.x1 - l.x0) * f, z = l.z0 + (l.z1 - l.z0) * f;
+      const arc = Math.sin(f * Math.PI) * 1.1;
+      l.mesh.position.set(x, 0.4 + arc, z);
+      if (f >= 1) {
+        l.done = true;
+        l.mesh.visible = false;
+        juice.burst(x, 0.4, z, 0x9bd63c, 6);
+        const pdx = player.root.position.x - x, pdz = player.root.position.z - z;
+        if (pdx * pdx + pdz * pdz < 0.9 * 0.9) player.hurt(1, { attacker: this, groundAttack: true });
+      }
+    }
+    this._lobs = this._lobs.filter((l) => !l.done || l.mesh.visible);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) { this._updateLobs(dt, player); return; }
+    if (this.stunUpdate(dt)) { this._updateLobs(dt, player); this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this.root.rotation.y = Math.atan2(dx, dz);
+
+    if (this._windup > 0) {
+      this._play('draw', 0.06);
+      this._windup -= dt;
+      const f = 1 - Math.max(0, this._windup) / A.ranged_lob_throw.windup;
+      this.model.scale.setScalar(0.48 * (1 + f * 0.15));
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.3 + f * 1.6;
+      if (this._windup <= 0) {
+        this.model.scale.setScalar(0.48);
+        this._fire(player);
+        this._shotT = state.settings.easy ? 2.8 : A.ranged_lob_throw.gap;
+      }
+    } else if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
+      this._shotT -= dt;
+      if (d < this.holdRange) {
+        this._play('walk');
+        const sv = this._moveSolved(this.x - (dx / d) * 1.6 * dt, this.z - (dz / d) * 1.6 * dt);
+        this.root.position.x = sv.x; this.root.position.z = sv.z;
+      } else {
+        this._play('idle');
+      }
+      if (this._shotT <= 0 && d > 2.5 && this.engaged !== false) this._windup = A.ranged_lob_throw.windup;
+    } else {
+      this._play('idle');
+    }
+    this.contact(player, 0.5);
+    this._updateLobs(dt, player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Stormcaller — the fastest ranged tell in the roster: shortest windup, a
+// straight fast bolt, and it holds ground rather than kiting (a caster, not
+// a skirmisher). The speed is entirely in the CLOCK, never the windup floor.
+export class RangedBolter extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 4, radius: 0.34, scale: 0.48, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', cast: 'Throw' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'kite';
+    this.holdRange = opts.holdRange ?? 4.5;
+    this.aggroRange = opts.aggroRange ?? 13;
+    this._shotT = 0.9;
+    this._windup = 0;
+    this._bolts = [];
+  }
+
+  _fire(player) {
+    const speed0 = state.settings.easy ? 7.0 : 9.5;
+    const aim = this.interceptPoint(player, speed0, 1.0);
+    const dx = aim.x - this.x, dz = aim.z - this.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const mesh = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.16, 0),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xcfd6ff, emissiveIntensity: 2.6, roughness: 1 }));
+    mesh.position.set(this.x, 0.95, this.z);
+    this.world.add(mesh);
+    this.world.keepLoose(mesh);
+    this._bolts.push({ mesh, x: this.x, z: this.z, vx: (dx / d) * speed0, vz: (dz / d) * speed0, life: 1.8 });
+    audio.play('parry', { volume: 0.3, rate: 2.1 });
+  }
+
+  _updateBolts(dt, player) {
+    for (const b of this._bolts) {
+      if (b.life <= 0) continue;
+      b.life -= dt;
+      b.x += b.vx * dt; b.z += b.vz * dt;
+      b.mesh.rotation.y += dt * 12;
+      const s = this.world.resolveCircle(b.x, b.z, 0.1);
+      const hitWall = Math.hypot(s.x - b.x, s.z - b.z) > 0.01;
+      const pdx = player.root.position.x - b.x, pdz = player.root.position.z - b.z;
+      const hitKael = pdx * pdx + pdz * pdz < 0.5 * 0.5;
+      if (hitKael) player.hurt(1, { attacker: this, groundAttack: true });
+      if (hitWall || hitKael || b.life <= 0) { b.life = 0; juice.burst(b.x, 0.7, b.z, 0xcfd6ff, 5); b.mesh.visible = false; }
+      else b.mesh.position.set(b.x, 0.95, b.z);
+    }
+    this._bolts = this._bolts.filter((b) => b.life > 0 || b.mesh.visible);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) { this._updateBolts(dt, player); return; }
+    if (this.stunUpdate(dt)) { this._updateBolts(dt, player); this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this.root.rotation.y = Math.atan2(dx, dz);
+
+    if (this._windup > 0) {
+      this._play('cast', 0.05);
+      this._windup -= dt;
+      const f = 1 - Math.max(0, this._windup) / A.ranged_bolt_shot.windup;
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + f * 2.0;
+      if (this._windup <= 0) {
+        this._fire(player);
+        this._shotT = state.settings.easy ? 2.4 : A.ranged_bolt_shot.gap;
+      }
+    } else if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
+      this._shotT -= dt;
+      if (d < this.holdRange) {
+        this._play('walk');
+        const sv = this._moveSolved(this.x - (dx / d) * 1.4 * dt, this.z - (dz / d) * 1.4 * dt);
+        this.root.position.x = sv.x; this.root.position.z = sv.z;
+      } else {
+        this._play('idle');
+      }
+      if (this._shotT <= 0 && d > 2 && this.engaged !== false) this._windup = A.ranged_bolt_shot.windup;
+    } else {
+      this._play('idle');
+    }
+    this.contact(player, 0.5);
+    this._updateBolts(dt, player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Arc Knight — chase, telegraph, straight-line dash. Same grammar as the
+// Skeleton Rogue's dash without the dodge gimmick: a clean, elite-scale
+// charger (faster, harder-hitting, no side dodge to bait first).
+export class DashStriker extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 7, radius: 0.4, scale: 0.52, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', stab: 'Melee_1H_Attack_Stab' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.dashTimer = 1.6;
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this._play('walk');
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        const speed = this.pursueSpeed(2.0, d);
+        const iv = this.interceptDir(player, d);
+        this._play('run');
+        this.chaseToward(dt, iv.x, iv.z, 1, speed);
+      }
+      this.dashTimer -= dt;
+      if (this.dashTimer <= 0 && d < 5.2 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.08);
+        const dd = Math.max(d, 0.01);
+        this.dashDir = { x: dx / dd, z: dz / dd };
+        this.root.rotation.y = Math.atan2(this.dashDir.x, this.dashDir.z);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.52 * (1 - 0.2 * Math.min(1, this.stateT * 2.2));
+      if (this.stateT >= A.dash_strike.windup) {
+        this.state = 'dash'; this.stateT = 0; this.model.scale.y = 0.52;
+        this._play('stab', 0.06, { once: true });
+        audio.play('sword-swing2', { volume: 0.55, rate: 1.15 });
+      }
+    } else if (this.state === 'dash') {
+      this.stateT += dt;
+      const nx = this.x + this.dashDir.x * 8.4 * dt, nz = this.z + this.dashDir.z * 8.4 * dt;
+      const solved = this._moveSolved(nx, nz);
+      const blocked = Math.hypot(solved.x - nx, solved.z - nz) > 0.01;
+      this.root.position.x = solved.x; this.root.position.z = solved.z;
+      this.contact(player);
+      if (this.stateT > A.dash_strike.active || blocked) { this.state = 'recover'; this.stateT = 0; this._play('idle', 0.2); }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.dash_strike.recover) { this.state = 'chase'; this.dashTimer = A.dash_strike.gap + Math.random() * 0.6; }
+    }
+    if (this.state === 'chase' || this.state === 'telegraph') this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Visored Wight / Gilded Husk — the readable 1v1: turn-clamped advance,
+// single windup, single swing, generous recovery. The "answer with
+// shield/parry" teaching enemy, at mook rather than mini-boss scale.
+export class Duellist extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 6, radius: 0.38, scale: 0.5, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_1H_Attack_Chop' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 1.8;
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 2.4);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 1.5 * dt, this.z + Math.cos(this.root.rotation.y) * 1.5 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      if (d < 1.9 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.1);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.5 * (1 - 0.14 * Math.min(1, this.stateT * 2));
+      if (this.stateT >= A.duellist_swing.windup) {
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.5;
+        this._play('swing', 0.06, { once: true });
+        audio.play('sword-swing', { volume: 0.6, rate: 1.0 });
+        this._swingHit = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.duellist_swing.active * 0.4 && !this._swingHit) {
+        this._swingHit = true;
+        this._swingDamage(player, 100, 2.0, 1);
+      }
+      if (this.stateT > A.duellist_swing.active) { this.state = 'recover'; this.stateT = 0; }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.duellist_swing.recover) { this.state = 'chase'; this.swingTimer = A.duellist_swing.gap; this._current = null; }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Molten Marauder / Stone Colossus / Ashen Vanguard — the biggest single hit
+// any mook throws. Slow turn, longest windup in the roster (1.1s), wide arc,
+// long recovery: the reward for reading it is real, and getting around it
+// is the whole lesson (LAW 2 — never a shorter tell, ever).
+export class HeavySwinger extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 9, radius: 0.44, scale: 0.56, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_2H_Attack_Chop' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 2.0;
+    if (opts.axeGltf) this.mount('r', opts.axeGltf);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 1.5);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 1.1 * dt, this.z + Math.cos(this.root.rotation.y) * 1.1 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      if (d < 2.6 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.1);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.56 * (1 - 0.16 * Math.min(1, this.stateT / A.heavy_swing.windup));
+      if (this.stateT >= A.heavy_swing.windup) {
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.56;
+        this._play('swing', 0.06, { once: true });
+        audio.play('slam', { volume: 0.6, rate: 0.9 });
+        this._swingHit = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.heavy_swing.active * 0.5 && !this._swingHit) {
+        this._swingHit = true;
+        this._swingDamage(player, 150, 2.6, 1.5);
+      }
+      if (this.stateT > A.heavy_swing.active) { this.state = 'recover'; this.stateT = 0; }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.heavy_swing.recover) { this.state = 'chase'; this.swingTimer = A.heavy_swing.gap; this._current = null; }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Hollow Sentinel / Glacier Warden — the shield-wall, transplanted onto the
+// new roster's own bodies. Same law as the Skeleton Shieldling: `shieldUp`
+// is the ONE getter both the guard pose and takeDamage's frontal-block read,
+// so the two can never drift apart (LAW 7).
+export class ShieldAdvancer extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 7, radius: 0.4, scale: 0.5, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_1H_Attack_Chop' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 2.0;
+    if (opts.shieldGltf) this.mount('l', opts.shieldGltf);
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+    this._setupGuard(anims, 'Melee_Blocking');
+  }
+
+  get shieldUp() { return this.state === 'chase' && this.stunned <= 0; }
+
+  takeDamage(n, element, kind) {
+    if (!this.dead && this.shieldUp && this._pp) {
+      const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
+      const dd = Math.hypot(dx, dz);
+      const fx = Math.sin(this.root.rotation.y), fz = Math.cos(this.root.rotation.y);
+      if (dd > 0.05 && (dx * fx + dz * fz) / dd > 0.35) {
+        audio.play('parry', { volume: 0.45, rate: 0.6 });
+        this._pop = 0.1;
+        if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.2, this.z, 'BLOCKED');
+        return;
+      }
+    }
+    super.takeDamage(n, element, kind);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    this._pp = { x: player.root.position.x, z: player.root.position.z };
+    this._guard(this.shieldUp, dt);
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk', 0.2);
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 2.0);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 1.0 * dt, this.z + Math.cos(this.root.rotation.y) * 1.0 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      if (d < 1.9 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'swing'; this.stateT = 0; this._play('swing', 0.1, { once: true });
+        audio.play('bones', { volume: 0.5, rate: 1.0 });
+        this._swingHit = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.shield_swing.windup && this.stateT < A.shield_swing.windup + A.shield_swing.active && !this._swingHit) {
+        this._swingHit = true;
+        this._swingDamage(player, 90, 1.6, 1);
+      }
+      if (this.stateT > A.shield_swing.windup + A.shield_swing.active + A.shield_swing.recover) {
+        this.state = 'chase'; this.swingTimer = A.shield_swing.gap; this._current = null;
+      }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Shade Knight — the Village's shadow duel. Same readable swing loop as the
+// Duellist, but MIRRORS: struck with the same element twice in a row while
+// under a third of its health, it shrugs the second hit off (the existing
+// resist pipeline — 0.4x + the grey RESIST callout, takeDamage() already
+// does this for free once `.resist` is set). The lesson: keep switching.
+export class MirrorKael extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 7, radius: 0.4, scale: 0.5, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_1H_Attack_Slice_Horizontal' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 1.8;
+    this._lastElement = null;
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+  }
+
+  takeDamage(n, element, kind) {
+    if (!this.dead) {
+      this.resist = (this.hp < this.maxHp / 3 && this._lastElement === element) ? element : null;
+      this._lastElement = element;
+    }
+    super.takeDamage(n, element, kind);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 2.6);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 1.6 * dt, this.z + Math.cos(this.root.rotation.y) * 1.6 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      if (d < 1.9 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.1);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.5 * (1 - 0.14 * Math.min(1, this.stateT * 2));
+      if (this.stateT >= A.mirror_swing.windup) {
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.5;
+        this._play('swing', 0.06, { once: true });
+        this._swingHit = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.mirror_swing.active * 0.4 && !this._swingHit) {
+        this._swingHit = true;
+        this._swingDamage(player, 100, 2.0, 1);
+      }
+      if (this.stateT > A.mirror_swing.active) { this.state = 'recover'; this.stateT = 0; }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.mirror_swing.recover) { this.state = 'chase'; this.swingTimer = A.mirror_swing.gap; this._current = null; }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Twinblade Husk — ONE committed swing, two hits inside it (never an
+// open-ended combo — bosses/mooks are never a grinder). The active window
+// is wide enough to fit both without shrinking the windup.
+export class Flurry extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 5, radius: 0.36, scale: 0.48, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', swing: 'Melee_Dualwield_Attack_Slice' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 1.5;
+    if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+    if (opts.bladeGltf) this.mount('l', opts.bladeGltf, 0.9);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this._play('walk');
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        const speed = this.pursueSpeed(2.2, d);
+        const iv = this.interceptDir(player, d);
+        this._play('run');
+        this.chaseToward(dt, iv.x, iv.z, 1, speed);
+      }
+      this.swingTimer -= dt;
+      if (d < 1.8 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.08);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.48 * (1 - 0.14 * Math.min(1, this.stateT * 2));
+      if (this.stateT >= A.flurry_strikes.windup) {
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.48;
+        this._play('swing', 0.05, { once: true });
+        this._hit1 = false; this._hit2 = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.flurry_strikes.active * 0.25 && !this._hit1) { this._hit1 = true; this._swingDamage(player, 110, 1.7, 0.5); }
+      if (this.stateT > A.flurry_strikes.active * 0.7 && !this._hit2) { this._hit2 = true; this._swingDamage(player, 110, 1.7, 0.5); }
+      if (this.stateT > A.flurry_strikes.active) { this.state = 'recover'; this.stateT = 0; }
+    } else { // recover — the long payoff for a two-hit swing
+      this.stateT += dt;
+      if (this.stateT > A.flurry_strikes.recover) { this.state = 'chase'; this.swingTimer = A.flurry_strikes.gap; this._current = null; }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Bonelord — the roster's first Leader/buffer (a documented gap in the
+// combat-context audit). Its OWN attack is a plain Duellist-shaped swing;
+// on a long separate cooldown it RALLIES instead: a rising on-body glow
+// (never a floor decal) that gives nearby non-elite allies a temporary
+// gold aura (+speed, +contact damage) for a few seconds. Obeys the same
+// token cap as any other attack, and it dies to the same taught answer as
+// every other duelist in the roster — kill the commander, the buff ends.
+export class Commander extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 10, radius: 0.42, scale: 0.54, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_2H_Attack_Spin', rally: 'Melee_2H_Idle' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.swingTimer = 2.2;
+    this.rallyTimer = 3.0; // first rally comes early enough to matter
+    if (opts.axeGltf) this.mount('r', opts.axeGltf);
+  }
+
+  _rallyAllies() {
+    for (const e of this.world.enemies) {
+      if (e === this || e.dead || e.scenery || e.constructor.name === 'Hittable') continue;
+      if (e.constructor.name === 'Commander') continue; // leaders don't buff each other
+      const dx = e.x - this.x, dz = e.z - this.z;
+      if (dx * dx + dz * dz > 5 * 5) continue;
+      e._rallyT = 4.5;
+      e._rallySpeedBonus = 1.3;
+    }
+    juice.burst(this.x, 1.1, this.z, 0xffd76a, 10);
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 1.6);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 1.15 * dt, this.z + Math.cos(this.root.rotation.y) * 1.15 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.swingTimer -= dt;
+      this.rallyTimer -= dt;
+      if (this.rallyTimer <= 0 && this.engaged !== false) {
+        this.state = 'rally'; this.stateT = 0; this._play('rally', 0.15);
+      } else if (d < 2.6 && this.swingTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.1);
+      }
+    } else if (this.state === 'rally') {
+      // rising glow ON THE BODY — no ground ring (LAW 4)
+      this.stateT += dt;
+      const f = Math.min(1, this.stateT / A.commander_rally.windup);
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = f * 1.8;
+      if (this.stateT >= A.commander_rally.windup) {
+        this._rallyAllies();
+        this.state = 'recover'; this.stateT = 0; this._justRallied = true;
+        this.rallyTimer = A.commander_rally.gap;
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      this.model.scale.y = 0.54 * (1 - 0.15 * Math.min(1, this.stateT / A.commander_swing.windup));
+      if (this.stateT >= A.commander_swing.windup) {
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.54;
+        this._play('swing', 0.06, { once: true });
+        this._swingHit = false;
+      }
+    } else if (this.state === 'swing') {
+      this.stateT += dt;
+      if (this.stateT > A.commander_swing.active * 0.5 && !this._swingHit) {
+        this._swingHit = true;
+        this._swingDamage(player, 130, 2.2, 1);
+      }
+      if (this.stateT > A.commander_swing.active) { this.state = 'recover'; this.stateT = 0; this._justRallied = false; }
+    } else { // recover — the rally leaves swingTimer running untouched (it
+      // never stopped counting), a swing resets it for the next cycle
+      this.stateT += dt;
+      if (this.stateT > (this._justRallied ? A.commander_rally.recover : A.commander_swing.recover)) {
+        this.state = 'chase'; this._current = null;
+        if (!this._justRallied) this.swingTimer = A.commander_swing.gap;
+        this._justRallied = false;
+      }
+    }
+    this.contact(player, 0.5);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Tower Wight — Stoneroot's landmark: slow, huge, one attack. A pared-down
+// Bone Warden (turn-clamped advance, one long telegraph, one AOE stomp) —
+// no shield, no "tired" cycle, no ground decal (that's the sanctioned boss
+// exception; this is a mook, LAW 4 applies): the tell is entirely on the
+// body — a deep crouch and a rising dust cloud.
+export class SlowStomper extends SkeletonBase {
+  constructor(world, x, z, gltf, anims, opts = {}) {
+    super(world, x, z, {
+      hp: opts.hp ?? 14, radius: 0.5, scale: 0.62, gltf, anims,
+      clips: { idle: 'Idle_A', walk: 'Walking_A', stomp: 'Melee_2H_Attack_Spin' },
+    });
+    applyRosterWeak(this, opts);
+    this.state = 'chase';
+    this.stompTimer = 2.4;
+    this._scrapeAcc = 0;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'chase') {
+      this._play('walk');
+      if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.6) {
+        this.holdOrbit(dt, dx, dz, d);
+      } else if (d > 0.01) {
+        this.turnToward(dt, dx, dz, 1.3);
+        const s = this._moveSolved(this.x + Math.sin(this.root.rotation.y) * 0.95 * dt, this.z + Math.cos(this.root.rotation.y) * 0.95 * dt);
+        this.root.position.x = s.x; this.root.position.z = s.z;
+      }
+      this.stompTimer -= dt;
+      if (d < 2.4 && this.stompTimer <= 0 && this.engaged !== false) {
+        this.state = 'telegraph'; this.stateT = 0; this._play('idle', 0.15);
+      }
+    } else if (this.state === 'telegraph') {
+      this.stateT += dt;
+      const f = Math.min(1, this.stateT / A.stomp_slam.windup);
+      this.model.scale.y = 0.62 * (1 - 0.2 * f);
+      this._scrapeAcc += dt;
+      if (this._scrapeAcc > 0.2) { this._scrapeAcc = 0; juice.burst(this.x, 0.15, this.z, 0x9a8a70, 4); }
+      if (this.stateT >= A.stomp_slam.windup) {
+        this.state = 'stomp'; this.stateT = 0; this.model.scale.y = 0.62;
+        this._play('stomp', 0.06, { once: true });
+        audio.play('slam', { volume: 0.8, rate: 0.7 });
+        this._stompHit = false;
+      }
+    } else if (this.state === 'stomp') {
+      this.stateT += dt;
+      if (this.stateT > A.stomp_slam.active * 0.5 && !this._stompHit) {
+        this._stompHit = true;
+        this._swingDamage(player, 360, 2.4, 1.5);
+        juice.burst(this.x, 0.1, this.z, 0x9a8a70, 10);
+      }
+      if (this.stateT > A.stomp_slam.active) { this.state = 'recover'; this.stateT = 0; }
+    } else { // recover
+      this.stateT += dt;
+      if (this.stateT > A.stomp_slam.recover) { this.state = 'chase'; this.stompTimer = A.stomp_slam.gap; this._current = null; }
+    }
+    if (this.state === 'chase') this.contact(player, 1);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Magma / Rime / Gloom / Toxin Slime — the genuinely new movement pattern
+// the roster needed: a real leap-arc hop rather than the cave slime's
+// sliding walk cycle. Rest → crouch-squash tell → airborne leap (Y arcs,
+// XZ carries the burst) → land. Inherits the cave slime's split-on-death
+// and contact damage for free.
+export class Hopper extends Slime {
+  constructor(world, x, z, gltf, opts = {}) {
+    super(world, x, z, gltf);
+    if (opts.weakness !== undefined) this.weakness = opts.weakness;
+    if (opts.resist !== undefined) this.resist = opts.resist;
+    if (opts.hp !== undefined) {
+      const bonus = state.settings.easy ? 0 : CONFIG.DIFFICULTY.ENEMY_HP_BONUS;
+      this.hp = this.maxHp = Math.round((opts.hp + bonus) * enemyScale() * 2) / 2;
+    }
+    this.splits = opts.splits ?? this.splits;
+    this.state = 'rest';
+    this.stateT = 0;
+    this.restTimer = 0.5 + Math.random() * 0.4;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    const d = Math.hypot(dx, dz);
+    this.stateT += dt;
+
+    if (this.state === 'rest') {
+      this._play('idle');
+      if (d < this.senseRange(player, this.aggroRange) && this.stateT > this.restTimer) {
+        if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.2) {
+          this.holdOrbit(dt, dx, dz, d);
+        } else if (this.engaged !== false) {
+          this.state = 'telegraph'; this.stateT = 0;
+          const dd = Math.max(d, 0.01);
+          this.hopDir = { x: dx / dd, z: dz / dd };
+          this.root.rotation.y = Math.atan2(dx, dz);
+        }
+      }
+    } else if (this.state === 'telegraph') {
+      this._play('idle');
+      const f = Math.min(1, this.stateT / A.hop_leap.windup);
+      this.model.scale.set(0.26 * (1 + f * 0.25), 0.26 * (1 - f * 0.3), 0.26 * (1 + f * 0.25)); // squash
+      if (this.stateT >= A.hop_leap.windup) {
+        this.state = 'charge'; this.stateT = 0;
+        this._play('attack', 0.05, { once: true });
+        this.model.scale.setScalar(0.26);
+      }
+    } else if (this.state === 'charge') {
+      const f = Math.min(1, this.stateT / A.hop_leap.active);
+      this.root.position.y = Math.sin(f * Math.PI) * 0.6;
+      const nx = this.x + this.hopDir.x * 3.6 * dt, nz = this.z + this.hopDir.z * 3.6 * dt;
+      const solved = this._moveSolved(nx, nz);
+      this.root.position.x = solved.x; this.root.position.z = solved.z;
+      this.contact(player);
+      if (this.stateT > A.hop_leap.active) {
+        this.root.position.y = 0;
+        this.state = 'recover'; this.stateT = 0;
+        juice.burst(this.x, 0.1, this.z, this.puffTint || 0x7fc46a, 5);
+      }
+    } else { // recover
+      this._play('idle');
+      if (this.stateT > A.hop_leap.recover) { this.state = 'rest'; this.stateT = 0; this.restTimer = A.hop_leap.gap; }
+    }
+    if (this.state !== 'charge') this.contact(player);
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// Ember / Frost / Shadow Dragonling — Dragon.glb (fully rigged: 5 clips,
+// 2 skins, real bones), never wired to an enemy before. Same roost/hover/
+// telegraph/dive/grounded/return grammar as the Cave Bat, at dragon scale,
+// using the model's OWN Attack clip for the bite at the dive's damage frame
+// instead of the bat's borrowed motion.
+export class Dragonling extends Enemy {
+  constructor(world, x, z, gltf, opts = {}) {
+    super(world, x, z, { hp: opts.hp ?? 6, radius: 0.55 });
+    if (opts.weakness !== undefined) this.weakness = opts.weakness;
+    if (opts.resist !== undefined) this.resist = opts.resist;
+    this.puffTint = opts.puffTint ?? 0x4a3f5c;
+    this.flying = true;
+    this.home = { x, z };
+    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+    model.scale.setScalar(opts.scale ?? 0.5);
+    if (opts.tint) {
+      model.traverse((n) => {
+        if (!n.isMesh) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        n.material = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
+        if (n.material.length === 1) n.material = n.material[0];
+      });
+    }
+    this.root.add(model);
+    this.model = model;
+    this.mixer = new THREE.AnimationMixer(model);
+    this.actions = {};
+    for (const [k, n] of Object.entries({
+      fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
+    })) {
+      const clip = gltf.animations.find((c) => c.name === n);
+      if (clip) this.actions[k] = this.mixer.clipAction(clip);
+    }
+    this._current = null;
+    if (this.actions.fly) { this.actions.fly.play(); this.actions.fly.timeScale = 0.35; }
+    this._flashMats = [];
+    this.registerFlashMats(this.root);
+    this.state = 'hover'; // dragonlings never roost — always circling
+    this.stateT = 0;
+    this.diveDir = { x: 0, z: 0 };
+    this._seed = x * 2.3 + z;
+    this.root.position.y = 2.0;
+  }
+
+  _play(name) {
+    if (this._current === name || !this.actions[name]) return;
+    const next = this.actions[name];
+    next.reset(); next.setLoop(THREE.LoopOnce); next.clampWhenFinished = true; next.play();
+    if (this._current && this.actions[this._current]) this.actions[this._current].crossFadeTo(next, 0.1, false);
+    this._current = name;
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    this.stateT += dt;
+    const px = player.root.position.x, pz = player.root.position.z;
+    const dx = px - this.x, dz = pz - this.z;
+    const d = Math.hypot(dx, dz);
+
+    if (this.state === 'hover') {
+      if (this.actions.fly) this.actions.fly.timeScale = 0.35;
+      this.root.position.x += (this.home.x + Math.sin(t * 0.7 + this._seed) * 1.3 - this.x) * dt * 0.6;
+      this.root.position.z += (this.home.z + Math.cos(t * 0.55 + this._seed) * 1.3 - this.z) * dt * 0.6;
+      this.root.position.y = 2.0 + Math.sin(t * 1.6 + this._seed) * 0.2;
+      this.root.rotation.y = Math.atan2(dx, dz);
+      const pv = player._vel ? Math.hypot(player._vel.x, player._vel.z) : 0;
+      const trig = pv > 3.4 ? 9.5 : 5.6;
+      if (d < trig && this.stateT > 1.1 && this.engaged !== false) { this.state = 'telegraph'; this.stateT = 0; }
+    } else if (this.state === 'telegraph') {
+      if (this.actions.fly) this.actions.fly.timeScale = 2.4;
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + (this.stateT / A.dragonling_dive.windup) * 2.0;
+      this.root.rotation.y = Math.atan2(dx, dz);
+      if (this.stateT >= A.dragonling_dive.windup) {
+        this.state = 'dive'; this.stateT = 0;
+        const ip = this.interceptPoint(player, 8.0, 1.0);
+        const ix = ip.x - this.root.position.x, iz = ip.z - this.root.position.z;
+        const idd = Math.hypot(ix, iz) || Math.max(d, 0.01);
+        this.diveDir = { x: ix / idd, z: iz / idd };
+        this._play('bite');
+        audio.play('growl', { volume: 0.5, rate: 0.6 });
+      }
+    } else if (this.state === 'dive') {
+      const speed = 8.0;
+      this.root.position.x += this.diveDir.x * speed * dt;
+      this.root.position.z += this.diveDir.z * speed * dt;
+      this.root.position.y = Math.max(0.6, this.root.position.y - dt * 3.0);
+      this.contact(player, 1, { ground: false });
+      if (this.stateT > A.dragonling_dive.active) { this.state = 'return'; this.stateT = 0; }
+    } else { // return to hover height/home
+      if (this.actions.fly) this.actions.fly.timeScale = 1;
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4;
+      const hx = this.home.x - this.x, hz = this.home.z - this.z;
+      const hd = Math.hypot(hx, hz);
+      this.root.position.y = Math.min(2.0, this.root.position.y + dt);
+      if (hd < 0.4 && this.root.position.y >= 1.9) { this.state = 'hover'; this.stateT = 0; }
+      else if (hd > 0.01) {
+        this.root.position.x += (hx / hd) * 3.0 * dt;
+        this.root.position.z += (hz / hd) * 3.0 * dt;
+        this.root.rotation.y = Math.atan2(hx, hz);
+      }
+    }
+    if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Ember drops: warm sparks fallen shadows sometimes leave behind.
 // Touch one to heal half a heart (fizzles after ~12s).
 // ---------------------------------------------------------------------------
@@ -2205,6 +3416,76 @@ function resolveBodies(world, dt, player) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// ROSTER (task #31) — one row per new enemy id, keyed exactly like the asset
+// tool's own manifest.json. `weakness`/`resist` are the per-instance
+// override this session settled on (regional law where one exists — "Wild
+// Woods fears fire", "Shadow Court fears moon" — bone-family default
+// otherwise); omit either to keep the class's own TRAITS default.
+//
+// KAYKIT_ROSTER ids load THEIR OWN generated body — the roster tool's baked
+// recolor/part-swap output at assets/generated/enemies/<id>.glb — bound to
+// the shared rig-medium clip library every skeleton already uses.
+// MONSTER_ROSTER ids reuse a shared Quaternius base (Slime/Bat/Dragon.glb)
+// with a runtime material tint, exactly like every other VARIANTS entry.
+// ---------------------------------------------------------------------------
+
+const KAYKIT_ROSTER = {
+  'ember-wretch': { cls: SkeletonMinion, hp: 2 },
+  'cinder-imp': { cls: SkeletonMinion, hp: 1 },
+  'rime-minion': { cls: SkeletonMinion, hp: 3 },
+  'molten-marauder': { cls: HeavySwinger, hp: 8, weakness: 'moon', mount: 'axe' },
+  'hollow-sentinel': { cls: ShieldAdvancer, hp: 6, weakness: 'moon', mount: 'shield' },
+  'shade-knight': { cls: MirrorKael, hp: 7, weakness: 'moon', mount: 'blade' },
+  'maskbone': { cls: Flanker, hp: 3, weakness: 'moon', mount: 'blade' },
+  'lurker': { cls: Stalker, hp: 4, weakness: 'moon' },
+  'wraith-archer': { cls: RangedKiter, hp: 3, weakness: 'moon' },
+  'glacier-warden': { cls: ShieldAdvancer, hp: 8, weakness: 'fire', mount: 'shield' },
+  'visored-wight': { cls: Duellist, hp: 6, mount: 'blade' },
+  'tower-wight': { cls: SlowStomper, hp: 14 },
+  'stone-colossus': { cls: HeavySwinger, hp: 12, mount: 'axe' },
+  'bonelord': { cls: Commander, hp: 10, mount: 'axe' },
+  'rotcaster': { cls: RangedLobber, hp: 3, weakness: 'fire' },
+  'thornstalker': { cls: RangedKiter, hp: 4, weakness: 'fire' },
+  'quiverbones': { cls: RangedKiter, hp: 3, weakness: 'fire' },
+  'stormcaller': { cls: RangedBolter, hp: 4 },
+  'arc-knight': { cls: DashStriker, hp: 7, mount: 'blade' },
+  'gilded-husk': { cls: Duellist, hp: 8, weakness: 'moon', mount: 'blade' },
+  'emberfang': { cls: Flanker, hp: 3, weakness: 'moon', mount: 'blade' },
+  'ashen-vanguard': { cls: HeavySwinger, hp: 9, mount: 'axe' },
+  'twinblade-husk': { cls: Flurry, hp: 5, weakness: 'moon', mount: 'blade' },
+};
+
+const MONSTER_ROSTER = {
+  'ember-dragonling': { cls: Dragonling, base: 'dragon', hp: 6, weakness: 'frost', scale: 0.5,
+    tint: { Main: 0x8f2f10, Belly: 0xff9a2a, Claws: 0x2a1410, Wings: 0xc23c00, Eyes: 0xfff07a } },
+  'frost-dragonling': { cls: Dragonling, base: 'dragon', hp: 6, weakness: 'fire', scale: 0.5,
+    tint: { Main: 0x3e5c73, Belly: 0xcfe3ee, Claws: 0x1a2630, Wings: 0x7d97ad, Eyes: 0x9fe6ff } },
+  'shadow-dragonling': { cls: Dragonling, base: 'dragon', hp: 7, weakness: 'moon', scale: 0.5,
+    tint: { Main: 0x2f2440, Belly: 0x6f6383, Claws: 0x12101a, Wings: 0x3d2f4f, Eyes: 0xb45cff } },
+  'cinder-bat': { cls: Moth, base: 'bat', hp: 1 }, // already the Ember Hollow flyer, no retint needed
+  'frost-bat': { cls: Moth, base: 'bat', hp: 1, variant: 'frostmoth' },
+  'magma-slime': { cls: Hopper, base: 'slime', hp: 2, weakness: ['tide', 'frost'], resist: 'fire',
+    tint: { Body: 0xff6a1a, Eyes: 0x2a1410 } },
+  'rime-slime': { cls: Hopper, base: 'slime', hp: 3,
+    tint: { Body: 0x8fd0f0, Eyes: 0x1a2630 } },
+  'gloom-slime': { cls: Hopper, base: 'slime', hp: 4, weakness: 'moon',
+    tint: { Body: 0x5b4770, Eyes: 0xb45cff } },
+  'toxin-slime': { cls: Hopper, base: 'slime', hp: 2,
+    tint: { Body: 0x8fd63c, Eyes: 0x1c2419 } },
+};
+
+function makeMonsterTint(map) {
+  return (m) => {
+    if (map[m.name] === undefined) return;
+    m.color && m.color.setHex(map[m.name]);
+    if (m.name === 'Eyes') { // eyes read as a glow, matching every other VARIANTS entry
+      m.emissive && m.emissive.setHex(map[m.name]);
+      m.emissiveIntensity = 1.6;
+    }
+  };
+}
+
 export async function spawnEnemies(world) {
   world.enemies = [];
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
@@ -2254,8 +3535,12 @@ export async function spawnEnemies(world) {
       world.enemies.push(applyVariant(new Bat(world, s.x, s.z, batGltf), s.variant));
     }
   }
+  // task #31 marker key for a roster id: 'ember-wretch' -> 'emberWretchSpots'
+  const rosterKey = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + 'Spots';
+  const rosterIds = Object.keys(KAYKIT_ROSTER).filter((id) => (mk[rosterKey(id)] || []).length);
+
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
-      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot) {
+      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot || rosterIds.length) {
     const [special, movement, general, combat] = await Promise.all([
       loadGLB('./assets/anims/rig-medium-special.glb'),
       loadGLB('./assets/anims/rig-medium-movement-basic.glb'),
@@ -2292,6 +3577,74 @@ export async function spawnEnemies(world) {
       ]);
       world.warden = new BoneWarden(world, mk.wardenSpot.x, mk.wardenSpot.z, warriorGltf, anims, axeGltf, shieldGltf);
       world.enemies.push(world.warden);
+    }
+
+    // task #31 — the 23 KayKit-family roster ids, each its own generated
+    // body (assets/generated/enemies/<id>.glb) on the same shared rig
+    if (rosterIds.length) {
+      const needsProp = (kind) => rosterIds.some((id) => KAYKIT_ROSTER[id].mount === kind);
+      const [bladeGltf, axeGltf2, shieldGltf2] = await Promise.all([
+        needsProp('blade') ? loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf') : null,
+        needsProp('axe') ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
+        needsProp('shield') ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
+      ]);
+      for (const id of rosterIds) {
+        const cfg = KAYKIT_ROSTER[id];
+        const bodyGltf = await loadGLB(`./assets/generated/enemies/${id}.glb`);
+        const opts = { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist };
+        if (cfg.mount === 'blade') opts.bladeGltf = bladeGltf;
+        if (cfg.mount === 'axe') opts.axeGltf = axeGltf2;
+        if (cfg.mount === 'shield') { opts.shieldGltf = shieldGltf2; opts.bladeGltf = bladeGltf; }
+        for (const s of mk[rosterKey(id)]) {
+          const e = cfg.cls === SkeletonMinion
+            ? new SkeletonMinion(world, s.x, s.z, bodyGltf, anims) // reuse as-is (swarm)
+            : new cfg.cls(world, s.x, s.z, bodyGltf, anims, opts);
+          if (cfg.cls === SkeletonMinion) { if (cfg.weakness !== undefined) e.weakness = cfg.weakness; if (cfg.resist !== undefined) e.resist = cfg.resist; }
+          world.enemies.push(e);
+        }
+      }
+    }
+  }
+
+  // task #31 — the 9 Quaternius-family roster ids, sharing the base
+  // Slime/Bat/Dragon.glb with a runtime material tint (same idiom VARIANTS
+  // already uses for every other reskin in the game)
+  {
+    const monsterIds = Object.keys(MONSTER_ROSTER).filter((id) => (mk[rosterKey(id)] || []).length);
+    if (monsterIds.length) {
+      const bases = [...new Set(monsterIds.map((id) => MONSTER_ROSTER[id].base))];
+      const loaded = {};
+      await Promise.all(bases.map(async (b) => {
+        const path = b === 'dragon' ? './assets/chars/monsters/Dragon.glb'
+          : b === 'bat' ? './assets/chars/monsters/Bat.glb' : './assets/chars/monsters/Slime.glb';
+        loaded[b] = await loadGLB(path);
+      }));
+      for (const id of monsterIds) {
+        const cfg = MONSTER_ROSTER[id];
+        const gltf = loaded[cfg.base];
+        for (const s of mk[rosterKey(id)]) {
+          let e;
+          if (cfg.cls === Dragonling) {
+            e = new Dragonling(world, s.x, s.z, gltf, {
+              hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist, scale: cfg.scale,
+              tint: cfg.tint ? makeMonsterTint(cfg.tint) : undefined,
+            });
+          } else if (cfg.cls === Hopper) {
+            e = new Hopper(world, s.x, s.z, gltf, { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist });
+            if (cfg.tint) {
+              e.model.traverse((n) => {
+                if (!n.isMesh) return;
+                for (const m of (Array.isArray(n.material) ? n.material : [n.material])) makeMonsterTint(cfg.tint)(m);
+              });
+            }
+          } else { // Moth reuse (cinder-bat / frost-bat)
+            e = applyVariant(new Moth(world, s.x, s.z, gltf), cfg.variant);
+            if (cfg.weakness !== undefined) e.weakness = cfg.weakness;
+            if (cfg.resist !== undefined) e.resist = cfg.resist;
+          }
+          world.enemies.push(e);
+        }
+      }
     }
   }
 

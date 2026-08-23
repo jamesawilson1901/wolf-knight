@@ -11,7 +11,12 @@ import { audio } from './audio.js';
 // starved the level curve, and a child arrived in the Wild Woods under-levelled.
 // That matters more than it looks: since v3.29 enemy hp scales with player
 // level, so the missing XP was making LEVEL 3 easier too.
-export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonMinion: 8, SkeletonRogue: 12, SkeletonShield: 12, SkeletonWarrior: 12, SkeletonMage: 14, BoneWarden: 60 };
+export const XP_VALUES = { Shade: 5, Moth: 6, Hound: 20, Breakable: 0, Hittable: 0, Slime: 5, Bat: 6, SkeletonMinion: 8, SkeletonRogue: 12, SkeletonShield: 12, SkeletonWarrior: 12, SkeletonMage: 14, BoneWarden: 60,
+  // Roster expansion (task #31) — same A9 lesson applies: every class the
+  // roster spawns needs an entry here or a kid earns nothing for it.
+  Flanker: 6, Stalker: 16, RangedKiter: 9, RangedLobber: 9, RangedBolter: 10,
+  DashStriker: 18, Duellist: 15, HeavySwinger: 18, ShieldAdvancer: 15,
+  MirrorKael: 18, Flurry: 15, Commander: 25, SlowStomper: 40, Hopper: 6, Dragonling: 16 };
 
 export const progressEvents = { onLevelUp: null, onXp: null, onSticker: null };
 

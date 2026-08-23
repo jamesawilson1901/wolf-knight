@@ -102,7 +102,13 @@ identity dials in CONFIG.FORMS):
 | **Wisp Moth** ⭐ | Bat, pale-green glow | dive pattern; fears fire | Wild Woods |
 
 ⭐ = VARIANTS (asset-multiplication law): tint + scale + stat + element
-swaps on models we already ship — the registry lives in enemies.js.
+swaps on models we already ship — the registry lives in enemies.js. This
+table has fallen behind what's actually shipped (Frostpeak/Stormreach/
+Shadow Court/Sunken Vale families, plus the 2026-08-23 roster expansion —
+15 new AI behaviors, 32 new enemy ids across all seven regions) —
+`docs/wolf-knight-combat-context.md` §1.4/§1.4a and finding 14 are the
+current ground truth; re-sync this table next time it's touched for an
+unrelated reason (§12's "keep it lean" applies here too).
 
 Deaths puff into smoke (not gory). Never more than 3 simultaneous aggro
 enemies near a kid. Enemies have solid bodies (no walking through each

@@ -1,0 +1,526 @@
+{
+  "builtAt": "2026-08-23T10:57:33.371Z",
+  "enemies": [
+    {
+      "id": "ember-wretch",
+      "name": "Ember Wretch",
+      "element": "fire",
+      "tier": "trash",
+      "region": "Ember Hollow",
+      "model": "enemies/ember-wretch.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 2,
+        "speed": 1.15,
+        "behaviour": "swarm",
+        "telegraph": 0.45,
+        "spawnCount": 3
+      },
+      "bytes": 305152
+    },
+    {
+      "id": "cinder-imp",
+      "name": "Cinder Imp",
+      "element": "fire",
+      "tier": "trash",
+      "region": "Ember Hollow",
+      "model": "enemies/cinder-imp.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 1,
+        "speed": 1.4,
+        "behaviour": "swarm",
+        "telegraph": 0.35,
+        "spawnCount": 4
+      },
+      "bytes": 303356
+    },
+    {
+      "id": "molten-marauder",
+      "name": "Molten Marauder",
+      "element": "fire",
+      "tier": "elite",
+      "region": "Ember Hollow",
+      "model": "enemies/molten-marauder.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 8,
+        "speed": 0.85,
+        "behaviour": "heavy-swinger",
+        "telegraph": 0.9
+      },
+      "bytes": 316972
+    },
+    {
+      "id": "hollow-sentinel",
+      "name": "Hollow Sentinel",
+      "element": "moon",
+      "tier": "elite",
+      "region": "The Village",
+      "model": "enemies/hollow-sentinel.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 6,
+        "speed": 0.9,
+        "behaviour": "shield-advance",
+        "telegraph": 0.75
+      },
+      "bytes": 338972
+    },
+    {
+      "id": "shade-knight",
+      "name": "Shade Knight",
+      "element": "moon",
+      "tier": "elite",
+      "region": "The Village",
+      "model": "enemies/shade-knight.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 7,
+        "speed": 1,
+        "behaviour": "mirror-kael",
+        "telegraph": 0.7
+      },
+      "bytes": 301544
+    },
+    {
+      "id": "maskbone",
+      "name": "Maskbone",
+      "element": "moon",
+      "tier": "trash",
+      "region": "Shadow Court",
+      "model": "enemies/maskbone.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 1.25,
+        "behaviour": "flanker",
+        "telegraph": 0.5
+      },
+      "bytes": 305044
+    },
+    {
+      "id": "lurker",
+      "name": "The Lurker",
+      "element": "moon",
+      "tier": "elite",
+      "region": "The Village",
+      "model": "enemies/lurker.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 4,
+        "speed": 1.3,
+        "behaviour": "stalker",
+        "telegraph": 0.55
+      },
+      "bytes": 355968
+    },
+    {
+      "id": "wraith-archer",
+      "name": "Wraith Archer",
+      "element": "moon",
+      "tier": "ranged",
+      "region": "The Village",
+      "model": "enemies/wraith-archer.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 0.8,
+        "behaviour": "ranged-kite",
+        "telegraph": 1
+      },
+      "bytes": 434284
+    },
+    {
+      "id": "rime-minion",
+      "name": "Rime Minion",
+      "element": "frost",
+      "tier": "trash",
+      "region": "Frostpeak",
+      "model": "enemies/rime-minion.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 0.95,
+        "behaviour": "swarm",
+        "telegraph": 0.5,
+        "spawnCount": 3
+      },
+      "bytes": 305096
+    },
+    {
+      "id": "glacier-warden",
+      "name": "Glacier Warden",
+      "element": "frost",
+      "tier": "elite",
+      "region": "Frostpeak",
+      "model": "enemies/glacier-warden.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 8,
+        "speed": 0.8,
+        "behaviour": "shield-advance",
+        "telegraph": 0.85
+      },
+      "bytes": 353476
+    },
+    {
+      "id": "visored-wight",
+      "name": "Visored Wight",
+      "element": "frost",
+      "tier": "elite",
+      "region": "Frostpeak",
+      "model": "enemies/visored-wight.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 6,
+        "speed": 0.9,
+        "behaviour": "duellist",
+        "telegraph": 0.7
+      },
+      "bytes": 414452
+    },
+    {
+      "id": "tower-wight",
+      "name": "Tower Wight",
+      "element": "earth",
+      "tier": "landmark",
+      "region": "Stoneroot",
+      "model": "enemies/tower-wight.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 14,
+        "speed": 0.6,
+        "behaviour": "slow-stomp",
+        "telegraph": 1.2
+      },
+      "bytes": 352228
+    },
+    {
+      "id": "stone-colossus",
+      "name": "Stone Colossus",
+      "element": "earth",
+      "tier": "elite",
+      "region": "Stoneroot",
+      "model": "enemies/stone-colossus.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 12,
+        "speed": 0.7,
+        "behaviour": "heavy-swinger",
+        "telegraph": 1.1
+      },
+      "bytes": 350200
+    },
+    {
+      "id": "bonelord",
+      "name": "Bonelord",
+      "element": "earth",
+      "tier": "elite",
+      "region": "Stoneroot",
+      "model": "enemies/bonelord.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 10,
+        "speed": 0.75,
+        "behaviour": "commander",
+        "telegraph": 1
+      },
+      "bytes": 351756
+    },
+    {
+      "id": "rotcaster",
+      "name": "Rotcaster",
+      "element": "venom",
+      "tier": "ranged",
+      "region": "Wild Woods",
+      "model": "enemies/rotcaster.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 0.75,
+        "behaviour": "ranged-lob",
+        "telegraph": 1.1
+      },
+      "bytes": 281644
+    },
+    {
+      "id": "thornstalker",
+      "name": "Thornstalker",
+      "element": "venom",
+      "tier": "trash",
+      "region": "Wild Woods",
+      "model": "enemies/thornstalker.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 4,
+        "speed": 1.2,
+        "behaviour": "ranged-kite",
+        "telegraph": 0.8
+      },
+      "bytes": 479664
+    },
+    {
+      "id": "quiverbones",
+      "name": "Quiverbones",
+      "element": "venom",
+      "tier": "ranged",
+      "region": "Wild Woods",
+      "model": "enemies/quiverbones.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 0.85,
+        "behaviour": "ranged-kite",
+        "telegraph": 0.95
+      },
+      "bytes": 385332
+    },
+    {
+      "id": "stormcaller",
+      "name": "Stormcaller",
+      "element": "storm",
+      "tier": "ranged",
+      "region": "Stormreach",
+      "model": "enemies/stormcaller.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 4,
+        "speed": 0.8,
+        "behaviour": "ranged-bolt",
+        "telegraph": 1.05
+      },
+      "bytes": 260668
+    },
+    {
+      "id": "arc-knight",
+      "name": "Arc Knight",
+      "element": "storm",
+      "tier": "elite",
+      "region": "Stormreach",
+      "model": "enemies/arc-knight.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 7,
+        "speed": 1.05,
+        "behaviour": "dash-strike",
+        "telegraph": 0.6
+      },
+      "bytes": 335620
+    },
+    {
+      "id": "gilded-husk",
+      "name": "Gilded Husk",
+      "element": "light",
+      "tier": "elite",
+      "region": "Shadow Court",
+      "model": "enemies/gilded-husk.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 8,
+        "speed": 0.9,
+        "behaviour": "duellist",
+        "telegraph": 0.8
+      },
+      "bytes": 340988
+    },
+    {
+      "id": "emberfang",
+      "name": "Emberfang",
+      "element": "fire",
+      "tier": "trash",
+      "region": "Ember Hollow",
+      "model": "enemies/emberfang.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 3,
+        "speed": 1.35,
+        "behaviour": "flanker",
+        "telegraph": 0.4
+      },
+      "bytes": 360032
+    },
+    {
+      "id": "ashen-vanguard",
+      "name": "Ashen Vanguard",
+      "element": "earth",
+      "tier": "elite",
+      "region": "Stoneroot",
+      "model": "enemies/ashen-vanguard.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 9,
+        "speed": 0.85,
+        "behaviour": "heavy-swinger",
+        "telegraph": 0.95
+      },
+      "bytes": 315356
+    },
+    {
+      "id": "twinblade-husk",
+      "name": "Twinblade Husk",
+      "element": "moon",
+      "tier": "elite",
+      "region": "The Village",
+      "model": "enemies/twinblade-husk.glb",
+      "rig": "Rig_Medium",
+      "gameplay": {
+        "hp": 5,
+        "speed": 1.25,
+        "behaviour": "flurry",
+        "telegraph": 0.45
+      },
+      "bytes": 362104
+    },
+    {
+      "id": "ember-dragonling",
+      "name": "Ember Dragonling",
+      "element": "fire",
+      "tier": "elite",
+      "region": "Ember Hollow",
+      "model": "enemies/ember-dragonling.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 6,
+        "speed": 1.1,
+        "behaviour": "flying-swoop",
+        "telegraph": 0.8
+      },
+      "bytes": 236576
+    },
+    {
+      "id": "frost-dragonling",
+      "name": "Frost Dragonling",
+      "element": "frost",
+      "tier": "elite",
+      "region": "Frostpeak",
+      "model": "enemies/frost-dragonling.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 6,
+        "speed": 1.05,
+        "behaviour": "flying-swoop",
+        "telegraph": 0.85
+      },
+      "bytes": 236604
+    },
+    {
+      "id": "shadow-dragonling",
+      "name": "Shadow Dragonling",
+      "element": "moon",
+      "tier": "elite",
+      "region": "The Village",
+      "model": "enemies/shadow-dragonling.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 7,
+        "speed": 1.1,
+        "behaviour": "flying-swoop",
+        "telegraph": 0.8
+      },
+      "bytes": 236612
+    },
+    {
+      "id": "cinder-bat",
+      "name": "Cinder Bat",
+      "element": "fire",
+      "tier": "trash",
+      "region": "Ember Hollow",
+      "model": "enemies/cinder-bat.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 1,
+        "speed": 1.5,
+        "behaviour": "erratic-flyer",
+        "telegraph": 0.3,
+        "spawnCount": 4
+      },
+      "bytes": 191612
+    },
+    {
+      "id": "frost-bat",
+      "name": "Frost Bat",
+      "element": "frost",
+      "tier": "trash",
+      "region": "Frostpeak",
+      "model": "enemies/frost-bat.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 1,
+        "speed": 1.45,
+        "behaviour": "erratic-flyer",
+        "telegraph": 0.3,
+        "spawnCount": 4
+      },
+      "bytes": 191628
+    },
+    {
+      "id": "magma-slime",
+      "name": "Magma Slime",
+      "element": "fire",
+      "tier": "trash",
+      "region": "Ember Hollow",
+      "model": "enemies/magma-slime.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 2,
+        "speed": 0.7,
+        "behaviour": "hopper",
+        "telegraph": 0.6,
+        "splitOnDeath": true
+      },
+      "bytes": 169164
+    },
+    {
+      "id": "rime-slime",
+      "name": "Rime Slime",
+      "element": "frost",
+      "tier": "trash",
+      "region": "Frostpeak",
+      "model": "enemies/rime-slime.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 3,
+        "speed": 0.55,
+        "behaviour": "hopper",
+        "telegraph": 0.7,
+        "splitOnDeath": true
+      },
+      "bytes": 169180
+    },
+    {
+      "id": "gloom-slime",
+      "name": "Gloom Slime",
+      "element": "moon",
+      "tier": "trash",
+      "region": "Shadow Court",
+      "model": "enemies/gloom-slime.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 4,
+        "speed": 0.6,
+        "behaviour": "hopper",
+        "telegraph": 0.7,
+        "splitOnDeath": true
+      },
+      "bytes": 169184
+    },
+    {
+      "id": "toxin-slime",
+      "name": "Toxin Slime",
+      "element": "venom",
+      "tier": "trash",
+      "region": "Wild Woods",
+      "model": "enemies/toxin-slime.glb",
+      "rig": "Quaternius",
+      "gameplay": {
+        "hp": 2,
+        "speed": 0.75,
+        "behaviour": "hopper",
+        "telegraph": 0.6,
+        "leavesPool": true
+      },
+      "bytes": 169180
+    }
+  ]
+}
