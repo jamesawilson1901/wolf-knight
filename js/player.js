@@ -1188,7 +1188,7 @@ export class Player {
       const CONE_COS = Math.cos(THREE.MathUtils.degToRad(38));
       const RANGE = 3.4;
       if (world && world.enemies) {
-        let seared = false;
+        let seared = false, killed = false;
         for (const e of world.enemies) {
           if (e.dead) continue;
           const dx = e.x - this.root.position.x, dz = e.z - this.root.position.z;
@@ -1197,8 +1197,15 @@ export class Player {
           if (d > 0.2 && (dx * bfx + dz * bfz) / d < CONE_COS) continue;
           e.takeDamage(this.boltDamage(e) + 0.5, 'fire', 'aoe');
           if (!e.scenery) seared = true;
+          if (e.dead) killed = true;
         }
-        if (seared) this.gainMoon(CONFIG.MOON.PER_BOLT);
+        if (seared) {
+          this.gainMoon(CONFIG.MOON.PER_BOLT);
+          juice.onHit(killed ? 'heavy' : 'medium', {
+            x: this.root.position.x + bfx * RANGE * 0.6, z: this.root.position.z + bfz * RANGE * 0.6,
+            color: 0xff8a3a,
+          });
+        }
       }
       // ...and the breath MELTS ice shells off frozen braziers (v3.21):
       // breath to melt, slam to light — two learned fire verbs, one puzzle.
@@ -1356,36 +1363,37 @@ export class Player {
                 if (d2 < nd) { nd = d2; p.target = n2; }
               }
               audio.play('hit', { volume: 0.8, vary: 0.08 });
-              juice.burst(px, 0.85, pz, 0xb08aff, 5);
+              juice.onHit(e.dead ? 'medium' : 'light', { x: px, y: 0.85, z: pz, color: 0xb08aff });
               if (p.pierced.size >= 3) gone = true;
             } else if (p.kind === 'ember') {
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
               if (world.damageEnemiesAt) world.damageEnemiesAt(px, pz, 1.3, 0.5, 'fire'); // the burst
-              juice.burst(px, 0.85, pz, 0xff8a3a, 12);
+              juice.onHit(e.dead ? 'heavy' : 'medium', { x: px, y: 0.85, z: pz, color: 0xff8a3a });
               audio.play('burn', { volume: 0.5, rate: 1.5 });
               gone = true;
             } else if (p.kind === 'rock') {
               e.takeDamage(this.boltDamage(e) + 0.5, elem, 'bolt');
               if (e.takeStun && !e.flying) e.takeStun(0.9);
-              juice.burst(px, 0.85, pz, 0xd8b06a, 8);
+              juice.onHit(e.dead ? 'heavy' : 'medium', { x: px, y: 0.85, z: pz, color: 0xd8b06a });
               audio.play('hit', { volume: 0.9, rate: 0.75 });
               gone = true;
             } else if (p.kind === 'shard') {
               // the ice shard bites cold: light damage, a lingering chill
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
               if (e.takeStun && !e.flying) e.takeStun(0.8);
-              juice.burst(px, 0.85, pz, 0xbfefff, 8);
+              juice.onHit(e.dead ? 'medium' : 'light', { x: px, y: 0.85, z: pz, color: 0xbfefff });
               audio.play('hit', { volume: 0.8, rate: 1.35 });
               gone = true;
             } else if (p.kind === 'thorn') {
               // the thrown thorn ROOTS its target: light damage, long tangle
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
               if (e.takeStun && !e.flying) e.takeStun(1.2);
-              juice.burst(px, 0.85, pz, 0x8fdc6a, 7);
+              juice.onHit(e.dead ? 'medium' : 'light', { x: px, y: 0.85, z: pz, color: 0x8fdc6a });
               audio.play('hit', { volume: 0.8, rate: 1.2 });
               gone = true;
             } else {
               e.takeDamage(this.boltDamage(e), elem, 'bolt');
+              juice.onHit(e.dead ? 'medium' : 'light', { x: px, y: 0.85, z: pz, color: p.mesh.material.emissive.getHex() });
               audio.play('hit', { volume: 0.8, vary: 0.08 });
               gone = true;
             }
@@ -1568,15 +1576,18 @@ export class Player {
     const px = this.root.position.x, pz = this.root.position.z;
     audio.play('whoosh', { volume: 0.85, rate: 0.8 });
     audio.play('puff', { volume: 0.7, rate: 0.9 });
+    let splashed = false, splashKilled = false;
     if (world.enemies) {
       for (const e of world.enemies) {
         if (e.dead) continue;
         if (Math.hypot(e.x - px, e.z - pz) > SPLASH_RADIUS + (e.radius || 0.3)) continue;
         e.takeDamage(SPLASH_DMG, 'tide', 'aoe');
         if (!e.dead && e.takeStun) e.takeStun(SPLASH_SOAK);   // flyers get soaked too
-        juice.burst(e.x, 0.6, e.z, 0x8fe4ff, 7);
+        splashed = true;
+        if (e.dead) splashKilled = true;
       }
     }
+    if (splashed) juice.onHit(splashKilled ? 'heavy' : 'medium', { x: px, y: 0.6, z: pz, color: 0x8fe4ff });
     const out = world.quenchAt ? world.quenchAt(px, pz, SPLASH_RADIUS) : 0;
     if (out > 0) {
       audio.play('burn', { volume: 0.6, rate: 0.55 });
@@ -1644,6 +1655,7 @@ export class Player {
     audio.play('whoosh', { volume: 0.9, rate: 1.05 });
     audio.play('bite', { volume: 0.5, rate: 1.2 });
     // damage the corridor ahead (project onto the facing line)
+    let lashed = false, lashKilled = false;
     if (world.enemies) {
       for (const e of world.enemies) {
         if (e.dead) continue;
@@ -1653,16 +1665,19 @@ export class Player {
         const side = Math.abs(dx * fz - dz * fx);    // distance off the line
         if (side > VINE_HALFWIDTH + e.radius) continue;
         e.takeDamage(VINE_DMG, 'verdant', 'melee');
+        lashed = true;
+        if (e.dead) { lashKilled = true; continue; }
         // SNARE. A graze tangles briefly; a rope around it HOLDS. The long
         // hold is the other half of the twist — the same discovery as the
         // boulder, taught on something that fights back.
-        if (!e.dead && e.takeStun && !e.flying) {
+        if (e.takeStun && !e.flying) {
           const squareOn = side < VINE_HALFWIDTH * 0.6;
           e.takeStun(squareOn ? VINE_SNARE : 0.6);
           if (squareOn) e.snaredUntil = performance.now() + VINE_SNARE * 1000;
         }
       }
     }
+    if (lashed) juice.onHit(lashKilled ? 'heavy' : 'medium', { x: px + fx * VINE_RANGE * 0.4, y: 0.6, z: pz + fz * VINE_RANGE * 0.4, color: 0x8fdc6a });
     // ...and CUT any bramble tangle in reach (gates.js registers cuttables)
     const tip = { x: px + fx * VINE_RANGE * 0.75, z: pz + fz * VINE_RANGE * 0.75 };
     if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
@@ -1697,6 +1712,7 @@ export class Player {
     const CONE = Math.cos(THREE.MathUtils.degToRad(FROST_CONE_DEG));
     audio.play('whoosh', { volume: 0.9, rate: 1.5 });
     audio.play('puff', { volume: 0.6, rate: 0.7 });
+    let frosted = false, frostKilled = false;
     if (world.enemies) {
       for (const e of world.enemies) {
         if (e.dead) continue;
@@ -1705,11 +1721,14 @@ export class Player {
         if (d > FROST_RANGE + e.radius) continue;
         if (d > 0.2 && (dx * fx + dz * fz) / d < CONE) continue;
         e.takeDamage(FROST_DMG, 'frost', 'aoe');
+        frosted = true;
         // FROZEN: held in place and brittle until it thaws
         if (!e.dead && e.takeStun) e.takeStun(FROST_FREEZE);
         if (!e.dead) e.frozen = Math.max(e.frozen || 0, FROST_FREEZE);
+        else frostKilled = true;
       }
     }
+    if (frosted) juice.onHit(frostKilled ? 'heavy' : 'medium', { x: px + fx * FROST_RANGE * 0.4, y: 0.7, z: pz + fz * FROST_RANGE * 0.4, color: 0xbfefff });
     // ...and SHATTER any ice in the cone (gates.js registers shatterables)
     if (world.shatterAt) {
       for (let i = 1; i <= 3; i++) {
@@ -1791,6 +1810,7 @@ export class Player {
     effects.groundSlam(this.root.position.clone(), 0xd8b06a, STOMP_RADIUS);
     effects.shake(0.3, 0.35);
     audio.play('slam', { rate: 0.75 });
+    let stomped = false;
     if (world.enemies) {
       for (const e of world.enemies) {
         if (e.dead || e.flying) continue;
@@ -1803,8 +1823,10 @@ export class Player {
         // a child to LEARN it, so the break now announces itself.
         const wasGuarding = !!e.shieldUp;
         e.takeDamage(2, 'earth', 'aoe');
+        stomped = true;
+        if (e.dead) continue;
         if (e.takeStun) e.takeStun(STOMP_STUN);
-        if (wasGuarding && !e.dead) {
+        if (wasGuarding) {
           if (world.onDmgNum) world.onDmgNum(e.x, 1.6, e.z, 'GUARD BROKEN!');
           audio.play('parry', { volume: 0.8, rate: 1.5 });
           if (effects) effects.punch(0.3, 0.28);
@@ -1812,6 +1834,9 @@ export class Player {
         }
       }
     }
+    // stone-stomp is thematically the roster's heaviest ground special —
+    // full weight always, not scaled by whether it killed
+    if (stomped) juice.onHit('heavy', { x, y: 0.5, z, color: 0xd8b06a });
     // STOMP_RADIUS, not SLAM_BURN_RADIUS. This cracked rock at 2.6u — the FIRE
     // wolf's constant, leaked into the earth wolf's move — while the ring and
     // the damage both said 3.2. A child stomping a cracked rock 3u away saw it
@@ -1832,7 +1857,8 @@ export class Player {
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone(), 0xff7a2a, SLAM_RADIUS);
     audio.play('slam');
-    if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, SLAM_RADIUS, 2, 'fire');
+    const slammed = world.damageEnemiesAt ? world.damageEnemiesAt(x, z, SLAM_RADIUS, 2, 'fire') : 0;
+    if (slammed > 0) juice.onHit('heavy', { x, y: 0.5, z, color: 0xff7a2a });
     // one ring, one number: burn and ignite now reach exactly as far as the
     // damage and the ring do. A brazier at 2.8u used to sit inside the orange
     // ring and refuse to light.
@@ -1983,8 +2009,9 @@ export class Player {
             if (Math.hypot(e.x - s.x, e.z - s.z) > DASH_R + (e.radius || 0.3)) continue;
             d.hit.add(e);
             e.takeDamage(DASH_DMG, 'storm', 'melee');
-            if (!e.dead && e.takeStun && !e.flying) e.takeStun(DASH_STUN);
-            juice.burst(e.x, 0.9, e.z, 0xfff4b0, 7);
+            const dashKilled = e.dead;
+            if (!dashKilled && e.takeStun && !e.flying) e.takeStun(DASH_STUN);
+            juice.onHit(dashKilled ? 'heavy' : 'medium', { x: e.x, y: 0.9, z: e.z, color: 0xfff4b0 });
             audio.play('hit', { volume: 0.8, rate: 1.5 });
             this.gainMoon(CONFIG.MOON.PER_HIT || 0.02);
           }

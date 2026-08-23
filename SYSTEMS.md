@@ -123,8 +123,8 @@ NARRATION-SCRIPT.md keeps the style rules + slice script.
 ## Audio (js/audio.js)
 WebAudio SFX + crossfading looped music (intro→loop, one-shot→then),
 generated brown-noise lava ambient, narration ducking, per-profile
-volume settings. Buffers currently decode lazily on first play (fix
-plan #1 preloads combat-critical ones).
+volume settings. SFX buffers preload on first user gesture (`_preloadSfx()`
+in `_init()`) — no first-play decode stutter mid-combat.
 
 ## Save (js/save.js)
 localStorage per-kid profiles, schema v2 (HUD-MENU-SAVE.md). Law:
