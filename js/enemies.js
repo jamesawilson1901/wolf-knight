@@ -3241,6 +3241,29 @@ export class Dragonling extends Enemy {
     this.diveDir = { x: 0, z: 0 };
     this._seed = x * 2.3 + z;
     this.root.position.y = 2.0;
+
+    // Dragon.glb's eyes are a SEPARATE skinned sub-rig (its own tiny
+    // EyeArmature, not parented under the body's Head bone) — and none of
+    // the model's 5 animation clips ever touch it, confirmed by reading the
+    // .glb's own animation channel targets. Left alone they sit frozen at
+    // their bind pose forever while the neck/head bends through Flying/
+    // Attack, reading as two eyes floating in empty air above the dragon.
+    // Locking them to the Head bone's live world position every frame is
+    // the fix — no shared vendored asset touched, contained to this class.
+    this._headBone = model.getObjectByName('Head');
+    this._eyeRig = ['EyeArmature', 'Eyes'].map((n) => model.getObjectByName(n)).filter(Boolean);
+    this._eyeOffset = new THREE.Vector3(0, 0.02, 0.06);
+  }
+
+  _syncEyes() {
+    if (!this._headBone || !this._eyeRig.length) return;
+    const headWorld = new THREE.Vector3();
+    this._headBone.getWorldPosition(headWorld);
+    for (const rig of this._eyeRig) {
+      if (!rig.parent) continue;
+      const local = rig.parent.worldToLocal(headWorld.clone());
+      rig.position.copy(local).add(this._eyeOffset);
+    }
   }
 
   _play(name) {
@@ -3253,7 +3276,7 @@ export class Dragonling extends Enemy {
 
   update(dt, t, player) {
     if (this.dead) return;
-    if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
+    if (this.stunUpdate(dt)) { this.mixer.update(dt); this._syncEyes(); return; }
     this.stateT += dt;
     const px = player.root.position.x, pz = player.root.position.z;
     const dx = px - this.x, dz = pz - this.z;
@@ -3304,6 +3327,7 @@ export class Dragonling extends Enemy {
     if (this.state === 'hover' || this.state === 'telegraph') this.contact(player, 1, { ground: false });
     this.flashUpdate(dt);
     this.mixer.update(dt);
+    this._syncEyes();
   }
 }
 
