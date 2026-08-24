@@ -56,18 +56,22 @@ so a child always knows "how many left" without a menu.
 
 | id | module | role |
 |---|---|---|
-| `vg` | arena/hub | **THE SQUARE** · arrival, restoration progress, all six paths |
-| `vg1` | pocket | **THE GATE HOUSE** · Hollow Sentinel (shield-advance) |
-| `vg2` | pocket | **THE MARKET ROW** · Shade Knight (mirror-kael) |
-| `vg3` | pocket | **THE MILL** · Twinblade Husk (flurry) |
-| `vg4` | pocket | **THE BELL TOWER** · Wraith Archer (ranged-kite) |
-| `vg5` | pocket | **THE BACK ALLEY** · The Lurker (stalker) |
-| `vg6` | pocket | **THE CHAPEL ROOF** · Shadow Dragonling (flying-swoop) |
-| `vgw` | pocket | optional · a rescued pup, a chest — the one non-combat room |
+| `ysq` | arena/hub | **THE SQUARE** · arrival, restoration progress, all six paths |
+| `yg1` | pocket | **THE GATE HOUSE** · Hollow Sentinel (shield-advance) |
+| `yg2` | pocket | **THE MARKET ROW** · Shade Knight (mirror-kael) |
+| `yg3` | pocket | **THE MILL** · Twinblade Husk (flurry) |
+| `yg4` | pocket | **THE BELL TOWER** · Wraith Archer (ranged-kite) |
+| `yg5` | pocket | **THE BACK ALLEY** · The Lurker (stalker) |
+| `yg6` | pocket | **THE CHAPEL ROOF** · Shadow Dragonling (flying-swoop) |
+| `yrw` | pocket | optional · a rescued pup, a chest — the one non-combat room |
 
-Every guardian room is a dead end back to `vg` (`loopsTo`), same convention
+(Room ids use the `y` prefix — `v` is already Stoneroot's, and `js/rooms.js`'s
+kit-loader dispatches on a room id's first letter, so reusing one would
+silently route the Village through Stoneroot's cave-kit branch.)
+
+Every guardian room is a dead end back to `ysq` (`loopsTo`), same convention
 as every other region's optional pockets — except here EVERY room is built
-that way, because every room is optional-order by design. `vgw` is the one
+that way, because every room is optional-order by design. `yrw` is the one
 room with no fight in it at all: a quiet payoff room, same "a reward you can
 see" law as everywhere else, placed last alphabetically so it never reads as
 "the missable one."
@@ -87,12 +91,12 @@ in this game.
 
 | room | guardian | class | hp | tell |
 |---|---|---|---|---|
-| `vg1` The Gate House | Hollow Sentinel | ShieldAdvancer | 6 | `shieldUp`-gated frontal block — the first thing a child meets, and the thing they already know from Stoneroot |
-| `vg2` The Market Row | Shade Knight | MirrorKael | 7 | adapts to a repeated element under ⅓ hp — punishes button-mashing one form, rewards switching |
-| `vg3` The Mill | Twinblade Husk | Flurry | 5 | one committed swing, two hits inside it |
-| `vg4` The Bell Tower | Wraith Archer | RangedKiter | 3 | holds range, kites — the tower gives it real sightlines a ground room wouldn't |
-| `vg5` The Back Alley | The Lurker | Stalker | 4 | unaware → suspicious → aware ambush, the one guardian that can be *approached quietly* — a callback to Shadow Court's awareness system, not a repeat of it (no watcher-gate, just one enemy that starts unaware) |
-| `vg6` The Chapel Roof | Shadow Dragonling | Dragonling | 7 | roost/hover/dive — the region's one aerial fight, same grammar as the three elemental dragonlings already wired into L1/L4 |
+| `yg1` The Gate House | Hollow Sentinel | ShieldAdvancer | 6 | `shieldUp`-gated frontal block — the first thing a child meets, and the thing they already know from Stoneroot |
+| `yg2` The Market Row | Shade Knight | MirrorKael | 7 | adapts to a repeated element under ⅓ hp — punishes button-mashing one form, rewards switching |
+| `yg3` The Mill | Twinblade Husk | Flurry | 5 | one committed swing, two hits inside it |
+| `yg4` The Bell Tower | Wraith Archer | RangedKiter | 3 | holds range, kites — the tower gives it real sightlines a ground room wouldn't |
+| `yg5` The Back Alley | The Lurker | Stalker | 4 | unaware → suspicious → aware ambush, the one guardian that can be *approached quietly* — a callback to Shadow Court's awareness system, not a repeat of it (no watcher-gate, just one enemy that starts unaware) |
+| `yg6` The Chapel Roof | Shadow Dragonling | Dragonling | 7 | roost/hover/dive — the region's one aerial fight, same grammar as the three elemental dragonlings already wired into L1/L4 |
 
 Six distinct AI families, zero repeats, zero new classes — every behaviour
 already shipped and audited (task #31, combat audit passes 1-5). This
@@ -105,7 +109,7 @@ mechanics.
 
 **W8 compliance is the spine of this region**: "restored" must be visible,
 not a flag. `WS.stage('village')` counts guardians defeated, 0-6. The
-Square (`vg`) reads it directly:
+Square (`ysq`) reads it directly:
 
 * Each of the six streets carries a **shadow-dressing overlay** (dimmed,
   desaturated props matching the corrupted-guardian palette) that clears
@@ -158,7 +162,7 @@ Written down so nobody looks for it later, same discipline as L7 §6:
   appears at the Den once `state.flags.grimmFreed` is true (the exact flag
   L7's ending already sets), narrated by Pip in one line pointing the way,
   same "gate_promise"-style single organic cue every other gate gets.
-* `vg`'s own spawn door leads back to the Den. No onward door — this is the
+* `ysq`'s own spawn door leads back to the Den. No onward door — this is the
   last region, and it loops to the hub like Shadow Court's own optional
   pockets do, not onward to an eighth destination.
 * Save-compatible by construction: a new `state.flags.villageRestored`-style
@@ -170,7 +174,7 @@ Written down so nobody looks for it later, same discipline as L7 §6:
 
 ## 7 · Build order
 
-1. `vg` + all six guardian pockets as greybox. Verified (`verify-level*.mjs`
+1. `ysq` + all six guardian pockets as greybox. Verified (`verify-level*.mjs`
    pattern, a new `verify-level-village.mjs`).
 2. Wire the six guardians via the existing roster-marker convention
    (`world.markers.<idCamelCase>Spots`, already read generically by
