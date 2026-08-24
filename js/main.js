@@ -1672,6 +1672,7 @@ function regionOf(id) {
   if (r[0] === 's') return 'stormreach';
   if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
   if (r[0] === 'x') return 'shadowcourt';
+  if (r[0] === 'y') return 'village';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
