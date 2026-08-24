@@ -55,6 +55,18 @@ export const ATTACK = {
     damage: 'melee', element: 'steel',
     counterplay: ['flank', 'shield', 'parry'],
   },
+  // ShieldAdvancer (task #31) deliberately runs the identical numbers —
+  // "the same law as SkeletonShield" per its own design note — but owns a
+  // separate table row so per-class coverage checks (verify-combat-laws.mjs
+  // #8/#9) actually see it; reusing shield_swing's row hid it from both
+  // (audit 2026-08-24, which is also how ShieldAdvancer's missing TRAITS
+  // armor entry went undetected).
+  shieldadvancer_swing: {
+    owner: 'ShieldAdvancer', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.20, recover: 0.95, gap: 2.8,
+    damage: 'melee', element: 'steel',
+    counterplay: ['flank', 'shield', 'parry'],
+  },
   spitter_spit: {
     owner: 'Spitter', tier: 'enemy', source: 'js/enemies.js',
     // 0.6s (0.75s even in Gentle) on the one enemy whose taught answer is

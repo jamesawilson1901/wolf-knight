@@ -97,6 +97,12 @@ const TRAITS = {
   DashStriker: { weakness: 'earth' },
   Duellist: { weakness: 'fire', armored: true },
   HeavySwinger: { weakness: 'fire', armored: true },
+  // ShieldAdvancer was missing from this table entirely (audit 2026-08-24) —
+  // it's a `shieldUp`-gated frontal-block class ("same law as SkeletonShield"
+  // per its own §1.4a description) that was silently never armored as a
+  // result: Enemy's constructor reads `armored` from HERE, not from the
+  // shield-carrying behavior itself.
+  ShieldAdvancer: { weakness: 'moon', armored: true },
   MirrorKael: { weakness: 'moon' },
   Flurry: { weakness: 'moon' },
   Commander: { weakness: 'fire', armored: true },
@@ -2826,12 +2832,12 @@ export class ShieldAdvancer extends SkeletonBase {
       }
     } else if (this.state === 'swing') {
       this.stateT += dt;
-      if (this.stateT > A.shield_swing.windup && this.stateT < A.shield_swing.windup + A.shield_swing.active && !this._swingHit) {
+      if (this.stateT > A.shieldadvancer_swing.windup && this.stateT < A.shieldadvancer_swing.windup + A.shieldadvancer_swing.active && !this._swingHit) {
         this._swingHit = true;
         this._swingDamage(player, 90, 1.6, 1);
       }
-      if (this.stateT > A.shield_swing.windup + A.shield_swing.active + A.shield_swing.recover) {
-        this.state = 'chase'; this.swingTimer = A.shield_swing.gap; this._current = null;
+      if (this.stateT > A.shieldadvancer_swing.windup + A.shieldadvancer_swing.active + A.shieldadvancer_swing.recover) {
+        this.state = 'chase'; this.swingTimer = A.shieldadvancer_swing.gap; this._current = null;
       }
     }
     this.contact(player, 0.5);
@@ -3712,9 +3718,15 @@ function assignEngagement(world, player) {
   fighters.sort((a, b) => a._engageD - b._engageD);
   for (let i = 0; i < fighters.length; i++) {
     const e = fighters[i];
-    // an attack in motion keeps its token — patterns never fizzle mid-swing
+    // an attack in motion keeps its token — patterns never fizzle mid-swing.
+    // 'rally' (Commander's cast) and 'stomp' (SlowStomper's AOE) were missing
+    // (audit 2026-08-24) — every other new class's active-damage phase reuses
+    // an already-covered name, but these two don't, so a closer enemy could
+    // silently steal their token mid-cast/mid-AOE and free a slot while the
+    // attack was still visibly happening.
     const committed = e.state === 'charge' || e.state === 'dive' || e.state === 'lunge' ||
-      e.state === 'telegraph' || e.state === 'crouch' || e.state === 'dash' || e.state === 'swing';
+      e.state === 'telegraph' || e.state === 'crouch' || e.state === 'dash' || e.state === 'swing' ||
+      e.state === 'rally' || e.state === 'stomp';
     e.engaged = i < max || committed;
   }
 }
