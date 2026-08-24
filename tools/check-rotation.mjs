@@ -5,16 +5,38 @@
 // (world.burnables/crackables/cuttables/shatterables/quenchables) it
 // populates inline — and maps that to the element it exercises.
 //
-// Known-bad (context pack §11.2, STILL LIVE — unlike §11.1, no fix has
-// landed for this one): fire carries L1 (Kiln braziers), L2 ("Stoneroot is
-// played with FIRE" — codified intent, but L2 ALSO still wires its own
-// burnables/crackables directly), and L3 (Wild Woods wisp-lanterns) —
-// three straight regions on one verb, with L4 leaning fire too per the doc.
 // Ground truth for the element↔hook mapping is read directly from source,
 // not asserted: js/player.js's Ground Slam comment names braziers/burnables
 // as the fire hook, the Vine-Lash comment names cuttables as verdant
 // ("mirrors Ember's burnables and Stoneroot's crackables"), and the Frost
 // Breath comment names shatterables.
+//
+// STATUS (2026-08-24 re-audit, context pack §11.2): 'earth' (L2-L4) and
+// 'frost' (L4-L6) both RESOLVED — Frostpeak's F2b pocket moved off earth
+// onto verdant (frostBramble, rooms.js), Stormreach's s3p pocket moved off
+// verdant onto earth (boulderGate, level5.js), Sunken Vale's d2p pocket
+// moved off frost onto verdant (valeBramble, level6.js). Each swap is a
+// pocket-only edit (a bonus-chest gate, never a mandatory-route puzzle) —
+// verified this held for real by mapping every flagged call's critical-
+// path-vs-pocket status by hand before touching anything (a prior pass had
+// already shown F3's boulder/plate puzzle isn't actually earth_wolf-gated
+// at all — pushableBoulder()/plateSwitch() never check the player's form,
+// unlike crackedRocks() — so it was never a real ability-reuse instance,
+// just a same-named checker miss from rooms.js's `boulder`/`pressurePlate`
+// aliases living outside this file's old hardcoded slice).
+//
+// 'fire' (L1-L4, 4 consecutive) is NOT fixable this way — it's a proven
+// floor, not an oversight: L1 is fire's own origin (nothing earlier
+// exists to swap in); L2's fire use is documented intentional design
+// ("Stoneroot is played with FIRE") AND exempt from the W5(a) 2-reuse
+// rule below (L2 has only ONE earlier form to begin with — see the loop
+// guard); L3 has exactly TWO earlier forms available (fire, earth) and
+// the W5(a) rule requires reusing both to hit its >=2-distinct minimum,
+// so L3 cannot drop fire without breaking that rule instead. Any fix
+// reaching this far back means redesigning already-shipped, tested
+// critical-path puzzles in 3 regions at once — out of scope for a static-
+// analysis cleanup pass. Documented, not silently accepted: this is the
+// SAME kind of structural constant as L2's own W5(a) exemption below.
 import { readFileSync, readdirSync } from 'fs';
 
 const problems = [];
@@ -25,7 +47,7 @@ const bad = (m) => { console.log(`✗ ${m}`); problems.push(m); };
 // combat-only imports like `flattenStatic` or `WS`).
 const IMPORT_ELEMENT = {
   brazier: 'fire',
-  crackedRocks: 'earth', pushableBoulder: 'earth', plateSwitch: 'earth',
+  crackedRocks: 'earth', pushableBoulder: 'earth', plateSwitch: 'earth', boulderGate: 'earth',
   registerCuttable: 'verdant', brambleGate: 'verdant', thornGate: 'verdant',
   iceGate: 'frost', frostGate: 'frost',
   waterGate: 'tide', quenchable: 'tide',
@@ -45,7 +67,16 @@ const REGIONS = [
   { id: 'L1', file: 'level1.js', newForm: 'fire' },
   { id: 'L2', file: 'level2.js', newForm: 'earth' },
   { id: 'L3', file: 'level3.js', newForm: 'verdant' },
-  { id: 'L4', file: null, slice: ['js/rooms.js', 3628, 3958], newForm: 'frost' }, // Frostpeak lives in rooms.js — no level4.js
+  // Frostpeak lives in rooms.js — no level4.js. Sliced by NAME, not hardcoded
+  // line numbers: a fixed [start,end] silently drifts wrong (and stops
+  // catching anything) the moment earlier content in this 4000-line file
+  // grows or shrinks — exactly what happened here 2026-08-24 when adding
+  // frostBramble() shifted every later line. loadSnowKit is the first
+  // Frostpeak-only top-level construct (helpers used only by f1-f5 live
+  // between it and buildF5); the ROOMS export is the first line after.
+  { id: 'L4', file: null,
+    slice: ['js/rooms.js', /^async function loadSnowKit/m, /^export const ROOMS/m],
+    newForm: 'frost' },
   { id: 'L5', file: 'level5.js', newForm: 'storm' },
   { id: 'L6', file: 'level6.js', newForm: 'tide' },
   { id: 'L7', file: 'level7.js', newForm: 'ghost' },
@@ -67,10 +98,24 @@ function elementsUsedIn(src) {
   return found;
 }
 
+// Name-anchored slice: find `startRe`'s match and `endRe`'s match (searched
+// only after start) and return the text between them. Throws loudly if
+// either landmark goes missing, rather than silently slicing the wrong
+// region — a hardcoded line-number slice going stale is exactly the bug
+// this replaced.
+function nameSlice(file, startRe, endRe) {
+  const src = readFileSync(file, 'utf8');
+  const s = src.search(startRe);
+  if (s < 0) throw new Error(`nameSlice: start marker ${startRe} not found in ${file}`);
+  const e = src.slice(s).search(endRe);
+  if (e < 0) throw new Error(`nameSlice: end marker ${endRe} not found in ${file} after the start marker`);
+  return src.slice(s, s + e);
+}
+
 const matrix = [];
 for (const r of REGIONS) {
   const src = r.file ? readFileSync(`js/${r.file}`, 'utf8')
-    : readFileSync(r.slice[0], 'utf8').split('\n').slice(r.slice[1] - 1, r.slice[2]).join('\n');
+    : nameSlice(r.slice[0], r.slice[1], r.slice[2]);
   matrix.push({ ...r, elements: elementsUsedIn(src) });
 }
 

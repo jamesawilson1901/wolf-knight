@@ -17,7 +17,7 @@ import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
-  pushableBoulder, plateSwitch } from './gates.js';
+  pushableBoulder, plateSwitch, registerCuttable } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
@@ -3399,6 +3399,43 @@ async function loadSnowKit() {
   return skit;
 }
 
+// FROST BRAMBLE — Frostpeak's reuse of verdant's own verb (gates.js's
+// registerCuttable(), the Verdant Wolf's vine-lash / world.cutAt). Same
+// code-built-primitives pattern as level5.js's stormBramble: a thorn tangle
+// that survived up here needs no new asset and never checks GREY() — it's
+// geometry, not a kit prop. W5 fix (2026-08-24): moved F2b's optional-nook
+// gate off earth (crackedRocks) onto this, since Frostpeak's critical path
+// already carries fire (F2) and needed a second earlier-form reuse that
+// wasn't earth, to stop 'earth' running three straight regions (L2-L4).
+function frostBramble(world, id, x, z, region = 'frost') {
+  const group = new THREE.Group();
+  for (const [ox, oz, s, ry] of [[-0.4, 0, 1.0, 0.4], [0.4, -0.1, 1.1, 2.1], [0, 0.35, 0.9, 4.0]]) {
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.55 * s, 0),
+      new THREE.MeshStandardMaterial({ color: 0x2f4a26, roughness: 0.9 })
+    );
+    m.position.set(x + ox, 0.4 * s, z + oz);
+    m.rotation.y = ry;
+    group.add(m);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
+  );
+  glint.position.set(x, 0.95, z);
+  group.add(glint);
+  world.add(group);
+  world.onAnimate((t) => {
+    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.rotation.y = t * 1.4;
+  });
+  const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
+  world.boxColliders.push(collider);
+  world.markers.brambleSpot = { x, z, id };
+  registerCuttable(world, { id, x, z, region, group, collider });
+  return { id, collider };
+}
+
 // Snow shell: a pale ground plane, a border of snow-laden firs (n/w/e) and —
 // per the BLIND-STRIP LAW — nothing on the south edge taller than a snow
 // drift, because the camera looks north straight over it.
@@ -3754,10 +3791,9 @@ async function buildF2b(scene) {
   ]);
   world.markers.houndSpots = [{ x: 1.6, z: -0.4, variant: 'elderrime' }];
   world.markers.pup11Spot = { x: 4.4, z: -3.2 };
-  crackedRocks(world, 'f2b_alcove', -4.2, -3.0);
-  world.markers.crackSpot = { x: -4.2, z: -3.0 };
+  frostBramble(world, 'f2b_alcove', -4.2, -3.0);
   world.markers.chestDefs = [
-    ...(state.flags.cracked.f2b_alcove
+    ...(WS.get('frost', 'cut_f2b_alcove')
       ? [{ id: 'c_f2b_nook', tier: 'gold', x: -5.2, z: -3.6, ry: 0.9, loot: { shards: 20, gear: 'hammer_a' } }]
       : []),
   ];

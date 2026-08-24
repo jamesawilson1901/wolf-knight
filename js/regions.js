@@ -137,7 +137,7 @@ export const REGIONS = {
       { id: 'f_cairn', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'the w1b spring taught the look; visible chest behind it' },
       { id: 'f_scour', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'in plain sight of the boss door; visible gold chest' },
       { id: 'f_eyrie', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'the grant+30s payout; Pip frost_howto points at it' },
-      { id: 'f2b_alcove', requires: 'earth_wolf', firstShownIn: 'stoneroot', hint: 'glittering cracks in the glacier nook' },
+      { id: 'f2b_alcove', requires: 'verdant_wolf', firstShownIn: 'wildwoods', hint: 'a stubborn thorn tangle in the glacier nook', sameRegionOk: true },
     ],
     restoration: {
       flag: 'restored',

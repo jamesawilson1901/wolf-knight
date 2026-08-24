@@ -26,7 +26,7 @@ import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { waterZone, buildWaterField, quenchable, canWade } from './water.js';
-import { iceGate } from './gates.js';
+import { registerCuttable } from './gates.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -294,6 +294,42 @@ function valeRubble(world, id, x, z) {
   const c = { id, x, z, group, collider, cracked: false };
   world.crackables.push(c);
   return c;
+}
+
+// VALE BRAMBLE — Sunken Vale's reuse of verdant's own verb (gates.js's
+// registerCuttable(), the Verdant Wolf's vine-lash). Same code-built-
+// primitives pattern as valeRubble above, level5.js's now-removed
+// stormBramble, and rooms.js's frostBramble — no new asset, never checks
+// GREY(). W5 re-audit (2026-08-24): d2p's frost reuse (iceGate, below)
+// put frost on three straight regions (frostpeak/stormreach/sunkenvale) —
+// swapped to this instead, since verdant's own run breaks cleanly here.
+function valeBramble(world, id, x, z, region = REGION) {
+  const group = new THREE.Group();
+  for (const [ox, oz, s, ry] of [[-0.4, 0, 1.0, 0.4], [0.4, -0.1, 1.1, 2.1], [0, 0.35, 0.9, 4.0]]) {
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.55 * s, 0),
+      new THREE.MeshStandardMaterial({ color: 0x2f4a26, roughness: 0.9 })
+    );
+    m.position.set(x + ox, 0.4 * s, z + oz);
+    m.rotation.y = ry;
+    group.add(m);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
+  );
+  glint.position.set(x, 0.95, z);
+  group.add(glint);
+  world.add(group);
+  world.onAnimate((t) => {
+    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.rotation.y = t * 1.4;
+  });
+  const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
+  world.boxColliders.push(collider);
+  world.markers.brambleSpot = { x, z, id };
+  registerCuttable(world, { id, x, z, region, group, collider });
+  return { id, collider };
 }
 
 const JUNCTION_HERO = { x: 0, z: 0 };
@@ -680,13 +716,15 @@ export async function buildD2p(scene) {
     { id: 'c_d2p', tier: 'silver', x: 0, z: -5.0, ry: 0.3, loot: { shards: 24, potion: 1 } },
     // W5 audit (2026-08-22): Sunken Vale's critical path reused ZERO
     // earlier forms — the region's own new reward (tide) carried
-    // everything. A frost-sealed nook, same pattern as Frostpeak's own
-    // cairn (rooms.js:3667): the Frost Wolf's shatter opens it.
-    { id: 'c_d2p_ice', tier: 'gold', x: 5.5, z: 1.5, ry: -0.4, loot: { shards: 18, heartPiece: 1 } },
+    // everything. W5 re-audit (2026-08-24): originally a frost-sealed nook
+    // (frost's shatter), but that put frost on three straight regions
+    // (frostpeak/stormreach/sunkenvale) — swapped to a bramble tangle
+    // (verdant's vine-lash) instead, see valeBramble above.
+    { id: 'c_d2p_bramble', tier: 'gold', x: 5.5, z: 1.5, ry: -0.4, loot: { shards: 18, heartPiece: 1 } },
   ];
   world.reserve(0, -5.0, 2.6, 'chest');
   world.reserve(5.5, 1.5, 2.2, 'chest');
-  iceGate(world, 4.4, 2.0, 'd2p_ice', 'vale');
+  valeBramble(world, 'd2p_bramble', 4.4, 2.0);
   waterZone(world, { x: 0, z: -1.5, w: 11, d: 5.5, deep: false });
   world.markers.slimeSpots = [{ x: -5, z: 1, variant: 'tide' }];
   scatter(world, halfW, halfD, D, 613, 4, { spin: 1, kinds: ['rockSA', 'crate'] });
