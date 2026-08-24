@@ -165,6 +165,15 @@ export const GROUND_STYLES = {
   galewing:  { pattern: 'cobble',    wear: 0.80, joint: 0.48, path: 1.18, grain: 0.65, base: 0x3c4757 },
   mirrorwing:{ pattern: 'flagstone', wear: 0.35, joint: 0.66, path: 1.10, grain: 0.45, base: 0x48416d },
   throne:    { pattern: 'flagstone', wear: 0.30, joint: 0.70, path: 1.08, grain: 0.40, base: 0x4f3f6f },
+  // --- The Village: the same square, before and after the shadow lifts -----
+  // Same pattern and wear on both — it is one place, not two — only the base
+  // hue moves: villageShadow reuses the exact 0x2a1a3a the rest of the game
+  // already paints on every moon-weak enemy's corruption puff (js/enemies.js
+  // TRAITS/puffTint), so a child who has learned "that colour is the shadow"
+  // reads the same colour here without being taught it twice. `village` is
+  // DISTRICTS.village's own floorTint, picked at the greybox pass.
+  village:      { pattern: 'flagstone', wear: 0.55, joint: 0.52, path: 1.10, grain: 0.70, base: 0x6e5f45 },
+  villageShadow:{ pattern: 'flagstone', wear: 0.55, joint: 0.52, path: 1.10, grain: 0.70, base: 0x2a1a3a },
 };
 
 const DEFAULT_STYLE = { pattern: 'earth', wear: 0.55, joint: 0.45, path: 1.15, grain: 0.80 };

@@ -26,7 +26,7 @@ await page.waitForFunction(() => window.__game && window.__game.world, null, { t
 await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false; g.state.settings.sfxVol = 0;
-  g.state.settings.greybox = true;   // the epilogue is greybox-forever until the dressing pass
+  g.state.settings.greybox = false;  // the dressing pass — test the real kit, not the boxes
   g.state.flags.grimmFreed = true;   // the region does not exist until the story is over
   g.state.formsUnlocked = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf',
     'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
@@ -58,10 +58,22 @@ for (const id of ALL) {
   if (!built) { check(`${id} builds`, false); continue; }
   rooms[id] = await page.evaluate(() => {
     const w = window.__game.world;
+    const foes = (w.enemies || []).filter((e) => !e.scenery);
     return {
       doors: w.doors.map((d) => d.to),
-      enemies: (w.enemies || []).filter((e) => !e.scenery).length,
-      enemyKinds: (w.enemies || []).filter((e) => !e.scenery).map((e) => e.constructor.name),
+      enemies: foes.length,
+      enemyKinds: foes.map((e) => e.constructor.name),
+      enemyClear: foes.map((e) => {
+        const x = e.x, z = e.z, R = e.radius || 0.4;
+        for (const b of w.boxColliders) {
+          const cx = Math.max(b.minX, Math.min(x, b.maxX)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
+          if ((x - cx) ** 2 + (z - cz) ** 2 < R * R) return false;
+        }
+        for (const c of w.circleColliders) {
+          if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return false;
+        }
+        return true;
+      }),
       markers: Object.keys(w.markers),
       calls: window.__game.renderer.info.render.calls,
     };
@@ -91,6 +103,19 @@ const kinds = GUARDIAN_ROOMS.map((id) => rooms[id] && rooms[id].enemyKinds[0]);
 check('yrw has none (the one non-combat room)', rooms.yrw && rooms.yrw.enemies === 0, { n: rooms.yrw && rooms.yrw.enemies });
 const distinctKinds = new Set(kinds);
 check('all six guardians are distinct classes', distinctKinds.size === 6, { kinds });
+
+console.log('\n── 4b. no guardian spawns inside the dressing ─────────');
+// The dressing pass hand-places real structures (hut/houses/tower/wagons)
+// with hand-measured colliders next to fixed enemy markers — exactly the
+// class of bug verify-spawn-clear.mjs caught in Wild Woods (t3b) on ship
+// day. That suite doesn't reach the Village at all, so this room-build
+// checks the same thing here.
+const trapped = [];
+for (const id of GUARDIAN_ROOMS) {
+  const r = rooms[id];
+  if (r && r.enemyClear && r.enemyClear.some((ok) => !ok)) trapped.push(id);
+}
+check('no guardian spawns inside a wall/structure collider', trapped.length === 0, { trapped });
 
 console.log('\n── 5. clear all six, and the restoration fires ────────');
 check('villageCleared() is false before any kill', await page.evaluate(() => {
