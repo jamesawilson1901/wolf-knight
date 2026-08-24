@@ -114,7 +114,7 @@ export async function buildYsq(scene) {
   ];
   const { halfW, halfD } = shell(world, spec, gaps, D, { hub: [0, 0] });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -6, angle: 0 });
+  sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -8, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'yg1', { x: 0, z: 6, angle: Math.PI }, { centre: -10 });
   sideDoor(world, 'n', halfW, halfD, 'yg2', { x: 0, z: 6, angle: Math.PI }, { centre: 0 });
   sideDoor(world, 'n', halfW, halfD, 'yg3', { x: 0, z: 6, angle: Math.PI }, { centre: 10 });

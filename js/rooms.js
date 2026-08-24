@@ -781,7 +781,8 @@ async function buildDen(scene) {
   // you. Walking back out means walking toward the camera, which is what every
   // other room in the game already does with its return door.
   for (let x = -halfW - 0.5; x <= halfW + 0.5; x += 1) {
-    addWall(x, -halfD - 0.5);
+    // north wall gap: THE VILLAGE, once Grimm is freed (state.flags.grimmFreed)
+    if (!(state.flags.grimmFreed && x > -1.8 && x < 1.8)) addWall(x, -halfD - 0.5);
     if (!(x > -1.8 && x < 1.8)) addWall(x, halfD + 0.5);   // the gap is the stair to la
   }
   for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
@@ -790,7 +791,12 @@ async function buildDen(scene) {
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
     materialTints: { grass: 0x4d6a3c, dirt: 0x5a4a34 },
   }));
-  world.addBox(-halfW - 1, halfW + 1, -halfD - 1, -halfD);
+  if (state.flags.grimmFreed) {
+    world.addBox(-halfW - 1, -1.8, -halfD - 1, -halfD);
+    world.addBox(1.8, halfW + 1, -halfD - 1, -halfD);
+  } else {
+    world.addBox(-halfW - 1, halfW + 1, -halfD - 1, -halfD);
+  }
   world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
   world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
   world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
@@ -798,6 +804,11 @@ async function buildDen(scene) {
   world.spawn = { x: 0, z: 7.4, angle: Math.PI };
   world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, halfD - 0.6, 'x');
+  if (state.flags.grimmFreed) {
+    // THE VILLAGE. The road that was always shadowed, now that Grimm is gone.
+    world.addDoor(-1.4, 1.4, -halfD - 0.9, -halfD + 0.15, 'ysq', { x: 0, z: 12, angle: Math.PI });
+    doorway(world, 0, -halfD + 0.6, 'x');
+  }
 
   // warm heart campfire + tents + trees + flowers
   checkpoint(world, 'cp_den', 0, -1.0);
