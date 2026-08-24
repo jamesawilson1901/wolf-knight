@@ -1069,7 +1069,10 @@ export async function buildT3b(scene) {
   for (const [i, p] of [[-5, 3], [5, 0], [-2, -5]].entries()) {
     bramble(world, `l3_t3b_${i}`, p[0], p[1], 3.0, 1.2, true);
   }
-  world.markers.quiverbonesSpots = [{ x: 8, z: 4 }];
+  // (7,5), not (8,4): a breakable pot's own circle collider lands at
+  // (8.9, 3.69) — close enough to overlap a spawn at (8,4) once the real
+  // kit is loaded (verify-spawn-clear.mjs, greybox:false). Moved clear.
+  world.markers.quiverbonesSpots = [{ x: 7, z: 5 }];
   world.markers.houndSpots = [{ x: -8, z: -4, variant: 'thorn' }];
   scatter(world, halfW, halfD, D, 142, 6, { spin: 1, kinds: ['logStack', 'rockLC', 'stump'] });
   grove(world, -12, 8, 4.2, D, { sick: 0.62 });
