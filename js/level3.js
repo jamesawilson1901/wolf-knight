@@ -850,7 +850,7 @@ export async function buildT2a(scene) {
   // A ground shape in the dark. Moths dive and wheel; a Bramble Blob crawls at
   // 1.2 u/s, which is the only kind of thing that is fair to put where a child
   // cannot see without the Dark Wolf's eyes.
-  world.markers.slimeSpots = [{ x: -7, z: -1, variant: 'bramble' }];
+  world.markers.toxinSlimeSpots = [{ x: -7, z: -1 }];
   scatter(world, halfW, halfD, D, 131, 6, { spin: 1, kinds: ['treeB', 'mushT', 'mushG', 'rockSA'] });
   grove(world, -12, 8, 4.2, D, { sick: 0.3 });
   grove(world, 11.5, 7, 3.8, D, { sick: 0.3 });
@@ -1037,7 +1037,8 @@ export async function buildT3a(scene) {
     });
     world.markers.rootWallPromise = { x: -13, z: 0 };
   }
-  world.markers.houndSpots = [{ x: 6, z: -6, variant: 'thorn' }, { x: -6, z: 4, variant: 'thorn' }];
+  world.markers.thornstalkerSpots = [{ x: 6, z: -6 }];
+  world.markers.houndSpots = [{ x: -6, z: 4, variant: 'thorn' }];
   scatter(world, halfW, halfD, D, 141, 6, { spin: 1, kinds: ['logStack', 'stump', 'rockLB', 'treeA'] });
   grove(world, -12, 8, 4.2, D, { sick: 0.55 });
   grove(world, 11.5, 7, 3.8, D, { sick: 0.55 });
@@ -1068,7 +1069,8 @@ export async function buildT3b(scene) {
   for (const [i, p] of [[-5, 3], [5, 0], [-2, -5]].entries()) {
     bramble(world, `l3_t3b_${i}`, p[0], p[1], 3.0, 1.2, true);
   }
-  world.markers.houndSpots = [{ x: 8, z: 4, variant: 'thorn' }, { x: -8, z: -4, variant: 'thorn' }];
+  world.markers.quiverbonesSpots = [{ x: 8, z: 4 }];
+  world.markers.houndSpots = [{ x: -8, z: -4, variant: 'thorn' }];
   scatter(world, halfW, halfD, D, 142, 6, { spin: 1, kinds: ['logStack', 'rockLC', 'stump'] });
   grove(world, -12, 8, 4.2, D, { sick: 0.62 });
   grove(world, 11.5, 7, 3.8, D, { sick: 0.62 });
@@ -1365,8 +1367,8 @@ export async function buildT4b(scene) {
       });
     }
   }
-  world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' },
-    { x: 7, z: 5, variant: 'thorn' }];
+  world.markers.houndSpots = [{ x: -7, z: 3, variant: 'elderthorn' }];
+  world.markers.rotcasterSpots = [{ x: 7, z: 5 }];
   scatter(world, halfW, halfD, D, 152, 6, { spin: 1, kinds: ['treeB', 'flowerA', 'flowerB'] });
   grove(world, -12, 8, 4.2, D, { sick: 0.85 });
   grove(world, 11.5, 7, 3.8, D, { sick: 0.85 });

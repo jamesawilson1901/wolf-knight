@@ -750,7 +750,7 @@ export async function buildS2b(scene) {
   world.markers.batSpots = [{ x: 10, z: 6, variant: 'stormbat' }];
   // the gauntlet flaked here — two pounces sometimes both missed a sprinter —
   // so the crossing gets the ranged answer too, just off the s2a → ssh line
-  world.markers.spitterSpots = [{ x: -2.6, z: -2 }];
+  world.markers.stormcallerSpots = [{ x: -2.6, z: -2 }];
   scatter(world, halfW, halfD, D, 512, 7, { spin: 1, kinds: ['rockLB', 'rockSA', 'crate', 'barrel'] });
   // DRESSED INTO THE ARRIVAL FRAME. Kael walks in at x 13 facing west, so the
   // camera shows x 13 down to about x 0 — and the first pass put this room's
@@ -943,7 +943,8 @@ export async function buildS3b(scene) {
   galeLane(world, { x: 0, z: -6, w: 30, d: 6, dir: 'e', strength: 'gust' });
   galeLane(world, { x: 0, z: 5, w: 30, d: 6, dir: 'w', strength: 'gust' });
 
-  world.markers.houndSpots = [{ x: -7, z: -7, variant: 'gale' }, { x: 7, z: 6, variant: 'gale' },
+  world.markers.arcKnightSpots = [{ x: -7, z: -7 }];
+  world.markers.houndSpots = [{ x: 7, z: 6, variant: 'gale' },
     { x: 0, z: 0, variant: 'eldergale' }];
   world.markers.slimeSpots = [{ x: 10, z: -2, variant: 'sparkblob' }];
   scatter(world, halfW, halfD, D, 522, 7, { spin: 1, kinds: ['rockLB', 'snowRockL', 'snowRockS', 'brick'] });

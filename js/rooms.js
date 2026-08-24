@@ -3634,7 +3634,7 @@ async function buildF1(scene) {
   world.markers.houndSpots = [
     { x: -4.0, z: -1.4, variant: 'rime' }, { x: 4.4, z: 0.4, variant: 'rime' },
   ];
-  world.markers.slimeSpots = [{ x: -1.4, z: -3.4, variant: 'snowblob' }];
+  world.markers.rimeSlimeSpots = [{ x: -1.4, z: -3.4 }];
   checkpoint(world, 'cp_f1', -6.8, 3.2);
   potionPickup(world, 6.6, 3.4);
   world.markers.chestDefs = [
@@ -3669,9 +3669,8 @@ async function buildF1b(scene) {
     { id: 'c_f1b_ice', tier: 'gold', x: 6.3, z: -3.2, ry: -1.6, loot: { shards: 22, heartPiece: 1 } },
     { id: 'c_f1b_cairn', tier: 'wood', x: -6.2, z: -3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
   ];
-  world.markers.slimeSpots = [
-    { x: -1.6, z: 2.6, variant: 'snowblob' }, { x: 2.6, z: -2.6, variant: 'snowblob' },
-  ];
+  world.markers.slimeSpots = [{ x: -1.6, z: 2.6, variant: 'snowblob' }];
+  world.markers.visoredWightSpots = [{ x: 2.6, z: -2.6 }];
   world.markers.pup10Spot = { x: -2.2, z: -3.4 };
   world.markers.breakables = [{ x: 6.4, z: 2.6, kind: 'barrel', shards: 3 }];
   return world;
@@ -3729,7 +3728,7 @@ async function buildF2(scene) {
   ]);
   // one lone flyer, parked away from the braziers — flavour, not interference
   world.markers.mothSpots = [{ x: 6.6, z: 3.4, variant: 'frostmoth' }];
-  world.markers.houndSpots = [{ x: -6.2, z: 3.2, variant: 'rime' }];
+  world.markers.rimeMinionSpots = [{ x: -6.2, z: 3.2 }];
   checkpoint(world, 'cp_f2', -7.4, 3.6);
   potionPickup(world, 7.4, 3.6);
   world.markers.chestDefs = [
@@ -3831,9 +3830,8 @@ async function buildF3(scene) {
     ['rockL', -6.6, -5.0, 1.3, 0.8, 0.95], ['rockL', 7.6, -5.6, 1.3, 2.0, 0.9],
     ['pile', -7.8, 5.0, 1.6, 0.6, 0], ['pile', 7.8, 5.0, 1.5, 1.6, 0],
   ]);
-  world.markers.slimeSpots = [
-    { x: -5.6, z: 3.2, variant: 'snowblob' }, { x: 5.8, z: 3.4, variant: 'snowblob' },
-  ];
+  world.markers.slimeSpots = [{ x: -5.6, z: 3.2, variant: 'snowblob' }];
+  world.markers.glacierWardenSpots = [{ x: 5.8, z: 3.4 }];
   checkpoint(world, 'cp_f3', -7.6, 3.8);
   world.markers.chestDefs = [
     { id: 'c_f3_lake', tier: 'wood', x: -8.0, z: -6.0, ry: 1.2, loot: { shards: 16 } },
@@ -3861,9 +3859,10 @@ async function buildF4(scene) {
   ]);
   // the rime pack — the mountain's last stand before the summit
   world.markers.houndSpots = [
-    { x: -3.6, z: -3.0, variant: 'rime' }, { x: 3.8, z: -2.4, variant: 'rime' },
+    { x: 3.8, z: -2.4, variant: 'rime' },
     { x: 0.4, z: -0.8, variant: 'elderrime' },
   ];
+  world.markers.frostDragonlingSpots = [{ x: -3.6, z: -3.0 }];
   world.markers.slimeSpots = [{ x: -5.4, z: 1.8, variant: 'snowblob' }];
   world.markers.mothSpots = [{ x: 5.6, z: 0.8, variant: 'frostmoth' }];
   world.markers.pup12Spot = { x: -7.0, z: 2.6 };

@@ -1011,8 +1011,9 @@ export async function buildVb1(scene) {
   world.markers.developCracks = [{ x: -9, z: 6 }, { x: 4, z: -6 }];
   for (const [i, p] of world.markers.developCracks.entries()) crackedPile(world, `l2_vb1_${i}`, p.x, p.z);
   world.markers.minionSpots = state.formsUnlocked.includes('earth_wolf')
-    ? [{ x: 2, z: -3 }, { x: 8, z: 6 }, { x: -7, z: 5 }]
-    : [{ x: 2, z: -3 }, { x: 8, z: 6 }];
+    ? [{ x: 8, z: 6 }, { x: -7, z: 5 }]
+    : [{ x: 8, z: 6 }];
+  world.markers.bonelordSpots = [{ x: 2, z: -3 }];
   world.markers.spitterSpots = [{ x: -3, z: 1.8 }];
   // THE BONE QUARRY. Cut stone, and what the cutting left. The terraces are
   // the room's shape and the dressing sits off them, so the two levels stay
@@ -1050,7 +1051,8 @@ export async function buildVb2(scene) {
   world.markers.heroSpot = { x: 4, z: -8 };
   world.markers.shieldSpots = [{ x: -2, z: 2 }];
   world.markers.spitterSpots = [{ x: 4, z: -2.5 }];
-  world.markers.minionSpots = [{ x: 9, z: 4 }, { x: -7, z: -4 }];
+  world.markers.minionSpots = [{ x: -7, z: -4 }];
+  world.markers.ashenVanguardSpots = [{ x: 9, z: 4 }];
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
   world.markers.breakables = [
@@ -1231,7 +1233,7 @@ export async function buildVc1(scene) {
   // where a shield plus a minion teaches "deal with the one you can hurt".
   world.markers.shieldSpots = [{ x: 5, z: 6 }];
   world.markers.spitterSpots = [{ x: -2.6, z: 2.2 }];
-  world.markers.minionSpots = [{ x: -6, z: -1 }];
+  world.markers.stoneColossusSpots = [{ x: -6, z: -1 }];
   // and no third body. Dropping one shield-bearer took this room 106 -> 102,
   // still over; a character costs far more than the room's own geometry here
   // (43 of the original 106 was three of them). Two enemies on a three-terrace
@@ -1278,7 +1280,7 @@ export async function buildVc2(scene) {
 
   heroProp(world, -8, -7, 'drownedDoor', D);     // ▲ THE DROWNED DOOR
   world.markers.heroSpot = { x: -8, z: -7 };
-  world.markers.shieldSpots = [{ x: 4, z: 2 }];
+  world.markers.towerWightSpots = [{ x: 4, z: 2 }];
   world.markers.spitterSpots = [{ x: -3, z: -2.2 }];
   world.markers.batSpots = [{ x: -4, z: 5 }];
 
