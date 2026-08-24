@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { manager } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
+import { villageCleared } from './levelVillage.js';
 import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
@@ -794,6 +795,16 @@ function narrationTriggers(dt, t) {
   }
   if (state.flags.sylvaDefeated && m.sylvaSpot && nearSpot(m.sylvaSpot, 3.0)) {
     if (narration.say('wild_complete')) persist();
+  }
+  // THE VILLAGE — an epilogue, no boss, so "complete" is watched here
+  // (guardiansDown() >= 6) instead of a boss's onDefeated, same idea as
+  // xh's relicCount() >= 4 gating the throne door in Shadow Court.
+  if (villageCleared() && state.room === 'ysq' && m.heroSpot && nearSpot(m.heroSpot, 2.6)) {
+    if (narration.say('village_complete')) {
+      effects.warmFlood();
+      WS.set('village', 'restored');
+      persist();
+    }
   }
 
   // L5/L6 RE-KEY (2026-08-22): STORM AND TIDE ARE ARIA'S AND MERI'S REWARDS,
@@ -1661,6 +1672,7 @@ function regionOf(id) {
   if (r[0] === 's') return 'stormreach';
   if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
   if (r[0] === 'x') return 'shadowcourt';
+  if (r[0] === 'y') return 'village';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
@@ -2122,6 +2134,12 @@ async function start() {
               setTimeout(() => narration.say('end_4'), 16000);
               setTimeout(() => { narration.say('end_5'); rollCredits(); }, 21000);
               setTimeout(() => narration.say('end_6'), 27000);
+              // THE VILLAGE, an epilogue: Grimm's shadow was the last thing
+              // holding this road shut, so its opening is the direct,
+              // visible consequence of freeing him, not a new plot thread.
+              // Said once (narration.say is idempotent), independent of
+              // which room the player is in by the time this fires.
+              setTimeout(() => narration.say('village_reveal'), 33000);
             } else if (state.room === 'ddp') {
               // MERI FREED — the vale drains and the drowned town stands up
               audio.playMusic('victory', { loop: false, then: 'den' });
@@ -2302,6 +2320,12 @@ function wireSettings() {
   gentle.addEventListener('change', () => {
     state.settings.easy = gentle.checked;
     if (gentle.checked) { state.settings.brave = false; brave.checked = false; }
+    persist();
+  });
+  const reduceMotion = document.getElementById('reduce-motion-toggle');
+  reduceMotion.checked = !!state.settings.reduceMotion;
+  reduceMotion.addEventListener('change', () => {
+    state.settings.reduceMotion = reduceMotion.checked;
     persist();
   });
   // --- the voice chooser ---------------------------------------------------

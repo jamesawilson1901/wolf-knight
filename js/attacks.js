@@ -55,6 +55,18 @@ export const ATTACK = {
     damage: 'melee', element: 'steel',
     counterplay: ['flank', 'shield', 'parry'],
   },
+  // ShieldAdvancer (task #31) deliberately runs the identical numbers —
+  // "the same law as SkeletonShield" per its own design note — but owns a
+  // separate table row so per-class coverage checks (verify-combat-laws.mjs
+  // #8/#9) actually see it; reusing shield_swing's row hid it from both
+  // (audit 2026-08-24, which is also how ShieldAdvancer's missing TRAITS
+  // armor entry went undetected).
+  shieldadvancer_swing: {
+    owner: 'ShieldAdvancer', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.20, recover: 0.95, gap: 2.8,
+    damage: 'melee', element: 'steel',
+    counterplay: ['flank', 'shield', 'parry'],
+  },
   spitter_spit: {
     owner: 'Spitter', tier: 'enemy', source: 'js/enemies.js',
     // 0.6s (0.75s even in Gentle) on the one enemy whose taught answer is
@@ -125,6 +137,107 @@ export const ATTACK = {
     windup: 0.9, active: 0.9, recover: 1.4, gap: 1.6,
     damage: 'contact', element: 'frost',
     counterplay: ['move_off_the_lane', 'bolt_it_down'],
+  },
+
+  // --- Roster expansion (task #31) — 15 new AI behaviors for the 32-enemy
+  // roster. Same law as everything above: every timing lives here first, the
+  // state machines in js/enemies.js only ever read it.
+  flanker_strike: {
+    owner: 'Flanker', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.30, recover: 0.90, gap: 1.8,
+    damage: 'melee', element: 'steel',
+    counterplay: ['sidestep', 'shield', 'watch_the_orbit'],
+  },
+  stalker_pounce: {
+    owner: 'Stalker', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.50, recover: 1.30, gap: 1.6,
+    damage: 'contact', element: 'steel',
+    counterplay: ['dodge_roll', 'shield', 'stay_moving'],
+  },
+  ranged_kite_shot: {
+    owner: 'RangedKiter', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.0, recover: 0.0, gap: 2.0,
+    damage: 'bolt', element: 'steel',
+    counterplay: ['step_off_the_line', 'close_the_gap'],
+  },
+  ranged_lob_throw: {
+    owner: 'RangedLobber', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.90, active: 0.0, recover: 0.0, gap: 2.2,
+    damage: 'bolt', element: 'verdant',
+    counterplay: ['step_off_the_line', 'close_the_gap'],
+  },
+  ranged_bolt_shot: {
+    owner: 'RangedBolter', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.80, active: 0.0, recover: 0.0, gap: 1.8,
+    damage: 'bolt', element: 'storm',
+    counterplay: ['step_off_the_line', 'interrupt'],
+  },
+  dash_strike: {
+    owner: 'DashStriker', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.50, recover: 1.30, gap: 1.8,
+    damage: 'contact', element: 'storm',
+    counterplay: ['sidestep', 'shield', 'parry'],
+  },
+  duellist_swing: {
+    owner: 'Duellist', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.25, recover: 1.00, gap: 2.0,
+    damage: 'melee', element: 'steel',
+    counterplay: ['shield', 'parry', 'back_off'],
+  },
+  heavy_swing: {
+    owner: 'HeavySwinger', tier: 'enemy', source: 'js/enemies.js',
+    // the biggest single hit any mook throws — a full 1.1s wind-up, the
+    // longest of any non-boss attack, so the reward for reading it is real
+    windup: 1.10, active: 0.35, recover: 1.20, gap: 2.0,
+    damage: 'melee', element: 'steel',
+    counterplay: ['sidestep', 'shield', 'flank'],
+  },
+  mirror_swing: {
+    owner: 'MirrorKael', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.30, recover: 1.00, gap: 1.9,
+    damage: 'melee', element: 'moon',
+    counterplay: ['shield', 'parry', 'switch_element'],
+  },
+  flurry_strikes: {
+    owner: 'Flurry', tier: 'enemy', source: 'js/enemies.js',
+    // twin blades, ONE committed swing with two hits inside it — never an
+    // open-ended combo string (LAW: bosses/mooks never grind), just a wider
+    // active window than a single-hit swing
+    windup: 0.85, active: 0.50, recover: 1.10, gap: 2.0,
+    damage: 'melee', element: 'steel',
+    counterplay: ['shield', 'parry', 'back_off'],
+  },
+  commander_swing: {
+    owner: 'Commander', tier: 'enemy', source: 'js/enemies.js',
+    windup: 1.00, active: 0.30, recover: 1.10, gap: 2.2,
+    damage: 'melee', element: 'earth',
+    counterplay: ['shield', 'parry', 'flank'],
+  },
+  commander_rally: {
+    owner: 'Commander', tier: 'enemy', source: 'js/enemies.js',
+    // the buff-allies cast — long gap on purpose, this is a support move,
+    // not pressure, and it must not be spammable
+    windup: 1.00, active: 0.0, recover: 0.50, gap: 5.0,
+    damage: 'aoe', element: 'earth',
+    counterplay: ['kill_the_commander_first', 'interrupt'],
+  },
+  stomp_slam: {
+    owner: 'SlowStomper', tier: 'enemy', source: 'js/enemies.js',
+    windup: 1.10, active: 0.30, recover: 1.20, gap: 2.0,
+    damage: 'aoe', element: 'earth',
+    counterplay: ['back_off', 'jump'],
+  },
+  hop_leap: {
+    owner: 'Hopper', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.85, active: 0.40, recover: 0.90, gap: 1.6,
+    damage: 'contact', element: 'steel',
+    counterplay: ['sidestep', 'shield'],
+  },
+  dragonling_dive: {
+    owner: 'Dragonling', tier: 'enemy', source: 'js/enemies.js',
+    windup: 0.90, active: 0.70, recover: 1.40, gap: 1.3,
+    damage: 'contact', element: 'fire',
+    counterplay: ['move', 'bolt_it_down'],
   },
 };
 

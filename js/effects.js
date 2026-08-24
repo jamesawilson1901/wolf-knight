@@ -4,6 +4,8 @@
 
 import * as THREE from 'three';
 import { juice } from './juice.js';
+import { CONFIG } from './config.js';
+import { state } from './state.js';
 
 export class Effects {
   constructor(scene) {
@@ -19,6 +21,8 @@ export class Effects {
 
   // Camera punch-in: a quick lean toward the action that releases over dur.
   punch(amount = 0.3, dur = 0.25) {
+    if (state.settings.reduceMotion) amount *= CONFIG.ACCESSIBILITY.REDUCE_MOTION_PUNCH_SCALE;
+    if (amount <= 0) return;
     let elapsed = 0;
     this._active.push((dt) => {
       elapsed += dt;
@@ -42,12 +46,21 @@ export class Effects {
   }
 
   shake(strength = 0.4, time = 0.5) {
+    if (state.settings.reduceMotion) strength *= CONFIG.ACCESSIBILITY.REDUCE_MOTION_SHAKE_SCALE;
+    if (strength <= 0) return;
     this._shakeStrength = Math.max(this._shakeStrength, strength);
     this._shakeTime = Math.max(this._shakeTime, time);
   }
 
   hitStop(t = 0.07) {
+    if (state.settings.reduceMotion) t *= CONFIG.ACCESSIBILITY.REDUCE_MOTION_HITSTOP_SCALE;
     this.hitStopTime = Math.max(this.hitStopTime, t);
+  }
+
+  // 1 normally; dimmed under reduce-motion for one-off light-burst flashes
+  // (ground-slam impact glow, the Surge's red wash/moon glow).
+  _flashScale() {
+    return state.settings.reduceMotion ? CONFIG.ACCESSIBILITY.REDUCE_MOTION_FLASH_SCALE : 1;
   }
 
   update(dt, t) {
@@ -116,7 +129,8 @@ export class Effects {
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(pos.x, 0.07, pos.z);
-    const flash = new THREE.PointLight(0xff8a3a, 18, 12, 1.7);
+    const fScale = this._flashScale();
+    const flash = new THREE.PointLight(0xff8a3a, 18 * fScale, 12, 1.7);
     flash.position.set(pos.x, 1.0, pos.z);
     this.scene.add(ring, flash);
     this.shake(0.3, 0.35);
@@ -130,7 +144,7 @@ export class Effects {
       const s = 1 + e * grow;
       ring.scale.set(s, s, 1);
       ring.material.opacity = 0.95 * (1 - f);
-      flash.intensity = 18 * (1 - f);
+      flash.intensity = 18 * fScale * (1 - f);
       if (f >= 1) {
         this.scene.remove(ring, flash);
         ring.geometry.dispose();
@@ -167,6 +181,8 @@ export class Effects {
   // player so the dive aims and deals damage through real game systems.
   surgeCeremony(pos, crash = null) {
     const scene = this.scene;
+    const fScale = this._flashScale();
+    const zScale = state.settings.reduceMotion ? CONFIG.ACCESSIBILITY.REDUCE_MOTION_PUNCH_SCALE : 1;
 
     // red wash over the whole scene
     const wash = new THREE.HemisphereLight(0xff2a33, 0x330a10, 0);
@@ -197,15 +213,15 @@ export class Effects {
       if (elapsed < RISE) {
         const f = elapsed / RISE;
         const e = 1 - (1 - f) * (1 - f); // decelerate upward
-        wash.intensity = f * 2.2;
+        wash.intensity = f * 2.2 * fScale;
         moon.position.y = 0.4 + e * 6.2;
         moonLight.position.copy(moon.position);
-        moonLight.intensity = f * 14;
-        this.zoom = Math.max(this.zoom, f * 0.85); // the camera leans in
+        moonLight.intensity = f * 14 * fScale;
+        this.zoom = Math.max(this.zoom, f * 0.85 * zScale); // the camera leans in
       } else if (elapsed < RISE + HOLD) {
-        wash.intensity = 2.2;
-        moonLight.intensity = 14;
-        this.zoom = Math.max(this.zoom, 0.85);
+        wash.intensity = 2.2 * fScale;
+        moonLight.intensity = 14 * fScale;
+        this.zoom = Math.max(this.zoom, 0.85 * zScale);
       } else if (crash && elapsed < RISE + HOLD + DIVE) {
         // THE CRASH: aim once (at dive start), then scream down in a curve
         if (!diveFrom) {
@@ -218,7 +234,7 @@ export class Effects {
         moon.position.lerpVectors(diveFrom, diveTo, e2);
         moon.scale.setScalar(1 - f * 0.45); // rushing in
         moonLight.position.copy(moon.position);
-        moonLight.intensity = 14 + f * 10;
+        moonLight.intensity = (14 + f * 10) * fScale;
         trailAcc += dt;
         if (trailAcc > 0.05) {
           trailAcc = 0;
@@ -242,10 +258,10 @@ export class Effects {
           crash.onImpact(ix, iz);
         }
         const f = Math.min(1, (elapsed - RISE - HOLD - (crash ? DIVE : 0)) / FADE);
-        this.zoom = Math.max(this.zoom, 0.85 * (1 - f)); // release the lean
+        this.zoom = Math.max(this.zoom, 0.85 * (1 - f) * zScale); // release the lean
         moon.material.emissiveIntensity = 2.4 * (1 - f);
-        moonLight.intensity = 20 * (1 - f);
-        wash.intensity = 2.2 * (1 - f);
+        moonLight.intensity = 20 * (1 - f) * fScale;
+        wash.intensity = 2.2 * (1 - f) * fScale;
         moon.scale.setScalar(Math.max(0.01, 0.55 * (1 - f))); // melts into the ground
         if (f >= 1) {
           scene.remove(moon, moonLight, wash);

@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
-import { loadGLB } from './assets.js';
+import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
   reserveLandings, DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
@@ -32,7 +32,7 @@ import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField, turnVane, WIND } from './wind.js';
 import { canWade } from './water.js';
-import { registerCuttable, iceGate } from './gates.js';
+import { iceGate, boulderGate } from './gates.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -228,39 +228,6 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall, place } =
   makeDressers({ kit: () => skyKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
-
-// STORM BRAMBLE — Stormreach's reuse of verdant's own verb (js/gates.js's
-// registerCuttable(), the Verdant Wolf's vine-lash / world.cutAt). Built
-// from simple primitives rather than a kit bush model — same pattern as
-// stormRubble above, and gates.js's own ice block: a code-built obstacle
-// never checks GREY().
-function stormBramble(world, id, x, z, region = REGION) {
-  const group = new THREE.Group();
-  for (const [ox, oz, s, ry] of [[-0.4, 0, 1.0, 0.4], [0.4, -0.1, 1.1, 2.1], [0, 0.35, 0.9, 4.0]]) {
-    const m = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.55 * s, 0),
-      new THREE.MeshStandardMaterial({ color: 0x2f4a26, roughness: 0.9 })
-    );
-    m.position.set(x + ox, 0.4 * s, z + oz);
-    m.rotation.y = ry;
-    group.add(m);
-  }
-  const glint = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.06, 0),
-    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
-  );
-  glint.position.set(x, 0.95, z);
-  group.add(glint);
-  world.add(group);
-  world.onAnimate((t) => {
-    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
-    glint.rotation.y = t * 1.4;
-  });
-  const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
-  world.boxColliders.push(collider);
-  registerCuttable(world, { id, x, z, region, group, collider });
-  return { id, collider };
-}
 
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
@@ -750,7 +717,7 @@ export async function buildS2b(scene) {
   world.markers.batSpots = [{ x: 10, z: 6, variant: 'stormbat' }];
   // the gauntlet flaked here — two pounces sometimes both missed a sprinter —
   // so the crossing gets the ranged answer too, just off the s2a → ssh line
-  world.markers.spitterSpots = [{ x: -2.6, z: -2 }];
+  world.markers.stormcallerSpots = [{ x: -2.6, z: -2 }];
   scatter(world, halfW, halfD, D, 512, 7, { spin: 1, kinds: ['rockLB', 'rockSA', 'crate', 'barrel'] });
   // DRESSED INTO THE ARRIVAL FRAME. Kael walks in at x 13 facing west, so the
   // camera shows x 13 down to about x 0 — and the first pass put this room's
@@ -943,7 +910,8 @@ export async function buildS3b(scene) {
   galeLane(world, { x: 0, z: -6, w: 30, d: 6, dir: 'e', strength: 'gust' });
   galeLane(world, { x: 0, z: 5, w: 30, d: 6, dir: 'w', strength: 'gust' });
 
-  world.markers.houndSpots = [{ x: -7, z: -7, variant: 'gale' }, { x: 7, z: 6, variant: 'gale' },
+  world.markers.arcKnightSpots = [{ x: -7, z: -7 }];
+  world.markers.houndSpots = [{ x: 7, z: 6, variant: 'gale' },
     { x: 0, z: 0, variant: 'eldergale' }];
   world.markers.slimeSpots = [{ x: 10, z: -2, variant: 'sparkblob' }];
   scatter(world, halfW, halfD, D, 522, 7, { spin: 1, kinds: ['rockLB', 'snowRockL', 'snowRockS', 'brick'] });
@@ -975,14 +943,17 @@ export async function buildS3p(scene) {
   world.markers.pupSpot = { x: 0, z: -3.5, id: 'pup_s3' };
   world.markers.batSpots = [{ x: -5, z: -2, variant: 'stormbat' }, { x: 5, z: -1, variant: 'stormbat' }];
   // W5 audit (2026-08-22): Stormreach's critical path reused ZERO earlier
-  // forms despite four being available. Verdant's own verb (stormBramble,
-  // above — world.cutAt, the Verdant Wolf's vine-lash) reused here, the
-  // second distinct earlier form on the critical path alongside frost's
-  // iceGate (s1p, above): a bramble tangle seals a bonus chest in this
-  // pocket room.
-  world.markers.chestDefs = [{ id: 'c_s3p_bramble', tier: 'silver', x: 8, z: -0.3, ry: -0.3, loot: { shards: 18, potion: 1 } }];
+  // forms despite four being available. Fixed with frost's iceGate (s1p,
+  // above) plus a second reuse here. W5 re-audit (2026-08-24): the second
+  // reuse was originally verdant (stormBramble) but that put verdant on
+  // three straight regions (wildwoods grants it, frostpeak reused it,
+  // stormreach reused it too) — swapped to earth (boulderGate, the same
+  // single-smooth-stone promise as Ember's em_boulder) instead, since
+  // earth's own run breaks cleanly here (frostpeak dropped its earth reuse
+  // in the same pass, so wildwoods/stoneroot's earth doesn't reach this far).
+  world.markers.chestDefs = [{ id: 'c_s3p_boulder', tier: 'silver', x: 8, z: -0.3, ry: -0.3, loot: { shards: 18, potion: 1 } }];
   world.reserve(8, -0.3, 2.2, 'chest');
-  stormBramble(world, 's3p_bramble', 8, 2);
+  boulderGate(world, prepareModel, skyKit.rockLB, 's3p_boulder', 8, 2);
   scatter(world, halfW, halfD, D, 523, 5, { spin: 1, kinds: ['snowRockM', 'snowRockS', 'rockSB'] });
   fallenColumn(world, -6, -5, 0, D, 4);
   rubbleField(world, 6, -5, 2.6, D, 10);

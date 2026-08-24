@@ -502,7 +502,8 @@ export async function buildXh(scene) {
     }
   }
 
-  world.markers.houndSpots = [{ x: -4, z: 8, variant: 'shadewalker' }, { x: 5, z: -8, variant: 'shadewalker' }];
+  world.markers.maskboneSpots = [{ x: -4, z: 8 }];
+  world.markers.houndSpots = [{ x: 5, z: -8, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 703, 7, { spin: 1, kinds: ['rockLA', 'brick', 'column'] });
   dressCourt(world, halfW, halfD, D, 7031, { homes: 3, loose: 18 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -559,7 +560,7 @@ export async function buildXa2(scene) {
   promiseGate(world, -6.5, 0, 3.4, 4.6, 0xd8b06a, 'CRACKED', 'rockLB',
     { system: 'crack', id: 'x_ash_vault', region: REGION });
   world.markers.wingSolve = { x: -6.5, z: 0, needs: 'earth_wolf' };
-  world.markers.slimeSpots = [{ x: 3, z: -4, variant: 'gloomblob' }];
+  world.markers.gloomSlimeSpots = [{ x: 3, z: -4 }];
   scatter(world, halfW, halfD, D, 712, 4, { spin: 1, kinds: ['brick', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7121, { homes: 1, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -575,7 +576,7 @@ export async function buildXa3(scene) {
   // LANDS ON FLOOR — see verify-reachable's landing sweep.
   sideDoor(world, 'e', halfW, halfD, 'xa2', { x: -7.1, z: 3.3, angle: -Math.PI / 2 });
   relic(world, -6, 0, 'ember', D);
-  world.markers.houndSpots = [{ x: 2, z: 5, variant: 'courtwarden' }];
+  world.markers.gildedHuskSpots = [{ x: 2, z: 5 }];
   scatter(world, halfW, halfD, D, 713, 5, { spin: 1, kinds: ['brick', 'coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7131, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

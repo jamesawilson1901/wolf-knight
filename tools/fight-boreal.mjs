@@ -103,12 +103,35 @@ await d.shot('post');
 // the way to Stormreach appears on the rebuild
 let onward = false, bossGone = false;
 if (flags.boreal) {
+  // task #32 root cause: onDefeated queues several narration.say() lines
+  // (Web Speech + captions), which hold gates.blocking/speaking for ~50s —
+  // walking to the door WHILE input is blocked timed out before ever
+  // leaving the room, so the "rebuild" below was reading the same
+  // never-rebuilt world the boss died in. Wait it out first.
+  const nt0 = Date.now();
+  let ntLast = null;
+  while ((Date.now() - nt0) / 1000 < 150) {
+    await d.pickPerkIfOffered();
+    const g = await d.wk('gates');
+    ntLast = g;
+    if (!g.blocking && !g.speaking && !g.transitioning) break;
+    await d.page.waitForTimeout(500);
+  }
+  say('post-defeat gates settled after', ((Date.now() - nt0) / 1000).toFixed(1) + 's:', JSON.stringify(ntLast));
+  // task #32 SECOND finding (see fight-sylva.mjs): a door's real trigger box
+  // is a shallow band around its reported center — walkTo's arrive radius
+  // can report "ok" short of it. Aim past the door's center (outward along
+  // the radial from room-origin) so the walk necessarily crosses it.
+  const past = (door) => {
+    const dd = Math.hypot(door.x, door.z) || 1;
+    return { x: door.x + (door.x / dd) * 1.4, z: door.z + (door.z / dd) * 1.4 };
+  };
   const sDoor = (await d.wk('doors')).find((x) => x.to === 'f4');
-  if (sDoor) { await d.walkTo(sDoor.x, sDoor.z, { timeout: 40, arrive: 0.4 }); }
+  if (sDoor) { const p = past(sDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
   if ((await d.wk('room')) === 'f4') {
     const back = (await d.wk('doors')).find((x) => x.to === 'f5');
-    if (back) await d.walkTo(back.x, back.z, { timeout: 40, arrive: 0.4 });
+    if (back) { const p = past(back); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
     await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
   }
   if ((await d.wk('room')) === 'f5') {

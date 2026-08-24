@@ -173,4 +173,21 @@ export const CONFIG = {
     // identically in the 36x28 hub. Measured, not assumed.
     hurtShake: 0.12, hurtShakeT: 0.18,
   },
+
+  // ---- ACCESSIBILITY (state.settings.reduceMotion gates these) ----
+  // Camera shake and the punch-in zoom are the two vestibular-motion
+  // triggers in the juice pipeline (WCAG 2.3.3-style concern); hitstop,
+  // particles and haptics are NOT camera motion and stay full-strength so a
+  // hit still reads as weighty. 0 = off outright, not just dampened.
+  ACCESSIBILITY: {
+    REDUCE_MOTION_SHAKE_SCALE: 0,
+    REDUCE_MOTION_PUNCH_SCALE: 0,
+    // Hitstop still freezes briefly (a hit must still read as landing) but
+    // far shorter — GAME-CONTRACT's polish item asks to TAME hitstop, not
+    // remove the "did that connect?" cue entirely.
+    REDUCE_MOTION_HITSTOP_SCALE: 0.4,
+    // Dims one-off light-burst flashes (ground-slam impact glow, the Blood
+    // Moon Surge's red wash/moon glow) without cutting them to nothing.
+    REDUCE_MOTION_FLASH_SCALE: 0.35,
+  },
 };

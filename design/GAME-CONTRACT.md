@@ -7,10 +7,26 @@
 ## Adopted law, code catching up (audit 2026-07-31)
 - ✅ DONE v3.10: Boss respawn preserves the reached phase — dying never
   restarts a boss from phase 1 (flags.bossProgress, saved per profile).
-- Every hit fires layered feedback through ONE juice pipeline (hitstop,
-  shake, contact particles, audio, haptics) with weight tiers; particles/
-  audio pooled + preloaded — no allocation or first-play decode stutter
-  mid-combat. [#1]
+- ✅ DONE 2026-08-23: Every hit fires layered feedback through ONE juice
+  pipeline (hitstop, shake, contact particles, audio, haptics) with weight
+  tiers; particles/audio pooled + preloaded — no allocation or first-play
+  decode stutter mid-combat. Audited and found only the plain sword swing
+  routed through it — the six wolf-form specials, the knight's ranged
+  throw, and Thunder Dash's in-flight hits all fired raw unweighted
+  `juice.burst()` (or nothing at all, for Ground Slam/Stone Stomp).
+  Unified all eight into `juice.onHit(weight, {...})`, weight scaled by
+  whether the hit killed (`js/player.js`: `tryGroundSlam`, `tryStoneStomp`,
+  `tryVineLash`, `tryFrostBreath`, `trySplash`, the Thunder Dash hit loop
+  in `update()`, and every bolt kind in `_projStep`/`tryRanged`'s fire-
+  breath branch). `trySpinAttack` turned out to already be correct — it
+  reuses the same `_pendingHit`/`onHitConnected` path as the ordinary
+  sword swing, just not visible from its own source text. Verified live:
+  called each attack via its real production method against a real
+  enemy and confirmed both the hitstop value and the particle count match
+  `CONFIG.JUICE`'s tier numbers exactly (light hits correctly show zero
+  hitstop by design — that tier's `stop` is 0). Particle pooling and audio
+  preload were already correct; only the pipeline routing had drifted.
+  [#1]
 - ✅ DONE v3.11: Forms are distinct TOOLS (safe shielded Knight vs fast
   fragile Dark Wolf with lunge + senses; shield Knight-only); Blood Moon
   is an EARNED Moon-Gauge surge, not a cooldown button; the gauge fills
@@ -24,7 +40,23 @@
   rumors that foreshadow the next region; Biscuit the den dog wanders;
   rescued pups play by the fire. A freed region's healing is WITNESSED
   (visible sequence, persistent, revisit rewards). [#5]
-- A reduce-motion setting tames shake/hitstop/flash. [polish list]
+- ✅ DONE 2026-08-23: A reduce-motion setting tames shake/hitstop/flash.
+  `state.settings.reduceMotion` (pause menu, "🎥 Reduce motion", persists
+  per profile like every other setting) gates three things through
+  `CONFIG.ACCESSIBILITY`: camera shake is cut to 0 (`Effects.shake()`,
+  every call site — juice hits, ground-slam/stomp, boss telegraphs, the
+  Surge impact — routes through this one method), the hit punch-in zoom
+  and the Surge ceremony's camera lean are both cut to 0, and hitstop/
+  light-burst flashes (ground-slam glow, the Surge's red wash/moon glow)
+  are dimmed to 40%/35% rather than removed — a hit still needs to read as
+  landing. Particles, audio and haptics are untouched: they aren't camera
+  motion, so `juice.onHit()`'s tiered feedback (see the entry above) still
+  reads as weighty with shake off. Verified live via the dev harness:
+  called `Effects.shake/hitStop/punch/groundSlam` directly with the
+  setting off then on and confirmed the exact scale factors applied, then
+  clicked the real pause-menu checkbox and confirmed it flips
+  `state.settings.reduceMotion`, updates the checkbox, and round-trips
+  through a real save (`localStorage`). [polish list]
 
 ## Combat grammar (already true — now law)
 - RED marks danger (rings/arcs/streaks), GOLD marks "act here" (strike

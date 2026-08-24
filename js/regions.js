@@ -137,7 +137,7 @@ export const REGIONS = {
       { id: 'f_cairn', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'the w1b spring taught the look; visible chest behind it' },
       { id: 'f_scour', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'in plain sight of the boss door; visible gold chest' },
       { id: 'f_eyrie', requires: 'frost_wolf', firstShownIn: 'wildwoods', hint: 'the grant+30s payout; Pip frost_howto points at it' },
-      { id: 'f2b_alcove', requires: 'earth_wolf', firstShownIn: 'stoneroot', hint: 'glittering cracks in the glacier nook' },
+      { id: 'f2b_alcove', requires: 'verdant_wolf', firstShownIn: 'frostpeak', hint: 'a stubborn thorn tangle in the glacier nook', retroUse: true },
     ],
     restoration: {
       flag: 'restored',
@@ -169,7 +169,9 @@ export const REGIONS = {
       { id: 's_gale_stair', requires: 'storm_wolf', firstShownIn: 'stormreach', hint: 'the first lane, in s1b, with the path on behind it' },
       { id: 's_sail', requires: 'storm_wolf', firstShownIn: 'stormreach', hint: 'the great sail-gate at s4b — two lanes turned at once' },
       { id: 's1a_seacave', requires: 'tide_wolf', firstShownIn: 'stormreach', hint: 'gate_promise + visible chest in the flooded cave mouth' },
-      { id: 's3b_crack', requires: 'earth_wolf', firstShownIn: 'stoneroot', hint: 'a tool they already own, rewarded in a region that is not its own' },
+      { id: 's3b_crack', requires: 'earth_wolf', firstShownIn: 'stormreach', hint: 'a tool they already own, rewarded in a region that is not its own', retroUse: true },
+      { id: 's3p_boulder', requires: 'earth_wolf', firstShownIn: 'stormreach', hint: 'a lone boulder, silver chest visible behind it', retroUse: true },
+      { id: 's1p_ice', requires: 'frost_wolf', firstShownIn: 'stormreach', hint: 'an ice-sealed pocket, gold chest visible behind it', retroUse: true },
     ],
     restoration: {
       flag: 'restored',
@@ -211,6 +213,8 @@ export const REGIONS = {
       { id: 'd_shrine', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'across the way out of the spring room' },
       { id: 'd_lagoon', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'the lagoon is THE ROAD, once you can walk it' },
       { id: 'ddp_out', requires: 'tide_wolf', firstShownIn: 'sunkenvale', hint: 'the way out of the deep, which opens when the vale drains' },
+      { id: 'd2p_bramble', requires: 'verdant_wolf', firstShownIn: 'sunkenvale', hint: 'a bramble tangle, gold chest visible behind it', retroUse: true },
+      { id: 'd3p_rubble', requires: 'earth_wolf', firstShownIn: 'sunkenvale', hint: 'a rubble clump, silver chest visible behind it', retroUse: true },
     ],
     restoration: {
       flag: 'restored',
@@ -276,7 +280,21 @@ export function validateRegions() {
       if (!grantRegion) { errors.push(`gate '${g.id}': unknown ability '${g.requires}'`); continue; }
       const shown = idx(g.firstShownIn);
       const granted = idx(grantRegion);
-      if (shown > granted) {
+      // retroUse: a bonus-pocket gate placed in a LATER region for an
+      // ability the player already holds (the W5 reuse pattern) — there is
+      // no "promise before the key" beat to check here, the child already
+      // has the key the moment they meet the lock, so shown > granted is
+      // the whole point rather than a violation. firstShownIn should still
+      // name the gate's own real region (audit 2026-08-24 found one gate
+      // labelled with a region it doesn't physically exist in, to dodge
+      // this exact check before the flag existed).
+      if (g.retroUse) {
+        if (shown !== idx(rid)) {
+          warnings.push(`gate '${g.id}': retroUse but firstShownIn ('${g.firstShownIn}') isn't this gate's own region ('${rid}') — should name where the gate actually is`);
+        } else if (shown <= granted) {
+          warnings.push(`gate '${g.id}': marked retroUse but firstShownIn ('${g.firstShownIn}') isn't after '${grantRegion}' where '${g.requires}' is granted — retroUse may not be needed here`);
+        }
+      } else if (shown > granted) {
         errors.push(`gate '${g.id}': lock first shown in '${g.firstShownIn}' AFTER its key is granted in '${grantRegion}' — lock must come before key`);
       } else if (shown === granted && granted > 0 && !g.sameRegionOk) {
         warnings.push(`gate '${g.id}': lock and key both in '${grantRegion}' — fine inside a region's own loop, but the NEXT region's lock should be shown a region early`);

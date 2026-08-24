@@ -245,6 +245,8 @@ export const LINES = {
   end_4: { voice: 'kael', text: 'Come home with us.' },
   end_5: { voice: 'pip', text: 'The Den is FULL, Kael. Everyone we found. Everyone.' },
   end_6: { voice: 'luna', text: 'Seven lights. Thank you, Wolf Knight. Go and play — the world is yours again.' },
+  village_reveal: { voice: 'pip', text: 'Kael, look — the road past the gate! It was always shadowed, and now… it isn’t. I think there’s somewhere we’ve never been.' },
+  village_complete: { voice: 'pip', text: 'Every shadow, gone! The Village is awake, Kael — go see what you woke up.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! HOLD the wolf button at the bottom to pick him. His frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },

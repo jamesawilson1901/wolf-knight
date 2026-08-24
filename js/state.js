@@ -49,7 +49,10 @@ export const state = {
     easy: false,
     // A7 — the DRESSED level is what a child gets. Greybox is a build-order
     // tool, not a costume to ship; it stays reachable from the cheat menu.
-    greybox: false },
+    greybox: false,
+    // Turns off camera shake + the hit punch-in zoom (see CONFIG.ACCESSIBILITY).
+    // Hitstop/particles/haptics are untouched — they aren't camera motion.
+    reduceMotion: false },
   spoken: {}, // narration line id -> true (story lines fire once per save)
 };
 

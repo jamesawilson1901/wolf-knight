@@ -17,7 +17,7 @@ import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
-  pushableBoulder, plateSwitch } from './gates.js';
+  pushableBoulder, plateSwitch, registerCuttable } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
@@ -26,6 +26,7 @@ import { LEVEL3_ROOMS, loadWoodKit } from './level3.js';
 import { LEVEL5_ROOMS, loadSkyKit } from './level5.js';
 import { LEVEL6_ROOMS, loadValeKit } from './level6.js';
 import { LEVEL7_ROOMS, loadCourtKit } from './level7.js';
+import { LEVELVILLAGE_ROOMS, loadVillageKit } from './levelVillage.js';
 import { buildPotionMesh } from './loot.js';
 
 // ---------------------------------------------------------------------------
@@ -780,7 +781,8 @@ async function buildDen(scene) {
   // you. Walking back out means walking toward the camera, which is what every
   // other room in the game already does with its return door.
   for (let x = -halfW - 0.5; x <= halfW + 0.5; x += 1) {
-    addWall(x, -halfD - 0.5);
+    // north wall gap: THE VILLAGE, once Grimm is freed (state.flags.grimmFreed)
+    if (!(state.flags.grimmFreed && x > -1.8 && x < 1.8)) addWall(x, -halfD - 0.5);
     if (!(x > -1.8 && x < 1.8)) addWall(x, halfD + 0.5);   // the gap is the stair to la
   }
   for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
@@ -789,7 +791,12 @@ async function buildDen(scene) {
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
     materialTints: { grass: 0x4d6a3c, dirt: 0x5a4a34 },
   }));
-  world.addBox(-halfW - 1, halfW + 1, -halfD - 1, -halfD);
+  if (state.flags.grimmFreed) {
+    world.addBox(-halfW - 1, -1.8, -halfD - 1, -halfD);
+    world.addBox(1.8, halfW + 1, -halfD - 1, -halfD);
+  } else {
+    world.addBox(-halfW - 1, halfW + 1, -halfD - 1, -halfD);
+  }
   world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
   world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
   world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
@@ -797,6 +804,11 @@ async function buildDen(scene) {
   world.spawn = { x: 0, z: 7.4, angle: Math.PI };
   world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, halfD - 0.6, 'x');
+  if (state.flags.grimmFreed) {
+    // THE VILLAGE. The road that was always shadowed, now that Grimm is gone.
+    world.addDoor(-1.4, 1.4, -halfD - 0.9, -halfD + 0.15, 'ysq', { x: 0, z: 12, angle: Math.PI });
+    doorway(world, 0, -halfD + 0.6, 'x');
+  }
 
   // warm heart campfire + tents + trees + flowers
   checkpoint(world, 'cp_den', 0, -1.0);
@@ -3399,6 +3411,43 @@ async function loadSnowKit() {
   return skit;
 }
 
+// FROST BRAMBLE — Frostpeak's reuse of verdant's own verb (gates.js's
+// registerCuttable(), the Verdant Wolf's vine-lash / world.cutAt). Same
+// code-built-primitives pattern as level5.js's stormBramble: a thorn tangle
+// that survived up here needs no new asset and never checks GREY() — it's
+// geometry, not a kit prop. W5 fix (2026-08-24): moved F2b's optional-nook
+// gate off earth (crackedRocks) onto this, since Frostpeak's critical path
+// already carries fire (F2) and needed a second earlier-form reuse that
+// wasn't earth, to stop 'earth' running three straight regions (L2-L4).
+function frostBramble(world, id, x, z, region = 'frost') {
+  const group = new THREE.Group();
+  for (const [ox, oz, s, ry] of [[-0.4, 0, 1.0, 0.4], [0.4, -0.1, 1.1, 2.1], [0, 0.35, 0.9, 4.0]]) {
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.55 * s, 0),
+      new THREE.MeshStandardMaterial({ color: 0x2f4a26, roughness: 0.9 })
+    );
+    m.position.set(x + ox, 0.4 * s, z + oz);
+    m.rotation.y = ry;
+    group.add(m);
+  }
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
+  );
+  glint.position.set(x, 0.95, z);
+  group.add(glint);
+  world.add(group);
+  world.onAnimate((t) => {
+    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.rotation.y = t * 1.4;
+  });
+  const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
+  world.boxColliders.push(collider);
+  world.markers.brambleSpot = { x, z, id };
+  registerCuttable(world, { id, x, z, region, group, collider });
+  return { id, collider };
+}
+
 // Snow shell: a pale ground plane, a border of snow-laden firs (n/w/e) and —
 // per the BLIND-STRIP LAW — nothing on the south edge taller than a snow
 // drift, because the camera looks north straight over it.
@@ -3634,7 +3683,7 @@ async function buildF1(scene) {
   world.markers.houndSpots = [
     { x: -4.0, z: -1.4, variant: 'rime' }, { x: 4.4, z: 0.4, variant: 'rime' },
   ];
-  world.markers.slimeSpots = [{ x: -1.4, z: -3.4, variant: 'snowblob' }];
+  world.markers.rimeSlimeSpots = [{ x: -1.4, z: -3.4 }];
   checkpoint(world, 'cp_f1', -6.8, 3.2);
   potionPickup(world, 6.6, 3.4);
   world.markers.chestDefs = [
@@ -3669,9 +3718,8 @@ async function buildF1b(scene) {
     { id: 'c_f1b_ice', tier: 'gold', x: 6.3, z: -3.2, ry: -1.6, loot: { shards: 22, heartPiece: 1 } },
     { id: 'c_f1b_cairn', tier: 'wood', x: -6.2, z: -3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
   ];
-  world.markers.slimeSpots = [
-    { x: -1.6, z: 2.6, variant: 'snowblob' }, { x: 2.6, z: -2.6, variant: 'snowblob' },
-  ];
+  world.markers.slimeSpots = [{ x: -1.6, z: 2.6, variant: 'snowblob' }];
+  world.markers.visoredWightSpots = [{ x: 2.6, z: -2.6 }];
   world.markers.pup10Spot = { x: -2.2, z: -3.4 };
   world.markers.breakables = [{ x: 6.4, z: 2.6, kind: 'barrel', shards: 3 }];
   return world;
@@ -3729,7 +3777,7 @@ async function buildF2(scene) {
   ]);
   // one lone flyer, parked away from the braziers — flavour, not interference
   world.markers.mothSpots = [{ x: 6.6, z: 3.4, variant: 'frostmoth' }];
-  world.markers.houndSpots = [{ x: -6.2, z: 3.2, variant: 'rime' }];
+  world.markers.rimeMinionSpots = [{ x: -6.2, z: 3.2 }];
   checkpoint(world, 'cp_f2', -7.4, 3.6);
   potionPickup(world, 7.4, 3.6);
   world.markers.chestDefs = [
@@ -3755,10 +3803,9 @@ async function buildF2b(scene) {
   ]);
   world.markers.houndSpots = [{ x: 1.6, z: -0.4, variant: 'elderrime' }];
   world.markers.pup11Spot = { x: 4.4, z: -3.2 };
-  crackedRocks(world, 'f2b_alcove', -4.2, -3.0);
-  world.markers.crackSpot = { x: -4.2, z: -3.0 };
+  frostBramble(world, 'f2b_alcove', -4.2, -3.0);
   world.markers.chestDefs = [
-    ...(state.flags.cracked.f2b_alcove
+    ...(WS.get('frost', 'cut_f2b_alcove')
       ? [{ id: 'c_f2b_nook', tier: 'gold', x: -5.2, z: -3.6, ry: 0.9, loot: { shards: 20, gear: 'hammer_a' } }]
       : []),
   ];
@@ -3831,9 +3878,8 @@ async function buildF3(scene) {
     ['rockL', -6.6, -5.0, 1.3, 0.8, 0.95], ['rockL', 7.6, -5.6, 1.3, 2.0, 0.9],
     ['pile', -7.8, 5.0, 1.6, 0.6, 0], ['pile', 7.8, 5.0, 1.5, 1.6, 0],
   ]);
-  world.markers.slimeSpots = [
-    { x: -5.6, z: 3.2, variant: 'snowblob' }, { x: 5.8, z: 3.4, variant: 'snowblob' },
-  ];
+  world.markers.slimeSpots = [{ x: -5.6, z: 3.2, variant: 'snowblob' }];
+  world.markers.glacierWardenSpots = [{ x: 5.8, z: 3.4 }];
   checkpoint(world, 'cp_f3', -7.6, 3.8);
   world.markers.chestDefs = [
     { id: 'c_f3_lake', tier: 'wood', x: -8.0, z: -6.0, ry: 1.2, loot: { shards: 16 } },
@@ -3861,9 +3907,10 @@ async function buildF4(scene) {
   ]);
   // the rime pack — the mountain's last stand before the summit
   world.markers.houndSpots = [
-    { x: -3.6, z: -3.0, variant: 'rime' }, { x: 3.8, z: -2.4, variant: 'rime' },
+    { x: 3.8, z: -2.4, variant: 'rime' },
     { x: 0.4, z: -0.8, variant: 'elderrime' },
   ];
+  world.markers.frostDragonlingSpots = [{ x: -3.6, z: -3.0 }];
   world.markers.slimeSpots = [{ x: -5.4, z: 1.8, variant: 'snowblob' }];
   world.markers.mothSpots = [{ x: 5.6, z: 0.8, variant: 'frostmoth' }];
   world.markers.pup12Spot = { x: -7.0, z: 2.6 };
@@ -3943,7 +3990,7 @@ async function buildF5(scene) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+export const ROOMS = { ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -3963,6 +4010,8 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadValeKit();
   } else if (id[0] === 'x') {
     if (state.settings.greybox === false) await loadCourtKit();
+  } else if (id[0] === 'y') {
+    if (state.settings.greybox === false) await loadVillageKit();
   } else {
     await loadKit();
     if (id[0] === 'e' || id[0] === 'k' || id[0] === 'w' || id[0] === 'f') await loadDungeonKit();

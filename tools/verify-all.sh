@@ -115,6 +115,7 @@ case "$1" in
     run verify-level5.mjs
     run verify-level6.mjs
     run verify-level7.mjs
+    run verify-level-village.mjs
     run verify-route.mjs
     run verify-roomid.mjs
     run verify-progression.mjs
