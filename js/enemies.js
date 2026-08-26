@@ -18,6 +18,8 @@ import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
+import { spawnRewardPop } from './loot.js';
+import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -658,6 +660,7 @@ class Enemy {
     // sometimes shadows leave a warm ember behind — a little half-heart heal
     const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
     if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
+    dropWeapon(this);
     this.world.root.remove(this.root);
   }
 
@@ -3364,6 +3367,29 @@ export class Dragonling extends Enemy {
 // Ember drops: warm sparks fallen shadows sometimes leave behind.
 // Touch one to heal half a heart (fizzles after ~12s).
 // ---------------------------------------------------------------------------
+
+// A RANDOM WEAPON, SOMETIMES. Combat has never handed out gear at all —
+// only the Den shop and chests ever have — despite nothing standing in the
+// way: addGear() is a one-line push, and shopStock() already knows exactly
+// which weapons/shields have unlocked at this point in the story (real-play
+// report: "there are no random weapon drops"). A small, universal chance on
+// every kill, roughly doubled for the "always drops something" elite tier
+// (dropChance >= 1) — picks from what the shop would sell RIGHT NOW, so a
+// drop can never hand a five-year-old the Boulder Hammer three rooms into
+// the game, and never repeats gear already owned. Visible the same way a
+// chest's reward now is (giveLoot(), js/main.js) — spawnRewardPop, not a
+// silent inventory change.
+function dropWeapon(e) {
+  const base = e.dropChance !== undefined ? e.dropChance : 0.35;
+  const chance = base >= 1 ? 0.08 : 0.03;
+  if (Math.random() >= chance) return;
+  const pool = shopStock().filter((s) => (s.kind === 'weapon' || s.kind === 'shield') && !ownsGear(s.id));
+  if (!pool.length) return;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  addGear(pick.id);
+  const gd = (pick.kind === 'weapon' ? WEAPONS : SHIELDS)[pick.id];
+  spawnRewardPop(e.world, e.x, e.z, gd ? gd.icon : '🗡️');
+}
 
 function spawnEmberDrop(world, x, z) {
   if (!world.drops) world.drops = [];

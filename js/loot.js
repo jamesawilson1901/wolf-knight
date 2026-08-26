@@ -127,6 +127,53 @@ export function spawnPotionDrop(world, x, z) {
   return true;
 }
 
+// A REWARD THAT ONLY EVER APPEARED IN A TOAST. Chest shards/potions have
+// always sprung out and landed for real (see spawnShards/spawnPotionDrop
+// above) — gear, armour, heart pieces and keys never did. giveLoot() grants
+// them straight into state and prints a line of text; the chest itself does
+// a lid-open hop, but the REWARD was never physically in the world at all
+// (real-play report: "physical coins and potions should spring out of the
+// chests or weapons if that's what there are" — this is the "or weapons"
+// half: a found sword is still nothing you ever see fly out of the box).
+// Purely additive and purely visual — the grant already happened by the
+// time this is called, so there is nothing to pick up and nothing to lose;
+// it only needs to arc, land, and fade, the same physics as a coin's hop
+// with no magnet/collection step after it.
+export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.font = '92px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(icon, 64, 68);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.position.set(x, 0.5, z);
+  sp.scale.set(0.7, 0.7, 1);
+  sp.renderOrder = 998;
+  world.add(sp);
+  const a = seatIndex * 1.15 + 0.4; // several rewards from one chest fan out, not stack
+  let vx = Math.cos(a) * 1.1, vz = Math.sin(a) * 1.1, vy = 3.6, y = 0.5;
+  let settled = false, t = 0;
+  const DURATION = 2.6;
+  world.onAnimate((tt, dt) => {
+    t += dt;
+    if (!settled) {
+      sp.position.x += vx * dt; sp.position.z += vz * dt;
+      y += vy * dt; vy -= 11 * dt;
+      if (y <= 0.55) { y = 0.55; settled = true; }
+    } else {
+      y = 0.55 + Math.sin(tt * 3 + a) * 0.06;
+    }
+    sp.position.y = y;
+    if (t > DURATION - 0.6) sp.material.opacity = Math.max(0, (DURATION - t) / 0.6);
+    if (t > DURATION) { world.root.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
+  });
+  return sp;
+}
+
 export function updateShards(world, dt, t, player) {
   if (!world.shards) return;
   const magnet = player.buffs && player.buffs.magnet > 0;

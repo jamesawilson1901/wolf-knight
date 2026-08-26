@@ -21,7 +21,7 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
-import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop } from './loot.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -1281,15 +1281,18 @@ function renderBuffs() {
 function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
+  let seat = 0; // several rewards from one chest fan out as they spring, not stack
   if (L.shards) lines.push(`🔸 ${L.shards}`);
   if (L.potion) {
     state.potions = Math.min(3, state.potions + L.potion);
     renderPotions(player);
     lines.push('🧪 potion');
+    spawnRewardPop(world, chest.x, chest.z, '🧪', seat++);
   }
   if (L.heartPiece) {
     state.inventory.heartPieces += L.heartPiece;
     lines.push('💗 heart piece');
+    spawnRewardPop(world, chest.x, chest.z, '💗', seat++);
     if (state.inventory.heartPieces >= 4) {
       state.inventory.heartPieces -= 4;
       state.maxHearts++;
@@ -1305,6 +1308,7 @@ function giveLoot(chest) {
     // found; the whole point of a chest is the moment you learn what was in it.
     const gd = WEAPONS[L.gear] || SHIELDS[L.gear];
     lines.push(gd ? `${gd.icon} ${gd.name}` : '🗡️ new gear');
+    spawnRewardPop(world, chest.x, chest.z, gd ? gd.icon : '🗡️', seat++);
   }
   // ARMOUR is found, not only bought — dad: "different weapons and armour that
   // you can find and equip".
@@ -1312,10 +1316,12 @@ function giveLoot(chest) {
     state.inventory.armours = state.inventory.armours || ['plain'];
     if (!state.inventory.armours.includes(L.armour)) state.inventory.armours.push(L.armour);
     lines.push(`${ARMOURS[L.armour].icon} ${ARMOURS[L.armour].name}`);
+    spawnRewardPop(world, chest.x, chest.z, ARMOURS[L.armour].icon, seat++);
   }
   if (L.key) {
     state.flags.keys[L.key] = true;
     lines.push('🗝️ ' + (L.keyName || 'a key'));
+    spawnRewardPop(world, chest.x, chest.z, '🗝️', seat++);
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
