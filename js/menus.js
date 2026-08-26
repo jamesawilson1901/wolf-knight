@@ -374,12 +374,30 @@ function statLine(id, def, kind) {
   return def.blurb || '';
 }
 
-// Big center toast for level-ups / stickers / power-ups
+// Big center toast for level-ups / stickers / power-ups.
+//
+// QUEUED, NOT OVERWRITTEN. Two chests opened in quick succession (real-play
+// report: looked like "only one opens" — both actually opened and granted
+// their loot correctly, but the second toast silently replaced the first
+// one's text before a child had time to read it, so the first reward was
+// never SEEN). A single shared element still shows one toast at a time —
+// that's fine, a child reads one thing at a time too — but a message that
+// arrives mid-display now waits its turn instead of erasing what's showing.
 let toastTimer = null;
-export function bigToast(html) {
+const toastQueue = [];
+function showNextToast() {
   const el = $('big-toast');
+  const html = toastQueue.shift();
   el.innerHTML = html;
   el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+    if (toastQueue.length) setTimeout(showNextToast, 260); // a beat between them
+  }, 2200);
+}
+export function bigToast(html) {
+  const el = $('big-toast');
+  const showing = el.classList.contains('show');
+  toastQueue.push(html);
+  if (!showing) { clearTimeout(toastTimer); showNextToast(); }
 }

@@ -1101,6 +1101,29 @@ export async function buildS4b(scene) {
     const lane = galeLane(world, { x: -10, z: s.z, w: 7.0, d: 8.5, dir: s.z < 0 ? 's' : 'n', strength: 'gale', vaned: true });
     vane(world, s.x, s.z, lane, D);
   }
+
+  // What "solved" looks like, checked every frame — the same rule as sc3's
+  // corridor vanes (svn), turned 90°: neither lane still blowing across the
+  // doorway line. This block was never written the first time, so the two
+  // vanes could be turned but `windBridge` never set — leaving ssA's far
+  // door (s1a) permanently sealed against anyone who crossed the bridge
+  // from s4a's always-open near side. Fixes real-play report: "a wall that
+  // literally blocks you from the way you need to go."
+  const LINE_X = -10;
+  world.markers.puzzleSolved = false;
+  let gateWasOpen = false;
+  world.onAnimate(() => {
+    const crossing = world.galeLanes.some((l) =>
+      LINE_X >= l.minX && LINE_X <= l.maxX && Math.abs(l.pz) > Math.abs(l.px));
+    const open = !crossing;
+    world.markers.puzzleSolved = open;
+    if (open && !gateWasOpen) {
+      gateWasOpen = true;
+      WS.set(REGION, 'windBridge');
+      if (world.onSolved) world.onSolved();
+    } else if (!open) { gateWasOpen = false; }
+  });
+
   if (!GREY()) {
     // the gate itself: two columns and an arch, so the doorway the gale defends
     // is plainly a DOORWAY and not just a windy patch of floor
