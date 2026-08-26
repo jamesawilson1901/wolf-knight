@@ -139,7 +139,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.42, hitAt: 0.22, range: 1.7, dmg: 1 },
-    boltColor: 0x8fdc6a, rangedKind: 'thorn',   // thrown thorn: chips + ROOTS
+    boltColor: 0x8fdc6a, rangedKind: 'thorn', boltShape: 'leaf',   // thrown thorn: chips + ROOTS
   },
   ghost_wolf: {
     // Luna's own. Quick and slight — the lightest thing in the game, because
@@ -150,7 +150,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.40, hitAt: 0.21, range: 1.7, dmg: 1 },
-    boltColor: 0xe8e4ff, rangedKind: 'pierce',
+    boltColor: 0xe8e4ff, rangedKind: 'pierce', boltShape: 'ring', // a hollow ring, not dark_wolf's crescent
   },
   tide_wolf: {
     // heavy in the water and sure on it — the only form that never hurries
@@ -160,7 +160,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.44, hitAt: 0.23, range: 1.7, dmg: 1.2 },
-    boltColor: 0x8fe4ff, rangedKind: 'shard',
+    boltColor: 0x8fe4ff, rangedKind: 'shard', boltShape: 'droplet',
   },
   storm_wolf: {
     // the fastest thing on four legs in the game — the sky spirit's gift is
@@ -171,7 +171,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.40, hitAt: 0.21, range: 1.7, dmg: 1 },
-    boltColor: 0xfff4b0, rangedKind: 'spark',   // a thrown spark: chips + stuns
+    boltColor: 0xfff4b0, rangedKind: 'spark', boltShape: 'lightning', // a thrown spark: chips + stuns
   },
   frost_wolf: {
     // sure-footed on the ice where everything else slides
@@ -181,7 +181,7 @@ const FORM_DEFS = {
       ranged: 'Attack', block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
     },
     attack: { lock: 0.44, hitAt: 0.23, range: 1.7, dmg: 1.2 },
-    boltColor: 0xbfefff, rangedKind: 'shard',   // ice shard: chips + slows
+    boltColor: 0xbfefff, rangedKind: 'shard', boltShape: 'icicle', // ice shard: chips + slows
   },
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
@@ -216,6 +216,77 @@ const POTION_HEAL = 3;
 // Elemental aura geometry (shared across the few meshes that use it)
 const FLAME_GEO = new THREE.ConeGeometry(0.13, 0.4, 6);
 const CHIP_GEO = new THREE.DodecahedronGeometry(0.11, 0);
+
+// Per-form ranged-bolt shapes (FORM_DEFS.boltShape) and their matching
+// special-attack debris. Built ONCE and shared/baked — never per-throw — so
+// giving every wolf its own silhouette costs nothing extra per frame. Where
+// a shape needs to be lopsided (a leaf, a droplet) the anisotropy is baked
+// into the geometry itself with .scale(), not applied per-instance, so every
+// user of these constants (bolts AND debris) can share one buffer.
+const RING_BOLT_GEO = new THREE.TorusGeometry(0.13, 0.045, 6, 10);      // ghost_wolf: a hollow ring, not a solid dart
+const ICICLE_GEO = new THREE.ConeGeometry(0.075, 0.5, 5);
+ICICLE_GEO.rotateX(Math.PI / 2); // apex points forward along local +Z
+const DROPLET_GEO = new THREE.SphereGeometry(0.12, 6, 5);
+DROPLET_GEO.scale(0.75, 0.75, 1.7); // teardrop: stretched along travel
+const LEAF_GEO = new THREE.OctahedronGeometry(0.1, 0);
+LEAF_GEO.scale(1.3, 0.32, 2.2); // flat, blade-like
+const LIGHTNING_SHAPE = new THREE.Shape();
+LIGHTNING_SHAPE.moveTo(0.03, 0.28);
+LIGHTNING_SHAPE.lineTo(-0.08, 0.05);
+LIGHTNING_SHAPE.lineTo(0.0, 0.05);
+LIGHTNING_SHAPE.lineTo(-0.05, -0.28);
+LIGHTNING_SHAPE.lineTo(0.09, -0.02);
+LIGHTNING_SHAPE.lineTo(0.0, -0.02);
+LIGHTNING_SHAPE.closePath();
+const LIGHTNING_GEO = new THREE.ExtrudeGeometry(LIGHTNING_SHAPE, { depth: 0.05, bevelEnabled: false });
+LIGHTNING_GEO.rotateX(-Math.PI / 2); // the zigzag's length runs along local Z
+LIGHTNING_GEO.center();
+
+// Cheap themed "debris" burst for a special attack: a handful of small
+// meshes (always ONE of the shared/cached geometries above — no per-particle
+// allocation) launched outward and up under gravity, then self-removing via
+// world.onAnimate (the same disposable-closure pattern loot.js's
+// spawnRewardPop uses). This is what makes a special read as the form's OWN
+// effect instead of a re-tinted ring: rock chunks for the earth wolf,
+// lightning shards for the storm wolf, and so on.
+function spawnDebris(world, x, z, geo, color, count, opts = {}) {
+  const mat = new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.6, roughness: 0.8, transparent: true,
+  });
+  const rise = opts.rise ?? 2.6;
+  const spread = opts.spread ?? 2.2;
+  const life = opts.life ?? 0.7;
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(geo, mat);
+    const a = Math.random() * Math.PI * 2;
+    const s = 0.5 + Math.random() * spread;
+    m.position.set(x, 0.3, z);
+    m.scale.setScalar(0.6 + Math.random() * 0.6);
+    world.root.add(m);
+    parts.push({
+      m, vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: rise * (0.6 + Math.random() * 0.6),
+      rx: (Math.random() - 0.5) * 6, rz: (Math.random() - 0.5) * 6,
+    });
+  }
+  let t = 0;
+  world.onAnimate((tt, dt) => {
+    t += dt;
+    for (const p of parts) {
+      p.m.position.x += p.vx * dt;
+      p.m.position.z += p.vz * dt;
+      p.vy -= 9.5 * dt;
+      p.m.position.y = Math.max(0.15, p.m.position.y + p.vy * dt);
+      p.m.rotation.x += p.rx * dt;
+      p.m.rotation.z += p.rz * dt;
+    }
+    if (t > life - 0.2) mat.opacity = Math.max(0, (life - t) / 0.2);
+    if (t > life) {
+      for (const p of parts) world.root.remove(p.m);
+      mat.dispose();
+    }
+  });
+}
 
 export function tintWolf(model, tint) {
   model.traverse((n) => {
@@ -1272,23 +1343,36 @@ export class Player {
       this.root.rotation.y = Math.atan2(aim.x, aim.z); // Kael turns to the shot
     }
 
-    // Each form throws its OWN projectile (FORM_DEFS.rangedKind):
-    // spark = dart · pierce = crescent through foes · ember = burst · rock = daze
+    // Each form throws its OWN projectile. FORM_DEFS.rangedKind drives the
+    // MECHANICS (speed, damage, pierce-through, stun) and is shared by
+    // several forms; FORM_DEFS.boltShape drives the LOOK on top of that, so
+    // e.g. dark_wolf and ghost_wolf both mechanically 'pierce' but throw a
+    // crescent and a ring respectively. Shapes below RING/ICICLE/DROPLET/
+    // LEAF/LIGHTNING are shared cached geometry (never disposed per-bolt,
+    // see sharedGeo below); the plain dart/rock fallback still builds fresh
+    // geometry per throw, as it always has.
     const kind = f.def.rangedKind || 'spark';
+    const shape = f.def.boltShape;
+    const SHAPE_GEO = { ring: RING_BOLT_GEO, icicle: ICICLE_GEO, droplet: DROPLET_GEO, leaf: LEAF_GEO, lightning: LIGHTNING_GEO };
+    const sharedGeo = !!SHAPE_GEO[shape];
+    const geo = sharedGeo ? SHAPE_GEO[shape]
+      : kind === 'rock' ? new THREE.DodecahedronGeometry(0.2, 0) : new THREE.OctahedronGeometry(0.13, 0);
     const bolt = new THREE.Mesh(
-      kind === 'rock' ? new THREE.DodecahedronGeometry(0.2, 0) : new THREE.OctahedronGeometry(0.13, 0),
+      geo,
       new THREE.MeshStandardMaterial({
         color: 0x000000, emissive: f.def.boltColor, emissiveIntensity: 2.6, roughness: 1,
       })
     );
-    if (kind === 'pierce') bolt.scale.set(2.6, 0.55, 2.8); // WIDE flat moon crescent
+    if (shape === 'lightning') bolt.scale.setScalar(1.3);
+    else if (shape === 'ring' || shape === 'icicle' || shape === 'droplet' || shape === 'leaf') bolt.scale.setScalar(1.1);
+    else if (kind === 'pierce') bolt.scale.set(2.6, 0.55, 2.8); // WIDE flat moon crescent
     else if (kind === 'rock') bolt.scale.setScalar(1.35);  // a real chunk of stone
     else bolt.scale.z = 2.4;
     const dir = aim;
     bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
     bolt.rotation.y = this.root.rotation.y;
     world.root.add(bolt);
-    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target, kind, pierced: null });
+    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target, kind, pierced: null, sharedGeo, boltColor: f.def.boltColor });
     return true;
   }
 
@@ -1330,9 +1414,9 @@ export class Player {
         p._trailAcc = (p._trailAcc || 0) + step;
         if (p._trailAcc > 0.4) {
           p._trailAcc = 0;
-          const tc = p.kind === 'pierce' ? 0xb08aff : p.kind === 'ember' ? 0xff8a3a
-            : p.kind === 'thorn' ? 0x8fdc6a : p.kind === 'shard' ? 0xbfefff : 0xd8b06a;
-          juice.burst(px, p.mesh.position.y, pz, tc, 2);
+          // the form's OWN color, not just its mechanical kind — frost_wolf
+          // and tide_wolf are both 'shard' but must not leave the same trail
+          juice.burst(px, p.mesh.position.y, pz, p.boltColor, 2);
         }
       }
       let gone = p.traveled > RANGED_RANGE;
@@ -1404,7 +1488,7 @@ export class Player {
       }
       if (gone) {
         p.world.root.remove(p.mesh);
-        p.mesh.geometry.dispose();
+        if (!p.sharedGeo) p.mesh.geometry.dispose(); // shared boltShape geo outlives this throw
         p.mesh.material.dispose();
         this._projectiles.splice(i, 1);
       }
@@ -1543,6 +1627,10 @@ export class Player {
     audio.play('form-switch', { volume: 0.7, rate: 0.7 });
     audio.play('pup-chime', { volume: 0.5, rate: 0.6 });
     juice.burst(this.root.position.x, 0.9, this.root.position.z, 0xe8e4ff, 12);
+    // a few translucent rings drift up and fade — Kael fading FROM the world,
+    // not just a burst of dots
+    spawnDebris(world, this.root.position.x, this.root.position.z, RING_BOLT_GEO, 0xe8e4ff, 3,
+      { rise: 0.9, spread: 0.5, life: 1.0 });
     if (effects && effects.punch) effects.punch(0.12, 0.3);
     // every shadow already hunting him loses the trail — that is the POINT of
     // pressing it mid-fight, and without it the ability would be useless in the
@@ -1598,6 +1686,8 @@ export class Player {
       juice.burst(px + Math.cos(a) * SPLASH_RADIUS * 0.8, 0.35,
         pz + Math.sin(a) * SPLASH_RADIUS * 0.8, 0x8fe4ff, 5);
     }
+    // real droplets thrown out with the ring, not just round motes
+    spawnDebris(world, px, pz, DROPLET_GEO, 0x8fe4ff, 6, { rise: 2.8, spread: 2.2, life: 0.55 });
     if (effects) effects.groundSlam({ x: px, z: pz }, 0x4fd0e0, SPLASH_RADIUS);
     this.specialCooldown = this.specialMax;
     return true;
@@ -1637,6 +1727,10 @@ export class Player {
     audio.play('parry', { volume: 0.5, rate: 1.9 });     // the crack
     if (effects && effects.punch) effects.punch(0.16, 0.18);
     juice.burst(this.root.position.x, 0.8, this.root.position.z, 0xfff4b0, 8);
+    // lightning sparking off the dash's start — the storm wolf's own debris,
+    // not the round-dot burst every other special also throws
+    spawnDebris(world, this.root.position.x, this.root.position.z, LIGHTNING_GEO, 0xfff4b0, 5,
+      { rise: 4.2, spread: 1.8, life: 0.4 });
     this.specialCooldown = this.specialMax;
     return true;
   }
@@ -1683,11 +1777,14 @@ export class Player {
     if (world.cutAt(tip.x, tip.z, 2.2) + world.cutAt(px + fx * 1.2, pz + fz * 1.2, 1.6) > 0) {
       if (effects && effects.punch) effects.punch(0.18, 0.2);
     }
-    // the whip itself: a green arc of leaf-bursts down the line
+    // the whip itself: a green arc of leaf-bursts down the line, plus real
+    // leaf-shaped debris (not just round dots) kicked up at the tip
     for (let i = 1; i <= 4; i++) {
       const f = i / 4;
       juice.burst(px + fx * VINE_RANGE * f, 0.5 + 0.25 * Math.sin(f * Math.PI), pz + fz * VINE_RANGE * f, 0x8fdc6a, 5);
     }
+    spawnDebris(world, px + fx * VINE_RANGE * 0.75, pz + fz * VINE_RANGE * 0.75, LEAF_GEO, 0x8fdc6a, 5,
+      { rise: 2.2, spread: 2.0, life: 0.6 });
     // the lash is a 3.8 x 0.9 CORRIDOR, so it is drawn as a narrow wedge from
     // Kael's feet — atan(0.9 / 3.8) is 13 degrees — not as a disc thrown ahead
     if (effects) effects.groundSlam({ x: px, z: pz }, 0x6fae4a, VINE_RANGE,
@@ -1748,6 +1845,9 @@ export class Player {
         pz + fz * reach + (Math.random() * 2 - 1) * spread,
         i === 2 ? 0xeaffff : 0xbfefff, 9);
     }
+    // real ice-shard debris scattered down the cone, not just round motes
+    spawnDebris(world, px + fx * 1.6, pz + fz * 1.6, ICICLE_GEO, 0xbfefff, 5,
+      { rise: 2.2, spread: 1.6, life: 0.5 });
     // the breath is a CONE, so draw the cone: same half-angle and same reach
     // the hit test uses, from Kael's feet
     if (effects) effects.groundSlam({ x: px, z: pz }, 0x9be3ff, FROST_RANGE,
@@ -1809,6 +1909,8 @@ export class Player {
     const { x, z } = { x: this.root.position.x, z: this.root.position.z };
     effects.groundSlam(this.root.position.clone(), 0xd8b06a, STOMP_RADIUS);
     effects.shake(0.3, 0.35);
+    // real rock chunks kick up from the quake, not just the shockwave ring
+    spawnDebris(world, x, z, CHIP_GEO, 0xd8b06a, 6, { rise: 3.4, spread: 2.8, life: 0.6 });
     audio.play('slam', { rate: 0.75 });
     let stomped = false;
     if (world.enemies) {
