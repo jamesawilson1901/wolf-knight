@@ -149,12 +149,15 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   // is a home, because a child knows what a door is for.
   function ruinedHome(world, x, z, ry, D, opts = {}) {
     if (GREY()) return null;
-    const r = srnd(Math.round(x * 73 + z * 31 + 17));
-    const g = new THREE.Group();
-    const P = D.propTint || D.floorTint;
     const W = opts.w !== undefined ? opts.w : 6;      // footprint
     const Dp = opts.d !== undefined ? opts.d : 5;
     const hw = W / 2, hd = Dp / 2;
+    // a house doesn't stand IN the lake it's next to — walls, a hearth and
+    // spilled belongings floating on open water reads as a bug, not a ruin
+    if (world.nearWater(x, z, Math.max(hw, hd))) return null;
+    const r = srnd(Math.round(x * 73 + z * 31 + 17));
+    const g = new THREE.Group();
+    const P = D.propTint || D.floorTint;
 
     // --- the walls, broken down to different heights on each run --------------
     // Modular wall pieces are ~2u wide. Dropping some below the floor is how a
@@ -222,6 +225,10 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   // is unmistakably domestic.
   function coldHearth(world, x, z, D, parent = null) {
     if (GREY()) return null;
+    // a fire, out in the open water — no ground under it to have burned on.
+    // Skipped only when called on its own; nested inside ruinedHome it's a
+    // few units off that home's own x/z, already checked by ITS bail.
+    if (!parent && world.nearWater(x, z, 1.3)) return null;
     const g = parent || new THREE.Group();
     const px = parent ? x : 0, pz = parent ? z : 0;
     place(world, g, K().woodfire, 'hearth', px, 0, pz, 1.1, 0, 0, D.propTint || D.wallTint);
@@ -284,7 +291,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   // Somewhere people STOPPED — the strongest signal a space was lived in.
   function wayshrine(world, x, z, ry, D) {
     if (GREY()) return null;
-    if (world.blocked(x, z, 1.1)) return null;
+    if (world.blocked(x, z, 1.1) || world.nearWater(x, z, 1.1)) return null;
     const g = new THREE.Group();
     place(world, g, K().arch, 'shrine', 0, 0, 0, 1.1, 0, 0, D.propTint || D.wallTint);
     place(world, g, K().pedestal, 'shrine', 0, 0, -0.2, 1.0, 0, 0, D.propTint || D.wallTint);
@@ -302,7 +309,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   // mid-room without taking the fighting floor away.
   function cartWreck(world, x, z, ry, D) {
     if (GREY()) return null;
-    if (world.blocked(x, z, 1.2)) return null;
+    if (world.blocked(x, z, 1.2) || world.nearWater(x, z, 1.2)) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 51 + z * 23));
     const P = D.propTint || D.floorTint;

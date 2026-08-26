@@ -144,6 +144,26 @@ export class World {
     (this._keepClear || (this._keepClear = [])).push({ x, z, r, tag });
   }
 
+  // WATER IS PAINT, NOT A COLLIDER — `blocked()` never sees it (ground.js's
+  // `patches` only tint the floor texture; the separate js/water.js system
+  // is what actually blocks a body, and only for `deep` zones, in a
+  // completely different this.waterZones array — see world.js's own field
+  // comment). So nothing placing decoration ever knew a `kind:'water'`
+  // patch was there, and a room author's hand-picked coordinates for a
+  // campfire or a ruin could land dead centre in one (real-play report:
+  // "random objects like campfires... in the middle of water. rocks only
+  // in water."). `shell()` records every water PATCH (this room's own
+  // ground-paint shape, in world.waterPatches — deliberately a different
+  // name/shape than the gameplay this.waterZones) as it builds; anything
+  // that shouldn't stand in water asks this before it places.
+  nearWater(x, z, pad = 0) {
+    for (const w of (this.waterPatches || [])) {
+      const dx = x - w.x, dz = z - w.z;
+      if (dx * dx + dz * dz < (w.r + pad) * (w.r + pad)) return true;
+    }
+    return false;
+  }
+
   // `why` — when true, returns the NAME of what claimed the ground instead of
   // just true. The sweep reports it, because "5 colliders dropped" tells you a
   // number and "dropped at (-7.2, 3.9), claimed by restSpot" tells you which
