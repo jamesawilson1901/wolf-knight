@@ -18,6 +18,8 @@ import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
+import { spawnRewardPop } from './loot.js';
+import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -658,6 +660,7 @@ class Enemy {
     // sometimes shadows leave a warm ember behind — a little half-heart heal
     const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
     if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
+    dropWeapon(this);
     this.world.root.remove(this.root);
   }
 
@@ -1360,8 +1363,17 @@ export class Bat extends Enemy {
         if (this.flyAction) this.flyAction.timeScale = 1;
       }
     } else if (this.state === 'hover') {
-      this.root.position.x += (this.home.x + Math.sin(t * 0.9 + this._seed) * 0.7 - this.x) * dt;
-      this.root.position.z += (this.home.z + Math.cos(t * 0.7 + this._seed) * 0.7 - this.z) * dt;
+      // FLYERS STILL HIT WALLS. "Flying free" (see _moveSolved's own
+      // comment) only ever meant free of lava — object collision was never
+      // meant to be optional, but hover/dive/return wrote straight to
+      // this.root.position and never routed through _moveSolved at all, so
+      // a hovering bat could drift straight through a rock, a Village hut,
+      // anything solid (real-play report: "enemies... going through
+      // physical objects").
+      const hs = this._moveSolved(
+        this.x + (this.home.x + Math.sin(t * 0.9 + this._seed) * 0.7 - this.x) * dt,
+        this.z + (this.home.z + Math.cos(t * 0.7 + this._seed) * 0.7 - this.z) * dt);
+      this.root.position.x = hs.x; this.root.position.z = hs.z;
       this.root.position.y = 1.4 + Math.sin(t * 2.6 + this._seed) * 0.15;
       this.root.rotation.y = Math.atan2(dx, dz);
       // only a token-holder may wind up a dive — the rest keep hovering
@@ -1394,16 +1406,25 @@ export class Bat extends Enemy {
       }
     } else if (this.state === 'dive') {
       const speed = 7.2; // playtest bump: dives demand a real dodge
-      this.root.position.x += this.diveDir.x * speed * dt;
-      this.root.position.z += this.diveDir.z * speed * dt;
+      const ds = this._moveSolved(this.x + this.diveDir.x * speed * dt, this.z + this.diveDir.z * speed * dt);
+      this.root.position.x = ds.x; this.root.position.z = ds.z;
       this.root.position.y = Math.max(0.45, this.root.position.y - dt * 2.2);
       this.contact(player, 1, { ground: false });
       if (this.stateT > 0.7) {
+        // A DIVE THAT ENDS IN LAVA STAYS AIRBORNE. landsAfterDive drops
+        // `flying` to false the instant the dive timer runs out, wherever
+        // that happened to be — no hazard check at all, so a dive aimed
+        // into Ember Hollow's lava channels could "land" a bat mid-pool,
+        // and grounded bats never move again, let alone re-check hazards
+        // (real-play report: "enemies walking over lava"). Landing on fire
+        // is now simply refused: the crash-land is skipped and it flies
+        // home instead, same as a moth's dive always has.
+        const landsSafely = this.landsAfterDive && !this.world.hazardAt(this.x, this.z);
         if (this.doubleDive && !this._didSecond) {
           this._didSecond = true;          // wheel around for a second swoop
           this.state = 'telegraph';
           this.stateT = 0.55;              // shortened re-aim
-        } else if (this.landsAfterDive) {
+        } else if (landsSafely) {
           this._didSecond = false;
           this.state = 'grounded';         // crash-landed and winded
           this.stateT = 0;
@@ -1430,8 +1451,8 @@ export class Bat extends Enemy {
       const hd = Math.hypot(hx, hz);
       if (hd < 0.3) { this.state = 'hover'; this.stateT = 0; }
       else {
-        this.root.position.x += (hx / hd) * 2.4 * dt;
-        this.root.position.z += (hz / hd) * 2.4 * dt;
+        const rs = this._moveSolved(this.x + (hx / hd) * 2.4 * dt, this.z + (hz / hd) * 2.4 * dt);
+        this.root.position.x = rs.x; this.root.position.z = rs.z;
         this.root.position.y = Math.min(1.5, this.root.position.y + dt);
         this.root.rotation.y = Math.atan2(hx, hz);
       }
@@ -3290,8 +3311,13 @@ export class Dragonling extends Enemy {
 
     if (this.state === 'hover') {
       if (this.actions.fly) this.actions.fly.timeScale = 0.35;
-      this.root.position.x += (this.home.x + Math.sin(t * 0.7 + this._seed) * 1.3 - this.x) * dt * 0.6;
-      this.root.position.z += (this.home.z + Math.cos(t * 0.55 + this._seed) * 1.3 - this.z) * dt * 0.6;
+      // Same fix as Bat/Moth (js/enemies.js): route through _moveSolved so a
+      // hovering/diving/returning dragonling stops flying straight through
+      // rocks, columns and dressed structures.
+      const hs = this._moveSolved(
+        this.x + (this.home.x + Math.sin(t * 0.7 + this._seed) * 1.3 - this.x) * dt * 0.6,
+        this.z + (this.home.z + Math.cos(t * 0.55 + this._seed) * 1.3 - this.z) * dt * 0.6);
+      this.root.position.x = hs.x; this.root.position.z = hs.z;
       this.root.position.y = 2.0 + Math.sin(t * 1.6 + this._seed) * 0.2;
       this.root.rotation.y = Math.atan2(dx, dz);
       const pv = player._vel ? Math.hypot(player._vel.x, player._vel.z) : 0;
@@ -3312,8 +3338,8 @@ export class Dragonling extends Enemy {
       }
     } else if (this.state === 'dive') {
       const speed = 8.0;
-      this.root.position.x += this.diveDir.x * speed * dt;
-      this.root.position.z += this.diveDir.z * speed * dt;
+      const ds = this._moveSolved(this.x + this.diveDir.x * speed * dt, this.z + this.diveDir.z * speed * dt);
+      this.root.position.x = ds.x; this.root.position.z = ds.z;
       this.root.position.y = Math.max(0.6, this.root.position.y - dt * 3.0);
       this.contact(player, 1, { ground: false });
       if (this.stateT > A.dragonling_dive.active) { this.state = 'return'; this.stateT = 0; }
@@ -3325,8 +3351,8 @@ export class Dragonling extends Enemy {
       this.root.position.y = Math.min(2.0, this.root.position.y + dt);
       if (hd < 0.4 && this.root.position.y >= 1.9) { this.state = 'hover'; this.stateT = 0; }
       else if (hd > 0.01) {
-        this.root.position.x += (hx / hd) * 3.0 * dt;
-        this.root.position.z += (hz / hd) * 3.0 * dt;
+        const rs = this._moveSolved(this.x + (hx / hd) * 3.0 * dt, this.z + (hz / hd) * 3.0 * dt);
+        this.root.position.x = rs.x; this.root.position.z = rs.z;
         this.root.rotation.y = Math.atan2(hx, hz);
       }
     }
@@ -3341,6 +3367,29 @@ export class Dragonling extends Enemy {
 // Ember drops: warm sparks fallen shadows sometimes leave behind.
 // Touch one to heal half a heart (fizzles after ~12s).
 // ---------------------------------------------------------------------------
+
+// A RANDOM WEAPON, SOMETIMES. Combat has never handed out gear at all —
+// only the Den shop and chests ever have — despite nothing standing in the
+// way: addGear() is a one-line push, and shopStock() already knows exactly
+// which weapons/shields have unlocked at this point in the story (real-play
+// report: "there are no random weapon drops"). A small, universal chance on
+// every kill, roughly doubled for the "always drops something" elite tier
+// (dropChance >= 1) — picks from what the shop would sell RIGHT NOW, so a
+// drop can never hand a five-year-old the Boulder Hammer three rooms into
+// the game, and never repeats gear already owned. Visible the same way a
+// chest's reward now is (giveLoot(), js/main.js) — spawnRewardPop, not a
+// silent inventory change.
+function dropWeapon(e) {
+  const base = e.dropChance !== undefined ? e.dropChance : 0.35;
+  const chance = base >= 1 ? 0.08 : 0.03;
+  if (Math.random() >= chance) return;
+  const pool = shopStock().filter((s) => (s.kind === 'weapon' || s.kind === 'shield') && !ownsGear(s.id));
+  if (!pool.length) return;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  addGear(pick.id);
+  const gd = (pick.kind === 'weapon' ? WEAPONS : SHIELDS)[pick.id];
+  spawnRewardPop(e.world, e.x, e.z, gd ? gd.icon : '🗡️');
+}
 
 function spawnEmberDrop(world, x, z) {
   if (!world.drops) world.drops = [];

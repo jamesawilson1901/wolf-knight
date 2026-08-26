@@ -94,8 +94,12 @@ for (const r of ladder) {
 }
 console.log('');
 
+// baseline is 2, not 1: the Den is now ALWAYS the first destination (a child
+// must be able to travel home to spend coin regardless of progress), so every
+// stage carries one more entry than it used to — the +1-per-region growth is
+// unchanged, only the floor moved.
 check('the moonstone grows one destination per region beaten',
-  ladder.map((r) => r.dest).join(',') === '1,2,3,4', { got: ladder.map((r) => r.dest) });
+  ladder.map((r) => r.dest).join(',') === '2,3,4,5', { got: ladder.map((r) => r.dest) });
 check('the pup total grows 3 → 6 → 9 → 12',
   ladder.map((r) => r.pupTotal).join(',') === '3,6,9,12', { got: ladder.map((r) => r.pupTotal) });
 

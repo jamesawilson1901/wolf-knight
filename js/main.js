@@ -21,7 +21,7 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
-import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop } from './loot.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -347,36 +347,32 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf'],
       emberDone: true, stoneDone: true, wildDone: true,
     },
-    // GREYBOX — not part of the played game. These two exist so a layout can
+    {
+      id: 's1a', label: '🌩️ Level 5 — Stormreach Cliffs',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true, borealDone: true,
+    },
+    {
+      id: 'd1a', label: '🌊 Level 6 — The Sunken Vale',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true, borealDone: true, ariaDone: true,
+    },
+    {
+      id: 'x1', label: '🌑 Level 7 — The Shadow Court',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true, borealDone: true, ariaDone: true, meriDone: true,
+    },
+    {
+      id: 'ysq', label: '🏘️ The Village (epilogue)',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true, borealDone: true, ariaDone: true, meriDone: true,
+      grimmDone: true,
+    },
+    // GREYBOX — not part of the played game. This one exists so a layout can
     // be walked and judged before a single art asset is placed (build order
-    // law). They stay in the cheat menu, behind the code, until dressed.
+    // law). It stays in the cheat menu, behind the code, until every region
+    // is dressed.
     { id: 'zoo', label: '📏 Metrics Zoo (greybox)', noSave: true, greybox: true },
-    {
-      id: 'la', label: '🧱 Level 1 REBUILD (greybox)',
-      forms: ['fire_wolf'], noSave: true, greybox: true,
-    },
-    {
-      id: 'la', label: '🎨 Level 1 REBUILD (dressed)',
-      forms: ['fire_wolf'], noSave: true, greybox: false,
-    },
-    {
-      id: 'vh', label: '🪨 Level 2 REBUILD (greybox)',
-      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: true,
-    },
-    {
-      id: 'vh', label: '💎 Level 2 REBUILD (dressed)',
-      forms: ['fire_wolf'], emberDone: true, noSave: true, greybox: false,
-    },
-    {
-      id: 't1a', label: '🌲 Level 3 REBUILD (greybox)',
-      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
-      noSave: true, greybox: true,
-    },
-    {
-      id: 't1a', label: '🍃 Level 3 REBUILD (dressed)',
-      forms: ['fire_wolf', 'earth_wolf'], emberDone: true, stoneDone: true,
-      noSave: true, greybox: false,
-    },
   ];
   const pad = document.getElementById('cheat-pad');
   const levels = document.getElementById('cheat-levels');
@@ -472,6 +468,15 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
         state.flags.plates.w3_p1 = true;
         state.flags.plates.w3_p2 = true;
       }
+      // L5-L7 and the Village only need the PRIOR boss's defeated flag —
+      // that alone is what each region's own entry door checks (moonstone
+      // travel gates on the same flags; the Village's Den door checks
+      // grimmFreed directly). No internal region state to backfill: unlike
+      // the Wild Woods, nothing past these doors is gated on anything else.
+      if (lvl.borealDone) state.flags.borealDefeated = true;
+      if (lvl.ariaDone) state.flags.ariaDefeated = true;
+      if (lvl.meriDone) state.flags.meriDefeated = true;
+      if (lvl.grimmDone) state.flags.grimmFreed = true;
       // the save follows the jump: Continue and respawns use the level start.
       // Greybox spaces deliberately do NOT — a kid who tapped the wrong thing
       // must not find their save parked in an untextured prototype.
@@ -1276,15 +1281,18 @@ function renderBuffs() {
 function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
+  let seat = 0; // several rewards from one chest fan out as they spring, not stack
   if (L.shards) lines.push(`🔸 ${L.shards}`);
   if (L.potion) {
     state.potions = Math.min(3, state.potions + L.potion);
     renderPotions(player);
     lines.push('🧪 potion');
+    spawnRewardPop(world, chest.x, chest.z, '🧪', seat++);
   }
   if (L.heartPiece) {
     state.inventory.heartPieces += L.heartPiece;
     lines.push('💗 heart piece');
+    spawnRewardPop(world, chest.x, chest.z, '💗', seat++);
     if (state.inventory.heartPieces >= 4) {
       state.inventory.heartPieces -= 4;
       state.maxHearts++;
@@ -1300,6 +1308,7 @@ function giveLoot(chest) {
     // found; the whole point of a chest is the moment you learn what was in it.
     const gd = WEAPONS[L.gear] || SHIELDS[L.gear];
     lines.push(gd ? `${gd.icon} ${gd.name}` : '🗡️ new gear');
+    spawnRewardPop(world, chest.x, chest.z, gd ? gd.icon : '🗡️', seat++);
   }
   // ARMOUR is found, not only bought — dad: "different weapons and armour that
   // you can find and equip".
@@ -1307,10 +1316,12 @@ function giveLoot(chest) {
     state.inventory.armours = state.inventory.armours || ['plain'];
     if (!state.inventory.armours.includes(L.armour)) state.inventory.armours.push(L.armour);
     lines.push(`${ARMOURS[L.armour].icon} ${ARMOURS[L.armour].name}`);
+    spawnRewardPop(world, chest.x, chest.z, ARMOURS[L.armour].icon, seat++);
   }
   if (L.key) {
     state.flags.keys[L.key] = true;
     lines.push('🗝️ ' + (L.keyName || 'a key'));
+    spawnRewardPop(world, chest.x, chest.z, '🗝️', seat++);
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }

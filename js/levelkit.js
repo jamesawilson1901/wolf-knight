@@ -371,6 +371,15 @@ export function makeBuilders({ kit, isGrey }) {
     // positions fails for rooms whose doors are all on one axis.
     world.halfW = spec.w / 2;
     world.halfD = spec.d / 2;
+    // record every water PATCH (ground-paint kind:'water' — decorative,
+    // this room's own visual shape), in BOTH costumes: decoration only
+    // places in dressed mode, but the shape is the same either way. NOT
+    // the same thing as world.waterZones (js/water.js's real gameplay
+    // deep/shallow zones, a totally different {minX,maxX,minZ,maxZ,deep}
+    // shape, already consumed by player.js and boss.js) — named
+    // differently on purpose after finding that out the hard way.
+    world.waterPatches = (opts.patches || []).filter((p) => p.kind === 'water')
+      .map((p) => ({ x: p.x, z: p.z, r: p.r }));
     return GREY()
       ? protoShell(world, spec.w, spec.d, gaps, D.tint)
       : dressShell(world, spec.w, spec.d, gaps, D, opts);

@@ -6,6 +6,57 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 export const manager = new THREE.LoadingManager();
 const gltfLoader = new GLTFLoader(manager);
 
+// KHR_materials_pbrSpecularGlossiness — the diffuse-texture side only.
+//
+// This vendored GLTFLoader (see its own header comment listing supported
+// KHR_materials_* extensions) has never supported this one — it's the
+// legacy Sketchfab-era workflow, superseded by pbrMetallicRoughness years
+// ago, but several free packs in assets/ were exported with it anyway
+// (chest-kit.glb — the standing chest every room uses — plus two unused
+// props). Per the glTF spec an unrecognised extension is silently ignored,
+// so the loader fell through to its own default: no baseColorTexture, a
+// flat white baseColorFactor. Every chest in the game has been rendering
+// flat white with no wood-grain texture since the chest kit was wired in —
+// invisible in a screenshot review, obvious the moment someone actually
+// played (real-play report: "chests are white with no texture").
+//
+// Full spec compliance means converting a specular+glossiness workflow
+// into three.js's metallic-roughness `MeshStandardMaterial` — this game's
+// low-poly, flat-shaded style has no need for that precision. Wiring the
+// diffuse texture and colour through as `map`/`color` and leaving
+// metalness/roughness at sensible flat-material defaults reads correctly
+// at this game's visual fidelity, and needs no shader math to get there.
+class KHRMaterialsPBRSpecularGlossiness {
+  constructor(parser) {
+    this.parser = parser;
+    this.name = 'KHR_materials_pbrSpecularGlossiness';
+  }
+  _ext(materialIndex) {
+    const def = this.parser.json.materials[materialIndex];
+    return (def.extensions && def.extensions[this.name]) || null;
+  }
+  getMaterialType(materialIndex) {
+    return this._ext(materialIndex) ? THREE.MeshStandardMaterial : null;
+  }
+  extendMaterialParams(materialIndex, materialParams) {
+    const ext = this._ext(materialIndex);
+    if (!ext) return Promise.resolve();
+    const pending = [];
+    const d = ext.diffuseFactor || [1, 1, 1, 1];
+    materialParams.color = new THREE.Color().setRGB(d[0], d[1], d[2], THREE.LinearSRGBColorSpace);
+    materialParams.opacity = d[3] !== undefined ? d[3] : 1.0;
+    if (ext.diffuseTexture !== undefined) {
+      pending.push(this.parser.assignTexture(materialParams, 'map', ext.diffuseTexture, THREE.SRGBColorSpace));
+    }
+    // no metallic-roughness equivalent in this workflow — a flat, mostly
+    // matte prop reads right at this game's fidelity without one
+    materialParams.metalness = 0.1;
+    materialParams.roughness = 1 - (ext.glossinessFactor !== undefined ? ext.glossinessFactor : 1) * 0.5;
+    return Promise.all(pending);
+  }
+}
+gltfLoader.register((parser) => new KHRMaterialsPBRSpecularGlossiness(parser));
+
 const gltfCache = new Map();
 
 // Everything a loaded GLB owns is SHARED across every room that uses it, so it
