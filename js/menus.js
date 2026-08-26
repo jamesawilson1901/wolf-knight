@@ -220,6 +220,11 @@ export class Menus {
     const row = document.createElement('div');
     row.className = 'map-rooms';
     const spots = [
+      // ALWAYS AVAILABLE — the moonstone is what a child taps to get home
+      // and spend shards without walking the whole way back. It was missing
+      // entirely: every region the moonstone could reach OUT to, none of
+      // them could reach back to the Den.
+      { room: 'den', name: 'The Den', icon: '🏡' },
       { room: 'r1', name: 'Ember Hollow', icon: '🔥' },
       ...(regionCleared('ember') ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
       ...(regionCleared('stoneroot') ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
