@@ -209,3 +209,197 @@ Suites green is necessary, never sufficient. The final gate for anything
 player-facing is a person playing it — the measured game and the felt game
 are different instruments, and this project's best bug reports have all
 come from the second one.
+
+---
+
+## 8 · The full sweep runs in CI, sharded
+
+The repo is public, so GitHub Actions is free — and public-repo workflows
+run on 4-vCPU / 16 GB runners. The full fleet, split across an 8-way shard
+matrix (`.github/workflows/verify.yml`), finishes the sweep in under an
+hour wall-clock instead of the serial ~2h40m (real first-run numbers in
+§10).
+
+**The `--par` failure class cannot occur here, by construction.** Each shard
+is its own virtual machine running its suites *serially*
+(`verify-all.sh --shard K/8`). There is no shared CPU to contend for, so
+there is no parallel-load false failure and no trust rule to remember for
+the sweep. Parallelism between machines, serial within each — that is the
+shape parallel verification should always have had.
+
+The workflow:
+
+- **`quick`** — runs `verify-all.sh --quick` on every push, any branch. This
+  is also how a branch proves the workflow itself works before merge,
+  because…
+- **`sweep`** — the full sharded fleet — runs nightly (cron `0 14 * * *`,
+  UTC ≈ midnight Brisbane) and on manual `workflow_dispatch`. Both of those
+  triggers only fire from `main`, so the sweep cannot be exercised on a
+  branch: the branch's green `quick` job is the evidence that earns the
+  merge.
+- Sharding lives in `verify-all.sh --shard K/N` (every `verify-*.mjs` file,
+  sorted alphabetically, assigned round-robin), not in the workflow, so
+  local and CI run the exact same code and cannot drift. `K` is 1-indexed.
+- The static server is started as its **own step** with a `curl` health
+  check — §2's rule, unchanged in CI.
+- **Every failure gets one automatic serial re-run — everywhere, not just
+  under `--par`.** This lives inside `verify-all.sh`'s `run()` itself now,
+  so `--shard`, the plain serial default, and a named suite all get it for
+  free, not just `--par`'s parallel-then-serial path. Only the LAST
+  attempt's verdict counts toward the exit code; every attempt is logged
+  to the timing table. This ports §2's trust rule into the runner and
+  absorbs environmental flake (OOM, a slow first asset fetch) without
+  hiding a real failure — a suite that is actually broken fails the
+  re-run too. A suite listed in `tools/known-fail.txt` is never retried
+  at all (retrying a documented, expected failure just burns CI minutes
+  nightly).
+- Screenshots, the serve log, and per-suite logs upload as artifacts on
+  every run (`actions/upload-artifact`, 5-day retention). The job summary
+  prints the per-suite timing table for that shard (see §10 — the
+  slowest suites are first in line for clock conversion).
+
+**The known-fail manifest** (`tools/known-fail.txt`). A nightly sweep that
+is permanently red teaches everyone to ignore it — that is how two regions
+played the wrong music for weeks. A failure that has been *proven
+pre-existing* (§6's `git worktree` rule) goes in the manifest with the
+suite name, the reason, and the date it was proven. The runner reports it
+as an expected `KNOWN-FAIL`, not a red `FAIL`, and it counts toward
+`passed`. An entry that unexpectedly *passes* prints a "stale known-fail"
+warning (visible, not red) so the list cannot rot. Red must always mean
+new information.
+
+Seeded with one entry: `verify-density.mjs`'s "island shows at least 32
+things on arrival" check fails on rooms `va1`/`vc1`. Re-proven 2026-08-28
+via `git worktree` against a clean `origin/main` checkout — no change in
+flight causes it.
+
+**Sharding balances by suite COUNT, not by known weight — this showed up
+on the very first real sweep.** Round-robin over an alphabetically sorted
+list put `verify-density.mjs` (the slowest single suite the sandbox has
+ever measured, ~7-8 minutes) in the same shard as several other
+non-trivial suites (`verify-l2-warden`, `verify-level2-progress`,
+`verify-route`, `verify-timing`), and that shard ran 58 minutes against a
+15-33 minute range for the rest. Nothing was wrong — every suite in it
+passed — the shard was just unlucky. A future improvement: sort suites by
+their own most recent timing-table entry before assigning them round-robin,
+so shards balance by wall-clock weight instead of headcount.
+
+---
+
+## 9 · Launch flags that keep the harness alive
+
+Two flags are now mandatory on every Chromium launch, and they live in
+exactly one place — `tools/launch.mjs`, which every `verify-*.mjs` suite
+(and the small set of permanent dev-tool scripts, and `wk-drive.mjs`'s own
+shared `launch()`) imports `launchBrowser()` from instead of calling
+`chromium.launch()` with its own copy of the args. Flags scattered
+per-suite are how one file silently drifts — before this pass,
+`verify-pups.mjs` and two dev-tool scripts were quietly missing
+`--autoplay-policy`, and nobody had noticed.
+
+- **`--disable-dev-shm-usage`.** Chromium puts shared memory in `/dev/shm`,
+  which is tiny (typically 64 MB) in containers; when it runs out, a
+  renderer process is OOM-killed. That is the §5 symptom — headless
+  Chromium dying mid-run *at a different point each retry* — diagnosed,
+  not just worked around: the flag routes shared memory to `/tmp`, which
+  has the machine's real memory behind it.
+- **`--enable-unsafe-swiftshader`.** Chromium is removing automatic
+  software-WebGL fallback; headless/no-GPU use is opt-in only. Without the
+  flag, a future Playwright/Chromium bump fails every suite with
+  context-creation errors that cosplay as N simultaneous game bugs. The
+  flag is harmless on versions that don't need it yet.
+
+**The renderer assertion.** `tools/launch.mjs` exports `assertWebGL(page)`;
+`verify-boot` calls it right after the page loads and prints the active
+WebGL renderer string on every run, failing loudly, naming the cause, if
+context creation failed. When the browser changes underneath us, the first
+line of the first suite says so — nothing downstream gets to fail
+mysteriously first. Verified live: with the static server deliberately
+stopped, `node tools/verify-boot.mjs` throws immediately with
+`net::ERR_CONNECTION_REFUSED` and the exact file:line — loud and named,
+never a silent hang.
+
+**Portability.** `tools/launch.mjs`'s `EXECUTABLE_PATH` only points at this
+sandbox's pre-installed Chromium (`/opt/pw-browsers/chromium`) when that
+path actually exists; otherwise it's omitted and Playwright resolves
+whatever `npx playwright install chromium` set up (CI, or any other
+machine). A `PLAYWRIGHT_CHROMIUM_PATH` env var overrides either default.
+This was found live: the launcher as first written hardcoded the sandbox
+path unconditionally, which would have failed every suite on a GitHub
+Actions runner before a single line of game code was ever exercised.
+
+**Browser recycling on long drivers.** Checked for a persistent
+overnight/long-run driver script in `tools/` — found none. `wk-drive.mjs`
+is a shared `launch()`/helper library that `run-l1.mjs`…`run-l7.mjs` and
+the `fight-*.mjs` scripts each import once per bounded, single-region
+invocation; none of them loop for dozens of legs inside one long-lived
+process. `verify-playthrough.mjs` is the closest thing (many "legs" — real
+walked room-to-room transitions — inside one continuous browser session)
+but it is a bounded suite (the long pole in shard 7's first real run — see
+§8), not an unbounded/overnight run, and its whole point is a *continuous*
+simulated walk — recycling the browser mid-playthrough would break the
+exact continuity the suite exists to test, for no benefit at that runtime.
+If a genuine overnight multi-hour driver is built later, it should close
+and relaunch the browser roughly every 10 legs and log `free -h` at each
+recycle, same as this section originally specified.
+
+**Playwright is pinned exact** (`tools/package.json`, `1.56.1`; a
+`tools/package-lock.json` locks the rest of the tree — the pin lives with
+the tooling in `tools/`, not a root `package.json`, so the shipped
+no-build PWA stays exactly that, per CLAUDE.md). Reason on record:
+Playwright 1.57 switched its default browser to Chrome for Testing, with a
+dramatic memory-usage regression that crashes parallel runs. Upgrades are
+deliberate: bump on a branch, run one shard green, then the fleet.
+
+---
+
+## 10 · First real sweep (2026-08-28) and what's still adopted-not-built
+
+The first full sharded sweep (`workflow_dispatch`, run
+[33217236982](https://github.com/jamesawilson1901/wolf-knight/actions/runs/33217236982))
+ran all 8 shards plus `quick` green on the first attempt. Wall-clock from
+dispatch to the last shard finishing: **~59 minutes** (22:33 → 23:32 UTC) —
+well under the serial ~2h40m, though short of "tens of minutes" until
+sharding is weight-balanced (§8). Per-shard wall-clock (setup + suites):
+
+| Shard | Wall-clock | Notes |
+|---|---|---|
+| 6/8 | 3m44s | |
+| 1/8 | 5m28s | |
+| 3/8 | 8m03s | |
+| 8/8 | 23m17s | |
+| 5/8 | 25m08s | |
+| 2/8 | 32m45s | |
+| 4/8 | 33m29s | |
+| 7/8 | **58m25s** | contains `verify-density.mjs` (~7-8min alone) + several other non-trivial suites — see §8 |
+| `quick` | 11m17s | includes `verify-density.mjs` |
+
+**Adopted, awaiting build.** Direction locked; each item moves up into
+practice when it lands. None of these shipped in the test-infra hardening
+pass (§8-9 above) — that pass was launcher/CI/manifest work only,
+deliberately scoped away from suite internals.
+
+- **Deterministic clock stepping (`page.clock`).** Playwright's fake clock
+  overrides `Date`, timers, `requestAnimationFrame`, and `performance` —
+  the loop's whole timing surface. Suites install it and drive the *real*
+  loop with `clock.runFor()`: real input paths, a deterministic 1/60
+  clock, no wall-clock waits on telegraphs or ceremonies. Two traps
+  pre-recorded: use `runFor`, never `fastForward` (which fires due timers
+  at most once — wrong for a game loop); and `waitForFunction` polls real
+  time while fake time stands still, so waits become advance-then-assert
+  loops. This also closes a validity gap: under SwiftShader every suite
+  currently runs at the clamped `dt = 0.05` — a frame rate no child's
+  device has. Stepped runs test true 60 fps timing.
+- **On-device perf recorder.** A `?dev=1` ring buffer of rAF deltas →
+  p50/p95/p99, longest frame, and `renderer.info.render.calls` per room,
+  as an overlay plus an export button. Budgets are measured, not
+  estimated — and the iPad 6 / Moto G04 jank gets numbers instead of
+  vibes.
+- **Global `?seed=`.** `Math.random` patched to seeded mulberry32 under
+  dev (the spawn director already works this way). With the stepped clock
+  this makes runs fully reproducible; a failing run's seed belongs in the
+  commit's evidence line.
+
+Per-suite timings from the sweep's job-summary tables decide the order
+clock conversion happens in: slowest first — `verify-density.mjs` and
+`verify-playthrough.mjs` are the clearest candidates from this first run.
