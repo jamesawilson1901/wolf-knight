@@ -1,0 +1,10 @@
+{
+  "name": "wolfknight-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Verification tooling only. Deliberately NOT a root package.json — the shipped game is a static PWA with no bundler and no build step (CLAUDE.md), and this file must never change that. `npm ci` here installs exactly what tools/*.mjs needs to run.",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
