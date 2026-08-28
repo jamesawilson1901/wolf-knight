@@ -6,11 +6,10 @@
 // block from the front, the stomp really does break it, and the punish really
 // does land — plus that the break ANNOUNCES itself, which is the part that
 // was missing.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 const errors = [];
 const check = (n, ok, d) => { console.log((ok?'✓ ':'✗ ')+n, d!==undefined?JSON.stringify(d):''); if(!ok) errors.push(n); };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e)=>errors.push('PAGEERROR: '+e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

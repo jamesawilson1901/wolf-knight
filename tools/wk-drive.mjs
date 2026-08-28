@@ -8,7 +8,7 @@
 // (a PNG of a single colour compresses far below any real world frame) and a
 // flat frame THROWS: it is a render failure, never evidence. FLAT_KB is
 // calibrated to the 740x360 viewport — recalibrate if the viewport changes.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 import { mkdirSync, statSync, appendFileSync } from 'fs';
 
 // 740x360 matches every verify-* suite; the old 960x480 drew 73% more pixels
@@ -17,9 +17,7 @@ const VW = 740, VH = 360;
 const FLAT_KB = 26; // calibrated: a real in-game frame at 740x360 measures ~200KB; single-colour frames compress under 10
 
 export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-      '--autoplay-policy=no-user-gesture-required'] });
+  const b = await launchBrowser();
   // FRESH CONTEXT, ALWAYS: no storage, no service worker, no cached build.
   const ctx = await b.newContext({ viewport: { width: VW, height: VH } });
   const page = await ctx.newPage();

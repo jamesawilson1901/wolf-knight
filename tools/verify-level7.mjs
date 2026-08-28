@@ -6,7 +6,7 @@
 // room table — a door typo makes a level that still boots, still looks right,
 // and cannot be finished. So this builds all twenty spaces through the real
 // loader and walks them.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -14,9 +14,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

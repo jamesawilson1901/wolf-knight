@@ -21,7 +21,7 @@
 // player is known and constant — 22.2u wide at Kael, 12.9u ahead of him, 4.5u
 // behind. Every room is therefore checked at its own SPAWN POINT, in the exact
 // frame that opens when a child walks in.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 // design/METRICS.md, measured (C3), at the shipping 740x360 landscape aspect
 const AHEAD = 12.9, BEHIND = 4.5, HALF_W = 22.2 / 2;
@@ -37,9 +37,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

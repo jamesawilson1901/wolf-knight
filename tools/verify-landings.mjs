@@ -22,7 +22,7 @@
 //      destination's own door trigger and the door fires on the next frame —
 //      they get bounced somewhere they did not choose, usually straight back,
 //      which is a room you cannot enter.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -32,9 +32,7 @@ const check = (n, ok, d) => {
 
 const ROOMS = ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le', 'vh', 'vga', 'va1', 'va2', 'vap', 'va3', 'vgb', 'vb1', 'vb2', 'vbp', 'vb3', 'vgc', 'vc1', 'vc2', 'vcp', 'vc3', 'vz', 't1a', 't1b', 't1p', 'tc1', 't2a', 't2b', 't2p', 'tsh', 'tc2', 't3a', 't3b', 't3p', 'tkn', 'tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl', 's1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2', 's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'd1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2', 'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp', 'x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3', 'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'];
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

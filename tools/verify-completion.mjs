@@ -17,7 +17,7 @@
 // record deliberately wiped, because that is the fault: what a child can travel
 // to must not depend on a line of dialogue. The NARRATION half stands Kael on
 // each rebuilt arena's real marker and asserts the line still speaks.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -25,11 +25,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'],
-});
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

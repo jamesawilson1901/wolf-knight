@@ -15,7 +15,7 @@
 //   2. EVERY DOOR CAN BE WALKED THROUGH. Real stick, real movement code,
 //      arriving in the right room — because a door that fires but cannot be
 //      reached (lava, a prop, a hole) is the bug dad actually hit.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -26,9 +26,7 @@ const check = (n, ok, d) => {
 const L1 = ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3',
   'ld', 'ld1', 'lg4', 'le'];
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));

@@ -9,7 +9,7 @@
 //
 //   Run:  (nohup python3 -m http.server 8901 &) ; node tools/verify-level2.mjs
 //   Add:  --dressed   to check the art costume instead of the greybox
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const DRESSED = process.argv.includes('--dressed');
 const errors = [];
@@ -18,11 +18,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'],
-});
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

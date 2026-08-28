@@ -1,0 +1,23 @@
+# KNOWN-FAIL MANIFEST (test-infra job 4).
+#
+# A nightly sweep that is permanently red teaches everyone to ignore it —
+# that is how two regions played the wrong music for weeks (docs/TESTING.md
+# §1). A failure that has been PROVEN pre-existing (§6's git-worktree rule:
+# check out live main in a worktree, run the suite there, watch it fail the
+# same way) goes here instead of turning the sweep red for something no
+# change in flight caused.
+#
+# Format, one entry per line, pipe-separated:
+#   suite.mjs | reason | YYYY-MM-DD proven
+#
+# verify-all.sh reads this: a listed failure reports as an expected
+# KNOWN-FAIL (green), not a red FAIL, and is never retried (retrying a
+# documented, expected failure just burns CI minutes every night). A listed
+# suite that unexpectedly PASSES reports as a "stale known-fail" warning —
+# visible, but not red — so this list cannot quietly rot into a lie either.
+#
+# Removing an entry: once the underlying room/system is actually fixed, the
+# suite will show as a stale known-fail on its own; delete the line then,
+# don't wait for someone to notice the warning.
+
+verify-density.mjs | "island (kind) shows at least 32 things on arrival" fails on va1 and vc1 — reproduced against a clean checkout of live main (git worktree, no changes from any branch in flight), so this predates every change in this repository's current history and is not caused by anything under test | 2026-08-28

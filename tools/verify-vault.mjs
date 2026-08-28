@@ -13,7 +13,7 @@
 // so the one line that earns it had never been run by anything, ever.
 //
 // This plays them. Real form, real special button, real markers.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -21,9 +21,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));

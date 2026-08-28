@@ -9,7 +9,7 @@
 // The assertion that matters is not "the string is right" but ROUTE
 // INDEPENDENCE: the same arena must behave identically whichever door you walk
 // through. So this reaches `tgl` both ways and compares.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 import { readFileSync } from 'fs';
 
 const errors = [];
@@ -54,8 +54,7 @@ const check = (n, ok, d) => {
   console.log(`  (${retired.size} retired ids in the table)`);
 }
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
