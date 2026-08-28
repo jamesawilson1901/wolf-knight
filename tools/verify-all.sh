@@ -20,43 +20,106 @@
 #   sh tools/verify-all.sh                    everything, serial (~2h40m measured)
 #   sh tools/verify-all.sh --par              everything, 3 suites at a time
 #   sh tools/verify-all.sh --quick            boot, density, music
+#   sh tools/verify-all.sh --shard 2/8        1/8th of the suites, serial, deterministic
 #   sh tools/verify-all.sh verify-level3.mjs  boot + that one
+#
+# EVERY FAILURE GETS ONE AUTOMATIC SERIAL RE-RUN (test-infra job 3): only the
+# LAST attempt's verdict counts toward PASS/FAIL/exit code, and every attempt
+# is logged. This absorbs environmental flake (OOM, a slow first asset fetch)
+# without hiding a real failure — a suite that is actually broken fails the
+# re-run too. Exception: a suite already listed in tools/known-fail.txt is
+# never retried (retrying a documented, expected failure just burns CI
+# minutes every single night).
 #
 # --par exists because the serial sweep measured 2h39m (run-2 report) on a
 # 4-core box where each suite is its own browser. Three at once contend for
-# CPU, so a suite CAN flake under load that would pass alone: any --par FAIL
-# must be re-run serially before it is believed (gate-triage rule). The three
-# frame-timing-sensitive suites always run serial, after the parallel batch.
+# CPU, so a suite CAN flake under load that would pass alone — its serial
+# re-run runs alone, contention gone, and per the rule above only THAT
+# verdict counts.
+#
+# --shard exists for CI (docs/TESTING.md §8): each of N shards is its own
+# machine running serially, so the --par false-failure class cannot occur
+# there by construction — parallelism between machines, serial within each.
+# The suite list is sorted and assigned round-robin, so the same K/N always
+# gets the same suites regardless of when or where it runs.
 #
 # The static server must be up: (nohup node tools/serve.mjs &)
 cd "$(dirname "$0")/.."
 PASS=0; FAIL=0; FAILED=""
-run() {
-  [ -f "tools/$1" ] || { printf '%-26s SKIP (no such file)\n' "$1"; return; }
-  printf '%-26s ' "$1"
+TIMES="/tmp/vall-times.$$"; : > "$TIMES"
+KNOWN_FAIL="tools/known-fail.txt"
+STALE_KNOWN_FAIL=""
+
+# Is this suite's failure already proven pre-existing (job 4)? Format per
+# line: "suite.mjs | reason | YYYY-MM-DD". Comments (#) and blanks skipped.
+is_known_fail() {
+  [ -f "$KNOWN_FAIL" ] || return 1
+  awk -F'|' -v t="$1" '!/^#/ && NF>=1 { gsub(/^[ \t]+|[ \t]+$/, "", $1); if ($1 == t) found=1 } END { exit !found }' "$KNOWN_FAIL"
+}
+
+record() { # record NAME VERDICT SECONDS ATTEMPT-TAG
+  printf '%s %s %s %s\n' "$1" "$2" "$3" "$4" >> "$TIMES"
+}
+
+# ONE attempt at a suite. Sets ATT_V (PASS/FAIL) and ATT_S (seconds). Never
+# touches PASS/FAIL/TIMES itself — every caller decides what an attempt means.
+attempt() {
   START=$(date +%s)
-  if node "tools/$1" > "/tmp/vall-$1.log" 2>&1; then
-    printf 'PASS  %ss\n' "$(( $(date +%s) - START ))"; PASS=$((PASS+1))
+  if node "tools/$1" > "/tmp/vall-$1.log" 2>&1 || grep -q "ALL CLEAN" "/tmp/vall-$1.log" 2>/dev/null; then
+    ATT_V=PASS
   else
-    if grep -q "ALL CLEAN" "/tmp/vall-$1.log" 2>/dev/null; then
-      printf 'PASS  %ss\n' "$(( $(date +%s) - START ))"; PASS=$((PASS+1))
-    else
-      printf 'FAIL  (/tmp/vall-%s.log)\n' "$1"; FAIL=$((FAIL+1)); FAILED="$FAILED $1"
-    fi
+    ATT_V=FAIL
+  fi
+  ATT_S=$(( $(date +%s) - START ))
+}
+
+# Turns a FINAL verdict (already decided — retries, if any, are done) into
+# the printed line + PASS/FAIL tally + timing-table record. Shared by every
+# code path so known-fail/stale-known-fail handling can't drift between them.
+report_verdict() {
+  t="$1"; v="$2"; s="$3"
+  if [ "$v" = FAIL ] && is_known_fail "$t"; then
+    printf 'KNOWN-FAIL  %ss  (%s)\n' "$s" "$KNOWN_FAIL"; PASS=$((PASS+1)); record "$t" KNOWN-FAIL "$s" final
+  elif [ "$v" = PASS ] && is_known_fail "$t"; then
+    printf 'PASS  %ss  (STALE known-fail entry — remove it from %s)\n' "$s" "$KNOWN_FAIL"
+    PASS=$((PASS+1)); STALE_KNOWN_FAIL="$STALE_KNOWN_FAIL $t"; record "$t" PASS "$s" final
+  elif [ "$v" = PASS ]; then
+    printf 'PASS  %ss\n' "$s"; PASS=$((PASS+1)); record "$t" PASS "$s" final
+  else
+    printf 'FAIL  (/tmp/vall-%s.log)\n' "$t"; FAIL=$((FAIL+1)); FAILED="$FAILED $t"; record "$t" FAIL "$s" final
   fi
 }
 
-# --one is --par's worker: same pass rule as run(), verdict to a result file.
-if [ "$1" = "--one" ]; then
-  t="$2"; RDIR="$3"
-  START=$(date +%s)
-  if node "tools/$t" > "/tmp/vall-$t.log" 2>&1 || grep -q "ALL CLEAN" "/tmp/vall-$t.log" 2>/dev/null; then
-    echo "PASS $(( $(date +%s) - START ))" > "$RDIR/$t"
-  else
-    echo "FAIL $(( $(date +%s) - START ))" > "$RDIR/$t"
+# The ordinary way to run one suite: one attempt, and — unless it is already a
+# documented known-fail — one automatic serial re-run if that attempt failed.
+run() {
+  [ -f "tools/$1" ] || { printf '%-26s SKIP (no such file)\n' "$1"; return; }
+  t="$1"
+  printf '%-26s ' "$t"
+  attempt "$t"
+  if [ "$ATT_V" = FAIL ] && ! is_known_fail "$t"; then
+    record "$t" FAIL "$ATT_S" attempt1
+    printf 'FAIL (%ss) — retrying serially...  ' "$ATT_S"
+    attempt "$t"
   fi
+  report_verdict "$t" "$ATT_V" "$ATT_S"
+}
+
+# --one is --par's worker: one bare attempt, verdict to a result file. No
+# retry here — the retry is the whole point of the serial re-run back in the
+# parent, which is the ONLY other attempt --par ever makes (job 3: parallel +
+# one serial re-run, exactly two attempts total, never three).
+if [ "$1" = "--one" ]; then
+  attempt "$2"
+  echo "$ATT_V $ATT_S" > "$3/$2"
   exit 0
 fi
+
+# Every suite file that exists, sorted — the one deterministic source both
+# --shard and the "unlisted suites" guard read from.
+sorted_suite_files() {
+  for f in tools/verify-*.mjs; do basename "$f"; done | grep -v '^verify-boot\.mjs$' | sort
+}
 
 # Boot first, always: twenty seconds, and it catches the errors that make every
 # other result meaningless.
@@ -66,6 +129,18 @@ case "$1" in
   --quick)
     run verify-density.mjs
     run verify-music.mjs
+    ;;
+  --shard)
+    KN="$2"
+    K=$(echo "$KN" | cut -d/ -f1); N=$(echo "$KN" | cut -d/ -f2)
+    case "$K$N" in *[!0-9]*|'') echo "usage: --shard K/N (e.g. --shard 2/8)"; exit 2 ;; esac
+    if [ "$K" -lt 1 ] || [ "$K" -gt "$N" ]; then echo "K must be between 1 and N ($KN)"; exit 2; fi
+    i=0
+    for t in $(sorted_suite_files); do
+      i=$((i + 1))
+      shard=$(( (i - 1) % N + 1 ))
+      [ "$shard" = "$K" ] && run "$t"
+    done
     ;;
   --par)
     # The suite list is PARSED FROM THE SERIAL BLOCK BELOW — one list, no rot.
@@ -81,15 +156,34 @@ case "$1" in
     done
     RDIR="/tmp/vall-par.$$"; mkdir -p "$RDIR"
     printf '%s\n' $PARLIST | xargs -P 3 -I{} sh "$0" --one {} "$RDIR"
+    FIRST_FAILED=""
     for t in $PARLIST; do
       if [ -f "$RDIR/$t" ]; then read -r V S < "$RDIR/$t"; else V=FAIL; S='?'; fi
-      printf '%-26s %s  %ss\n' "$t" "$V" "$S"
-      if [ "$V" = "PASS" ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); FAILED="$FAILED $t"; fi
+      printf '%-26s %s  %ss  (parallel attempt)\n' "$t" "$V" "$S"
+      record "$t" "$V" "$S" parallel
+      [ "$V" = "FAIL" ] && FIRST_FAILED="$FIRST_FAILED $t"
     done
+    rm -rf "$RDIR"
     for t in $TAIL; do
       echo "$ALL" | grep -qx "$t" && run "$t"
     done
-    rm -rf "$RDIR"
+    # THE RE-RUN. Any suite that failed in the parallel batch gets EXACTLY ONE
+    # serial re-run — CPU contention is gone, it's alone now — and per job 3
+    # only this verdict feeds PASS/FAIL/exit code. A known-fail doesn't need
+    # re-proving; it goes straight to report_verdict.
+    if [ -n "$FIRST_FAILED" ]; then
+      echo
+      echo "re-running serially, failed under --par:$FIRST_FAILED"
+      for t in $FIRST_FAILED; do
+        printf '%-26s ' "$t"
+        if is_known_fail "$t"; then
+          report_verdict "$t" FAIL 0
+        else
+          attempt "$t"
+          report_verdict "$t" "$ATT_V" "$ATT_S"
+        fi
+      done
+    fi
     ;;
   '')
     # THE ONES THAT ANSWER "IS IT A GAME" come first, because a failure here
@@ -167,7 +261,8 @@ esac
 # AND A GUARD AGAINST THIS FILE ROTTING THE SAME WAY. A verifier that exists
 # but is not listed here is a verifier nobody runs, which is where this started.
 # --par parses its list from the serial block, so guarding the serial block
-# guards both modes.
+# guards both modes. --shard reads the sorted file list directly, so it is
+# never short a suite even if this guard is what catches the gap.
 if [ -z "$1" ] || [ "$1" = "--par" ]; then
   MISSING=""
   for f in tools/verify-*.mjs; do
@@ -179,6 +274,20 @@ if [ -z "$1" ] || [ "$1" = "--par" ]; then
     echo "NOT RUN BY THIS SCRIPT — add them:$MISSING"
     FAIL=$((FAIL+1)); FAILED="$FAILED unlisted-suites"
   fi
+fi
+
+# THE TIMING TABLE (job 3). Slowest FINAL-verdict attempt first — that is the
+# order clock-conversion work (TESTINGADDENDUM.md §10) should happen in.
+if [ -s "$TIMES" ]; then
+  echo
+  echo "timing (slowest first):"
+  awk '$4 == "final" || $4 == "parallel" { printf "%-26s %-10s %6ss  %s\n", $1, $2, $3, $4 }' "$TIMES" | sort -t' ' -k3 -rn
+fi
+rm -f "$TIMES"
+
+if [ -n "$STALE_KNOWN_FAIL" ]; then
+  echo
+  echo "STALE KNOWN-FAIL (now passing — remove from $KNOWN_FAIL):$STALE_KNOWN_FAIL"
 fi
 
 echo

@@ -21,8 +21,18 @@
 //                               game bugs. Harmless on versions that don't
 //                               need it yet.
 import { chromium } from 'playwright';
+import { existsSync } from 'fs';
 
-export const EXECUTABLE_PATH = '/opt/pw-browsers/chromium';
+// This sandbox pre-installs Chromium at a fixed path outside Playwright's own
+// cache. CI (and any other environment) instead runs `npx playwright install
+// chromium`, which puts the browser wherever Playwright's own cache lives —
+// so EXECUTABLE_PATH is used only when it actually exists; everywhere else
+// `executablePath` is simply omitted and Playwright resolves its own
+// install. An env var lets a real deployment pin something else entirely.
+const SANDBOX_PATH = '/opt/pw-browsers/chromium';
+export const EXECUTABLE_PATH =
+  process.env.PLAYWRIGHT_CHROMIUM_PATH ||
+  (existsSync(SANDBOX_PATH) ? SANDBOX_PATH : undefined);
 
 export const LAUNCH_ARGS = [
   '--use-gl=angle',
@@ -38,7 +48,7 @@ export const LAUNCH_ARGS = [
 export async function launchBrowser(opts = {}) {
   const { args, ...rest } = opts;
   return chromium.launch({
-    executablePath: EXECUTABLE_PATH,
+    ...(EXECUTABLE_PATH ? { executablePath: EXECUTABLE_PATH } : {}),
     headless: true,
     ...rest,
     args: args ? [...LAUNCH_ARGS, ...args] : LAUNCH_ARGS,
@@ -67,8 +77,10 @@ export async function assertWebGL(page) {
     throw new Error(
       'WebGL context could not be created. This usually means the software ' +
       'renderer is unavailable: check --enable-unsafe-swiftshader is passed ' +
-      '(tools/launch.mjs), that /opt/pw-browsers/chromium exists, and that ' +
-      'this environment is not GPU-only with software rendering blocked.'
+      '(tools/launch.mjs), that Chromium is actually installed (`npx ' +
+      'playwright install chromium` — or that EXECUTABLE_PATH in ' +
+      'tools/launch.mjs points at a real binary), and that this environment ' +
+      'is not GPU-only with software rendering blocked.'
     );
   }
   return renderer;
