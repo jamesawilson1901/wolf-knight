@@ -10,7 +10,7 @@
 // the prop keep-out register and matches pup*Spot deliberately (it reserves the
 // pup's standing room), so it reports "true" at every correct placement and
 // means the opposite of what this file needs.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 // Every room that should now hold a pup, by region.
 const ROOMS = {
@@ -26,8 +26,7 @@ const ROOMS = {
 const ALL_FORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf',
   'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const b = await launchBrowser();
 const page = await b.newPage({ viewport: { width: 740, height: 360 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

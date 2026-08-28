@@ -1,9 +1,8 @@
 // Every enemy must spawn on walkable floor, not inside a wall run, a hero prop,
 // a bramble, a boulder or a promise-gate alcove. A stuck enemy is worse than no
 // enemy: it never reaches the child and never stops being on the screen.
-import { chromium } from 'playwright';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+import { launchBrowser } from './launch.mjs';
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });

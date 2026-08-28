@@ -10,7 +10,7 @@
 //      with the setting on there was nowhere for Pip to run.
 //
 // Nothing failed, because nothing asked. This asks.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const errors = [];
@@ -46,9 +46,7 @@ const check = (n, ok, d) => {
   check('every hint names a line that actually exists', missing.length === 0, { missing });
 }
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

@@ -4,11 +4,10 @@
 //   a FRESH child walks den → Level 1 → Level 2 → Level 3 → Frostpeak
 //   a RETURNING child whose save predates the rebuild still loads, in the
 //   right place, and is not handed a checkerboard.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 const errors = [];
 const check = (n, ok, d) => { console.log((ok?'✓ ':'✗ ')+n, d!==undefined?JSON.stringify(d):''); if(!ok) errors.push(n); };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e)=>errors.push('PAGEERROR: '+e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

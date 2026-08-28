@@ -20,7 +20,7 @@
 // screen while this file reported all fourteen Ember Hollow rooms fine.
 //
 // So it sets window.__noBatch before building, and every prop stays separate.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -31,9 +31,7 @@ const check = (n, ok, d) => {
 // Things that hang, hover or fly on purpose.
 const ALLOWED = /banner|torch|cobweb|flame|fire|light|glow|coin|shard|moth|wisp|bat|spark|veil|wind|water|decal|threshold|arch|lintel|bridge|vane|relic|eye|socket|mirror|sky|cloud|rain|snow|bar|hud|hanging/i;
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });

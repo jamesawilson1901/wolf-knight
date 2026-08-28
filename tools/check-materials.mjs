@@ -21,7 +21,7 @@
 // materials this bug involved, per LAW 10 §6.5's "add durable checks for
 // the specific incident" precedent (see check-variant-names.mjs,
 // verify-combat-laws.mjs §9 — same pattern, same session).
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 import { readFileSync } from 'fs';
 
 const problems = [];
@@ -56,8 +56,7 @@ if (problems.length === n0) ok(`the known-bad materials (${MUST_BE_TINTED.join('
 
 // Informational sweep of the Den's whole kit vs the tint keys — real
 // signal, but "should this be tinted?" needs a human, so these are NOTES.
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 400, height: 300 } })).newPage();
 page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
