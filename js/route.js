@@ -57,6 +57,13 @@ const ONWARD = {
   xg1: 'xg2', xg2: 'xg3', xg3: 'xh',
   xm1: 'xm2', xm2: 'xm3', xm3: 'xh',
   xp1: 'xh', xp2: 'xh',
+
+  // --- The Village: two streets between the square and the districts. The
+  // square and both streets answer as functions below (which guardian still
+  // stands decides the way on); the pockets loop back to their street.
+  yg1: 'yhs', yg2: 'yhs', yg3: 'yhs',
+  yg4: 'ylw', yg5: 'ylw', yg6: 'ylw',
+  yrw: 'ysq',
 };
 
 // The two hubs answer differently depending on what the child has already done.
@@ -64,6 +71,22 @@ const ONWARD = {
 // its stage has opened, and the Court's throne stair only opens on four relics.
 const HUBS = {
   vh: () => ['vga', 'vgb', 'vgc', 'vz'][Math.min(3, WS.stage('vault'))],
+  // The Village: point at whichever street still has a standing guardian
+  // behind it; inside a street, at that street's first unbeaten district.
+  ysq: () => {
+    const g = (k) => WS.get('village', 'guardian_' + k);
+    if (!g('g1') || !g('g2') || !g('g3')) return 'yhs';
+    if (!g('g4') || !g('g5') || !g('g6')) return 'ylw';
+    return 'yrw';
+  },
+  yhs: () => {
+    const g = (k) => WS.get('village', 'guardian_' + k);
+    return !g('g1') ? 'yg1' : !g('g2') ? 'yg2' : !g('g3') ? 'yg3' : 'ylw';
+  },
+  ylw: () => {
+    const g = (k) => WS.get('village', 'guardian_' + k);
+    return !g('g4') ? 'yg4' : !g('g5') ? 'yg5' : !g('g6') ? 'yg6' : 'ysq';
+  },
   xh: () => {
     const wings = [['ember', 'xa1'], ['thorn', 'xr1'], ['tide', 'xg1'], ['moon', 'xm1']];
     for (const [relic, door] of wings) if (!WS.get('court', 'relic_' + relic)) return door;

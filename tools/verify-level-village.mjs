@@ -48,8 +48,11 @@ const go = async (room) => {
 };
 
 const HUB = 'ysq';
+const STREETS = ['yhs', 'ylw'];
+// which street each district hangs off (the town-rebuild graph, 2026-08-28)
+const STREET_OF = { yg1: 'yhs', yg2: 'yhs', yg3: 'yhs', yg4: 'ylw', yg5: 'ylw', yg6: 'ylw' };
 const GUARDIAN_ROOMS = ['yg1', 'yg2', 'yg3', 'yg4', 'yg5', 'yg6'];
-const ALL = [HUB, ...GUARDIAN_ROOMS, 'yrw'];
+const ALL = [HUB, ...STREETS, ...GUARDIAN_ROOMS, 'yrw'];
 
 console.log('\n── 1. every space builds ──────────────────────────────');
 const rooms = {};
@@ -79,15 +82,31 @@ for (const id of ALL) {
     };
   });
 }
-check('all eight spaces build', Object.keys(rooms).length === ALL.length,
+check('all ten spaces build', Object.keys(rooms).length === ALL.length,
   { built: Object.keys(rooms).length, of: ALL.length });
 
-console.log('\n── 2. the square opens all six guardians + the well ──');
-const missing = [...GUARDIAN_ROOMS, 'yrw'].filter((id) => !rooms[HUB] || !rooms[HUB].doors.includes(id));
-check('ysq has a door to every pocket', missing.length === 0, { missing });
-const backHome = GUARDIAN_ROOMS.filter((id) => !rooms[id] || !rooms[id].doors.includes(HUB));
-check('every guardian pocket loops back to ysq', backHome.length === 0, { backHome });
+console.log('\n── 2. the square opens the streets; the streets open the town ──');
+check('ysq opens both streets and the well',
+  rooms[HUB] && STREETS.every((st) => rooms[HUB].doors.includes(st)) && rooms[HUB].doors.includes('yrw'),
+  { doors: rooms[HUB] && rooms[HUB].doors });
+const missing = GUARDIAN_ROOMS.filter((id) =>
+  !rooms[STREET_OF[id]] || !rooms[STREET_OF[id]].doors.includes(id));
+check('each street opens its three districts', missing.length === 0, { missing });
+const backHome = GUARDIAN_ROOMS.filter((id) => !rooms[id] || !rooms[id].doors.includes(STREET_OF[id]));
+check('every guardian pocket loops back to its street', backHome.length === 0, { backHome });
 check('yrw loops back to ysq too', rooms.yrw && rooms.yrw.doors.includes(HUB));
+// THE TOWN LOOP: ysq → yhs → ylw → ysq must close, both directions walkable —
+// the difference between a town and a diagram of one.
+check('the streets join each other (the town is a loop)',
+  rooms.yhs && rooms.yhs.doors.includes('ylw') && rooms.ylw && rooms.ylw.doors.includes('yhs'),
+  { yhs: rooms.yhs && rooms.yhs.doors, ylw: rooms.ylw && rooms.ylw.doors });
+// the streets are safe ground — combat lives in the districts
+check('the streets hold no enemies',
+  STREETS.every((st) => rooms[st] && rooms[st].enemies === 0),
+  STREETS.map((st) => ({ st, n: rooms[st] && rooms[st].enemies })));
+// and each street hides one chest for the child who pokes around
+check('each street hides a chest',
+  STREETS.every((st) => rooms[st] && rooms[st].markers.includes('chestDefs')));
 
 console.log('\n── 3. no dead ends, no locks ──────────────────────────');
 const dead = ALL.filter((id) => rooms[id] && rooms[id].doors.length === 0);
