@@ -281,7 +281,12 @@ fi
 if [ -s "$TIMES" ]; then
   echo
   echo "timing (slowest first):"
-  awk '$4 == "final" || $4 == "parallel" { printf "%-26s %-10s %6ss  %s\n", $1, $2, $3, $4 }' "$TIMES" | sort -t' ' -k3 -rn
+  # Sort the RAW single-space-delimited records first (field 3 = seconds) —
+  # sorting after printf's padding turns every run of spaces into extra empty
+  # fields and silently un-sorts the table (caught live: verify-music at 96s
+  # printed ahead of verify-density at 459s).
+  awk '$4 == "final" || $4 == "parallel"' "$TIMES" | sort -k3 -rn | \
+    awk '{ printf "%-26s %-10s %6ss  %s\n", $1, $2, $3, $4 }'
 fi
 rm -f "$TIMES"
 
