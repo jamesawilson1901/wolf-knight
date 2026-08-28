@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "THE VERB LIST — Puzzle Level Playbook §3, codified from the SHIPPED game.",
+    "These verbs already exist; this file documents them so mission graphs",
+    "(assets/dungeons.json) can be validated against them. The playbook's",
+    "8-verb cap governs NEW verbs: none may be added here without a design",
+    "pass over every existing room. What keeps the per-region vocabulary",
+    "inside the cap is the grant schedule — a region is played with only the",
+    "verbs earned before it, so no region ever asks for more than ~6.",
+    "",
+    "Each verb lists its affordances (playbook: a verb needs >=3 or it is a",
+    "key, not a verb). Affordances marked (new) ship with the puzzle rebuild.",
+    "Verbs are PERMANENT once granted — never taken away (L-verbs rule)."
+  ],
+  "traversal": {
+    "jump":       { "granted": "start",        "affordances": ["gaps", "lava hops", "pit hops", "dodge ground attacks"] },
+    "dark_sight": { "granted": "start (dark_wolf)", "affordances": ["dark zones read", "hidden shimmer (senses)", "pit edges visible"] },
+    "lunge":      { "granted": "start (dark_wolf)", "affordances": ["dash-bite", "quick reposition"] },
+    "dash":       { "granted": "L5 boss (storm_wolf)", "affordances": ["cross gale lanes", "spin weathervanes", "damage+stun line"] },
+    "swim":       { "granted": "L6 boss (tide_wolf)",  "affordances": ["deep water", "dive pickups"] },
+    "ghost_walk": { "granted": "L7 (ghost_wolf)",      "affordances": ["unseen by watchers", "drop pursuit", "stand in sight-lanes"] }
+  },
+  "interaction": {
+    "sword":  { "granted": "start", "affordances": ["enemies", "breakables", "bosses"] },
+    "bolt":   { "granted": "start (all forms, per-form flavour)", "affordances": ["flyers", "chip damage", "crystal switches (new)", "wind-bent aiming (new, L5)"] },
+    "push":   { "granted": "start (the body)", "affordances": ["boulders", "grid blocks (new)", "blocks onto plates (new)", "blocks into flows (new)"] },
+    "carry":  { "granted": "L1 mid-region (new)", "affordances": ["socket stones (new)", "wisp light (new, L3)", "portable weight on plates (new)"], "trade": "carrying disables the special (Wild Arms rule)" },
+    "fire_slam":    { "granted": "L1 boss (fire_wolf)",    "affordances": ["light braziers", "burn scorched gates", "melt ice shells", "rattle plates", "ignite"] },
+    "earth_stomp":  { "granted": "L2 boss (earth_wolf)",   "affordances": ["crack rock piles", "ring rattle plates", "guard break", "nudge a boulder one tile (new)"] },
+    "vine_lash":    { "granted": "L3 boss (verdant_wolf)", "affordances": ["cut brambles", "snare enemies", "cut vine-switch tangles (new)"] },
+    "frost_breath": { "granted": "L4 boss (frost_wolf)",   "affordances": ["shatter ice gates", "freeze enemies brittle", "freeze water to standable ice (new)"] },
+    "splash":       { "granted": "L6 boss (tide_wolf)",    "affordances": ["quench fires", "soak/stagger", "fill dry basins (new — chains with frost_breath)"] }
+  },
+  "producer_consumer_pairs": [
+    { "produce": "splash (water in a basin)", "consume": "frost_breath (freeze it into a standable block)" },
+    { "produce": "fire_slam (light a wisp-lantern)", "consume": "carry (bear the light through the dark)" },
+    { "produce": "dash (spin a vane)", "consume": "wind carries a floating seed/ember down the lane" }
+  ],
+  "cap_note": "8-verb cap applies to additions. Grant schedule keeps any single region's active set at 4-6."
+}
