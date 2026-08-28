@@ -374,6 +374,7 @@ export async function buildXsh(scene) {
   world.markers.sparkSpot = { x: 0, z: -1.5, grants: 'ghost_wolf' };
   world.reserve(0, -1.5, 3.0, 'spark');
   world.markers.teachWatcher = { x: 0, z: -5.5 };
+  world.markers.pupSpot = { x: -6.5, z: 3, id: 'pup_x3' };
   // INTRODUCE: one watcher, across the way out, and nothing else in the room.
   watcher(world, 0, -5.5, D);
   if (!GREY()) {
@@ -815,6 +816,7 @@ export async function buildXp2(scene) {
   world.markers.chestDefs = [{ id: 'c_xp2', tier: 'gold', x: 0, z: -4.2, ry: 0.3, loot: { shards: 40, heartPiece: 1, armour: 'moon' } }];
   world.reserve(0, -4.2, 2.6, 'chest');
   world.markers.houndSpots = [{ x: -5, z: 1, variant: 'shadewalker' }];
+  world.markers.pupSpot = { x: 6.5, z: -1, id: 'pup_x2' };
   scatter(world, halfW, halfD, D, 752, 4, { spin: 1, kinds: ['coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7521, { homes: 1, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

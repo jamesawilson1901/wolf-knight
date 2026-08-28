@@ -817,6 +817,8 @@ export async function buildLc1(scene) {
   // every time, with nothing to dodge. Nothing had ever checked a landing.
   sideDoor(world, 'w', halfW, halfD, 'lc', { x: 12.2, z: 1.7, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, -2, -5, 6, -5, D);
+  // Ember's third pup, in the corner the forge water never reached
+  world.markers.pupSpot = { x: -7, z: 5.5, id: 'pup_l3' };
   // THE DROWNED FORGE: the one place in the Hollow where the fire lost. Water
   // took the floor, the stacks went over, and the heart piece is at the back
   // of it — which is why this pocket is worth the detour.

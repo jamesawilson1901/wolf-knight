@@ -212,11 +212,28 @@ function renderPotions(player) {
   ctxShow(potionsEl);
 }
 
+// Three pups hide in every region, and the HUD only ever promises the ones a
+// child can actually reach: the denominator grows by three as each region's
+// boss falls and opens the next, so "🐺 2/3" stays a solvable puzzle instead
+// of "2/24" being a number that means nothing yet. Latest-first, first match
+// wins. The last step is Grimm rather than a region boss — freeing him is what
+// opens the Village, which holds the final three.
+const PUP_LADDER = [
+  [() => state.flags.grimmFreed, 24],       // + the Village's three
+  [() => regionCleared('sunkenvale'), 21],  // + the Shadow Court's three
+  [() => regionCleared('stormreach'), 18],  // + the Sunken Vale's
+  [() => regionCleared('frostpeak'), 15],   // + Stormreach's
+  [() => regionCleared('wildwoods'), 12],   // + Frostpeak's
+  [() => regionCleared('stoneroot'), 9],    // + the Wild Woods'
+  [() => regionCleared('ember'), 6],        // + Stoneroot's
+];
+
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
-  // each opened region adds three pups to the count the HUD promises
-  const total = regionCleared('wildwoods') ? 12
-    : regionCleared('stoneroot') ? 9 : regionCleared('ember') ? 6 : 3;
+  const hit = PUP_LADDER.find(([reached]) => reached());
+  // never promise fewer than the child has already rescued: a save that ran
+  // ahead of the ladder must not read "5/3"
+  const total = Math.max(hit ? hit[1] : 3, found);
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -1405,6 +1422,17 @@ function onPupCollected() {
     effects.warmFlood();
     narration.say('all_pups_frost');
   } else {
+    // PAST TWELVE THE REWARD CHANGES SHAPE. There are 24 pups now — three in
+    // every region including the last four — but the heart ladder stops at
+    // nine on purpose: a child with thirteen hearts is a child for whom no
+    // fight can go wrong, and the back half of the game would stop meaning
+    // anything. The hunt still has to pay, so the later pups pay in coin
+    // (spent in the Den, where the pups live) instead of in health.
+    if (found > 12) {
+      const purse = 15 + (found - 12) * 5;   // 20, 25, 30 … the last is worth most
+      state.shards += purse;
+      bigToast(`🐺 ${found}/24 · +${purse} 🪙`);
+    }
     narration.say('pup_found');
   }
   persist(); // pup collected is a save point

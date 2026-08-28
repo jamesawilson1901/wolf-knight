@@ -907,6 +907,7 @@ export async function buildT2p(scene) {
   world.spawn = { x: 7.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 't2b', { x: -13.5, z: 0, angle: Math.PI / 2 });
   visibleReward(world, -6, -3, 'l3_t2p_chest', { shards: 24 });
+  world.markers.pupSpot = { x: 6, z: 4.5, id: 'pup_t3' };
   world.markers.mothSpots = [{ x: -3, z: 4, variant: 'wisp' }];
   // The splitting blob lives HERE rather than in t3b. Measured: a Bramble Blob
   // costs ~17 draw calls at its peak, not 5 — it dies into two minis and their

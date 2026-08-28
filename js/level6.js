@@ -712,6 +712,7 @@ export async function buildD2p(scene) {
   });
   world.spawn = { x: 0, z: 6, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'd2a', { x: 0, z: -10, angle: 0 });
+  world.markers.pupSpot = { x: -6.5, z: 3.5, id: 'pup_d2' };  // dry ground west of the pool
   world.markers.chestDefs = [
     { id: 'c_d2p', tier: 'silver', x: 0, z: -5.0, ry: 0.3, loot: { shards: 24, potion: 1 } },
     // W5 audit (2026-08-22): Sunken Vale's critical path reused ZERO

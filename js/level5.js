@@ -750,6 +750,7 @@ export async function buildS2p(scene) {
   world.markers.chestDefs = [{ id: 'c_s2p', tier: 'silver', x: 0, z: -4.0, ry: 0.3, loot: { shards: 22, potion: 1 } }];
   world.reserve(0, -4.0, 2.6, 'chest');
   world.markers.houndSpots = [{ x: -5, z: 1, variant: 'gale' }];
+  world.markers.pupSpot = { x: 6, z: 0, id: 'pup_s2' };
   scatter(world, halfW, halfD, D, 513, 5, { spin: 1, kinds: ['rockSA', 'rockSB', 'crate'] });
   lowWall(world, -6, -5, 0, D, 4.0);
   lowWall(world, 6, -5, 0, D, 4.0);

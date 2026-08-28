@@ -1083,6 +1083,7 @@ export async function buildVbp(scene) {
   sideDoor(world, 'n', halfW, halfD, 'vb2', { x: 0, z: 10.5, angle: Math.PI });  // LOOPS BACK
   wallRun(world, -6, 1, 2, 1, D);
   visibleReward(world, 6, 4, 'l2_vbp_chest', { shards: 22, gear: 'sword_c' });
+  world.markers.pupSpot = { x: -7.5, z: 4.5, id: 'pup_v2' };
   world.markers.minionSpots = [{ x: -4, z: -3 }];
   // THE CHALK SEAM: a dead end they worked out and abandoned
   world.markers.breakables = [
@@ -1326,6 +1327,7 @@ export async function buildVcp(scene) {
   sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 14.1, z: 1.5, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, 0, -4, 0, 3, D);
   visibleReward(world, 6, -3, 'l2_vcp_chest', { shards: 20, heartPiece: 1, armour: 'stone' }, 'gold');
+  world.markers.pupSpot = { x: -6.5, z: -5, id: 'pup_v3' };
   world.markers.slimeSpots = [{ x: 5, z: 4 }];
   // the last dry pocket before the crypt — someone sheltered here and the gold
   // chest is what they were carrying

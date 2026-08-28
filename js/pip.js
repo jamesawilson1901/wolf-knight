@@ -242,23 +242,31 @@ class Pup {
   }
 }
 
+// THREE WAYS TO SAY "A PUP STANDS HERE", because the game grew three of them.
+// The numbered `pupNSpot` markers are the original Level 1-4 contract; the
+// rebuilt regions 5-7 and the Village write a single `pupSpot` carrying its own
+// id; `pupSpots` is the list form a room uses when it holds more than one.
+//
+// Only the numbered form was ever read, so EVERY pup in Stormreach, the Sunken
+// Vale, the Shadow Court and the Village was placed by its room and then never
+// spawned — the counter promised wolves those regions could not contain. All
+// three forms are collected here, and an id is required rather than derived so
+// two rooms can never quietly share one save key.
+function pupSpotsOf(markers) {
+  const out = [];
+  for (let i = 1; i <= 12; i++) {
+    const s = markers[`pup${i}Spot`];
+    if (s) out.push([s.id || `pup${i}`, s]);
+  }
+  if (markers.pupSpot && markers.pupSpot.id) out.push([markers.pupSpot.id, markers.pupSpot]);
+  for (const s of markers.pupSpots || []) if (s && s.id) out.push([s.id, s]);
+  return out;
+}
+
 export async function spawnPups(world, onCollected) {
   world.pups = [];
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-  const spots = [
-    ['pup1', world.markers.pup1Spot],
-    ['pup2', world.markers.pup2Spot],
-    ['pup3', world.markers.pup3Spot],
-    ['pup4', world.markers.pup4Spot],
-    ['pup5', world.markers.pup5Spot],
-    ['pup6', world.markers.pup6Spot],
-    ['pup7', world.markers.pup7Spot],
-    ['pup8', world.markers.pup8Spot],
-    ['pup9', world.markers.pup9Spot],
-    ['pup10', world.markers.pup10Spot],
-    ['pup11', world.markers.pup11Spot],
-    ['pup12', world.markers.pup12Spot],
-  ];
+  const spots = pupSpotsOf(world.markers);
   for (const [id, spot] of spots) {
     if (!spot || state.flags.pups[id]) continue;
     // Pup #3 hides behind the burnable — only reachable (and only spawned
