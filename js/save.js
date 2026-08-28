@@ -185,8 +185,16 @@ export function applySave(profileId, profileName, data) {
   state.stickers = data.stickers || {};
   // additive forever: a profile saved before mini games existed simply has none
   state.minigames = data.minigames || {};
-  state.formsUnlocked = Array.isArray(data.formsUnlocked) && data.formsUnlocked.length
-    ? data.formsUnlocked : ['knight', 'dark_wolf'];
+  // THE TWO STARTING FORMS ARE A FLOOR, NOT A SAVED VALUE. Kael is the Knight
+  // and the Dark Wolf from minute one — that is the premise of the game, not
+  // something earned — so they are re-granted on every load no matter what the
+  // file says. A profile written before the Dark Wolf became a starting form
+  // (or one that lost it any other way) restored a list without it and the
+  // child could never reach him again: Tab only ever found the Knight. Merging
+  // rather than replacing also keeps this additive-forever — every form the
+  // save DID earn survives untouched.
+  const saved = Array.isArray(data.formsUnlocked) ? data.formsUnlocked : [];
+  state.formsUnlocked = ['knight', 'dark_wolf', ...saved.filter((f) => f !== 'knight' && f !== 'dark_wolf')];
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';
   // pups may be keyed under whichever region was current at save time —
   // flatten every list so travelling between regions never loses them
