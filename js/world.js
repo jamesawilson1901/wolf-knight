@@ -54,6 +54,12 @@ export class World {
                                // that OVERRIDE hazards underneath them
     this.geysers = [];         // {x, z, r, active} — managed by room animate
     this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
+    // A HOLE IN THE FLOOR. Not a hazard: falling in costs no hearts, it puts
+    // the child back at `pitReturn` (the room's entry) and they walk it again.
+    // That is the whole punishment, and it is the right one for five-year-olds
+    // — the cost of a mistake is the walk, never the run.
+    this.pitZones = [];        // {minX, maxX, minZ, maxZ}
+    this.pitReturn = null;     // {x, z} — where a fall puts you; defaults to spawn
     this.doors = [];           // {minX, maxX, minZ, maxZ, to, entry:{x,z,angle}}
     this.checkpoints = [];     // {id, x, z, r, flame, light}
     this.markers = {};         // named spots for later phases (pups, boss, enemies)
@@ -660,6 +666,19 @@ export class World {
       if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) return 1;
     }
     return 0;
+  }
+
+  // Is this square open floor or a hole? Bridge decks win here exactly as they
+  // do over lava — a plank laid across a pit is floor.
+  pitAt(x, z) {
+    if (!this.pitZones.length) return false;
+    for (const s of this.safeZones) {
+      if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) return false;
+    }
+    for (const p of this.pitZones) {
+      if (x >= p.minX && x <= p.maxX && z >= p.minZ && z <= p.maxZ) return true;
+    }
+    return false;
   }
 
   // Push a circle body (x, z, r) out of every static collider. Returns the

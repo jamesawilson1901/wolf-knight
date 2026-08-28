@@ -121,7 +121,7 @@ const hub = await page.evaluate(async () => {
   const g = window.__game;
   const out = [];
   for (const [n, keys] of [[0, []], [1, ['spark']], [2, ['spark', 'drained']],
-    [3, ['spark', 'drained', 'handDown']]]) {
+    [3, ['spark', 'drained', 'deepLantern']]]) {
     for (const k of keys) g.WS.set('vault', k, true);
     out.push({ stage: n, next: g.nextRoom ? g.nextRoom('vh') : null });
   }

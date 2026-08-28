@@ -115,10 +115,13 @@ export const LINES = {
   guard_broken: { voice: 'pip', text: 'His guard is down — GET HIM!' },
   // LEVEL 2 — the twist. Say the IDEA, never the button: "listen" is the clue.
   rattle_hint: { voice: 'pip', text: 'Ooh — stand right on the round stone and STOMP. Then listen!' },
-  // LEVEL 2 — Spoke C's shoulder pin. The line names the MECHANISM the room
-  // now actually shows (titanArm in level2.js): a charred beam propping the
-  // stone giant's hand. Cause, verb, effect — nothing abstract left.
-  pin_hint: { voice: 'pip', text: 'Look — that black beam is holding the giant’s hand up! Be the Fire Wolf and SLAM the beam!', repeat: true },
+  // LEVEL 2 — Spoke C's deep lantern, in the dark room with the broken floor.
+  // Two lines because there are two problems and they are solved by different
+  // wolves: you cannot SEE the floor, and the lantern is not LIT. The dark one
+  // fires first (it is the one blocking you) and is deliberately about seeing
+  // rather than about a button — say the idea, never the control.
+  deep_dark_hint: { voice: 'pip', text: 'It’s so dark I can’t see the floor! Be the Dark Wolf, Kael — he sees in the dark!', repeat: true },
+  deep_lantern_hint: { voice: 'pip', text: 'There’s a cold lantern past the holes! Be the Fire Wolf and SLAM it alight!', repeat: true },
   // The encounter seal (js/world.js). A room with real foes in it shuts behind
   // you; these are the two ways it opens again.
   // LEVEL 3, the vine-lash teach. Say the IDEA, never the button.

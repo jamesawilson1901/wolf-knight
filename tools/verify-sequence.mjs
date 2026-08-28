@@ -18,7 +18,7 @@ await page.evaluate(() => { const g=window.__game;
   g.state.settings.captions=false; g.state.settings.voice=false; g.state.settings.sfxVol=0;
   g.state.settings.greybox=false;
   g.state.formsUnlocked=['knight','dark_wolf','fire_wolf','earth_wolf','verdant_wolf'];
-  g.WS.set('vault','spark',true); g.WS.set('vault','drained',true); g.WS.set('vault','handDown',true);
+  g.WS.set('vault','spark',true); g.WS.set('vault','drained',true); g.WS.set('vault','deepLantern',true);
   g.WS.set('wild3','rootCut',true); g.WS.set('wild3','logDown',true);
   g.player.iframes=99999; });
 const go = async (room) => { for (let a=0;a<8;a++){ await page.evaluate((r)=>{const g=window.__game;

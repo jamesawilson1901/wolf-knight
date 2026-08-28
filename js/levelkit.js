@@ -640,8 +640,38 @@ export function makeBuilders({ kit, isGrey }) {
     world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
   }
 
+  // A HOLE IN THE FLOOR. Registers the fall zone and drops a black quad into
+  // the floor so it READS as a hole rather than as a differently-coloured tile
+  // — in a dark room the child needs the shape of the gap, and the Dark Wolf's
+  // sight is what turns that shape from a guess into a route. The rim is a
+  // separate ring so the edge stays visible when the veil is at its darkest.
+  function pit(world, minX, maxX, minZ, maxZ) {
+    world.pitZones.push({ minX, maxX, minZ, maxZ });
+    if (isGrey()) return;
+    const w = maxX - minX, d = maxZ - minZ;
+    const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+    const hole = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshBasicMaterial({ color: 0x05040a })
+    );
+    hole.rotation.x = -Math.PI / 2;
+    hole.position.set(cx, (world.deckY || 0) + 0.05, cz);
+    world.add(hole);
+    // a pale lip so the edge is findable: this is the thing the Dark Wolf sees
+    const rim = new THREE.Mesh(
+      new THREE.RingGeometry(Math.min(w, d) * 0.48, Math.min(w, d) * 0.5 + 0.12, 4, 1),
+      new THREE.MeshBasicMaterial({ color: 0x6b6480, transparent: true, opacity: 0.55,
+        side: THREE.DoubleSide, depthWrite: false })
+    );
+    rim.rotation.x = -Math.PI / 2;
+    rim.rotation.z = Math.PI / 4;
+    rim.scale.set(w / Math.min(w, d), 1, d / Math.min(w, d));
+    rim.position.set(cx, (world.deckY || 0) + 0.06, cz);
+    world.add(rim);
+  }
+
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
-    promiseGate, visibleReward, darkZone, protoMaterial };
+    promiseGate, visibleReward, darkZone, pit, protoMaterial };
 }
 
 // ---------------------------------------------------------------------------

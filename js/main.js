@@ -559,7 +559,7 @@ const GATE_HINTS = [
   { marker: 'practiceCracks',    form: 'earth_wolf',   line: 'crack_prompt' },
   { marker: 'developCracks',     form: 'earth_wolf',   line: 'crack_prompt' },
   // Stoneroot is played with FIRE now — earth is its boss's reward.
-  { marker: 'pinSpot',           form: 'fire_wolf',    line: 'pin_hint' },
+  { marker: 'deepLanternSpot',   form: 'fire_wolf',    line: 'deep_lantern_hint' },
   { marker: 'rattlePlate',       form: 'fire_wolf',    line: 'rattle_hint' },
   { marker: 'relightSpot',       form: 'fire_wolf',    line: 'brazier_hint' },
   { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
@@ -630,7 +630,7 @@ function guideTarget() {
   const vm = world.markers || {};
   if (vm.relightSpot && !WS.get('vault', 'spark'))   return { x: 0, z: -1.1 };  // the cold lantern
   if (vm.rattlePlate && !WS.get('vault', 'drained')) return { x: vm.rattlePlate.x, z: vm.rattlePlate.z };
-  if (vm.pinSpot && !WS.get('vault', 'handDown'))    return { x: vm.pinSpot.x, z: vm.pinSpot.z };
+  if (vm.deepLanternSpot && !WS.get('vault', 'deepLantern')) return { x: vm.deepLanternSpot.x, z: vm.deepLanternSpot.z };
   // FROSTPEAK'S PUZZLE ROOMS, same law. These two cases existed below the
   // switch for years and were DEAD CODE: onwardSpot() answered first (route.js
   // maps f2→f3, f3→f4), so a stuck child was walked to the SEALED ice gate —
@@ -1114,12 +1114,17 @@ function narrationTriggers(dt, t) {
   // linger 22 seconds for the stuck-hint. Without this a child does Spoke C,
   // never realises the post is theirs to burn, and loops back to the hub: the
   // exact "new rooms just loop back with nothing to do" dad reported.
-  if (m.pinSpot && !WS.get('vault', 'handDown')) {
-    if (state.formsUnlocked.includes('fire_wolf') && nearSpot(m.pinSpot, 3.2)) narration.say('pin_hint');
-    if (state.flags.burned.l2_vc3_pin) {
-      if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
-      persist();
-    }
+  if (m.deepLanternSpot && !WS.get('vault', 'deepLantern')) {
+    // THE DARK IS THE PUZZLE, so the nudge names the form that solves it. A
+    // child arriving in any other shape sees an unlit room with holes in the
+    // floor and no way to read them; Pip says which wolf sees in the dark.
+    if (nearSpot(m.deepLanternSpot, 6.0)) narration.say('deep_dark_hint');
+    else if (state.formsUnlocked.includes('fire_wolf')) narration.say('deep_lantern_hint');
+  }
+  if (m.deepLanternSpot && WS.get('vault', 'deepLantern') && !state.spoken.deep_lit) {
+    state.spoken.deep_lit = true;
+    bigToast('🔥 The deep lantern burns. The crypt is open.');
+    persist();
   }
 
   // -------------------------------------------------------------------------
