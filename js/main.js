@@ -23,6 +23,7 @@ import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
+import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
 import { Menus, bigToast } from './menus.js';
@@ -2109,6 +2110,7 @@ async function start() {
 
       player.update(dt, input, world);
       world.updateBoulders(dt, player);
+      updateCarry(world, dt, t, player);
       pip.update(dt, t, player, world);
       // 🌸 Gentle profiles: the whole enemy world runs at 80% time —
       // slower moves AND longer telegraphs, one lever (CONFIG.DIFFICULTY).

@@ -29,10 +29,12 @@ import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate,
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
-import { brazier } from './gates.js';
+import { brazier, pushableBoulder, plateSwitch } from './gates.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
+import { spawnShards } from './loot.js';
+import { carryItem, socket } from './carry.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -589,6 +591,11 @@ export async function buildLg1(scene) {
   rubbleField(world, 4.8, 2.8, 2.2, D, 10);
   rubbleField(world, -4.8, 2.6, 2.0, D, 9);
   aftermath(world, -3, 1.5, 1.6, D, 4);
+  // THE KI: one block, one plate, no enemies — the region's first taught
+  // mechanic (playbook ki beat; assets/dungeons.json's ember_hollow graph,
+  // node lg1). It cannot be failed: one clean push is the whole puzzle.
+  pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1);
+  plateSwitch(world, 'l1_lg1_ki', -5, 3.5, () => spawnShards(world, -5, 3.5, 8));
   return finish(world, spec, D);
 }
 
@@ -835,6 +842,14 @@ export async function buildLc1(scene) {
   rubbleField(world, -1, -6.5, 2.4, D, 10);
   aftermath(world, 5, 2, 2.0, D, 12);
   visibleReward(world, 6, -2, 'l1_drowned_forge', { shards: 22, heartPiece: 1, armour: 'ember' });
+  // THE EMBER KEY (playbook item beat): a stone that remembers the seal
+  // back at THE EMBER SEAL. Carry it there — carrying trades away the
+  // special (Wild Arms rule, js/carry.js) — and the "sealed by shadow"
+  // hint Pip has been giving since the first room finally resolves. This
+  // pocket stays optional: nothing about clearing the region depends on it.
+  carryItem(world, prepareModel, emberKit.rockSA, {
+    id: 'ember_key', region: 'ember', x: -4, z: -1, tint: 0xffa93a, scale: 0.85,
+  });
   scatter(world, halfW, halfD, D, 32, 5);
   return finish(world, spec, D);
 }
@@ -854,6 +869,14 @@ export async function buildLg3(scene) {
   world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'box' }];
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.sealSpot = { x: 0, z: -2 };
+  // THE SEAL ITSELF: the Ember Key (lc1) seats here. Resolves the key_door
+  // hint (main.js) and pays out a bonus find — this stays a side-quest, not
+  // a gate, since lc1 is an optional pocket, not on the spine.
+  socket(world, prepareModel, emberKit.rockSA, {
+    id: 'ember_seal', region: 'ember', x: 0, z: -2, stoneId: 'ember_key',
+    tint: 0xffa93a, scale: 0.85,
+    onFill: () => { state.flags.keys.ember = true; spawnShards(world, 0, -2, 20); },
+  });
   wayshrine(world, -4.4, -2.4, 0.4, D);
   coldHearth(world, 4.2, 1.4, D);
   fallenColumn(world, 4.6, -2.8, -0.7, D, 2.4);
