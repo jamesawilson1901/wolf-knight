@@ -337,6 +337,8 @@ export class Player {
     this.airV = 0;
     this.jumpsUsed = 0;
     this.onPotionsChanged = null;
+    this.carrying = null;        // id of a carried puzzle item (js/carry.js), or null
+    this._carryModel = null;     // the held mesh itself, parented to player.root
     this.onHitConnected = null;  // melee landed → main triggers hit-stop
     this.buffs = { star: 0, fury: 0, feather: 0, magnet: 0 }; // timed power-ups
     this._vel = { x: 0, z: 0 };     // ramped velocity (CONFIG accel/decel)
@@ -1602,6 +1604,9 @@ export class Player {
   // special anymore — its Blood Moon is the EARNED Moon-Gauge surge (main
   // routes the trigger through its scripted-beat guards).
   trySpecial(effects, world) {
+    // Wild Arms rule (verbs.json 'carry'): both hands are full — the special
+    // is traded away for the duration of the carry, not just weakened.
+    if (this.carrying) return false;
     if (state.form === 'knight') return this.trySpinAttack(effects, world);
     if (state.form === 'fire_wolf') return this.tryGroundSlam(effects, world);
     if (state.form === 'earth_wolf') return this.tryStoneStomp(effects, world);
