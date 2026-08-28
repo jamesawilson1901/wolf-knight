@@ -74,6 +74,13 @@ export async function loadVillageKit() {
   // tint pass possible at all.
   const entries = await Promise.all(Object.entries(names).map(async ([k, u]) => [k, await loadGLB(u)]));
   villageKit = Object.fromEntries(entries);
+  // SPLIT THE HOUSES-PACK INTO HOUSES. The pack is one 46.5u strip of
+  // townhouses with every offset baked into the vertices (all node
+  // translations are zero — probe-modelsize confirmed), so it was only ever
+  // placeable as the whole terrace at once, which is why the Back Alley used
+  // it at 0.34 scale: the strip only fit a pocket as a miniature. Cluster its
+  // meshes by world bounds instead and one download becomes a street's worth
+  // of DISTINCT buildings, each placeable, tintable and colliding on its own.
   // THIS ENGINE HAS NO USE FOR BAKED COLLISION MESHES. World's own collision
   // is a flat list of boxes/circles (world.addBox/addCircle), registered by
   // hand at each placement — never mesh geometry. The assetfactory pieces
@@ -89,7 +96,57 @@ export async function loadVillageKit() {
     });
     for (const n of dead) { if (n.parent) n.parent.remove(n); }
   }
+  // split AFTER the collider strip, or every townhouse keeps a ghost double
+  // of itself baked in
+  villageKit.townhouses = splitBuildings(villageKit.houses);
   return villageKit;
+}
+
+// Cluster a pack GLB's visible meshes into separate buildings by overlapping
+// world bounds (union-find over AABBs padded 0.6u — chimneys and porches touch
+// their house, houses do not touch each other across a street). Each cluster
+// comes back as {scene} so tintedModel/place treat it exactly like a loaded
+// GLB: centred on x/z, feet at y=0, with its true size attached for collider
+// derivation — a collider is COMPUTED from the building it boxes, never typed.
+function splitBuildings(gltf) {
+  const meshes = [];
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse((n) => { if (n.isMesh) meshes.push(n); });
+  const boxes = meshes.map((m) => new THREE.Box3().setFromObject(m));
+  const parent = meshes.map((_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const PAD = 0.6;
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i].clone().expandByScalar(PAD);
+      if (a.intersectsBox(boxes[j])) parent[find(i)] = find(j);
+    }
+  }
+  const clusters = new Map();
+  meshes.forEach((m, i) => {
+    const r = find(i);
+    if (!clusters.has(r)) clusters.set(r, []);
+    clusters.get(r).push(i);
+  });
+  const out = [];
+  for (const idxs of clusters.values()) {
+    const box = new THREE.Box3();
+    for (const i of idxs) box.union(boxes[i]);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.x < 1 || size.z < 1) continue;   // stray trim, not a building
+    const ctr = box.getCenter(new THREE.Vector3());
+    const g = new THREE.Group();
+    for (const i of idxs) {
+      const c = meshes[i].clone();
+      c.applyMatrix4(meshes[i].matrixWorld);
+      c.position.sub(new THREE.Vector3(ctr.x, box.min.y, ctr.z));
+      g.add(c);
+    }
+    out.push({ scene: g, w: size.x, h: size.y, d: size.z });
+  }
+  // biggest first, so callers can pick "a grand house" vs "a small one" by index
+  out.sort((a, b) => b.w * b.d - a.w * a.d);
+  return out;
 }
 
 export const DISTRICTS = {
@@ -130,20 +187,39 @@ export const guardianDown = (g) => !!WS.get(REGION, 'guardian_' + g);
 export const guardiansDown = () => GUARDIANS.filter(guardianDown).length;
 export const villageCleared = () => guardiansDown() >= GUARDIANS.length;
 
+// A TOWN, NOT A ROOM WITH SHEDS IN IT. Dad, from play: "the town is
+// miniaturized and is just a regular room with some tiny houses. I want a
+// bigger level, a huge level with proper sized houses in comparison to the
+// character. I want it to actually look like a proper town to explore and
+// get lost in."
+//
+// He was right twice over. The hut model is 1.35u tall at scale 1 and was
+// placed at 0.85-1.15 — waist-high on a 1.7u child — and the whole region
+// was one hub with six pockets hanging straight off it: a star, which is a
+// diagram of a town, not a town. Now two full-size STREETS stand between
+// the square and the districts, lined with real townhouses (the split
+// houses-pack, ~5u tall at street scale), and a lane joins the streets to
+// each other so the map is a LOOP a child can actually get lost in and then
+// find their own way out of. All six guardians, both pups, every WS key and
+// chest id survive unchanged — the town got bigger around them.
 export const LV = {
   ysq: { ...M.hub,    kind: 'hub',    district: 'village', spine: true, junction: true,
-         label: 'THE VILLAGE SQUARE', beat: 'epilogue · six guardians, six doors, no locks' },
-  yg1: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+         label: 'THE VILLAGE SQUARE', beat: 'epilogue · the tree, the well, two streets' },
+  yhs: { ...M.island, kind: 'island', district: 'village', spine: true, junction: true,
+         label: 'THE HIGH STREET', beat: 'townhouses · three doors north · the lane west' },
+  ylw: { ...M.island, kind: 'island', district: 'village', spine: true, junction: true,
+         label: 'THE LOW LANES', beat: 'cramped lanes · the lane north · three districts' },
+  yg1: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'yhs',
          label: 'THE GATE HOUSE', beat: 'guardian 1/6 · Hollow Sentinel' },
-  yg2: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+  yg2: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'yhs',
          label: 'THE MARKET ROW', beat: 'guardian 2/6 · Shade Knight' },
-  yg3: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+  yg3: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'yhs',
          label: 'THE MILL', beat: 'guardian 3/6 · Twinblade Husk' },
-  yg4: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+  yg4: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ylw',
          label: 'THE BELL TOWER', beat: 'guardian 4/6 · Wraith Archer' },
-  yg5: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+  yg5: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ylw',
          label: 'THE BACK ALLEY', beat: 'guardian 5/6 · The Lurker' },
-  yg6: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
+  yg6: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ylw',
          label: 'THE CHAPEL ROOF', beat: 'guardian 6/6 · Shadow Dragonling' },
   yrw: { ...M.pocket, kind: 'pocket', district: 'village', loopsTo: 'ysq',
          label: 'THE WELL', beat: 'optional · a rescued pup, a chest' },
@@ -165,6 +241,39 @@ function placeOne(world, gltf, key, x, z, s, ry, tint) {
   place(world, g, gltf, key, x, 0, z, s, ry, 0, tint, true, true);
   world.add(g);
   return g;
+}
+
+// STREET SCALE, DERIVED ONCE FROM THE CHARACTER. Kael stands 1.7u; a town
+// door should clear his head with room to spare and a house should be a
+// storey or two above that. The split townhouses measure ~7.4u tall at scale
+// 1 (properly proportioned buildings, unlike the 1.35u-tall hut), so:
+const TOWNHOUSE_S = 0.62;   // ~4.6u tall — a real two-storey house beside him
+const TOWER_S = 0.75;       // ~10.5u — landmarks visible over the rooflines
+const WALL_S = 0.85;        // ~3.6u town wall
+const BARN_S = 2.3;         // the 1.35u-tall hut, honest about being a low barn
+
+// A building with its collider COMPUTED from its own rotated footprint —
+// colliders typed by hand at one scale are exactly how the old 0.85-scale
+// "houses" kept their old boxes through every resize. In both costumes: the
+// greybox shows a box of the true footprint, so the layout walked in grey is
+// the layout that ships dressed (the levelkit's founding rule).
+function townhouse(world, idx, x, z, ry, tint, s = TOWNHOUSE_S) {
+  const list = villageKit ? villageKit.townhouses : null;
+  const tpl = list && list.length ? list[((idx % list.length) + list.length) % list.length] : null;
+  const w = (tpl ? tpl.w : 6.5) * s, d = (tpl ? tpl.d : 6.0) * s, h = (tpl ? tpl.h : 7.4) * s;
+  // rotated AABB of the footprint; 0.82 inset keeps eaves from blocking lanes
+  const c = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry));
+  const hw = (w * c + d * sn) * 0.5 * 0.82, hd = (w * sn + d * c) * 0.5 * 0.82;
+  if (GREY()) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, h, hd * 2),
+      new THREE.MeshStandardMaterial({ color: 0x6e5f45, roughness: 0.95 }));
+    m.position.set(x, h / 2, z); m.castShadow = true;
+    world.add(m);
+  } else if (tpl) {
+    placeOne(world, tpl, `townhouse${idx}`, x, z, s, ry, tint);
+  }
+  world.addBox(x - hw, x + hw, z - hd, z + hd);
+  return { hw, hd, h };
 }
 
 // THE MOMENT A GUARDIAN FALLS. Additive only, exactly like
@@ -233,33 +342,35 @@ export async function buildYsq(scene) {
     propTint: mixHex(CORRUPT_TINT, WARM_D.propTint, blend),
     ground: blend >= 0.5 ? 'village' : 'villageShadow',
     name: 'THE VILLAGE', hero: 'THE VILLAGE SQUARE' };
+  // THE NEW GRAPH: the square keeps four ways out — the Den behind you, the
+  // High Street north, the Low Lanes west, the Well east. The six guardian
+  // districts hang off the STREETS now, not off the square: a child crosses
+  // real town to reach every fight, which is the entire point of a town.
   const gaps = [
-    gap('s'),                                                       // back to the Den
-    gap('n', undefined, -10), gap('n', undefined, 0), gap('n', undefined, 10),
-    gap('w', undefined, -7), gap('w', undefined, 7),
-    gap('e', undefined, -7), gap('e', undefined, 7),
+    gap('s'),                       // back to the Den
+    gap('n', undefined, 0),         // THE HIGH STREET
+    gap('w', undefined, 0),         // THE LOW LANES
+    gap('e', undefined, 0),         // THE WELL
   ];
   const { halfW, halfD } = shell(world, spec, gaps, D, { hub: [0, 0] });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: -8, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'yg1', { x: 0, z: 6, angle: Math.PI }, { centre: -10 });
-  sideDoor(world, 'n', halfW, halfD, 'yg2', { x: 0, z: 6, angle: Math.PI }, { centre: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'yg3', { x: 0, z: 6, angle: Math.PI }, { centre: 10 });
-  sideDoor(world, 'w', halfW, halfD, 'yg4', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: -7 });
-  sideDoor(world, 'w', halfW, halfD, 'yg5', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: 7 });
-  sideDoor(world, 'e', halfW, halfD, 'yg6', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: -7 });
-  sideDoor(world, 'e', halfW, halfD, 'yrw', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: 7 });
+  sideDoor(world, 'n', halfW, halfD, 'yhs', { x: 0, z: 10.5, angle: Math.PI }, { centre: 0 });
+  sideDoor(world, 'w', halfW, halfD, 'ylw', { x: 13.5, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
+  sideDoor(world, 'e', halfW, halfD, 'yrw', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
 
   world.markers.heroSpot = { x: 0, z: 0 };
   world.markers.restSpot = { x: -10, z: -8 };
 
-  // A LIVED-IN SQUARE, kept clear of all eight door gaps: two houses in the
-  // south corners, the one stretch of wall no gap touches.
+  // A LIVED-IN SQUARE AT LIVED-IN SCALE: real townhouses facing the tree
+  // from the corners the doors don't use, and the old waist-high huts gone.
+  townhouse(world, 0, -13, 9, 0.5, D.propTint);
+  townhouse(world, 1, 13, 9, -0.5, D.propTint);
+  townhouse(world, 2, -13, -9, 2.6, D.propTint);
+  townhouse(world, 3, 13, -9, -2.6, D.propTint);
   if (!GREY()) {
-    placeOne(world, villageKit.hut, 'hut', -14, 10, 1.1, 0.6, D.propTint);
-    world.addBox(-16.4, -11.6, 8.2, 12.2);
-    placeOne(world, villageKit.hut, 'hut', 14, 10, 1.1, -0.6, D.propTint);
-    world.addBox(11.6, 16.4, 8.2, 12.2);
+    placeOne(world, villageKit.wagons, 'wagons', 8, 4, 1.15, 1.2, D.propTint);
+    world.addBox(6.2, 9.8, 1.5, 6.5);
   }
 
   // THE WELL — a dead tree, not a well: no well asset exists in any
@@ -287,6 +398,114 @@ export async function buildYsq(scene) {
 }
 
 // ---------------------------------------------------------------------------
+// THE TWO STREETS — the town itself. Both read the aggregate of the three
+// guardians that hang off them, the same continuous blend the square uses,
+// so a street warms house by house as its districts are freed.
+// ---------------------------------------------------------------------------
+function streetD(gs) {
+  const down = gs.filter(guardianDown).length;
+  const blend = down / gs.length;
+  return { tint: mixHex(CORRUPT_TINT, WARM_D.tint, blend),
+    floorTint: mixHex(CORRUPT_TINT, WARM_D.floorTint, blend),
+    wallTint: mixHex(CORRUPT_D.wallTint, WARM_D.wallTint, blend),
+    propTint: mixHex(CORRUPT_TINT, WARM_D.propTint, blend),
+    ground: blend >= 0.5 ? 'village' : 'villageShadow',
+    name: 'THE VILLAGE', hero: 'THE VILLAGE SQUARE' };
+}
+
+// THE HIGH STREET: a real street — townhouses shoulder to shoulder down both
+// sides, the three north districts opening off the top of it, and the lane
+// west to the Low Lanes closing the town loop. The alley BEHIND the east row
+// hides a chest: the "get lost and be paid for it" promise, kept.
+export async function buildYhs(scene) {
+  const { world, spec } = base(scene, 'yhs');
+  const D = streetD(['g1', 'g2', 'g3']);
+  const { halfW, halfD } = shell(world, spec, [
+    gap('s', undefined, 0),
+    gap('n', undefined, -10), gap('n', undefined, 0), gap('n', undefined, 10),
+    gap('w', undefined, 0),
+  ], D, {
+    paths: [[[0, 11], [0, -11]], [[-14, 0], [-4, 0], [0, 3]],
+            [[-10, -3], [-10, -11]], [[10, -3], [10, -11]]],
+  });
+  world.spawn = { x: 0, z: 10.5, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 0, z: -11.5, angle: 0 });
+  sideDoor(world, 'n', halfW, halfD, 'yg1', { x: 0, z: 6, angle: Math.PI }, { centre: -10 });
+  sideDoor(world, 'n', halfW, halfD, 'yg2', { x: 0, z: 6, angle: Math.PI }, { centre: 0 });
+  sideDoor(world, 'n', halfW, halfD, 'yg3', { x: 0, z: 6, angle: Math.PI }, { centre: 10 });
+  sideDoor(world, 'w', halfW, halfD, 'ylw', { x: 0, z: -10.5, angle: 0 }, { centre: 0 });
+
+  // WEST ROW: three houses fronting the street, gaps left for the lane door.
+  townhouse(world, 0, -8.5, 7.5, 1.62, D.propTint);
+  townhouse(world, 4, -9.5, -6.5, 1.5, D.propTint);
+  townhouse(world, 2, -8.5, -11, 1.7, D.propTint);
+  // EAST ROW: three more, pulled off the wall so a real ALLEY runs behind
+  // them — nothing marks it, walking it is its own discovery.
+  townhouse(world, 1, 9, 7.5, -1.55, D.propTint);
+  townhouse(world, 3, 9.5, 0.5, -1.62, D.propTint);
+  townhouse(world, 5, 9, -7, -1.5, D.propTint);
+  if (!GREY()) {
+    placeOne(world, villageKit.wagons, 'wagons', 3, 6, 1.1, 0.25, D.propTint);
+    world.addBox(1.3, 4.7, 3.6, 8.4);
+  }
+  // the alley chest, behind the east row against the wall
+  world.markers.chestDefs = [
+    { id: 'c_yhs_alley', tier: 'gold', x: 14, z: 0, ry: -1.2,
+      loot: { shards: 34, gear: 'staff_moon' } },
+  ];
+  world.reserve(14, 0, 2.2, 'chest');
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  return finish(world, spec, D);
+}
+
+// THE LOW LANES: the cramped half of town. Town walls cut the room into
+// crooked lanes; the three remaining districts open off them. A nook in the
+// walls holds the second hidden chest.
+export async function buildYlw(scene) {
+  const { world, spec } = base(scene, 'ylw');
+  const D = streetD(['g4', 'g5', 'g6']);
+  const { halfW, halfD } = shell(world, spec, [
+    gap('e', undefined, 0),
+    gap('n', undefined, 0),
+    gap('w', undefined, -7), gap('w', undefined, 7),
+    gap('s', undefined, 0),
+  ], D, {
+    paths: [[[14, 0], [4, 0], [-4, -2], [-14, -7]], [[-4, -2], [-14, 7]],
+            [[4, 0], [0, -11]], [[0, 2], [0, 11]]],
+  });
+  world.spawn = { x: 13.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'ysq', { x: -15, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'n', halfW, halfD, 'yhs', { x: -13.5, z: 0, angle: Math.PI / 2 }, { centre: 0 });
+  sideDoor(world, 'w', halfW, halfD, 'yg4', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: -7 });
+  sideDoor(world, 'w', halfW, halfD, 'yg6', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: 7 });
+  sideDoor(world, 's', halfW, halfD, 'yg5', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: 0 });
+
+  // the lanes: two runs of town wall and three houses set crooked, so no
+  // line of sight runs the whole room — corners, which is what "get lost
+  // in" means at this scale
+  if (!GREY()) {
+    placeOne(world, villageKit.wall1, 'wall1', -4, -5.5, WALL_S, 0.35, D.propTint);
+    world.addBox(-7.4, -0.6, -6.6, -4.4);
+    placeOne(world, villageKit.wall2, 'wall2', 3, 5, WALL_S, -0.5, D.propTint);
+    world.addBox(0.1, 5.9, 3.6, 6.4);
+  } else {
+    world.addBox(-7.4, -0.6, -6.6, -4.4);
+    world.addBox(0.1, 5.9, 3.6, 6.4);
+  }
+  townhouse(world, 6, -9, -10, 0.3, D.propTint);
+  townhouse(world, 7, 9.5, -8.5, -2.9, D.propTint);
+  townhouse(world, 8, -10, 9.5, 2.8, D.propTint);
+  // the nook chest, tucked where the wall meets the south house
+  world.markers.chestDefs = [
+    { id: 'c_ylw_nook', tier: 'gold', x: -3.5, z: 11, ry: 2.6,
+      loot: { shards: 30, armour: 'verdant' } },
+  ];
+  world.reserve(-3.5, 11, 2.2, 'chest');
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  return finish(world, spec, D);
+}
+
+// ---------------------------------------------------------------------------
 // Six guardian pockets — each a named structure, tinted corrupted or
 // restored by whether ITS OWN guardian has fallen, plus a live warm-light
 // bloom the instant it does.
@@ -297,15 +516,15 @@ export async function buildYg1(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {});
   world.spawn = { x: 0, z: 6, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 0, z: 6, angle: Math.PI }, { centre: -10 });
+  sideDoor(world, 's', halfW, halfD, 'yhs', { x: -10, z: -10.5, angle: 0 }, { centre: -10 });
   // THE GATE HOUSE: the keeper's hut to one side, a stretch of wall behind
   // the sentinel — the "already know this shape" gate Hollow Sentinel's own
   // shieldUp block borrows from Stoneroot (design doc §3).
   if (!GREY()) {
-    placeOne(world, villageKit.hut, 'hut', -6, -5, 1.0, 0.9, D.propTint);
-    world.addBox(-8.5, -3.5, -7.2, -3.2);
-    placeOne(world, villageKit.wall1, 'wall1', 6, -6.5, 1.0, Math.PI / 2, D.propTint);
-    world.addBox(2, 10, -7.9, -5.1);
+    placeOne(world, villageKit.hut, 'hut', -5.5, -4.5, 1.9, 0.9, D.propTint);
+    world.addBox(-10, -1, -8, -1);
+    placeOne(world, villageKit.wall1, 'wall1', 6, -6.5, WALL_S, Math.PI / 2, D.propTint);
+    world.addBox(2.6, 9.4, -7.7, -5.3);
   }
   world.markers.hollowSentinelSpots = [{ x: 0, z: -4 }];
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -325,13 +544,12 @@ export async function buildYg2(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {});
   world.spawn = { x: 0, z: 6, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 0, z: 6, angle: Math.PI }, { centre: 0 });
+  sideDoor(world, 's', halfW, halfD, 'yhs', { x: 0, z: -10.5, angle: 0 }, { centre: 0 });
   // THE MARKET ROW: a cart left mid-sale, a stall never opened again.
   if (!GREY()) {
     placeOne(world, villageKit.wagons, 'wagons', -6, -2, 1.15, 0.4, D.propTint);
     world.addBox(-8.8, -3.2, -4.9, 0.9);
-    placeOne(world, villageKit.hut, 'hut', 6, -5, 0.9, -0.5, D.propTint);
-    world.addBox(3.9, 8.1, -7.1, -3.3);
+    townhouse(world, 4, 6.5, -5, -0.5, D.propTint, 0.55);
   }
   world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y2' };
   world.markers.shadeKnightSpots = [{ x: 0, z: -4 }];
@@ -352,14 +570,14 @@ export async function buildYg3(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {});
   world.spawn = { x: 0, z: 6, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 0, z: 6, angle: Math.PI }, { centre: 10 });
+  sideDoor(world, 's', halfW, halfD, 'yhs', { x: 10, z: -10.5, angle: 0 }, { centre: 10 });
   // THE MILL: the hut IS the millhouse; the wheel is architecture, not a
   // creature, so it is a primitive rather than a new model — same reasoning
   // as frostBramble/valeBramble (js/level5.js, js/level6.js).
   let wheel = null;
   if (!GREY()) {
-    placeOne(world, villageKit.hut, 'hut', -5, -5, 1.0, 0.4, D.propTint);
-    world.addBox(-7.5, -2.5, -7.1, -3.3);
+    placeOne(world, villageKit.hut, 'hut', -5, -5, 1.7, 0.4, D.propTint);
+    world.addBox(-9.3, -0.7, -8, -2);
     const wg = new THREE.Group();
     const rim = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.16, 6, 14),
       new THREE.MeshStandardMaterial({ color: D.propTint, roughness: 0.9 }));
@@ -397,11 +615,11 @@ export async function buildYg4(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
   world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'ysq', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: -7 });
+  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: -13.5, z: -7, angle: Math.PI / 2 }, { centre: -7 });
   // THE BELL TOWER: real height, real sightlines — the design doc's own
   // reason a ranged kiter belongs here rather than on open ground.
   if (!GREY()) {
-    placeOne(world, villageKit.tower2, 'tower2', 4, -4, 1.0, 0, D.propTint);
+    placeOne(world, villageKit.tower2, 'tower2', 4, -4, TOWER_S, 0, D.propTint);
     world.addBox(1.9, 6.1, -6.1, -1.9);
   }
   world.markers.wraithArcherSpots = [{ x: 4, z: 0 }];
@@ -422,14 +640,16 @@ export async function buildYg5(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
   world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'ysq', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: 7 });
+  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: 0, z: 10.5, angle: Math.PI }, { centre: 7 });
   // THE BACK ALLEY: cramped on purpose — the one guardian that can be
   // approached quietly wants corners to be approached quietly FROM.
   if (!GREY()) {
-    placeOne(world, villageKit.houses, 'houses', -3, -6.4, 0.34, 0, D.propTint);
-    world.addBox(-9.5, 3.5, -7.9, -5.3);
-    placeOne(world, villageKit.wall2, 'wall2', 3, 3, 1.0, Math.PI / 2, D.propTint);
-    world.addBox(-1, 7, 2.1, 3.9);
+    // the alley's terrace: two REAL townhouses instead of the whole
+    // houses-pack strip squeezed to 0.34 — the exact miniaturisation dad named
+    townhouse(world, 5, -5, -6, 0.15, D.propTint, 0.55);
+    townhouse(world, 7, 2.5, -6.2, -0.15, D.propTint, 0.55);
+    placeOne(world, villageKit.wall2, 'wall2', 3, 3, WALL_S, Math.PI / 2, D.propTint);
+    world.addBox(-0.4, 6.4, 2.4, 3.6);
   }
   world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y3' };
   world.markers.lurkerSpots = [{ x: 4, z: 0 }];
@@ -450,11 +670,11 @@ export async function buildYg6(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('w')], D, {});
   world.spawn = { x: 6, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 'ysq', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: -7 });
+  sideDoor(world, 'w', halfW, halfD, 'ylw', { x: -13.5, z: 7, angle: Math.PI / 2 }, { centre: -7 });
   // THE CHAPEL ROOF: the region's second, distinct tower (tower-3, not
   // tower-2 again) — height for the region's one aerial fight.
   if (!GREY()) {
-    placeOne(world, villageKit.tower3, 'tower3', -4, -4, 1.0, 0, D.propTint);
+    placeOne(world, villageKit.tower3, 'tower3', -4, -4, TOWER_S, 0, D.propTint);
     world.addBox(-6.1, -1.9, -6.1, -1.9);
   }
   world.markers.shadowDragonlingSpots = [{ x: -4, z: 0 }];
@@ -478,10 +698,13 @@ export async function buildYrw(scene) {
   const D = WARM_D;
   const { halfW, halfD } = shell(world, spec, [gap('w')], D, {});
   world.spawn = { x: 6, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 'ysq', { x: 8, z: 0, angle: Math.PI / 2 }, { centre: 7 });
+  sideDoor(world, 'w', halfW, halfD, 'ysq', { x: 15, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
+  // the well-keeper's barn — the hut at the scale it honestly is
   if (!GREY()) {
-    placeOne(world, villageKit.hut, 'hut', 4, -5, 0.85, -0.3, D.propTint);
-    world.addBox(2.1, 6.5, -7.0, -3.5);
+    placeOne(world, villageKit.hut, 'hut', 3.5, -5, BARN_S, -0.3, D.propTint);
+    world.addBox(-2.2, 9.2, -9.6, -0.6);
+  } else {
+    world.addBox(-2.2, 9.2, -9.6, -0.6);
   }
   world.markers.pupSpot = { x: -4, z: 0, id: 'pup_village' };
   world.markers.chestDefs = [
@@ -492,7 +715,7 @@ export async function buildYrw(scene) {
 }
 
 export const LEVELVILLAGE_ROOMS = {
-  ysq: buildYsq,
+  ysq: buildYsq, yhs: buildYhs, ylw: buildYlw,
   yg1: buildYg1, yg2: buildYg2, yg3: buildYg3,
   yg4: buildYg4, yg5: buildYg5, yg6: buildYg6,
   yrw: buildYrw,
