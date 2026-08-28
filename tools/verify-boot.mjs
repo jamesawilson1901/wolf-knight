@@ -8,7 +8,7 @@
 //
 // This is the cheap check that actually catches those: load the page, wait for
 // the title screen, and report any page error. Run it before anything longer.
-import { chromium } from 'playwright';
+import { launchBrowser, assertWebGL } from './launch.mjs';
 import { readFileSync } from 'fs';
 
 // --- STATIC CHECK: nothing after `return finish()` -------------------------
@@ -52,14 +52,25 @@ import { readFileSync } from 'fs';
   }
   console.log('✓ no room builder returns before it finishes dressing');
 }
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE: ' + m.text()); });
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
+// THE RENDERER ASSERTION (test-infra hardening job 1). Printed on every run,
+// and it fails LOUDLY with a named cause if WebGL context creation ever
+// breaks — the first line of the first suite, not forty-four gameplay
+// failures that are really one dead software-rendering context.
+let renderer;
+try {
+  renderer = await assertWebGL(page);
+  console.log('WebGL renderer: ' + renderer);
+} catch (e) {
+  console.log('✗ ' + e.message);
+  await b.close();
+  process.exit(1);
+}
 let titled = false;
 try {
   await page.waitForSelector('#title', { state: 'visible', timeout: 25000 });

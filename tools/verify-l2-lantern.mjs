@@ -11,7 +11,7 @@
 // opened by the deep lantern, the dark room is genuinely dark and genuinely
 // holed, the holes send a child back to the door rather than killing them, and
 // the Dark Wolf can see where the other forms cannot.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -19,9 +19,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await b.newPage({ viewport: { width: 740, height: 360 } });
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 

@@ -29,7 +29,7 @@
 //       physical width  = 2340 px / 403 ppi = 5.81 in = 14.75 cm
 //       CSS viewport    = 2340 / 3 = 780 CSS px wide
 //   =>  1 CSS px = 14.75 / 780 = 0.01891 cm
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const CM_PER_CSS_PX = 14.75 / 780;
 const FLOOR_PX = 44;             // the hard floor: below this a thumb misses
@@ -42,8 +42,7 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 // the device model above, exactly
 const page = await (await b.newContext({ viewport: { width: 780, height: 360 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));

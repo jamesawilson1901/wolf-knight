@@ -15,9 +15,8 @@
 // This measures it in world space rather than deriving it: transform the arc's
 // centre vertex by the mesh's real matrixWorld and compare the bearing with the
 // warden's own forward vector, at seven facings including non-cardinals.
-import { chromium } from 'playwright';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+import { launchBrowser } from './launch.mjs';
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });

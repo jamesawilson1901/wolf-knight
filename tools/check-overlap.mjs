@@ -18,7 +18,7 @@
 // the room." Read every reported pair before treating it as a bug; the core
 // pairwise-overlap math itself is validated (LAW 10) against synthetic
 // known-bad/known-good/known-touching cases, not against a live scene.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
 const check = (name, ok, extra) => {
   console.log(`${ok ? '✓' : '✗'} ${name}` + (extra ? ' ' + JSON.stringify(extra) : ''));
@@ -30,9 +30,7 @@ const errors = [];
 // counts as a real interpenetration, not two things merely close together.
 const OVERLAP_FRACTION = 0.35;
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 // Set BEFORE any module code runs — verify-grounded.mjs's own lesson ("Prove

@@ -15,11 +15,9 @@
 // clock: under SwiftShader a frame can take 200ms and main.js clamps dt to
 // 0.05, so a real-time sample catches the coin still on its first rise and
 // "proves" there is no bounce.
-import { chromium } from 'playwright';
+import { launchBrowser } from './launch.mjs';
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--autoplay-policy=no-user-gesture-required'] });
+const b = await launchBrowser();
 const page = await b.newPage({ viewport: { width: 740, height: 360 } });
 page.on('pageerror', (e) => console.log('pageerror:', e.message));
 

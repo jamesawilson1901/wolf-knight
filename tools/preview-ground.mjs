@@ -1,7 +1,6 @@
 // Screenshot the ground painter's output so a human can judge it.
-import { chromium } from 'playwright';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', headless: true,
-  args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+import { launchBrowser } from './launch.mjs';
+const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 960, height: 1000 }, deviceScaleFactor: 2 })).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
