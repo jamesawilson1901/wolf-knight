@@ -109,7 +109,7 @@ export const L2 = {
   vcp: { ...M.pocket, kind: 'pocket', district: 'sunken',  loopsTo: 'vc2',
          label: 'Drowned Alcove', beat: 'optional · chest' },
   vc3: { ...M.pocket, kind: 'pocket', district: 'sunken',  spine: true, returnsToHub: true,
-         label: 'THE SHOULDER PIN', beat: 'the last pin drops' },
+         label: 'THE DEEP LANTERN', beat: 'DARK · the broken floor · the last lantern' },
 
   vz:  { ...M.arena,  kind: 'arena',  district: 'crypt',   spine: true,
          label: "E · THE WARDEN'S CRYPT", beat: 'THE BONE WARDEN · CONCLUDE' },
@@ -198,10 +198,6 @@ export async function loadCaveKit() {
     logStack:'./assets/env/log-stack.glb',                 // Kenney Nature 🟢
     horse:   './assets/env/dungeon/Statue_Horse.glb',
     archDoorB:'./assets/env/dungeon/Arch_Door.glb',
-    // the hero prop that is a BEING gets a real character model, never code
-    // geometry (no-code-built-creatures law). A stone titan is a slumped
-    // giant: KayKit's barbarian at 3.4x, tinted granite.
-    titan:   './assets/chars/barbarian.glb',       // KayKit Adventurers 🟢
   };
   const entries = await Promise.all(Object.entries(names).map(async ([k, u]) => [k, await loadGLB(u)]));
   caveKit = Object.fromEntries(entries);
@@ -209,7 +205,7 @@ export async function loadCaveKit() {
 }
 
 const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
-  darkZone } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
+  darkZone, pit } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
@@ -278,70 +274,6 @@ function crackedPile(world, id, x, z, big = false) {
     } });
   return g;
 }
-
-// A scorched timber wedge — the thing the fire slam takes. Same silhouette
-// family as crackedPile so a child reads "breakable" at a glance, but charred
-// dark with an ember glint instead of gold: burn, not smash.
-function burnPin(world, id, x, z) {
-  if (state.flags.burned[id]) return null;
-  if (GREY()) {
-    // same shape crackedPile's grey branch pushes — the kit is not loaded here
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 1.6, 2.2),
-      new THREE.MeshStandardMaterial({ color: 0x2c211a, roughness: 0.95,
-        emissive: 0xff7a2d, emissiveIntensity: 0.2 })
-    );
-    m.position.set(x, 0.8, z);
-    const gg = new THREE.Group();
-    gg.add(m);
-    world.add(gg);
-    world.addCircle(x, z, 1.2);
-    const col = world.circleColliders[world.circleColliders.length - 1];
-    world.burnables.push({ id, x, z, hitR: 1.3, group: gg, collider: col });
-    return gg;
-  }
-  // TIMBER, NOT ROCK. This was three rock models tinted char-black — the same
-  // silhouette as crackedPile, i.e. an EARTH-stomp target — and dad read it
-  // exactly as drawn: "you just burn a random rock? whats that?" The wood the
-  // comments always claimed is now on screen: a charred log-stack strut with
-  // burnt logs at its foot (Woodfire.glb ships pre-charred), standing wedged
-  // under the titan's fist (titanArm, below). All measured floor-pivot models.
-  const g = new THREE.Group();
-  const strut = tinted(caveKit.logStack, 'burnpin', 0x3a2a1c, 0.95);
-  strut.position.set(x, 0, z);
-  strut.rotation.y = 0.3;
-  strut.rotation.z = 0.10;                      // leaning under the load
-  strut.scale.set(2.2, 3.4, 2.2);               // a post, taller than wide
-  g.add(strut);
-  const brace = tinted(caveKit.logStack, 'burnpin', 0x2c211a, 0.9);
-  brace.position.set(x + 0.65, 0, z + 0.45);
-  brace.rotation.y = 1.4;
-  brace.scale.set(1.6, 1.5, 1.6);
-  g.add(brace);
-  const chars = tinted(caveKit.woodfire, 'burnpin', 0x2c211a, 0.85);
-  chars.position.set(x - 0.5, 0, z - 0.4);
-  chars.scale.setScalar(1.25);
-  g.add(chars);
-  const glint = new THREE.Mesh(
-    new THREE.RingGeometry(1.0, 1.3, 18),
-    new THREE.MeshBasicMaterial({ color: 0xff7a2d, transparent: true, opacity: 0.34,
-      side: THREE.DoubleSide, depthWrite: false })
-  );
-  glint.rotation.x = -Math.PI / 2;
-  glint.position.set(x, world.deckY + 0.04, z);
-  world.add(glint);
-  world.add(g);
-  world.addCircle(x, z, 1.2);
-  const col = world.circleColliders[world.circleColliders.length - 1];
-  world.burnables.push({ id, x, z, hitR: 1.3, group: g, collider: col,
-    clear: () => {
-      const i = world.circleColliders.indexOf(col);
-      if (i >= 0) world.circleColliders.splice(i, 1);
-      glint.visible = false;
-    } });
-  return g;
-}
-
 // The hero props. Greybox is a bold blocky silhouette at TRUE SCALE, because
 // "does it read from directly above" is a silhouette question, not an art one.
 function heroProp(world, x, z, kind, D) {
@@ -354,11 +286,15 @@ function heroProp(world, x, z, kind, D) {
       m.position.set(px, py, pz); m.rotation.y = ry; m.castShadow = true;
       g.add(m);
     };
-    if (kind === 'titan') {          // a slumped giant against the far wall
-      add(6, 7, 3.4, 0, 3.5, 0);                 // torso
-      add(3.4, 3.4, 3.4, 0, 8.4, 0.4);           // head
-      add(2.4, 6.5, 2.4, -5.2, 3.2, 1.6, 0.4);   // the arm that becomes the ramp
-      world.addBox(x - 3.4, x + 3.4, z - 1.9, z + 1.9);
+    if (kind === 'beacon') {         // a great lamp on a stepped plinth
+      add(5.2, 1.0, 5.2, 0, 0.5, 0);             // base step
+      add(3.8, 1.0, 3.8, 0, 1.5, 0);             // second step
+      add(2.2, 5.0, 2.2, 0, 4.5, 0);             // the column
+      add(3.4, 1.6, 3.4, 0, 7.8, 0);             // the lamp housing
+      // ±2.6, matched to the dressed monument's true footprint (pedestal +
+      // columns at r2.5). The first cut was ±3.2 and the walk-up check caught
+      // it: a child could not stand within 3u of the level's own anchor.
+      world.addBox(x - 2.6, x + 2.6, z - 2.6, z + 2.6);
     } else if (kind === 'geode') {   // a split crystal taller than Kael
       add(3.2, 5.4, 3.2, -1.3, 2.7, 0, 0.5);
       add(2.6, 4.2, 2.6, 1.6, 2.1, 0.4, -0.4);
@@ -389,24 +325,56 @@ function heroProp(world, x, z, kind, D) {
     return m;
   };
 
-  if (kind === 'titan') {
-    // A real humanoid model at 3.4x, tipped back and slumped — the
-    // asset-multiplication law doing the work a bespoke model would.
+  if (kind === 'beacon') {
+    // THE GREAT BEACON: a stepped stone plinth carrying a lamp, built from the
+    // kit's own pedestal, columns and torch rather than a bespoke model — the
+    // asset-multiplication law, and it keeps the silhouette in the same
+    // vocabulary as every other vault structure.
     //
-    // AND IT IS STONE, WHICH MEANS NO TEXTURE. tinted() multiplies the colour
-    // into the material's map, and granite grey times barbarian hide is still
-    // warm brown — so the level's anchor read as a giant BEAR standing on the
-    // crypt gate, which is exactly what dad sent a screenshot of. Stone has no
-    // skin: one flat granite material across every mesh, and the deeper slump
-    // takes its head out of the sky above the gate.
-    const t = tinted(caveKit.titan, 'titan', 0x8d8f94);
+    // STONE HAS NO SKIN. tinted() multiplies its colour into the material's
+    // map, and granite times a dungeon texture is still that texture — the
+    // titan that stood here read as a giant BEAR for exactly this reason. One
+    // flat granite material across the masonry, and the lamp is the only thing
+    // in the group allowed to have a colour of its own.
     const granite = new THREE.MeshStandardMaterial({ color: 0x7e8288, roughness: 0.96 });
-    t.traverse((n) => { if (n.isMesh) n.material = granite; });
-    t.scale.setScalar(3.4);
-    t.rotation.set(-0.62, 0, 0.10);      // properly slumped, head down and aside
-    t.position.set(0, -0.5, 0.6);        // settled into the rubble, not standing on it
-    g.add(t);
-    world.addBox(x - 3.4, x + 3.4, z - 1.9, z + 1.9);
+    const stone = (gltf, px, py, pz, s, ry = 0) => {
+      const m = tinted(gltf, 'beacon', 0x8d8f94);
+      m.traverse((n) => { if (n.isMesh) n.material = granite; });
+      m.position.set(px, py, pz);
+      m.rotation.y = ry;
+      m.scale.setScalar(s);
+      g.add(m);
+      return m;
+    };
+    stone(caveKit.pedestal, 0, 0, 0, 3.4);
+    for (let i = 0; i < 4; i++) {           // four columns around the plinth
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      stone(caveKit.column, Math.cos(a) * 2.5, 1.1, Math.sin(a) * 2.5, 1.9, a);
+    }
+    stone(caveKit.column2, 0, 1.1, 0, 2.6);
+    // the lamp itself, high on the column
+    const housing = stone(caveKit.torch, 0, 5.4, 0, 3.2);
+    housing.traverse((n) => { if (n.isMesh) n.material = granite; });
+    const litNow = WS.stage(REGION) >= 1;
+    const bowl = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.9, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, emissive: litNow ? 0xffc46a : 0x1a1520,
+        emissiveIntensity: litNow ? 2.4 : 0.35, roughness: 1,
+      })
+    );
+    bowl.position.set(0, 7.1, 0);
+    g.add(bowl);
+    world.keepLoose(bowl);
+    if (litNow) {
+      const lamp = new THREE.PointLight(0xffc46a, 10, 26, 1.8);
+      lamp.position.set(x, 7.4, z);
+      world.add(lamp);
+      world.onAnimate((t2) => {
+        bowl.material.emissiveIntensity = 2.1 + Math.sin(t2 * 2.2) * 0.45;
+      });
+    }
+    world.addBox(x - 2.6, x + 2.6, z - 2.6, z + 2.6);
   } else if (kind === 'geode') {
     // a split boulder with a glowing heart — one rock, two halves, cracked open
     put(caveKit.rockLA, 'geodeShell', -1.5, 0, 0, 2.6, 0.5, 0.18, 0x35525c);
@@ -540,8 +508,16 @@ export async function buildVh(scene) {
       { open: stage >= 3, portal: 0x8f7bff, height: 3.4, halfGap: BOSS_DOOR_HALF });
   }
 
-  // ▲ THE STONE TITAN, slumped against the north wall. The level's anchor.
-  heroProp(world, 0, -11.5, 'titan', D);
+  // ▲ THE GREAT BEACON, against the north wall. The level's anchor.
+  //
+  // This was a slumped stone giant whose arm you freed to make a ramp to the
+  // crypt. It is gone, along with the puzzle hung off it — dad: "get rid of
+  // the 'the giants arm is trapped' and all that crap that has no logical
+  // sense." What stands here instead says what the region actually runs on:
+  // a great cold lamp on a plinth, dark until the first lantern is lit, and
+  // burning from then on. A child who walks in, sees an unlit beacon, and
+  // later sees it burning has been told the whole region in two glances.
+  heroProp(world, 0, -11.5, 'beacon', D);
   world.markers.heroSpot = { x: 0, z: -11.5 };
 
   // --- CHANGE 1: the lantern -----------------------------------------------
@@ -691,25 +667,25 @@ export async function buildVh(scene) {
       st.scale.set(1.5, 0.35, 1.5);
       st.position.set(9, 1.012 * 0.35, -12.4);
       world.add(st);
-      // ...AND THE ARM THAT LOWERED IT. "The titan's hand lowers into a ramp"
-      // was never depicted: the stairs appeared 9 units from a statue that
-      // never moved. A granite arm now reaches from the titan's shoulder to a
-      // flat stone hand beside the stair head, so the vc3 fall (titanArm) and
-      // this ramp are visibly the same limb. Boulders, not rotated columns —
-      // floor-pivot models placed on the floor, nothing to mismeasure.
+      // ...AND WHAT OPENED IT. This used to be a granite arm reaching from the
+      // titan's shoulder to a flat stone hand beside the stair head, so the
+      // fall in vc3 and this ramp read as the same limb. The titan is gone and
+      // the crypt is opened by the deep lantern now, so the arm goes with it —
+      // fallen masonry marks the way instead, which is what a vault that has
+      // been shut for a very long time actually looks like when it opens.
       // placement law: everything stays WEST of x=7 — the door lane (x
       // 7.7..10.3) and the crypt-return landing at (9,-10.2) must stay clear
       for (const [px, pz, s, ry] of [[2.6, -11.6, 3.0, 0.7], [4.4, -11.4, 2.4, 2.1]]) {
-        const seg = tinted(caveKit.rockLB, 'titanarm', 0x8d8f94);
+        const seg = tinted(caveKit.rockLB, 'cryptrubble', 0x8d8f94);
         seg.position.set(px, 0, pz);
         seg.rotation.y = ry;
         seg.scale.setScalar(s);
         world.add(seg);
       }
-      const palm = tinted(caveKit.rockLC, 'titanhand', 0x8d8f94);
-      palm.position.set(6.2, 0, -11.3);
-      palm.scale.set(1.7, 1.3, 1.7);
-      world.add(palm);
+      const slab = tinted(caveKit.rockLC, 'cryptrubble', 0x8d8f94);
+      slab.position.set(6.2, 0, -11.3);
+      slab.scale.set(1.7, 1.3, 1.7);
+      world.add(slab);
     }
   }
 
@@ -932,7 +908,7 @@ export async function buildVa3(scene) {
   // is the Bone Warden's reward now (main.js onWardenDefeated has granted it
   // there all along); this room's job is the region's first MILESTONE instead:
   // Petra's lantern stands cold on the shrine, and the FIRE WOLF lights it.
-  // That is what completes 'spark' — the titan's lantern relights, and the hub
+  // That is what completes 'spark' — the great beacon relights, and the hub
   // opens its other two spokes — so Stoneroot is entered and solved with the
   // wolf the last boss gave you, exactly as asked.
   world.markers.shrineSpot = { x: 0, z: 0 };
@@ -1083,6 +1059,7 @@ export async function buildVbp(scene) {
   sideDoor(world, 'n', halfW, halfD, 'vb2', { x: 0, z: 10.5, angle: Math.PI });  // LOOPS BACK
   wallRun(world, -6, 1, 2, 1, D);
   visibleReward(world, 6, 4, 'l2_vbp_chest', { shards: 22, gear: 'sword_c' });
+  world.markers.pupSpot = { x: -7.5, z: 4.5, id: 'pup_v2' };
   world.markers.minionSpots = [{ x: -4, z: -3 }];
   // THE CHALK SEAM: a dead end they worked out and abandoned
   world.markers.breakables = [
@@ -1326,6 +1303,7 @@ export async function buildVcp(scene) {
   sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 14.1, z: 1.5, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, 0, -4, 0, 3, D);
   visibleReward(world, 6, -3, 'l2_vcp_chest', { shards: 20, heartPiece: 1, armour: 'stone' }, 'gold');
+  world.markers.pupSpot = { x: -6.5, z: -5, id: 'pup_v3' };
   world.markers.slimeSpots = [{ x: 5, z: 4 }];
   // the last dry pocket before the crypt — someone sheltered here and the gold
   // chest is what they were carrying
@@ -1341,108 +1319,78 @@ export async function buildVcp(scene) {
   return finish(world, spec, D);
 }
 
-// THE TITAN'S ARM, IN THE ROOM WITH THE PIN. Dad, from play: "in order to
-// unlock the door you just burn a random rock? whats that? it needs to be
-// something that makes sense, not an abstract action just because." The causal
-// chain — strut props the arm, burn the strut, the arm falls and its hand
-// becomes the crypt ramp — lived only in comments and a worldstate title; the
-// room showed a black rock. Now the limb physically reaches in from the north
-// wall (the wall whose door leads back to the hub where the titan slumps): a
-// line of granite boulders descending to a flat stone HAND that hovers over
-// the charred strut. Burn the strut and the hand falls to the floor in front
-// of the child; on re-entry the room reads the same flag burnPin uses, so the
-// arm is down forever after. Granite tint matches the hub titan (0x8d8f94).
-// All models measured floor-pivot (the stairs lesson: measure, never assume).
-function titanArm(world, dropped) {
-  if (GREY()) return;   // greybox suites drive the flag directly; no dressing
-  const GRANITE = 0x8d8f94;
-  // the arm: shoulder at the wall, two joints stepping down toward the pin
-  for (const [px, pz, s, ry] of [[-3.9, -7.3, 3.2, 0.4], [-2.8, -5.9, 2.5, 1.9], [-1.6, -4.4, 1.9, 0.9]]) {
-    const seg = tinted(caveKit.rockLB, 'titanarm', GRANITE);
-    seg.position.set(px, 0, pz);
-    seg.rotation.y = ry;
-    seg.scale.setScalar(s);
-    world.add(seg);
-    world.addCircle(px, pz, s * 0.42);   // a giant's arm is solid
-  }
-  // THE HAND — a flat granite palm with two knuckle stones, hovering directly
-  // over the strut. This is the thing the strut visibly holds up. Named so
-  // verify-grounded.mjs's grounding check knows the difference between
-  // hanging and hovering, same fix as level3.js's hangingLog (found live,
-  // 2026-08-22 — the fist read as a floating-rock defect until this name
-  // was added; it was never a placement bug, just an unnamed exemption).
-  const hand = new THREE.Group();
-  hand.name = 'hangingFist';
-  const palm = tinted(caveKit.rockLC, 'titanfist', GRANITE);
-  palm.scale.set(1.9, 1.6, 1.9);
-  hand.add(palm);
-  for (const [kx, kz] of [[-0.35, 0.3], [0.4, -0.25]]) {
-    const kn = tinted(caveKit.rockSA, 'titanfist', GRANITE);
-    kn.position.set(kx, 0.5, kz);
-    kn.scale.setScalar(1.7);
-    hand.add(kn);
-  }
-  const UP = { x: -0.3, y: 1.35, z: -3.15 };   // hovering over the strut at (0,-3)
-  const DOWN = { x: 0.45, y: 0.06, z: -2.45 }; // fallen, just beside the ash
-  if (dropped) {
-    hand.position.set(DOWN.x, DOWN.y, DOWN.z);
-    world.add(hand);
-    world.addCircle(DOWN.x, DOWN.z, 0.85);
-    return;
-  }
-  hand.position.set(UP.x, UP.y, UP.z);
-  world.add(hand);
-  world.keepLoose(hand);   // flattenStatic must not freeze the falling hand
-  let fall = 0;
-  world.onAnimate((t, dt) => {
-    if (!state.flags.burned.l2_vc3_pin || fall >= 1) return;
-    fall = Math.min(1, fall + dt * 1.4);
-    const e = fall * fall;                      // ease-in: a heavy thing falls
-    hand.position.set(UP.x + (DOWN.x - UP.x) * e, UP.y + (DOWN.y - UP.y) * e,
-      UP.z + (DOWN.z - UP.z) * e);
-    // no collider on the live drop — a child standing there must not be
-    // trapped; the rebuild adds it (the flag persists, so next entry is DOWN)
-  });
-}
-
-// THE SHOULDER PIN — the last thing holding the titan's arm up.
+// THE DEEP LANTERN — the room that is DARK, and the reason the Dark Wolf is
+// not just the form you start in.
+//
+// This was "the shoulder pin": a wedged timber propping a stone giant's arm,
+// which you burned so the arm fell and became a ramp to the crypt. Dad, from
+// play: "the second level makes zero sense in terms of things you need to do
+// to unlock the door. get rid of the 'the giants arm is trapped' and all that
+// crap that has no logical sense." He is right — nothing about it told a child
+// what it was for, and the titan is gone from the region entirely.
+//
+// What replaces it is the region's own verb said plainly: THE VAULT RUNS ON
+// LANTERNS. One is lit on Spoke A and the galleries open. This is the last one,
+// and lighting it opens the crypt.
+//
+// The room is unlit, and the floor has holes in it. In any other form the veil
+// sits at 0.62 and the gaps are guesswork; as the DARK WOLF the veil drops to
+// 0.12 and the route is simply visible (js/main.js reads state.form for both).
+// That mechanic has been in the engine since the beginning and has never once
+// been the answer to anything — the shape of the floor is what finally asks
+// for it. Falling costs the walk back, never a heart.
 export async function buildVc3(scene) {
   const { world, spec, D } = base(scene, 'vc3');
-  // BOTH DOORS, ALWAYS. The pin-pile sits square in the middle of the only line
-  // between them, so it cannot be walked past — which is what the earned
-  // shortcut was clumsily trying to guarantee.
+  const lit = WS.get(REGION, 'deepLantern');
+  // BOTH DOORS, ALWAYS. The lantern sits past the gaps on the only line between
+  // them, so it cannot be walked past.
   const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
-    patches: [{ x: 0, z: -3, r: 3.8, kind: 'water' }, { x: -6, z: 4, r: 3.0, kind: 'moss' },
-              { x: 6, z: 3, r: 2.8, kind: 'mud' }],
-    paths: [[[0, 8], [0, 1], [0, -8]]],
+    patches: [{ x: -6, z: 4, r: 3.0, kind: 'moss' }, { x: 6, z: 3, r: 2.8, kind: 'mud' },
+              { x: 0, z: -6, r: 3.0, kind: 'rubble' }],
+    paths: [[[0, 8], [0, 5]]],   // the worn path STOPS at the edge of the holes
   });
   world.spawn = { x: 0, z: 5.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc2', { x: 0, z: -10.5, angle: 0 });
-  // LANDS IN FRONT OF THE TITAN, NOT INSIDE IT. This shortcut used to put the
-  // child down at (0,-11.5) — which is where the Stone Titan's collider moved to
-  // when it was slid back to make room for the vault's pool. Arriving inside a
-  // statue meant the flood fill for the walk to the crypt began in solid rock,
-  // and the only symptom anywhere was the boss becoming unwalkable-to. The spot
-  // is clear whether the pool is still flooded or drained.
   sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: -8.4, angle: Math.PI });
 
-  world.markers.pinSpot = { x: 0, z: -3 };
-  // THE PIN BURNS. It was a cracked pile — an EARTH verb — standing between a
-  // child and the boss that AWARDS earth. Under boss-earned forms that is a
-  // door locked with the key behind it. The wedged timber is scorched black
-  // and the Fire Wolf's slam takes it, same as every burnable since Level 1.
-  // The ARM the strut props is in the room now (titanArm above): burn the
-  // strut and the granite hand falls in front of the child — the cause and
-  // the effect finally share a screen.
-  titanArm(world, !!state.flags.burned.l2_vc3_pin);
-  burnPin(world, 'l2_vc3_pin', 0, -3);
-  world.markers.shieldSpots = [{ x: -4, z: 2 }];
-  world.markers.breakables = [{ x: -8, z: 1, kind: 'crate' }, { x: 8, z: 1, kind: 'jar' }];
-  fallenColumn(world, -7.5, -4.5, 0.6, D, 2.6);
-  fallenColumn(world, 7.5, -4.5, -0.6, D, 2.6);
-  rubbleField(world, -7.5, 5, 2.4, D, 10);
-  rubbleField(world, 7.5, 5, 2.4, D, 10);
-  aftermath(world, -4, 6, 1.8, D, 35);
+  // Back to the doorway you came in by, not to the middle of the holes.
+  world.pitReturn = { x: 0, z: 5.5 };
+
+  // THE BROKEN FLOOR. Three gaps with two standing stones between them, so the
+  // way across is a real route with choices and not one corridor. Measured
+  // against the 0.34u body radius: every ledge is at least 1.6u wide, which is
+  // walkable without precision — this is a SEEING puzzle, not a platforming
+  // one, and a five-year-old must never fail it for being half a unit off.
+  pit(world, -9.0, -2.6, -1.2, 1.8);
+  pit(world, -1.0, 1.0, -4.4, 1.8);
+  pit(world, 2.6, 9.0, -1.2, 1.8);
+
+  // The dark sits over the broken half only: you can SEE that the room goes
+  // wrong from the doorway, which is the invitation to change form.
+  darkZone(world, -halfW, halfW, -8, 3.2);
+
+  // THE LANTERN, past the gaps. Lighting it opens the Warden's crypt.
+  world.markers.deepLanternSpot = { x: 0, z: -6.4 };
+  if (!GREY()) {
+    brazier(world, prepareModel, caveKit.torch, 'l2_deep_lantern', 0, -6.4, () => {
+      WS.set(REGION, 'deepLantern');
+      if (world.onDeepLantern) world.onDeepLantern();
+    });
+    if (lit) {
+      // already lit on a return visit: the brazier's own state is rebuilt from
+      // the flag by gates.js, and the room keeps its warm pool of light
+      const lamp = new THREE.PointLight(0xffc46a, 9, 20, 1.8);
+      lamp.position.set(0, 2.4, -6.4);
+      world.add(lamp);
+    }
+  }
+
+  world.markers.shieldSpots = [{ x: -6, z: 4 }];
+  world.markers.breakables = [{ x: -8, z: 6, kind: 'crate' }, { x: 8, z: 6, kind: 'jar' }];
+  fallenColumn(world, -7.5, -5.5, 0.6, D, 2.6);
+  fallenColumn(world, 7.5, -5.5, -0.6, D, 2.6);
+  rubbleField(world, -7.5, 6.5, 2.4, D, 10);
+  rubbleField(world, 7.5, 6.5, 2.4, D, 10);
   return finish(world, spec, D);
 }
 

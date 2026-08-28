@@ -2324,6 +2324,37 @@ export class Player {
   _hazards(dt, world) {
     if (this.iframes > 0) this.iframes -= dt;
     if (this.hurtFlashT > 0) this.hurtFlashT -= dt;
+    // A HOLE IN THE FLOOR COSTS THE WALK, NOT A HEART.
+    //
+    // Falling puts the child back at the room's entry and nothing else: no
+    // damage, no death, no lost progress. For a five-year-old the honest cost
+    // of a misstep is doing it again, and a pit that also takes hearts turns
+    // one mistake into two. Airborne skips it, so a deliberate jump clears a
+    // narrow gap exactly the way it clears lava.
+    if (!this.airborne && !this._pitFall && world.pitAt
+        && world.pitAt(this.root.position.x, this.root.position.z)) {
+      const back = world.pitReturn || world.spawn || { x: 0, z: 0 };
+      this._pitFall = { t: 0, dur: 0.42, toX: back.x, toZ: back.z };
+      this._roll = null; this._dash = null; this._lavaBounce = null;
+      this.lockTime = Math.max(this.lockTime, 0.42);
+      this.iframes = Math.max(this.iframes, 0.9);   // never land back into a hit
+      audio.play('hurt', { volume: 0.45, rate: 0.72 });
+      audio.play('puff', { volume: 0.5, rate: 0.6 });
+    }
+    if (this._pitFall) {
+      const p = this._pitFall;
+      p.t += dt;
+      const k = Math.min(1, p.t / p.dur);
+      // drop out of sight, then set down at the entry for the second half
+      if (k < 0.5) this.airY = -3.2 * (k / 0.5);
+      else {
+        this.root.position.x = p.toX;
+        this.root.position.z = p.toZ;
+        this.airY = -3.2 * (1 - (k - 0.5) / 0.5);
+      }
+      if (k >= 1) { this.airY = 0; this._pitFall = null; }
+      return;   // nothing else touches him mid-fall
+    }
     const hz = world.hazardAt(this.root.position.x, this.root.position.z);
     // remember the last safe footing (used for the lava bounce-back)
     if (!hz && this.airY <= 0) {

@@ -60,7 +60,7 @@ const go = async (room) => {
 const setStage = (n) => page.evaluate((k) => {
   const g = window.__game;
   g.state.flags.world = {};
-  const keys = ['spark', 'drained', 'handDown'].slice(0, k);
+  const keys = ['spark', 'drained', 'deepLantern'].slice(0, k);
   for (const key of keys) g.WS.set('vault', key, true);
 }, n);
 

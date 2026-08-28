@@ -64,7 +64,7 @@ const REGIONS = [
       ['vgb'], ['vb1'], ['vb2'], ['vb3'],
       ['vh', { ws: ['vault', 'drained'] }],
       ['vgc'], ['vc1'], ['vc2'], ['vc3'],
-      ['vh', { ws: ['vault', 'handDown'] }],        // the hand lowers into a ramp
+      ['vh', { ws: ['vault', 'deepLantern'] }],     // the deep lantern opens the crypt
       ['vz'],
     ] },
 

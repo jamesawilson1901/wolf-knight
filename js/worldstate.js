@@ -30,9 +30,26 @@
 
 import { state } from './state.js';
 
+// RENAMED MILESTONES, so a finished room stays finished.
+//
+// A restoration key is written into the save. Renaming one without a bridge
+// would silently un-finish that milestone for every child already past it —
+// stage() counts from the front of the list, so the vault's crypt door would
+// shut again on a save that had already opened it. Each entry is
+// `newKey: [old keys that also count]`, read-only and additive forever.
+const KEY_ALIASES = {
+  // v3.64: the titan and its propped-up arm were cut; the crypt is opened by
+  // lighting the deep lantern now. A save that dropped the hand has earned it.
+  vault: { deepLantern: ['handDown'] },
+};
+
 export const WS = {
   get(region, key) {
-    return !!(state.flags.world && state.flags.world[region] && state.flags.world[region][key]);
+    const w = state.flags.world && state.flags.world[region];
+    if (!w) return false;
+    if (w[key]) return true;
+    const alias = KEY_ALIASES[region] && KEY_ALIASES[region][key];
+    return !!(alias && alias.some((k) => w[k]));
   },
   set(region, key, v = true) {
     if (!state.flags.world) state.flags.world = {};
@@ -97,12 +114,23 @@ export function restorationOf(region) { return RESTORATIONS[region] || []; }
 //
 // `titles` are what a grown-up reads in a debug list. The child is told
 // nothing — they walk in and the room is different, which is the entire point.
+// THE VAULT RUNS ON LANTERNS. It used to end on a stone giant whose propped-up
+// arm you burned free so it fell into a ramp — which nothing in the room ever
+// explained, and which dad named exactly: "the second level makes zero sense in
+// terms of things you need to do to unlock the door." The titan is gone. Two
+// lanterns are lit with the Fire Wolf instead, in two different places, and the
+// second of them is in the dark where only the Dark Wolf can see the floor.
+//
+// `handDown` is kept as a DEAD KEY, never written and never read: saves are
+// additive-forever, and a profile mid-Stoneroot may still carry it. Removing
+// the name from this list would silently renumber stage() for that child and
+// shut a door they had already opened.
 defineRestoration('vault', [
-  { key: 'spark', title: "the titan's lantern relights",
+  { key: 'spark', title: 'the vault lantern relights',
     opens: 'the Bone Quarry and the Sunken Stair doors, invisible in the dark' },
   { key: 'drained', title: 'the water drains from the sunken ring',
     opens: 'the vault floor, and the chest that was underwater' },
-  { key: 'handDown', title: "the titan's hand lowers into a ramp",
+  { key: 'deepLantern', title: 'the deep lantern is lit in the dark',
     opens: "the Warden's Crypt" },
 ]);
 

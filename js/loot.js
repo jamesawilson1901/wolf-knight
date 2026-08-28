@@ -163,7 +163,14 @@ export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
     if (!settled) {
       sp.position.x += vx * dt; sp.position.z += vz * dt;
       y += vy * dt; vy -= 11 * dt;
-      if (y <= 0.55) { y = 0.55; settled = true; }
+      // bounces like the coins do, so a weapon out of a chest reads as a thing
+      // thrown onto the floor rather than a label appearing in the air
+      if (y <= 0.55) {
+        y = 0.55;
+        vy = -vy * 0.42;
+        vx *= 0.5; vz *= 0.5;
+        if (vy < 0.8) { vy = 0; settled = true; }
+      }
     } else {
       y = 0.55 + Math.sin(tt * 3 + a) * 0.06;
     }
@@ -186,7 +193,26 @@ export function updateShards(world, dt, t, player) {
       s.z += s.vz * dt;
       s.y += s.vy * dt;
       s.vy -= 12 * dt;
-      if (s.y <= 0.25 && s.vy < 0) { s.y = 0.25; s.settled = true; }
+      if (s.y <= 0.25 && s.vy < 0) {
+        // IT BOUNCES. Dad: "there should also be an animation on that item
+        // bounce out on the floor a few times." A coin used to fly one arc and
+        // stick to the floor dead, which reads as a sprite being placed rather
+        // than a thing being thrown. Each landing keeps 45% of the fall and
+        // sheds most of the skid, so it hops smaller and smaller — typically
+        // three or four times from the spawn arc — and settles once the hop is
+        // too small to see. The pickup arm timer is untouched, so the "flies
+        // out, lands, THEN is yours" rule above still holds.
+        s.y = 0.25;
+        s.vy = -s.vy * 0.45;
+        s.vx *= 0.55; s.vz *= 0.55;
+        s.hops = (s.hops || 0) + 1;
+        if (s.vy < 0.9) { s.vy = 0; s.settled = true; }
+        // ONE chink per coin, on its first landing. A pot drops five coins and
+        // each hops three or four times; chinking on every hop is twenty plays
+        // inside a second, which is mud rather than sparkle. The spread of
+        // first-landings across the arc is what makes it read as a scatter.
+        else if (s.hops === 1) audio.play('coin', { volume: 0.16, rate: 2.1, vary: 0.25 });
+      }
     } else {
       s.y = 0.25 + Math.sin(t * 3 + s.x * 2) * 0.05;
     }
@@ -262,6 +288,19 @@ export function updateShards(world, dt, t, player) {
 // screenshot was a nine-centimetre plank stack, and even the honest crate that
 // replaced it stood barely past Kael's knee. `size` is the model's largest
 // dimension, so these are real furniture.
+// What each material sounds like coming apart. Layered: an impact plus a body.
+const SMASH_SFX = {
+  crate:  [{ n: 'hit', v: 0.6, r: 0.62 }, { n: 'whoosh', v: 0.3, r: 1.5 }],
+  box:    [{ n: 'hit', v: 0.55, r: 0.72 }, { n: 'whoosh', v: 0.28, r: 1.6 }],
+  barrel: [{ n: 'hit', v: 0.62, r: 0.5 }, { n: 'whoosh', v: 0.32, r: 1.3 }],
+  cask:   [{ n: 'hit', v: 0.58, r: 0.58 }, { n: 'whoosh', v: 0.3, r: 1.4 }],
+  // clay: brighter, shorter, with the dusty tail `puff` already carries
+  vase:   [{ n: 'hit', v: 0.5, r: 1.55 }, { n: 'puff', v: 0.42, r: 1.5 }],
+  jar:    [{ n: 'hit', v: 0.46, r: 1.75 }, { n: 'puff', v: 0.38, r: 1.65 }],
+  // a chest bursting: the lid lets go, then the boards do
+  chest:  [{ n: 'chest-open', v: 0.7, r: 1.25 }, { n: 'hit', v: 0.55, r: 0.7 }],
+};
+
 const BREAK_KINDS = {
   crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.55, shards: 2 },
   // the same crate, low and wide: a supply box rather than a shipping one
@@ -371,8 +410,9 @@ function collapse(gltf) {
 
 export class Breakable {
   constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
-    potion = 0.14, collapsed = null } = {}) {
+    potion = 0.14, collapsed = null, kind = 'crate' } = {}) {
     this.world = world;
+    this.kind = kind;   // chooses the smash sound (SMASH_SFX)
     const model = collapsed
       ? new THREE.Mesh(collapsed.geometry, collapsed.material)
       : prepareModel(gltf.scene.clone());
@@ -429,7 +469,19 @@ export class Breakable {
     if (this.dead) return;
     this.dead = true;
     bumpCounter('pots');
-    audio.play('burn', { volume: 0.55, rate: 1.3 });
+    // WOOD SPLINTERS, CLAY SHATTERS. Every breakable in the game used to make
+    // one sound: `burn` at rate 1.3, a fire hiss borrowed because it was
+    // handy. A crate and a clay jar broke identically and neither sounded like
+    // breaking — dad: "there should be a sound effect when the crate, chest,
+    // barrel they are in is smashed."
+    //
+    // No new audio was added: these are the existing CC0 files pitched to the
+    // material. `hit` low and heavy is a wooden crack; `hit` bright and fast
+    // over `puff` is pottery going to pieces; a chest bursting gets its own
+    // lid-and-hinge crack. All three are layered under a WHOOSH of the thing
+    // coming apart so the break has a body, not just a click.
+    const smash = SMASH_SFX[this.kind] || SMASH_SFX.crate;
+    for (const s of smash) audio.play(s.n, { volume: s.v, rate: s.r, vary: 0.09 });
     // wooden debris: chunks fly and fade
     const bits = [];
     for (let i = 0; i < 6; i++) {
@@ -490,8 +542,11 @@ export async function spawnBreakables(world, spots) {
     // collapsed per KIND, not per url: `jar` is a tinted vase and must not
     // share the vase's baked material
     if (breakCollapsed[kind] === undefined) breakCollapsed[kind] = collapse(breakGltf[def.url]);
+    // `kind` last and resolved: a spot naming something that does not exist
+    // falls back to the crate, and must sound like the crate it became rather
+    // than like the name it asked for.
     world.enemies.push(new Breakable(world, breakGltf[def.url], s.x, s.z,
-      { ...def, ...s, collapsed: breakCollapsed[kind] }));
+      { ...def, ...s, collapsed: breakCollapsed[kind], kind }));
   }
 }
 

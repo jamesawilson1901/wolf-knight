@@ -83,34 +83,36 @@ check('standing on the plate and stomping drains the vault', rattle.drained === 
 check('...and nothing threw while it happened',
   !pageErrors.some((e) => /shake|is not a function/.test(e)), pageErrors.slice(0, 3));
 
-console.log('\n── 1b. the shoulder pin BURNS — no earth required ────');
+console.log('\n── 1b. the DEEP LANTERN lights — the fire verb, in the dark ──');
+// (the shoulder pin and the titan's arm are gone — v3.64 lantern rebuild.
+// deepLantern reads true through the legacy handDown alias, so BOTH keys are
+// cleared or the fresh-light test would pass vacuously on an old flag.)
 await page.evaluate(() => { const g = window.__game;
-  g.WS.set('vault', 'handDown', false);
-  delete g.state.flags.burned.l2_vc3_pin; });
-check('the Pin builds', await go('vc3'));
-const pin = await page.evaluate(async () => {
+  g.WS.set('vault', 'deepLantern', false);
+  g.WS.set('vault', 'handDown', false); });
+check('the Deep Lantern room builds', await go('vc3'));
+const lantern = await page.evaluate(async () => {
   const g = window.__game, w = g.world;
-  const b = (w.burnables || []).find((x) => x.id === 'l2_vc3_pin');
-  if (!b) return { err: 'no burnable pin in vc3' };
+  const b = (w.braziers || []).find((x) => x.id === 'l2_deep_lantern');
+  if (!b) return { err: 'no deep lantern brazier in vc3' };
   g.state.form = 'fire_wolf';
   g.player.root.position.set(b.x + 1.2, g.player.root.position.y, b.z);
   for (let i = 0; i < 300; i++) {
     g.player.iframes = 9999;
     if (i % 40 === 0) g.player.trySpecial(g.effects, w);
     await new Promise((r) => requestAnimationFrame(r));
-    if (g.state.flags.burned.l2_vc3_pin) break;
+    if (g.WS.get('vault', 'deepLantern')) break;
   }
-  return { burned: !!g.state.flags.burned.l2_vc3_pin,
-    handDown: !!g.WS.get('vault', 'handDown') };
+  return { lit: !!b.lit, deepLantern: !!g.WS.get('vault', 'deepLantern') };
 });
-check('the fire slam burns the pin', pin.burned === true, pin);
+check('the fire slam lights the deep lantern', lantern.deepLantern === true, lantern);
 
 console.log('\n── 2. the hub opens as its milestones are earned ─────');
 const stages = [];
 for (const [n, keys] of [[0, []], [1, ['spark']], [2, ['spark', 'drained']],
-                         [3, ['spark', 'drained', 'handDown']]]) {
+                         [3, ['spark', 'drained', 'deepLantern']]]) {
   await page.evaluate((k) => { const g = window.__game;
-    for (const key of ['spark', 'drained', 'handDown']) g.WS.set('vault', key, k.includes(key));
+    for (const key of ['spark', 'drained', 'deepLantern', 'handDown']) g.WS.set('vault', key, k.includes(key));
   }, keys);
   await go('vh');
   stages.push(await page.evaluate((n) => ({ n,

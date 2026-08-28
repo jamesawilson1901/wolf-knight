@@ -212,11 +212,28 @@ function renderPotions(player) {
   ctxShow(potionsEl);
 }
 
+// Three pups hide in every region, and the HUD only ever promises the ones a
+// child can actually reach: the denominator grows by three as each region's
+// boss falls and opens the next, so "🐺 2/3" stays a solvable puzzle instead
+// of "2/24" being a number that means nothing yet. Latest-first, first match
+// wins. The last step is Grimm rather than a region boss — freeing him is what
+// opens the Village, which holds the final three.
+const PUP_LADDER = [
+  [() => state.flags.grimmFreed, 24],       // + the Village's three
+  [() => regionCleared('sunkenvale'), 21],  // + the Shadow Court's three
+  [() => regionCleared('stormreach'), 18],  // + the Sunken Vale's
+  [() => regionCleared('frostpeak'), 15],   // + Stormreach's
+  [() => regionCleared('wildwoods'), 12],   // + Frostpeak's
+  [() => regionCleared('stoneroot'), 9],    // + the Wild Woods'
+  [() => regionCleared('ember'), 6],        // + Stoneroot's
+];
+
 function renderPups() {
   const found = Object.keys(state.flags.pups).length;
-  // each opened region adds three pups to the count the HUD promises
-  const total = regionCleared('wildwoods') ? 12
-    : regionCleared('stoneroot') ? 9 : regionCleared('ember') ? 6 : 3;
+  const hit = PUP_LADDER.find(([reached]) => reached());
+  // never promise fewer than the child has already rescued: a save that ran
+  // ahead of the ladder must not read "5/3"
+  const total = Math.max(hit ? hit[1] : 3, found);
   const el = document.getElementById('pups');
   el.textContent = `🐺 ${found}/${total}`;
   ctxShow(el);
@@ -542,7 +559,7 @@ const GATE_HINTS = [
   { marker: 'practiceCracks',    form: 'earth_wolf',   line: 'crack_prompt' },
   { marker: 'developCracks',     form: 'earth_wolf',   line: 'crack_prompt' },
   // Stoneroot is played with FIRE now — earth is its boss's reward.
-  { marker: 'pinSpot',           form: 'fire_wolf',    line: 'pin_hint' },
+  { marker: 'deepLanternSpot',   form: 'fire_wolf',    line: 'deep_lantern_hint' },
   { marker: 'rattlePlate',       form: 'fire_wolf',    line: 'rattle_hint' },
   { marker: 'relightSpot',       form: 'fire_wolf',    line: 'brazier_hint' },
   { marker: 'bramblePromise',    form: 'verdant_wolf', line: 'bramble_teach' },
@@ -613,7 +630,7 @@ function guideTarget() {
   const vm = world.markers || {};
   if (vm.relightSpot && !WS.get('vault', 'spark'))   return { x: 0, z: -1.1 };  // the cold lantern
   if (vm.rattlePlate && !WS.get('vault', 'drained')) return { x: vm.rattlePlate.x, z: vm.rattlePlate.z };
-  if (vm.pinSpot && !WS.get('vault', 'handDown'))    return { x: vm.pinSpot.x, z: vm.pinSpot.z };
+  if (vm.deepLanternSpot && !WS.get('vault', 'deepLantern')) return { x: vm.deepLanternSpot.x, z: vm.deepLanternSpot.z };
   // FROSTPEAK'S PUZZLE ROOMS, same law. These two cases existed below the
   // switch for years and were DEAD CODE: onwardSpot() answered first (route.js
   // maps f2→f3, f3→f4), so a stuck child was walked to the SEALED ice gate —
@@ -1097,12 +1114,17 @@ function narrationTriggers(dt, t) {
   // linger 22 seconds for the stuck-hint. Without this a child does Spoke C,
   // never realises the post is theirs to burn, and loops back to the hub: the
   // exact "new rooms just loop back with nothing to do" dad reported.
-  if (m.pinSpot && !WS.get('vault', 'handDown')) {
-    if (state.formsUnlocked.includes('fire_wolf') && nearSpot(m.pinSpot, 3.2)) narration.say('pin_hint');
-    if (state.flags.burned.l2_vc3_pin) {
-      if (WS.complete('vault', 'handDown')) bigToast('🪨 Far off, something enormous moves.');
-      persist();
-    }
+  if (m.deepLanternSpot && !WS.get('vault', 'deepLantern')) {
+    // THE DARK IS THE PUZZLE, so the nudge names the form that solves it. A
+    // child arriving in any other shape sees an unlit room with holes in the
+    // floor and no way to read them; Pip says which wolf sees in the dark.
+    if (nearSpot(m.deepLanternSpot, 6.0)) narration.say('deep_dark_hint');
+    else if (state.formsUnlocked.includes('fire_wolf')) narration.say('deep_lantern_hint');
+  }
+  if (m.deepLanternSpot && WS.get('vault', 'deepLantern') && !state.spoken.deep_lit) {
+    state.spoken.deep_lit = true;
+    bigToast('🔥 The deep lantern burns. The crypt is open.');
+    persist();
   }
 
   // -------------------------------------------------------------------------
@@ -1405,6 +1427,17 @@ function onPupCollected() {
     effects.warmFlood();
     narration.say('all_pups_frost');
   } else {
+    // PAST TWELVE THE REWARD CHANGES SHAPE. There are 24 pups now — three in
+    // every region including the last four — but the heart ladder stops at
+    // nine on purpose: a child with thirteen hearts is a child for whom no
+    // fight can go wrong, and the back half of the game would stop meaning
+    // anything. The hunt still has to pay, so the later pups pay in coin
+    // (spent in the Den, where the pups live) instead of in health.
+    if (found > 12) {
+      const purse = 15 + (found - 12) * 5;   // 20, 25, 30 … the last is worth most
+      state.shards += purse;
+      bigToast(`🐺 ${found}/24 · +${purse} 🪙`);
+    }
     narration.say('pup_found');
   }
   persist(); // pup collected is a save point

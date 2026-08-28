@@ -100,7 +100,7 @@ const arrival = await page.evaluate(() => {
   return { ahead: +ahead.toFixed(1), toHero };
 });
 check('you can walk forward out of the door you came in by', arrival.ahead >= 4, arrival);
-check('...and the Stone Titan can be stood next to', arrival.toHero !== null && arrival.toHero <= 3.0, arrival);
+check('...and the Great Beacon can be stood next to', arrival.toHero !== null && arrival.toHero <= 3.0, arrival);
 
 console.log('\n── 2. the spoke leads to Petra, and she is reachable ──');
 await go('va3');
@@ -258,29 +258,35 @@ check('vb3 has both its doors', b3.doors.length >= 2, b3);
     r && r.off <= 1.9, r);
 }
 await go('vc3');
+// vc3 is the Deep Lantern room now (v3.64): what stands in the way out is not
+// a prop but the BROKEN FLOOR — the straight line between the doors must cross
+// a hole, or the room's puzzle can be walked past without ever being seen.
 const c3 = await page.evaluate(() => {
   const w = window.__game.world;
-  const p = w.markers.pinSpot, sp = w.spawn;
+  const sp = w.spawn;
   const mid = (d) => ({ x: (d.minX + d.maxX) / 2, z: (d.minZ + d.maxZ) / 2, to: d.to });
   let far = null, best = -1;
   for (const d of (w.doors || []).map(mid)) {
     const dd = Math.hypot(d.x - sp.x, d.z - sp.z);
     if (dd > best) { best = dd; far = d; }
   }
-  if (!p || !far) return { doors: (w.doors || []).map((d) => d.to) };
-  const ax = sp.x, az = sp.z, bx = far.x, bz = far.z;
-  const t = Math.max(0, Math.min(1,
-    ((p.x - ax) * (bx - ax) + (p.z - az) * (bz - az)) / ((bx - ax) ** 2 + (bz - az) ** 2)));
-  return { doors: (w.doors || []).map((d) => d.to), to: far.to,
-    off: +Math.hypot(ax + (bx - ax) * t - p.x, az + (bz - az) * t - p.z).toFixed(2) };
+  let lineCrossesHole = false;
+  if (far) {
+    for (let t = 0; t <= 1; t += 0.02) {
+      if (w.pitAt(sp.x + (far.x - sp.x) * t, sp.z + (far.z - sp.z) * t)) { lineCrossesHole = true; break; }
+    }
+  }
+  return { doors: (w.doors || []).map((d) => d.to), pits: (w.pitZones || []).length,
+    lantern: !!w.markers.deepLanternSpot, lineCrossesHole };
 });
 check('vc3 has both its doors', c3.doors.length >= 2, c3);
-check('...and the shoulder pin stands in the way out', c3.off !== undefined && c3.off <= 1.5, c3);
+check('...and the broken floor stands in the way out', c3.lineCrossesHole && c3.pits >= 2, c3);
+check('...and the deep lantern is there to light', c3.lantern, c3);
 
 console.log('\n── 7. and then there is a boss to fight ──────────────');
 await page.evaluate(() => {
   const g = window.__game;
-  for (const k of ['spark', 'drained', 'handDown']) g.WS.set('vault', k, true);
+  for (const k of ['spark', 'drained', 'deepLantern']) g.WS.set('vault', k, true);
 });
 await go('vh');
 const crypt = await page.evaluate(() => {

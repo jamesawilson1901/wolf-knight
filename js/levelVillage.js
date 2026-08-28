@@ -333,6 +333,7 @@ export async function buildYg2(scene) {
     placeOne(world, villageKit.hut, 'hut', 6, -5, 0.9, -0.5, D.propTint);
     world.addBox(3.9, 8.1, -7.1, -3.3);
   }
+  world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y2' };
   world.markers.shadeKnightSpots = [{ x: 0, z: -4 }];
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
@@ -430,6 +431,7 @@ export async function buildYg5(scene) {
     placeOne(world, villageKit.wall2, 'wall2', 3, 3, 1.0, Math.PI / 2, D.propTint);
     world.addBox(-1, 7, 2.1, 3.9);
   }
+  world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y3' };
   world.markers.lurkerSpots = [{ x: 4, z: 0 }];
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {

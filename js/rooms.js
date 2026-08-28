@@ -3720,7 +3720,12 @@ async function buildF1b(scene) {
   ];
   world.markers.slimeSpots = [{ x: -1.6, z: 2.6, variant: 'snowblob' }];
   world.markers.visoredWightSpots = [{ x: 2.6, z: -2.6 }];
-  world.markers.pup10Spot = { x: -2.2, z: -3.4 };
+  // Was (-2.2,-3.4), which is INSIDE the scenery — resolveCircle pushes a body
+  // 0.95u out of it, so the pup stood in a rock and could not be walked into.
+  // Nothing had ever measured a pup against the room it sits in; the sweep that
+  // found this now runs over all 24. Moved 1.7u to the nearest clear floor,
+  // which keeps the room's intent (tucked behind the wight, off the path).
+  world.markers.pup10Spot = { x: -0.5, z: -3.5 };
   world.markers.breakables = [{ x: 6.4, z: 2.6, kind: 'barrel', shards: 3 }];
   return world;
 }
