@@ -689,6 +689,12 @@ function narrationTriggers(dt, t) {
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
   if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 5))) narration.say('learn_jump');
+  // "no encouragement to get different weapons or armour" — teaches the
+  // concept once, the first time a child comes near ANY unopened chest that
+  // actually holds gear (never fires for a plain shard chest, so it stays a
+  // real signal rather than background noise every chest gives off).
+  if ((world.chests || []).some((c) => !c.opened && c.loot && (c.loot.gear || c.loot.armour)
+    && nearXZ(c.x, c.z, 3.2))) narration.say('gear_hint');
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&

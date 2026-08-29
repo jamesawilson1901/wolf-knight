@@ -152,12 +152,25 @@ export class Pip {
       if (this.sparkling) this.root.rotation.y += dt * 2.5; // excited spin-ish
     }
 
-    // Sparkle when an uncollected pup is near
+    // Sparkle when an uncollected pup is near — or an unopened chest that
+    // holds gear/armour rather than only shards. Dad's "no encouragement to
+    // get different weapons or armour": a plain shard chest and a gear chest
+    // looked identical from a distance, so a detour for one never read as
+    // worth it for the other. This is the SAME "something special" signal
+    // pups already teach, just widened to the other thing worth a detour for.
     this.sparkling = false;
     if (world.pups) {
       for (const pup of world.pups) {
         if (pup.collected) continue;
         const sd = Math.hypot(pup.x - this.root.position.x, pup.z - this.root.position.z);
+        if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
+      }
+    }
+    if (!this.sparkling && world.chests) {
+      for (const c of world.chests) {
+        if (c.opened) continue;
+        if (!c.loot || (!c.loot.gear && !c.loot.armour)) continue;
+        const sd = Math.hypot(c.x - this.root.position.x, c.z - this.root.position.z);
         if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
       }
     }
