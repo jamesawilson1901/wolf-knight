@@ -96,7 +96,10 @@ const REGIONS = [
 
   { name: 'stormreach', label: 'Stormreach Cliffs', enter: 's1a',
     grant: { forms: ['storm_wolf'], flags: { borealDefeated: true } },
-    legs: [['s1b'], ['sc1'], ['s2a'], ['s2b'], ['ssh'],
+    // the via line for s1a→s1b: down the middle to the open z≈2 corridor,
+    // east along it (it is clear wall-to-wall), then the door at (16.6, 0).
+    // Laid from an ASCII solidity map of the room, not guessed.
+    legs: [['s1b', { via: [[5, 2], [14.5, 2]] }], ['sc1'], ['s2a'], ['s2b'], ['ssh'],
       ['sc2', { needs: 'the thunder-dash, across the shrine gale' }],
       ['s3a', { needs: 'the thunder-dash, across three lanes of wind' }],
       ['s3b'], ['svn'], ['sc3'], ['s4a'], ['s4b'], ['sc4'], ['scr']] },
@@ -232,14 +235,15 @@ const walkTo = async (to, opts) => {
     // BFS from where Kael is standing to the floor nearest the doorway.
     const ci = (v) => Math.round(v / STEP);
     const key = (i, j) => i + ',' + j;
-    const plan = () => {
+    // plan() aims at the door unless told otherwise — via points below reuse it.
+    const plan = (tx = dcx, tz = dcz) => {
     const start = [ci(g.player.root.position.x), ci(g.player.root.position.z)];
     const prev = new Map(); prev.set(key(start[0], start[1]), null);
     const q = [start];
     let best = null, bestD = Infinity;
     for (let qi = 0; qi < q.length; qi++) {
       const [i, j] = q[qi];
-      const dist = Math.hypot(i * STEP - dcx, j * STEP - dcz);
+      const dist = Math.hypot(i * STEP - tx, j * STEP - tz);
       if (dist < bestD) { bestD = dist; best = [i, j]; }
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const ni = i + di, nj = j + dj;
@@ -254,9 +258,55 @@ const walkTo = async (to, opts) => {
     const p2 = [];
     for (let cur = best; cur; cur = prev.get(key(cur[0], cur[1]))) p2.push([cur[0] * STEP, cur[1] * STEP]);
     p2.reverse();
-    p2.push([dcx, dcz]);   // the last stride is INTO the trigger
+    p2.push([tx, tz]);   // the last stride is INTO the trigger
     return p2;
     };
+
+    // HAND-LAID VIA POINTS (opts.via = [[x, z], ...]). One room defeated the
+    // straight follower: s1a, where wall-sliding along the landing rocks put
+    // Kael behind a pot with every waypoint behind him, and replanning from
+    // there kept drawing the same doomed line. A child LOOKS and takes the
+    // long way round the rocks; a via point is that look written down. Each
+    // one is walked with the full machinery (plan, replan, nudge) and counts
+    // as reached within 1.2u — only the door itself needs the trigger.
+    for (const [vx, vz] of (opts && opts.via) || []) {
+      let vpath = plan(vx, vz);
+      if (!vpath) return { ok: false, retryable: true, why: 'no walkable floor reaches via point', via: [vx, vz] };
+      let wp = 0, frames = 0, stale = 0, bestGap = Infinity, nudge = 0, nudgeSide = 1, replans = 0;
+      while (frames < 6000 && stale < 900) {
+        await new Promise((r) => requestAnimationFrame(r));
+        frames++;
+        if (g.narration) g.narration.blocking = false;
+        g.player.iframes = 60;
+        const p = g.player.root.position;
+        if (Math.hypot(vx - p.x, vz - p.z) < 1.2) break;   // via point reached
+        while (wp < vpath.length - 1
+          && Math.hypot(vpath[wp][0] - p.x, vpath[wp][1] - p.z) < 1.0) { wp++; bestGap = Infinity; stale = 0; nudge = 0; }
+        const [tx, tz] = vpath[Math.min(wp, vpath.length - 1)];
+        const dx = tx - p.x, dz = tz - p.z;
+        const len = Math.hypot(dx, dz) || 1;
+        if (len < bestGap - 0.05) { bestGap = len; stale = 0; } else stale++;
+        if (stale > 300 && replans < 6) {
+          const fresh = plan(vx, vz);
+          replans++; stale = 0; bestGap = Infinity; nudge = 0;
+          if (fresh) { vpath = fresh; wp = 0; continue; }
+        }
+        if (stale > 120 && nudge <= 0) { nudge = 40; nudgeSide = -nudgeSide; }
+        if (nudge > 0) {
+          nudge--;
+          g.input.move.x = (-dz / len) * nudgeSide;
+          g.input.move.z = (dx / len) * nudgeSide;
+          continue;
+        }
+        g.input.move.x = dx / len; g.input.move.z = dz / len;
+      }
+      g.input.move.x = 0; g.input.move.z = 0;
+      const p = g.player.root.position;
+      if (Math.hypot(vx - p.x, vz - p.z) >= 1.2) {
+        return { ok: false, why: 'could not reach via point', via: [vx, vz],
+          stuckAt: { x: +p.x.toFixed(1), z: +p.z.toFixed(1) } };
+      }
+    }
 
     let path = plan();
     if (!path) return { ok: false, retryable: true, why: 'no walkable floor reaches the doorway' };
@@ -361,21 +411,14 @@ const walkTo = async (to, opts) => {
 // directions: leave the suite red and the next real blocker gets read as noise,
 // or invent a cause and the file starts lying.
 //
-// s1a → s1b: the Stormreach landing. Kael slides along the rocks east of the
-// spawn — the movement code doing its job — and ends up beside a pot with the
-// route's waypoints behind him. Re-planning, sidestepping and a wider arrival
-// radius all failed to shake him loose; four diagnoses of mine were wrong
-// before I stopped guessing.
-//
-// What IS established: verify-reachable's flood fill reaches that doorway, and
-// driving Kael east by hand from the exact stuck point walks him clean across
-// the room to the far wall. The route is open; the follower is too simple for
-// this one room. It wants a real steering behaviour, which is a bigger job than
-// tonight, and the day it gets one this entry comes out.
-const CANNOT_WALK = {
-  's1a→s1b': 'the follower wedges on the landing rocks; flood fill and a hand-driven '
-    + 'crossing both say the route is open',
-};
+// EMPTY, at last. s1a → s1b lived here for a night: Kael slid along the
+// landing rocks into a pocket behind a pot and no amount of replanning drew a
+// different line. The promised "real steering behaviour" turned out to be
+// opts.via — hand-laid intermediate points on the leg (see the Stormreach RUN
+// entry), each walked with the full plan/replan/nudge machinery. That is the
+// look a child gives the room, written down, and the leg walks. If a new leg
+// ever lands here, try via points before inventing a cause.
+const CANNOT_WALK = {};
 
 const skipped = [];
 let first = true;
