@@ -386,7 +386,15 @@ function heroProp(world, x, z, kind, D) {
   } else if (kind === 'throne') {
     place(world, g, valeKit.pedestal, 'pedestal', x, 0, z, 2.2, 0, 0, P);
     for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI * 2 / 8;
+      // Half a step off the axes. At i*2π/8 two of these columns landed at
+      // (0, ±9.8) — dead centre of both doorway lanes, three units in front
+      // of the doors. It never mattered while the north door only existed
+      // on a rebuild; the moment the way on started opening IN the live
+      // room (v3.74.0), the child's first walk to their new door met a
+      // column square in the lane (and the fight suite's walker wedged on
+      // it, which is how it was found). Rotated 22.5° the crown reads the
+      // same and both lanes are clear.
+      const a = i * Math.PI * 2 / 8 + Math.PI / 8;
       const px = x + Math.cos(a) * 9.8, pz = z + Math.sin(a) * 9.8;
       place(world, g, i % 2 ? valeKit.column : valeKit.pillar, 'tcol' + (i % 2),
         px, 0, pz, 1.5, a, 0.05, P);
