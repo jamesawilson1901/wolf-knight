@@ -713,13 +713,22 @@ export async function buildLb(scene) {
   // A breakable has to come apart on its own, so each one is its own draw;
   // the two cut here were the far-corner box beside another barrel and the
   // east jar the vault crowd already busies.
+  // TWO, in the room that measures heaviest in the game: the density suite's
+  // ceiling is STRICT (< 125 calls) and lb sat at exactly 126 with four pots.
+  // A breakable can never batch — it has to come apart on its own — so each
+  // one is a whole draw call, and the two barrels were the cut that costs the
+  // least: the vase and the box keep W9's smash-coverage, and the room around
+  // them is the densest-dressed island in Ember anyway.
   world.markers.breakables = [
-    { x: -9, z: 4.5, kind: 'barrel' }, { x: -10.5, z: -6, kind: 'vase' },
-    { x: 6, z: 7, kind: 'box' }, { x: 2.5, z: 9.5, kind: 'barrel' },
+    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }];
   world.markers.emberDragonlingSpots = [{ x: 4, z: 2 }];
-  world.markers.spitterSpots = [{ x: -3, z: -3.4 }];
+  // NO SPITTER — a design call and a budget call that agree. The room gained
+  // a two-block push puzzle, and a ranged harasser sniping a child mid-push
+  // is frustration, not challenge; three signatures (moth, dragonling,
+  // marauder) match la's density. It was also ~6 draw calls in the room that
+  // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
   world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
 
@@ -980,6 +989,38 @@ export async function buildLc1(scene) {
   // every time, with nothing to dodge. Nothing had ever checked a landing.
   sideDoor(world, 'w', halfW, halfD, 'lc', { x: 12.2, z: 1.7, angle: -Math.PI / 2 });  // LOOPS BACK
   wallRun(world, -2, -5, 6, -5, D);
+
+  // THE KETSU: push_block's conclusion beat, and the last hole in Ember's
+  // four-beat arc (dungeons.json carried it as a known gap; verify-graphs sat
+  // in the known-fail manifest over it). The route is an L — north up the
+  // open floor, then west into the corridor behind the forge wall — so it
+  // asks for everything the arc taught: lg1's push, lb's patience, lb2's
+  // routing. The corridor is the trick that makes the LONG push unfailable:
+  // its walls (the forge wall south, the room shell north) leave no sideways
+  // for a lean to deflect into, and a plate SNAPS the block dead-centre, so
+  // the final leg cannot be fumbled — precision comes from the geometry, not
+  // from the child. The open-floor half stays open floor: a wrong push out
+  // there is walked around and pushed back, never wedged (the ma lesson).
+  // Optional twice over — lc1 is a dead-end pocket, and the bars gate a NEW
+  // vault, not the forge chest a save might already have opened.
+  // The first cut of this room was wrong twice, and pushing it for real found
+  // both inside ten minutes: the north leg had no stopper (the block overran
+  // the turn and drifted into the corner), and the vault sat exactly where
+  // the child must STAND to start the west leg. So the shell wall IS the
+  // stopper now — push north until the room itself stops the block, which
+  // auto-aligns the turn (f3's skid-stopper idea, on foot) — and the vault
+  // lives at the corridor's FAR END, sealed on three sides (shell north, a
+  // short wall west, the forge wall south), its prize visible down the
+  // tunnel through the bars. The child only ever pushes from the east.
+  for (let z = -2.6; z >= -6.8; z -= 1.2) world.reserve(7, z, 1.4, 'ketsuLane');
+  for (let x = 0.2; x <= 8.6; x += 1.2) world.reserve(x, -6.8, 1.4, 'ketsuLane');
+  if (!GREY()) pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -2.6);
+  wallRun(world, -1.2, -5.6, -1.2, -7.2, D);          // the vault pocket's west seal
+  visibleReward(world, 0.2, -6.8, 'l1_lc1_ketsu', { shards: 26, potion: 1 }, 'silver');
+  const ketsuBars = GREY() ? { open() {} }
+    : plateBars(world, prepareModel, emberKit.bars, 'l1_lc1_ketsu', 0.9, -6.8,
+        { span: 2.0, ry: Math.PI / 2 });
+  plateSwitch(world, 'l1_lc1_ketsu', 2.2, -6.8, () => { ketsuBars.open(); });
   // Ember's third pup, in the corner the forge water never reached
   world.markers.pupSpot = { x: -7, z: 5.5, id: 'pup_l3' };
   // THE DROWNED FORGE: the one place in the Hollow where the fire lost. Water

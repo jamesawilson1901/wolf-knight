@@ -800,6 +800,20 @@ export async function buildVa1(scene) {
   rubbleField(world, -8, -10.5, 2.8, D, 12);
   rubbleField(world, 3, -9, 2.6, D, 11);
   aftermath(world, -10, 6, 2.0, D, 25);
+  // THE ARRIVAL FRAME IS THE EAST HALF. You walk in at (13.5, 0) facing west,
+  // and the camera's first frame reaches only to x ≈ 0.6 — but most of this
+  // room's dressing stood west of that line, so a room dressed to standard
+  // measured 23 things against the island floor of 32 on the one frame that
+  // decides a first impression (verify-density, in the known-fail manifest
+  // since 2026-08-28). These clusters fill the HALF THE CHILD ACTUALLY SEES:
+  // the diggers' east camp, broken up the way the west half already is.
+  fallenColumn(world, 7, -5.5, 0.5, D, 3.2);
+  cartWreck(world, 2.5, -6.5, -0.9, D);
+  coldHearth(world, 4, 6.5, D);
+  lowWall(world, 9.5, -8.5, -0.3, D, 2.8);
+  lowWall(world, 1.5, 9.5, 0.7, D, 3.0);
+  rubbleField(world, 8, 4.5, 2.2, D, 9);
+  aftermath(world, 5, -8, 1.8, D, 12);
   scatter(world, halfW, halfD, D, 81, 6, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLB', 'column'] });
   return finish(world, spec, D);
 }
@@ -1239,6 +1253,10 @@ export async function buildVc1(scene) {
   rubbleField(world, -3, 7.5, 2.4, D, 10);
   rubbleField(world, 4, 11.5, 2.4, D, 10);
   aftermath(world, -7, 6, 1.8, D, 40);
+  // one more thing in the arrival frame: vc1 measured 31 against the island
+  // floor of 32 — a single cluster short, on the terrace the camera opens on
+  lowWall(world, -7.5, 12, 0.4, D, 2.6);
+  cartWreck(world, 8, 12.5, 1.1, D);
   scatter(world, halfW, halfD, D, 101, 6, { spin: 1, kinds: ['rockSA', 'rockLB', 'column2'] });
   return finish(world, spec, D);
 }

@@ -405,6 +405,13 @@ export function pushableBoulder(world, prepareModel, rockGltf, x, z) {
 // pass — it is now a big, IN-THE-FLOOR target: recessed stone base, glowing
 // disc, and a pulsing GOLD act-here ring that matches the boulder's own gold
 // ring, so "roll THIS onto THAT" reads at a glance.
+// ONE material for every plate base in the game. Each plateSwitch used to
+// make its own — same grey every time — and flattenStatic merges by material,
+// so every base was a bucket of one and cost its own draw call forever. One
+// shared material lets all of a room's bases (same 16u cell) collapse into a
+// single batched draw (lb draw-budget work, 2026-08-30).
+const PLATE_BASE_MAT = new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 });
+
 export function plateSwitch(world, id, x, z, onPressed) {
   // HEIGHT LAW (v3.18, generalised in v3.20): a decal below the room's floor
   // top is BURIED and invisible — that is why "there is no pressure plate".
@@ -416,7 +423,7 @@ export function plateSwitch(world, id, x, z, onPressed) {
   // "danger, keep off", the exact opposite of an act-here target)
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(0.66, 0.74, 0.1, 26),
-    new THREE.MeshStandardMaterial({ color: 0x707684, roughness: 0.95 })
+    PLATE_BASE_MAT
   );
   base.position.set(x, deck - 0.015, z);
   world.add(base);
@@ -506,6 +513,12 @@ export function plateBars(world, prepareModel, barsGltf, id, x, z, opts = {}) {
     g.add(bar);
   }
   world.add(g);
+  // INSURANCE against the batcher: bars must vanish when open() removes the
+  // group. Today Arch_bars ships as one mesh per panel, so its bucket-of-one
+  // is never merged — but a future model with two same-material meshes WOULD
+  // merge, and opening the gate would leave ghost bars welded into the batch
+  // forever. keepLoose makes the contract explicit instead of lucky.
+  world.keepLoose(g);
   // The panel is flat, so the collider is thin ACROSS and wide ALONG — and it
   // is a box, not a circle, because the whole job of these bars is to seal a
   // straight opening from jamb to jamb with no shoulder to squeeze past.
