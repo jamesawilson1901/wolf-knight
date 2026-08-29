@@ -129,6 +129,14 @@ export function buildPotionMesh() {
   );
   cork.position.y = 0.41;
   group.add(glass, liquid, cork);
+  // NAMED, ALL OF THEM: a pickup hovers and bobs on purpose, and
+  // verify-grounded exempts deliberate floaters BY NAME. Its first pass over
+  // Frostpeak flagged the cork — a 0.08u disc riding 0.46u up the bottle —
+  // as "(unnamed)" hovering, which is exactly what an anonymous mesh half a
+  // unit off the floor should be flagged as. One name here covers the floor
+  // pickup and the smashable drop both (LAW P5: one potion, drawn once).
+  group.traverse((n) => { if (n.isMesh) n.name = n.name || 'potion-part'; });
+  group.name = 'potion-pickup';
   return { group, liquid };
 }
 

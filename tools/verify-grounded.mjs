@@ -30,7 +30,7 @@ const check = (n, ok, d) => {
 };
 
 // Things that hang, hover or fly on purpose.
-const ALLOWED = /banner|torch|cobweb|flame|fire|light|glow|coin|shard|moth|wisp|bat|spark|veil|wind|water|decal|threshold|arch|lintel|bridge|vane|relic|eye|socket|mirror|sky|cloud|rain|snow|bar|hud|hanging/i;
+const ALLOWED = /banner|torch|cobweb|flame|fire|light|glow|coin|shard|moth|wisp|bat|spark|veil|wind|water|decal|threshold|arch|lintel|bridge|vane|relic|eye|socket|mirror|sky|cloud|rain|snow|bar|hud|hanging|potion|sigil/i;
 
 const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
