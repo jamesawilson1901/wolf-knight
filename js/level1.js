@@ -673,6 +673,26 @@ export async function buildLb(scene) {
   rubbleField(world, 2, -11, 2.8, D, 12);
   aftermath(world, -11, 5, 2.2, D, 5);
   aftermath(world, 4, -9, 2.0, D, 6);
+  // THE SHO: same element (push_block), more of it — two blocks, two plates,
+  // a corner to think about (playbook ki->sho arc; dungeons.json node lb).
+  // The pocket sits south-east of the room's combat spots, so the KID rule
+  // ("combat cleared first, then the puzzle") holds without a wall to force
+  // it: nothing here bites until the enemies already wandering lb are down.
+  //
+  // RESERVED BEFORE scatter(): the Knot (level3.js) learned this the hard
+  // way — a random breakable dropped mid-lane deflects a rolling boulder
+  // sideways on contact, and it then tracks that new heading in a dead
+  // straight line, skimming past the plate forever. Both push lanes (x 9
+  // and x 13, z -2..2) are reserved so scatter() below leaves them clear.
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 9, -2);
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 13, -2);
+  const lbShoDone = () => !!state.flags.plates.l1_lb_sho_p1 && !!state.flags.plates.l1_lb_sho_p2;
+  const lbShoReward = () => { if (lbShoDone()) spawnShards(world, 11, 2, 16); };
+  plateSwitch(world, 'l1_lb_sho_p1', 9, 2, lbShoReward);
+  plateSwitch(world, 'l1_lb_sho_p2', 13, 2, lbShoReward);
+  for (const lz of [-2, -0.7, 0.7, 2]) {
+    world.reserve(9, lz, 1.1, 'lbShoLane'); world.reserve(13, lz, 1.1, 'lbShoLane');
+  }
   scatter(world, halfW, halfD, D, 21, 7);
   return finish(world, spec, D);
 }
@@ -728,7 +748,7 @@ export async function buildLb2(scene) {
   // the fire came through, and the props say so: everything on this side is
   // charred, collapsed, and the shrine did not survive it upright.
   world.markers.breakables = [
-    { x: 3, z: 4.5, kind: 'crate' }, { x: 7.5, z: -3, kind: 'cask' },
+    { x: 3, z: 4.5, kind: 'crate' }, { x: 8.5, z: -5.5, kind: 'cask' },
     { x: -8.5, z: 2, kind: 'vase' },
   ];
   ruinedHome(world, -6.5, 5.5, 0.4, D, { w: 6, d: 4.5, keep: 0.35 });
@@ -738,6 +758,34 @@ export async function buildLb2(scene) {
   rubbleField(world, 0, 6, 3.0, D, 14);
   rubbleField(world, -8, -4, 2.8, D, 12);
   aftermath(world, -5, -5.5, 2.2, D, 8);
+  // THE TEN: push_block meets a second thing — not a new element, a new
+  // SHAPE. lb's blocks each went straight to their plate; this one can't,
+  // because a spur wall sits right where a straight push would land it. The
+  // player has to walk the block around the spur's open south end before
+  // it can reach the plate at all — routing, not repeating (playbook §5
+  // ten: "exactly one twist"; dungeons.json node lb2). East of the fire
+  // gate, so it needs nothing the room hasn't already granted.
+  //
+  // RESERVED BEFORE scatter() — same Knot lesson as lb's sho puzzle above:
+  // an unreserved lane lets scatter() drop a breakable in the boulder's
+  // path, which deflects it off-course on contact.
+  // the wall sits at x=4.5, not 4 — a boulder's 0.62 radius from x=3 already
+  // reaches to x=3.62, and wallRun's own half-thickness pads its collider
+  // another 0.5u past the x it's given, so x=4 would have the boulder
+  // resting flush against the wall at its AUTHORED start, not clear of it.
+  wallRun(world, 4.5, -3, 4.5, 1, D);
+  // GRID-SNAPPED to the boulder's OWN 1.2u push step from its start, not a
+  // round number: 3 -> 4.2 -> 5.4 -> 6.6 east, 4 steps south to -5.8, 4 back
+  // north to exactly -1.0 again. Landing the plate off that grid (the first
+  // version used a plain x=7) needed the plate's 0.55 capture radius to
+  // paper over the gap — and a breakable two units off the route was close
+  // enough to a push slide's collision resolution to skim the block sideways
+  // before it ever got there anyway. Exact beats approximate; the cask moved.
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 3, -1);
+  plateSwitch(world, 'l1_lb2_ten', 6.6, -1, () => spawnShards(world, 6.6, -1, 14));
+  for (const [rx, rz] of [[3, -1], [3, -3], [3, -5.8], [4.8, -5.8], [6.6, -5.8], [6.6, -3], [6.6, -1]]) {
+    world.reserve(rx, rz, 1.1, 'lb2TenLane');
+  }
   scatter(world, halfW, halfD, D, 23, 5);
   return finish(world, spec, D);
 }
