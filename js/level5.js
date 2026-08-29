@@ -220,7 +220,7 @@ export async function loadSkyKit() {
   return skyKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward } =
+const { shell, sideDoor, wallRun, scatter, promiseGate, onwardPlug, visibleReward } =
   makeBuilders({ kit: () => skyKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -1199,8 +1199,10 @@ export async function buildSc4(scene) {
 // ---------------------------------------------------------------------------
 export async function buildScr(scene) {
   const { world, spec, D } = base(scene, 'scr');
-  const { halfW, halfD } = shell(world, spec,
-    state.flags.ariaDefeated ? [gap('s'), gap('n')] : [gap('s')], D, {
+  // The north gap is ALWAYS cut now — plugged with rocks while Aria holds
+  // the crown, opened live (smoke poof, main.js) the moment she falls, so
+  // the way on appears where the child is standing instead of on re-entry.
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
       patches: [{ x: 0, z: 0, r: 7.0, kind: 'sand' }, { x: -9, z: -8, r: 3.2, kind: 'gravel' }],
     });
   // THE WAY ON. Once the gale drops off the crown, the north side opens: the
@@ -1209,6 +1211,8 @@ export async function buildScr(scene) {
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'sc4', { x: 0, z: -5, angle: 0 });
   if (onward) sideDoor(world, 'n', halfW, halfD, 'd1a', { x: 0, z: 10, angle: Math.PI });
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSB', D.propTint,
+    () => sideDoor(world, 'n', halfW, halfD, 'd1a', { x: 0, z: 10, angle: Math.PI }));
 
   heroProp(world, 0, 0, 'crownstones', D);
   if (!state.flags.ariaDefeated) {

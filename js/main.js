@@ -2191,6 +2191,39 @@ async function start() {
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
             spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
+            // THE WAY ON OPENS WHERE YOU STAND (dad's request, 2026-08-30).
+            // Arenas whose onward door used to arrive only on a rebuild
+            // (f5, scr, ddp) now carry a rock plug + world.openOnward. A
+            // beat and a half after the kill — so the shard shower lands
+            // first and the eye is free to catch it — the plug goes up in a
+            // smoke poof and the door is simply there.
+            //
+            // GAME TIME, NOT WALL TIME. This rode setTimeout first, and the
+            // headless harness caught it firing a different subset of rooms
+            // on every run — throttled page timers. The countdown lives in
+            // the arena's own animate list instead: it ticks only while the
+            // child is still standing in the arena, and if they have already
+            // run out, the rebuild-time path shows the open door anyway.
+            const arena = world;
+            if (arena.openOnward) {
+              let poofIn = 1.5;
+              arena.onAnimate((tNow, dt) => {
+                if (poofIn <= 0) return;
+                poofIn -= dt || 0.016;
+                if (poofIn > 0) return;
+                if (arena.openOnward) arena.openOnward();
+                const s = arena.onwardSpot;
+                if (!s || arena !== world) return;
+                for (let i = 0; i < 8; i++) {
+                  juice.burst(s.x + (Math.random() * 2 - 1) * (s.w / 2),
+                    0.4 + Math.random() * 1.3,
+                    s.z + (Math.random() * 2 - 1) * (s.d / 2),
+                    i % 2 ? 0xcfd6de : 0x9aa4b0, 6);
+                }
+                audio.play('puff', { volume: 0.9, rate: 0.6, vary: 0.1 });
+                effects.shake(0.18, 0.35);
+              });
+            }
             if (state.room === 'f5') {
               // BOREAL FALLS — the storm lifts off Frostpeak and the Frost
               // Wolf is earned (boss.js set the flags; here is the party)

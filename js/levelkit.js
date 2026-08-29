@@ -606,6 +606,65 @@ export function makeBuilders({ kit, isGrey }) {
     return g;
   }
 
+  // THE WAY ON, PLUGGED UNTIL THE BOSS FALLS — and opened WHERE YOU STAND.
+  //
+  // Dad: "is it possible that at the end of the boss fight the door to the
+  // next level opens without having to walk out the room and back again?
+  // could we do a smoke poof animation and have it appear?"
+  //
+  // The old shape was rebuild-gated: the arena's onward gap and door only
+  // existed if the defeated flag was set when the room BUILT, so the child
+  // who had just won was standing in a room whose reward hadn't arrived —
+  // they had to leave and come back to fetch it. Now the gap is always cut,
+  // this plug of region rocks fills it while the boss lives, and beating the
+  // boss removes plug + collider and adds the door trigger IN the live room
+  // (main.js does the smoke poof and the thump — juice/audio live there).
+  //
+  // Geometry notes: keepLoose is load-bearing — flattenStatic would fold the
+  // rocks into the static batches and removing the group would leave their
+  // picture behind. The door trigger is only added at open time, so the
+  // door-suites (openholes, gauntlet, reachable) see either "no door" or
+  // "open door", never "a door that fires into a wall". A live-added door
+  // misses finish()'s threshold-glow fan; the poof carries the announcement.
+  function onwardPlug(world, x, z, w, d, kindModel, tint, addTheDoor) {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    const span = Math.max(w, d);
+    if (GREY()) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 1.5, d),
+        new THREE.MeshStandardMaterial({ color: tint, roughness: 0.9 })
+      );
+      m.position.set(0, 0.75, 0);
+      g.add(m);
+    } else {
+      const kit0 = K();
+      const src = kit0[kindModel] || kit0.rockLB;
+      const n = Math.max(2, Math.round(span / 1.4));
+      for (let i = 0; i < n; i++) {
+        const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
+        const piece = tintedModel(src, 'onward_' + kindModel, tint);
+        piece.position.set(w > d ? f * w : 0, 0, d >= w ? f * d : 0);
+        piece.rotation.y = i * 1.31;
+        piece.scale.setScalar(1.15);
+        g.add(piece);
+      }
+    }
+    world.add(g);
+    world.keepLoose(g);
+    world.reserve(x, z, span * 0.6 + 1.4, 'onward');
+    const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+    world.boxColliders.push(collider);
+    world.onwardSpot = { x, z, w: Math.max(w, 2.6), d: Math.max(d, 1.6) };
+    world.openOnward = () => {
+      world.root.remove(g);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      addTheDoor();
+      world.openOnward = null;
+    };
+  }
+
   // The reward you can SEE but not reach yet — the other half of a promise.
   function visibleReward(world, x, z, id, loot = { shards: 14 }, tier = 'wood') {
     if (GREY()) {
@@ -671,7 +730,7 @@ export function makeBuilders({ kit, isGrey }) {
   }
 
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
-    promiseGate, visibleReward, darkZone, pit, protoMaterial };
+    promiseGate, onwardPlug, visibleReward, darkZone, pit, protoMaterial };
 }
 
 // ---------------------------------------------------------------------------

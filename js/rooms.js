@@ -3949,13 +3949,43 @@ async function buildF5(scene) {
   // THE WAY ON. Once Boreal is calmed the summit's north side opens: the cliff
   // path down off the mountain and out onto the Stormreach sea cliffs.
   const onward = !!state.flags.borealDefeated;
+  // The north gap is ALWAYS cut now — plugged with rime-caked boulders while
+  // Boreal flies, opened live (smoke poof, main.js) the moment she is calmed,
+  // so the way on appears where the child is standing instead of on re-entry.
+  // Same live-plug pattern as R3's shortcut, two walls further north.
   buildSnowShell(world, 18, 18, [
     { side: 's', from: -1.3, to: 1.3 }, // back to the Windscour
-    ...(onward ? [{ side: 'n', from: -1.3, to: 1.3 }] : []),
+    { side: 'n', from: -1.3, to: 1.3 }, // down to Stormreach (plugged below)
   ]);
   world.spawn = { x: 0, z: 7.2, angle: Math.PI };
   world.addDoor(-1.3, 1.3, 8.85, 10.2, 'f4', { x: 0, z: -4.9, angle: 0 });
-  if (onward) world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
+  if (onward) {
+    world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
+  } else {
+    const plug = new THREE.Group();
+    for (const [kind, x, z, s, ry] of [
+      ['rockM', -1.0, -9.1, 1.25, 0.7], ['rockL', 0.1, -9.4, 1.35, 2.1],
+      ['rockM', 1.1, -9.0, 1.15, 4.0],
+    ]) {
+      const m = prepareModel(skit[kind].scene.clone());
+      m.position.set(x, 0, z);
+      m.rotation.y = ry;
+      m.scale.setScalar(s);
+      plug.add(m);
+    }
+    world.add(plug);
+    world.keepLoose(plug);      // flattenStatic must not fold in a removable
+    const collider = { minX: -2.0, maxX: 2.0, minZ: -10.2, maxZ: -8.3 };
+    world.boxColliders.push(collider);
+    world.onwardSpot = { x: 0, z: -9.1, w: 3.4, d: 1.6 };
+    world.openOnward = () => {
+      world.root.remove(plug);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
+      world.openOnward = null;
+    };
+  }
 
   // Standing stones round the RIM only — cover to break a dive line, never a
   // maze. They are pushed right out to the edges on purpose: a dive that ends

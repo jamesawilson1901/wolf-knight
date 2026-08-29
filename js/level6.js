@@ -209,7 +209,7 @@ export async function loadValeKit() {
   return valeKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward } =
+const { shell, sideDoor, wallRun, scatter, promiseGate, onwardPlug, visibleReward } =
   makeBuilders({ kit: () => valeKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -1140,12 +1140,17 @@ export async function buildDdp(scene) {
   // THE LAST DOOR. Once the vale drains, the way out of the deep opens north —
   // and there is only one place left to go.
   const onward = !!state.flags.meriDefeated;
-  const { halfW, halfD } = shell(world, spec, onward ? [gap('s'), gap('n')] : [gap('s')], D, {
+  // The north gap is ALWAYS cut now — plugged with drowned stone while Meri
+  // fights, opened live (smoke poof, main.js) the moment the vale drains, so
+  // the way on appears where the child is standing instead of on re-entry.
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
   if (onward) sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI });
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSA', D.propTint,
+    () => sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI }));
   heroProp(world, 0, 0, 'throne', D);
   // the arena floor is shallow — the fight is fought ankle-deep, and Meri's
   // slams are what make it deeper
