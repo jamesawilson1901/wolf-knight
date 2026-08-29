@@ -170,7 +170,14 @@ check('every stock line names an item that exists', reach.badStock.length === 0,
 // loot, so a weapon reachable ONLY by finding it still passes.
 const sources = await page.evaluate(async () => {
   const found = new Set();
-  for (const f of ['level1', 'level2', 'level3', 'level5', 'level6', 'level7', 'rooms']) {
+  // EVERY LEVEL FILE, and this list has rotted once already: levelVillage and
+  // levelSpire were both missing, so the Village's staff_moon and the Spire's
+  // hammer_earth / shield_moon read as "in no chest anywhere". Nothing failed
+  // because all three happen to be stocked in the shop too — but a weapon
+  // placed ONLY in one of those regions would have been called unobtainable
+  // and turned this suite red for a prize that was sitting in a chest.
+  for (const f of ['level1', 'level2', 'level3', 'level5', 'level6', 'level7',
+                   'levelVillage', 'levelSpire', 'rooms']) {
     const src = await (await fetch(`/js/${f}.js`)).text();
     for (const m of src.matchAll(/\b(?:gear|armour):\s*'([a-z0-9_]+)'/g)) found.add(m[1]);
   }

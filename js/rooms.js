@@ -3716,7 +3716,14 @@ async function buildF1b(scene) {
   snowRidge(world, 4.4, -1.6, 6.9, -1.6);
   iceGate(world, 5.0, -3.2, 'f_cairn', 'frost');
   world.markers.chestDefs = [
-    { id: 'c_f1b_ice', tier: 'gold', x: 6.3, z: -3.2, ry: -1.6, loot: { shards: 22, heartPiece: 1 } },
+    // THE RIME PLATE WAS THE LAST ARMOUR YOU COULD ONLY BUY.
+    // Ember's Kiln Plate is in the Drowned Forge, Stoneroot's Vault Plate in
+    // vcp, the Greenweave in the Village, Luna's Moonplate behind the Court's
+    // last door — and Frostpeak's own armour sat in the shop with a 300-shard
+    // price on it and nowhere in the world. Dad asked for gear "that you can
+    // find and equip"; this was the one that could only be bought.
+    { id: 'c_f1b_ice', tier: 'gold', x: 6.3, z: -3.2, ry: -1.6,
+      loot: { shards: 22, heartPiece: 1, armour: 'frost' } },
     { id: 'c_f1b_cairn', tier: 'wood', x: -6.2, z: -3.6, ry: 0.8, loot: { shards: 12, potion: 1 } },
   ];
   world.markers.slimeSpots = [{ x: -1.6, z: 2.6, variant: 'snowblob' }];
