@@ -33,6 +33,11 @@ export const CONFIG = {
   BUFFER_WINDOW: 0.15,   // s, attack taps in the tail of a swing are queued
   HITBOX_PAD: 0.2,       // u, hits are more generous than the visual arc
   ATTACK_MOVE_MULT: 0.75, // attacks barely slow you — fight on the move
+  // ...and they barely slow your TURN either. A swing used to freeze the aim
+  // solid until the animation ended, which is exactly when a child can see
+  // they aimed wrong and most wants to fix it. 0.55 keeps a strike feeling
+  // heavy to redirect without making it un-redirectable.
+  ATTACK_TURN_MULT: 0.55,
 
   // ---- dodge roll (tap shield WHILE moving; hold while still = block) ----
   ROLL_SPEED: 7.5,

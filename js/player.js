@@ -2268,13 +2268,26 @@ export class Player {
       this.root.position.x = solved.x;
       this.root.position.z = solved.z;
     }
-    // facing follows stick intent (not while a swing holds the aim)
-    if (!locked && mag > 0.01) {
+    // FACING FOLLOWS THE STICK, AND KEEPS FOLLOWING IT THROUGH A SWING.
+    //
+    // Dad, from play: "when you attack you get stuck facing the same way until
+    // the animation stops. you should be able to rotate still." He is right,
+    // and it was worse than it sounds — the swing is the moment a child most
+    // wants to correct their aim, because it is the moment they can see they
+    // got it wrong. Committing the whole animation to the angle it started at
+    // turns every mistimed tap into a wasted one with no way to save it.
+    //
+    // A swing still has WEIGHT, though: turn at ATTACK_TURN_MULT of the free
+    // rate, so a heavy strike leans round rather than snapping, and the arc
+    // still costs something to redirect. Zero was never the honest number for
+    // that cost; it just made Kael a statue.
+    if (mag > 0.01) {
       const target = Math.atan2(move.x, move.z);
       let delta = target - this.root.rotation.y;
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      const turn = TURN_SPEED * (f.def.turnMult || 1); // the hunter turns on a claw
+      const turn = TURN_SPEED * (f.def.turnMult || 1)   // the hunter turns on a claw
+        * (locked ? CONFIG.ATTACK_TURN_MULT : 1);
       this.root.rotation.y += THREE.MathUtils.clamp(delta, -turn * dt, turn * dt);
     }
 

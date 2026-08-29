@@ -27,6 +27,9 @@ import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 // in which a five-year-old sees the eyes come up and gets to ghost or back off,
 // and the whole point of the state is that the window exists.
 const SUSPECT_R = 5.5;
+// How far a shadow can see a GHOSTED Kael: arm's length, so being stood on
+// still gives him away, and nothing else does. See senseRange().
+const GHOST_SIGHT = 1.3;
 const SUSPECT_HOLD = 2.0;
 
 // ---------------------------------------------------------------------------
@@ -736,7 +739,28 @@ class Enemy {
   // room hears you. Move slowly and every quiet range is exactly what it was:
   // sneaking past a sleeping skeleton is still a thing a patient child can do,
   // which is the Zelda bargain — speed or safety, pick one.
+  // HOW FAR THIS SHADOW CAN NOTICE YOU RIGHT NOW.
+  //
+  // Ghosting used to change this number not at all. Dad, from play: "ghost
+  // wolf's power turning invisible doesn't work. the enemies still react and
+  // attack" — and he was right, because the only two places in the game that
+  // ever read `player.ghosted` were the wake/settle rules on the three
+  // variants flagged `sleeps: true`. Every other shadow in seven regions
+  // hunted a boy it could not see.
+  //
+  // The white wolf is Luna's own moonlight and it lasts six seconds on an
+  // eight-second cooldown (player.js), so this is a window to slip a lane, not
+  // a way to walk through the game unseen. While it is open, sight collapses
+  // to arm's length: a shadow you stand on still finds you — contact works
+  // both ways, which is the rule that keeps ghosting honest — and a shadow
+  // already hunting simply loses the thread, because every caller treats
+  // out-of-range as "go idle".
+  //
+  // Bosses are untouched by design: they are their own classes in js/boss.js
+  // and never come through here. Vanishing out of an arena you were sealed
+  // into would not be stealth, it would be an exit.
   senseRange(player, quiet) {
+    if (player && player.ghosted) return GHOST_SIGHT;
     const vx = (player._vel && player._vel.x) || 0;
     const vz = (player._vel && player._vel.z) || 0;
     return Math.hypot(vx, vz) > 3.4 ? Math.max(quiet, 14) : quiet;
@@ -1286,7 +1310,10 @@ export class Spitter extends Slime {
         this._spawnGlob(player);
         this._spitT = state.settings.easy ? 3.2 : A.spitter_spit.gap;
       }
-    } else if (d < this.aggroRange && d > 0.01) {
+    } else if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
+      // ...through senseRange like every other prowler, so the Spitter cannot
+      // keep shooting a boy who has gone translucent — it was the one enemy
+      // reading its aggro radius raw.
       this._spitT -= dt;
       if (d < 4) {
         // too close for comfort: waddle back, keep the gun range open

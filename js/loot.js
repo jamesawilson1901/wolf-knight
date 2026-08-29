@@ -24,6 +24,22 @@ export async function preloadLoot() {
   }
 }
 
+// A COIN A CHILD CAN ACTUALLY SEE, ON A PHONE, FROM THE 3/4 CAMERA.
+//
+// Dad: "make the coins large and noticeable to the user when the chest is
+// opened or the crate is broken. at the moment I can't see them at all."
+// coin.glb is 0.4u across, and at the old 1.55 it rendered 62cm — a third of
+// Kael's height, lying almost flat on the floor, in a room thirty metres wide.
+// It was drawn, it span, it bounced, and from the camera it was a glint.
+//
+// 2.4 puts it just under a metre: about half Kael's height, the same read a
+// Mario coin has against Mario, and unmissable against a stone floor. The rest
+// height comes OFF the scale rather than being typed, because the old 0.25 was
+// already burying the small coin's lower edge — the same measure-the-model
+// lesson the chests, the crate and the vase each had to learn separately.
+const SHARD_SCALE = 2.4;
+const SHARD_REST = 0.4 * SHARD_SCALE * 0.5;   // sit ON the floor, not in it
+
 export function spawnShards(world, x, z, n) {
   if (!world.shards) world.shards = [];
   for (let i = 0; i < n; i++) {
@@ -45,7 +61,7 @@ export function spawnShards(world, x, z, n) {
       });
       if (!Array.isArray(n.material)) n.material = n.material[0];
     });
-    coin.scale.setScalar(1.55);
+    coin.scale.setScalar(SHARD_SCALE);
     const a = (i / Math.max(1, n)) * Math.PI * 2 + x;
     coin.position.set(x, 0.4, z);
     world.add(coin);
@@ -73,7 +89,14 @@ export function spawnShards(world, x, z, n) {
       // Half a second of being uncollectable is exactly the arc: up at 3 u/s,
       // gravity 12, apex at a quarter second, landing at a half. It flies out,
       // it lands, THEN it is yours.
-      arm: 0.5,
+      //
+      // 0.85, not 0.5, since v3.70. `arm` gates the MAGNET as well as the
+      // pickup, and the magnet reaches 2.2u — so a child standing at the chest
+      // they just opened had the whole payout land and be hoovered up inside
+      // about a third of a second. Dad: "I can't see them at all." Bigger coins
+      // alone would not have fixed that; they also have to still be there. This
+      // is the extra beat where the money is lying on the floor being money.
+      arm: 0.85,
       taken: false,
     });
   }
@@ -140,24 +163,33 @@ export function spawnPotionDrop(world, x, z) {
 // it only needs to arc, land, and fade, the same physics as a coin's hop
 // with no magnet/collection step after it.
 export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
+  // Drawn at 256 rather than 128 because the sprite is now twice the size on
+  // screen — a 128px emoji stretched to 1.4u is a blurry smudge, and the point
+  // of the whole pop is that a child can tell a sword from a shield at a
+  // glance without reading the toast.
   const c = document.createElement('canvas');
-  c.width = 128; c.height = 128;
+  c.width = 256; c.height = 256;
   const g = c.getContext('2d');
-  g.font = '92px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  g.font = '184px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(icon, 64, 68);
+  g.fillText(icon, 128, 136);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
   sp.position.set(x, 0.5, z);
-  sp.scale.set(0.7, 0.7, 1);
+  // Dad: "I can see the weapons but even they could be larger." 0.7 was a
+  // third of Kael's height and it flew, bounced and faded inside 2.6 seconds,
+  // which is not long enough to notice something small.
+  sp.scale.set(1.4, 1.4, 1);
   sp.renderOrder = 998;
   world.add(sp);
   const a = seatIndex * 1.15 + 0.4; // several rewards from one chest fan out, not stack
   let vx = Math.cos(a) * 1.1, vz = Math.sin(a) * 1.1, vy = 3.6, y = 0.5;
   let settled = false, t = 0;
-  const DURATION = 2.6;
+  // ...and it stays up half a second longer, because the reward being ON the
+  // floor is the half of the arc a child actually looks at.
+  const DURATION = 3.4;
   world.onAnimate((tt, dt) => {
     t += dt;
     if (!settled) {
@@ -193,7 +225,7 @@ export function updateShards(world, dt, t, player) {
       s.z += s.vz * dt;
       s.y += s.vy * dt;
       s.vy -= 12 * dt;
-      if (s.y <= 0.25 && s.vy < 0) {
+      if (s.y <= SHARD_REST && s.vy < 0) {
         // IT BOUNCES. Dad: "there should also be an animation on that item
         // bounce out on the floor a few times." A coin used to fly one arc and
         // stick to the floor dead, which reads as a sprite being placed rather
@@ -202,7 +234,7 @@ export function updateShards(world, dt, t, player) {
         // three or four times from the spawn arc — and settles once the hop is
         // too small to see. The pickup arm timer is untouched, so the "flies
         // out, lands, THEN is yours" rule above still holds.
-        s.y = 0.25;
+        s.y = SHARD_REST;
         s.vy = -s.vy * 0.45;
         s.vx *= 0.55; s.vz *= 0.55;
         s.hops = (s.hops || 0) + 1;
@@ -214,7 +246,7 @@ export function updateShards(world, dt, t, player) {
         else if (s.hops === 1) audio.play('coin', { volume: 0.16, rate: 2.1, vary: 0.25 });
       }
     } else {
-      s.y = 0.25 + Math.sin(t * 3 + s.x * 2) * 0.05;
+      s.y = SHARD_REST + Math.sin(t * 3 + s.x * 2) * 0.05;
     }
     const dx = player.root.position.x - s.x;
     const dz = player.root.position.z - s.z;
@@ -568,22 +600,62 @@ const KIT_OPEN  = { gold: 'GoldenChest|OpenChest', silver: 'SilverChest[|OpenChe
 // Isolate ONE tier out of the three-chest kit: clone the whole rig (skeletons
 // and all), drop the two tiers we do not want, and centre what remains on the
 // floor at the origin so the caller can scale and place it like any other model.
+// THE CHEST THAT CAME WITH A FRIEND.
+//
+// Dad: "why do the smaller chests always appear in two, with only one
+// opening? fix it. one chest that opens only."
+//
+// The middle chest in this kit is named `SilverChest[` in the glTF — a stray
+// bracket baked in by whoever exported the FBX. three.js sanitises node names
+// as it loads (PropertyBinding.sanitizeNodeName strips anything outside
+// \w and -), so by the time the scene exists that node is called
+// `SilverChest`, and getObjectByName('SilverChest[') matched nothing. The
+// isolate loop below therefore removed gold and wood — whose names survive
+// sanitising untouched — and silently left SILVER standing in every wood and
+// every gold room, a metre and a bit away, un-animated because the mixer was
+// only ever driving the tier that was asked for. Silver rooms looked right,
+// which is why it hid: it was the one tier whose own name matched.
+//
+// Both lookups now try the raw name and the sanitised one, so the kit works
+// whichever way a future three.js decides to spell it.
+const sanitised = (s) => String(s).replace(/\s/g, '_').replace(/[^\w-]/g, '');
+const findNode = (root, name) =>
+  root.getObjectByName(name) || root.getObjectByName(sanitised(name)) || null;
+const findClip = (clips, name) =>
+  THREE.AnimationClip.findByName(clips || [], name)
+  || (clips || []).find((c) => sanitised(c.name) === sanitised(name)) || null;
+
 function buildKitChest(tier) {
   const inner = prepareCharacter(SkeletonUtils.clone(chestKit.scene));
   const keep = KIT_GROUP[tier] || KIT_GROUP.wood;
   for (const name of ['GoldenChest', 'SilverChest[', 'WoodenChest']) {
     if (name === keep) continue;
-    const g = inner.getObjectByName(name);
+    const g = findNode(inner, name);
     if (g && g.parent) g.parent.remove(g);
   }
+  // ANCHOR ON THE CHEST'S OWN NODE, NOT ON A BOUNDING BOX.
+  //
+  // These are SKINNED meshes, and a skinned mesh's geometry bounds sit in bind
+  // space — they do not follow the armature that actually places the chest.
+  // The three chests are laid out side by side in the kit (x = 0.03, 3.79,
+  // 7.52; their armature nodes carry the offset), so a box-centre anchor put
+  // every chest up to two and a half metres from the spot the room asked for.
+  // With the phantom silver chest also in the box that error was hidden inside
+  // a bigger one: the box spanned BOTH chests, which shrank the scale as well,
+  // and "the smaller chests" were smaller than intended for exactly that
+  // reason. The armature's world position is where the chest really is.
+  inner.updateWorldMatrix(true, true);
   const box = new THREE.Box3().setFromObject(inner);
   const size = box.getSize(new THREE.Vector3());
-  const ctr = box.getCenter(new THREE.Vector3());
-  inner.position.set(-ctr.x, -box.min.y, -ctr.z);   // centred on x/z, sitting on y=0
+  const anchor = new THREE.Vector3();
+  const keepNode = findNode(inner, keep);
+  if (keepNode) keepNode.getWorldPosition(anchor);
+  else box.getCenter(anchor);
+  inner.position.set(-anchor.x, -box.min.y, -anchor.z);   // on its spot, on the floor
   const group = new THREE.Group();
   group.add(inner);
   const mixer = new THREE.AnimationMixer(inner);
-  const clip = THREE.AnimationClip.findByName(chestKit.animations || [], KIT_OPEN[tier] || KIT_OPEN.wood);
+  const clip = findClip(chestKit.animations, KIT_OPEN[tier] || KIT_OPEN.wood);
   let openAction = null;
   if (clip) {
     openAction = mixer.clipAction(clip);
