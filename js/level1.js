@@ -706,10 +706,16 @@ export async function buildLb(scene) {
   // THE CAUSEWAY IS THE ROAD IN. This is the edge of the settlement proper —
   // where the road widens, the stalls stood, and the gateposts still do. It is
   // busier than the Ashfall on purpose: you are walking INTO somewhere.
+  // FOUR, NOT SIX — the d1b lesson (levelkit.js potSpots: "six put the Vale's
+  // d1b at 126 against a ceiling of 125"). lb shipped with six hand-listed
+  // pots anyway, and once the sho furniture went in (boulders, bars, plates,
+  // the silver chest — all unbatchable) the room measured 134 against 125.
+  // A breakable has to come apart on its own, so each one is its own draw;
+  // the two cut here were the far-corner box beside another barrel and the
+  // east jar the vault crowd already busies.
   world.markers.breakables = [
-    { x: -9, z: 4.5, kind: 'barrel' }, { x: -13, z: 8.5, kind: 'box' },
-    { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
-    { x: 2.5, z: 9.5, kind: 'barrel' }, { x: 12, z: 6, kind: 'jar' },
+    { x: -9, z: 4.5, kind: 'barrel' }, { x: -10.5, z: -6, kind: 'vase' },
+    { x: 6, z: 7, kind: 'box' }, { x: 2.5, z: 9.5, kind: 'barrel' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }];
   world.markers.emberDragonlingSpots = [{ x: 4, z: 2 }];

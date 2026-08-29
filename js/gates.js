@@ -12,6 +12,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { canWade } from './water.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const GATE_TYPES = {
   boulder: { ability: 'earth_wolf', icon: '🪨', label: 'A huge boulder blocks the way' },
@@ -349,12 +350,36 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
 // ---------------------------------------------------------------------------
 // Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
 export function pushableBoulder(world, prepareModel, rockGltf, x, z) {
-  const rock = prepareModel(rockGltf.scene.clone());
-  rock.traverse((n) => {
+  // ONE MESH, ONE MATERIAL. rock-small-a ships as TWO meshes (its "grass" and
+  // "dirt" materials) — but this boulder tints both to the same grey, so the
+  // split buys nothing and costs a draw call per boulder, per frame, forever.
+  // A pushable can never join the static batch (it moves), so it pays its own
+  // way: merge the clone's geometry into one mesh under one material.
+  // castShadow stays off — grounding comes from the ring and floor contact,
+  // and a mover's shadow pass is a second draw the budget feels
+  // (probe-drawcall-attrib on lb, 2026-08-29: 134 calls against 125).
+  const src = prepareModel(rockGltf.scene.clone());
+  src.updateWorldMatrix(true, true);
+  const geos = [];
+  src.traverse((n) => {
     if (!n.isMesh) return;
-    n.material = n.material.clone();
-    n.material.color.setHex(0x8a8d95);
+    const gclone = n.geometry.clone();
+    gclone.applyMatrix4(n.matrixWorld);
+    for (const extra of Object.keys(gclone.attributes)) {
+      if (extra !== 'position' && extra !== 'normal') gclone.deleteAttribute(extra);
+    }
+    geos.push(gclone);
   });
+  let rock;
+  try {
+    rock = new THREE.Mesh(mergeGeometries(geos, false),
+      new THREE.MeshStandardMaterial({ color: 0x8a8d95, roughness: 0.95 }));
+  } catch {
+    // a merge that throws must never cost the room its boulder
+    rock = prepareModel(rockGltf.scene.clone());
+    rock.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.setHex(0x8a8d95); } });
+  }
+  rock.castShadow = false;
   rock.scale.setScalar(2.0);
   const group = new THREE.Group();
   group.add(rock);
@@ -469,6 +494,12 @@ export function plateBars(world, prepareModel, barsGltf, id, x, z, opts = {}) {
       if (!m.isMesh || !m.material) return;
       m.material = m.material.clone();
       m.material.color.setHex(tint);
+      // NO SHADOW PASS. A thin grate's shadow is stripes nobody reads, and a
+      // castShadow mesh renders twice (depth + beauty). lb measured 134 calls
+      // against the 125 budget with the sho furniture in, and the shadow
+      // passes on the unbatchable puzzle pieces were the honest place to pay
+      // it back (probe-drawcall-attrib, 2026-08-29).
+      m.castShadow = false;
     });
     bar.position.set(ry ? 0 : f, 0, ry ? f : 0);
     bar.rotation.y = ry;
