@@ -437,3 +437,62 @@ export function plateSwitch(world, id, x, z, onPressed) {
   });
   return p;
 }
+
+// A BARRED WAY — the road, or the reward, that you can SEE and cannot take yet.
+//
+// Bars rather than rubble, deliberately. A rock pile is the crackables'
+// grammar ("break me") and a tinted gate is a promiseGate ("a wolf you have
+// not earned"). Iron bars in front of a lit chest say only "something opens
+// these" — which is exactly the question a pressure plate answers, and the
+// only question a five-year-old has to ask to solve the room.
+//
+// Cleared state is the PLATE'S OWN save flag, so a room the child already
+// solved rebuilds with no bars and — the promiseGate lesson, learned the hard
+// way in A8 — no leftover collider either. A cleared gate that keeps its
+// collider is a locked door with nothing left in the room to unlock it.
+// `opts.solved` matters when a room needs TWO plates: keyed off one plate's
+// own flag, a half-solved room would rebuild with the bars gone and the door
+// still shut — an opening with nothing in it and nothing left to open it.
+export function plateBars(world, prepareModel, barsGltf, id, x, z, opts = {}) {
+  const { span = 2.6, ry = 0, tint = 0x4a4350 } = opts;
+  const solved = opts.solved || (() => !!state.flags.plates[id]);
+  if (solved()) return { open() {} };
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  // Arch_bars measures 2.48 x 3.39 (tools/probe-modelsize.mjs), so one panel
+  // covers a 2.4u doorway exactly and a wider mouth takes as many as it needs.
+  const n = Math.max(1, Math.round(span / 2.4));
+  for (let i = 0; i < n; i++) {
+    const f = n === 1 ? 0 : (i / (n - 1) - 0.5) * (span - 2.4);
+    const bar = prepareModel(barsGltf.scene.clone());
+    bar.traverse((m) => {
+      if (!m.isMesh || !m.material) return;
+      m.material = m.material.clone();
+      m.material.color.setHex(tint);
+    });
+    bar.position.set(ry ? 0 : f, 0, ry ? f : 0);
+    bar.rotation.y = ry;
+    g.add(bar);
+  }
+  world.add(g);
+  // The panel is flat, so the collider is thin ACROSS and wide ALONG — and it
+  // is a box, not a circle, because the whole job of these bars is to seal a
+  // straight opening from jamb to jamb with no shoulder to squeeze past.
+  const halfSpan = span / 2, halfThick = 0.45;
+  const collider = ry
+    ? { minX: x - halfThick, maxX: x + halfThick, minZ: z - halfSpan, maxZ: z + halfSpan }
+    : { minX: x - halfSpan, maxX: x + halfSpan, minZ: z - halfThick, maxZ: z + halfThick };
+  world.boxColliders.push(collider);
+  world.reserve(x, z, halfSpan + 0.6, 'bars:' + id);
+  return {
+    open(silent = false) {
+      world.root.remove(g);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      if (!silent) {
+        audio.play('slam', { volume: 0.75, rate: 0.8 });   // the bars go up
+        audio.play('puff', { volume: 0.6, rate: 1.1 });
+      }
+    },
+  };
+}

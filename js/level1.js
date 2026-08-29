@@ -29,7 +29,7 @@ import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate,
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
-import { brazier, pushableBoulder, plateSwitch } from './gates.js';
+import { brazier, pushableBoulder, plateSwitch, plateBars } from './gates.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -602,8 +602,18 @@ export async function buildLg1(scene) {
     pathWidth: 2.4,
   });
   world.spawn = { x: 0, z: 3.2, angle: Math.PI };
+  const lg1Solved = () => !!state.flags.plates.l1_lg1_ki;
   sideDoor(world, 's', halfW, halfD, 'la', { x: 0, z: -10, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'lb', { x: 0, z: 10, angle: Math.PI });
+  // THE WAY ON IS THE PRIZE. A plate that pays only in coins is a switch with
+  // a payout, not a puzzle — dad, on the first cut of these rooms: "there's no
+  // opening the way to continue through the level or anything. no push this
+  // rock on the plate for no reason at all." So the north door is barred until
+  // the block is on the plate, and the bars are the first thing you see from
+  // the doorway you came in by. Never the SOUTH door: the way back is always
+  // open, so a child who cannot solve it can still leave, and the room rebuilds
+  // its boulder on re-entry (L2's reset, for free).
+  sideDoor(world, 'n', halfW, halfD, 'lb', { x: 0, z: 10, angle: Math.PI },
+    { when: lg1Solved });
   // A CHOKE IS A REST, AND A REST NEEDS SOMEWHERE TO SIT. The four chokes
   // shipped as completely empty 14x10 boxes — nothing but two doors. They are
   // the smallest rooms in the level, which makes them the cheapest to fill and
@@ -611,17 +621,48 @@ export async function buildLg1(scene) {
   // shrine they passed on the way, and the gateposts of the old road.
   world.markers.breakables = [{ x: 3.4, z: 0.8, kind: 'cask' }, { x: -2.2, z: -3.2, kind: 'vase' }];
   world.markers.restSpot = { x: 0, z: 0 };
+  // THE KI: one block, one plate, no enemies — the region's first taught
+  // mechanic (playbook ki beat; assets/dungeons.json's ember_hollow graph,
+  // node lg1). It cannot be failed: one clean push is the whole puzzle, and
+  // it pays out twice over — the vault in the south-east wall opens AND the
+  // road north opens, both on the same clang.
+  //
+  // PLACED BEFORE THE DRESSING, and this ordering is the whole trick. Every
+  // dressing helper consults world.blocked(), and reserve() is what answers
+  // it — so a lane reserved up here is a lane the columns, walls and scatter
+  // all politely decline to stand in. Reserved afterwards (as the first cut
+  // of these rooms did) it reserves nothing: the props are already down, and
+  // a boulder that clips one tracks off its lane forever and skims past the
+  // plate. That is the Knot's lesson (level3.js) paid for a second time.
+  const lg1Lane = [];
+  for (let z = 1; z <= 3.5; z += 1.2) lg1Lane.push([-5, z]);
+  for (const [rx, rz] of lg1Lane) world.reserve(rx, rz, 1.1, 'lg1KiLane');
+  world.reserve(4.5, 4.0, 1.8, 'lg1Vault');       // the vault and its mouth
+  world.reserve(0, -4.2, 1.8, 'lg1DoorBars');
+
+  pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1);
+  // THE VAULT: a nook cut into the south-east wall, bars across its mouth, a
+  // chest lit up behind them. Visible from the moment you walk in, which is
+  // the point — the child sees the prize first and works out the question
+  // second (the Lolo contract, playbook §18.1).
+  wallRun(world, 3.2, 2.6, 3.2, 5, D);
+  wallRun(world, 5.8, 2.6, 5.8, 5, D);
+  visibleReward(world, 4.5, 4.0, 'l1_lg1_vault', { shards: 16, gear: 'shield_a' });
+  const lg1VaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lg1_ki', 4.5, 2.6,
+    { span: 2.6 });
+  const lg1DoorBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lg1_ki', 0, -4.2,
+    { span: 2.6 });
+  plateSwitch(world, 'l1_lg1_ki', -5, 3.5, () => {
+    lg1VaultBars.open();
+    lg1DoorBars.open(true);      // one clang between them, not two
+  });
+
   coldHearth(world, 0, 0.6, D);
   wayshrine(world, -4.6, -2.2, 0.5, D);
   fallenColumn(world, 4.4, -2.6, -0.4, D, 2.6);
   rubbleField(world, 4.8, 2.8, 2.2, D, 10);
   rubbleField(world, -4.8, 2.6, 2.0, D, 9);
   aftermath(world, -3, 1.5, 1.6, D, 4);
-  // THE KI: one block, one plate, no enemies — the region's first taught
-  // mechanic (playbook ki beat; assets/dungeons.json's ember_hollow graph,
-  // node lg1). It cannot be failed: one clean push is the whole puzzle.
-  pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1);
-  plateSwitch(world, 'l1_lg1_ki', -5, 3.5, () => spawnShards(world, -5, 3.5, 8));
   return finish(world, spec, D);
 }
 
@@ -636,8 +677,14 @@ export async function buildLb(scene) {
             [[1, 0], [9, 1], [16, 0]]],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
+  const lbSolved = () => !!state.flags.plates.l1_lb_sho_p1 && !!state.flags.plates.l1_lb_sho_p2;
   sideDoor(world, 's', halfW, halfD, 'lg1', { x: 0, z: -3.2, angle: 0 });
-  sideDoor(world, 'n', halfW, halfD, 'lg2', { x: 0, z: 3.2, angle: Math.PI });
+  // Barred until BOTH plates are down — the Causeway is the gate on the road
+  // to the Kiln. The three other doors (back to lg1, out to the pup pocket and
+  // the scorched cubby) stay open the whole time, so the room is a place to
+  // wander and think in, never a cell.
+  sideDoor(world, 'n', halfW, halfD, 'lg2', { x: 0, z: 3.2, angle: Math.PI },
+    { when: lbSolved });
   sideDoor(world, 'e', halfW, halfD, 'lb1', { x: -7, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'lb2', { x: 7, z: 0, angle: -Math.PI / 2 });
 
@@ -659,6 +706,43 @@ export async function buildLb(scene) {
   world.markers.spitterSpots = [{ x: -3, z: -3.4 }];
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
   world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
+
+  // THE SHO: the same element, twice over — two blocks, two plates, and a
+  // room big enough that you have to notice the second one (playbook sho beat;
+  // dungeons.json node lb). Both must be down before anything happens, which
+  // is the develop step: one block is no longer the whole answer.
+  //
+  // Reserved and built BEFORE the dressing, for the reason spelled out in
+  // lg1: reserve() is what world.blocked() answers with, so a lane claimed up
+  // here is a lane the columns, the low walls and scatter all decline. Claimed
+  // afterwards it claims nothing — and the first cut of this room put a low
+  // wall's rubble half a metre off the eastern lane, close enough to shoulder
+  // a rolling block off its line.
+  for (const lx of [7, 11]) {
+    for (let z = -3.6; z <= 0.01; z += 1.2) world.reserve(lx, z, 1.1, 'lbShoLane');
+  }
+  world.reserve(14.6, -4.7, 2.0, 'lbVault');
+  world.reserve(0, -11.9, 1.8, 'lbDoorBars');
+
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -3.6);
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 11, -3.6);
+  // THE VAULT, cut into the east wall between the Kiln road and the pup
+  // pocket: a heart piece behind bars, in plain sight from both plates.
+  wallRun(world, 13.7, -6, 16, -6, D);
+  wallRun(world, 13.7, -3.4, 16, -3.4, D);
+  visibleReward(world, 14.9, -4.7, 'l1_lb_vault', { shards: 24, heartPiece: 1 }, 'silver');
+  const lbVaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb_sho', 13.2, -4.7,
+    { span: 2.0, ry: Math.PI / 2, solved: lbSolved });
+  const lbDoorBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb_sho', 0, -11.9,
+    { span: 2.6, solved: lbSolved });
+  const lbOpen = () => {
+    if (!lbSolved()) return;      // one plate is half an answer, and stays shut
+    lbVaultBars.open();
+    lbDoorBars.open(true);
+  };
+  plateSwitch(world, 'l1_lb_sho_p1', 7, 0, lbOpen);
+  plateSwitch(world, 'l1_lb_sho_p2', 11, 0, lbOpen);
+
   ruinedHome(world, -11, 6.5, -0.35, D, { w: 6.5, d: 5, keep: 0.68 });
   ruinedHome(world, -12.5, -7.5, 0.6, D, { w: 6, d: 4.5, keep: 0.5 });
   wayshrine(world, -6.5, 10.5, Math.PI + 0.2, D);
@@ -673,26 +757,6 @@ export async function buildLb(scene) {
   rubbleField(world, 2, -11, 2.8, D, 12);
   aftermath(world, -11, 5, 2.2, D, 5);
   aftermath(world, 4, -9, 2.0, D, 6);
-  // THE SHO: same element (push_block), more of it — two blocks, two plates,
-  // a corner to think about (playbook ki->sho arc; dungeons.json node lb).
-  // The pocket sits south-east of the room's combat spots, so the KID rule
-  // ("combat cleared first, then the puzzle") holds without a wall to force
-  // it: nothing here bites until the enemies already wandering lb are down.
-  //
-  // RESERVED BEFORE scatter(): the Knot (level3.js) learned this the hard
-  // way — a random breakable dropped mid-lane deflects a rolling boulder
-  // sideways on contact, and it then tracks that new heading in a dead
-  // straight line, skimming past the plate forever. Both push lanes (x 9
-  // and x 13, z -2..2) are reserved so scatter() below leaves them clear.
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 9, -2);
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 13, -2);
-  const lbShoDone = () => !!state.flags.plates.l1_lb_sho_p1 && !!state.flags.plates.l1_lb_sho_p2;
-  const lbShoReward = () => { if (lbShoDone()) spawnShards(world, 11, 2, 16); };
-  plateSwitch(world, 'l1_lb_sho_p1', 9, 2, lbShoReward);
-  plateSwitch(world, 'l1_lb_sho_p2', 13, 2, lbShoReward);
-  for (const lz of [-2, -0.7, 0.7, 2]) {
-    world.reserve(9, lz, 1.1, 'lbShoLane'); world.reserve(13, lz, 1.1, 'lbShoLane');
-  }
   scatter(world, halfW, halfD, D, 21, 7);
   return finish(world, spec, D);
 }
@@ -751,41 +815,43 @@ export async function buildLb2(scene) {
     { x: 3, z: 4.5, kind: 'crate' }, { x: 8.5, z: -5.5, kind: 'cask' },
     { x: -8.5, z: 2, kind: 'vase' },
   ];
+
+  // THE TEN: push_block meets a second thing — not a new element, a new
+  // SHAPE. lb's blocks each went straight at their plate; this one cannot,
+  // because a spur wall stands exactly where a straight push would land it.
+  // The block has to be walked the long way round the spur's open end before
+  // it can reach the plate at all — routing, not repeating (playbook §5's
+  // "exactly one twist"; dungeons.json node lb2). This is the hardest push in
+  // the region, so it guards the best thing in it.
+  //
+  // Reserved before the dressing, for the reason given in lg1 and lb.
+  for (const [rx, rz] of [[3, -1], [3, -2.2], [3, -3.4], [3, -4.6], [3, -5.8],
+                          [4.2, -5.8], [5.4, -5.8], [6.6, -5.8],
+                          [6.6, -4.6], [6.6, -3.4], [6.6, -2.2], [6.6, -1]]) {
+    world.reserve(rx, rz, 1.1, 'lb2TenLane');
+  }
+  world.reserve(8.7, 6.6, 2.0, 'lb2Vault');
+
+  wallRun(world, 4.5, -3, 4.5, 1, D);
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 3, -1);
+  // THE VAULT, in the cubby's own back corner — the region's best axe behind
+  // the region's hardest push. Nothing here is on the critical path (lb2 is a
+  // dead end that loops back to the Causeway), so this one gates treasure and
+  // never the road: a child who cannot route the block loses a prize, not
+  // their game.
+  wallRun(world, 7.0, 5.2, 7.0, 8, D);
+  visibleReward(world, 8.7, 6.6, 'l1_lb2_vault', { shards: 20, gear: 'axe_ember' }, 'gold');
+  const lb2Bars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb2_ten', 8.7, 5.2,
+    { span: 2.6 });
+  plateSwitch(world, 'l1_lb2_ten', 6.6, -1, () => lb2Bars.open());
+
   ruinedHome(world, -6.5, 5.5, 0.4, D, { w: 6, d: 4.5, keep: 0.35 });
-  fallenColumn(world, 6, 5, 1.3, D, 3.2);
+  fallenColumn(world, 3.5, 6.5, 2.2, D, 3.2);
   fallenColumn(world, 5, -5.5, -0.6, D, 2.8);
   cartWreck(world, 8.5, 2, 0.8, D);
   rubbleField(world, 0, 6, 3.0, D, 14);
   rubbleField(world, -8, -4, 2.8, D, 12);
   aftermath(world, -5, -5.5, 2.2, D, 8);
-  // THE TEN: push_block meets a second thing — not a new element, a new
-  // SHAPE. lb's blocks each went straight to their plate; this one can't,
-  // because a spur wall sits right where a straight push would land it. The
-  // player has to walk the block around the spur's open south end before
-  // it can reach the plate at all — routing, not repeating (playbook §5
-  // ten: "exactly one twist"; dungeons.json node lb2). East of the fire
-  // gate, so it needs nothing the room hasn't already granted.
-  //
-  // RESERVED BEFORE scatter() — same Knot lesson as lb's sho puzzle above:
-  // an unreserved lane lets scatter() drop a breakable in the boulder's
-  // path, which deflects it off-course on contact.
-  // the wall sits at x=4.5, not 4 — a boulder's 0.62 radius from x=3 already
-  // reaches to x=3.62, and wallRun's own half-thickness pads its collider
-  // another 0.5u past the x it's given, so x=4 would have the boulder
-  // resting flush against the wall at its AUTHORED start, not clear of it.
-  wallRun(world, 4.5, -3, 4.5, 1, D);
-  // GRID-SNAPPED to the boulder's OWN 1.2u push step from its start, not a
-  // round number: 3 -> 4.2 -> 5.4 -> 6.6 east, 4 steps south to -5.8, 4 back
-  // north to exactly -1.0 again. Landing the plate off that grid (the first
-  // version used a plain x=7) needed the plate's 0.55 capture radius to
-  // paper over the gap — and a breakable two units off the route was close
-  // enough to a push slide's collision resolution to skim the block sideways
-  // before it ever got there anyway. Exact beats approximate; the cask moved.
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 3, -1);
-  plateSwitch(world, 'l1_lb2_ten', 6.6, -1, () => spawnShards(world, 6.6, -1, 14));
-  for (const [rx, rz] of [[3, -1], [3, -3], [3, -5.8], [4.8, -5.8], [6.6, -5.8], [6.6, -3], [6.6, -1]]) {
-    world.reserve(rx, rz, 1.1, 'lb2TenLane');
-  }
   scatter(world, halfW, halfD, D, 23, 5);
   return finish(world, spec, D);
 }
