@@ -536,7 +536,16 @@ export async function buildYg1(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {});
   world.spawn = { x: 0, z: 6, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'yhs', { x: -10, z: -10.5, angle: 0 }, { centre: -10 });
+  // THE TRIGGER LIVES IN THE GAP, AND THE GAP IS AT CENTRE 0. Five of the six
+  // guardian pockets shipped from the big-town rebuild with their STREET-side
+  // door centre (±10 along the High Street, ±7 along the Lanes) mirrored onto
+  // their own exit wall — where the shell's gap is cut at the default centre.
+  // Result: a door trigger buried in solid wall at the room's corner, and an
+  // open hole at centre 0 with nothing solid and nothing firing — a walk into
+  // the black nothing, the exact v3.47 class. yg2 aligned only because its
+  // street slot happens to BE 0. Caught by probe-openholes the first night it
+  // knew these rooms existed (2026-08-29).
+  sideDoor(world, 's', halfW, halfD, 'yhs', { x: -10, z: -10.5, angle: 0 });
   // THE GATE HOUSE: the keeper's hut to one side, a stretch of wall behind
   // the sentinel — the "already know this shape" gate Hollow Sentinel's own
   // shieldUp block borrows from Stoneroot (design doc §3).
@@ -590,7 +599,7 @@ export async function buildYg3(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {});
   world.spawn = { x: 0, z: 6, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'yhs', { x: 10, z: -10.5, angle: 0 }, { centre: 10 });
+  sideDoor(world, 's', halfW, halfD, 'yhs', { x: 10, z: -10.5, angle: 0 });
   // THE MILL: the hut IS the millhouse; the wheel is architecture, not a
   // creature, so it is a primitive rather than a new model — same reasoning
   // as frostBramble/valeBramble (js/level5.js, js/level6.js).
@@ -635,7 +644,7 @@ export async function buildYg4(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
   world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: -13.5, z: -7, angle: Math.PI / 2 }, { centre: -7 });
+  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: -13.5, z: -7, angle: Math.PI / 2 });
   // THE BELL TOWER: real height, real sightlines — the design doc's own
   // reason a ranged kiter belongs here rather than on open ground.
   if (!GREY()) {
@@ -660,7 +669,7 @@ export async function buildYg5(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
   world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: 0, z: 10.5, angle: Math.PI }, { centre: 7 });
+  sideDoor(world, 'e', halfW, halfD, 'ylw', { x: 0, z: 10.5, angle: Math.PI });
   // THE BACK ALLEY: cramped on purpose — the one guardian that can be
   // approached quietly wants corners to be approached quietly FROM.
   if (!GREY()) {
@@ -690,7 +699,7 @@ export async function buildYg6(scene) {
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('w')], D, {});
   world.spawn = { x: 6, z: 0, angle: Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 'ylw', { x: -13.5, z: 7, angle: Math.PI / 2 }, { centre: -7 });
+  sideDoor(world, 'w', halfW, halfD, 'ylw', { x: -13.5, z: 7, angle: Math.PI / 2 });
   // THE CHAPEL ROOF: the region's second, distinct tower (tower-3, not
   // tower-2 again) — height for the region's one aerial fight.
   if (!GREY()) {
