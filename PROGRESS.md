@@ -1,3 +1,44 @@
+# SHIPPED v3.69.0 → v3.71.1 (2026-08-29, overnight) — PUZZLES PAY, THE SPIRE, THE ELEMENTAL WOLF
+# (This log went quiet between v3.54 and v3.69 — that history is in
+#  BUILDLOG.md and the git log; the habit resumes here.)
+#
+# DAD'S FEEDBACK BATCH, all shipped:
+#   * every push-plate puzzle now opens the way or a visible barred reward
+#     (lg1/lb/lb2 rebuilt; verify-puzzle-payoff.mjs fails by name on any
+#     plate that pays nothing)
+#   * coins/weapon drops big enough to actually see; the double-chest fixed
+#     (a three.js node-name sanitisation bug — the phantom silver chest also
+#     skewed every chest's placement box)
+#   * attack no longer locks facing (ATTACK_TURN_MULT 0.55)
+#   * jump dodges ground attacks honestly (AIR_GRACE after real jumps)
+#   * Ghost Wolf invisibility works (senseRange -> GHOST_SIGHT 1.3)
+#   * THE MOONLIT SPIRE (m1/m2/ma/mb/m3): final level off the restored
+#     Village. m1 is the game's first REQUIRED jumps (gaps 1.8/1.8/1.6u vs
+#     2.98u worst-case carry; a miss costs the walk, never a heart).
+#     Trials pay a vault each AND light the sigils that open the last door.
+#   * THE ELEMENTAL WOLF: tenth form, granted at the crown. Two rigged
+#     never-used wolf clips for its attacks, seven-element braided swirl
+#     aura, ranged bolt rolls one of the six shipped kinds (no repeats),
+#     Element Storm hits each foe with its own weakness + fires every
+#     world-verb. Overpowered on purpose — it's the victory lap.
+# TEST DEBT PAID ALONG THE WAY:
+#   * verify-route had been red since the spine gained its puzzle gates —
+#     now proves the gates are SHUT first, then walks with plates down
+#   * five game-wide suites carried hand-kept room lists that had never
+#     heard of the Village or the Spire; tools/all-rooms.mjs now asks the
+#     live ROOMS registry (LEGACY names the 28 rooms still excluded, dated)
+#   * verify-spire.mjs measures the jump gauntlet from world.pitAt, not
+#     from the comments; run-spire.mjs plays the whole level on real keys
+#     (3x consecutive ALL CLEAN)
+#   * the Rime Plate is findable now (c_f1b_ice), not shop-only
+# GATES: run-spire x3 ALL CLEAN, verify-spire/route/landings/roomid/
+#   reachable/gear/callable/check-loot green; extended-list landings +
+#   converted-suite re-runs + legacy-room audit + full --par sweep were
+#   IN FLIGHT overnight — see the morning summary in chat for outcomes.
+# OPEN FOR DAD: no human has played the Spire yet. The jump margins are
+#   generous on paper and a bot clears them every time, but "a five-year-
+#   old can do this" is a claim only a five-year-old can settle.
+
 # SHIPPED v3.54.0 — THE TEST HARNESS'S OWN ROOM-IDENTITY RACE, FIXED EVERYWHERE
 # THE BUG: window.__game.state.room flips the INSTANT a jump is requested,
 #   before the async rebuild it triggers even starts. Every tools/*.mjs file
