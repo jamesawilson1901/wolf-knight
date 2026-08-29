@@ -146,12 +146,18 @@ if (flags.meri) {
     await d.page.waitForTimeout(500);
   }
   say('post-defeat gates settled after', ((Date.now() - nt0) / 1000).toFixed(1) + 's');
+  // #32 SECOND finding, also only ever landed in fight-boreal: the trigger
+  // is a shallow band — aim PAST the door's centre so the walk crosses it.
+  const past = (door) => {
+    const dd = Math.hypot(door.x, door.z) || 1;
+    return { x: door.x + (door.x / dd) * 1.4, z: door.z + (door.z / dd) * 1.4 };
+  };
   const sDoor = (await d.wk('doors')).find((x) => x.to === 'dg4');
-  if (sDoor) await d.walkTo(sDoor.x, sDoor.z, { timeout: 40, arrive: 0.4 });
+  if (sDoor) { const p = past(sDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
   if ((await d.wk('room')) === 'dg4') {
     const back = (await d.wk('doors')).find((x) => x.to === 'ddp');
-    if (back) await d.walkTo(back.x, back.z, { timeout: 40, arrive: 0.4 });
+    if (back) { const p = past(back); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
     await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
   }
   if ((await d.wk('room')) === 'ddp') {
