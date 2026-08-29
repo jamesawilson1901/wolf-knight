@@ -42,6 +42,7 @@ export const LINES = {
   kiln_order: { voice: 'pip', text: 'Look — these braziers wear little rings. One, two, three… light them in that order!' },
   gate_promise: { voice: 'pip', text: 'We can’t open this yet… but let’s remember it. We WILL come back.', repeat: true },
   gear_hint: { voice: 'pip', text: 'I sense something special in there — not just shards. A weapon, maybe! Let’s look — you can equip whatever we find.' },
+  dodo_secret: { voice: 'pip', text: 'Wait… is that a DODO?! I thought they were make-believe! Don’t tell anyone we saw this, Kael — it’s our secret.' },
   boss_door: { voice: 'pip', text: 'The spirit is near… but something’s wrong. Be ready, Kael.' },
   boss_intro: { voice: 'pip', text: 'There! The fire spirit — a shadow has it in its grip! Free it!' },
   boss_duel: { voice: 'pip', text: 'It’s just a wolf — a BIG one! It fights like the little ones: dodge its charge, shield its swipes!' },

@@ -210,6 +210,31 @@ const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
+// A DODO. Just a dodo. No mechanic, no reward, nothing required — a secret
+// for its own sake ("more secrets and easter eggs... the things that make
+// kids remember a game as something special"). assets/chars/monsters/
+// dodo.glb was vendored for a combat-enemy pass that never shipped (it
+// carries zero animation clips — measured with probe-modelsize.mjs, which
+// is exactly why it belongs here instead: it only ever needed to stand
+// still and be funny in a volcano ruin that has no business having one.
+let _dodoGltf = null;
+async function dodoSecret(world, x, z) {
+  if (GREY()) return;
+  if (!_dodoGltf) _dodoGltf = await loadGLB('./assets/chars/monsters/dodo.glb');
+  const model = prepareModel(_dodoGltf.scene.clone());
+  const root = new THREE.Group();
+  root.position.set(x, 0, z);
+  root.add(model);
+  world.add(root);
+  world.addCircle(x, z, 0.4, 'decor');
+  const seed = x * 3 + z;
+  world.onAnimate((t) => {
+    root.rotation.y = 0.4 + Math.sin(t * 0.5 + seed) * 0.5;
+    model.position.y = 0.02 + Math.max(0, Math.sin(t * 1.6 + seed)) * 0.05; // a little hop, not a bob
+  });
+  world.markers.dodoSpot = { x, z };
+}
+
 // The lava you can SEE. In greybox the channel is a red decal so its footprint
 // can be judged; dressed, it is an emissive surface with a pulsing light, and
 // the safe slabs are real bridge pieces laid across it.
@@ -565,6 +590,7 @@ export async function buildLa1(scene) {
   // A PRIZE, NOT JUST COINS. Dad: gear "that you can find and equip". Ember's
   // warrens hold the axe — the first weapon that is a different SHAPE of swing.
   visibleReward(world, 7, 5, 'l1_warrens', { shards: 16, gear: 'axe_b' });
+  await dodoSecret(world, 0, -7);
   return finish(world, spec, D);
 }
 

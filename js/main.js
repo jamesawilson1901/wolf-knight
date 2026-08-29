@@ -695,6 +695,8 @@ function narrationTriggers(dt, t) {
   // real signal rather than background noise every chest gives off).
   if ((world.chests || []).some((c) => !c.opened && c.loot && (c.loot.gear || c.loot.armour)
     && nearXZ(c.x, c.z, 3.2))) narration.say('gear_hint');
+  // an easter egg, found by nobody's system but curiosity
+  if (m.dodoSpot && nearSpot(m.dodoSpot, 3)) narration.say('dodo_secret');
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
