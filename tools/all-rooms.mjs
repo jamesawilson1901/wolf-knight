@@ -45,15 +45,21 @@
 // The point of the split is that it is now VISIBLE and dated instead of being
 // an accident of nine copy-pasted arrays. Shrink it on purpose.
 export const LEGACY = [
-  // retired hand-built rooms, superseded by the l/v/t rebuilds
+  // retired hand-built rooms, superseded by the l/v/t rebuilds — the game
+  // never routes a child into any of these
   'r1', 'r1b', 'r2', 'r2b', 'k1', 'ka', 'kb', 'r3',
   'e1', 'e1b', 'e3', 'w1', 'w1b', 'w2', 'w2b', 'w4', 'w5',
-  // live and played, but never covered by any hand-kept list either — this is
-  // a REAL gap, written down rather than quietly perpetuated
-  'den', 'e2', 'e2b', 'w3', 'f1', 'f1b', 'f2', 'f2b', 'f3', 'f4', 'f5',
   // the metrics greybox: a measuring space, not a played room
   'zoo',
 ];
+// The eleven LIVE legacy rooms (den, e2, e2b, w3, f1-f5 + pockets) sat in this
+// list for exactly one night — long enough to be audited before five
+// game-wide invariants switched on over them (2026-08-29). The audit's whole
+// yield: one unnamed potion cork "hovering" in f1 (named), two Frostpeak
+// frost gates flagged as walled doorways (named in verify-openholes'
+// SEALED_BY_DESIGN — they are the design), the Den holding no creatures (it
+// is the safe hub), and vc2→vcp genuinely sealed behind its own alcove wall
+// (fixed, v3.71.7). They are covered nightly now, same as every other room.
 
 export async function allRooms(page, { include = [], exclude = LEGACY } = {}) {
   const ids = await page.evaluate(async () => {
