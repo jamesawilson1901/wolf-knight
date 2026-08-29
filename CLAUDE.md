@@ -50,7 +50,10 @@ first: `node tools/serve.mjs &`.
   https://jamesawilson1901.github.io/wolf-knight/. Never push straight to
   `main` without being asked.
 - **Bump `CACHE_NAME` in `sw.js` on every deploy** that changes a cached
-  file, or the PWA serves stale assets from its own service worker.
+  file, or the PWA serves stale assets from its own service worker. **Bump
+  the `#badge` version in `index.html` to match at the same time** — it is
+  hardcoded and does not follow CACHE_NAME on its own; letting them drift
+  once cost half an hour of chasing a phantom cache bug (2026-08-29).
 - **Never force-push or rewrite history.**
 - Saves are additive-forever — never remove a field a save might still read.
 - Verify fixes via real input paths (actual room jumps, real key presses
