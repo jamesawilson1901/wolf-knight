@@ -21,4 +21,10 @@
 # don't wait for someone to notice the warning.
 
 verify-density.mjs | "island (kind) shows at least 32 things on arrival" fails on va1 and vc1 — reproduced against a clean checkout of live main (git worktree, no changes from any branch in flight), so this predates every change in this repository's current history and is not caused by anything under test | 2026-08-28
+# ⚠ THE ENTRY ABOVE COVERS ONLY va1/vc1 DENSITY, but a known-fail silences the
+# WHOLE suite — so verify-density's draw-call law is currently unguarded by the
+# sweep. Known hiding behind it right now: lb at 133 calls against the 125
+# budget (regressed 2026-08-29 by the sho puzzle furniture — boulders, bars,
+# plates, silver chest are all unbatchable). Fix lb, then this note goes; the
+# deeper manifest weakness (per-suite, not per-check) is test-infra debt.
 verify-graphs.mjs | NOT a proven-pre-existing bug in this manifest's usual sense — a deliberate, documented scope decision: Ember Hollow's push_block arc ships ki(lg1)+sho(lb)+ten(lb2) but no ketsu room, accepted under assets/dungeons.json's own "L1-L3 kid-weighted (3 required puzzles)" density note and recorded in that file's ember_hollow.known_gaps. Pure validation-schema data (assets/dungeons.json, tools/verify-graphs.mjs) — nothing the live game reads, zero gameplay risk. Listed here only so the nightly sweep doesn't train people to ignore a permanently-red suite; remove once a ketsu room for push_block ships, or if it's decided the arc doesn't need one. | 2026-08-29

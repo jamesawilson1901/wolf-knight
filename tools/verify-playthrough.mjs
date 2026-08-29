@@ -50,7 +50,16 @@ const check = (n, ok, d) => {
 const REGIONS = [
   { name: 'ember', label: 'Ember Hollow', enter: 'la',
     grant: { forms: ['knight', 'dark_wolf', 'fire_wolf'], flags: {} },
-    legs: [['lg1'], ['lb'], ['lg2'], ['lc'], ['lg3'], ['ld'], ['lg4'], ['le']] },
+    legs: [['lg1'],
+      // The spine is PUZZLE-GATED since the payoff rebuild (dad: "yes, on the
+      // main path too"): lg1's north door opens on the ki plate, lb's on both
+      // sho plates. Same idiom as Frostpeak's f4 leg below — the walker sets
+      // the plates and reloads so the gate rebuilds open; that the gates are
+      // really SHUT first, and that the blocks really push, is verify-route's
+      // and verify-l1-doors' job, not this file's.
+      ['lb', { plates: ['l1_lg1_ki'], reload: true }],
+      ['lg2', { plates: ['l1_lb_sho_p1', 'l1_lb_sho_p2'], reload: true }],
+      ['lc'], ['lg3'], ['ld'], ['lg4'], ['le']] },
 
   { name: 'stoneroot', label: 'Stoneroot', enter: 'vh',
     grant: { forms: ['earth_wolf'], flags: { bossDefeated: true } },
