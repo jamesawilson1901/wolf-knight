@@ -167,6 +167,16 @@ hours. Symptoms already diagnosed here:
 
 ---
 
+**Sequencing suites from shell: gate on PIDs, never on `pgrep -f` text.**
+A wrapper script that waits with `pgrep -f "node tools/verify-x"` matches any
+process whose command LINE contains that text — including its own heredoc, a
+monitor tailing the log, or a dead watcher's shell — so the gate either never
+opens or `pkill` with the same pattern kills the orchestrator, the watchers
+and the caller's own shell in one swing (both happened, 2026-08-29, and cost
+an hour of phantom wedges). Record `$!` when you start a job and wait on that
+PID, or better: run stages sequentially in ONE script with `timeout` guards,
+so there is nothing to gate on at all.
+
 ## 6 · Techniques for level/content work
 
 - **Measure models before placing them.** `tools/probe-modelsize.mjs`
