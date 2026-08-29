@@ -87,7 +87,13 @@ for (const room of ROOMS) {
   // Prove the switch took hold on a room built AFTER it was set. Asserting it
   // up front tested the boot room, which was already merged — the check failed
   // on its first run for that reason, which is the point of having it.
-  if (!checkedUnmerged) {
+  // The no-batch guard proves the mechanism on the first MODERN room only:
+  // _batchSkipped is set by flattenStatic when it honours __noBatch, and the
+  // legacy rooms (den, e/w/f/k/r prefixes) never call flattenStatic at all —
+  // their props are separate by construction, the flag is undefined, and
+  // asserting it there fails a single-room legacy run while proving nothing
+  // (found running `verify-grounded f1` to re-prove the potion-cork fix).
+  if (!checkedUnmerged && /^[lvtsdxym]/.test(room) && room !== 'den') {
     checkedUnmerged = true;
     check('flattenStatic is switched off, so props are separate',
       await page.evaluate(() => !!window.__game.world._batchSkipped),
