@@ -125,6 +125,19 @@ if (flags.aria && (await d.wk('room')) === 'scr') {
 // the way onward on the rebuild — leave and re-enter
 let onward = false, bossGone = false;
 if (flags.aria) {
+  // task #32's lesson, applied here too (it only ever landed in
+  // fight-boreal): the victory narration holds gates.blocking for tens of
+  // seconds at 1x, and a walk attempted under it times out in place — the
+  // suite then reads the corpse world and reports boss gone: false. Wait
+  // the gates out before walking.
+  const nt0 = Date.now();
+  while ((Date.now() - nt0) / 1000 < 150) {
+    await d.pickPerkIfOffered();
+    const g = await d.wk('gates');
+    if (!g.blocking && !g.speaking && !g.transitioning) break;
+    await d.page.waitForTimeout(500);
+  }
+  say('post-defeat gates settled after', ((Date.now() - nt0) / 1000).toFixed(1) + 's');
   const sDoor = (await d.wk('doors')).find((x) => x.to === 'sc4');
   if (sDoor) await d.walkTo(sDoor.x, sDoor.z, { timeout: 40, arrive: 0.4 });
   await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
