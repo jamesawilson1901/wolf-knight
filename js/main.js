@@ -1269,6 +1269,17 @@ function updateMusic() {
   else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('region-stone');
   else if (state.room[0] === 'x') audio.playMusic('stone-deep');
   else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
+  // THE VILLAGE AND THE SPIRE WERE NEVER ROUTED — the same hole the rebuilt
+  // levels fell into above, one paragraph later in the same chain. Both fell
+  // through to the bossDefeated branch (Ember's flag, always true by the time
+  // either exists), so the monster-overrun Village played the Den's lullaby.
+  // Corrupted Village: the stone loop, dark enough to say something is wrong.
+  // Restored Village: the healed-world calm it was fighting for. The Spire:
+  // the cold high hush — a moonlit tower over a sleeping world — until the
+  // crown, which is the warmest room in the game and sounds like it.
+  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'region-stone');
+  else if (state.room === 'm3') audio.playMusic('ember-calm');
+  else if (state.room[0] === 'm') audio.playMusic('stone-deep');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
   // k-rooms are RETIRED — the live Kiln is ld/ld1/lg4 inside the rebuilt Level 1.
   // So the one district in the game with its own track has been playing the

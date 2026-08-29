@@ -69,6 +69,11 @@ const REGIONS = [
   { id: 's1b', region: 'Stormreach' },
   { id: 'd1b', region: 'Sunken Vale' },
   { id: 'x1',  region: 'Shadow Court' },
+  // the two capstones — never in this list, and both fell through to the
+  // bossDefeated branch, so the monster-overrun Village played the Den's
+  // lullaby until 2026-08-29. Fresh profile = guardians standing = corrupted.
+  { id: 'ysq', region: 'The Village (corrupted)' },
+  { id: 'm1',  region: 'The Moonlit Spire' },
 ];
 
 console.log('\n── 1. every region has music ─────────────────────────');
