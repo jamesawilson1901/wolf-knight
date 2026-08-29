@@ -56,6 +56,12 @@ const SPLASH_RADIUS = 3.4;
 const SPLASH_DMG = 1;
 const SPLASH_SOAK = 2.0;        // seconds off their feet
 const FROST_COOLDOWN = 7;       // Frost Wolf breath (cone: shatters ice, freezes foes)
+// THE ELEMENT STORM — the Elemental Wolf's special. Short, because the form
+// exists to feel enormous and a twelve-second wait does not feel enormous.
+const ELEMENTAL_COOLDOWN = 5;
+const ELEMENTAL_RADIUS = 4.2;
+const ELEMENTAL_DMG = 3;
+const ELEMENTAL_STUN = 1.6;
 const FROST_RANGE = 3.6;
 const FROST_CONE_DEG = 40;
 const FROST_DMG = 1;
@@ -74,6 +80,10 @@ export const WOLF_TINTS = {
   storm_wolf: { main: 0xc9d4ff, eyes: 0xfff4b0 },   // Aria's gift (region 5)
   tide_wolf: { main: 0x3fb0c4, eyes: 0xd8fbff },    // Meri's gift (region 6)
   ghost_wolf: { main: 0xe8e4ff, eyes: 0xffffff },   // Luna's own moonlight (region 7)
+  // THE AVATAR. Not one element's colour, because it is not one element: a
+  // pale moon-silver body for every wolf at once, with the elements themselves
+  // doing the colouring as they orbit it (see _elementalSwirl).
+  elemental_wolf: { main: 0xf2ecff, eyes: 0xffd76a },
 };
 
 // FORM IDENTITY fields (data-driven so the seven later wolves slot in):
@@ -183,10 +193,33 @@ const FORM_DEFS = {
     attack: { lock: 0.44, hitAt: 0.23, range: 1.7, dmg: 1.2 },
     boltColor: 0xbfefff, rangedKind: 'shard', boltShape: 'icicle', // ice shard: chips + slows
   },
+  // THE ELEMENTAL WOLF — the avatar of every wolf at once, and the last thing
+  // the game gives you. Dad: "an overpowered wolf with the ranged attack
+  // randomly alternating... and the wolf has all the elements swirling around
+  // it." Overpowered on purpose: this is the victory lap, not a difficulty
+  // curve, and it is granted after the Court is already won.
+  //
+  // Its ATTACK CLIPS are the honest kind of new. The wolf rig ships twelve
+  // animations and the game only ever used seven; `Jump_ToIdle` (a rearing
+  // recovery) and `Idle_HitReact1` are real, rigged, unused clips, so this
+  // form's bite and its ranged throw look like nothing else in the game
+  // without a single frame being invented — the same rule the models follow.
+  elemental_wolf: {
+    speed: 6.2, turnMult: 1.25, hurtMult: 0.6,   // fast, sure, and hard to hurt
+    clips: {
+      idle: 'Idle', walk: 'Walk', run: 'Gallop', howl: 'Idle_2',
+      attack: 'Jump_ToIdle',        // rears and comes down — nothing else uses it
+      ranged: 'Idle_HitReact1',     // a whipping recoil as the bolt leaves
+      block: 'Idle_2_HeadLow', jump: 'Gallop_Jump',
+    },
+    attack: { lock: 0.34, hitAt: 0.16, range: 2.1, dmg: 2.4 },
+    stepIn: 0.5, lunge: true, senses: true,
+    boltColor: 0xffffff, rangedKind: 'elemental', boltShape: 'ring',
+  },
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide', ghost_wolf: 'moon' };
+const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide', ghost_wolf: 'moon', elemental_wolf: 'moon' };
 const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant', shard: 'frost' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -390,7 +423,7 @@ export class Player {
     await this.equipGear();
 
     // Wolves: ONE Quaternius model, cloned per form, tinted per casting sheet
-    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf']) {
+    for (const formName of ['dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf', 'elemental_wolf']) {
       const model = prepareCharacter(tintWolf(SkeletonUtils.clone(wolf.scene), WOLF_TINTS[formName]));
       model.scale.setScalar(WOLF_SCALE);
       this._addForm(formName, model, wolf.animations);
@@ -563,6 +596,52 @@ export class Player {
       this.forms.verdant_wolf.aura = aura;
       this.forms.verdant_wolf.auraData = { kind: 'verdant', leaves };
     }
+
+    // ELEMENTAL — every element at once, orbiting. Dad asked for "all the
+    // elements swirling around it", and the honest way to show ALL of them is
+    // to use each element's OWN shape and OWN colour, the ones the game has
+    // already taught over seven regions: the Fire Wolf's flame, the Earth
+    // Wolf's chip, Sylva's leaf, Boreal's icicle, Aria's bolt, Meri's droplet
+    // and Luna's ring. A child who has played this far can name all seven
+    // going past.
+    //
+    // They do not share one flat ring — seven rings would read as one. Each
+    // orbit is TILTED by its own angle, so the paths cross and re-cross and
+    // the whole thing reads as a swirl rather than a hoop.
+    if (this.forms.elemental_wolf) {
+      const aura = new THREE.Group();
+      const SPEC = [
+        { geo: FLAME_GEO,     color: 0xff7a3a, spin: 1.0 },  // fire
+        { geo: CHIP_GEO,      color: 0xd8b06a, spin: 1.4 },  // earth
+        { geo: LEAF_GEO,      color: 0x8fdc6a, spin: 2.2 },  // verdant
+        { geo: ICICLE_GEO,    color: 0xbfefff, spin: 0.8 },  // frost
+        { geo: LIGHTNING_GEO, color: 0xfff4b0, spin: 2.6 },  // storm
+        { geo: DROPLET_GEO,   color: 0x8fe4ff, spin: 1.2 },  // tide
+        { geo: RING_BOLT_GEO, color: 0xb08aff, spin: 1.6 },  // moon
+      ];
+      const orbs = [];
+      SPEC.forEach((sp, i) => {
+        const m = new THREE.Mesh(sp.geo, new THREE.MeshStandardMaterial({
+          color: 0x1a1626, emissive: sp.color, emissiveIntensity: 1.4, roughness: 0.6,
+        }));
+        aura.add(m);
+        orbs.push({ m, spin: sp.spin, color: sp.color,
+          phase: i / SPEC.length, tilt: i * (Math.PI / SPEC.length) });
+      });
+      // one light for all seven, cycling through their colours in turn, so the
+      // ground under Kael keeps changing hue as the swirl goes round
+      const glow = new THREE.PointLight(0xffffff, 1.5, 5.2, 1.8);
+      glow.position.set(0, 0.8, 0);
+      aura.add(glow);
+      aura.visible = false;
+      this.root.add(aura);
+      this.forms.elemental_wolf.aura = aura;
+      this.forms.elemental_wolf.auraData = {
+        kind: 'elemental', orbs, glow,
+        cols: orbs.map((o) => new THREE.Color(o.color)),
+        tmp: new THREE.Color(),
+      };
+    }
   }
 
   _updateAura(dt) {
@@ -649,6 +728,28 @@ export class Player {
         dp.m.scale.setScalar(0.7 + Math.sin(cyc * Math.PI) * 0.6);
       }
       d.glow.intensity = 1.0 + Math.sin(t * 1.8) * 0.3;
+    } else if (d.kind === 'elemental') {
+      // seven tilted orbits, each turning at the same rate so they hold their
+      // spacing, each on its own plane so the paths braid
+      const R = 0.78;
+      for (const o of d.orbs) {
+        const a = t * 1.15 + o.phase * Math.PI * 2;
+        const flat = Math.cos(a) * R;
+        o.m.position.set(
+          flat * Math.cos(o.tilt),
+          0.62 + flat * Math.sin(o.tilt) + Math.sin(t * 1.7 + o.phase * 6) * 0.06,
+          Math.sin(a) * R
+        );
+        o.m.rotation.x = t * o.spin;
+        o.m.rotation.y = t * o.spin * 0.7 + o.phase * 5;
+        // the one coming toward the camera swells a little, so the swirl has
+        // a front and a back instead of reading as a flat decal
+        o.m.scale.setScalar(0.85 + Math.max(0, Math.sin(a)) * 0.45);
+      }
+      const k = (t * 0.9) % d.cols.length;
+      const i0 = k | 0, i1 = (i0 + 1) % d.cols.length;
+      d.glow.color.copy(d.tmp.copy(d.cols[i0]).lerp(d.cols[i1], k - i0));
+      d.glow.intensity = 1.3 + Math.sin(t * 3.1) * 0.35;
     } else if (d.kind === 'verdant') {
       for (const lf of d.leaves) {
         const cyc = (t * 0.45 + lf.phase) % 1;              // slow rising spiral
@@ -818,7 +919,7 @@ export class Player {
     f.model.scale.setScalar(this._baseScale());
     if (f.aura) f.aura.visible = true;
     const cdMult = 1 - 0.15 * (state.perks.cooldown || 0);
-    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN, storm_wolf: DASH_COOLDOWN, tide_wolf: SPLASH_COOLDOWN, ghost_wolf: GHOST_COOLDOWN }[name] || SLAM_COOLDOWN;
+    const baseCd = { knight: SPIN_COOLDOWN, fire_wolf: SLAM_COOLDOWN, earth_wolf: STOMP_COOLDOWN, verdant_wolf: VINE_COOLDOWN, frost_wolf: FROST_COOLDOWN, storm_wolf: DASH_COOLDOWN, tide_wolf: SPLASH_COOLDOWN, ghost_wolf: GHOST_COOLDOWN, elemental_wolf: ELEMENTAL_COOLDOWN }[name] || SLAM_COOLDOWN;
     this.specialMax = baseCd * cdMult;
     this.specialCooldown = Math.min(this.specialCooldown, this.specialMax);
     this._current = null;
@@ -1355,8 +1456,33 @@ export class Player {
     // LEAF/LIGHTNING are shared cached geometry (never disposed per-bolt,
     // see sharedGeo below); the plain dart/rock fallback still builds fresh
     // geometry per throw, as it always has.
-    const kind = f.def.rangedKind || 'spark';
-    const shape = f.def.boltShape;
+    let kind = f.def.rangedKind || 'spark';
+    let shape = f.def.boltShape;
+    let boltColor = f.def.boltColor;
+    // THE AVATAR THROWS A DIFFERENT ELEMENT EVERY TIME. Dad: "an overpowered
+    // wolf with the ranged attack randomly alternating." Rather than invent a
+    // seventh projectile, the Elemental Wolf ROLLS one of the six the game
+    // already ships — so every mechanic (pierce-through, the rock's daze, the
+    // thorn's root, the shard's slow, the spark's stun) and every weakness
+    // reaction comes along for free, and a child watching sees the colour and
+    // the shape change shot to shot. It never rolls the same one twice in a
+    // row: two identical throws would read as "it just does that sometimes"
+    // rather than as the wolf cycling through everything it is.
+    if (kind === 'elemental') {
+      const ROLL = [
+        { kind: 'spark',  shape: 'lightning', color: 0xfff4b0 },
+        { kind: 'pierce', shape: 'ring',      color: 0xb08aff },
+        { kind: 'rock',   shape: null,        color: 0xd8b06a },
+        { kind: 'thorn',  shape: 'leaf',      color: 0x8fdc6a },
+        { kind: 'shard',  shape: 'icicle',    color: 0xbfefff },
+        { kind: 'shard',  shape: 'droplet',   color: 0x8fe4ff },
+      ];
+      let pick = (Math.random() * ROLL.length) | 0;
+      if (pick === this._lastElemental) pick = (pick + 1) % ROLL.length;
+      this._lastElemental = pick;
+      const r = ROLL[pick];
+      kind = r.kind; shape = r.shape; boltColor = r.color;
+    }
     const SHAPE_GEO = { ring: RING_BOLT_GEO, icicle: ICICLE_GEO, droplet: DROPLET_GEO, leaf: LEAF_GEO, lightning: LIGHTNING_GEO };
     const sharedGeo = !!SHAPE_GEO[shape];
     const geo = sharedGeo ? SHAPE_GEO[shape]
@@ -1364,7 +1490,7 @@ export class Player {
     const bolt = new THREE.Mesh(
       geo,
       new THREE.MeshStandardMaterial({
-        color: 0x000000, emissive: f.def.boltColor, emissiveIntensity: 2.6, roughness: 1,
+        color: 0x000000, emissive: boltColor, emissiveIntensity: 2.6, roughness: 1,
       })
     );
     if (shape === 'lightning') bolt.scale.setScalar(1.3);
@@ -1376,7 +1502,7 @@ export class Player {
     bolt.position.set(this.root.position.x + dir.x * 0.5, 0.85, this.root.position.z + dir.z * 0.5);
     bolt.rotation.y = this.root.rotation.y;
     world.root.add(bolt);
-    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target, kind, pierced: null, sharedGeo, boltColor: f.def.boltColor });
+    this._projectiles.push({ mesh: bolt, dir, traveled: 0, world, target, kind, pierced: null, sharedGeo, boltColor });
     return true;
   }
 
@@ -1618,6 +1744,7 @@ export class Player {
     if (state.form === 'storm_wolf') return this.tryThunderDash(effects, world);
     if (state.form === 'tide_wolf') return this.trySplash(effects, world);
     if (state.form === 'ghost_wolf') return this.tryGhost(effects, world);
+    if (state.form === 'elemental_wolf') return this.tryElementStorm(effects, world);
     return false;
   }
 
@@ -1654,6 +1781,83 @@ export class Player {
 
   // Is he unseen right now? Read by every enemy, every frame.
   get ghosted() { return state.form === 'ghost_wolf' && this._time < (this.ghostUntil || 0); }
+
+  // Elemental Wolf ELEMENT STORM: Kael howls and all seven elements answer at
+  // once, in a ring around him.
+  //
+  // It is unashamedly overpowered, because dad asked for overpowered and
+  // because of WHEN it is given: the Court is already won, Grimm is already
+  // beaten, and this is the victory lap. There is no difficulty curve left to
+  // protect.
+  //
+  // Two things make it feel like every wolf at once rather than a bigger
+  // splash. First, each enemy is struck with the element it is WEAK to — the
+  // storm always contains the right answer, so nothing in the game resists it.
+  // Second, it fires every wolf's world-verb together: it quenches, it cracks
+  // stone, it cuts bramble and it burns. Every obstacle in seven regions opens
+  // to one button, which is exactly what being the avatar should mean.
+  tryElementStorm(effects, world) {
+    if (state.form !== 'elemental_wolf') return false;
+    if (this.specialCooldown > 0 || this.lockTime > 0) return false;
+    this._playOnce('howl');
+    this.lockTime = 0.5;
+    this._softLock = false;
+    this.iframes = Math.max(this.iframes, 0.6);   // the avatar is not interrupted
+    const px = this.root.position.x, pz = this.root.position.z;
+    audio.play('whoosh', { volume: 1, rate: 0.62 });
+    audio.play('form-switch', { volume: 0.85, rate: 0.8 });
+    audio.play('parry', { volume: 0.5, rate: 1.4 });
+
+    const RING = [
+      { el: 'fire', color: 0xff7a3a, geo: FLAME_GEO },
+      { el: 'earth', color: 0xd8b06a, geo: CHIP_GEO },
+      { el: 'verdant', color: 0x8fdc6a, geo: LEAF_GEO },
+      { el: 'frost', color: 0xbfefff, geo: ICICLE_GEO },
+      { el: 'storm', color: 0xfff4b0, geo: LIGHTNING_GEO },
+      { el: 'tide', color: 0x8fe4ff, geo: DROPLET_GEO },
+      { el: 'moon', color: 0xb08aff, geo: RING_BOLT_GEO },
+    ];
+
+    let hit = false, killed = false;
+    if (world.enemies) {
+      let i = 0;
+      for (const e of world.enemies) {
+        if (e.dead || e.scenery) continue;
+        if (Math.hypot(e.x - px, e.z - pz) > ELEMENTAL_RADIUS + (e.radius || 0.3)) continue;
+        // whatever hurts you most is in the storm; if nothing does, it still
+        // rotates through the seven so no foe is simply immune
+        const w = Array.isArray(e.weakness) ? e.weakness[0] : e.weakness;
+        const el = w || RING[i % RING.length].el;
+        e.takeDamage(ELEMENTAL_DMG, el, 'aoe');
+        if (!e.dead && e.takeStun) e.takeStun(ELEMENTAL_STUN);
+        hit = true;
+        if (e.dead) killed = true;
+        i++;
+      }
+    }
+    if (hit) juice.onHit(killed ? 'heavy' : 'medium', { x: px, y: 0.7, z: pz, color: 0xf2ecff });
+
+    // every wolf's verb, together
+    if (world.quenchAt) world.quenchAt(px, pz, ELEMENTAL_RADIUS);
+    if (world.crackAt) world.crackAt(px, pz, ELEMENTAL_RADIUS);
+    if (world.cutAt) world.cutAt(px, pz, ELEMENTAL_RADIUS);
+    if (world.burnAt) world.burnAt(px, pz, ELEMENTAL_RADIUS);
+    if (world.igniteAt) world.igniteAt(px, pz, ELEMENTAL_RADIUS);
+
+    // the ring itself: each element thrown outward on its own arc, in its own
+    // shape, so the burst is readable as seven things and not one white flash
+    RING.forEach((r, n) => {
+      const a = (n / RING.length) * Math.PI * 2;
+      const ox = px + Math.cos(a) * ELEMENTAL_RADIUS * 0.7;
+      const oz = pz + Math.sin(a) * ELEMENTAL_RADIUS * 0.7;
+      juice.burst(ox, 0.5, oz, r.color, 6);
+      spawnDebris(world, ox, oz, r.geo, r.color, 3, { rise: 3.0, spread: 1.9, life: 0.7 });
+    });
+    if (effects) effects.groundSlam({ x: px, z: pz }, 0xf2ecff, ELEMENTAL_RADIUS);
+    if (effects && effects.punch) effects.punch(0.26, 0.34);
+    this.specialCooldown = this.specialMax;
+    return true;
+  }
 
   // Tide Wolf SPLASH: a ring of water thrown out from where Kael stands. It
   // soaks everything near him — light damage and, more to the point, they lose
