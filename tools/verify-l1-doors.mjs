@@ -8,9 +8,20 @@
 //
 // So the law this suite now holds Level 1 to is simple:
 //
-//   1. NO DOOR EVER LOCKS. In every room, with every enemy alive and hostile,
-//      every doorway fires. (Level 1 has no gated doors at all — even its boss
-//      door opens on a key, which is a `when` on the far side, not here.)
+//   0. A GATE MAY HOLD THE WAY ONWARD. NOTHING EVER HOLDS THE WAY BACK.
+//      v3.69 gave lg1 and lb push-block puzzles that bar their north doors
+//      until the blocks are on the plates — dad, on the version before it:
+//      "there's no opening the way to continue through the level or anything.
+//      no push this rock on the plate for no reason at all." That is a PUZZLE
+//      gate, which the room itself hands you the answer to, and it is a
+//      different animal from the ENCOUNTER SEAL he overruled — a fight you
+//      must win before the room will let you leave at all. So the two are held
+//      apart here: the onward door may wait on the plate, every other door in
+//      the room may not, and no child is ever shut in.
+//
+//   1. NO DOOR EVER LOCKS BEHIND A FIGHT. In every room, with every enemy
+//      alive and hostile, every doorway fires. (Section 0 solves the two
+//      puzzles first, because from there on the question is reachability.)
 //
 //   2. EVERY DOOR CAN BE WALKED THROUGH. Real stick, real movement code,
 //      arriving in the right room — because a door that fires but cannot be
@@ -84,7 +95,49 @@ const walkThrough = (i, secs = 3.0) => page.evaluate(async (a) => {
   return { to: d.to, left: g.state.room !== room0, arrived: g.state.room };
 }, { i, secs });
 
-console.log('\n── 1. no door ever locks, however alive the room is ──');
+console.log('\n── 0. the puzzle gates gate — and only the way ONWARD ──');
+// Ember Hollow has exactly two of them, each opened by a plate in the room the
+// player is already standing in, so the answer is never somewhere else.
+const GATED = [
+  { room: 'lg1', onward: 'lb',  back: ['la'],                 flags: ['l1_lg1_ki'] },
+  { room: 'lb',  onward: 'lg2', back: ['lg1', 'lb1', 'lb2'],
+    flags: ['l1_lb_sho_p1', 'l1_lb_sho_p2'] },
+];
+const firesTo = (o) => page.evaluate((oo) => {
+  const w = window.__game.world;
+  const fire = (to) => {
+    const d = (w.doors || []).find((x) => x.to === to);
+    return d ? !!w.doorAt((d.minX + d.maxX) / 2, (d.minZ + d.maxZ) / 2) : null;
+  };
+  return { onward: fire(oo.onward), back: (oo.back || []).map(fire) };
+}, o);
+
+for (const gate of GATED) {
+  await page.evaluate(() => { window.__game.state.flags.plates = {}; });
+  if (!(await go(gate.room))) { check(`${gate.room} builds unsolved`, false); continue; }
+  const shut = await firesTo(gate);
+  check(`${gate.room} → ${gate.onward} is SHUT until the blocks are placed`,
+    shut.onward === false, { room: gate.room, ...shut });
+  check(`${gate.room}: every way BACK stays open meanwhile`,
+    shut.back.length > 0 && shut.back.every((x) => x === true), { room: gate.room, ...shut });
+
+  await page.evaluate((f) => { for (const k of f) window.__game.state.flags.plates[k] = true; },
+    gate.flags);
+  if (!(await go(gate.room))) { check(`${gate.room} builds solved`, false); continue; }
+  const open = await firesTo(gate);
+  check(`${gate.room} → ${gate.onward} OPENS once they are`, open.onward === true,
+    { room: gate.room, ...open });
+}
+
+// From here the puzzles stay solved. Sections 1-3 ask whether a doorway is
+// REACHABLE and walkable, which is a different question from whether it is
+// gated — and a gate left shut here would be misreported as a broken door.
+await page.evaluate(() => {
+  const p = window.__game.state.flags.plates;
+  p.l1_lg1_ki = true; p.l1_lb_sho_p1 = true; p.l1_lb_sho_p2 = true;
+});
+
+console.log('\n── 1. no door ever locks behind a fight ─────────────');
 const state = {};
 for (const room of L1) {
   if (!(await go(room))) { check(`${room} builds`, false); continue; }
