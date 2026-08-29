@@ -248,11 +248,45 @@ async function dodoSecret(world, x, z) {
 // The lava you can SEE. In greybox the channel is a red decal so its footprint
 // can be judged; dressed, it is an emissive surface with a pulsing light, and
 // the safe slabs are real bridge pieces laid across it.
+// The molten skin. A bare emissive plane read as "a flat orange rectangle"
+// in the B1 screenshot audit — real lava has a dark crust floating on the
+// glow. One little canvas gradient does it: bright rifts with blobs of
+// cooled black drifting on top, drifting slowly along the channel via UV
+// offset. A texture on the material, not geometry — still one draw call.
+let _lavaTex = null;
+function lavaTexture() {
+  if (_lavaTex) return _lavaTex;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ff5a2b'; g.fillRect(0, 0, 256, 64);
+  // hotter rifts
+  for (let i = 0; i < 7; i++) {
+    const gr = g.createRadialGradient(i * 37 + 18, (i * 29) % 64, 2, i * 37 + 18, (i * 29) % 64, 26);
+    gr.addColorStop(0, 'rgba(255,208,120,0.9)'); gr.addColorStop(1, 'rgba(255,208,120,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 64);
+  }
+  // floating crust — dark islands, soft-edged so they read as cooled skin
+  for (let i = 0; i < 26; i++) {
+    const px = (i * 53 + 11) % 256, py = (i * 41 + 7) % 64, pr = 5 + (i * 13) % 11;
+    const gr = g.createRadialGradient(px, py, pr * 0.25, px, py, pr);
+    gr.addColorStop(0, 'rgba(38,10,6,0.85)'); gr.addColorStop(1, 'rgba(38,10,6,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(px, py, pr, 0, 6.29); g.fill();
+  }
+  _lavaTex = new THREE.CanvasTexture(c);
+  _lavaTex.wrapS = _lavaTex.wrapT = THREE.RepeatWrapping;
+  _lavaTex.colorSpace = THREE.SRGBColorSpace;
+  return _lavaTex;
+}
+
 function lavaSurface(world, x, z, w, d) {
   if (GREY()) return null;
+  const tex = lavaTexture().clone();         // own repeat/offset per channel
+  tex.needsUpdate = true;
+  tex.repeat.set(Math.max(1, Math.round(w / 7)), Math.max(1, Math.round(d / 7)));
   const lava = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff5a2b, emissiveIntensity: 1.8, roughness: 1 })
+    new THREE.MeshStandardMaterial({ color: 0x000000,
+      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1.8, roughness: 1 })
   );
   lava.rotation.x = -Math.PI / 2;
   lava.position.set(x, world.deckY + 0.02, z);
@@ -265,6 +299,7 @@ function lavaSurface(world, x, z, w, d) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + x) * Math.sin(t * 0.7 + z);
     lava.material.emissiveIntensity = 1.5 + pulse * 0.9;
     light.intensity = 8 + pulse * 5;
+    tex.offset.x = t * 0.011;                // the crust drifts downstream
   });
   return lava;
 }

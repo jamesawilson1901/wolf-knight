@@ -243,11 +243,16 @@ export async function buildM1(scene) {
     cv.width = 16; cv.height = 128;
     const cx = cv.getContext('2d');
     const grad = cx.createLinearGradient(0, 0, 0, 128);
-    grad.addColorStop(0, '#3a3750');    // near the north shore: still stone-lit
-    grad.addColorStop(0.25, '#151223');
-    grad.addColorStop(0.5, '#060510');  // the middle: gone
-    grad.addColorStop(0.75, '#151223');
-    grad.addColorStop(1, '#3a3750');    // near shore
+    // Tuned by re-shot, twice. Brightened to '#4a4664/#120f24' the band reads
+    // as walkable floor — an invitation to step into a pit; the original
+    // '#060510' middle is indistinguishable from unrendered black. Between:
+    // shores clearly stone-lit, middle clearly an abyss, but purple enough
+    // to be somewhere.
+    grad.addColorStop(0, '#393552');    // near the north shore: still stone-lit
+    grad.addColorStop(0.22, '#17132a');
+    grad.addColorStop(0.5, '#0b0918');  // the middle: deep, but a place
+    grad.addColorStop(0.78, '#17132a');
+    grad.addColorStop(1, '#393552');    // near shore
     cx.fillStyle = grad; cx.fillRect(0, 0, 16, 128);
     const tex = new THREE.CanvasTexture(cv);
     const fade = new THREE.Mesh(
@@ -255,7 +260,12 @@ export async function buildM1(scene) {
       new THREE.MeshBasicMaterial({ map: tex })
     );
     fade.rotation.x = -Math.PI / 2;
-    fade.position.set(0, 0.02, -1.6);        // spans the pit band z -6.8..3.6
+    // ABOVE pit()'s own lid. levelkit's pit() paints a flat 0x05040a cover at
+    // deckY+0.05, and the first two cuts of this gradient sat at +0.02 —
+    // underneath it, invisible, while the lid kept reading as "black
+    // nothing". Two re-shots to find that. Under the rim (+0.06), over the
+    // lid (+0.05).
+    fade.position.set(0, 0.055, -1.6);       // spans the pit band z -6.8..3.6
     world.add(fade);
     world.keepLoose(fade);                    // under the pads, never batched over them
 
@@ -617,17 +627,32 @@ export async function buildM3(scene) {
       const ped = tinted(kit().pedestal, 'pedestal', D.propTint);
       if (ped) { ped.position.set(x, 0, z); world.add(ped); }
     }
-    const l = new THREE.PointLight(c, 2.2, 8.5, 1.8);
+    const l = new THREE.PointLight(c, 4.5, 10, 1.8);
     l.position.set(x, 1.7, z);
     world.add(l);
     world.keepLoose(l);
+    // At 0.22u the gem was three pixels from the arrival camera and the
+    // seven colours vanished (re-shot check, v3.72.1): the crown read as
+    // plain purple ruin. Bigger gem, hotter emissive — the colour stays a
+    // COLOUR because it is saturated; white-out was a near-white at 3.6.
     const m = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.22, 0),
-      new THREE.MeshStandardMaterial({ color: 0x14101f, emissive: c, emissiveIntensity: 1.7, roughness: 0.6 })
+      new THREE.OctahedronGeometry(0.34, 0),
+      new THREE.MeshStandardMaterial({ color: 0x14101f, emissive: c, emissiveIntensity: 2.4, roughness: 0.6 })
     );
     m.position.set(x, 1.55, z);
     world.add(m);
     world.keepLoose(m);
+    // and a pool of its element's light on the stone below — the cheap decal
+    // that makes a point light READ at this camera distance. +1 draw each.
+    const pool = new THREE.Mesh(
+      new THREE.CircleGeometry(1.15, 24),
+      new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.30,
+        blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(x, 0.045, z);
+    world.add(pool);
+    world.keepLoose(pool);
     world.onAnimate((t) => {
       m.position.y = 1.55 + Math.sin(t * 1.3 + i) * 0.12;
       m.rotation.y = t * 0.9 + i;

@@ -82,6 +82,18 @@ const MUSIC_FILES = {
   spire: './assets/audio/music/spire.ogg',
 };
 
+// PER-TRACK TRIM. The vendored themes were not mastered against each other:
+// decoded RMS puts sunkenvale's theme near -34 dB while spire's sits near
+// -10 dB — walk from the Vale to the Spire and the music would jump to
+// nine times the loudness. A linear gain per track, applied on top of the
+// fade (1 = leave it alone). Numbers from tools-side decoded-audio
+// measurement; dad's ear outranks them.
+const MUSIC_TRIM = {
+  sunkenvale: 3.2,     // very quiet master, high headroom (dyn 0.59)
+  'village-dark': 1.15,
+  spire: 0.8,          // hottest master of the six, pull it back a touch
+};
+
 class AudioSystem {
   constructor() {
     this.ctx = null;
@@ -249,7 +261,7 @@ class AudioSystem {
     const fade = this.ctx.createGain();
     fade.gain.value = 0;
     fade.connect(this.musicGain);
-    fade.gain.linearRampToValueAtTime(1, t + 0.8);
+    fade.gain.linearRampToValueAtTime(MUSIC_TRIM[name] || 1, t + 0.8);
 
     const src = this.ctx.createBufferSource();
     src.buffer = buf;

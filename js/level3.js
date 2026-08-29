@@ -786,6 +786,13 @@ export async function buildT1p(scene) {
               { x: -5, z: -4, r: 2.4, kind: 'mud' }],
   });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
+  // THE CAMERA LANE IS GROUND GAMEPLAY OWNS. The camera hangs 7u south of
+  // Kael (+z, CAM_OFFSET in main.js), so a canopy planted between the spawn
+  // and that point fills the whole arrival frame with leaves — the B1
+  // screenshot audit found a child stepping into this pocket saw a tree, not
+  // a room. grove() already asks blocked() before every trunk; this reserve
+  // makes the sight line something it can refuse.
+  world.reserve(-7.5, 3.5, 2.6, 'cameraLane');
   sideDoor(world, 'w', halfW, halfD, 't1b', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   wallRun(world, -2, -3, 5, -3, D);
   world.markers.pup7Spot = { x: 6, z: -5 };
@@ -794,6 +801,11 @@ export async function buildT1p(scene) {
   grove(world, 6.5, -4, 3.0, D, { sick: 0.30 });
   thicket(world, -2, -5, 2.8, D, { sick: 0.1 });
   thicket(world, 3, 5, 2.6, D, { sick: 0.1 });
+  // undergrowth beside the reserved camera lane — no canopy, so it can sit
+  // this close to the spawn without ever blocking the view; puts back the
+  // in-frame density the lane took from the grove (22 of a floor of 20
+  // without it — one relaid prop from passing on luck)
+  thicket(world, -5.2, -2.2, 2.2, D, { sick: 0.1 });
   blight(world, 6, 4, 2.4, D);
   aftermath(world, -6, -4, 1.8, D, 6);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1097,6 +1109,9 @@ export async function buildT3p(scene) {
               { x: -5, z: -4, r: 2.4, kind: 'mud' }],
   });
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
+  // Same camera-lane reserve as t1p, same reason: the arrival frame was a
+  // wall of canopy (B1 audit). See the comment there.
+  world.reserve(-7.5, 3.5, 2.6, 'cameraLane');
   sideDoor(world, 'w', halfW, halfD, 't3b', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   wallRun(world, 0, -4, 0, 3, D);
   world.markers.pup8Spot = { x: 6, z: -3 };
