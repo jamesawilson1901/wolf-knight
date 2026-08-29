@@ -477,8 +477,18 @@ export async function buildMb(scene) {
     world.markers.gildedHuskSpots = [{ x: 2.5, z: 4.0 }];
     world.markers.emberfangSpots = [{ x: -4.5, z: -3.5 }];
   }
+  // THE ROOM MUST HAVE HELD A FIGHT BEFORE IT CAN BE SAID TO BE WON.
+  //
+  // `every(dead || scenery)` is the Village's clear test, and it is true of a
+  // room containing nothing but two breakable barrels. If a roster model ever
+  // failed to load, this room would light its sigil on the first frame and
+  // hand over the last door in the game for free. `sawFoes` latches only when
+  // a real enemy has actually stood here, so an empty room stays unwon.
+  let sawFoes = false;
   world.onAnimate(() => {
-    if (WS.get(REGION, 'sigil_flame') || !world.enemies || !world.enemies.length) return;
+    if (WS.get(REGION, 'sigil_flame') || !world.enemies) return;
+    if (world.enemies.some((e) => !e.scenery)) sawFoes = true;
+    if (!sawFoes) return;
     if (world.enemies.every((e) => e.dead || e.scenery)) {
       WS.set(REGION, 'sigil_flame');
       mbBars.open();
