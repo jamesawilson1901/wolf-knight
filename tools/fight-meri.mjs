@@ -155,6 +155,12 @@ if (flags.meri) {
   const sDoor = (await d.wk('doors')).find((x) => x.to === 'dg4');
   if (sDoor) { const p = past(sDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
+  if ((await d.wk('room')) === 'ddp') {
+    // the walk did not leave — say exactly where it ended and what it aimed at
+    const s = await d.wk();
+    say('WALK DID NOT LEAVE ddp — at', JSON.stringify(s.pos),
+      'door', JSON.stringify(sDoor), 'gates', JSON.stringify(await d.wk('gates')));
+  }
   if ((await d.wk('room')) === 'dg4') {
     const back = (await d.wk('doors')).find((x) => x.to === 'ddp');
     if (back) { const p = past(back); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
