@@ -147,6 +147,13 @@ const GATED = {
   'xa2→xa3': 'the Ash Wing vault — a CRACKED promise gate, opened with Earth',
   'xr2→xr3': 'the Root Wing spring — frozen shut until Frost is used on it',
   'ddp→dg4': 'the way out of the deep, which opens when the vale drains',
+  // The Spire's last door. plateBars stands 3.5u into the room (so the bars
+  // read as a barrier from the whole hall, not a decal on the wall), which
+  // seals every floor cell near the door inside the pocket until both trial
+  // sigils burn. lg1 and lb pass WITHOUT an entry here only because their
+  // bar pockets are shallow — floor beside the bars still counts as "near the
+  // door". Depth of pocket is a look choice, not a rule; both are correct.
+  'm2→m3': 'the way to the crown — barred until the stone AND flame sigils burn',
 };
 
 console.log('\n── every door has floor in front of it that the player can reach ──');

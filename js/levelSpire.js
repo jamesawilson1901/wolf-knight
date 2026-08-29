@@ -210,9 +210,11 @@ export async function buildM1(scene) {
     paths: [[[0, 12], [0, 8]], [[0, -8], [0, -12]]],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
-  // back down the stair, and out at the foot of it — the Spire's door is on
-  // the Square's south wall at centre 12, so that is where this puts you down
-  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 12, z: 10, angle: 0 });
+  // back down the stair, and out at the foot of it — the Spire's archway is
+  // on the Square's south wall at centre 8, so that is where this puts you
+  // down (z 12: the first cut used the building-corner at (12,10) and landed
+  // arrivals 1.57u inside the corner house — verify-landings' catch)
+  sideDoor(world, 's', halfW, halfD, 'ysq', { x: 8, z: 12, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'm2', { x: 0, z: 11, angle: Math.PI });
 
   // THE VOID, then the pieces of stair still standing in it. The order

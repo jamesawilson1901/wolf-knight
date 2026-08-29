@@ -351,11 +351,14 @@ export async function buildYsq(scene) {
     gap('n', undefined, 0),         // THE HIGH STREET
     gap('w', undefined, 0),         // THE LOW LANES
     gap('e', undefined, 0),         // THE WELL
-    // THE SPIRE STAIR, in the south-east corner. A SECOND gap on the south
-    // wall rather than a second one on the east, because the Well's door has
-    // sat at east-centre since the region shipped and moving a door moves the
-    // landing every test and every save-side reservation was built against.
-    gap('s', undefined, 12),
+    // THE SPIRE STAIR. A SECOND gap on the south wall rather than one on the
+    // east, because the Well's door has sat at east-centre since the region
+    // shipped. Centre 8, not 12: the first cut used 12 and the extended
+    // landings sweep caught what that meant — the corner house (collider
+    // x 10.6-15.4, z 6.7-11.3) stood square in front of the doorway, hiding
+    // the last door in the game behind a building AND dropping arrivals from
+    // the Spire 1.57u inside its wall. At 8 the archway fronts open street.
+    gap('s', undefined, 8),
   ];
   const { halfW, halfD } = shell(world, spec, gaps, D, { hub: [0, 0] });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
@@ -369,7 +372,7 @@ export async function buildYsq(scene) {
   // visible the whole time — thresholdGlow spills the Spire's cold violet
   // across it — so it reads as a promise rather than as a wall.
   sideDoor(world, 's', halfW, halfD, 'm1', { x: 0, z: 11, angle: Math.PI },
-    { centre: 12, when: villageCleared });
+    { centre: 8, when: villageCleared });
 
   world.markers.heroSpot = { x: 0, z: 0 };
   world.markers.restSpot = { x: -10, z: -8 };
@@ -450,7 +453,12 @@ export async function buildYhs(scene) {
   // WEST ROW: three houses fronting the street, gaps left for the lane door.
   townhouse(world, 0, -8.5, 7.5, 1.62, D.propTint);
   townhouse(world, 4, -9.5, -6.5, 1.5, D.propTint);
-  townhouse(world, 2, -8.5, -11, 1.7, D.propTint);
+  // 1.5u east of its first spot (-8.5): there its collider reached x -10.5
+  // and ate half the yg1 doorway (centre -10), leaving a 0.7u squeeze into
+  // the Gate House street and swallowing the landing from yg1's own door —
+  // live since the region shipped, invisible until the landing sweep learned
+  // this room existed (the hand-kept-list rot, caught 2026-08-29).
+  townhouse(world, 2, -7, -11, 1.7, D.propTint);
   // EAST ROW: three more, pulled off the wall so a real ALLEY runs behind
   // them — nothing marks it, walking it is its own discovery.
   townhouse(world, 1, 9, 7.5, -1.55, D.propTint);
