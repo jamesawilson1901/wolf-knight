@@ -1245,7 +1245,15 @@ export async function buildVc1(scene) {
 
 export async function buildVc2(scene) {
   const { world, spec, D } = base(scene, 'vc2');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D, {
+  // The east gap sits at centre 5, NOT the default 0: the bramble alcove's
+  // south wall (wallRun 11,0 → 16,0, dressed in after the door existed) runs
+  // straight across a centre-0 doorway — its collider reaches x 16.5 and
+  // seals the door's middle, leaving 0.38u slivers a 0.64u wolf cannot pass,
+  // and the doorway that remained opened INTO the gated alcove. The pocket
+  // beyond holds the Vault Plate chest, so Stoneroot's armour was unreachable
+  // on foot from the day the alcove was dressed. Caught by probe-openholes
+  // the first night it knew every room (2026-08-29).
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e', undefined, 5)], D, {
     patches: [{ x: -8, z: -7, r: 5.0, kind: 'water' }, { x: 10, z: 7, r: 4.2, kind: 'mud' },
               { x: -12, z: 6, r: 4.0, kind: 'moss' }, { x: 6, z: -10, r: 3.6, kind: 'water' }],
     paths: [[[0, 13], [-2, 4], [0, -4], [0, -13]], [[1, -3], [6, -3], [10, -3]]],
@@ -1253,7 +1261,7 @@ export async function buildVc2(scene) {
   world.spawn = { x: 0, z: 10.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'vc1', { x: 0, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc3', { x: 0, z: 5.5, angle: Math.PI });
-  sideDoor(world, 'e', halfW, halfD, 'vcp', { x: -7.5, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'e', halfW, halfD, 'vcp', { x: -7.5, z: 0, angle: Math.PI / 2 }, { centre: 5 });
 
   heroProp(world, -8, -7, 'drownedDoor', D);     // ▲ THE DROWNED DOOR
   world.markers.heroSpot = { x: -8, z: -7 };
@@ -1300,7 +1308,7 @@ export async function buildVcp(scene) {
   world.spawn = { x: -7.5, z: 0, angle: Math.PI / 2 };
   // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
   // why nothing had ever measured these.
-  sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 14.1, z: 1.5, angle: -Math.PI / 2 });  // LOOPS BACK
+  sideDoor(world, 'w', halfW, halfD, 'vc2', { x: 14.2, z: 5, angle: -Math.PI / 2 });  // LOOPS BACK, south of the alcove wall
   wallRun(world, 0, -4, 0, 3, D);
   visibleReward(world, 6, -3, 'l2_vcp_chest', { shards: 20, heartPiece: 1, armour: 'stone' }, 'gold');
   world.markers.pupSpot = { x: -6.5, z: -5, id: 'pup_v3' };

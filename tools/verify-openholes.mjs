@@ -65,6 +65,17 @@ const go = async (room) => {
 // the reason written beside it, the way verify-reachable's GATED does it.
 const OPEN_BY_DESIGN = {};
 
+// Doorways that fire while something solid stands in them ON PURPOSE: the
+// legacy frost gates seal the opening with a real melting wall, but their
+// addDoor calls predate `when()` so the trigger stays live behind the ice.
+// The seal is the design; the live trigger behind it is legacy plumbing. If
+// one of these ever shows up as an unfired hole instead, that is the gate
+// FAILING TO BUILD and this list must not excuse it (it only covers walled).
+const SEALED_BY_DESIGN = {
+  'f2→f3': 'the Frozen Lake frost gate — melts when the braziers are lit',
+  'f3→f4': 'the Windscour frost gate — opens on both lake plates',
+};
+
 const holes = [], walled = [], wallHoles = [];
 for (const room of ROOMS) {
   if (!(await go(room))) { check(`${room} builds`, false); continue; }
@@ -112,7 +123,11 @@ for (const room of ROOMS) {
     // the seal working, not a hole and not a walling-off
     if (d.gated) continue;
     if (!d.fires && !d.solid) holes.push({ room, ...d });
-    if (d.fires && d.solid) walled.push({ room, ...d });
+    if (d.fires && d.solid) {
+      const sealed = SEALED_BY_DESIGN[`${room}→${d.to}`];
+      if (sealed) { console.log(`· ${room} → ${d.to} — sealed by design: ${sealed}`); continue; }
+      walled.push({ room, ...d });
+    }
   }
   if (!OPEN_BY_DESIGN[room]) for (const sp of r.spans) wallHoles.push({ room, ...sp });
 }
