@@ -100,6 +100,25 @@ say('FLAGS:', JSON.stringify(flags));
 say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, bolts: seen.bolts }));
 await d.shot('post');
 
+// THE WAY ON OPENS WHERE YOU STAND (v3.74.0): a beat and a half of game
+// time after the kill, the rock plug goes up in a smoke poof and the s1a
+// door appears IN the live eyrie — no walking out and back. The countdown
+// runs on world.animate, which narration blocking pauses, so give it the
+// patience a watching child has. Checked only if the kill ended with Kael
+// still standing in the room, which is the case the feature exists for.
+let inPlace = true;  // vacuously true if Kael already left — the rebuild path covers that
+if (flags.boreal && (await d.wk('room')) === 'f5') {
+  inPlace = false;
+  const it0 = Date.now();
+  while ((Date.now() - it0) / 1000 < 150 && !inPlace) {
+    await d.pickPerkIfOffered();
+    inPlace = !!(await d.wk('doors')).find((x) => x.to === 's1a');
+    if (!inPlace) await d.page.waitForTimeout(500);
+  }
+  say('the way on opened IN PLACE:', inPlace, 'after', ((Date.now() - it0) / 1000).toFixed(1) + 's');
+  await d.shot('f5-onward-in-place');
+}
+
 // the way to Stormreach appears on the rebuild
 let onward = false, bossGone = false;
 if (flags.boreal) {
@@ -144,7 +163,7 @@ if (flags.boreal) {
 }
 say('music:', await d.wk('music'));
 d.saveLog('boreal');
-const won = flags.boreal && flags.frost && onward && bossGone;
+const won = flags.boreal && flags.frost && onward && bossGone && inPlace;
 say(won ? `BOREAL CALMED at ${TS}x — FROST WOLF earned, the sea cliffs open` : 'NOT COMPLETE');
 say('errors:', JSON.stringify(d.errors));
 await d.close();

@@ -113,6 +113,23 @@ if (flags.meri && !flags.tideGranted) {
 say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, dashes: seen.dashes }));
 await d.shot('post');
 
+// THE WAY ON OPENS WHERE YOU STAND (v3.74.0): a beat and a half of game
+// time after the kill, the rock plug goes up in a smoke poof and the x1
+// door appears IN the live deep — no walking out and back. See
+// fight-boreal.mjs for the full note.
+let inPlace = true;  // vacuously true if Kael already left — the rebuild path covers that
+if (flags.meri && (await d.wk('room')) === 'ddp') {
+  inPlace = false;
+  const it0 = Date.now();
+  while ((Date.now() - it0) / 1000 < 150 && !inPlace) {
+    await d.pickPerkIfOffered();
+    inPlace = !!(await d.wk('doors')).find((x) => x.to === 'x1');
+    if (!inPlace) await d.page.waitForTimeout(500);
+  }
+  say('the way on opened IN PLACE:', inPlace, 'after', ((Date.now() - it0) / 1000).toFixed(1) + 's');
+  await d.shot('ddp-onward-in-place');
+}
+
 // the way onward on the rebuild — leave and re-enter
 let onward = false, bossGone = false;
 if (flags.meri) {
@@ -134,7 +151,7 @@ if (flags.meri) {
 }
 say('music:', await d.wk('music'));
 d.saveLog('aria');
-const won = flags.meri && bossGone;
+const won = flags.meri && bossGone && inPlace;
 say(won ? `MERI FREED at ${TS}x — the vale drains, the way to the Court opens` : 'NOT COMPLETE');
 say('errors:', JSON.stringify(d.errors));
 await d.close();

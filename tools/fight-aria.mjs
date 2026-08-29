@@ -105,6 +105,23 @@ if (flags.aria && !flags.stormGranted) {
 say('SEEN:', JSON.stringify({ actions: [...seen.actions], deaths: seen.deaths, respawns: seen.respawns, dashes: seen.dashes }));
 await d.shot('post');
 
+// THE WAY ON OPENS WHERE YOU STAND (v3.74.0): a beat and a half of game
+// time after the kill, the rock plug goes up in a smoke poof and the d1a
+// door appears IN the live crown — no walking out and back. See
+// fight-boreal.mjs for the full note.
+let inPlace = true;  // vacuously true if Kael already left — the rebuild path covers that
+if (flags.aria && (await d.wk('room')) === 'scr') {
+  inPlace = false;
+  const it0 = Date.now();
+  while ((Date.now() - it0) / 1000 < 150 && !inPlace) {
+    await d.pickPerkIfOffered();
+    inPlace = !!(await d.wk('doors')).find((x) => x.to === 'd1a');
+    if (!inPlace) await d.page.waitForTimeout(500);
+  }
+  say('the way on opened IN PLACE:', inPlace, 'after', ((Date.now() - it0) / 1000).toFixed(1) + 's');
+  await d.shot('scr-onward-in-place');
+}
+
 // the way onward on the rebuild — leave and re-enter
 let onward = false, bossGone = false;
 if (flags.aria) {
@@ -126,7 +143,7 @@ if (flags.aria) {
 }
 say('music:', await d.wk('music'));
 d.saveLog('aria');
-const won = flags.aria && bossGone;
+const won = flags.aria && bossGone && inPlace;
 say(won ? `ARIA FREED at ${TS}x — the gale drops off the crown` : 'NOT COMPLETE');
 say('errors:', JSON.stringify(d.errors));
 await d.close();
