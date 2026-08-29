@@ -2292,7 +2292,17 @@ export class Player {
         // costs nothing a grown player would notice and turns a near-miss
         // into the dodge it looked like. Only after a REAL jump — jumpsUsed
         // is set by tryJump alone — so rolls and lunges keep their own rules.
-        if (this.jumpsUsed > 0) this._airGrace = AIR_GRACE;
+        if (this.jumpsUsed > 0) {
+          this._airGrace = AIR_GRACE;
+          // LANDING FEEDBACK. The jump finally matters (m1's gaps, the
+          // AIR_GRACE dodge), and an action that matters deserves a thump:
+          // a low ash puff at the feet and a soft landing sound. Real jumps
+          // only — jumpsUsed is set by tryJump alone, so rolls and lunges
+          // stay silent. Particles are policy-exempt from reduceMotion
+          // (CONFIG.ACCESSIBILITY: not camera motion).
+          juice.burst(this.root.position.x, 0.12, this.root.position.z, 0xcfc8bc, 6);
+          audio.play('puff', { volume: 0.4, rate: 0.85, vary: 0.12 });
+        }
         this.jumpsUsed = 0;
       }
       this.root.position.y = this.airY;

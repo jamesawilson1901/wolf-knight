@@ -71,6 +71,55 @@ const SECTIONS = [
     ['tgl', 'SYLVA’S GLADE. Arena: edges only'],
     ['tsA', 'secret shortcut'], ['tsB', 'secret shortcut'],
   ], 'woods'],
+  // THE BACK HALF OF THE GAME was never on this sheet — the same hand-kept
+  // rot every room list in tools/ carried (2026-08-30). A review page that
+  // shows regions 1-3 of a nine-region game reviews a third of the game.
+  ['Frostpeak — the cold, high hush', 'Level 4 · the old build, still played: braziers, the frozen lake, Boreal.', [
+    ['f1', 'THE RIME GATE — arrival'], ['f1b', 'the ice pocket — Rime Plate chest'],
+    ['f2', 'THE ICEBOUND HALL — braziers melt the way'], ['f2b', 'the Glacier Nook'],
+    ['f3', 'THE FROZEN LAKE — skidding boulders, two plates'],
+    ['f4', 'THE WINDSCOUR'], ['f5', 'BOREAL'],
+  ], 'frost'],
+  ['Stormreach Cliffs — a climb into weather', 'Level 5 · a switchback up the sea-cliffs; the wind is the wall.', [
+    ['s1a', 'THE LANDING'], ['s1b', 'up from the shore'], ['s1p', 'optional'],
+    ['sc1', 'rest'], ['s2a', 'THE GALESTAIR'], ['s2b', 'higher'], ['s2p', 'optional'],
+    ['ssh', 'the shrine (storm detour)'], ['sc2', 'rest'],
+    ['s3a', 'THE THUNDER SHELF'], ['s3b', 'higher'], ['s3p', 'optional'],
+    ['svn', 'the weathervane room (detour)'], ['sc3', 'rest'],
+    ['s4a', 'THE OPEN SKY'], ['s4b', 'the last pitch'], ['s4p', 'optional'],
+    ['sc4', 'rest'], ['scr', 'THE CROWN — Aria'],
+    ['ssA', 'secret shortcut'],
+  ], 'storm'],
+  ['The Sunken Vale — four shores that drowned', 'Level 6 · a lagoon that becomes a hub; Meri under it all.', [
+    ['d1a', 'THE SHALLOWS'], ['d1b', 'deeper in'], ['d1p', 'optional'],
+    ['dg1', 'rest'], ['d2a', 'THE REEDS'], ['d2b', 'deeper'], ['d2p', 'optional'],
+    ['dsh', 'the shrine (tide detour)'], ['dg2', 'rest'],
+    ['d3a', 'THE DROWNED TOWN'], ['d3b', 'deeper'], ['d3p', 'optional'],
+    ['dtp', 'the tide pools'], ['dg3', 'rest'],
+    ['d4a', 'THE SALT FLATS'], ['d4b', 'the last shore'], ['d4p', 'optional'],
+    ['dg4', 'rest'], ['dlg', 'THE LAGOON'], ['ddp', 'THE DEEP — Meri'],
+  ], 'vale'],
+  ['The Shadow Court — one palace, four wings', 'Level 7 · four relics open the throne; Grimm at the top.', [
+    ['x1', 'THE APPROACH'], ['xsh', 'the shrine'], ['xh', 'THE GREAT HALL — hub'],
+    ['xa1', 'Ash Wing'], ['xa2', 'deeper'], ['xa3', 'the relic'],
+    ['xr1', 'Root Wing'], ['xr2', 'deeper'], ['xr3', 'the relic'],
+    ['xg1', 'Tide Wing'], ['xg2', 'deeper'], ['xg3', 'the relic'],
+    ['xm1', 'Mirror Wing'], ['xm2', 'deeper'], ['xm3', 'the relic'],
+    ['xp1', 'pocket'], ['xp2', 'pocket'],
+    ['xst', 'THE THRONE STAIR'], ['xth', 'THE THRONE — Grimm'],
+  ], 'court'],
+  ['The Village — cleared street by street', 'Epilogue · overrun and dark until all six guardians fall; then the sun.', [
+    ['ysq', 'THE VILLAGE SQUARE — the tree, the well, two streets'],
+    ['yhs', 'THE HIGH STREET'], ['yg1', 'The Gate House'], ['yg2', 'The Market Row'], ['yg3', 'The Mill'],
+    ['ylw', 'THE LOW LANES'], ['yg4', 'The Bell Tower'], ['yg5', 'The Back Alley'], ['yg6', 'The Chapel Roof'],
+    ['yrw', 'THE WELL — a rescued pup, a chest'],
+  ], 'village'],
+  ['The Moonlit Spire — the finale', 'The last climb: the jump room, two trials, and the Elemental Wolf at the crown.', [
+    ['m1', 'THE BROKEN ASCENT — the game\'s first REQUIRED jumps'],
+    ['m2', 'THE HALL OF SIGILS — two trials off it, the last door barred'],
+    ['ma', 'THE TRIAL OF STONE'], ['mb', 'THE TRIAL OF EMBERS'],
+    ['m3', 'THE MOON\'S CROWN — Luna, and the Elemental Wolf'],
+  ], 'spire'],
 ];
 
 const uri = (id) => {
@@ -149,6 +198,12 @@ const html = `<title>Wolf Knight — every room</title>
   section.stone { --accent: var(--stone); }
   section.woods { --accent: var(--woods); }
   section.den   { --accent: var(--den); }
+  section.frost   { --accent: #9be3ff; }   /* Boreal's pale ice   */
+  section.storm   { --accent: #c9d4ff; }   /* Aria's storm-light  */
+  section.vale    { --accent: #4fd0e0; }   /* Meri's lagoon       */
+  section.court   { --accent: #b45cff; }   /* the shadow violet   */
+  section.village { --accent: #d8a44a; }   /* restored-sun warmth */
+  section.spire   { --accent: #d8cfff; }   /* moonlit silver      */
   h2 {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: clamp(20px, 3.2vw, 28px); font-weight: 600; letter-spacing: -0.01em;

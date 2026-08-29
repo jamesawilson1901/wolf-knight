@@ -1993,6 +1993,17 @@ async function start() {
     effects.hitStop(CONFIG.SWITCH_FX.STOP);
     effects.punch(CONFIG.SWITCH_FX.PUNCH, CONFIG.SWITCH_FX.PUNCH_T);
     juice.burst(P.x, 0.8, P.z, FORM_BURST[name] || 0xffffff, 14);
+    // THE AVATAR ANNOUNCES ITSELF IN ALL SEVEN COLOURS. Every other form
+    // bursts in its own hue; the Elemental Wolf's whole identity is that it
+    // is every wolf at once, so its switch throws a ring of all seven — the
+    // same palette its orbit aura carries (player.js _buildAuras 'elemental').
+    if (name === 'elemental_wolf') {
+      const COLS = [0xff7a3a, 0xd8b06a, 0x8fdc6a, 0xbfefff, 0xfff4b0, 0x8fe4ff, 0xb08aff];
+      COLS.forEach((c, i) => {
+        const a = (i / COLS.length) * Math.PI * 2;
+        juice.burst(P.x + Math.cos(a) * 1.1, 0.7, P.z + Math.sin(a) * 1.1, c, 5);
+      });
+    }
     if (world && world.enemies) {
       for (const e of world.enemies) {
         if (e.dead || !e.takeStun || e.scenery || !e.root) continue; // real foes only
