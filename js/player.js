@@ -207,6 +207,7 @@ const JUMP_V = 6.8;
 const DOUBLE_JUMP_V = 8.2;  // second press mid-air jumps higher
 const GRAVITY = 21;
 const AIRBORNE_DODGE_Y = 0.35; // above this, a HOP dodges ground attacks
+const AIR_GRACE = 0.16;        // ...and a real jump keeps dodging this long after landing
 // A weapon narrower than this thrusts instead of slashing (C4). cos() grows as
 // the arc shrinks, so "narrower than 50 degrees" is "arcCos above cos(50)".
 const NARROW_ARC_COS = Math.cos(THREE.MathUtils.degToRad(50));
@@ -334,6 +335,7 @@ export class Player {
     this.defending = false;
     this.defendStart = -99;      // timestamp (game time) shield was raised
     this.airY = 0;               // visual jump height (gameplay stays on XZ)
+    this._airGrace = 0;          // landing forgiveness on a real jump
     this.airV = 0;
     this.jumpsUsed = 0;
     this.onPotionsChanged = null;
@@ -1534,6 +1536,7 @@ export class Player {
   // dodges of every ground attack would be a different game. `jumpsUsed` is set
   // only by tryJump and cleared on landing, so it is exactly "this is a jump".
   get airborne() {
+    if ((this._airGrace || 0) > 0) return true;   // just landed — see below
     if (this.jumpsUsed > 0) return this.airY > 0 || this.airV > 0;
     return this.airY > AIRBORNE_DODGE_Y;
   }
@@ -2065,6 +2068,7 @@ export class Player {
       if (this.buffs[k] > 0) this.buffs[k] -= dt;
     }
 
+    if (this._airGrace > 0) this._airGrace -= dt;
     // jump physics (Y is visual-only; collisions stay on the XZ plane)
     if (this.airY > 0 || this.airV > 0) {
       this.airY += this.airV * dt;
@@ -2072,6 +2076,19 @@ export class Player {
       if (this.airY <= 0) {
         this.airY = 0;
         this.airV = 0;
+        // LANDING GRACE. Dad: "there is no reason to use the jump button. it
+        // doesn't dodge attacks." It does — hurt() drops any groundAttack
+        // while `airborne` — but the jump is only off the floor for 0.648s
+        // and enemy contact re-tests every single frame of overlap, so a hop
+        // that was a frame or two early ate the hit anyway and taught a child
+        // that jumping does not work. That lesson sticks after about two
+        // tries, which is why the button ended up unused.
+        //
+        // A sixth of a second of "still counts as airborne" after touchdown
+        // costs nothing a grown player would notice and turns a near-miss
+        // into the dodge it looked like. Only after a REAL jump — jumpsUsed
+        // is set by tryJump alone — so rolls and lunges keep their own rules.
+        if (this.jumpsUsed > 0) this._airGrace = AIR_GRACE;
         this.jumpsUsed = 0;
       }
       this.root.position.y = this.airY;
