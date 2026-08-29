@@ -152,16 +152,21 @@ if (flags.meri) {
     const dd = Math.hypot(door.x, door.z) || 1;
     return { x: door.x + (door.x / dd) * 1.4, z: door.z + (door.z / dd) * 1.4 };
   };
-  const sDoor = (await d.wk('doors')).find((x) => x.to === 'dg4');
-  if (sDoor) { const p = past(sDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
+  // OUT THROUGH THE DOOR THE KILL JUST OPENED — the child's actual path.
+  // The old route (south to dg4) wedged the straight-line walker on arena
+  // furniture ~5u short of the door at 1x (telemetry: stopped at z 8.4
+  // aiming at z 13.6, every gate clear); the 4x runs shoved past it on
+  // momentum. The north lane was cleared by the poof, and walking it is
+  // also the truer test.
+  const nDoor = (await d.wk('doors')).find((x) => x.to === 'x1');
+  if (nDoor) { const p = past(nDoor); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
   await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
   if ((await d.wk('room')) === 'ddp') {
-    // the walk did not leave — say exactly where it ended and what it aimed at
     const s = await d.wk();
     say('WALK DID NOT LEAVE ddp — at', JSON.stringify(s.pos),
-      'door', JSON.stringify(sDoor), 'gates', JSON.stringify(await d.wk('gates')));
+      'door', JSON.stringify(nDoor), 'gates', JSON.stringify(await d.wk('gates')));
   }
-  if ((await d.wk('room')) === 'dg4') {
+  if ((await d.wk('room')) === 'x1') {
     const back = (await d.wk('doors')).find((x) => x.to === 'ddp');
     if (back) { const p = past(back); await d.walkTo(p.x, p.z, { timeout: 40, arrive: 0.6 }); }
     await d.page.waitForFunction(() => !window.__wk.gates.transitioning, null, { timeout: 30000 }).catch(() => {});
