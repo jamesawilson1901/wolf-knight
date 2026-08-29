@@ -3681,8 +3681,15 @@ async function buildF1(scene) {
     ['rockM', -3.2, -0.6, 1.3, 1.2, 0.6], ['rockM', 3.6, 1.8, 1.25, 0.4, 0.6],
     ['pile', -7.0, 1.2, 1.6, 2.8, 0], ['pile', 7.0, 2.4, 1.5, 3.4, 0],
   ]);
+  // BRACKETING THE CROSSING, not guarding the corners. The w5→f2 line runs
+  // straight down x=0 and is only 13u — at the old posts (±4 off the line) a
+  // blind sprint crossed in 2.6s untouched, which breaks the gauntlet law
+  // ("the crossing costs", dad's overrule of the encounter seal). First
+  // caught the week the legacy rooms joined the game-wide suites. One hound
+  // either side of the line, staggered north/south: a straight line meets
+  // both; a child who weaves still gets through clean.
   world.markers.houndSpots = [
-    { x: -4.0, z: -1.4, variant: 'rime' }, { x: 4.4, z: 0.4, variant: 'rime' },
+    { x: -1.0, z: 1.6, variant: 'rime' }, { x: 1.2, z: -2.2, variant: 'rime' },
   ];
   world.markers.rimeSlimeSpots = [{ x: -1.4, z: -3.4 }];
   checkpoint(world, 'cp_f1', -6.8, 3.2);
