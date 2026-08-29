@@ -31,13 +31,28 @@
 #     from the comments; run-spire.mjs plays the whole level on real keys
 #     (3x consecutive ALL CLEAN)
 #   * the Rime Plate is findable now (c_f1b_ice), not shop-only
-# GATES: run-spire x3 ALL CLEAN, verify-spire/route/landings/roomid/
-#   reachable/gear/callable/check-loot green; extended-list landings +
-#   converted-suite re-runs + legacy-room audit + full --par sweep were
-#   IN FLIGHT overnight — see the morning summary in chat for outcomes.
+# GATES, AS THEY ACTUALLY LANDED (v3.71.1 → v3.71.8 overnight):
+#   run-spire x3 ALL CLEAN · verify-spire, route, landings, roomid, gear,
+#   callable, check-loot, music, gauntlet, emptyrooms green · reachable
+#   ALL CLEAN over the full 126-room registry (267 doors) · playthrough
+#   ALL CLEAN once the walker learned the spine's puzzle gates · loot's
+#   --par FAIL was contention flake (serial PASS) · density KNOWN-FAIL
+#   (va1/vc1 pre-existing; lb 130 vs 125 is MY open debt, task #69,
+#   loudly noted in known-fail.txt so the green cannot hide it).
+# WHAT FIRST-NIGHT COVERAGE OF THE MISSING ROOMS CAUGHT AND FIXED:
+#   two landings inside Village houses (v3.71.2) · Village/Spire music
+#   fallthrough — the overrun Village played the Den's lullaby (v3.71.3)
+#   · FIVE guardian pockets with door triggers buried in wall and open
+#   holes at their real gaps — no way out since the big-town rebuild
+#   (v3.71.5) · vc2→vcp sealed behind its own alcove wall, so Stoneroot's
+#   armour chest was unreachable on foot (v3.71.7) · two unnamed
+#   deliberate floaters named (sigils v3.71.4, potion cork v3.71.6).
+#   Room lists are no longer kept by hand (tools/all-rooms.mjs), and
+#   verify-openholes now asks the WALL, not just the door list.
 # OPEN FOR DAD: no human has played the Spire yet. The jump margins are
 #   generous on paper and a bot clears them every time, but "a five-year-
-#   old can do this" is a claim only a five-year-old can settle.
+#   old can do this" is a claim only a five-year-old can settle. And the
+#   five pocket-exit fixes mean the VILLAGE deserves one human replay too.
 
 # SHIPPED v3.54.0 — THE TEST HARNESS'S OWN ROOM-IDENTITY RACE, FIXED EVERYWHERE
 # THE BUG: window.__game.state.room flips the INSTANT a jump is requested,
