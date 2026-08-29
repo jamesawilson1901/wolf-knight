@@ -3703,3 +3703,84 @@ impossible to get stuck.**
 
 Also caught, and fixed: `refreshBadge()` reads `FORM_META` unguarded and threw
 on the very first switch to a form that was not in the table.
+
+---
+
+## The night of the audit, and the door that opens where you stand (2026-08-29 → 30)
+
+The overnight board (A: debt, B: look, C: feel/close) is done. What shipped,
+v3.72.0 → v3.74.1:
+
+### The look (B)
+
+All 137 rooms were screenshotted at their arrival frame and reviewed by eye.
+The game held up better than expected — Stormreach is the strongest region in
+the game — and the audit came back with exactly three real offenders, all
+fixed:
+
+- **t1p/t3p**: a grove planted across the camera's sight line filled the whole
+  arrival frame with canopy. `world.reserve('cameraLane')` now holds the
+  spawn's sight line clear before dressing; grove() already asked blocked()
+  per trunk, so the fix was one reserved circle, not a new system.
+- **lc**: the lava channel was a bare emissive plane — a flat orange
+  rectangle. It wears a drifting canvas crust now, same single draw call.
+- **m1/m3**: the Spire's void gradient had been invisible under pit()'s own
+  black lid at +0.05 all along (two re-shots to find), and the crown's seven
+  gems were three pixels of dark octahedron. The gradient sits above the lid
+  now; the gems are bigger, hotter, and each pours a pool of its element's
+  light on the stone. verify-spire + run-spire green on the result.
+
+### The sound (B3)
+
+Six regions have their own music — Superpowers Medieval Fantasy themes, CC0,
+licence file on disk, the first formally-licensed music in the game. Cast by
+decoded-audio character, then stormreach↔shadowcourt swapped on the numbers
+(the storm deserved the busier theme), and MUSIC_TRIM levels the unmastered
+files against each other (sunkenvale sat ~14 dB under spire). **Dad's ear has
+final cut on all of it** — re-casting is one file copy per region.
+
+### The feel (C)
+
+- A real Space press lands with an ash puff and a soft thump (probe-verified
+  through the actual key path).
+- The Elemental Wolf announces itself in all seven colours (probe-verified).
+- **The walker learned to look**: s1a→s1b — the one leg the playthrough
+  harness could never walk — walks now, via hand-laid via points drawn from
+  an ASCII solidity map of the room. Stormreach's fourteen legs are walked
+  for the first time, and CANNOT_WALK is empty.
+
+### The door that opens where you stand (dad's request, next morning)
+
+*"Is it possible that at the end of the boss fight the door to the next level
+opens without having to walk out the room and back again? could we do a smoke
+poof animation and have it appear?"*
+
+Three arenas rebuild-gated their onward door: f5 (Boreal → Stormreach), scr
+(Aria → the Vale), ddp (Meri → the Court). Each now cuts the gap at build
+time and plugs it with region rocks (levelkit `onwardPlug`); the kill removes
+plug + collider and adds the door trigger in the live room, a beat and a half
+later — shard shower first, then the poof, then the door is simply there.
+The countdown runs on game time via the arena's animate list, because
+headless verification caught wall-clock setTimeout firing a different subset
+of rooms per run (throttled page timers).
+
+Verified by the real fight suites (bolts, dodges, shield timing, 1x): all
+three report "the way on opened IN PLACE: true", each with a screenshot.
+
+What the verification dug up along the way, all fixed:
+
+- fight-aria/meri had never received EITHER half of task #32's lesson
+  (gates-settling wait, past-the-centre door aiming) — their historic passes
+  at 4x were momentum and luck.
+- **ddp's throne ring stood a column at (0, ±9.8) — dead centre of both
+  doorway lanes.** Harmless while the north door only existed on a rebuild;
+  the moment the door opened live, the child's first walk to it met a column
+  square in the lane. The telemetry tell was symmetry: the walker stalled at
+  |z| 8.4 in both directions. The ring is rotated 22.5°; same crown, clear
+  lanes. (v3.74.1)
+
+### Still true in the morning
+
+No human has played the Spire, Stormreach's full walk is new, and the music
+casting is a blind man describing colours. **A playtest tells us more than
+the next ten queue items.**
