@@ -21,6 +21,7 @@
 //
 // So it sets window.__noBatch before building, and every prop stays separate.
 import { launchBrowser } from './launch.mjs';
+import { allRooms } from './all-rooms.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -52,8 +53,13 @@ await page.evaluate((GAPENV) => {
 // EVERY ROOM, not just the one dad happened to photograph. A suite that checks
 // a seventh of the game and prints ALL CLEAN is the same trap as verify-all.sh
 // running three suites of thirty-two. Pass room ids to narrow it when iterating.
+// EVERY ROOM THE GAME ROUTES TO, ASKED OF THE GAME (tools/all-rooms.mjs).
+// This was a literal array and had never heard of the Village's ten rooms, the
+// Spire's five, or the three shortcut rooms in the Wild Woods and Stormreach.
+// The registry cannot be wrong about which rooms exist; LEGACY there names the
+// rooms still deliberately left out, and why.
 const ROOMS = process.argv.slice(2).length ? process.argv.slice(2)
-  : ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le', 'vh', 'vga', 'va1', 'va2', 'vap', 'va3', 'vgb', 'vb1', 'vb2', 'vbp', 'vb3', 'vgc', 'vc1', 'vc2', 'vcp', 'vc3', 'vz', 't1a', 't1b', 't1p', 'tc1', 't2a', 't2b', 't2p', 'tsh', 'tc2', 't3a', 't3b', 't3p', 'tkn', 'tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl', 's1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2', 's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'd1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2', 'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp', 'x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3', 'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'];
+  : await allRooms(page);
 
 const go = async (room) => {
   for (let a = 0; a < 8; a++) {

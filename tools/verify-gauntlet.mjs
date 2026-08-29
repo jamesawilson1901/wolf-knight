@@ -22,6 +22,7 @@
 // seconds (js/main.js clamps its step to 0.05), and the hits are the real
 // hurt() path with iframes ticking normally.
 import { launchBrowser } from './launch.mjs';
+import { allRooms } from './all-rooms.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -32,7 +33,6 @@ const check = (n, ok, d) => {
 // Every room, so promise 1 is game-wide. Promise 2 applies where a fight lives.
 // Name rooms on the command line to iterate on just those.
 const ONLY = process.argv.slice(2);
-const ROOMS = ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le', 'vh', 'vga', 'va1', 'va2', 'vap', 'va3', 'vgb', 'vb1', 'vb2', 'vbp', 'vb3', 'vgc', 'vc1', 'vc2', 'vcp', 'vc3', 'vz', 't1a', 't1b', 't1p', 'tc1', 't2a', 't2b', 't2p', 'tsh', 'tc2', 't3a', 't3b', 't3p', 'tkn', 'tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl', 's1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2', 's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'd1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2', 'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp', 'x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3', 'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'];
 
 const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
@@ -44,6 +44,12 @@ await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
 await page.fill('#t-name', 'GAUNT');
 await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
+// EVERY ROOM THE GAME ROUTES TO, ASKED OF THE GAME (tools/all-rooms.mjs).
+// This was a literal array and had never heard of the Village's ten rooms, the
+// Spire's five, or the three shortcut rooms in the Wild Woods and Stormreach.
+// The registry cannot be wrong about which rooms exist; LEGACY there names the
+// rooms still deliberately left out, and why.
+const ROOMS = await allRooms(page);
 await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false;
