@@ -63,7 +63,8 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 
 | Track / pack | Author | Used for | Source |
 |---|---|---|---|
-| ⚠ **HydroGene — High Quality 16-bit RPG Music** | HydroGene | **Eight of the game's ten tracks**: `boss-intro`+`boss-loop` (Battle Theme II), `causeway`+`kiln` (Volcanic Crater), `den`+`ember-calm` (Peaceful Village), `region-stone` (Hidden Cavern), `stone-deep` (Dwarven Mine — also Frostpeak) | https://hydrogene.itch.io/high-quality-16-bit-music |
+| ⚠ **HydroGene — High Quality 16-bit RPG Music** | HydroGene | **Eight of the game's ten tracks**: `boss-intro`+`boss-loop` (Battle Theme II), `causeway`+`kiln` (Volcanic Crater), `den`+`ember-calm` (Peaceful Village), `region-stone` (Hidden Cavern), `stone-deep` (Dwarven Mine) | https://hydrogene.itch.io/high-quality-16-bit-music |
+| ✓ **Superpowers Medieval Fantasy (music themes)** | Pixel-boy (for Superpowers) | **Six region themes** (2026-08-30, the first formally-licensed music in the game — CC0, licence file on disk): `frostpeak`, `stormreach`, `sunkenvale`, `shadowcourt`, `village-dark`, `spire` | https://github.com/sparklinlabs/superpowers-asset-packs |
 | ⚠ Cave Theme (`region-ember`) | Brandon Morris | Ember Hollow region music | https://opengameart.org/content/cave-theme |
 | ⚠ Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
 | ✓ RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits + growls (`chop`), dust puffs and air-whooshes (`cloth3`/`cloth1`) | https://kenney.nl/assets/rpg-audio |

@@ -67,6 +67,19 @@ const MUSIC_FILES = {
   // connection. Two names, one file each.
   kiln: './assets/audio/music/causeway.mp3',
   'ember-calm': './assets/audio/music/den.ogg',
+  // SIX REGIONS GET THEIR OWN SOUND (2026-08-30). Five loops had been
+  // stretched across nine regions since the rebuilds; these six are the
+  // Superpowers Medieval Fantasy themes (CC0, licence file on disk — the
+  // first formally-licensed music in the game; see assets/LICENSES/).
+  // The theme→region casting was chosen by decoded-audio character and dad
+  // has final cut: any of these can be re-pointed at another theme file
+  // without touching code.
+  frostpeak: './assets/audio/music/frostpeak.ogg',
+  stormreach: './assets/audio/music/stormreach.ogg',
+  sunkenvale: './assets/audio/music/sunkenvale.ogg',
+  shadowcourt: './assets/audio/music/shadowcourt.ogg',
+  'village-dark': './assets/audio/music/village-dark.ogg',
+  spire: './assets/audio/music/spire.ogg',
 };
 
 class AudioSystem {

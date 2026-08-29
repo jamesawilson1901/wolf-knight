@@ -230,6 +230,59 @@ export async function buildM1(scene) {
   //   far shore from  z = -6.8
   pit(world, -halfW, halfW, -6.8, 3.6);
   world.pitReturn = { x: 0, z: 6.4 };     // the near shore, one run-up back
+  // THE VOID HAS TO READ AS DEPTH, NOT AS NOTHING RENDERED. The first shot of
+  // this room showed a flat black band with the pad rims apparently floating
+  // in space — exactly the "black nothing" dad once reported as a bug, here
+  // on purpose but indistinguishable from one. Two cheap cues fix the read:
+  // a gradient that FALLS AWAY from each shore (the floor visibly descends
+  // into dark, so the black is depth), and a thin drift of moonlit motes
+  // sinking slowly into it (things fall down there; it is a place, not a
+  // hole in the render). One textured quad + one Points cloud = 2 draws.
+  if (!GREY()) {
+    const cv = document.createElement('canvas');
+    cv.width = 16; cv.height = 128;
+    const cx = cv.getContext('2d');
+    const grad = cx.createLinearGradient(0, 0, 0, 128);
+    grad.addColorStop(0, '#3a3750');    // near the north shore: still stone-lit
+    grad.addColorStop(0.25, '#151223');
+    grad.addColorStop(0.5, '#060510');  // the middle: gone
+    grad.addColorStop(0.75, '#151223');
+    grad.addColorStop(1, '#3a3750');    // near shore
+    cx.fillStyle = grad; cx.fillRect(0, 0, 16, 128);
+    const tex = new THREE.CanvasTexture(cv);
+    const fade = new THREE.Mesh(
+      new THREE.PlaneGeometry(halfW * 2, 10.4),
+      new THREE.MeshBasicMaterial({ map: tex })
+    );
+    fade.rotation.x = -Math.PI / 2;
+    fade.position.set(0, 0.02, -1.6);        // spans the pit band z -6.8..3.6
+    world.add(fade);
+    world.keepLoose(fade);                    // under the pads, never batched over them
+
+    const N = 42;
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() * 2 - 1) * (halfW - 1);
+      pos[i * 3 + 1] = -Math.random() * 3.2;
+      pos[i * 3 + 2] = -6.4 + Math.random() * 9.6;
+    }
+    const pgeo = new THREE.BufferGeometry();
+    pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const motes = new THREE.Points(pgeo, new THREE.PointsMaterial({
+      color: 0xcfc8ec, size: 0.09, transparent: true, opacity: 0.7,
+      depthWrite: false, sizeAttenuation: true,
+    }));
+    world.add(motes);
+    world.keepLoose(motes);
+    world.onAnimate((t, dt) => {
+      const a = pgeo.attributes.position.array;
+      for (let i = 0; i < N; i++) {
+        a[i * 3 + 1] -= (dt || 0.016) * 0.35;
+        if (a[i * 3 + 1] < -3.4) a[i * 3 + 1] = 0.1;
+      }
+      pgeo.attributes.position.needsUpdate = true;
+    });
+  }
   stairPad(world, -5, 5, -0.8, 1.8, D);   // PAD A
   stairPad(world, -5, 5, -5.2, -2.6, D);  // PAD B
   // THE LEDGE. Optional, and the only 2.4u gap in the room: a chest you can
@@ -523,9 +576,19 @@ export async function buildMb(scene) {
 // ---------------------------------------------------------------------------
 export async function buildM3(scene) {
   const { world, spec, D } = base(scene, 'm3');
+  // SEVEN SPOKES IN THE FLOOR. The crown's whole geometry is "seven around
+  // one", and the worn paths say it before a single prop does: one spoke per
+  // element light, all meeting at the altar. The first shot of this room was
+  // a flat violet field — the finale looked like a car park (B2 audit,
+  // 2026-08-30), and the floor is most of a top-down frame.
+  const SPOKES = [];
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 - Math.PI / 2;
+    SPOKES.push([[Math.cos(a) * 9.5, Math.sin(a) * 9.5 - 1], [Math.cos(a) * 3.2, Math.sin(a) * 3.2 - 1.4]]);
+  }
   const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
-    patches: [{ x: 0, z: 0, r: 6.0, kind: 'gravel' }],
-    paths: [[[0, 12], [0, 2]]],
+    patches: [{ x: 0, z: -2, r: 5.2, kind: 'gravel' }, { x: 0, z: 8, r: 3.4, kind: 'rubble' }],
+    paths: [[[0, 12], [0, 2]], ...SPOKES],
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'm2', { x: 0, z: -11, angle: 0 });
@@ -539,29 +602,56 @@ export async function buildM3(scene) {
   // and the last chest in the game, standing open to the sky beside her
   visibleReward(world, -7.5, -6, 'm_crown', { shards: 40, heartPiece: 1 }, 'gold');
 
-  // SEVEN LIGHTS AROUND THE RIM, one per element, already burning when you
-  // walk in — the room is the swirl the wolf is about to wear, drawn large.
+  // SEVEN LIGHTS AROUND THE RIM, one per element, each on its own PEDESTAL,
+  // with a STANDING COLUMN between each pair — the crown gets a crown's
+  // silhouette. The first cut floated bare icosahedra in mid-air and at
+  // emissiveIntensity 3.6 they bloomed to white marshmallows: the colour has
+  // to live in the LIGHT (strong) and the gem (small, moderate emissive) to
+  // read as seven different elements rather than seven blobs.
   const COLS = [0xff7a3a, 0xd8b06a, 0x8fdc6a, 0xbfefff, 0xfff4b0, 0x8fe4ff, 0xb08aff];
   COLS.forEach((c, i) => {
     const a = (i / COLS.length) * Math.PI * 2 - Math.PI / 2;
     const x = Math.cos(a) * 9.5, z = Math.sin(a) * 9.5 - 1;
-    const l = new THREE.PointLight(c, 1.5, 7.5, 1.9);
-    l.position.set(x, 1.5, z);
+    world.reserve(x, z, 1.3, 'rimlight');
+    if (!GREY()) {
+      const ped = tinted(kit().pedestal, 'pedestal', D.propTint);
+      if (ped) { ped.position.set(x, 0, z); world.add(ped); }
+    }
+    const l = new THREE.PointLight(c, 2.2, 8.5, 1.8);
+    l.position.set(x, 1.7, z);
     world.add(l);
     world.keepLoose(l);
     const m = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.34, 0),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: c, emissiveIntensity: 3.6, roughness: 1 })
+      new THREE.OctahedronGeometry(0.22, 0),
+      new THREE.MeshStandardMaterial({ color: 0x14101f, emissive: c, emissiveIntensity: 1.7, roughness: 0.6 })
     );
-    m.position.set(x, 1.5, z);
+    m.position.set(x, 1.55, z);
     world.add(m);
     world.keepLoose(m);
-    world.reserve(x, z, 1.2, 'rimlight');
     world.onAnimate((t) => {
-      m.position.y = 1.5 + Math.sin(t * 1.3 + i) * 0.14;
-      m.rotation.y = t * 0.8 + i;
+      m.position.y = 1.55 + Math.sin(t * 1.3 + i) * 0.12;
+      m.rotation.y = t * 0.9 + i;
     });
   });
+  // the columns of the crown — one between each pair of lights, skipping the
+  // south gate where the child enters. Tinted singles on purpose: tintedModel
+  // caches materials by class+tint, so all seven share one material and
+  // flattenStatic folds them into the cell batches — a crown for ~one draw.
+  if (!GREY()) {
+    for (let i = 0; i < 7; i++) {
+      const a = ((i + 0.5) / 7) * Math.PI * 2 - Math.PI / 2;
+      const x = Math.cos(a) * 10.6, z = Math.sin(a) * 10.6 - 1;
+      if (z > 8) continue;                     // leave the entrance open
+      world.reserve(x, z, 1.3, 'crownColumn');
+      const col = tinted(kit().column2, 'column2', D.propTint);
+      if (!col) break;
+      col.position.set(x, 0, z);
+      col.rotation.y = a + Math.PI / 2;
+      col.scale.setScalar(1.25);
+      world.add(col);
+      world.addCircle(x, z, 0.55);
+    }
+  }
 
   world.markers.breakables = [{ x: 8, z: -6, kind: 'vase' }];
   fallenColumn(world, -10, 6, 0.5, D, 3.4);

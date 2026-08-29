@@ -1265,10 +1265,14 @@ function updateMusic() {
   // since the day they were built. Nothing was ever checking.
   else if (state.room[0] === 'v') audio.playMusic('region-stone');   // Stoneroot, rebuilt
   else if (state.room[0] === 't') audio.playMusic('causeway');       // Wild Woods, rebuilt
-  else if (state.room[0] === 's') audio.playMusic('causeway');
-  else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('region-stone');
-  else if (state.room[0] === 'x') audio.playMusic('stone-deep');
-  else if (state.room[0] === 'f') audio.playMusic('stone-deep'); // the cold, high hush (custom track: polish list)
+  // The reuse era ends here (the polish list's oldest item): Frostpeak,
+  // Stormreach, the Vale and the Court each carry their own theme now. The
+  // Wild Woods keeps causeway — its long-standing sound, and no neighbour
+  // shares it.
+  else if (state.room[0] === 's') audio.playMusic('stormreach');
+  else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('sunkenvale');
+  else if (state.room[0] === 'x') audio.playMusic('shadowcourt');
+  else if (state.room[0] === 'f') audio.playMusic('frostpeak');
   // THE VILLAGE AND THE SPIRE WERE NEVER ROUTED — the same hole the rebuilt
   // levels fell into above, one paragraph later in the same chain. Both fell
   // through to the bossDefeated branch (Ember's flag, always true by the time
@@ -1277,9 +1281,9 @@ function updateMusic() {
   // Restored Village: the healed-world calm it was fighting for. The Spire:
   // the cold high hush — a moonlit tower over a sleeping world — until the
   // crown, which is the warmest room in the game and sounds like it.
-  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'region-stone');
+  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'village-dark');
   else if (state.room === 'm3') audio.playMusic('ember-calm');
-  else if (state.room[0] === 'm') audio.playMusic('stone-deep');
+  else if (state.room[0] === 'm') audio.playMusic('spire');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
   // k-rooms are RETIRED — the live Kiln is ld/ld1/lg4 inside the rebuilt Level 1.
   // So the one district in the game with its own track has been playing the
