@@ -252,6 +252,17 @@ case "$1" in
     run verify-l3-lash.mjs
     run verify-l3-knot.mjs
     run verify-l3-chords.mjs
+    # Added 2026-08-30, the night the rot guard caught all seven at once:
+    # each of these shipped with its feature but never joined this list, so
+    # no mode had ever run them in a sweep. The guard exists because this
+    # exact thing is how the file rotted before; it earned its keep tonight.
+    run verify-graphs.mjs
+    run verify-l2-lantern.mjs
+    run verify-openholes.mjs
+    run verify-pups.mjs
+    run verify-puzzle-payoff.mjs
+    run verify-smash.mjs
+    run verify-spire.mjs
     ;;
   *)
     for t in "$@"; do run "$t"; done
