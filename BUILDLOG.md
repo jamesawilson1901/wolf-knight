@@ -3617,3 +3617,89 @@ if it does.
 Everything. No child has played any of it. The wayfinding, the awareness window,
 the taunts and the pots have been measured, not watched. **A playtest would tell
 us more than the next ten items on the queue.**
+
+
+---
+
+## The Moonlit Spire, and the Elemental Wolf (2026-08-29)
+
+Dad, after playing: *"I want to add another level at the end. You get the
+'Elemental wolf' essentially the avatar of the wolves. He's an overpowered
+wolf with the ranged attack randomly alternating. New animations for their
+attacks and the wolf has all the elements swirling around in. Add this as the
+last thing you build."* And, separately: *"Currently there is no reason to use
+the jump button either. It doesn't dodge attacks, nowhere requires the user to
+jump over anything."*
+
+Both are one item, because the second one needed somewhere to live.
+
+### The form
+
+**New animations, without inventing a frame.** `assets/chars/wolf.gltf` ships
+twelve clips and the game had only ever used seven. `Jump_ToIdle` (a rearing
+recovery) and `Idle_HitReact1` (a whipping recoil) are real, rigged, unused
+clips — so the Elemental Wolf's bite and its ranged throw look like nothing
+else in the game and nothing was built in code. That is the same rule the
+models follow, applied to animation.
+
+**The swirl is seven elements, not one aura.** Each orbiter is the element's
+own shape in its own colour — the Fire Wolf's flame, the Earth Wolf's chip,
+Sylva's leaf, Boreal's icicle, Aria's bolt, Meri's droplet, Luna's ring — on
+seven orbits, each tilted by its own angle so the paths braid rather than
+reading as one hoop. A child who has played this far can name all seven going
+past. One light cycles through their hues underneath.
+
+**The ranged attack rolls, it does not invent.** Six shipped projectile kinds,
+one picked per throw, never the same twice running. Every existing weakness
+reaction, every hit puff and every enemy resist comes free; a seventh bolt type
+would have needed all of that written again.
+
+**The ELEMENT STORM** strikes each enemy with the element it is *weak* to, and
+fires every wolf's world-verb at once (quench, crack, cut, burn). Unashamedly
+overpowered — dad asked for overpowered — and safe to be, because it is granted
+after Grimm is beaten and the Village is restored. There is no difficulty curve
+left to protect.
+
+### The level
+
+Four rooms behind the `m` prefix, in Ember's own kit re-tinted cold: a tower is
+made of the same masonry a ruin is, and nothing new was vendored for four
+rooms. `m1` the broken ascent, `m2` the hall of sigils, `ma`/`mb` two trials,
+`m3` the crown. It opens on the Square once every Village guardian is down.
+
+**The jump button gets its reason in `m1`.** The stair fell; three pieces of it
+still stand over a void that spans the room wall to wall, so going round is not
+available and the button stops being decoration. The gaps are 1.8u, 1.8u and
+1.6u against ~3.0u of carry at the SLOWEST form's speed — 40% margin at the
+worst case. It could not honestly have been retrofitted into a verified room:
+Level 2's own comment says *"this is a SEEING puzzle, not a platforming one,
+and a five-year-old must never fail it for being half a unit off."* And the
+cost of a miss was already solved and already gentle — `world.pitAt` puts a
+child back on the near shore and takes nothing (`A HOLE IN THE FLOOR COSTS THE
+WALK, NOT A HEART`). `world.pitReturn` is set to the shore, three steps back,
+not the door.
+
+### What playing it caught
+
+`tools/run-spire.mjs` walks the whole level through real key events. It found
+three things reading the source would not have:
+
+1. **The Trial of Stone's first layout was a trap.** The block sat west of the
+   plate and wanted an eastward push — and the walk in from the east door
+   leaned on its east face the whole way, shoving it two steps *away* from the
+   plate before the plate had been seen.
+2. **Flipped round, an approach half a metre off the lane pushed it sideways**,
+   because a lean picks the cardinal direction of greatest offset.
+3. **Walling the lane into a corridor fixed (2) and caused something worse:**
+   once the wolf was west of the block inside a corridor it could not squeeze
+   back past it, and the room was dead until the child left and came back.
+
+What shipped is the open room with the shortest push in the game — two steps,
+block between the door and the plate, floor open all round. A mis-push is
+always recoverable (the 1.2u step grid means one shove puts a knocked-aside
+block exactly back on the lane) and re-entering rebuilds it where it started.
+**Making the room impossible to get wrong was worth less than making it
+impossible to get stuck.**
+
+Also caught, and fixed: `refreshBadge()` reads `FORM_META` unguarded and threw
+on the very first switch to a form that was not in the table.

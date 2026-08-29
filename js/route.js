@@ -64,6 +64,11 @@ const ONWARD = {
   yg1: 'yhs', yg2: 'yhs', yg3: 'yhs',
   yg4: 'ylw', yg5: 'ylw', yg6: 'ylw',
   yrw: 'ysq',
+
+  // --- The Moonlit Spire: a climb with two trials off the middle of it. `m2`
+  // answers as a function below (which sigil is still dark decides the way on).
+  m1: 'm2',
+  ma: 'm2', mb: 'm2',
 };
 
 // The two hubs answer differently depending on what the child has already done.
@@ -86,6 +91,12 @@ const HUBS = {
   ylw: () => {
     const g = (k) => WS.get('village', 'guardian_' + k);
     return !g('g4') ? 'yg4' : !g('g5') ? 'yg5' : !g('g6') ? 'yg6' : 'ysq';
+  },
+  // The Spire's hall: point at whichever trial is still undone, then up.
+  m2: () => {
+    if (!state.flags.plates.m_sigil_stone) return 'ma';
+    if (!WS.get('spire', 'sigil_flame')) return 'mb';
+    return 'm3';
   },
   xh: () => {
     const wings = [['ember', 'xa1'], ['thorn', 'xr1'], ['tide', 'xg1'], ['moon', 'xm1']];

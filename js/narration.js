@@ -235,6 +235,8 @@ export const LINES = {
   court_watcher: { voice: 'pip', text: 'It is watching. It will not move while it can see us.' },
   ghost_grant: { voice: 'luna', text: 'Take my own light, Kael. Be a ghost. They cannot chase what they cannot see.' },
   ghost_howto: { voice: 'pip', text: 'Press the star and go quiet! Walk right past them!' },
+  elemental_grant: { voice: 'luna', text: 'You were every wolf, one at a time. Be all of them at once, Kael. This one is yours.' },
+  elemental_howto: { voice: 'pip', text: 'Look at him! Throw anything — it comes out different every time. And the star? The star is EVERYTHING.' },
   court_wings: { voice: 'pip', text: 'Four doors, four locks. Every wolf you ever were opens one of them.' },
   court_relic: { voice: 'pip', text: 'A relic! Look up — one of the lights over the stair is on now.' },
   court_relic_last: { voice: 'pip', text: 'All four! The stair is open, Kael. He is up there.' },

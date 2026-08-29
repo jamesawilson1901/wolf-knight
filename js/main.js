@@ -386,6 +386,12 @@ document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
       emberDone: true, stoneDone: true, wildDone: true, borealDone: true, ariaDone: true, meriDone: true,
       grimmDone: true,
     },
+    {
+      id: 'm1', label: '🌙 The Moonlit Spire (finale)',
+      forms: ['fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'],
+      emberDone: true, stoneDone: true, wildDone: true, borealDone: true, ariaDone: true, meriDone: true,
+      grimmDone: true,
+    },
     // GREYBOX — not part of the played game. This one exists so a layout can
     // be walked and judged before a single art asset is placed (build order
     // law). It stays in the cheat menu, behind the code, until every region
@@ -1024,9 +1030,10 @@ function narrationTriggers(dt, t) {
         storm_wolf: { region: 'storm', key: 'spark', toast: '🌩️ The Storm Wolf awakens!' },
         tide_wolf: { region: 'vale', key: 'spark', toast: '🌊 The Tide Wolf awakens!' },
         ghost_wolf: { region: 'court', key: 'spark', toast: '👻 The Ghost Wolf awakens!' },
+        elemental_wolf: { region: 'spire', key: 'spark', toast: '🐺 THE ELEMENTAL WOLF AWAKENS!' },
       }[gift];
       if (SPARK) { WS.complete(SPARK.region, SPARK.key); bigToast(SPARK.toast); }
-      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant', ghost_wolf: 'ghost_grant' }[gift] || 'earthwolf_grant');
+      narration.say({ verdant_wolf: 'verdant_grant', storm_wolf: 'storm_grant', tide_wolf: 'tide_grant', ghost_wolf: 'ghost_grant', elemental_wolf: 'elemental_grant' }[gift] || 'earthwolf_grant');
       // AND HOW TO HOLD IT. Dad, an adult, on Stoneroot: "tell me how I'm meant
       // to get through level two. I honestly don't know how or what to do."
       //
@@ -1046,6 +1053,7 @@ function narrationTriggers(dt, t) {
         fire_wolf: 'firewolf_howto', earth_wolf: 'earthwolf_howto',
         verdant_wolf: 'verdant_howto', frost_wolf: 'frost_howto',
         storm_wolf: 'storm_howto', tide_wolf: 'tide_howto', ghost_wolf: 'ghost_howto',
+        elemental_wolf: 'elemental_howto',
       };
       if (HOWTO[gift]) narration.say(HOWTO[gift]);
       persist();
@@ -1726,6 +1734,7 @@ function regionOf(id) {
   if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
   if (r[0] === 'x') return 'shadowcourt';
   if (r[0] === 'y') return 'village';
+  if (r[0] === 'm') return 'spire';
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';

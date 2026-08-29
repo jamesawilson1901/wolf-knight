@@ -135,6 +135,11 @@ export const GROUND_STYLES = {
                // a lawn in a photograph, not a glade in a wood.
                base: 0x4f7a3c },
   snowfield: { pattern: 'snow',  wear: 0.30, joint: 0.20, path: 1.10, grain: 0.60 },
+  // --- The Moonlit Spire: cut stone that has stood in moonlight a long time --
+  // Cool violet-grey below, and half a step paler and brighter at the crown, so
+  // the climb reads in the FLOOR as well as in the light.
+  spirestone: { pattern: 'flagstone', wear: 0.62, joint: 0.48, path: 1.22, grain: 0.62, base: 0x6d6a86 },
+  moonhall:   { pattern: 'flagstone', wear: 0.38, joint: 0.36, path: 1.30, grain: 0.50, base: 0x8f89ad },
   // --- Stormreach: sea-cliff rock, scoured barer the higher you climb -------
   // One gradient, bottom to top, and the numbers carry it rather than the
   // colours alone: `wear` climbs and `grain` falls as the wind gets at it, so

@@ -141,6 +141,16 @@ export const TEACH = [
 // Nothing here comes from an UNKNOWN pack.
 // ---------------------------------------------------------------------------
 let emberKit = null;
+
+// THE SPIRE BORROWS THIS KIT. js/levelSpire.js is built from the same
+// Quaternius dungeon set, re-tinted cold — a tower is made of the same masonry
+// a ruin is — so rather than loading a second copy of twenty-five files it
+// reads whatever loadEmberKit() left here. An accessor rather than the binding
+// itself because `emberKit` is reassigned on load and an imported binding
+// would be a live view of a module-private let: correct, but far less obvious
+// than a function that says what it does. Answers null before the kit loads,
+// which is every caller's "wear the checkers" signal.
+export function emberKitRef() { return emberKit; }
 export async function loadEmberKit() {
   if (emberKit) return emberKit;
   const names = {

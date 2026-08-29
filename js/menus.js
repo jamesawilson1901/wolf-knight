@@ -7,6 +7,7 @@ import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
+import { villageCleared } from './levelVillage.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -237,6 +238,10 @@ export class Menus {
       // The Village opens the same moment its Den door does — no separate
       // "cleared" gate, since nothing about reaching it is sequential.
       ...(state.flags.grimmFreed ? [{ room: 'ysq', name: 'The Village', icon: '🏘️' }] : []),
+      // The Spire appears on the moonstone the moment the Village is restored
+      // — the same rule as every other region: you can be carried back to a
+      // place you have already been able to reach.
+      ...(villageCleared() ? [{ room: 'm1', name: 'The Moonlit Spire', icon: '🌙' }] : []),
     ];
     for (const s of spots) {
       const d = document.createElement('div');

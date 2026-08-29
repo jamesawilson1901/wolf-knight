@@ -29,6 +29,14 @@ shimmer on hidden things. Melee: soft lock-on, input buffering, thrust
 combo, generous hitboxes (CONFIG combat block). Mid-attack switches
 queue to the swing's end. Specials: ground-slam (fire), stone-stomp
 (earth); the Dark Wolf's Blood Moon is the MOON GAUGE SURGE (below).
+THE ELEMENTAL WOLF (the finale's gift, js/levelSpire.js) is the tenth
+form: fast, hard to hurt, its bite and ranged throw driven by the two
+wolf-rig clips nothing else uses (`Jump_ToIdle`, `Idle_HitReact1`), a
+seven-orbit elemental swirl for an aura (`_buildAuras` kind 'elemental'),
+a ranged bolt that ROLLS one of the six shipped projectile kinds each
+throw (never twice running), and the ELEMENT STORM special, which strikes
+each enemy with the element it is weak to and fires every wolf's
+world-verb at once (quench/crack/cut/burn).
 
 ## Moon Gauge & Blood Moon Surge (js/player.js + ui.js, CONFIG.MOON)
 state.moonGauge (0..1, persisted) fills from hits landed/taken +
@@ -90,6 +98,23 @@ ROOMS registry builds each room from kit pieces; flat-plane collisions
 `when()` predicates, one-way ledge drops, checkpoints, landmark helpers
 (kilnLandmark). Region = room id prefix. LEVEL-DESIGN-2.md holds the
 seven layout rules + region graphs.
+
+## The Moonlit Spire (js/levelSpire.js) — the finale
+Four rooms behind the `m` prefix, opened by restoring the Village and
+granting the ELEMENTAL WOLF at the top. An epilogue capstone like the
+Village: not in REGION_ORDER, no boss, no lock-and-key chain.
+Wears Ember's kit re-tinted cold (`emberKitRef()` from level1.js —
+one kit, two regions, nothing new vendored). Rooms: `m1` the broken
+ascent (THE JUMP ROOM — a wall-to-wall pit with three 1.6-1.8u gaps and
+two stair pads across it; `world.pitReturn` puts a miss back on the near
+shore for the cost of one run-up), `m2` the hall of sigils (two trials
+off it, the way up barred by `plateBars` until both sigils burn), `ma`
+the trial of stone (one push, opens a vault AND lights a sigil), `mb`
+the trial of embers (four roster foes; clearing them opens a vault and
+lights the other), `m3` the crown (Luna's shrine → `markers.sparkSpot
+= { grants: 'elemental_wolf' }`; main.js runs the ceremony). Sigil state:
+`state.flags.plates.m_sigil_stone` + `WS.get('spire','sigil_flame')`.
+Played end-to-end through real key events by `tools/run-spire.mjs`.
 
 ## Den villagers (js/npcs.js)
 spawnDenNpcs(world) populates the Den from VILLAGERS data (id, model,

@@ -40,6 +40,8 @@ const ROOMS = [
   't1a', 't2a', 't3a', 'tkn', 'tc3', 't4a',
   // the older hand-built rooms that still carry gates
   'w3', 'e2', 'e2b', 'f3',
+  // The Moonlit Spire
+  'm1', 'm2', 'ma', 'mb', 'm3',
 ];
 
 const b = await launchBrowser();

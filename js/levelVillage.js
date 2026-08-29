@@ -351,6 +351,11 @@ export async function buildYsq(scene) {
     gap('n', undefined, 0),         // THE HIGH STREET
     gap('w', undefined, 0),         // THE LOW LANES
     gap('e', undefined, 0),         // THE WELL
+    // THE SPIRE STAIR, in the south-east corner. A SECOND gap on the south
+    // wall rather than a second one on the east, because the Well's door has
+    // sat at east-centre since the region shipped and moving a door moves the
+    // landing every test and every save-side reservation was built against.
+    gap('s', undefined, 12),
   ];
   const { halfW, halfD } = shell(world, spec, gaps, D, { hub: [0, 0] });
   world.spawn = { x: 0, z: 12, angle: Math.PI };
@@ -358,6 +363,13 @@ export async function buildYsq(scene) {
   sideDoor(world, 'n', halfW, halfD, 'yhs', { x: 0, z: 10.5, angle: Math.PI }, { centre: 0 });
   sideDoor(world, 'w', halfW, halfD, 'ylw', { x: 13.5, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
   sideDoor(world, 'e', halfW, halfD, 'yrw', { x: -8, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
+  // THE WAY UP, and the last door in the game. Shut until every guardian is
+  // down: the Spire is what the Village is restored FOR, and opening it early
+  // would let a child walk past the region they are standing in. The stair is
+  // visible the whole time — thresholdGlow spills the Spire's cold violet
+  // across it — so it reads as a promise rather than as a wall.
+  sideDoor(world, 's', halfW, halfD, 'm1', { x: 0, z: 11, angle: Math.PI },
+    { centre: 12, when: villageCleared });
 
   world.markers.heroSpot = { x: 0, z: 0 };
   world.markers.restSpot = { x: -10, z: -8 };
