@@ -3839,7 +3839,12 @@ async function buildF3(scene) {
     { side: 'n', from: -1.3, to: 1.3 }, // the Windscour (frost-sealed)
   ]);
   world.spawn = { x: 0, z: 5.2, angle: Math.PI };
-  world.addDoor(-1.3, 1.3, 6.85, 8.2, 'f2', { x: 0, z: -6.4, angle: 0 });
+  // z -5.6, not -6.4: f2's frost gate stands at (0, -7.05) and its shut-state
+  // keep-out reaches to z≈-6.55 — the old landing put a child down INSIDE it,
+  // pushed out 0.47u on arrival. Never caught before task #66/#67 put the
+  // legacy rooms on the live registry (the sweep measured 226 landings then,
+  // 285 now); the first full sweep that could see it, did.
+  world.addDoor(-1.3, 1.3, 6.85, 8.2, 'f2', { x: 0, z: -5.6, angle: 0 });
   world.addDoor(-1.3, 1.3, -8.2, -6.85, 'f4', { x: 0, z: 5.6, angle: Math.PI });
 
   // the lake itself — everything inside it slides (Kael excepted, always)
@@ -3910,7 +3915,10 @@ async function buildF4(scene) {
     { side: 'n', from: -1.3, to: 1.3 }, // Boreal's Eyrie
   ]);
   world.spawn = { x: 0, z: 4.6, angle: Math.PI };
-  world.addDoor(-1.3, 1.3, 5.85, 7.2, 'f3', { x: 0, z: -6.4, angle: 0 });
+  // z -5.6 for the same reason as f3's door into f2 (see buildF3): f3's own
+  // frost gate at (0, -7.05) owned the old landing spot. Clear of the gate,
+  // clear of the ridge at z -1.5.
+  world.addDoor(-1.3, 1.3, 5.85, 7.2, 'f3', { x: 0, z: -5.6, angle: 0 });
   world.addDoor(-1.3, 1.3, -7.2, -5.85, 'f5', { x: 0, z: 6.2, angle: Math.PI });
 
   drift(world, [
