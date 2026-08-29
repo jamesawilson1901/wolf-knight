@@ -28,7 +28,7 @@ Rules of engagement:
 
 Dev harness: `CONFIG.DEV_HARNESS: true` + `?dev=1` URL flag → read-only `window.__wk` state view, level jump, timescale. Use it for runtime state inspection instead of inferring state from source.
 
-### 1.2 Player forms (FORM_DEFS, player.js) — now NINE forms
+### 1.2 Player forms (FORM_DEFS, player.js) — now TEN forms
 | Form | speed | melee lock / hitAt / range / dmg | ranged kind (bolt element) | special (cooldown) |
 |---|---|---|---|---|
 | knight | 4.6 | 0.55 / 0.30 / 2.0 / 1 | spark (spark) | Whirlwind 360° ×1.2 dmg (6s) |
@@ -40,6 +40,16 @@ Dev harness: `CONFIG.DEV_HARNESS: true` + `?dev=1` URL flag → read-only `windo
 | tide_wolf | 5.0 | 0.44 / 0.23 / 1.7 / 1.2 | shard (frost, 0.8s stun) | Splash 1 dmg r3.4, 2.0s soak (6s) |
 | storm_wolf | 5.7 | 0.40 / 0.21 / 1.7 / 1 | spark | Thunder dash 5.2u, 1.5 dmg, 1.6s stun (5s) |
 | frost_wolf | 5.0 | 0.44 / 0.23 / 1.7 / 1.2 | shard | Frost breath cone 40°, freeze 2.2s (7s) |
+| elemental_wolf | 6.2 | 0.34 / 0.16 / 2.1 / 2.4 | ROLLS one of six shipped kinds per throw, never twice running (spark/pierce/rock/thorn/shard×2) | Element Storm 3 dmg r4.2, 1.6s stun, hits each foe with the element it is WEAK to, and fires quench+crack+cut+burn together (5s) |
+
+The tenth form, `elemental_wolf`, is the FINALE'S GIFT (js/levelSpire.js,
+room `m3`) and is granted after Grimm and after the Village is restored — it is
+a victory lap, not a difficulty tier, which is why `hurtMult 0.6` / `turnMult
+1.25` / 2.4 melee damage are allowed to be as strong as they are. It is the
+only form whose bite and ranged clips are not shared with the other wolves:
+`Jump_ToIdle` and `Idle_HitReact1`, the two rigged clips in wolf.gltf nothing
+else uses. Its aura is seven tilted orbits, one per element (`_buildAuras`,
+kind `'elemental'`).
 
 Key player constants (player.js): `PARRY_WINDOW 0.3` (+ shield `parryBonus`), `PARRY_STUN 2.2`, `IFRAME_TIME 1.0`, `COMBO_WINDOW 0.7`, thrust = ×1.3 dmg / +0.55 range / 32° arc, `RANGED_COOLDOWN 1.1`, `boltDamage`: 0.5 ground / 1.0 flying (+0.25/perk rank, ×3 fury). Dodge roll from CONFIG: `ROLL_SPEED 7.5, ROLL_DUR 0.32, ROLL_IFRAMES 0.4`. Dark Wolf lunge: `LUNGE_DIST 2.5 / LUNGE_DUR 0.26` with i-frames = LUNGE_DUR exactly (one number, visible dash = invulnerable window — deliberate).
 
@@ -89,7 +99,7 @@ Audit implications: any new multiplier must slot into this order explicitly; a w
 - **Gate helpers (rooms.js):** `burnable` (fire slam), `brazier` (fire), `crackedRocks` (earth stomp), `pushableBoulder`+`plateSwitch`, `brambleGate` (verdant vine-lash), `iceGate` (frost — "promise ice"), `frostGate` (puzzle-answer gate; codified: "MUST NOT DRESS LIKE THE PROMISE ICE"), `waterGate` (tide), `boulderGate`, `thornGate`. No storm-, tide-(beyond waterGate), or ghost-specific puzzle helper exists in rooms.js.
 - **Gate state:** `WS.get/set(region, key)` + `state.flags.{keys,plates,burned,cracked,*Defeated}`; doors via `world.addDoor(..., condition)`; plugs removed by splicing colliders.
 - **Narration architecture (main.js):** two data-driven tables — `GATE_HINTS` `{marker, form, line}` and `PROMISES` `{marker, id, icon, radius, label, done()}` (the "lock before key" system: unreachable gates log `🗺️ Added to the map: ???`) — plus many scattered nested-if triggers inside `narrationTriggers(dt,t)`. Narration line TEXT lives in a separate table keyed by ID (`burn_prompt`, `pin_hint`, …).
-- **Form unlock order (verified):** dark_wolf (minute one) → fire_wolf (Shadowgrip, L1) → earth_wolf (Bone Warden, L2) → verdant_wolf (Sylva, L3) → frost_wolf (Frostpeak/Boreal, L4 — grant code not located, verify) → storm_wolf (Stormreach spark, L5) → tide_wolf (Sunken Vale spark, L6) → ghost_wolf (Shadow Court spark, L7). Codified intent: "Stoneroot is played with FIRE now — earth is its boss's reward" — each region is played with the PREVIOUS boss's wolf; the new wolf is the reward.
+- **Form unlock order (verified):** dark_wolf (minute one) → fire_wolf (Shadowgrip, L1) → earth_wolf (Bone Warden, L2) → verdant_wolf (Sylva, L3) → frost_wolf (Frostpeak/Boreal, L4 — grant code not located, verify) → storm_wolf (Stormreach spark, L5) → tide_wolf (Sunken Vale spark, L6) → ghost_wolf (Shadow Court spark, L7) → elemental_wolf (the Moonlit Spire's crown, `m3`, after the Village is restored). Codified intent: "Stoneroot is played with FIRE now — earth is its boss's reward" — each region is played with the PREVIOUS boss's wolf; the new wolf is the reward.
 - **Prop placement:** hand-authored coordinate tables (`placeRocks`, `grove`, `instAt`, `blockRow`, inline `position.set`). **No overlap/interpenetration validation exists anywhere.** Documented past incidents: a geometrically unsolvable boulder corridor (visual 2.0u vs collider 1.0u), a pressure plate parked in the camera blind strip, a statue model needing manual child-geometry recentering.
 - **Materials:** GLB kits recolored via name-keyed tint maps (`denTint`, `materialTints`, `naturalTint`). Two codified silent-failure modes: (a) tint lookup by material name skips silently on mismatch — the canopy incident: code expected `foliage`, asset used `leafsGreen`, trees rendered "in the model's own turquoise"; (b) `assets.js` caches prepared materials BY NAME — "a recoloured rock must also be RENAMED, or prepareModel hands it straight back the shared texture-atlas material and the tint silently vanishes."
 
