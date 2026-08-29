@@ -346,6 +346,11 @@ function sigil(world, x, z, colour, lit) {
       emissiveIntensity: lit ? 3.4 : 0, roughness: 0.8,
     })
   );
+  // NAMED, because floating on purpose is a claim a mesh has to make out
+  // loud: verify-grounded exempts deliberate floaters BY NAME (its ALLOWED
+  // list), and an unnamed octahedron 0.73u off the floor is indistinguishable
+  // from dad's "Image 1 shows floating rocks". A sigil glows; say so.
+  m.name = 'sigil-glow';
   m.position.set(x, 1.15, z);
   world.add(m);
   world.keepLoose(m);
