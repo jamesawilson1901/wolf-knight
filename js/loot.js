@@ -243,10 +243,15 @@ export function updateShards(world, dt, t, player) {
         // too small to see. The pickup arm timer is untouched, so the "flies
         // out, lands, THEN is yours" rule above still holds.
         s.y = SHARD_REST;
-        s.vy = -s.vy * 0.45;
+        // 0.5 and 0.7, not 0.45 and 0.9: run the numbers with the spawn arcs
+        // above (vy 3 or 4, gravity 12) and the old pair gave HALF the coins
+        // exactly two hops — "a few times" was true only for the lucky half.
+        // verify-smash finally joined the sweep and caught it the same night.
+        // With this pair every coin hops three times before it settles.
+        s.vy = -s.vy * 0.5;
         s.vx *= 0.55; s.vz *= 0.55;
         s.hops = (s.hops || 0) + 1;
-        if (s.vy < 0.9) { s.vy = 0; s.settled = true; }
+        if (s.vy < 0.7) { s.vy = 0; s.settled = true; }
         // ONE chink per coin, on its first landing. A pot drops five coins and
         // each hops three or four times; chinking on every hop is twenty plays
         // inside a second, which is mud rather than sparkle. The spread of
