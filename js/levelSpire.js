@@ -490,7 +490,8 @@ export async function buildMa(scene) {
   // judge a layout before any art is placed) there is nothing to make them
   // out of. The lane, the plate, the vault walls and every reservation are
   // still here, which is the part a greybox pass is for.
-  if (!GREY()) pushableBoulder(world, prepareModel, kit().rockSA, -1.2, -3);
+  if (!GREY()) pushableBoulder(world, prepareModel, kit().rockSA, -1.2, -3,
+    { solved: () => !!state.flags.plates.m_sigil_stone, restAt: { x: -3.6, z: -3 } });
   // the vault, cut into the west wall, visible from the door you walk in by
   wallRun(world, -8.2, 1.6, -8.2, 4.6, D);
   wallRun(world, -4.8, 1.6, -4.8, 4.6, D);

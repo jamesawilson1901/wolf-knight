@@ -37,7 +37,14 @@ export async function preloadLoot() {
 // height comes OFF the scale rather than being typed, because the old 0.25 was
 // already burying the small coin's lower edge — the same measure-the-model
 // lesson the chests, the crate and the vase each had to learn separately.
-const SHARD_SCALE = 2.4;
+//
+// 3.4 (2026-08-30). Dad, replaying Ember: "coins are still not visible. they
+// aren't meant to be realistic if that's why you keep making them so small."
+// 2.4 was sized against a stone floor; against Ember's orange it is gold on
+// orange and disappears. He is right about the register too — this is a
+// cartoon, the coin is a CELEBRATION, and at 3.4 (~70% of Kael) it reads
+// from the couch. Emissive up a notch with it, for the dark rooms.
+const SHARD_SCALE = 3.4;
 const SHARD_REST = 0.4 * SHARD_SCALE * 0.5;   // sit ON the floor, not in it
 
 export function spawnShards(world, x, z, n) {
@@ -55,7 +62,7 @@ export function spawnShards(world, x, z, n) {
       n.material = mats.map((m) => {
         const c = m.clone();
         if (c.color) c.color.setHex(0xffc843);
-        if (c.emissive) { c.emissive.setHex(0xff9c1a); c.emissiveIntensity = 0.85; }
+        if (c.emissive) { c.emissive.setHex(0xff9c1a); c.emissiveIntensity = 1.1; }
         c.metalness = 0.35; c.roughness = 0.35;
         return c;
       });
@@ -63,7 +70,12 @@ export function spawnShards(world, x, z, n) {
     });
     coin.scale.setScalar(SHARD_SCALE);
     const a = (i / Math.max(1, n)) * Math.PI * 2 + x;
-    coin.position.set(x, 0.4, z);
+    // launch from the REST height, not a hard 0.4 — at 3.4x the rest is
+    // 0.68 and a coin starting below it lost most of its arc; with the old
+    // numbers it settled after two hops and verify-smash failed the size
+    // change within the hour it shipped. Start AT rest, throw harder (4.2),
+    // and every coin clears three hops again at the new size.
+    coin.position.set(x, SHARD_REST, z);
     world.add(coin);
     world.shards.push({
       mesh: coin,
@@ -71,8 +83,8 @@ export function spawnShards(world, x, z, n) {
       z: z + Math.sin(a) * 0.01,
       vx: Math.cos(a) * (1.2 + (i % 3) * 0.5),
       vz: Math.sin(a) * (1.2 + (i % 3) * 0.5),
-      vy: 3 + (i % 2),
-      y: 0.4,
+      vy: 4.2 + (i % 2),
+      y: SHARD_REST,
       settled: false,
       life: 25,
       // A COIN HAS TO BE SEEN BEFORE IT CAN BE TAKEN.
@@ -170,6 +182,81 @@ export function spawnPotionDrop(world, x, z) {
 // time this is called, so there is nothing to pick up and nothing to lose;
 // it only needs to arc, land, and fade, the same physics as a coin's hop
 // with no magnet/collection step after it.
+// THE THING ITSELF COMES OUT OF THE CHEST. Dad: "when shields and weapons
+// come out the chest, don't use a generic round orange dot like you have.
+// there are shield assets available. use them." He is right twice over: the
+// Round Guard's emoji is literally 🟠, and every gear def already names its
+// real model file. So a weapon or shield now flies out as the actual 3D
+// item — normalized to a readable size, tinted like the equipped version,
+// spinning as it arcs and bounces — and the emoji pop stays only for the
+// things with no model to show (potions, hearts, keys, armour plate).
+const gearDropCache = new Map();
+export function spawnGearDrop(world, x, z, def, seatIndex = 0) {
+  (async () => {
+    let gltf;
+    try {
+      if (!gearDropCache.has(def.file)) gearDropCache.set(def.file, await loadGLB(def.file));
+      gltf = gearDropCache.get(def.file);
+    } catch {
+      spawnRewardPop(world, x, z, def.icon || '🗡️', seatIndex);   // never drop nothing
+      return;
+    }
+    const m = prepareModel(gltf.scene.clone(), { castShadow: false });
+    // measure the model — gear files vary wildly in native size
+    const bb = new THREE.Box3().setFromObject(m);
+    const size = bb.getSize(new THREE.Vector3());
+    const scale = 1.5 / Math.max(size.x, size.y, size.z, 0.001);
+    m.scale.setScalar(scale);
+    const mats = [];
+    m.traverse((n) => {
+      if (!n.isMesh || !n.material) return;
+      const list = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = list.map((mat) => {
+        const c = mat.clone();
+        if (def.tint && c.color) c.color.setHex(def.tint);
+        c.transparent = true;
+        mats.push(c);
+        return c;
+      });
+      if (!Array.isArray(n.material)) n.material = n.material[0];
+    });
+    const holder = new THREE.Group();
+    holder.add(m);
+    holder.position.set(x, 0.5, z);
+    world.add(holder);
+    world.keepLoose(holder);
+    const a = seatIndex * 1.15 + 0.4;
+    let vx = Math.cos(a) * 1.1, vz = Math.sin(a) * 1.1, vy = 3.6, y = 0.5;
+    let settled = false, t = 0;
+    const DURATION = 3.8;   // a touch longer than the emoji pop — it earned it
+    world.onAnimate((tt, dt) => {
+      t += dt;
+      if (!settled) {
+        holder.position.x += vx * dt; holder.position.z += vz * dt;
+        y += vy * dt; vy -= 11 * dt;
+        if (y <= 0.55) {
+          y = 0.55;
+          vy = -vy * 0.42;
+          vx *= 0.5; vz *= 0.5;
+          if (vy < 0.8) { vy = 0; settled = true; }
+        }
+      } else {
+        y = 0.55 + Math.sin(tt * 3 + a) * 0.06;
+      }
+      holder.position.y = y;
+      holder.rotation.y = tt * 2.2 + a;   // turn so the shape reads from any seat
+      if (t > DURATION - 0.6) {
+        const o = Math.max(0, (DURATION - t) / 0.6);
+        for (const c of mats) c.opacity = o;
+      }
+      if (t > DURATION && holder.parent) {
+        world.root.remove(holder);
+        for (const c of mats) c.dispose();
+      }
+    });
+  })();
+}
+
 export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
   // Drawn at 256 rather than 128 because the sprite is now twice the size on
   // screen — a 128px emoji stretched to 1.4u is a blurry smudge, and the point

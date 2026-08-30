@@ -21,7 +21,7 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
-import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop } from './loot.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop, spawnGearDrop } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
@@ -1362,7 +1362,10 @@ function giveLoot(chest) {
     // found; the whole point of a chest is the moment you learn what was in it.
     const gd = WEAPONS[L.gear] || SHIELDS[L.gear];
     lines.push(gd ? `${gd.icon} ${gd.name}` : '🗡️ new gear');
-    spawnRewardPop(world, chest.x, chest.z, gd ? gd.icon : '🗡️', seat++);
+    // the REAL item flies out (dad: "there are shield assets available. use
+    // them") — emoji only if the def has no model to show
+    if (gd && gd.file) spawnGearDrop(world, chest.x, chest.z, gd, seat++);
+    else spawnRewardPop(world, chest.x, chest.z, gd ? gd.icon : '🗡️', seat++);
   }
   // ARMOUR is found, not only bought — dad: "different weapons and armour that
   // you can find and equip".
@@ -1614,6 +1617,16 @@ async function loadRoom(rawId, entry, handoff = null) {
     if (fwd.x * own.x + fwd.z * own.z > 0.17) angle = handoff.heading;   // within ~80°
   }
   player.place(px, pz, angle);
+  // THE SAFE FOOTING DOES NOT CROSS DOORS. _lastSafe (the lava ouch-leap's
+  // target) is player state, and it survived room changes — so a child who
+  // touched lava right after a door, before their first safe step, was
+  // hurled to coordinates remembered from the PREVIOUS room. In the Cinder
+  // Bridges those coordinates land mid-channel, and because you never stand
+  // safe in lava, every bounce re-aimed at the same burning spot: dad's
+  // "flung me across the room to the middle of the lava, it kept respawning
+  // me there". Cleared on every arrival; player.js falls back to the room's
+  // own spawn until the first safe step writes a real one.
+  player._lastSafe = null;
   if (handoff) {
     // momentum survives the seam: they walked in moving, they come out moving
     player._vel.x = handoff.vx; player._vel.z = handoff.vz;

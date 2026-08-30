@@ -349,7 +349,17 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
 // Level 3 ended up with its own incompatible copy of the cut system.
 // ---------------------------------------------------------------------------
 // Pushable boulder (Kenney rock, stone-gray) — the Stoneroot puzzle verb.
-export function pushableBoulder(world, prepareModel, rockGltf, x, z) {
+// opts.solved / opts.restAt (2026-08-30, dad's replay report): a save that
+// solved a push puzzle in an earlier session rebuilt the room with the
+// boulders back at their START spots and their gold PUSH-ME rings still
+// pulsing — beside plates already sitting green. Dad read it as "these two
+// plates do nothing". A solved room has to TELL the story of being solved:
+// pass `solved` (the same predicate the bars take) and `restAt` (the plate),
+// and on a solved save the boulder builds parked on its plate with no gold
+// invitation. Unsolved saves see exactly what they always saw.
+export function pushableBoulder(world, prepareModel, rockGltf, x, z, opts = {}) {
+  const solved = !!(opts.solved && opts.solved());
+  if (solved && opts.restAt) { x = opts.restAt.x; z = opts.restAt.z; }
   // ONE MESH, ONE MATERIAL. rock-small-a ships as TWO meshes (its "grass" and
   // "dirt" materials) — but this boulder tints both to the same grey, so the
   // split buys nothing and costs a draw call per boulder, per frame, forever.
@@ -387,15 +397,18 @@ export function pushableBoulder(world, prepareModel, rockGltf, x, z) {
   world.add(group);
   const collider = { x, z, r: 0.62 };
   world.circleColliders.push(collider);
-  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.88, 26),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
-  group.add(ring);
-  world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
+  // GOLD marks "act here" (contract grammar): a pulsing ring says PUSH ME —
+  // but only while there is something left to do. A solved room stays quiet.
+  if (!solved) {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.72, 0.88, 26),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = world.deckY + 0.035; // height law: clear of THIS room's floor
+    group.add(ring);
+    world.onAnimate((t) => { ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 2.4); });
+  }
   const b = { x, z, r: 0.62, group, mesh: rock, collider };
   world.boulders.push(b);
   return b;

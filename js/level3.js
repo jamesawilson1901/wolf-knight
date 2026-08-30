@@ -1162,7 +1162,8 @@ export async function buildTkn(scene) {
   world.markers.houndSpots = [{ x: 3, z: 3, variant: 'thorn' }];
 
   if (!GREY()) {
-    pushableBoulder(world, prepareModel, woodKit.rockLB, -8, 2);
+    pushableBoulder(world, prepareModel, woodKit.rockLB, -8, 2,
+      { solved: () => !!state.flags.plates.l3_knot_p1, restAt: { x: 6, z: 2 } });
   } else {
     // greybox: the same collider and the same slide, in a plain box, so the
     // puzzle can be walked and judged before any art exists

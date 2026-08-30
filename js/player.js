@@ -2625,8 +2625,13 @@ export class Player {
       // OUCH — leap BACKWARDS out of the lava to the last safe footing,
       // facing the lava the whole way (the classic startled Zelda bounce).
       // The arc itself plays in update() so kids SEE the jump, not a blink.
-      if (this._lastSafe) {
-        const s = world.resolveCircle(this._lastSafe.x, this._lastSafe.z, BODY_RADIUS);
+      // No safe step taken in THIS room yet (main.js clears _lastSafe on
+      // every arrival)? The room's own spawn is safe by construction — leap
+      // there rather than to a stale spot from the room before.
+      const safe = this._lastSafe
+        || (world.spawn ? { x: world.spawn.x, z: world.spawn.z } : null);
+      if (safe) {
+        const s = world.resolveCircle(safe.x, safe.z, BODY_RADIUS);
         this._lavaBounce = {
           t: 0, dur: 0.32,
           fromX: this.root.position.x, fromZ: this.root.position.z,

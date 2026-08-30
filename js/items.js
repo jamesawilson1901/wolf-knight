@@ -126,17 +126,17 @@ export const SHIELDS = {
     blurb: 'A knight’s first friend.',
   },
   shield_a: {
-    name: 'Round Guard', icon: '🟠', file: './assets/gear/shield_A.gltf',
+    name: 'Round Guard', icon: '🛡️', file: './assets/gear/shield_A.gltf',
     blunt: 0.5, parryBonus: 0.12, price: 70,
     blurb: 'Easier perfect blocks!',
   },
   shield_c: {
-    name: 'Tower Shield', icon: '🔷', file: './assets/gear/shield_C.gltf',
+    name: 'Tower Shield', icon: '🛡️', file: './assets/gear/shield_C.gltf',
     blunt: 0.25, parryBonus: 0, price: 180,
     blurb: 'Blocks almost everything.',
   },
   shield_b: {
-    name: 'Kite Shield', icon: '🔶', file: './assets/gear/shield_B.gltf',
+    name: 'Kite Shield', icon: '🛡️', file: './assets/gear/shield_B.gltf',
     blunt: 0.4, parryBonus: 0.06, price: 130,
     blurb: 'A bit of both.',
   },

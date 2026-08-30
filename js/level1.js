@@ -685,7 +685,8 @@ export async function buildLg1(scene) {
   world.reserve(4.5, 4.0, 1.8, 'lg1Vault');       // the vault and its mouth
   world.reserve(0, -4.2, 1.8, 'lg1DoorBars');
 
-  pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1);
+  pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1,
+    { solved: () => !!state.flags.plates.l1_lg1_ki, restAt: { x: -5, z: 3.5 } });
   // THE VAULT: a nook cut into the south-east wall, bars across its mouth, a
   // chest lit up behind them. Visible from the moment you walk in, which is
   // the point — the child sees the prize first and works out the question
@@ -784,8 +785,13 @@ export async function buildLb(scene) {
   world.reserve(14.6, -4.7, 2.0, 'lbVault');
   world.reserve(0, -11.9, 1.8, 'lbDoorBars');
 
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -3.6);
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 11, -3.6);
+  // A solved save parks each block on its plate, gold rings off — the room
+  // tells the story of being solved instead of advertising a dead puzzle
+  // (dad's replay report, 2026-08-30).
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -3.6,
+    { solved: () => !!state.flags.plates.l1_lb_sho_p1, restAt: { x: 7, z: 0 } });
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 11, -3.6,
+    { solved: () => !!state.flags.plates.l1_lb_sho_p2, restAt: { x: 11, z: 0 } });
   // THE VAULT, cut into the east wall between the Kiln road and the pup
   // pocket: a heart piece behind bars, in plain sight from both plates.
   wallRun(world, 13.7, -6, 16, -6, D);
@@ -893,7 +899,8 @@ export async function buildLb2(scene) {
   world.reserve(8.7, 6.6, 2.0, 'lb2Vault');
 
   wallRun(world, 4.5, -3, 4.5, 1, D);
-  pushableBoulder(world, prepareModel, emberKit.rockSA, 3, -1);
+  pushableBoulder(world, prepareModel, emberKit.rockSA, 3, -1,
+    { solved: () => !!state.flags.plates.l1_lb2_ten, restAt: { x: 6.6, z: -1 } });
   // THE VAULT, in the cubby's own back corner — the region's best axe behind
   // the region's hardest push. Nothing here is on the critical path (lb2 is a
   // dead end that loops back to the Causeway), so this one gates treasure and
@@ -1049,7 +1056,8 @@ export async function buildLc1(scene) {
   // tunnel through the bars. The child only ever pushes from the east.
   for (let z = -2.6; z >= -6.8; z -= 1.2) world.reserve(7, z, 1.4, 'ketsuLane');
   for (let x = 0.2; x <= 8.6; x += 1.2) world.reserve(x, -6.8, 1.4, 'ketsuLane');
-  if (!GREY()) pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -2.6);
+  if (!GREY()) pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -2.6,
+    { solved: () => !!state.flags.plates.l1_lc1_ketsu, restAt: { x: 2.2, z: -6.8 } });
   wallRun(world, -1.2, -5.6, -1.2, -7.2, D);          // the vault pocket's west seal
   visibleReward(world, 0.2, -6.8, 'l1_lc1_ketsu', { shards: 26, potion: 1 }, 'silver');
   const ketsuBars = GREY() ? { open() {} }
