@@ -3784,3 +3784,25 @@ What the verification dug up along the way, all fixed:
 No human has played the Spire, Stormreach's full walk is new, and the music
 casting is a blind man describing colours. **A playtest tells us more than
 the next ten queue items.**
+
+### The sweep's verdicts (added at dawn)
+
+The closing `verify-all --par` sweep, plus the seven suites the rot guard
+caught (shipped with their features, never added to the sweep list — so no
+nightly run had ever executed them): **every suite in tools/ now holds a
+green serial verdict from tonight, a first for the project.** Getting there
+surfaced three real defects, every one of them in ground the test net had
+only just grown eyes on, all fixed and shipped:
+
+- **f3→f2 and f4→f3 landed a child inside a shut frost gate's keep-out**
+  (pushed 0.47u on arrival). The landing sweep measured 226 landings before
+  the legacy rooms joined the registry, 285 after — the first sweep that
+  could see Frostpeak's landings failed them. Moved clear. (v3.74.2)
+- **f1's crossing was free**: both hounds stood 4u off the 13u sprint line
+  and a blind dash crossed in 2.6s untouched — against the gauntlet law.
+  The hounds now bracket the line; the sprint costs half a heart, a weaving
+  child still gets through clean. (v3.74.3)
+- **Half the coins got two hops, not "a few"**: run the bounce numbers on
+  the shipped restitution/cutoff pair and coins launched at vy 3 settled
+  after two hops. verify-smash guarded the promise and caught it the first
+  night it ever ran. Every coin hops three times now. (v3.74.4)
