@@ -130,11 +130,25 @@ export function updateCarry(world, dt, t, player) {
   }
 
   for (const s of world.sockets || []) {
+    // HYSTERESIS (2026-08-30, dad's replay: 3504 coins). Both branches below
+    // are proximity-automatic, so standing ON a filled socket retrieved the
+    // stone one frame and re-seated it the next — and lg3's onFill paid its
+    // 20-shard bonus on every re-seat: a 600-coins-per-second mint you
+    // operated by standing still in the green circle. After either action
+    // the socket now waits for the child to STEP OUT of its radius before it
+    // will act again — the no-ferrying-softlock rule is untouched, you just
+    // can't pick and place from the same standstill.
+    {
+      const dx = s.x - player.root.position.x, dz = s.z - player.root.position.z;
+      if (dx * dx + dz * dz > SOCKET_R * SOCKET_R) s._settleUntilExit = false;
+      else if (s._settleUntilExit) continue;
+    }
     if (s.filled) {
       // retrieving — always allowed (no ferrying softlock, dungeons.json)
       if (player.carrying || !s.seatedMesh) continue;
       const dx = s.x - player.root.position.x, dz = s.z - player.root.position.z;
       if (dx * dx + dz * dz > SOCKET_R * SOCKET_R) continue;
+      s._settleUntilExit = true;
       world.root.remove(s.seatedMesh);
       s.seatedMesh = null;
       s.filled = false;
@@ -158,6 +172,7 @@ export function updateCarry(world, dt, t, player) {
       player.carrying = null;
       CARRYING_ID = null;
       s.filled = true;
+      s._settleUntilExit = true;
       s.seatedMesh = makeMesh(s.args.prepareModel, s.args.gltf, s.args.tint, s.args.scale);
       s.seatedMesh.position.set(s.x, 0, s.z);
       world.add(s.seatedMesh);

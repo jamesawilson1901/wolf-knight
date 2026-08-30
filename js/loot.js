@@ -71,10 +71,12 @@ export function spawnShards(world, x, z, n) {
     coin.scale.setScalar(SHARD_SCALE);
     const a = (i / Math.max(1, n)) * Math.PI * 2 + x;
     // launch from the REST height, not a hard 0.4 — at 3.4x the rest is
-    // 0.68 and a coin starting below it lost most of its arc; with the old
-    // numbers it settled after two hops and verify-smash failed the size
-    // change within the hour it shipped. Start AT rest, throw harder (4.2),
-    // and every coin clears three hops again at the new size.
+    // 0.68 and a coin starting below it lost most of its arc. The throw is
+    // 3.2/3.6, not the 4.2/5.2 that shipped first: those arcs peaked at
+    // ~1.9u — Kael's own height — and dad's very next session reported "a
+    // shard over your head". Impact speed IS launch speed on flat ground,
+    // and three hops need ≥2.8 at the floor, so 3.2 keeps the bounce
+    // promise with the apex at chest height instead of overhead.
     coin.position.set(x, SHARD_REST, z);
     world.add(coin);
     world.shards.push({
@@ -83,7 +85,7 @@ export function spawnShards(world, x, z, n) {
       z: z + Math.sin(a) * 0.01,
       vx: Math.cos(a) * (1.2 + (i % 3) * 0.5),
       vz: Math.sin(a) * (1.2 + (i % 3) * 0.5),
-      vy: 4.2 + (i % 2),
+      vy: 3.2 + (i % 2) * 0.4,
       y: SHARD_REST,
       settled: false,
       life: 25,
@@ -191,35 +193,12 @@ export function spawnPotionDrop(world, x, z) {
 // spinning as it arcs and bounces — and the emoji pop stays only for the
 // things with no model to show (potions, hearts, keys, armour plate).
 const gearDropCache = new Map();
-export function spawnGearDrop(world, x, z, def, seatIndex = 0) {
-  (async () => {
-    let gltf;
-    try {
-      if (!gearDropCache.has(def.file)) gearDropCache.set(def.file, await loadGLB(def.file));
-      gltf = gearDropCache.get(def.file);
-    } catch {
-      spawnRewardPop(world, x, z, def.icon || '🗡️', seatIndex);   // never drop nothing
-      return;
-    }
-    const m = prepareModel(gltf.scene.clone(), { castShadow: false });
-    // measure the model — gear files vary wildly in native size
-    const bb = new THREE.Box3().setFromObject(m);
-    const size = bb.getSize(new THREE.Vector3());
-    const scale = 1.5 / Math.max(size.x, size.y, size.z, 0.001);
-    m.scale.setScalar(scale);
-    const mats = [];
-    m.traverse((n) => {
-      if (!n.isMesh || !n.material) return;
-      const list = Array.isArray(n.material) ? n.material : [n.material];
-      n.material = list.map((mat) => {
-        const c = mat.clone();
-        if (def.tint && c.color) c.color.setHex(def.tint);
-        c.transparent = true;
-        mats.push(c);
-        return c;
-      });
-      if (!Array.isArray(n.material)) n.material = n.material[0];
-    });
+
+// The shared pop animator: any object flies out of the chest, bounces,
+// spins, fades. Splitting this from the gear loader is what let the potion,
+// the heart piece, the key and armour plate all become REAL things too —
+// dad's rule after the Round Guard incident: "don't use emojis anywhere!"
+function animateItemPop(world, m, mats, x, z, seatIndex) {
     const holder = new THREE.Group();
     holder.add(m);
     holder.position.set(x, 0.5, z);
@@ -254,7 +233,56 @@ export function spawnGearDrop(world, x, z, def, seatIndex = 0) {
         for (const c of mats) c.dispose();
       }
     });
+}
+
+// Prepare a loaded model for popping: normalized size, optional tint,
+// fade-ready cloned materials.
+function preparePopModel(gltf, tint, targetSize = 1.5) {
+  const m = prepareModel(gltf.scene.clone(), { castShadow: false });
+  const bb = new THREE.Box3().setFromObject(m);
+  const size = bb.getSize(new THREE.Vector3());
+  m.scale.setScalar(targetSize / Math.max(size.x, size.y, size.z, 0.001));
+  const mats = [];
+  m.traverse((n) => {
+    if (!n.isMesh || !n.material) return;
+    const list = Array.isArray(n.material) ? n.material : [n.material];
+    n.material = list.map((mat) => {
+      const c = mat.clone();
+      if (tint && c.color) c.color.setHex(tint);
+      c.transparent = true;
+      mats.push(c);
+      return c;
+    });
+    if (!Array.isArray(n.material)) n.material = n.material[0];
+  });
+  return { m, mats };
+}
+
+export function spawnGearDrop(world, x, z, def, seatIndex = 0) {
+  (async () => {
+    let gltf;
+    try {
+      if (!gearDropCache.has(def.file)) gearDropCache.set(def.file, await loadGLB(def.file));
+      gltf = gearDropCache.get(def.file);
+    } catch (e) {
+      console.warn('[loot] gear pop model missing:', def.file, e);
+      return;                                     // toast still names the find
+    }
+    const { m, mats } = preparePopModel(gltf, def.tint, def.size || 1.5);
+    animateItemPop(world, m, mats, x, z, seatIndex);
   })();
+}
+
+// A code-built mesh (the potion) pops through the same animator.
+export function spawnMeshPop(world, x, z, group, seatIndex = 0) {
+  const mats = [];
+  group.traverse((n) => {
+    if (!n.isMesh || !n.material) return;
+    n.material = n.material.clone();
+    n.material.transparent = true;
+    mats.push(n.material);
+  });
+  animateItemPop(world, group, mats, x, z, seatIndex);
 }
 
 export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
@@ -394,6 +422,9 @@ export function updateShards(world, dt, t, player) {
 // rather than different colours: a child playing on a phone in a dark room
 // picks a shape out long before a tint.
 //
+// SIZED DOWN ~15% (2026-08-30). The character-sized pass overshot: dad,
+// replaying — "make all the chests a bit smaller, same with the barrels and
+// crates". Still furniture, no longer freight.
 // EVERY KIND IS SIZED BY MEASUREMENT, NOT BY A NUMBER SOMEONE TYPED — and
 // measuring is how the actual bug got found.
 //
@@ -434,30 +465,30 @@ const SMASH_SFX = {
 };
 
 const BREAK_KINDS = {
-  crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.55, shards: 2 },
+  crate:  { url: './assets/env/dungeon/Crate.glb',        size: 1.30, shards: 2 },
   // the same crate, low and wide: a supply box rather than a shipping one
-  box:    { url: './assets/env/dungeon/Crate.glb',        size: 1.25, shards: 2, squash: 1.25 },
-  barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.70, shards: 3 },
+  box:    { url: './assets/env/dungeon/Crate.glb',        size: 1.05, shards: 2, squash: 1.25 },
+  barrel: { url: './assets/env/dungeon/Barrel.glb',       size: 1.45, shards: 3 },
   // A CASK, NOT AN OIL DRUM. This pointed at the survival pack's barrel, which
   // is a red steel drum with a ring lid — dad spotted it in the Den at a glance:
   // "replace industrial barrels with wooden ones or something that fits the
   // ascetic of the game." He is right, and no amount of tinting makes a pressed
   // steel rim read as a cooper's cask. It is the dungeon barrel again, shorter
   // and darker: same mesh, different silhouette, one more draw call saved.
-  cask:   { url: './assets/env/dungeon/Barrel.glb',       size: 1.30, shards: 2,
+  cask:   { url: './assets/env/dungeon/Barrel.glb',       size: 1.10, shards: 2,
     tint: 0x6b4a2f, squash: 1.30 },
-  vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.50, shards: 2 },
+  vase:   { url: './assets/env/dungeon/Vase.glb',         size: 1.25, shards: 2 },
   // a squat clay jar: the vase again, shorter, wider and browner. Same mesh, and
   // the asset-multiplication law says that is a feature.
-  jar:    { url: './assets/env/dungeon/Vase.glb',         size: 1.20, shards: 1,
+  jar:    { url: './assets/env/dungeon/Vase.glb',         size: 1.00, shards: 1,
     tint: 0xb07a4e, squash: 1.35 },
   // AND CHESTS. They burst rather than open — the standing chests are a
   // different thing with a different promise. This is the one a child hopes
   // for: five coins, and a potion better than half the time.
-  chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.45, shards: 5,
+  chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.25, shards: 5,
     potion: 0.55 },
   // and the rare one, worth running across a room for
-  goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.45, shards: 12,
+  goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.25, shards: 12,
     potion: 0.75 },
 };
 const breakGltf = {};
@@ -796,7 +827,7 @@ export async function spawnChests(world, defs) {
     // model against itself. This does.
     const bb = new THREE.Box3().setFromObject(mesh);
     const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
-    const want = def.tier === 'gold' ? 1.35 : 1.10;   // a chest a child walks up to
+    const want = def.tier === 'gold' ? 1.15 : 0.95;   // a chest a child walks up to
     const s = want / Math.max(0.01, dx, dy, dz);
     mesh.position.set(def.x, 0, def.z);
     mesh.rotation.y = def.ry || 0;

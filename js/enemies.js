@@ -18,7 +18,7 @@ import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
-import { spawnRewardPop } from './loot.js';
+import { spawnGearDrop } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
@@ -3292,6 +3292,7 @@ export class Dragonling extends Enemy {
     this.registerFlashMats(this.root);
     this.state = 'hover'; // dragonlings never roost — always circling
     this.stateT = 0;
+    this._floorT = 0;
     this.diveDir = { x: 0, z: 0 };
     this._seed = x * 2.3 + z;
     this.root.position.y = 2.0;
@@ -3328,6 +3329,26 @@ export class Dragonling extends Enemy {
     this._current = name;
   }
 
+  // THE SHIELD IS THE ANSWER TO THE DIVE (dad's request, 2026-08-30): meet
+  // the fly-at with a raised shield — a plain block, not only a perfect
+  // parry — and the dragonling crashes out of the air onto the floor, dazed
+  // and finally in sword's reach. Same grammar Boreal teaches at boss scale.
+  _floor(dur) {
+    if (this.dead || this.state === 'floored') return;
+    this.state = 'floored';
+    this.stateT = 0;
+    this._floorT = dur;
+    if (this.actions.fly) this.actions.fly.timeScale = 0;
+    juice.burst(this.x, 0.5, this.z, this.puffTint, 10);
+    audio.play('slam', { volume: 0.6, rate: 1.3 });
+  }
+
+  takeStun(sec) { this._floor(Math.max(2.2, sec)); }
+
+  onBlocked() {
+    if (this.state === 'dive') this._floor(2.4);
+  }
+
   update(dt, t, player) {
     if (this.dead) return;
     if (this.stunUpdate(dt)) { this.mixer.update(dt); this._syncEyes(); return; }
@@ -3336,6 +3357,18 @@ export class Dragonling extends Enemy {
     const dx = px - this.x, dz = pz - this.z;
     const d = Math.hypot(dx, dz);
 
+    if (this.state === 'floored') {
+      // downed: sinks to the floor, dim, harmless, and hittable
+      this._floorT -= dt;
+      this.root.position.y = Math.max(0.35, this.root.position.y - dt * 6);
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.12;
+      if (this._floorT <= 0) { this.state = 'return'; this.stateT = 0;
+        if (this.actions.fly) this.actions.fly.timeScale = 1; }
+      this.flashUpdate(dt);
+      this.mixer.update(dt);
+      this._syncEyes();
+      return;
+    }
     if (this.state === 'hover') {
       if (this.actions.fly) this.actions.fly.timeScale = 0.35;
       // Same fix as Bat/Moth (js/enemies.js): route through _moveSolved so a
@@ -3415,7 +3448,8 @@ function dropWeapon(e) {
   const pick = pool[Math.floor(Math.random() * pool.length)];
   addGear(pick.id);
   const gd = (pick.kind === 'weapon' ? WEAPONS : SHIELDS)[pick.id];
-  spawnRewardPop(e.world, e.x, e.z, gd ? gd.icon : '🗡️');
+  // the real item, never an emoji (dad's rule after the Round Guard 🟠)
+  if (gd && gd.file) spawnGearDrop(e.world, e.x, e.z, gd);
 }
 
 function spawnEmberDrop(world, x, z) {

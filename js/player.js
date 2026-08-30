@@ -1723,6 +1723,12 @@ export class Player {
       audio.play('parry', { volume: 0.45, rate: 0.7 }); // dull block clank
       this.damage(shieldDef().blunt);
       this.iframes = IFRAME_TIME;
+      // A PLAIN BLOCK tells the attacker too (dad: "have the flying dragon
+      // fall to the ground and become vulnerable if you block as it flies at
+      // you"). A perfect parry already stuns via takeStun above; onBlocked
+      // is the gentler cousin for classes that react to any raised shield —
+      // today that is the dragonling, which crashes when it meets one.
+      if (source.attacker && source.attacker.onBlocked) source.attacker.onBlocked();
       return;
     }
     this.damage(n);

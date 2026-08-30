@@ -390,7 +390,12 @@ export function pushableBoulder(world, prepareModel, rockGltf, x, z, opts = {}) 
     rock.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.setHex(0x8a8d95); } });
   }
   rock.castShadow = false;
-  rock.scale.setScalar(2.0);
+  // 2.5, not 2.0 (dad: "make the rocks that are pushed onto pressure plates
+  // bigger") — the block should read as the heavy thing the puzzle says it
+  // is, and at 2.0 it sat smaller than the plate ring it lands on. VISUAL
+  // only: the 0.62 collider below is what every verified push-line was
+  // walked against, and it does not move.
+  rock.scale.setScalar(2.5);
   const group = new THREE.Group();
   group.add(rock);
   group.position.set(x, 0, z);

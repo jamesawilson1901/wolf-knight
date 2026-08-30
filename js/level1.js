@@ -1115,7 +1115,17 @@ export async function buildLg3(scene) {
   socket(world, prepareModel, emberKit.rockSA, {
     id: 'ember_seal', region: 'ember', x: 0, z: -2, stoneId: 'ember_key',
     tint: 0xffa93a, scale: 0.85,
-    onFill: () => { state.flags.keys.ember = true; spawnShards(world, 0, -2, 20); },
+    // The bonus pays ONCE EVER. onFill used to pay 20 shards on every seat,
+    // and the socket oscillator (carry.js hysteresis note) turned that into
+    // an infinite mint. Belt and braces: the mint is fixed there, and the
+    // payout is flagged here — re-seating the key is tidy, not lucrative.
+    onFill: () => {
+      state.flags.keys.ember = true;
+      if (!state.flags.emberSealPaid) {
+        state.flags.emberSealPaid = true;
+        spawnShards(world, 0, -2, 20);
+      }
+    },
   });
   wayshrine(world, -4.4, -2.4, 0.4, D);
   coldHearth(world, 4.2, 1.4, D);

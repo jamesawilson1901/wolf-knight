@@ -21,7 +21,7 @@ import { audio } from './audio.js';
 import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
-import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnRewardPop, spawnGearDrop } from './loot.js';
+import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
@@ -1341,12 +1341,14 @@ function giveLoot(chest) {
     state.potions = Math.min(3, state.potions + L.potion);
     renderPotions(player);
     lines.push('🧪 potion');
-    spawnRewardPop(world, chest.x, chest.z, '🧪', seat++);
+    { const pm = buildPotionMesh(); pm.scale.setScalar(2.6);
+      spawnMeshPop(world, chest.x, chest.z, pm, seat++); }
   }
   if (L.heartPiece) {
     state.inventory.heartPieces += L.heartPiece;
     lines.push('💗 heart piece');
-    spawnRewardPop(world, chest.x, chest.z, '💗', seat++);
+    spawnGearDrop(world, chest.x, chest.z,
+      { file: './assets/loot/platformer/heart-piece.glb', size: 1.2 }, seat++);
     if (state.inventory.heartPieces >= 4) {
       state.inventory.heartPieces -= 4;
       state.maxHearts++;
@@ -1365,7 +1367,8 @@ function giveLoot(chest) {
     // the REAL item flies out (dad: "there are shield assets available. use
     // them") — emoji only if the def has no model to show
     if (gd && gd.file) spawnGearDrop(world, chest.x, chest.z, gd, seat++);
-    else spawnRewardPop(world, chest.x, chest.z, gd ? gd.icon : '🗡️', seat++);
+    else spawnGearDrop(world, chest.x, chest.z,
+      { file: './assets/gear/sword_C.gltf' }, seat++);
   }
   // ARMOUR is found, not only bought — dad: "different weapons and armour that
   // you can find and equip".
@@ -1373,12 +1376,14 @@ function giveLoot(chest) {
     state.inventory.armours = state.inventory.armours || ['plain'];
     if (!state.inventory.armours.includes(L.armour)) state.inventory.armours.push(L.armour);
     lines.push(`${ARMOURS[L.armour].icon} ${ARMOURS[L.armour].name}`);
-    spawnRewardPop(world, chest.x, chest.z, ARMOURS[L.armour].icon, seat++);
+    spawnGearDrop(world, chest.x, chest.z,
+      { file: './assets/chars/shield_badge.gltf', tint: ARMOURS[L.armour].tint || 0x9aa4b0, size: 1.2 }, seat++);
   }
   if (L.key) {
     state.flags.keys[L.key] = true;
     lines.push('🗝️ ' + (L.keyName || 'a key'));
-    spawnRewardPop(world, chest.x, chest.z, '🗝️', seat++);
+    spawnGearDrop(world, chest.x, chest.z,
+      { file: './assets/loot/platformer/key.glb', size: 1.3 }, seat++);
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
