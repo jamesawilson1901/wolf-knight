@@ -69,9 +69,25 @@ await page.evaluate(() => {
     if (el) { el.classList.add('revealed'); el.style.display = 'flex'; }
   }
 });
-// the reveal animation scales a button up to 1.3x mid-flight; measuring
-// during it reports a size the button never actually rests at
-await page.waitForTimeout(1200);
+// THE REVEAL ANIMATION SCALES A BUTTON UP TO 1.3x MID-FLIGHT, and measuring
+// during it reports a size the button never actually rests at — a 60px badge
+// reads as 80px and "overlaps" its neighbour. A flat 1200ms wait was enough on
+// an idle machine and NOT enough on a loaded one, which made this suite fail
+// intermittently for reasons that had nothing to do with the change in flight
+// (2026-08-31: it false-failed once on `btn-attack ∩ form-badge`, passed on the
+// re-run, and cost a stash-and-bisect to clear). Wait for the geometry to stop
+// moving instead of guessing how long that takes.
+await page.waitForFunction(() => {
+  const ids = ['btn-ranged', 'btn-defend', 'btn-jump', 'form-badge', 'special-btn', 'btn-attack'];
+  const now = ids.map((id) => {
+    const el = document.getElementById(id);
+    return el ? Math.round(el.getBoundingClientRect().width) : 0;
+  }).join(',');
+  const stable = window.__touchStable || (window.__touchStable = { last: null, n: 0 });
+  if (now === stable.last) stable.n++; else { stable.last = now; stable.n = 0; }
+  return stable.n >= 8;          // ~8 consecutive rAF-ish polls with no change
+}, null, { timeout: 15000, polling: 50 });
+await page.waitForTimeout(150);  // one more beat, so nothing is measured on the last frame of a transition
 
 console.log(`\nDevice model: 780x360 CSS landscape, 1 CSS px = ${CM_PER_CSS_PX.toFixed(5)} cm`);
 console.log(`Hard floor: ${FLOOR_PX} CSS px = ${(FLOOR_PX * CM_PER_CSS_PX).toFixed(2)} cm`);

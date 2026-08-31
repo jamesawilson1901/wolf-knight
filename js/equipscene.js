@@ -59,16 +59,16 @@ function tintClone(model, tint) {
 // Render `def` (anything with .file and optional .tint) to a PNG data URL.
 // Returns null if the model cannot be loaded — callers keep their placeholder
 // rather than showing a broken image.
-export async function itemThumb(renderer, def) {
+export async function itemThumb(renderer, def, pose = null) {
   if (!def || !def.file) return null;
-  const key = `${def.file}|${def.tint || 0}`;
+  const key = `${def.file}|${def.tint || 0}|${pose ? pose.yaw || 0 : 0}`;
   if (THUMBS.has(key)) return THUMBS.get(key);
 
   let gltf;
   try { gltf = await loadGLB(def.file); }
   catch (e) { console.warn('[equip] no model for thumb:', def.file, e); return null; }
   return renderThumb(renderer, key,
-    tintClone(prepareCharacter(SkeletonUtils.clone(gltf.scene)), def.tint));
+    tintClone(prepareCharacter(SkeletonUtils.clone(gltf.scene)), def.tint), pose);
 }
 
 // The same still-frame treatment for something built in code rather than
@@ -79,7 +79,14 @@ export async function meshThumb(renderer, key, group) {
   return renderThumb(renderer, key, group);
 }
 
-function renderThumb(renderer, key, model) {
+// `pose` steers the framing for the handful of things a weapon's default
+// three-quarter tilt does not suit. A sword is a diagonal and reads at any
+// angle; a WOLF is a long thin side profile that shrinks to a smudge in a
+// 38px HUD counter, so the pup icon turns to face the camera and pulls it in.
+//   yaw   — extra rotation about Y, radians (turn the model toward the lens)
+//   tiltZ — override the default 0.18π lean (0 for anything that should stand up)
+//   zoom  — >1 pulls the camera in, filling more of the frame
+function renderThumb(renderer, key, model, pose = null) {
   if (!thumbRT) {
     thumbRT = new THREE.WebGLRenderTarget(THUMB_SIZE, THUMB_SIZE);
     thumbCanvas = document.createElement('canvas');
@@ -101,15 +108,20 @@ function renderThumb(renderer, key, model) {
   model.traverse((n) => { if (n.isMesh) n.visible = true; });
   scene.add(model);
 
-  // Frame the model on its own bounds and show it at a three-quarter angle,
-  // tipped so a long weapon reads as a diagonal rather than a vertical line.
+  // POSE FIRST, THEN FRAME. The tilt is what makes a long weapon read as a
+  // diagonal rather than a vertical line — but it also changes the model's
+  // bounds, so measuring before turning it frames the pose the model ISN'T in.
+  model.rotation.z = pose && pose.tiltZ !== undefined ? pose.tiltZ : Math.PI * 0.18;
+  if (pose && pose.yaw) model.rotation.y = pose.yaw;
+  model.updateMatrixWorld(true);
+
   const box = new THREE.Box3().setFromObject(model);
   const c = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const d = Math.max(size.x, size.y, size.z) || 1;
-  model.rotation.z = Math.PI * 0.18;
+  const zoom = (pose && pose.zoom) || 1;
   const cam = new THREE.PerspectiveCamera(38, 1, 0.05, 100);
-  cam.position.set(c.x + d * 0.9, c.y + d * 0.5, c.z + d * 1.5);
+  cam.position.set(c.x + (d * 0.9) / zoom, c.y + (d * 0.5) / zoom, c.z + (d * 1.5) / zoom);
   cam.lookAt(c.x, c.y, c.z);
 
   const prevRT = renderer.getRenderTarget();

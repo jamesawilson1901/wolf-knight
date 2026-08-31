@@ -419,6 +419,29 @@
       border: 2px solid rgba(255,160,140,.5); touch-action: none;
     }
     .potion-slot.empty { filter: grayscale(1) brightness(.5); border-style: dashed; }
+    /* HUD item art (js/main.js preloadHudArt): real models, rendered once
+       through the game's own renderer, standing in for the last emoji a child
+       looks at every second of play. Sized to match the glyphs they replace so
+       nothing in the HUD shifts. */
+    .hud-art {
+      display: block; image-rendering: auto; pointer-events: none;
+      /* the counters sit over the world, and a dark grey wolf on a pale desert
+         floor is invisible without an edge — the same job the text-shadow does
+         for the numbers beside them */
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.85)) drop-shadow(0 0 1px rgba(0,0,0,.6));
+    }
+    .hud-art.potion { width: 46px; height: 46px; }
+    .hud-art.shard  { width: 30px; height: 30px; }
+    .hud-art.pup    { width: 38px; height: 38px; }
+    /* Both counters are icon + number sitting straight on the world, and the
+       world is bright sand in Ember and white snow in Frostpeak. A soft chip
+       behind them — the same treatment the potion slots already carry — is
+       what makes a dark wolf and a gold coin readable in every region. */
+    #shards, #pups {
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(20,14,26,.42); border-radius: 16px;
+      padding: 2px 10px 2px 5px;
+    }
     #shards {
       position: fixed; left: calc(200px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); z-index: 5;
       color: #ffd76a; font-size: 20px; font-weight: 800;
@@ -935,7 +958,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.77.1</div>
+  <div id="badge">Wolf Knight &middot; v3.78.0</div>
 
   <script>
     window.addEventListener('error', (e) => {

@@ -33,6 +33,7 @@ import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
+import { itemThumb, meshThumb } from './equipscene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf', 'elemental_wolf'];
@@ -184,6 +185,52 @@ function fadeTo(opacity, ms = 300) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// ---------------------------------------------------------------------------
+// HUD ART — the last emoji on the screen a child looks at most.
+//
+// The Armoury taught the trick (js/equipscene.js): one still frame of a real
+// model, rendered through the game's OWN renderer into a PNG data URL and
+// cached forever. The bag now shows a real axe; the HUD was still showing a
+// science-lab test tube for the healing potion, an orange lozenge for an ember
+// shard, and an emoji wolf face for the pups. Three different art styles for
+// three things that all exist as models three feet away in the world.
+//
+// These are preloaded once, after the renderer belongs to the game, and every
+// renderer here degrades to its old glyph if the art never arrives — a HUD
+// must never be the thing that breaks the game.
+const hudArt = { potion: null, shard: null, pup: null };
+
+async function preloadHudArt() {
+  try {
+    const { group } = buildPotionMesh();
+    hudArt.potion = await meshThumb(renderer, 'hud-potion', group);
+  } catch (e) { console.warn('[hud] no potion art', e); }
+  try {
+    // the same gold the coin carries in the world (js/loot.js SHARD tinting),
+    // so the counter and the thing on the floor are the same object
+    hudArt.shard = await itemThumb(renderer, { file: './assets/loot/platformer/coin.glb', tint: 0xffc843 });
+  } catch (e) { console.warn('[hud] no shard art', e); }
+  try {
+    // A wolf is not a sword: the default weapon framing (tilted, whatever way
+    // the model happens to face) turned it into a smudge in a 38px counter.
+    // Rendered at six angles AT THE SIZE A CHILD SEES (scratchpad/pupyaw2.mjs,
+    // not the 110px strip that first fooled me into picking 1.25PI), 0.75PI
+    // stood clear of the rest: a three-quarter profile with ears, legs and
+    // tail all reading. Anything past 1.0PI is a wolf seen end-on, which at
+    // this size is a lump.
+    hudArt.pup = await itemThumb(renderer, { file: './assets/chars/wolf.gltf' },
+      { yaw: Math.PI * 0.75, tiltZ: 0, zoom: 1.2 });
+  } catch (e) { console.warn('[hud] no pup art', e); }
+  if (player) { renderPotions(player); }
+  renderShards();
+  renderPups();
+}
+
+// <img> for the art, plain text when it hasn't loaded (or failed).
+function artHtml(url, cls) {
+  return url ? `<img class="hud-art ${cls}" src="${url}" alt="">` : '';
+}
+
 const heartsEl = document.getElementById('hearts');
 function renderHearts(player) {
   // blocked hits cost half a heart → 💔 shows the half
@@ -201,7 +248,8 @@ function renderPotions(player) {
   for (let i = 0; i < 3; i++) {
     const slot = document.createElement('div');
     slot.className = 'potion-slot ui' + (i < player.potions ? '' : ' empty');
-    slot.textContent = '🧪';
+    if (hudArt.potion) slot.innerHTML = artHtml(hudArt.potion, 'potion');
+    else slot.textContent = '\u{1F9EA}';
     if (i < player.potions) {
       slot.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
@@ -236,7 +284,9 @@ function renderPups() {
   // ahead of the ladder must not read "5/3"
   const total = Math.max(hit ? hit[1] : 3, found);
   const el = document.getElementById('pups');
-  el.textContent = `🐺 ${found}/${total}`;
+  el.innerHTML = hudArt.pup
+    ? `${artHtml(hudArt.pup, 'pup')}<span>${found}/${total}</span>`
+    : `\u{1F43A} ${found}/${total}`;
   ctxShow(el);
 }
 
@@ -1304,7 +1354,9 @@ function updateMusic() {
 
 function renderShards() {
   const el = document.getElementById('shards');
-  el.textContent = `🔸 ${state.shards}`;
+  el.innerHTML = hudArt.shard
+    ? `${artHtml(hudArt.shard, 'shard')}<span>${state.shards}</span>`
+    : `\u{1F538} ${state.shards}`;
   ctxShow(el);
 }
 
@@ -2085,6 +2137,10 @@ async function start() {
   // a thing a suite has to be able to look at (does the knight actually change
   // when you tap an axe?) and it hangs off the menus instance.
   window.__menus = menus;
+  // The HUD's own item art, warmed in the background: the game is already
+  // running by here, so a slow model can never hold up the first frame — the
+  // glyph fallback carries the HUD until the render lands.
+  preloadHudArt().catch((e) => console.warn('[hud] art preload skipped', e));
   lootEvents.onShards = () => renderShards();
   // A breakable can drop a potion — but only if the child has room for it, or
   // the reward vanishes on pickup and teaches that smashing things is pointless.

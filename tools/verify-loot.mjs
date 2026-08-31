@@ -53,6 +53,14 @@ const seen = await page.evaluate(async () => {
   let last = performance.now();
   const start = last;
   while (performance.now() - start < 25000) {
+    // A STORY HINT FREEZES THE WORLD (js/main.js: `if (narration.blocking)
+    // return`), and a frozen world does not run updateShards — so the coins
+    // neither drift toward the player nor age. Whether a Pip line happened to
+    // be up decided whether this check passed, which is why it read
+    // "left: 4, gained: 0" one run and "left: 2, gained: 2" the next for the
+    // same code. Hold the narration open the way every other probe does, so
+    // what is measured is the coin logic and not Pip's timing.
+    g.narration.blocking = false;
     await new Promise((r) => requestAnimationFrame(r));
     const now = performance.now();
     const dt = (now - last) / 1000; last = now;
