@@ -1336,17 +1336,24 @@ function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
   let seat = 0; // several rewards from one chest fan out as they spring, not stack
-  if (L.shards) lines.push(`🔸 ${L.shards}`);
+  if (L.shards) lines.push(`${L.shards} shards`);
   if (L.potion) {
     state.potions = Math.min(3, state.potions + L.potion);
     renderPotions(player);
-    lines.push('🧪 potion');
-    { const pm = buildPotionMesh(); pm.scale.setScalar(2.6);
+    lines.push('potion');
+    // buildPotionMesh() hands back { group, liquid } — the bottle AND the
+    // material the bob animation pulses — so the GROUP is what pops. Taking
+    // the whole record and calling .scale on it threw a TypeError right here,
+    // which killed the rest of giveLoot: any chest holding a potion AND
+    // anything else dropped the potion and then silently stopped, so the gear
+    // or heart piece beside it never popped and never got announced. Found
+    // 2026-08-31 while giving the shop real item art off the same function.
+    { const { group: pm } = buildPotionMesh(); pm.scale.setScalar(2.6);
       spawnMeshPop(world, chest.x, chest.z, pm, seat++); }
   }
   if (L.heartPiece) {
     state.inventory.heartPieces += L.heartPiece;
-    lines.push('💗 heart piece');
+    lines.push('heart piece');
     spawnGearDrop(world, chest.x, chest.z,
       { file: './assets/loot/platformer/heart-piece.glb', size: 1.2 }, seat++);
     if (state.inventory.heartPieces >= 4) {
@@ -1363,7 +1370,10 @@ function giveLoot(chest) {
     // NAME THE THING. "new gear" tells a child nothing about what they just
     // found; the whole point of a chest is the moment you learn what was in it.
     const gd = WEAPONS[L.gear] || SHIELDS[L.gear];
-    lines.push(gd ? `${gd.icon} ${gd.name}` : '🗡️ new gear');
+    // The real item is already arcing out of the chest in front of them, so
+    // the line names it rather than repeating a (wrong) emoji beside it —
+    // dad's rule, and the Cinder Axe was announcing itself with a 🔥.
+    lines.push(gd ? gd.name : 'new gear');
     // the REAL item flies out (dad: "there are shield assets available. use
     // them") — emoji only if the def has no model to show
     if (gd && gd.file) spawnGearDrop(world, chest.x, chest.z, gd, seat++);

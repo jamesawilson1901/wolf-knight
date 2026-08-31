@@ -67,7 +67,19 @@ export async function itemThumb(renderer, def) {
   let gltf;
   try { gltf = await loadGLB(def.file); }
   catch (e) { console.warn('[equip] no model for thumb:', def.file, e); return null; }
+  return renderThumb(renderer, key,
+    tintClone(prepareCharacter(SkeletonUtils.clone(gltf.scene)), def.tint));
+}
 
+// The same still-frame treatment for something built in code rather than
+// loaded — the healing potion has no file of its own, and Maren sells more of
+// them than anything else on the shelf.
+export async function meshThumb(renderer, key, group) {
+  if (THUMBS.has(key)) return THUMBS.get(key);
+  return renderThumb(renderer, key, group);
+}
+
+function renderThumb(renderer, key, model) {
   if (!thumbRT) {
     thumbRT = new THREE.WebGLRenderTarget(THUMB_SIZE, THUMB_SIZE);
     thumbCanvas = document.createElement('canvas');
@@ -85,7 +97,6 @@ export async function itemThumb(renderer, def) {
   rim.position.set(-2, 1, -2);
   scene.add(rim);
 
-  const model = tintClone(prepareCharacter(SkeletonUtils.clone(gltf.scene)), def.tint);
   model.visible = true;
   model.traverse((n) => { if (n.isMesh) n.visible = true; });
   scene.add(model);

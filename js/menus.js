@@ -8,7 +8,8 @@ import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear }
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { persist } from './save.js';
 import { villageCleared } from './levelVillage.js';
-import { EquipPreview, itemThumb } from './equipscene.js';
+import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
+import { buildPotionMesh } from './loot.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -248,11 +249,11 @@ export class Menus {
     const el = $('shop-menu');
     el.innerHTML = '';
     const h = document.createElement('h2');
-    h.textContent = '🛒 Moonlit Trading Post';
+    h.textContent = 'Moonlit Trading Post';
     el.appendChild(h);
     const shardLine = document.createElement('div');
     shardLine.style.cssText = 'font-size:18px;color:#ffd76a;font-weight:800';
-    shardLine.textContent = `You have 🔸 ${state.shards}`;
+    shardLine.textContent = `You have ${state.shards} shards`;
     el.appendChild(shardLine);
 
     const grid = document.createElement('div');
@@ -271,9 +272,26 @@ export class Menus {
       const full = s.kind === 'potion' && state.potions >= 3;
       const card = document.createElement('div');
       card.className = 'item-card ui' + (!afford || full ? ' cant' : '');
-      card.innerHTML = `<div class="ic">${def.icon}</div><div class="nm">${def.name}</div>
+      // THE SHELF SHOWS THE THING, NOT A PICTURE OF A DIFFERENT THING. Maren's
+      // stock used the same emoji the backpack used to — so the Cinder Axe was
+      // a 🔥 here as well. Weapons and shields are drawn from the real model at
+      // the real tint (js/equipscene.js), armour as its own colour, and only
+      // the potion — which has no model, being code-built — keeps its icon.
+      card.innerHTML = `<div class="ic"></div><div class="nm">${def.name}</div>
         <div>${def.blurb || statLine(s.id, def, s.kind)}</div>
-        <div class="price">🔸 ${s.price}${full ? ' (bag full)' : ''}</div>`;
+        <div class="price">${s.price} shards${full ? ' (bag full)' : ''}</div>`;
+      const ic = card.querySelector('.ic');
+      ic.className = 'ic shop-art';
+      if (s.kind === 'potion') {
+        // The potion is built in code rather than loaded, so it gets the same
+        // still-frame treatment through its own mesh — it is the thing Maren
+        // sells most, and it was the last emoji left on the shelf.
+        if (this.renderer) {
+          meshThumb(this.renderer, 'potion', buildPotionMesh().group)
+            .then((url) => { if (url) ic.style.backgroundImage = `url(${url})`; })
+            .catch(() => { ic.className = 'ic'; ic.textContent = def.icon; });
+        } else { ic.className = 'ic'; ic.textContent = def.icon; }
+      } else this._art(ic, def, s.kind);
       card.addEventListener('pointerdown', async () => {
         if (!afford || full) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
         state.shards -= s.price;
@@ -306,7 +324,7 @@ export class Menus {
     if (next) {
       const soon = document.createElement('div');
       soon.className = 'item-card shop-teaser locked';
-      soon.innerHTML = `<div class="ic">📦</div><div class="nm">New stock</div>
+      soon.innerHTML = `<div class="nm">New stock</div>
         <div>Maren is off gathering — back ${next.blurb}.</div>`;
       grid.appendChild(soon);
     }
@@ -347,7 +365,7 @@ export class Menus {
     const el = $('map-menu');
     el.innerHTML = '';
     const h = document.createElement('h2');
-    h.textContent = '🌙 Luna’s Moonstone';
+    h.textContent = 'Luna’s Moonstone';
     el.appendChild(h);
     const blurb = document.createElement('div');
     blurb.style.cssText = 'font-size:15px;opacity:.85';
@@ -400,7 +418,7 @@ export class Menus {
     const el = $('map-menu');
     el.innerHTML = '';
     const h = document.createElement('h2');
-    h.textContent = '🗺️ The Kingdom';
+    h.textContent = 'The Kingdom';
     el.appendChild(h);
 
     const addRegion = (title, rooms) => {
@@ -450,7 +468,7 @@ export class Menus {
     if (mys.length) {
       const mt = document.createElement('div');
       mt.style.cssText = 'font-size:15px;opacity:.85;margin-top:6px';
-      mt.textContent = '❓ Mysteries';
+      mt.textContent = 'Mysteries';
       el.appendChild(mt);
       const row = document.createElement('div');
       row.className = 'map-rooms';
