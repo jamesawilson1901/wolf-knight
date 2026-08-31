@@ -1362,7 +1362,7 @@ function giveLoot(chest) {
       player.maxHearts = state.maxHearts;
       player.healFull();
       effects.warmFlood();
-      bigToast('💖 A whole new heart!');
+      bigToast('A whole new heart!');
     }
   }
   if (L.gear) {
@@ -1385,20 +1385,27 @@ function giveLoot(chest) {
   if (L.armour && ARMOURS[L.armour]) {
     state.inventory.armours = state.inventory.armours || ['plain'];
     if (!state.inventory.armours.includes(L.armour)) state.inventory.armours.push(L.armour);
-    lines.push(`${ARMOURS[L.armour].icon} ${ARMOURS[L.armour].name}`);
+    lines.push(ARMOURS[L.armour].name);
+    // ARMOUR POPS AS A COLOURED JEWEL, NOT A SHIELD BADGE. There is no armour
+    // model in any vendored pack — the suit IS the knight's plate recoloured —
+    // but the old pop used shield_badge.gltf, so finding Kiln Plate looked
+    // exactly like finding a shield. Dad's rule cuts both ways: if a tower
+    // shield must be a tower shield, then armour must not pretend to be one.
+    // A jewel in the armour's own colour claims to be nothing it isn't, and
+    // matches the colour swatch the armoury shows for the same item.
     spawnGearDrop(world, chest.x, chest.z,
-      { file: './assets/chars/shield_badge.gltf', tint: ARMOURS[L.armour].tint || 0x9aa4b0, size: 1.2 }, seat++);
+      { file: './assets/loot/platformer/jewel.glb', tint: ARMOURS[L.armour].tint || 0x9aa4b0, size: 1.1 }, seat++);
   }
   if (L.key) {
     state.flags.keys[L.key] = true;
-    lines.push('🗝️ ' + (L.keyName || 'a key'));
+    lines.push(L.keyName || 'a key');
     spawnGearDrop(world, chest.x, chest.z,
       { file: './assets/loot/platformer/key.glb', size: 1.3 }, seat++);
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
   if (L.powerup) spawnPowerup(world, chest.x, chest.z + 0.8, L.powerup);
-  if (lines.length) bigToast(`🎁 ${lines.join(' · ')}`);
+  if (lines.length) bigToast(lines.join(' · '));
   persist();
 }
 
