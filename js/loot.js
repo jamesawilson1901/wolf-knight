@@ -366,7 +366,28 @@ export function updateShards(world, dt, t, player) {
         s.vy = -s.vy * 0.5;
         s.vx *= 0.55; s.vz *= 0.55;
         s.hops = (s.hops || 0) + 1;
-        if (s.vy < 0.7) { s.vy = 0; s.settled = true; }
+        // A COIN MUST STOP BOUNCING, AND "vy < 0.7" ALONE DOES NOT GUARANTEE IT.
+        //
+        // The speed test is frame-rate dependent: gravity adds 12*dt to the
+        // fall every frame, so on a slow frame (dt clamped at 0.05, i.e. any
+        // device under ~20fps) a coin picks up 0.6 of downward speed in the
+        // frame it lands, and the bounce hands back 0.3 of it. Run the loop and
+        // it converges on a LIMIT CYCLE at vy ≈ 0.77 — permanently just above
+        // the 0.7 threshold. Traced on a headless run: hops 21 and climbing,
+        // settled still false, the coin twitching two centimetres off the floor
+        // forever.
+        //
+        // That is not a cosmetic bug. `settled` gates the pull that walks a
+        // coin to the player, so a coin that never settles is never pulled;
+        // unless the child happens to step within 0.45u of it, its 25s life
+        // runs out and it is deleted WITHOUT PAYING. A coin they watched come
+        // out of a pot vanishes and they get nothing — and it happens on
+        // exactly the cheap tablets this game is meant for, because it needs a
+        // slow frame to trigger.
+        //
+        // The hop cap is frame-rate independent and says what the comment above
+        // already promised: three or four hops, then it is on the floor.
+        if (s.vy < 0.7 || s.hops >= 4) { s.vy = 0; s.settled = true; }
         // ONE chink per coin, on its first landing. A pot drops five coins and
         // each hops three or four times; chinking on every hop is twenty plays
         // inside a second, which is mud rather than sparkle. The spread of
@@ -379,7 +400,15 @@ export function updateShards(world, dt, t, player) {
     const dx = player.root.position.x - s.x;
     const dz = player.root.position.z - s.z;
     const d2 = dx * dx + dz * dz;
-    const pullR = magnet ? 8 : 2.2;
+    // 3.2, NOT 2.2. Traced from a real four-coin scatter: the outermost coin
+    // settles 2.22u from where the pot broke — a hand's width OUTSIDE the old
+    // radius, so it is never pulled and, if the child doesn't walk over it,
+    // expires unpaid. The launch speeds above (up to 2.2 m/s, three hops at
+    // 0.55 skid damping) put the far edge of a scatter right on 2.2, and a
+    // five-coin chest spreads wider still. 3.2 covers the whole scatter while
+    // staying far short of the magnet powerup's 8, so "flies out, lands, THEN
+    // is yours" reads exactly as before.
+    const pullR = magnet ? 8 : 3.2;
     if (s.arm <= 0 && s.settled && d2 < pullR * pullR && d2 > 0.3 * 0.3) {
       const d = Math.sqrt(d2);
       const pull = (magnet ? 10 : 6) * dt;

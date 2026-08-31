@@ -48,7 +48,7 @@ const seen = await page.evaluate(async () => {
   // MEASURE THE TIME THE COIN IS ON SCREEN, NOT THE FRAME COUNT. Headless under
   // SwiftShader this runs at about five frames a second, so "1200ms" was six
   // frames and the coins had not finished their arc, let alone been collected.
-  let visibleFor = 0, maxDist = 0;
+  let visibleFor = 0, maxDist = 0, maxHops = 0;
   const before = g.state.shards;
   let last = performance.now();
   const start = last;
@@ -67,13 +67,26 @@ const seen = await page.evaluate(async () => {
     const live = (w.shards || []).filter((s) => !s.taken);
     if (!live.length) break;
     visibleFor += dt;
-    for (const s of live) maxDist = Math.max(maxDist, Math.hypot(s.x - p.x, s.z - p.z));
+    for (const s of live) {
+      maxDist = Math.max(maxDist, Math.hypot(s.x - p.x, s.z - p.z));
+      maxHops = Math.max(maxHops, s.hops || 0);
+    }
   }
-  return { visibleFor: +visibleFor.toFixed(2), maxDist: +maxDist.toFixed(2),
+  return { visibleFor: +visibleFor.toFixed(2), maxDist: +maxDist.toFixed(2), maxHops,
+    unsettled: (w.shards || []).filter((s) => !s.taken && !s.settled).length,
     left: (w.shards || []).filter((s) => !s.taken).length, gained: g.state.shards - before };
 });
 check('the coins stay on screen long enough to be seen', seen.visibleFor > 0.4, seen);
 check('...and they arc clear of the player before being taken', seen.maxDist > 0.35, seen);
+// A COIN THAT NEVER STOPS BOUNCING IS A COIN THAT NEVER PAYS. `settled` gates
+// the pull that walks a coin to the player, so a coin stuck in a bounce limit
+// cycle is only collectable by standing on it, and otherwise expires unpaid.
+// It shipped for weeks: the speed-only settle test (vy < 0.7) is frame-rate
+// dependent, and on a slow frame the bounce converges just ABOVE the threshold
+// — 21 hops and climbing on a headless run. "Collected in the end" alone did
+// not catch it, because the probe that would have shown it was itself frozen
+// by a narration line. Assert the property directly.
+check('...and none of them bounces forever', seen.maxHops <= 6 && seen.unsettled === 0, seen);
 check('...and they are all collected in the end', seen.left === 0 && seen.gained > 0, seen);
 
 console.log('\n── 2. a coin reads as gold, wherever it lands ────────');
