@@ -190,7 +190,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     }
 
     // --- what they left ------------------------------------------------------
-    coldHearth(world, x + (r() - 0.5) * 1.5, z - hd + 1.2, D, g);
+    coldHearth(world, (r() - 0.5) * 1.5, -hd + 1.2, D, g);   // LOCAL offsets — g is already at (x, z)
     const spill = 3 + Math.round(r() * 3);
     for (let i = 0; i < spill; i++) {
       const px = (r() - 0.5) * (W - 1.2), pz = (r() - 0.5) * (Dp - 1.6);
@@ -229,6 +229,16 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     // Skipped only when called on its own; nested inside ruinedHome it's a
     // few units off that home's own x/z, already checked by ITS bail.
     if (!parent && world.nearWater(x, z, 1.3)) return null;
+    // TWO FRAMES, BOTH PREVIOUSLY WRONG (dad's replay, 2026-08-30: "objects
+    // outside in the black" / "weird floating rock structure"). place() works
+    // in the GROUP's local frame. Standalone, the group sat at the ORIGIN and
+    // the pieces at local 0 — every lone hearth in the game rendered at room
+    // centre, stacking into a nonsense rock pile. Nested under ruinedHome, the
+    // caller's coordinates are treated as LOCAL to the home group — which is
+    // itself already positioned — so passing world coordinates DOUBLED them
+    // and threw stone rings past the walls. Now: standalone positions the
+    // group at (x, z) with pieces at local 0; parent-mode treats x/z as local
+    // offsets, and ruinedHome passes offsets, not world coordinates.
     const g = parent || new THREE.Group();
     const px = parent ? x : 0, pz = parent ? z : 0;
     place(world, g, K().woodfire, 'hearth', px, 0, pz, 1.1, 0, 0, D.propTint || D.wallTint);
@@ -238,7 +248,7 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       place(world, g, i % 2 ? K().rockSA : K().rockSB, 'hearthRing',
         px + Math.cos(a) * 1.1, 0, pz + Math.sin(a) * 1.1, 0.42 + r() * 0.18, a, 0, D.propTint || D.wallTint, false);
     }
-    if (!parent) { g.position.set(0, 0, 0); world.add(g); }
+    if (!parent) { g.position.set(x, 0, z); world.add(g); }
     return g;
   }
 

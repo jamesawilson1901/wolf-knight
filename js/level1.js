@@ -232,6 +232,18 @@ async function dodoSecret(world, x, z) {
   if (GREY()) return;
   if (!_dodoGltf) _dodoGltf = await loadGLB('./assets/chars/monsters/dodo.glb');
   const model = prepareModel(_dodoGltf.scene.clone());
+  // dodo.glb's pivot is NOT under the bird — the RENDERED mesh sits ~2.2u
+  // south of the origin, so the dodo placed at (0,-7) in la1 STOOD IN THE
+  // BLACK past the south wall (dad's "objects outside in the black",
+  // 2026-08-30), and the idle sway swung it through an arc instead of
+  // turning it in place. Box3.setFromObject CANNOT measure this one: the
+  // mesh is SKINNED (an armature with zero clips), and bind-space bounds
+  // report the bird as centred while the bones actually draw it 2.2u away —
+  // measured live with the out-of-bounds probe (bounds centre (0.2,-9.2)
+  // against a root at (0,-7)). So the correction is the probe's number,
+  // hard-set: if the asset is ever re-exported, re-measure.
+  model.position.x = -0.2;
+  model.position.z = 2.2;
   const root = new THREE.Group();
   root.position.set(x, 0, z);
   root.add(model);
@@ -588,10 +600,13 @@ export async function buildLa(scene) {
   // --- THINGS TO DO (ROOM-STANDARD §4) --------------------------------------
   // 1. BREAK THINGS OPEN. Pots and crates at each house, where a family's
   //    belongings would actually be. main.js spawns these from the marker.
-  // 2. AN ALCOVE FOUND BY EXPLORING OFF-PATH. Behind the east house, screened
-  //    from the worn route, a nook you only see if you go and look.
-  wallRun(world, 14.5, -11.5, 14.5, -3.5, D);
-  visibleReward(world, 15.2, -7.5, 'l1_ash_nook', { shards: 12 });
+  //
+  // (There WAS an alcove here — wallRun at x 14.5 screening a chest at
+  // (15.2, -7.5). On the couch it read as "a random wall and chest" floating
+  // beside the east house, because the screen wall sat 1.5u inside the real
+  // east wall and the chest wedged against the ruin's arch. Dad asked for it
+  // gone, 2026-08-30. The l1_ash_nook save flag stays honoured if already
+  // collected — saves are additive-forever — the spawn is simply not built.)
 
   scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.

@@ -516,7 +516,12 @@ export async function buildS1a(scene) {
   });
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'f5', { x: 0, z: 7.2, angle: Math.PI });
-  sideDoor(world, 'e', halfW, halfD, 's1b', { x: -13, z: 0, angle: -Math.PI / 2 });
+  // angle π/2 = facing east, INTO s1b — this pair of arrivals shipped with
+  // both signs swapped (2026-08-31): a child stepping through either door
+  // arrived facing the wall they had just walked through, and the density
+  // suite's arrival frame (which trusts spawn.angle) was measuring a strip
+  // of out-of-room black instead of the room.
+  sideDoor(world, 'e', halfW, halfD, 's1b', { x: -13, z: 0, angle: Math.PI / 2 });
   if (bridged) sideDoor(world, 'w', halfW, halfD, 'ssA', { x: 10, z: 0, angle: Math.PI / 2 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'gatehouse', D);
@@ -566,8 +571,8 @@ export async function buildS1b(scene) {
               { x: 12, z: -8, r: 4.6, kind: 'gravel' },
               { x: 10, z: 8, r: 3.6, kind: 'rubble' }],
   });
-  world.spawn = { x: -13, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'w', halfW, halfD, 's1a', { x: 13, z: 0, angle: Math.PI / 2 });
+  world.spawn = { x: -13, z: 0, angle: Math.PI / 2 };   // facing east, into the room (sign swap fixed 2026-08-31)
+  sideDoor(world, 'w', halfW, halfD, 's1a', { x: 13, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'e', halfW, halfD, 'sc1', { x: -9, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'n', halfW, halfD, 's1p', { x: 0, z: 6, angle: Math.PI });
 
@@ -597,6 +602,16 @@ export async function buildS1b(scene) {
   cartWreck(world, 11, 8, 0.4, D);
   fallenColumn(world, 2, -2, 0, D, 4.5);
   rubbleField(world, -12, 6, 3.2, D, 12);
+  // The coldHearth frame fix (2026-08-31) moved the home's hearth from its
+  // doubled, out-of-place position back inside the house — which pulled the
+  // arrival frame below the 32-thing floor (the density counter works on
+  // batch-cell centres, and the stray pieces had been dragging cells into
+  // frame). These are the honest replacement, spread across the arrival
+  // cells: storm debris, a cart that did not get out, and a broken windbreak.
+  rubbleField(world, -10, -1.5, 2.6, D, 9);
+  cartWreck(world, -6, -4.5, 2.1, D);
+  lowWall(world, -8.5, 4.5, 0.9, D, 3.0);
+  rubbleField(world, -4.5, 5, 2.2, D, 8);
   aftermath(world, 6, 1, 2.4, D, 9);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);

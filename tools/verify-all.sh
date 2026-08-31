@@ -263,6 +263,11 @@ case "$1" in
     run verify-puzzle-payoff.mjs
     run verify-smash.mjs
     run verify-spire.mjs
+    # AN ENEMY'S BONES MUST MOVE (2026-08-31, dad: "the skeletons don't walk
+    # or attack with an animation"). Damage suites and screenshots both pass
+    # a skinned mesh gliding around in bind pose; this one measures a leg
+    # bone's quaternion actually changing on every rigged enemy.
+    run verify-motion.mjs
     ;;
   *)
     for t in "$@"; do run "$t"; done

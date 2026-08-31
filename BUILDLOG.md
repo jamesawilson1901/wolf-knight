@@ -3806,3 +3806,48 @@ only just grown eyes on, all fixed and shipped:
   the shipped restitution/cutoff pair and coins launched at vy 3 settled
   after two hops. verify-smash guarded the promise and caught it the first
   night it ever ran. Every coin hops three times now. (v3.74.4)
+
+## 2026-08-31 — Replay batch 2 verified and shipped (v3.76.0)
+
+Dad's second replay batch, item by item, this time with the measurements
+attached (the batch's own lesson: say what was measured, not what was hoped).
+
+- **The infinite-shard mint is dead, live-verified.** Standing on the lg3
+  socket performs exactly one action per visit (hysteresis: you must step
+  out of the circle before it acts again) and the ember-seal bonus pays
+  once per save. Probe: 240 frames standing still = one fill, zero payout
+  repeats.
+- **Breakables were never empty** — measured 6 smashes, coins spawned every
+  time (2,2,1,3,1,2) and all 11 collectable. What dad saw was the payout
+  being invisible: head-height arcs + instant magnet. Coins are now
+  cartoon-big, arc at chest height, and audibly triple-bounce.
+- **Dragonling vs shield, live-verified through the real input path**: hold
+  the shield as it dives and it crashes, lies floored for ~2.4s, and takes
+  melee hits while down.
+- **"Objects outside in the black" was three real bugs.** (1) coldHearth had
+  two coordinate frames, both wrong: lone hearths all drew at the room
+  ORIGIN (stacking into the "weird floating rock structure"), and hearths
+  nested in ruined homes DOUBLED their coordinates, throwing stone rings
+  past the walls. One function, both of dad's screenshots. (2) The la1 dodo
+  is a skinned mesh whose bind-space bounds lie about where it renders — it
+  stood 2.2u past the south wall; recentred by the measured offset.
+  (3) la's ash-nook alcove (screen wall + chest) read as "a random wall and
+  chest" — removed at dad's order; the l1_ash_nook save flag stays honoured.
+  The out-of-bounds probe now sweeps clean on la/la1/lb/lg1/lg4/ld1.
+- **Skeleton animation: could not reproduce, and now permanently guarded.**
+  Every skeleton-family class in Ember and the Village measured with moving
+  leg bones (quaternion deltas 0.14-0.27 vs 0.000 for a frozen mesh), with
+  rendered-pixel confirmation for the wretch and the marauder. Clip names,
+  bone names, skin joints and all 32 generated bodies audit clean. New
+  suite `verify-motion.mjs` (in the sweep list) fails if any rigged enemy
+  ever glides in bind pose. If dad still sees it: suspect his phone's
+  service-worker cache mid-upgrade — a full reload should tell us.
+- Chests/barrels/crates ~15% smaller, boulders 2.5x, every chest pop is a
+  real model (potion mesh, heart piece, shield badge, key, sword) — zero
+  emoji anywhere in loot.
+
+Post-mortem for "work out what went wrong": the suites verified promises,
+never abuse, never motion, never geometry against the shell; "all green"
+was reported as "debugged" with more confidence than the coverage earned.
+verify-motion.mjs is the first structural fix; the out-of-bounds probe is
+next in line for promotion to a suite.
