@@ -23,6 +23,15 @@ const SFX_FILES = {
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
   bones: './assets/audio/sfx/bones.ogg',
+  // A HEAVY STONE MAKES A NOISE WHEN IT MOVES. The push-block puzzles were
+  // completely silent — a child leans on a boulder the size of a cart and it
+  // slides across bare rock without a sound, which reads as a bug even to
+  // someone who could not say why. Kenney Foley (staged 2026-08-31), two drag
+  // takes so consecutive shoves do not sound looped, and a settle for the
+  // moment it stops or locks onto a plate.
+  'stone-drag': './assets/audio/sfx/stone-drag.ogg',
+  'stone-drag2': './assets/audio/sfx/stone-drag2.ogg',
+  'stone-settle': './assets/audio/sfx/stone-settle.ogg',
   // v3.21.3: `bite` used to be a second copy of hit.ogg (a chop), so a wolf's
   // jaws and a sword landing made the identical sound. It now has its own —
   // Kenney impactSoft_medium_001, measured as the darkest and most front-loaded

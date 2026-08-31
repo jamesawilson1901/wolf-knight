@@ -536,6 +536,19 @@ export class World {
         const solved = this.resolveCircle(b.x + s.dx * step, b.z + s.dz * step, b.r);
         if (i >= 0) this.circleColliders.splice(i, 0, b.collider);
         const moved = this._moveBoulder(b, solved.x, solved.z);
+        s.movedTotal = (s.movedTotal || 0) + moved;
+        // THE GRIND FOLLOWS THE STONE, NOT THE SHOVE. Playing it when the push
+        // STARTS meant a boulder held against a wall ground away about seven
+        // times a second forever, because a blocked step ends instantly and the
+        // lean immediately starts another. It fires on the first frame the
+        // thing has actually travelled, once per slide — so leaning on a stuck
+        // rock is silent, which is also the honest signal that it will not go.
+        if (!s.sounded && s.movedTotal > 0.06) {
+          s.sounded = true;
+          b._dragFlip = !b._dragFlip;
+          audio.play(b._dragFlip ? 'stone-drag' : 'stone-drag2',
+            { volume: 0.55, rate: this.slickFloor ? 0.85 : 1, vary: 0.08 });
+        }
         s.remaining -= step;
         if (moved < step * 0.35) s.remaining = 0; // hit something — stop clean
         // rolling onto a plate ends the step immediately: CLICK, locked in
@@ -543,6 +556,14 @@ export class World {
         if (plate) s.remaining = 0;
         if (s.remaining <= 0) {
           b._slide = null;
+          // IT LANDS. A dull settle wherever it stops, and a harder one when it
+          // drops onto a plate — that thud is the "you solved it" beat, so it
+          // arrives before the plate's own reaction rather than under it. Only
+          // if it actually travelled, for the same reason as the grind above.
+          if (s.sounded) {
+            audio.play('stone-settle',
+              { volume: plate ? 0.75 : 0.5, rate: plate ? 0.9 : 1.05, vary: 0.06 });
+          }
           if (plate) {
             this._moveBoulder(b, plate.x, plate.z); // snap dead-center
             b._locked = true;                        // it holds the weight forever

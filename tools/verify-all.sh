@@ -282,6 +282,12 @@ case "$1" in
     # in the live registry — see the suite's own header for what it does not
     # cover (levers, plates: a real gap, not yet guarded).
     run verify-abuse.mjs
+    # THE ARMOURY (2026-08-31). A new screen with a live 3D preview, real item
+    # art and its own second WebGL context — three things that can each break
+    # silently. It also guards dad's rule that "a red axe is a red axe" on the
+    # one screen where it was still false, and checks the layout at PHONE size,
+    # which is the only size that actually matters here.
+    run verify-armoury.mjs
     ;;
   *)
     for t in "$@"; do run "$t"; done
