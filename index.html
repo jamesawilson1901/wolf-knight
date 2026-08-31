@@ -474,6 +474,107 @@
       pointer-events: none;
     }
     .item-card.locked .nm { color: #cbb9e8; }
+    /* ---- THE ARMOURY -------------------------------------------------
+       Dad: "it feels too kindergarten. it should feel adventure game."
+       So: a split screen — the knight turning on his plinth at the left,
+       the racks at the right — in leather and old gold rather than the
+       bright card grid it replaces. Laid out side by side because the game
+       is played in landscape; the racks scroll on their own so the Done
+       button is always reachable (the soft-lock the .panel rule warns of). */
+    .armoury {
+      display: flex; gap: 14px; width: min(94vw, 900px);
+      max-height: 72vh; align-items: stretch;
+    }
+    .arm-left {
+      flex: 0 0 34%; display: flex; flex-direction: column; gap: 8px;
+      background: linear-gradient(#2a2036, #1b1526);
+      border: 2px solid #6b5533; border-radius: 14px; padding: 10px;
+    }
+    .arm-title {
+      font-size: 19px; font-weight: 900; color: #ffd76a; text-align: center;
+      letter-spacing: .08em; text-transform: uppercase;
+      border-bottom: 1px solid #6b5533; padding-bottom: 6px;
+    }
+    .arm-stage { flex: 1 1 auto; min-height: 168px; position: relative; }
+    #equip-preview { width: 100%; height: 100%; display: block; }
+    /* No second WebGL context on this device — the stage collapses rather
+       than sitting there as a dead black rectangle. */
+    .arm-stage-flat { min-height: 0; flex: 0 0 auto; }
+    .arm-slots { display: flex; gap: 6px; }
+    .arm-slot {
+      flex: 1; text-align: center; background: rgba(0,0,0,.3);
+      border: 1px solid #5a4830; border-radius: 9px; padding: 5px 3px;
+    }
+    .arm-slot-art {
+      width: 100%; height: 34px; background-size: contain;
+      background-repeat: no-repeat; background-position: center;
+    }
+    .arm-slot-art.arm-swatch {
+      height: 22px; width: 22px; margin: 6px auto; border-radius: 50%;
+      border: 1px solid #00000066;
+    }
+    .arm-slot-label {
+      font-size: 9px; color: #b9a88a; text-transform: uppercase; letter-spacing: .07em;
+    }
+    .arm-slot-name { font-size: 11px; font-weight: 800; color: #ffe9c8; line-height: 1.15; }
+    .arm-right {
+      flex: 1 1 auto; overflow-y: auto; padding-right: 4px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .rack-head {
+      font-size: 12px; font-weight: 900; color: #ffd76a; text-transform: uppercase;
+      letter-spacing: .12em; margin-top: 6px; padding-bottom: 3px;
+      border-bottom: 1px solid #6b553355;
+    }
+    /* Compact enough that weapons, shields AND armour are all reachable on a
+       phone in landscape without a child having to discover scrolling. */
+    .rack-row {
+      display: flex; align-items: center; gap: 9px; padding: 4px 8px;
+      background: linear-gradient(rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border: 2px solid transparent; border-radius: 10px;
+      touch-action: manipulation;
+    }
+    .rack-row.on {
+      border-color: #ffd76a; background: linear-gradient(rgba(255,215,106,.16), rgba(255,215,106,.05));
+    }
+    .rack-art {
+      flex: 0 0 38px; height: 38px; background-size: contain;
+      background-repeat: no-repeat; background-position: center;
+    }
+    .rack-art.arm-swatch {
+      height: 26px; flex-basis: 26px; border-radius: 50%; align-self: center;
+      border: 1px solid #00000066;
+    }
+    .rack-body { flex: 1 1 auto; min-width: 0; }
+    .rack-name { font-size: 14px; font-weight: 800; color: #ffe9c8; }
+    .rack-blurb {
+      font-size: 10px; color: #b9a88a; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .rack-stats { display: flex; gap: 8px; margin: 2px 0; flex-wrap: wrap; }
+    .gauge { display: flex; align-items: center; gap: 4px; }
+    .gauge-label {
+      font-size: 9px; color: #9d8f78; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .gauge-track {
+      width: 42px; height: 5px; border-radius: 3px; background: rgba(0,0,0,.45);
+      overflow: hidden;
+    }
+    .gauge-fill { display: block; height: 100%; background: linear-gradient(90deg, #ffb347, #ffd76a); }
+    .rack-mark {
+      flex: 0 0 auto; font-size: 9px; font-weight: 900; color: #ffd76a;
+      letter-spacing: .1em;
+    }
+    .arm-foot { display: flex; gap: 16px; font-size: 13px; color: #b9a88a; }
+    .arm-foot b { color: #ffd76a; font-size: 15px; }
+    /* The way out matches the room it is in. Scoped to the armoury on purpose:
+       the shop, map and sticker book keep the bright button they have always
+       had — this screen is the one dad asked to grow up. */
+    .armoury-panel .menu-btn {
+      min-width: 150px; padding: 10px 26px; font-size: 17px;
+      background: linear-gradient(#3a2f22, #241c14);
+      border: 2px solid #ffd76a; color: #ffe9c8; box-shadow: none;
+    }
     .perk-card {
       width: 190px; padding: 22px 14px; border-radius: 18px; text-align: center;
       background: linear-gradient(#3a2a5a, #241a3a); border: 3px solid #b48aff;

@@ -2052,6 +2052,10 @@ async function start() {
 
   menus = new Menus({
     player,
+    // The armoury renders REAL item art (js/equipscene.js) with the game's own
+    // renderer rather than a second context — one still frame per model, cached
+    // forever. Only the turning knight needs a live context of its own.
+    renderer,
     onPauseGame: () => { menuPaused = true; },
     onResumeGame: () => { menuPaused = false; },
     onTravel: (room) => {
@@ -2060,6 +2064,10 @@ async function start() {
     },
   });
   menus.onHudChanged = () => { renderShards(); renderPotions(player); };
+  // Testing hook, same spirit as window.__game: the armoury's live preview is
+  // a thing a suite has to be able to look at (does the knight actually change
+  // when you tap an axe?) and it hangs off the menus instance.
+  window.__menus = menus;
   lootEvents.onShards = () => renderShards();
   // A breakable can drop a potion — but only if the child has room for it, or
   // the reward vanishes on pickup and teaches that smashing things is pointless.
@@ -2122,6 +2130,14 @@ async function start() {
 
     if (paused || menuPaused) {
       renderer.render(scene, camera);
+      // THE KNIGHT KEEPS TURNING WHILE YOU CHOOSE. The armoury's preview is
+      // the one thing that must animate with the world held still, so it is
+      // driven from here rather than from a timer of its own — one clock, and
+      // it stops the moment the panel closes.
+      if (menus && menus.preview && menus.preview.ok
+        && document.getElementById('inv-menu').style.display === 'flex') {
+        menus.preview.render(dt);
+      }
       perf.sample(realDt, state.room);
       return;
     }
