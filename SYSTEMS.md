@@ -160,6 +160,24 @@ XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
 shop, stickers, map screen (regions + mysteries), fast travel via Luna's
 moonstone, pause/settings.
 
+## The Armoury & item art (js/equipscene.js)
+The equipment screen and every place gear is *shown*. Two renderers, split
+by cost. `itemThumb()/meshThumb()` render ONE still frame of a real model
+through the game's own renderer into a PNG data URL and cache it forever —
+used by the armoury racks, Maren's shop cards, and the HUD's potion, shard
+and pup counters, so the same object looks the same everywhere. An optional
+`pose` ({yaw, tiltZ, zoom}) reframes the few things the default weapon
+angle does not suit (the pup wolf). `EquipPreview` owns a SECOND small
+WebGL context for the one thing that must move: the knight himself, turning
+on the spot, changing as you equip. Created once, lazily, and reused — the
+canvas is kept and re-parented on reopen, never recreated, because a
+renderer is welded to the canvas it was built with. Every entry point
+degrades to a placeholder if creation or loading fails; a menu must never
+be the thing that breaks the game.
+LAW: weapons/shields tint with `color.setHex()` (multiplies against the
+texture); armour tints with `color.lerp(t, 0.72)` (replace it and the
+knight flattens to a silhouette).
+
 ## Difficulty assists (scattered, all quiet)
 Cozy default halves damage (min ½ heart); rubber-band after 3 deaths at
 one checkpoint; full-hearts respawn; Pip re-teach lines; max-3 aggro.

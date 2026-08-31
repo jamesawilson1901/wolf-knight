@@ -3851,3 +3851,108 @@ never abuse, never motion, never geometry against the shell; "all green"
 was reported as "debugged" with more confidence than the coverage earned.
 verify-motion.mjs is the first structural fix; the out-of-bounds probe is
 next in line for promotion to a suite.
+
+## The night dad went to bed — the Armoury, and a coin that never paid (2026-08-31, v3.77.0 → v3.78.1)
+
+Dad's brief, at bedtime: *"I'm putting you on autopilot while I sleep. keep
+going until you finish everything or I tell you to stop... also the backpack
+changed and the whole equipping thing changed, it feels too kindergarten. it
+should feel adventure game. even have it come up like split screen and have
+the character on one side slowly rotating... and if you pick up a red axe, it
+has to be a red axe in the player's hand when equipped."*
+
+**The three mechanics he asked for already worked.** Before touching anything,
+`scratchpad/gearid.mjs` measured the whole gear system through the real
+equip path: every weapon mounts its own file to the hand bone, every tint
+lands, all six armours recolour the plate. A red axe *was* a red axe in his
+hand. What was NOT true was the **screen**: the backpack drew each item as an
+emoji, so the Cinder Axe — a real red axe in the world and in his hand — was
+a 🔥 in the bag. That reframed the whole job, and it is the one screen where
+"the thing is the thing" was false.
+
+**The Armoury** (`js/equipscene.js`, new). A split layout: the knight on the
+left turning on the spot on a plinth, racks of real gear on the right, and
+tapping a piece changes him in front of you. Two renderers, split by cost —
+`itemThumb()` renders one still frame of a model through the game's OWN
+renderer into a cached PNG (thirty items must not cost thirty live scenes),
+while `EquipPreview` owns one small second context for the only thing that
+has to move. Indexed in SYSTEMS.md.
+
+Three things that cost real time and are worth remembering:
+
+- **A WebGLRenderer is welded to its canvas.** The preview worked on first
+  open and was dead on every reopen, because `renderInventory()` built a
+  fresh `<canvas>` each time while the renderer stayed bound to the first.
+  Found by testing the REOPEN path, not the first open. The canvas is kept
+  and re-parented now, and `verify-armoury.mjs` opens it three times.
+- **`buildPotionMesh()` returns `{ group, liquid }`, not an Object3D.** I
+  passed the record where a group was wanted and it threw — then found the
+  same mistake in SHIPPED code at `giveLoot()`, where `pm.scale.setScalar()`
+  threw and **killed the rest of the function**. Any chest holding a potion
+  AND anything else silently dropped everything after the potion. Verified
+  fixed with a chest holding potion + gear + armour + heart + key: all five
+  delivered, eight pops, no page errors.
+- **Armour was popping `shield_badge.gltf`**, so finding Kiln Plate looked
+  exactly like finding a shield. Dad's rule cuts both ways: if a tower shield
+  must be a tower shield, armour must not pretend to be one. It pops a jewel
+  in the armour's own colour now (measured: mesh `jewel_1`, material
+  `#d8763a`, toast "Kiln Plate").
+
+**The HUD stopped speaking emoji.** The potion slot was a science-lab test
+tube, the shard counter an orange lozenge, the pup counter an emoji wolf
+face — three art styles for three things that exist as models three feet away
+in the world. All three now render through the Armoury's own trick. A wolf is
+not a sword, though: the default weapon framing turned the pup into a smudge,
+and picking an angle from a 110px comparison strip fooled me into choosing
+one that reads as a lump at the size a child actually sees. Re-rendered at
+38px, 0.75π stood clear. `renderThumb()` grew an optional pose, and now frames
+the model AFTER posing it rather than before — which had been quietly
+mis-framing every tilted thumbnail since it shipped.
+
+**A pushed boulder makes a noise.** Kenney Foley, one grind per slide and one
+settle per stop. The first attempt fired on shove-START and played 42 times
+for a three-step push, because a blocked step ends instantly and the lean
+re-attempts about seven times a second against a wall. It fires on the first
+actual movement now: three steps, three grinds, three settles.
+
+**And the one that matters most — a coin that bounces forever never pays.**
+`verify-loot` had been failing for weeks and had been written off as
+pre-existing. It was telling the truth. Traced: four coins from one pot,
+three still bouncing after 25 seconds, hops 21 and climbing, `settled` still
+false. The settle test was speed-only (`vy < 0.7`) and that is **frame-rate
+dependent** — gravity adds `12*dt` to the fall each frame, so on a slow frame
+(dt clamped at 0.05, i.e. any device under ~20fps) the bounce converges on a
+limit cycle at vy ≈ 0.77, permanently just above the threshold. `settled`
+gates the pull that walks a coin to the player, so a coin that never settles
+is never pulled, and unless the child steps within 0.45u of it its 25-second
+life runs out and it is **deleted without paying**. They watch a coin come
+out of a pot and get nothing — on exactly the cheap tablets this game is for,
+because it takes a slow frame to trigger. Fixed with a hop cap (frame-rate
+independent, and what the comment above it already promised) plus a pull
+radius of 3.2, because the outermost coin of a four-coin scatter settles at
+2.22u — a hand's width outside the old 2.2.
+
+Two suites were also lying, and both now say what they mean:
+
+- `verify-touch` measured button geometry 1200ms after triggering a reveal
+  animation that scales buttons to 1.3x. Enough on an idle machine, not
+  enough on a loaded one — it false-failed on "btn-attack overlaps
+  form-badge" (a 60px badge caught mid-reveal reporting 80px) and passed on
+  the re-run. It waits for the geometry to STOP MOVING now.
+- `verify-loot`'s coin probe never cleared `narration.blocking`, and a story
+  hint freezes the world — so whether a Pip line happened to be up decided
+  whether the check passed. That is why the same code read "left 4, gained 0"
+  one run and "left 2, gained 2" the next. It holds narration open now, and
+  gained a check that asserts the property directly: no coin may bounce more
+  than six times or end unsettled.
+
+**Deliberately not done, and why.** The remaining emoji are in the form badge
+and picker, the perk/sticker/mystery cards and the level-select labels. Every
+one of them is a pictogram for an ABSTRACT concept — fire, ice, a lock, a map
+— and there is no model in any vendored pack to substitute. Kenney Game Icons
+(checked, 425 icons) is a UI-control set: buttons, arrows, gamepad glyphs, no
+elements and no creatures. Swapping the ten form badges for ten tinted wolves
+would make them all the same shape and LOSE the element information a
+non-reader depends on. Where an emoji stands in for something the game
+already models, it is now gone; where it is genuinely the best pictogram
+available, it stays. Dad's call if he disagrees.
