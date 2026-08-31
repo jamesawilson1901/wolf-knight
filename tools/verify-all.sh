@@ -268,6 +268,20 @@ case "$1" in
     # a skinned mesh gliding around in bind pose; this one measures a leg
     # bone's quaternion actually changing on every rigged enemy.
     run verify-motion.mjs
+    # NOTHING RENDERS OUTSIDE ITS ROOM, AND NOTHING HOVERS (2026-08-31, dad:
+    # "objects outside in the black" / "a weird floating rock structure").
+    # Both were the same dresser function with a wrong coordinate frame, and
+    # nothing had ever swept the game for either symptom outside the frame a
+    # human happened to screenshot. Promoted from the scratchpad probe that
+    # found the bug; sweeps every room in the live registry.
+    run verify-bounds.mjs
+    # STANDING STILL MUST NEVER PAY OUT (2026-08-31, dad: "stand in the
+    # circle... and get pretty much infinite shards" — 3,504 coins from one
+    # socket). Every suite verified a socket WORKS; none asked whether
+    # repeating the same action, unmoving, is safe. Sweeps every carry socket
+    # in the live registry — see the suite's own header for what it does not
+    # cover (levers, plates: a real gap, not yet guarded).
+    run verify-abuse.mjs
     ;;
   *)
     for t in "$@"; do run "$t"; done

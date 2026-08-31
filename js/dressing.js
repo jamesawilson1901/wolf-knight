@@ -255,11 +255,29 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   // A column that came down, plus the drum sections that rolled. Reads as
   // COLLAPSE rather than as decoration, because the pieces are scattered along
   // the direction it fell.
-  function fallenColumn(world, x, z, dir, D, len = 4) {
+  //
+  // `room` (optional, `{halfW, halfD}`) caps how far the drums can reach so
+  // the outermost one never lands past the wall. Every HAND-AUTHORED call in
+  // the game (level1/2/5/6/7/Spire, ~68 of them) already tunes its own len
+  // by eye and is left alone — this only matters for the two dressers that
+  // pick x/z/len at RANDOM (dressCourt, dressShore): a base only guaranteed
+  // 2.4u clear of a wall, plus a 4-6u random reach, can and did overshoot —
+  // caught by verify-bounds.mjs in d3b/xa1/xa3 (2026-08-31), a real column
+  // drum ~1.2u past the shell. Omit `room` to keep the old unclamped
+  // behaviour exactly as every existing call site relies on it.
+  function fallenColumn(world, x, z, dir, D, len = 4, room = null) {
     if (GREY()) return null;
     const g = new THREE.Group();
     const r = srnd(Math.round(x * 13 + z * 57));
     const dx = Math.sin(dir), dz = Math.cos(dir);
+    if (room) {
+      const MARGIN = 1.4; // a drum's own footprint plus its random jitter
+      const reachX = dx > 0.001 ? (room.halfW - MARGIN - x) / dx
+        : dx < -0.001 ? (-room.halfW + MARGIN - x) / dx : Infinity;
+      const reachZ = dz > 0.001 ? (room.halfD - MARGIN - z) / dz
+        : dz < -0.001 ? (-room.halfD + MARGIN - z) / dz : Infinity;
+      len = Math.max(1.5, Math.min(len, reachX, reachZ));
+    }
     if (!world.blocked(x, z, 0.7)) {
       place(world, g, K().column, 'fallCol', 0, 0, 0, 1.0, 0, 0, D.propTint || D.wallTint);
       world.addCircle(x, z, 0.6, 'decor');

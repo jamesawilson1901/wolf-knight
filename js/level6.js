@@ -499,7 +499,7 @@ function dressShore(world, halfW, halfD, D, seed, opts = {}) {
   }
   for (let k = 0; k < 2; k++) {
     const p = spots[i++ % spots.length];
-    if (!world.blocked(p.x, p.z, 1.6)) fallenColumn(world, p.x, p.z, k ? 1 : 0, washed(D, r()), 4 + r() * 2);
+    if (!world.blocked(p.x, p.z, 1.6)) fallenColumn(world, p.x, p.z, k ? 1 : 0, washed(D, r()), 4 + r() * 2, { halfW, halfD });
   }
   for (let k = 0; k < 2; k++) {
     const p = spots[i++ % spots.length];

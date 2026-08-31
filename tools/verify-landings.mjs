@@ -84,7 +84,7 @@ for (const room of ROOMS) {
       triggers: (w.doors || []).map((d) => ({ to: d.to,
         minX: d.minX, maxX: d.maxX, minZ: d.minZ, maxZ: d.maxZ })),
       exits: (w.doors || []).map((d) => ({ to: d.to,
-        x: d.entry && d.entry.x, z: d.entry && d.entry.z })),
+        x: d.entry && d.entry.x, z: d.entry && d.entry.z, angle: d.entry && d.entry.angle })),
     };
   });
 }
@@ -200,6 +200,43 @@ for (const room of ROOMS) {
 for (const x of burning) check(`${x.leg}: you can stand in the doorway without burning`, false, x);
 check('no doorway in the game stands in a hazard', burning.length === 0);
 
-console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, on floor, clear of every other door, and can be reached without burning.');
+console.log('\n── 5. and you arrive FACING INTO the room ────────────');
+// Added 2026-08-31, after the coldHearth frame fix cost s1b its density floor
+// and, chasing that down, a static scan found the door SIGN CONVENTION itself
+// wrong on ~30 legs across L5/L6/L7 — a child stepping through arrives facing
+// the wall they just walked through instead of the room. Level 1's own
+// convention (la1's arrival at x -7 faces +PI/2, INTO the room) never got
+// written down anywhere a later level could copy correctly, so it drifted.
+//
+// The test: from the landing spot, a point 1.1u AHEAD along entry.angle must
+// be walkable. A door always lands you a step off a wall, so "ahead is
+// solid" alone is enough to catch the facing bug without also needing to
+// confirm a wall behind — checking is a positive assertion in the confirmed
+// case (level 1's own doors), never a suspicion in the rest of the game.
+// Reuses the room already built for check 3/4 above — no extra room builds.
+const misfaced = [];
+for (const [dest, list] of byDest) {
+  if (!(await go(dest))) continue;
+  const bad = await page.evaluate((spots) => {
+    const w = window.__game.world;
+    const out = [];
+    for (const s of spots) {
+      if (s.angle === undefined || s.angle === null) continue;
+      const fx = Math.sin(s.angle), fz = Math.cos(s.angle);
+      const ax = s.x + fx * 1.1, az = s.z + fz * 1.1;
+      const ahead = w.resolveCircle(ax, az, 0.3);
+      // "ahead is solid" = resolveCircle pushed the probe back out again
+      const aheadSolid = Math.hypot(ahead.x - ax, ahead.z - az) > 0.05;
+      if (aheadSolid) out.push({ ...s, aheadSolid });
+    }
+    return out;
+  }, list);
+  for (const s of bad) misfaced.push({ leg: `${s.from} → ${dest}`, at: [s.x, s.z], angle: s.angle, fault: 'ahead is solid — faces the wall' });
+}
+for (const m of misfaced) check(`${m.leg}: arrival faces into the room, not the wall`, false, m);
+check('no arrival in the game faces the wall it just came through', misfaced.length === 0,
+  { checked: Object.values(rooms).reduce((n, r) => n + r.exits.filter((e) => e.angle !== undefined && e.angle !== null).length, 0) });
+
+console.log(errors.length ? `\n${errors.length} PROBLEM(S)` : '\nALL CLEAN — every door puts you down in the room, on floor, clear of every other door, facing in, and can be reached without burning.');
 await b.close();
 process.exit(errors.length ? 1 : 0);

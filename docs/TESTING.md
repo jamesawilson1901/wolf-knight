@@ -221,6 +221,71 @@ player-facing is a person playing it — the measured game and the felt game
 are different instruments, and this project's best bug reports have all
 come from the second one.
 
+### 7a · The property classes a "does it work" suite always misses
+
+Dad's replay batch 2 (2026-08-30/31) shipped six real bugs behind a sweep
+that was entirely green, and asked directly: how does this stop being
+something only he can catch? The honest answer, worked out by looking at
+what every one of those bugs had in common: **every suite up to that point
+asked "does the feature work", and nothing asked these three questions of
+the whole game at once.** They are now permanent, full-registry suites —
+`tools/all-rooms.mjs`'s live room list, not a hand-kept sample — so a new
+room or a new socket is covered the day it ships, not the day someone
+remembers to test it.
+
+1. **Does repeating an action, without moving, ever act again?**
+   (`verify-abuse.mjs`.) The shard mint was a socket that retrieved and
+   re-placed itself every frame a child stood still on it, paying a bonus
+   each time — 3,504 coins from doing nothing. No suite had ever stood
+   still anywhere and watched. This one stands on every carry socket in
+   the game for three seconds and asserts nothing fires twice. Scope is
+   honest in its own header: sockets only, because that is the one
+   concrete case this session found — levers and pressure plates are not
+   covered and are a named gap, not a blind spot.
+2. **Does every rigged enemy's body actually move?** (`verify-motion.mjs`.)
+   A skinned mesh gliding in bind pose passes every damage suite and every
+   screenshot — nothing had ever measured a bone's rotation changing over
+   time. This one wakes every mixer-driven enemy across a spread of rooms
+   and asserts a bone actually rotates, translates, or scales within 90
+   frames.
+3. **Does every prop sit inside its own room, on the floor?**
+   (`verify-bounds.mjs`.) A dresser function with a wrong coordinate frame
+   put lone campfires at the room's origin (stacking into a "floating rock
+   structure") and threw others past the walls into the black — and the
+   screenshot audits only ever review the arrival frame, so anything off
+   to the side or in a room nobody photographed that session was
+   invisible. This one measures every prop's world-space bounds in every
+   room and flags anything outside the shell or hovering with nothing
+   under it. Getting this one trustworthy took three rounds of its own:
+   an early version flagged a correctly-anchored chest (skinned-mesh
+   geometry bounds are BIND SPACE, not where skinning actually draws it —
+   measure by the animated skeleton's bone positions instead), a
+   correctly-flying bat (enemies are gameplay bodies, not dressing —
+   excluded outright), and a brazier's unlit flame (`visible = false`
+   until ignited, but still had real geometry — skip anything hidden by
+   itself or an ancestor). Each is a fact worth knowing before writing the
+   next sweep of this shape.
+
+`verify-landings.mjs` gained a fourth invariant the same session, for the
+same reason: a static regex scan (fast, but blind to each room's real
+half-extents) suggested ~30 doors across Levels 5-7 faced the wall they'd
+just walked through. The dynamic version — `resolveCircle` against the
+room the game actually built, reusing the sweep verify-landings already
+ran for every door in the registry — found the real number: **one** (a
+sign-swapped pair in Stormreach, fixed), out of 261 checked. The lesson
+generalizes: a hunch from reading code is a lead, never a finding: what
+found the previous six bugs, and what should be trusted to say "clean",
+is always the thing that actually built the room and measured it.
+
+**What is still not automatable, and why claiming otherwise would be the
+same mistake again:** whether a coin's arc *reads* as a coin, whether a
+chest looks the right size next to Kael, whether a boss fight *feels*
+fair — these are judgment calls a suite can bound (verify-smash asserts an
+apex height range) but never fully replace. The honest framing for a
+report is "N new invariants now run automatically across the whole game,
+and here is the one class of thing that still needs your eyes" — not
+"content complete, all green."
+
 ---
 
 ## 8 · The full sweep runs in CI, sharded
