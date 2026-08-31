@@ -277,6 +277,48 @@ generalizes: a hunch from reading code is a lead, never a finding: what
 found the previous six bugs, and what should be trusted to say "clean",
 is always the thing that actually built the room and measured it.
 
+### 7b · A suite that lies is worse than no suite (2026-08-31)
+
+Three separate lessons from one night, all the same shape: **a check whose
+result depends on something other than the thing it is checking.** Each of
+these cost real time, and two of them had been quietly wrong for weeks.
+
+1. **A frozen world measures nothing.** `verify-loot`'s coin probe watched
+   four coins for 25 seconds and reported "2 collected" one run and "0
+   collected" the next, on identical code. It never cleared
+   `narration.blocking` — and js/main.js's loop returns early while a story
+   hint plays, so `updateShards` was simply not running. Any probe that
+   watches the world evolve must hold narration open every frame, exactly
+   the way the hand-written scratchpad probes do. A probe that measures a
+   paused game will produce a number, and the number will be a lie.
+2. **Never measure during an animation you triggered.** `verify-touch`
+   waited a flat 1200ms after revealing buttons that animate to 1.3× scale,
+   then measured their geometry. Enough on an idle machine; not enough on a
+   loaded one — so it false-failed on "btn-attack overlaps form-badge" (a
+   60px badge caught mid-reveal reporting 80px) and passed on the re-run,
+   sending me stashing and bisecting a change that had nothing to do with
+   it. Wait for the geometry to STOP MOVING (poll until N consecutive
+   identical measurements), never for a duration you guessed.
+3. **A long-standing failure is a finding, not furniture.** `verify-loot`
+   had been failing for weeks and had been written off as pre-existing. It
+   was right: coins really were bouncing forever and being deleted without
+   paying, on any device slow enough to hit the dt clamp. The known-fail
+   manifest exists so a PROVEN pre-existing failure doesn't turn the sweep
+   red — it does not exist to let a red check become scenery. If a suite
+   has been failing for more than a session, the next step is to find out
+   what it is telling you, not to route around it.
+
+And the structural fix that came out of it: **`pageerror` does not catch a
+rejected promise.** This codebase does most of its loading fire-and-forget
+(`spawnGearDrop`, room builds, every preload), and a rejection in one of
+those used to vanish with nothing anywhere recording it — which is exactly
+how `giveLoot()` shipped for weeks silently dropping every reward after a
+potion. index.html now records both thrown errors and unhandled rejections
+on `window.__errors`; `tools/launch.mjs` exports `pageErrors(page)` so any
+suite can end with "and nothing threw while we did that". `verify-loot` and
+`verify-armoury` assert it today; adding the line to the rest is mechanical
+and worth doing as suites are touched.
+
 **What is still not automatable, and why claiming otherwise would be the
 same mistake again:** whether a coin's arc *reads* as a coin, whether a
 chest looks the right size next to Kael, whether a boss fight *feels*

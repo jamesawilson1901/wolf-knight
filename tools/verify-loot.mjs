@@ -12,7 +12,7 @@
 // A counter going up is not a reward. Being SHOWN the coin is the reward. So
 // this measures the thing that matters: after a pot breaks, is there a coin on
 // screen, for long enough to see, before it is taken.
-import { launchBrowser } from './launch.mjs';
+import { launchBrowser, pageErrors } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -242,6 +242,13 @@ const spread = await page.evaluate(async () => {
 check('a sweep of rooms uses more than three shapes', Object.keys(spread).length > 3, spread);
 check('...and chests turn up, but are not everywhere',
   spread.chest > 0 && spread.chest < 14, spread);
+
+// ...AND NOTHING THREW WHILE WE DID IT, including in async code. This is
+// the check that would have caught giveLoot() silently dropping every reward
+// after a potion: `pageerror` alone misses a rejected promise, and this
+// codebase loads almost everything fire-and-forget.
+const thrown = await pageErrors(page);
+check('nothing threw during the run', thrown.length === 0, thrown);
 
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')

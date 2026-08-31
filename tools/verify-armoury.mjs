@@ -20,7 +20,7 @@
 //      whose Done button is off the bottom is a soft-lock (the .panel rule in
 //      index.html carries that scar already), so the layout is measured at a
 //      phone-sized viewport, not just at desktop.
-import { launchBrowser } from './launch.mjs';
+import { launchBrowser, pageErrors } from './launch.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -143,6 +143,12 @@ const fits = await page.evaluate(() => {
 });
 check('the Done button is reachable at phone size', fits.doneReachable, fits);
 check('nothing overflows sideways', !fits.horizontalOverflow, { w: fits.horizontalOverflow });
+
+// ...and nothing threw while we did it, including in async code — the
+// armoury loads a dozen models in the background, and a rejected promise in
+// one of those used to vanish without a trace (tools/launch.mjs pageErrors).
+const thrown = await pageErrors(page);
+check('nothing threw during the run', thrown.length === 0, thrown);
 
 console.log(errors.length ? `\n${errors.length} PROBLEM(S)`
   : '\n✓ PASS — the armoury shows real gear, changes the knight as you equip, survives reopening, and fits a phone.');

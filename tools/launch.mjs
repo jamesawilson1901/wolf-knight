@@ -85,3 +85,20 @@ export async function assertWebGL(page) {
   }
   return renderer;
 }
+
+// NOTHING THREW DURING THAT RUN — including in async code.
+//
+// Playwright's `pageerror` catches an uncaught THROW. It does not reliably
+// catch a REJECTED PROMISE, and this codebase does most of its loading in
+// fire-and-forget async work (spawnGearDrop, room builds, every preload). A
+// rejection in one of those used to vanish with nothing to assert on, which
+// is exactly how giveLoot() shipped for weeks silently dropping every reward
+// after a potion.
+//
+// index.html records both kinds on window.__errors. Call this at the end of a
+// suite — after the play it cares about, before the browser closes — and it
+// returns the list so the suite can `check()` on it. It never throws by
+// itself: a suite decides whether a stray rejection is a failure or a note.
+export async function pageErrors(page) {
+  return page.evaluate(() => (window.__errors || []).map((e) => e.kind + ': ' + e.text));
+}

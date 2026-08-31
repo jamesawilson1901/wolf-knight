@@ -958,14 +958,43 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.78.1</div>
+  <div id="badge">Wolf Knight &middot; v3.78.2</div>
 
   <script>
-    window.addEventListener('error', (e) => {
+    // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.
+    //
+    // A thrown error already showed the panel. A REJECTED PROMISE did not —
+    // and this codebase is full of fire-and-forget async work (every
+    // spawnGearDrop, every preload, every room build). A rejection in one of
+    // those used to vanish completely: no panel, no console, nothing for a
+    // suite to assert on. That is the same shape as the bug that shipped in
+    // giveLoot(), where one throw silently dropped every reward after it and
+    // nothing anywhere said so.
+    //
+    // Both kinds are recorded on window.__errors, which any verify suite can
+    // read to say "and nothing threw during that" (tools/launch.mjs
+    // assertNoErrors). What a CHILD sees is unchanged: a thrown error still
+    // shows the panel, and a stray rejection does not — a full-screen error
+    // over a game is worse for them than a line in the console, and the
+    // ?dev=1 harness is where we want to be shouted at instead.
+    window.__errors = [];
+    const wkDev = /[?&]dev=1/.test(location.search);
+    const wkShowPanel = (text) => {
       const el = document.getElementById('error');
-      document.getElementById('error-text').textContent =
-        (e.message || 'Unknown error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '');
+      document.getElementById('error-text').textContent = text;
       el.style.display = 'flex';
+    };
+    window.addEventListener('error', (e) => {
+      const text = (e.message || 'Unknown error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '');
+      window.__errors.push({ kind: 'error', text });
+      wkShowPanel(text);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const r = e.reason;
+      const text = 'Unhandled rejection: ' + ((r && (r.stack || r.message)) || String(r));
+      window.__errors.push({ kind: 'rejection', text });
+      console.error(text);
+      if (wkDev) wkShowPanel(text);
     });
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
