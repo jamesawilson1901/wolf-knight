@@ -17,10 +17,18 @@ export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, on
 // Shards
 // ---------------------------------------------------------------------------
 
-let coinGltf = null;
+let coinGltf = null;          // legacy Kenney disc, kept for old saves' sake
+let coinKit = null;           // the three struck coins that replaced it
 export async function preloadLoot() {
   if (!coinGltf) {
     coinGltf = await loadGLB('./assets/loot/platformer/coin.glb');
+  }
+  if (!coinKit) {
+    coinKit = await Promise.all([
+      loadGLB('./assets/loot/treasure/coin-gold-a.glb'),
+      loadGLB('./assets/loot/treasure/coin-gold-b.glb'),
+      loadGLB('./assets/loot/treasure/coin-gold-c.glb'),
+    ]).catch(() => null);
   }
 }
 
@@ -44,13 +52,55 @@ export async function preloadLoot() {
 // orange and disappears. He is right about the register too — this is a
 // cartoon, the coin is a CELEBRATION, and at 3.4 (~70% of Kael) it reads
 // from the couch. Emissive up a notch with it, for the dark rooms.
-const SHARD_SCALE = 3.4;
+// 2026-09-01. Dad, sending a treasure pack: "the coin assets to replace shards
+// as the currency and have five or six jump out the chests and bounce and have
+// a sound effect. make them half the size of the characters shield."
+//
+// That REVERSES the two sizings above, and it is worth being honest about why
+// it is still the right call. He pushed the old disc up twice because he could
+// not SEE it — and the fixes that actually solved that were making it gold and
+// lighting it from inside, not the scale. At 3.4 the coin ended up 1.36 units
+// across: measured against the shield Kael actually carries (0.54 at its
+// widest, probe in scratchpad/shieldsize.mjs) that is TWO AND A HALF SHIELDS.
+// A coin bigger than the shield on your arm is why it stopped reading as
+// money. Half a shield is 0.27, and the visibility he wants comes from the
+// other half of the same instruction: five or six of them, not one.
+//
+// The span is a TARGET WIDTH, not a scale factor — each coin in the kit is
+// measured and scaled to it, so swapping in a different model needs no maths.
+const COIN_SPAN = 0.27;
+const SHARD_SCALE = 3.4;                      // legacy disc only
 const SHARD_REST = 0.4 * SHARD_SCALE * 0.5;   // sit ON the floor, not in it
 
+// FIVE OR SIX FLY OUT, WHATEVER THE CHEST IS WORTH.
+//
+// Dad: "have five or six jump out the chests and bounce." The levels pay in
+// values like 26, 34, 60 — and this used to spawn one physical coin per point,
+// so a good chest threw SIXTY discs. That is not a treasure spray, it is a
+// hailstorm, and it cost sixty draw calls and sixty colliders to say the same
+// thing six coins say better.
+//
+// The VALUE and the COUNT are separate now: at most six coins come out, and
+// each is worth its share. state.shards still moves by exactly `n`, so every
+// price in the shop and every save already written mean what they always did.
+const COIN_BURST_MAX = 6;
 export function spawnShards(world, x, z, n) {
   if (!world.shards) world.shards = [];
-  for (let i = 0; i < n; i++) {
-    const coin = prepareModel(coinGltf.scene.clone(), { castShadow: false });
+  const count = Math.max(1, Math.min(COIN_BURST_MAX, n));
+  const per = Math.floor(n / count);
+  const spare = n - per * count;          // the remainder rides on the first coin
+  // ONE HANDFUL, ONE SOUND. Each coin still chinks as it lands (that spread is
+  // what makes the scatter read), but the moment the chest throws them gets a
+  // sound of its own — the sound of money being thrown, not of one coin.
+  if (count > 1) audio.play('coin-burst', { volume: 0.5, rate: 1, vary: 0.06 });
+  for (let i = 0; i < count; i++) {
+    // THREE STRUCK COINS, NOT ONE STAMPED DISC. A scatter of identical
+    // discs reads as a texture; three faces in the same spray reads as
+    // treasure. Falls back to the old Kenney disc if the kit failed to load,
+    // because a chest that pays nothing is worse than a chest that pays a
+    // plainer coin.
+    const src = coinKit ? coinKit[i % coinKit.length] : coinGltf;
+    const coin = prepareModel(src.scene.clone(), { castShadow: false });
     // GOLD, AND LIT FROM INSIDE. The model ships with an ordinary material, so
     // in a dark room the currency of the game rendered BLACK — dad found little
     // black discs on the floor of the cave and could not tell what they were.
@@ -68,8 +118,23 @@ export function spawnShards(world, x, z, n) {
       });
       if (!Array.isArray(n.material)) n.material = n.material[0];
     });
-    coin.scale.setScalar(SHARD_SCALE);
-    const a = (i / Math.max(1, n)) * Math.PI * 2 + x;
+    // MEASURE, THEN SCALE. Each coin in the kit is a different mesh at a
+    // different native size, so the span is hit per-model rather than by a
+    // shared factor — the lesson the chests, the crate and the vase each had
+    // to learn separately.
+    let rest = SHARD_REST;
+    if (coinKit) {
+      const bb = new THREE.Box3().setFromObject(coin);
+      const sz = bb.getSize(new THREE.Vector3());
+      const span = Math.max(sz.x, sz.y, sz.z) || 1;
+      coin.scale.setScalar(COIN_SPAN / span);
+      // rest ON the floor: half of whatever the coin's vertical extent
+      // becomes once scaled, never a typed constant
+      rest = Math.max(0.05, (sz.y * (COIN_SPAN / span)) * 0.5);
+    } else {
+      coin.scale.setScalar(SHARD_SCALE);
+    }
+    const a = (i / count) * Math.PI * 2 + x;
     // launch from the REST height, not a hard 0.4 — at 3.4x the rest is
     // 0.68 and a coin starting below it lost most of its arc. The throw is
     // 3.2/3.6, not the 4.2/5.2 that shipped first: those arcs peaked at
@@ -77,7 +142,7 @@ export function spawnShards(world, x, z, n) {
     // shard over your head". Impact speed IS launch speed on flat ground,
     // and three hops need ≥2.8 at the floor, so 3.2 keeps the bounce
     // promise with the apex at chest height instead of overhead.
-    coin.position.set(x, SHARD_REST, z);
+    coin.position.set(x, rest, z);
     world.add(coin);
     world.shards.push({
       mesh: coin,
@@ -86,7 +151,13 @@ export function spawnShards(world, x, z, n) {
       vx: Math.cos(a) * (1.2 + (i % 3) * 0.5),
       vz: Math.sin(a) * (1.2 + (i % 3) * 0.5),
       vy: 3.2 + (i % 2) * 0.4,
-      y: SHARD_REST,
+      y: rest,
+      value: per + (i === 0 ? spare : 0),   // the six of them still add to n
+      // EVERY DROP CARRIES ITS OWN FLOOR. The rest height used to be one
+      // module constant sized for one model, which is why a dropped potion
+      // (spawned at 0.4) snapped up to the coin's 0.68 on its first bounce and
+      // hovered there. Each drop now settles on its own half-height.
+      rest,
       settled: false,
       life: 25,
       // A COIN HAS TO BE SEEN BEFORE IT CAN BE TAKEN.
@@ -166,7 +237,7 @@ export function spawnPotionDrop(world, x, z) {
   world.add(inner);
   world.shards.push({
     mesh: inner, kind: 'potion',
-    x, z, vx: 0, vz: 0, vy: 3.4, y: 0.4,
+    x, z, vx: 0, vz: 0, vy: 3.4, y: 0.4, rest: 0.4,
     settled: false, life: 40, arm: 0.5, taken: false,
   });
   return true;
@@ -348,7 +419,8 @@ export function updateShards(world, dt, t, player) {
       s.z += s.vz * dt;
       s.y += s.vy * dt;
       s.vy -= 12 * dt;
-      if (s.y <= SHARD_REST && s.vy < 0) {
+      const rest = s.rest !== undefined ? s.rest : SHARD_REST;
+      if (s.y <= rest && s.vy < 0) {
         // IT BOUNCES. Dad: "there should also be an animation on that item
         // bounce out on the floor a few times." A coin used to fly one arc and
         // stick to the floor dead, which reads as a sprite being placed rather
@@ -357,7 +429,7 @@ export function updateShards(world, dt, t, player) {
         // three or four times from the spawn arc — and settles once the hop is
         // too small to see. The pickup arm timer is untouched, so the "flies
         // out, lands, THEN is yours" rule above still holds.
-        s.y = SHARD_REST;
+        s.y = rest;
         // 0.5 and 0.7, not 0.45 and 0.9: run the numbers with the spawn arcs
         // above (vy 3 or 4, gravity 12) and the old pair gave HALF the coins
         // exactly two hops — "a few times" was true only for the lucky half.
@@ -395,7 +467,7 @@ export function updateShards(world, dt, t, player) {
         else if (s.hops === 1) audio.play('coin', { volume: 0.16, rate: 2.1, vary: 0.25 });
       }
     } else {
-      s.y = SHARD_REST + Math.sin(t * 3 + s.x * 2) * 0.05;
+      s.y = (s.rest !== undefined ? s.rest : SHARD_REST) + Math.sin(t * 3 + s.x * 2) * 0.05;
     }
     const dx = player.root.position.x - s.x;
     const dz = player.root.position.z - s.z;
@@ -422,8 +494,9 @@ export function updateShards(world, dt, t, player) {
         if (s.kind === 'potion') {
           if (lootEvents.onPotion) lootEvents.onPotion();
         } else {
-          state.shards++;
-          bumpCounter('shardsEarned');
+          const worth = s.value !== undefined ? s.value : 1;
+          state.shards += worth;
+          bumpCounter('shardsEarned', worth);
           audio.play('coin', { volume: 0.35, rate: 1.5, vary: 0.2 });
           if (lootEvents.onShards) lootEvents.onShards();
         }

@@ -54,6 +54,11 @@ const SFX_FILES = {
   'step-grass-2': './assets/audio/sfx/step-grass-2.ogg',
   'chest-open': './assets/audio/sfx/chest-open.ogg',
   coin: './assets/audio/sfx/coin.ogg',
+  // The moment a chest throws its money into the air. coin.ogg is already
+  // handleCoins.ogg from the same pack (checked by hash — the shipped file IS
+  // that file), so the burst is its sibling handleCoins2: a different handful,
+  // not the same chink played louder.
+  'coin-burst': './assets/audio/sfx/coin-burst.ogg',
   'gate-creak': './assets/audio/sfx/gate-creak.ogg',
   // v3.21.3: whoosh was a second copy of puff.ogg. It now has its own —
   // Kenney cloth1: longer (0.68s vs 0.50), brighter and louder, so a dive or a

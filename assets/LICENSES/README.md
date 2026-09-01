@@ -56,3 +56,37 @@ in the build at all. So the largest single licence exposure in the game is a
 pack whose strongest written permission is a friendly sentence in a readme.
 The two Quaternius packs are very likely CC0 — but "very likely" is exactly
 what this folder exists to stop.
+
+## 2026-09-01 — assets supplied by James, and what is known about each
+
+These came in as a batch of downloads rather than from a pack page with a
+licence file next to it, so this records exactly what IS known. Two of them
+need a source link from James before this repo can claim a licence for them;
+the game does not depend on that being resolved, and any of them can be
+removed with one `git rm` and a cache bump.
+
+- **Treasure pack** (`assets/loot/treasure/*`) — coins, gems, keys, a scroll.
+  Shipped as a folder named "Free" with **no licence file and no named
+  author**. Used as the game's currency and chest loot. ACTION: James to
+  confirm the source page so the terms can be recorded here.
+- **`assets/chars/monsters/wyrm.glb`** — the dragon. The glTF asset block
+  carries `"copyright": "bocdagla"`, so the author is at least named, but the
+  download had **no licence file**. ACTION: James to confirm the source page
+  and whether attribution is required; if it is, the credit goes here and in
+  the game's credits.
+- **Jampot 3D Chests (Free)** — shipped a full royalty-free commercial
+  licence, no attribution required. NOT USED: measured at 7,000-9,800
+  triangles with 2 materials and 4 PBR textures each, against the 232-322
+  triangles and single flat texture of the chests already in the game. It is
+  a realistic baked-PBR set and this is a flat-shaded low-poly game; next to
+  `wolf.gltf` they would read as a different product. Its licence also
+  restricts redistribution of the models "on their own", which a public
+  repository sits awkwardly against.
+- **Army / Orc / Skeletons / Wizard character packs** — NOT USED as
+  characters. Every one of the fourteen is rigged but ships **zero animation
+  clips**, and their rigs are Blender Rigify (`hand.L`, `spine.001..006`)
+  where this game's animation library is KayKit (`hand.l`, `spine`, `chest`),
+  so the existing clips cannot simply be retargeted onto them. Shipping them
+  would put unanimated bodies in the world — the exact defect
+  `tools/verify-motion.mjs` exists to catch. Their static weapon props are
+  usable and are considered separately.

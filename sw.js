@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.79.0';
+const CACHE_NAME = 'wolfknight-v3.80.0';
 
 const PRECACHE = [
   './',
@@ -231,6 +231,19 @@ const PRECACHE = [
   // pieces sharing one 27KB colormap, which the GLBs reference by relative URI,
   // so the texture MUST be cached alongside them or the whole set renders white.
   './assets/audio/music/title.ogg',
+  './assets/audio/sfx/coin-burst.ogg',
+  // The struck coins that replaced the stamped disc as the game's currency,
+  // plus the treasure that shares their one embedded texture set.
+  './assets/loot/treasure/coin-gold-a.glb',
+  './assets/loot/treasure/coin-gold-b.glb',
+  './assets/loot/treasure/coin-gold-c.glb',
+  './assets/loot/treasure/coin-mega.glb',
+  './assets/loot/treasure/gem-emerald.glb',
+  './assets/loot/treasure/gem-diamond.glb',
+  './assets/loot/treasure/gem-topaz.glb',
+  './assets/loot/treasure/key-gold.glb',
+  './assets/loot/treasure/key-skeleton.glb',
+  './assets/loot/treasure/scroll-sealed.glb',
   './assets/env/cave/gate-rock.glb',
   './assets/env/cave/gate-overhang.glb',
   './assets/env/cave/ladder.glb',

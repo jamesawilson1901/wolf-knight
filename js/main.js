@@ -206,9 +206,10 @@ async function preloadHudArt() {
     hudArt.potion = await meshThumb(renderer, 'hud-potion', group);
   } catch (e) { console.warn('[hud] no potion art', e); }
   try {
-    // the same gold the coin carries in the world (js/loot.js SHARD tinting),
-    // so the counter and the thing on the floor are the same object
-    hudArt.shard = await itemThumb(renderer, { file: './assets/loot/platformer/coin.glb', tint: 0xffc843 });
+    // the same coin that flies out of a chest, at the same gold — the counter
+    // and the thing on the floor have to be the same object, so this follows
+    // js/loot.js's kit rather than keeping a picture of the disc it replaced
+    hudArt.shard = await itemThumb(renderer, { file: './assets/loot/treasure/coin-gold-a.glb', tint: 0xffc843 });
   } catch (e) { console.warn('[hud] no shard art', e); }
   try {
     // A wolf is not a sword: the default weapon framing (tilted, whatever way
