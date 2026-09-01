@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.82.0';
+const CACHE_NAME = 'wolfknight-v3.83.0';
 
 const PRECACHE = [
   './',
@@ -197,6 +197,12 @@ const PRECACHE = [
   './assets/chars/monsters/Bat.glb',
   './assets/chars/monsters/Dragon.glb',
   './assets/chars/monsters/wyrm.glb',
+  // spoil: weapons off the packs whose characters could not be animated
+  './assets/gear/sword_legion.glb',
+  './assets/gear/spear_legion.glb',
+  './assets/gear/cleaver_orc.glb',
+  './assets/gear/staff_bone.glb',
+  './assets/gear/shield_tower_iron.glb',
   './assets/chars/monsters/dodo.glb',
   './assets/env/mushroom-group.glb',
   './assets/env/mushroom-tall.glb',

@@ -117,6 +117,39 @@ export const WEAPONS = {
     dmg: 3.4, lock: 0.85, range: 1.9, price: 420, arc: 82, stun: 0.9, element: 'earth',
     blurb: 'The ground itself complains.',
   },
+  // ---- TAKEN OFF WHAT YOU BEAT (2026-09-01) --------------------------------
+  //
+  // Four weapons out of the packs James sent, from the same downloads whose
+  // CHARACTERS could not be used (rigged, but shipped with zero animation
+  // clips — see assets/LICENSES/README.md). A weapon needs no rig, so the
+  // props are usable where the bodies were not.
+  //
+  // They are darker and more angular than the KayKit gear beside them, which
+  // is why they are cast as SPOIL rather than shop stock: a legionary's sword,
+  // an orc's cleaver, a bone staff. Rendered side by side with the existing
+  // five before any of them was wired (scratchpad/gearcmp.mjs) — the two that
+  // did not hold up next to sword_1handed were dropped rather than tinted into
+  // pretending.
+  sword_legion: {
+    name: 'Legion Blade', icon: '🗡️', file: './assets/gear/sword_legion.glb',
+    dmg: 1.6, lock: 0.56, range: 2.1, price: 190, arc: 70,
+    blurb: 'Carried by someone who is not carrying it any more.',
+  },
+  spear_legion: {
+    name: 'Legion Pike', icon: '🥢', file: './assets/gear/spear_legion.glb',
+    dmg: 1.4, lock: 0.58, range: 3.0, price: 240, arc: 34,
+    blurb: 'Keeps them at arm’s length. And then some.',
+  },
+  cleaver_orc: {
+    name: 'Iron Cleaver', icon: '🪓', file: './assets/gear/cleaver_orc.glb',
+    dmg: 2.6, lock: 0.78, range: 1.9, price: 350, arc: 84, stun: 0.45,
+    blurb: 'Heavy, slow, and it does NOT stop.',
+  },
+  staff_bone: {
+    name: 'Bonecap Staff', icon: '🪄', file: './assets/gear/staff_bone.glb',
+    dmg: 1.3, lock: 0.5, range: 2.7, price: 260, arc: 62, stun: 0.55,
+    blurb: 'Something rattles inside the top of it.',
+  },
 };
 
 export const SHIELDS = {
@@ -144,6 +177,11 @@ export const SHIELDS = {
     name: 'Moonguard', icon: '🌙', file: './assets/gear/shield_B.gltf', tint: 0xbfa8ff,
     blunt: 0.3, parryBonus: 0.18, price: 340,
     blurb: 'It KNOWS when to catch a blow.',
+  },
+  shield_iron: {
+    name: 'Iron Wall', icon: '🛡️', file: './assets/gear/shield_tower_iron.glb',
+    blunt: 0.2, parryBonus: 0, price: 300,
+    blurb: 'Nothing gets past. Nothing.',
   },
 };
 
