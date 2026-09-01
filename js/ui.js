@@ -128,7 +128,10 @@ export class UI {
   refreshBadge() {
     const meta = FORM_META[state.form];
     this.badge.textContent = meta.icon;
-    this.badge.style.background = meta.color;
+    // the rim, not the fill — see #form-badge in index.html
+    this.badge.style.borderColor = meta.color;
+    this.badge.style.boxShadow =
+      `0 2px 8px rgba(0,0,0,.45), inset 0 0 14px ${meta.color}55`;
     // the switch FLOURISH: the badge pops with every transformation
     this.badge.classList.remove('switched');
     void this.badge.offsetWidth;
@@ -139,8 +142,24 @@ export class UI {
     const hasSpecial = state.form !== 'dark_wolf'; // every form but the moon-powered wolf
     this.specialBtn.style.display = 'flex';
     this.specialBtn.classList.toggle('disabled', !hasSpecial);
-    this.specialIcon.textContent =
-      { knight: '🌀', fire_wolf: '🔥', earth_wolf: '🪨', verdant_wolf: '🌿', frost_wolf: '❄️', storm_wolf: '🌩️', tide_wolf: '🌊', ghost_wolf: '👻', elemental_wolf: '✨' }[state.form] || '🌙';
+    // THE SPECIAL BUTTON SAYS "POWER", AND ITS COLOUR SAYS WHICH.
+    //
+    // This used to swap between nine element emoji — a flame, a leaf, a
+    // snowflake — which is the one thing dad asked to be rid of on this side
+    // of the screen, and no icon pack has a fantasy-element set to replace
+    // them with (Kenney's three icon packs were checked: arrows, fists and
+    // kicks). So the glyph stays put and the COLOUR carries the element,
+    // which the form badge beside it is already teaching. One shape to learn,
+    // eight colours to recognise, nothing borrowed from a system font.
+    // The glyph stays bright on its dark plate; the form's colour rides the
+    // RIM, so which power you hold is legible without dimming the thing you
+    // have to hit. (Knight's grey on plum was near-invisible when the colour
+    // was on the glyph itself.)
+    const sm = FORM_META[state.form];
+    if (sm) {
+      this.specialIcon.style.backgroundColor = '#f0e8ff';
+      this.specialBtn.style.borderColor = sm.color;
+    }
     // The moon gauge is the DARK WOLF's power — no other form shows the
     // button (v3.18 playtest law; the gauge still fills quietly underneath)
     this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');

@@ -77,6 +77,18 @@ await page.evaluate(() => {
 // (2026-08-31: it false-failed once on `btn-attack ∩ form-badge`, passed on the
 // re-run, and cost a stash-and-bisect to clear). Wait for the geometry to stop
 // moving instead of guessing how long that takes.
+// ASK THE BROWSER WHEN IT HAS STOPPED ANIMATING, then confirm it held still.
+//
+// Polling for a stable width was not enough on its own: the poll can settle on
+// eight identical readings BEFORE the reveal animation has started, and then
+// the measurement lands mid-pop anyway (2026-09-01: form-badge measured 79px
+// against a resting 60px and "overlapped" btn-attack, twice, on a change that
+// moved neither of them). getAnimations() is the browser's own answer to "is
+// anything still moving", so wait on that first and keep the stability poll as
+// the belt to its braces.
+await page.waitForFunction(
+  () => document.getAnimations().every((a) => a.playState !== 'running'),
+  null, { timeout: 15000, polling: 50 }).catch(() => {});
 await page.waitForFunction(() => {
   const ids = ['btn-ranged', 'btn-defend', 'btn-jump', 'form-badge', 'special-btn', 'btn-attack'];
   const now = ids.map((id) => {
@@ -87,7 +99,7 @@ await page.waitForFunction(() => {
   if (now === stable.last) stable.n++; else { stable.last = now; stable.n = 0; }
   return stable.n >= 8;          // ~8 consecutive rAF-ish polls with no change
 }, null, { timeout: 15000, polling: 50 });
-await page.waitForTimeout(150);  // one more beat, so nothing is measured on the last frame of a transition
+await page.waitForTimeout(250);  // one more beat, so nothing is measured on the last frame of a transition
 
 console.log(`\nDevice model: 780x360 CSS landscape, 1 CSS px = ${CM_PER_CSS_PX.toFixed(5)} cm`);
 console.log(`Hard floor: ${FLOOR_PX} CSS px = ${(FLOOR_PX * CM_PER_CSS_PX).toFixed(2)} cm`);

@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.80.0';
+const CACHE_NAME = 'wolfknight-v3.81.0';
 
 const PRECACHE = [
   './',
@@ -232,6 +232,13 @@ const PRECACHE = [
   // so the texture MUST be cached alongside them or the whole set renders white.
   './assets/audio/music/title.ogg',
   './assets/audio/sfx/coin-burst.ogg',
+  // Kenney Mobile Controls (CC0) — the thumb buttons' glyphs, used as CSS
+  // masks so they wear the game's own colours.
+  './assets/ui/controls/sword.png',
+  './assets/ui/controls/shield.png',
+  './assets/ui/controls/jump.png',
+  './assets/ui/controls/burst.png',
+  './assets/ui/controls/star.png',
   // The struck coins that replaced the stamped disc as the game's currency,
   // plus the treasure that shares their one embedded texture set.
   './assets/loot/treasure/coin-gold-a.glb',
