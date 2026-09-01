@@ -2030,8 +2030,17 @@ async function start() {
   })().catch((e) => console.warn('title scene skipped:', e));
 
   document.body.classList.add('titling'); // no gameplay HUD over the title
+  // THE LOBBY. The title screen turned its campfire in silence — the one
+  // screen every session starts on, and the only one with nothing to listen
+  // to. Asked for, not inferred: the browser will not let this sound until the
+  // first gesture (autoplay policy), so it starts as soon as the audio context
+  // unlocks and js/audio.js's own `_wantMusic` carries the intent until then.
+  audio.playMusic('title');
   const { profile, save } = await showTitle();
   document.body.classList.remove('titling');
+  // ...and hands straight over: loadRoom() picks the region theme on arrival,
+  // and crossfading out of the lobby here means no gap and no double track.
+  audio.stopMusic();
   renderer.setAnimationLoop(null); // hand the renderer back to the game
   if (titleScene) { titleScene.dispose(); titleScene = null; }
   document.getElementById('title').classList.remove('live');

@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.78.3';
+const CACHE_NAME = 'wolfknight-v3.79.0';
 
 const PRECACHE = [
   './',
@@ -227,6 +227,17 @@ const PRECACHE = [
   './vendor/addons/loaders/GLTFLoader.js',
   './vendor/addons/utils/BufferGeometryUtils.js',
   './vendor/addons/utils/SkeletonUtils.js',
+  // Kenney Modular Cave Kit (CC0) — the rock Stoneroot is dug through. Eight
+  // pieces sharing one 27KB colormap, which the GLBs reference by relative URI,
+  // so the texture MUST be cached alongside them or the whole set renders white.
+  './assets/audio/music/title.ogg',
+  './assets/env/cave/gate-rock.glb',
+  './assets/env/cave/gate-overhang.glb',
+  './assets/env/cave/ladder.glb',
+  './assets/env/cave/template-detail.glb',
+  './assets/env/cave/template-wall-detail-a.glb',
+  './assets/env/cave/template-wall-half.glb',
+  './assets/env/cave/Textures/colormap.png',
   './assets/env/floor-tile.glb',
   './assets/env/rock-large-a.glb',
   './assets/env/rock-large-b.glb',

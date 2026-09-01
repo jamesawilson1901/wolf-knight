@@ -110,9 +110,11 @@
     #pause-btn {
       position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
       width: 60px; height: 60px; border-radius: 16px;
-      background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
+      background: linear-gradient(rgba(42,32,54,.9), rgba(27,21,38,.9));
+      border: 2px solid var(--brass); color: var(--gold);
       display: flex; align-items: center; justify-content: center;
-      font-size: 42px; color: #e8ddd0; touch-action: none;
+      box-shadow: inset 0 1px 0 rgba(255,215,106,.16);
+      touch-action: none;
     }
     #pause-menu {
       position: fixed; inset: 0; z-index: 15; display: none;
@@ -124,8 +126,9 @@
     #cheat-btn {
       margin-top: 8px; width: 60px; height: 60px; border-radius: 16px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 42px; opacity: .35;
+      color: var(--gold); opacity: .35;
     }
+    #cheat-btn .ico { width: 34px; height: 34px; }
     /* The pause menu SCROLLS on touch: its buttons/rows must allow vertical
        pans (touch-action:none on .menu-btn was eating every drag, which made
        anything below the fold — the 🎮 included — unreachable on phones). */
@@ -184,18 +187,60 @@
     #pause-close {
       position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
       z-index: 16; width: 52px; height: 52px; border-radius: 50%;
-      background: rgba(232,221,208,.16); border: 2px solid rgba(232,221,208,.5);
+      background: linear-gradient(var(--stone-a), var(--stone-b));
+      border: 2px solid var(--brass); color: var(--gold);
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; font-weight: 800; color: #e8ddd0; touch-action: none;
+      touch-action: none;
+    }
+    #pause-close .ico { width: 22px; height: 22px; }
+    /* ONE THEME, NOT THREE.
+       The Armoury settled what this game's menus look like — cut plum stone,
+       a brass edge, gold lettering — and the pause menu was still wearing the
+       lilac-and-white buttons it shipped with in v1, next to emoji labels. A
+       child moving from one to the other saw two different products. These
+       tokens are the Armoury's own values, lifted so the two screens cannot
+       drift apart again. */
+    :root {
+      --ink: #1b1526;            /* deepest plum, the ground under everything */
+      --stone-a: #2a2036;        /* panel top */
+      --stone-b: #1b1526;        /* panel bottom */
+      --brass: #6b5533;          /* the edge on every panel */
+      --brass-dim: #5a4830;
+      --gold: #ffd76a;           /* headings, icons, the thing you press */
+      --cream: #ffe9c8;          /* body text on a panel */
+      --muted: #b9a88a;          /* labels above a value */
+    }
+    .ico {
+      width: 1.15em; height: 1.15em; flex: 0 0 auto;
+      fill: currentColor; vertical-align: -.18em; pointer-events: none;
     }
     .menu-btn {
-      min-width: 220px; padding: 16px 30px; border-radius: 16px;
-      background: #6b56a8; color: #fff; font-size: 22px; font-weight: 700;
-      text-align: center; border: 3px solid rgba(255,255,255,.35);
-      box-shadow: 0 4px 16px rgba(0,0,0,.4); touch-action: none;
+      min-width: 220px; padding: 14px 26px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: linear-gradient(var(--stone-a), var(--stone-b));
+      color: var(--gold); font-size: 21px; font-weight: 800;
+      letter-spacing: .02em; text-align: center;
+      border: 2px solid var(--brass);
+      box-shadow: 0 4px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,215,106,.14);
+      touch-action: none;
     }
-    .menu-btn.secondary { background: #4a3f5c; }
-    #pause-title { color: #e8ddd0; font-size: 30px; font-weight: 800; letter-spacing: .04em; }
+    /* The one button that is the ANSWER to the screen gets the gold fill — the
+       same weight the Armoury's Done carries, so "the lit one is the way out"
+       is a rule a child learns once and it holds everywhere. */
+    .menu-btn.primary {
+      background: linear-gradient(#4a3a1c, #2e2413);
+      border-color: var(--gold); color: var(--gold);
+    }
+    .menu-btn.secondary {
+      min-width: 200px; padding: 11px 22px; font-size: 18px;
+      color: var(--cream); border-color: var(--brass-dim);
+    }
+    .menu-btn .ico { color: var(--gold); }
+    #pause-title {
+      color: var(--gold); font-size: 27px; font-weight: 900;
+      letter-spacing: .14em; text-transform: uppercase;
+      border-bottom: 1px solid var(--brass); padding: 0 18px 6px;
+    }
     #saved-toast {
       position: fixed; left: 50%; top: 64px; transform: translateX(-50%);
       z-index: 9; padding: 8px 18px; border-radius: 20px;
@@ -213,12 +258,19 @@
     #caption.show { pointer-events: auto; cursor: pointer; }
     #caption.show::after { content: '  ▸'; opacity: .6; }
     #voice-pick { min-width: 128px; padding: 8px 12px; font-size: 15px; margin: 0; }
+    /* A settings row is a plank on the same shelf as everything else: dark
+       inset, brass hairline, gold icon, cream label. */
     .setting-row {
-      display: flex; align-items: center; gap: 14px; color: #e8ddd0;
-      font-size: 18px; font-weight: 600; min-width: 270px; justify-content: space-between;
+      display: flex; align-items: center; gap: 14px; color: var(--cream);
+      font-size: 17px; font-weight: 700; min-width: 300px; justify-content: space-between;
+      background: rgba(0,0,0,.3); border: 1px solid var(--brass-dim);
+      border-radius: 10px; padding: 7px 12px;
     }
-    .setting-row input[type=range] { width: 140px; accent-color: #ff8a3a; }
-    .setting-row input[type=checkbox] { width: 22px; height: 22px; accent-color: #ff8a3a; }
+    .setting-row > span { display: flex; align-items: center; gap: 9px; }
+    .setting-row .ico { color: var(--gold); width: 20px; height: 20px; }
+    .setting-row input[type=range] { width: 132px; accent-color: var(--gold); }
+    .setting-row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--gold); }
+    .setting-row .menu-btn.secondary { min-width: 108px; padding: 6px 14px; font-size: 15px; }
     #title {
       position: fixed; inset: 0; z-index: 20; display: none;
       flex-direction: column; align-items: center; justify-content: center; gap: 22px;
@@ -463,10 +515,13 @@
     #inv-btn {
       position: fixed; right: calc(78px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
       width: 60px; height: 60px; border-radius: 16px;
-      background: rgba(232,221,208,.14); border: 2px solid rgba(232,221,208,.4);
+      background: linear-gradient(rgba(42,32,54,.9), rgba(27,21,38,.9));
+      border: 2px solid var(--brass); color: var(--gold);
       display: flex; align-items: center; justify-content: center;
-      font-size: 42px; touch-action: none;
+      box-shadow: inset 0 1px 0 rgba(255,215,106,.16);
+      touch-action: none;
     }
+    #inv-btn .ico, #pause-btn .ico { width: 34px; height: 34px; }
     .panel {
       position: fixed; inset: 0; z-index: 16; display: none;
       flex-direction: column; align-items: center; justify-content: safe center; gap: 12px;
@@ -803,6 +858,103 @@
   </script>
 </head>
 <body>
+  <!-- THE ICON SET.
+       Every glyph the HUD and the pause menu used to borrow from the system
+       emoji font, drawn instead — one 24x24 sprite, `fill: currentColor`, so
+       CSS colours them and nothing depends on which emoji font a device
+       happens to ship. Emoji were the last thing on these screens that did not
+       look like it came from this game: a system backpack next to the
+       Armoury's gold plate reads as two products. They are drawn CHUNKY and
+       solid rather than as thin line art, to sit at the same weight as the
+       game's low-poly models and the Armoury's gauges.
+       Kenney's Game Icons pack was checked first and has none of these — it is
+       a UI-control set (buttons, arrows, gamepad legends), no objects. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+    <symbol id="ico-pack" viewBox="0 0 24 24">
+      <!-- the two shoulder straps loop over the top; drawn first so the body
+           covers where they meet it, which is what makes them read as STRAPS
+           and not as two aerials sticking out of a tin -->
+      <path d="M7.4 7.4a4.6 4.6 0 0 1 4.6-4.6 4.6 4.6 0 0 1 4.6 4.6h-2.5A2.1 2.1 0 0 0 12 5.3a2.1 2.1 0 0 0-2.1 2.1Z"/>
+      <path d="M6.6 6.6h10.8a4.6 4.6 0 0 1 4.6 4.6V18a3.4 3.4 0 0 1-3.4 3.4H4.4A3.4 3.4 0 0 1 1 18v-6.8a4.6 4.6 0 0 1 4.6-4.6Z"/>
+      <!-- the flap and the front pocket, knocked OUT of the body: at 34px a
+           drawn line disappears, a cut does not -->
+      <path d="M2.6 11.6h18.8v1.8H2.6Z" fill="#1b1526"/>
+      <path d="M8.4 15.4h7.2v6h-7.2Z" fill="#1b1526"/>
+      <path d="M10.2 17.1h3.6v1.7h-3.6Z"/>
+      <path d="M10.9 8.4h2.2v3.2h-2.2Z" fill="#1b1526"/>
+    </symbol>
+    <symbol id="ico-pause" viewBox="0 0 24 24">
+      <rect x="6" y="4" width="4.2" height="16" rx="1.6"/><rect x="13.8" y="4" width="4.2" height="16" rx="1.6"/>
+    </symbol>
+    <symbol id="ico-play" viewBox="0 0 24 24">
+      <path d="M8 5.4a1.4 1.4 0 0 1 2.1-1.2l8.2 6.6a1.4 1.4 0 0 1 0 2.4l-8.2 6.6A1.4 1.4 0 0 1 8 18.6V5.4Z"/>
+    </symbol>
+    <symbol id="ico-close" viewBox="0 0 24 24">
+      <path d="M6.4 4.3 12 9.9l5.6-5.6 2.1 2.1L14.1 12l5.6 5.6-2.1 2.1L12 14.1l-5.6 5.6-2.1-2.1L9.9 12 4.3 6.4Z"/>
+    </symbol>
+    <symbol id="ico-map" viewBox="0 0 24 24">
+      <path d="M9 3 3 5.4v15.2L9 18l6 3 6-2.4V3.4L15 6ZM9 5.6 15 8.4v10L9 15.6Z"/>
+      <circle cx="18" cy="9" r="1.6"/>
+    </symbol>
+    <symbol id="ico-seal" viewBox="0 0 24 24">
+      <path d="M12 2.2 14.5 6l4.4.7-2.2 3.8 2.2 3.8-4.4.7L12 18.8 9.5 15l-4.4-.7 2.2-3.8L5.1 6.7 9.5 6Z"/>
+      <path d="M9.4 17.2 7.6 22l4.4-1.9L16.4 22l-1.8-4.8-2.6 1.4Z"/>
+    </symbol>
+    <symbol id="ico-keep" viewBox="0 0 24 24">
+      <path d="M3 9h3V5h2.6v4h6.8V5H18v4h3v12h-6.2v-5.2H9.2V21H3Z"/>
+      <path d="M11 2h2v3h-2Z"/>
+    </symbol>
+    <symbol id="ico-music" viewBox="0 0 24 24">
+      <path d="M19 3v11.2a3.6 3.6 0 1 1-2.4-3.4V6.9L10 8.4v9a3.6 3.6 0 1 1-2.4-3.4V6.5Z"/>
+    </symbol>
+    <symbol id="ico-bell" viewBox="0 0 24 24">
+      <path d="M12 2a2 2 0 0 1 2 2v.6a6.4 6.4 0 0 1 4.4 6.1V15l1.8 2.6V19H3.8v-1.4L5.6 15v-4.3A6.4 6.4 0 0 1 10 4.6V4a2 2 0 0 1 2-2Z"/>
+      <path d="M9.4 20.4h5.2a2.6 2.6 0 0 1-5.2 0Z"/>
+    </symbol>
+    <symbol id="ico-fox" viewBox="0 0 24 24">
+      <!-- A FOX, NOT A CAT. The first attempt was a wide round face with two
+           big triangles on it, which at 20px is unmistakably a cat. What makes
+           a fox read at icon size is the TAPER: a broad brow narrowing to a
+           long pointed snout, with the ears set wide and swept back. -->
+      <path d="M2.6 2.8 7.9 8h8.2l5.3-5.2-.6 7.1c-.4 2-1.5 3.6-3.1 4.8L12 21.6l-5.7-6.9c-1.6-1.2-2.7-2.8-3.1-4.8Z"/>
+      <path d="m12 21.6-2.7-3.3a10 10 0 0 0 5.4 0Z"/>
+      <circle cx="8.9" cy="11.4" r="1.35" fill="#1b1526"/>
+      <circle cx="15.1" cy="11.4" r="1.35" fill="#1b1526"/>
+      <path d="M12 15.1 10.5 16.4 12 17.9l1.5-1.5Z" fill="#1b1526"/>
+    </symbol>
+    <symbol id="ico-caption" viewBox="0 0 24 24">
+      <path d="M3 4.6h18v13H12.9L8 21.4v-3.8H3Z"/>
+      <path d="M6 8.4h12v1.8H6Zm0 3.6h8.4v1.8H6Z" fill="#1b1526"/>
+    </symbol>
+    <symbol id="ico-voice" viewBox="0 0 24 24">
+      <path d="M12 2.6a3.2 3.2 0 0 1 3.2 3.2v6a3.2 3.2 0 0 1-6.4 0v-6A3.2 3.2 0 0 1 12 2.6Z"/>
+      <path d="M5.6 11.2h2.2a4.2 4.2 0 0 0 8.4 0h2.2a6.4 6.4 0 0 1-5.3 6.3v3.9h-2.2v-3.9a6.4 6.4 0 0 1-5.3-6.3Z"/>
+    </symbol>
+    <symbol id="ico-speaker" viewBox="0 0 24 24">
+      <path d="M4 9h3.6L12 4.6v14.8L7.6 15H4Z"/>
+      <path d="M15 8.4a5 5 0 0 1 0 7.2l1.6 1.6a7.2 7.2 0 0 0 0-10.4Zm3.2-3.2a9.6 9.6 0 0 1 0 13.6l1.6 1.6a11.8 11.8 0 0 0 0-16.8Z"/>
+    </symbol>
+    <symbol id="ico-speed" viewBox="0 0 24 24">
+      <path d="M4.6 6.6 10 12l-5.4 5.4L2.5 15.3 5.8 12 2.5 8.7Zm7.6 0L17.6 12l-5.4 5.4-2.1-2.1L13.4 12l-3.3-3.3Zm7.6 0L22 8.7 18.7 12 22 15.3l-2.2 2.1L14.4 12Z"/>
+    </symbol>
+    <symbol id="ico-motion" viewBox="0 0 24 24">
+      <path d="M12 4.2a7.8 7.8 0 0 1 7.5 5.7h-2.4A5.5 5.5 0 0 0 12 6.5V9L7.6 5.6 12 2.2Z"/>
+      <path d="M12 19.8a7.8 7.8 0 0 1-7.5-5.7h2.4A5.5 5.5 0 0 0 12 17.5V15l4.4 3.4L12 21.8Z"/>
+    </symbol>
+    <symbol id="ico-heart" viewBox="0 0 24 24">
+      <path d="M12 20.6 4.2 13.2A5 5 0 0 1 12 6.8a5 5 0 0 1 7.8 6.4Z"/>
+    </symbol>
+    <symbol id="ico-brave" viewBox="0 0 24 24">
+      <path d="M12 2.4 20.4 6v6.2c0 4.5-3.4 8-8.4 9.4-5-1.4-8.4-4.9-8.4-9.4V6Z"/>
+      <path d="m12 6.6 1.7 3.6 3.9.5-2.9 2.7.8 3.9L12 15.4 8.5 17.3l.8-3.9-2.9-2.7 3.9-.5Z" fill="#1b1526"/>
+    </symbol>
+    <symbol id="ico-pad" viewBox="0 0 24 24">
+      <path d="M7.4 5.6h9.2a5.4 5.4 0 0 1 5.3 6.4l-.9 4.8a2.8 2.8 0 0 1-5.1 1l-1.1-1.8H9.2l-1.1 1.8a2.8 2.8 0 0 1-5.1-1l-.9-4.8a5.4 5.4 0 0 1 5.3-6.4Z"/>
+      <path d="M6 9.2h1.9v1.7h1.7v1.9H7.9v1.7H6v-1.7H4.3v-1.9H6Z" fill="#1b1526"/>
+      <circle cx="16.4" cy="10.6" r="1.3" fill="#1b1526"/><circle cx="18.8" cy="13" r="1.3" fill="#1b1526"/>
+    </symbol>
+  </defs></svg>
+
   <canvas id="game"></canvas>
 
   <div id="loading" class="overlay">
@@ -822,33 +974,33 @@
 
   <div id="hearts"></div>
   <div id="pups">🐺 0/3</div>
-  <div id="pause-btn" class="ui">⏸</div>
+  <div id="pause-btn" class="ui"><svg class="ico"><use href="#ico-pause"/></svg></div>
   <div id="pause-menu" class="ui">
-    <div id="pause-close" class="ui">✕</div>
+    <div id="pause-close" class="ui"><svg class="ico"><use href="#ico-close"/></svg></div>
     <div id="pause-title">Paused</div>
-    <div class="menu-btn ui" id="resume-btn">▶ Keep Playing</div>
-    <div class="setting-row ui"><span>🎵 Music</span><input type="range" id="music-vol" min="0" max="1" step="0.05"></div>
-    <div class="setting-row ui"><span>🔔 Sounds</span><input type="range" id="sfx-vol" min="0" max="1" step="0.05"></div>
-    <div class="setting-row ui"><span>🦊 Pip talks</span><input type="checkbox" id="talk-toggle"></div>
-    <div class="setting-row ui"><span>💬 Captions</span><input type="checkbox" id="captions-toggle"></div>
-    <div class="setting-row ui"><span>🗣️ Voice</span><input type="checkbox" id="voice-toggle"></div>
+    <div class="menu-btn primary ui" id="resume-btn"><svg class="ico"><use href="#ico-play"/></svg>Keep Playing</div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-music"/></svg>Music</span><input type="range" id="music-vol" min="0" max="1" step="0.05"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-bell"/></svg>Sounds</span><input type="range" id="sfx-vol" min="0" max="1" step="0.05"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-fox"/></svg>Pip talks</span><input type="checkbox" id="talk-toggle"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-caption"/></svg>Captions</span><input type="checkbox" id="captions-toggle"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-voice"/></svg>Voice</span><input type="checkbox" id="voice-toggle"></div>
     <!-- CHOOSE THE VOICE BY EAR. A dropdown of device voice names is unreadable
          to a seven-year-old (they are strings like "Microsoft Libby Online
          (Natural) - English (United Kingdom)"), so this is one big button that
          steps to the next voice and immediately SPEAKS with it. Hidden when the
          device has no speech synthesis. -->
     <div class="setting-row ui" id="voice-pick-row">
-      <span>🔊 Which voice?</span>
+      <span><svg class="ico"><use href="#ico-speaker"/></svg>Which voice?</span>
       <div class="menu-btn secondary ui" id="voice-pick">Pip ▸</div>
     </div>
-    <div class="setting-row ui"><span>🐢 Talk speed</span><input type="range" id="voice-rate" min="0.6" max="1.2" step="0.05"></div>
-    <div class="setting-row ui"><span>🎥 Reduce motion</span><input type="checkbox" id="reduce-motion-toggle"></div>
-    <div class="setting-row ui"><span>🌸 Gentle mode</span><input type="checkbox" id="gentle-toggle"></div>
-    <div class="setting-row ui"><span>🦁 Brave mode</span><input type="checkbox" id="brave-toggle"></div>
-    <div class="menu-btn secondary ui" id="map-btn">🗺️ Map</div>
-    <div class="menu-btn secondary ui" id="sticker-btn">📒 Stickers</div>
-    <div class="menu-btn secondary ui" id="title-btn">🏠 Title</div>
-    <div id="cheat-btn" class="ui">🎮</div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-speed"/></svg>Talk speed</span><input type="range" id="voice-rate" min="0.6" max="1.2" step="0.05"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-motion"/></svg>Reduce motion</span><input type="checkbox" id="reduce-motion-toggle"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-heart"/></svg>Gentle mode</span><input type="checkbox" id="gentle-toggle"></div>
+    <div class="setting-row ui"><span><svg class="ico"><use href="#ico-brave"/></svg>Brave mode</span><input type="checkbox" id="brave-toggle"></div>
+    <div class="menu-btn secondary ui" id="map-btn"><svg class="ico"><use href="#ico-map"/></svg>Map</div>
+    <div class="menu-btn secondary ui" id="sticker-btn"><svg class="ico"><use href="#ico-seal"/></svg>Stickers</div>
+    <div class="menu-btn secondary ui" id="title-btn"><svg class="ico"><use href="#ico-keep"/></svg>Title</div>
+    <div id="cheat-btn" class="ui"><svg class="ico"><use href="#ico-pad"/></svg></div>
   </div>
   <div id="cheat-pad">
     <div id="cheat-close" class="ui">✕</div>
@@ -948,7 +1100,7 @@
   <div id="shards">🔸 0</div>
   <div id="level-badge">Lv 1<div id="xp-bar"><div id="xp-fill"></div></div></div>
   <div id="buffs"></div>
-  <div id="inv-btn" class="ui">🎒</div>
+  <div id="inv-btn" class="ui"><svg class="ico"><use href="#ico-pack"/></svg></div>
   <div id="inv-menu" class="panel"></div>
   <div id="shop-menu" class="panel"></div>
   <div id="perk-menu" class="panel"></div>
@@ -958,7 +1110,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.78.3</div>
+  <div id="badge">Wolf Knight &middot; v3.79.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

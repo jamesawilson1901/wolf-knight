@@ -89,6 +89,17 @@ const MUSIC_FILES = {
   shadowcourt: './assets/audio/music/shadowcourt.ogg',
   'village-dark': './assets/audio/music/village-dark.ogg',
   spire: './assets/audio/music/spire.ogg',
+  // THE TITLE SCREEN HAD NO MUSIC AT ALL — a campfire diorama turning in
+  // silence while a child picked a profile. This is HydroGene's "long journey"
+  // (same 16-bit RPG pack the rest of the game's music comes from, licence
+  // already on disk), chosen against the others by decoded-audio character the
+  // way the six region themes were: at 0.31 onsets/sec and dyn 0.13 it is the
+  // CALMEST and steadiest thing in the pack, and its rms 0.119 / zcr 3.59 sit
+  // in the same warm band as the Den's own theme (0.114 / 3.38) — so it sounds
+  // like this game rather than like a track borrowed from another one. Kenney's
+  // Music Loops were checked first and are cartoon polka/comedy: wrong genre.
+  // Re-point this one line at any other file to change it; nothing else knows.
+  title: './assets/audio/music/title.ogg',
 };
 
 // PER-TRACK TRIM. The vendored themes were not mastered against each other:
@@ -251,7 +262,13 @@ class AudioSystem {
       buf = await this._buffer(url);
       if (opts.intro) introBuf = await this._buffer(MUSIC_FILES[opts.intro]);
     } catch (e) { return; }
-    if (this._wantMusic.name !== name) return; // superseded while decoding
+    // SUPERSEDED — OR STOPPED. `stopMusic()` sets _wantMusic to null, so a
+    // decode still in flight when the music is stopped used to dereference it
+    // and throw. Latent since this function was written; the title-screen
+    // lobby track is simply the first path that reliably plays and then stops
+    // inside the few seconds a decode takes, and window.__errors (added
+    // yesterday) caught it as an unhandled rejection the first time it ran.
+    if (!this._wantMusic || this._wantMusic.name !== name) return;
 
     // fade the old track out
     const t = this.ctx.currentTime;

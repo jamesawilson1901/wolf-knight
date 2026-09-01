@@ -198,6 +198,25 @@ export async function loadCaveKit() {
     logStack:'./assets/env/log-stack.glb',                 // Kenney Nature 🟢
     horse:   './assets/env/dungeon/Statue_Horse.glb',
     archDoorB:'./assets/env/dungeon/Arch_Door.glb',
+    // --- THE CAVE ITSELF ----------------------------------------------------
+    // Stoneroot is the region most obviously built out of generic blocks: its
+    // walls are the same fitted masonry as everywhere else, and nothing in the
+    // room says CAVE. These eight are Kenney's Modular Cave Kit (CC0, licence
+    // already staged) — the only pieces of its forty that work as PROPS rather
+    // than as a room shell, which this game does not use. All eight share one
+    // 27KB colormap, so the whole set costs less than a single dungeon arch.
+    caveArch:   './assets/env/cave/gate-rock.glb',              // Kenney Cave 🟢
+    caveLintel: './assets/env/cave/gate-overhang.glb',
+    caveLadder: './assets/env/cave/ladder.glb',
+    caveSpur:   './assets/env/cave/template-detail.glb',        // rock formation
+    caveBulge:  './assets/env/cave/template-wall-detail-a.glb', // wall face
+    caveChunk:  './assets/env/cave/template-wall-half.glb',
+    // The kit's two FLOOR pieces are not here on purpose. They are 0.1 units
+    // tall, and laid on this game's flat deck they read as dark patches in the
+    // floor — holes, not rubble — worst of all in the Glimmerway, where the
+    // room is pale ice and every one of them looked like something a child had
+    // spilled. Seen in a screenshot, cut. Rock only reads as rock when it
+    // stands up.
   };
   const entries = await Promise.all(Object.entries(names).map(async ([k, u]) => [k, await loadGLB(u)]));
   caveKit = Object.fromEntries(entries);
@@ -219,6 +238,86 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
 // ---------------------------------------------------------------------------
 // LEVEL-SPECIFIC PIECES
 // ---------------------------------------------------------------------------
+
+// THE CAVE, PUT BACK INTO THE CAVERNS.
+//
+// Stoneroot's fiction is a dug-out place: something enormous was carved here
+// and the dark sat on it. Its ROOMS never said so — the shell is the same
+// fitted masonry every region uses, and every prop in them was furniture the
+// diggers left. Nothing was rock. These two dressers are the rock.
+//
+// Rules they keep, because verify-bounds and the draw budget both have
+// opinions:
+//   * everything sits ON the floor (world.deckY is a flat 0 — there is no
+//     terrain height in this game, so a raised prop is genuinely floating);
+//   * the caller passes coordinates already inside the room, and the scatter
+//     radius is clamped to stay there;
+//   * they are DELIBERATELY SMALL. Each piece is its own material, so each is
+//     its own draw call — a cavern that costs ten more of them per room is a
+//     cavern that drops frames on the tablet this is for. Six to nine, placed
+//     where the camera actually looks, beats thirty on the perimeter.
+const CAVE_ROCK = 0x8a8375;   // dry cut rock, a shade warmer than the masonry
+const CAVE_SHADES = [1, 1.09, 1.18];   // see caveWorkings: three materials, not N
+
+// A rock arch, for a doorway or a passage mouth. `ry` faces it; the lintel
+// rides just above the opening so the two read as one cut.
+function caveMouth(world, x, z, ry, D, s = 1.5) {
+  if (GREY() || !caveKit || !caveKit.caveArch) return;
+  const g = new THREE.Group();
+  g.userData.cave = 'mouth';   // findable by a probe or a future bounds suite
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  const arch = tinted(caveKit.caveArch, 'caveMouth', CAVE_ROCK);
+  arch.scale.setScalar(s);
+  g.add(arch);
+  const lintel = tinted(caveKit.caveLintel, 'caveMouth', CAVE_ROCK);   // same shade = same material
+  lintel.scale.setScalar(s * 0.95);
+  lintel.position.y = 2.55 * s;      // measured off the arch: sits on its crown
+  g.add(lintel);
+  world.add(g);
+  return g;
+}
+
+// A patch of worked rock: a spur or two standing out of the floor, a bulge in
+// the wall face, and flat scree that costs nothing to stand on because it is
+// 0.1 units tall. `n` is a budget, not a count — it stops at whatever fits.
+function caveWorkings(world, x, z, seed, D, n = 6, ladder = false) {
+  if (GREY() || !caveKit || !caveKit.caveSpur) return;
+  let t = seed * 9301 + 49297;
+  const r = () => ((t = (t * 9301 + 49297) % 233280) / 233280);
+  const g = new THREE.Group();
+  g.userData.cave = 'workings';
+  g.position.set(x, 0, z);
+  world.add(g);
+  const pieces = ['caveSpur', 'caveBulge', 'caveChunk'];
+  for (let i = 0; i < n; i++) {
+    const key = pieces[Math.floor(r() * pieces.length)];
+    // never DARKEN it: these read against pale ice in the Glimmerway as much as
+    // against grey masonry in the vault, and anything under 1 turned into a
+    // silhouette rather than a rock.
+    //
+    // THREE BRIGHTNESSES, NOT A RANDOM FLOAT. tintedModel caches materials on
+    // `${class}|${tex}|${tint}|${darken}` and flattenStatic folds one draw call
+    // per material — so a random darken per piece would have handed this room
+    // twenty-four materials and twenty-four draw calls against a budget of a
+    // hundred. Quantised, the whole cavern costs three.
+    const m = tinted(caveKit[key], 'caveWorkings', CAVE_ROCK, CAVE_SHADES[Math.floor(r() * 3)]);
+    const a = r() * Math.PI * 2;
+    const rad = 0.9 + r() * 2.4;
+    m.position.set(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+    m.rotation.y = r() * Math.PI * 2;
+    m.scale.setScalar(0.5 + r() * 0.38);
+    g.add(m);
+  }
+  if (ladder && caveKit.caveLadder) {
+    const l = tinted(caveKit.caveLadder, 'caveWorkings', 0x6b5b42);
+    l.position.set(0, 0, 0);
+    l.rotation.y = seed;
+    l.scale.setScalar(1.4);
+    g.add(l);
+  }
+  return g;
+}
 
 // A cracked pile — the Earth Wolf's verb, and before you have the Earth Wolf,
 // a promise. Glittering cracks say "later" in the same shape every time, which
@@ -731,6 +830,21 @@ export async function buildVh(scene) {
   rubbleField(world, -4, 9.5, 2.6, D, 11);
   rubbleField(world, 5, 11.5, 2.4, D, 10);
   aftermath(world, 3, 7, 1.8, D, 39);
+  // THE ROCK ITSELF. Everything above is what the diggers left; these are what
+  // they were digging THROUGH.
+  //
+  // PLACED WHERE THE CAMERA LOOKS, not on the perimeter — the same mistake the
+  // comment above records the first dressing pass making here. Measured rather
+  // than guessed: projecting a grid through the arrival camera, vh shows z 4-12,
+  // narrowing from x +-12 at the near edge to x +-4 at the far one. The first
+  // attempt put all three clusters at z -6 to 4 and every one of them was off
+  // the bottom of the screen. These sit in the band, off the central route
+  // (three spokes and the crypt lead off this room) and clear of the hearth,
+  // the carts and the fallen columns already standing in it.
+  caveWorkings(world, -11.5, 5.5, 3, D, 7);
+  caveWorkings(world, 10.5, 5, 11, D, 6);
+  caveWorkings(world, -6.5, 3.4, 17, D, 5, true);   // + a digger's ladder
+  caveWorkings(world, 13.5, -7.5, 23, D, 5);        // and one for the walk south
   return finish(world, spec, D);
 }
 
@@ -762,6 +876,8 @@ export async function buildVga(scene) {
   rubbleField(world, 4.6, -2.6, 2.2, D, 11);
   rubbleField(world, -4.4, 2.8, 2.0, D, 9);
   aftermath(world, 3, 2.4, 1.6, D, 22);
+  caveWorkings(world, -4.5, 3.2, 5, D, 5);
+  caveWorkings(world, 4.5, -3.2, 23, D, 4);
   return finish(world, spec, D);
 }
 
@@ -856,6 +972,10 @@ export async function buildVa2(scene) {
   rubbleField(world, 15, 2, 2.6, D, 11);
   rubbleField(world, -2, -11, 2.8, D, 12);
   aftermath(world, -12, 7, 2.0, D, 26);
+  // pushed to the walls, like the rest of va2's dressing — the three practice
+  // cracks in the open are what this room is asking you to look at
+  caveWorkings(world, -15, -8, 31, D, 6);
+  caveWorkings(world, 15.5, -10, 37, D, 5);
   scatter(world, halfW, halfD, D, 82, 7, { spin: 1, kinds: ['rockSA', 'rockLC', 'column2', 'brick'] });
   return finish(world, spec, D);
 }
