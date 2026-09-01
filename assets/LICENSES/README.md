@@ -59,34 +59,55 @@ what this folder exists to stop.
 
 ## 2026-09-01 — assets supplied by James, and what is known about each
 
-These came in as a batch of downloads rather than from a pack page with a
-licence file next to it, so this records exactly what IS known. Two of them
-need a source link from James before this repo can claim a licence for them;
-the game does not depend on that being resolved, and any of them can be
-removed with one `git rm` and a cache bump.
+Sources traced 2026-09-01. Every pack below is also claimed in MANIFEST.json,
+which `tools/check-licences.mjs` enforces; this file is the prose version.
 
-- **Treasure pack** (`assets/loot/treasure/*`) — coins, gems, keys, a scroll.
-  Shipped as a folder named "Free" with **no licence file and no named
-  author**. Used as the game's currency and chest loot. ACTION: James to
-  confirm the source page so the terms can be recorded here.
-- **`assets/chars/monsters/wyrm.glb`** — the dragon. The glTF asset block
-  carries `"copyright": "bocdagla"`, so the author is at least named, but the
-  download had **no licence file**. ACTION: James to confirm the source page
-  and whether attribution is required; if it is, the credit goes here and in
-  the game's credits.
-- **Jampot 3D Chests (Free)** — shipped a full royalty-free commercial
-  licence, no attribution required. NOT USED: measured at 7,000-9,800
-  triangles with 2 materials and 4 PBR textures each, against the 232-322
-  triangles and single flat texture of the chests already in the game. It is
-  a realistic baked-PBR set and this is a flat-shaded low-poly game; next to
-  `wolf.gltf` they would read as a different product. Its licence also
-  restricts redistribution of the models "on their own", which a public
-  repository sits awkwardly against.
-- **Army / Orc / Skeletons / Wizard character packs** — NOT USED as
-  characters. Every one of the fourteen is rigged but ships **zero animation
-  clips**, and their rigs are Blender Rigify (`hand.L`, `spine.001..006`)
-  where this game's animation library is KayKit (`hand.l`, `spine`, `chest`),
-  so the existing clips cannot simply be retargeted onto them. Shipping them
-  would put unanimated bodies in the world — the exact defect
-  `tools/verify-motion.mjs` exists to catch. Their static weapon props are
-  usable and are considered separately.
+- **`assets/chars/monsters/wyrm.glb` — the dragon Boreal wears. SETTLED, WITH
+  A CONDITION.** It is bocdagla's *Low Poly Dragon Model 3D*,
+  https://bocdagla.itch.io/low-poly-dragon, released under **Creative Commons
+  Attribution**: *"You can use this file however you want as long as you give
+  credit."* Commercial use is fine; **credit is required**, and this is it —
+
+      Dragon model by bocdagla (https://bocdagla.itch.io/low-poly-dragon)
+
+  Recorded here rather than on the credits screen by James's decision: that
+  screen is the kids' ending and runs on the game's no-reading rule, so a line
+  of text aimed at adults does not belong on it.
+
+  One caveat kept deliberately: the licence page could not be opened from the
+  build machine — every itch.io domain is blocked by its egress proxy — so the
+  wording above is quoted from search results, not read first-hand. The
+  identification is not in doubt (the model's own glTF asset block carries
+  `copyright: "bocdagla"`), but the exact terms are worth one human glance.
+
+- **`assets/loot/treasure/*` — the coins, gems, keys and scroll that became the
+  game's currency in v3.80.0. IDENTIFIED, LICENCE STILL UNREAD.** It is
+  Binbun's *Treasure* pack, free tier, https://binbun3d.itch.io/treasure.
+  Identified by contents rather than metadata (the files carry none): the free
+  tier is documented as 15 gems, 8 rings, 14 coins, 9 scrolls and a chest with
+  a variation, and the files on disk count 15 / 8 / 14 / 9 / a 3-part chest —
+  61 models against the listed "60+". Five of six categories match exactly.
+
+  **OUTSTANDING:** read the licence box on that page. The search result that
+  found it had the licence text truncated, and guessing at it would be worse
+  than leaving this line here.
+
+- **`assets/gear/{sword_legion,spear_legion,cleaver_orc,staff_bone,shield_tower_iron}.glb`
+  — LICENCE UNREAD.** The static weapon props out of the Army, Orc and
+  Skeleton character packs. Those downloads shipped no licence files and no
+  store page was identified. **OUTSTANDING:** find the source pages.
+
+- **The fourteen CHARACTERS in those same packs — NOT USED, and not a
+  licensing decision.** Every one is rigged but ships **zero animation clips**,
+  on a Blender Rigify skeleton (`hand.L`, `spine.001..006`) where this game's
+  animation library is KayKit (`hand.l`, `spine`, `chest`) — so the clips it
+  already owns cannot simply be retargeted onto them. Shipping them would put
+  unanimated bodies in the world, which is the exact defect
+  `tools/verify-motion.mjs` exists to catch.
+
+- **Jampot 3D Chests (Free) — NOT USED.** It shipped a full royalty-free
+  commercial licence, no attribution required, so the licence was never the
+  problem: the style was. Measured at 7,000-9,800 triangles with two materials
+  and four PBR textures each, against the 232-322 triangles and single flat
+  texture of the chests already in the game. It is a realistic baked-PBR set
+  and this is a flat-shaded low-poly game.
