@@ -801,9 +801,16 @@ export class Player {
     const [w, s] = await Promise.all([loadGLB(weaponDef().file), loadGLB(shieldDef().file)]);
     this._handR.clear();
     this._handL.clear();
-    this._handR.add(this._tintGear(prepareCharacter(w.scene.clone()), weaponDef().tint));
+    const blade = this._tintGear(prepareCharacter(w.scene.clone()), weaponDef().tint);
+    // `def.scale` is opt-in and rare — see items.js. The packs were authored at
+    // their own scales, and two of them shipped a model that contradicted the
+    // stat it carries. Applied here rather than baked into the GLB so the
+    // number stays next to the stat it exists to agree with.
+    if (weaponDef().scale) blade.scale.setScalar(weaponDef().scale);
+    this._handR.add(blade);
     this.equipArmour();
     const shield = this._tintGear(prepareCharacter(s.scene.clone()), shieldDef().tint);
+    if (shieldDef().scale) shield.scale.setScalar(shieldDef().scale);
     // C4 — the parry window needs somewhere to SHOW itself, and the shield is
     // the honest place. Its materials come out of the shared loader cache, so
     // they are cloned here: tinting the cache would light up every shield in

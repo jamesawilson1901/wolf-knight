@@ -137,7 +137,13 @@ export const WEAPONS = {
   },
   spear_legion: {
     name: 'Legion Pike', icon: '🥢', file: './assets/gear/spear_legion.glb',
-    dmg: 1.4, lock: 0.58, range: 3.0, price: 240, arc: 34,
+    // `scale` exists for ONE reason: a stat a child can SEE must not be
+    // contradicted by the model that carries it. Measured in the real hand,
+    // this pike came out 0.83u against spear_a's 1.55u — the longest reach in
+    // the game (3.0 vs 2.7) rendered as the shortest of the three polearms.
+    // Reach is the only weapon stat visible in the geometry, so the geometry
+    // was lying. 2.0x puts it at ~1.66u: the longest thing Kael can hold.
+    dmg: 1.4, lock: 0.58, range: 3.0, price: 240, arc: 34, scale: 2.0,
     blurb: 'Keeps them at arm’s length. And then some.',
   },
   cleaver_orc: {
@@ -180,7 +186,12 @@ export const SHIELDS = {
   },
   shield_iron: {
     name: 'Iron Wall', icon: '🛡️', file: './assets/gear/shield_tower_iron.glb',
-    blunt: 0.2, parryBonus: 0, price: 300,
+    // Same law, same reason: 0.60u against shield_c's 0.71u, so the game's
+    // BEST block (blunt 0.2) was also its smallest shield. A tower shield that
+    // renders smaller than a round one argues against its own name and its own
+    // stat. 1.4x makes it the biggest thing on Kael's arm, which is the whole
+    // readable signal for "nothing gets past".
+    blunt: 0.2, parryBonus: 0, price: 300, scale: 1.4,
     blurb: 'Nothing gets past. Nothing.',
   },
 };

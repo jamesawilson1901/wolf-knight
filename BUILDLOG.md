@@ -4000,3 +4000,31 @@ Verified by real play, not by re-reading the tables: a probe set each gate's own
 already-opened flag (`promiseGate()` then builds no geometry at all, exactly as
 it does on a return visit), walked the player into each alcove on real WASD
 events, and read the bag afterwards. Five for five, no page errors.
+
+### ...and two of them were the wrong size (same day)
+
+Measuring the five in the real hand to check they looked like their prices
+turned up something else: two models contradicted the stat they carry.
+
+```
+spear_a       1.55u   range 2.7
+spear_legion  0.83u   range 3.0   ← longest reach in the game, shortest polearm
+shield_c      0.71u   blunt 0.25
+shield_iron   0.60u   blunt 0.20  ← best block in the game, smallest shield
+```
+
+Reach is the one weapon stat a child can read off the geometry, and size is
+the one thing that says "tower shield". Both were saying the opposite. New
+opt-in `scale` field on the item def, honoured in the two places gear mounts
+at true size — `player.equipGear()` and the Armoury's live preview (the
+thumbnails auto-frame, so they neither need it nor notice it). The pike goes
+to 1.66u and is now the longest thing Kael can hold; the Iron Wall goes to
+0.83u and is now the biggest shield. From the game camera the pike was
+previously invisible behind him and now reads as a polearm.
+
+**`sword_legion` (0.64u) and `cleaver_orc` (0.52u) were deliberately left
+alone.** The tempting rule — heavier weapon, bigger model — is not a rule this
+game has: `hammer_a` ships at 0.61u with the highest damage in the game (3.0).
+Small-and-heavy is an established look in this art, so those two are inside
+the range the game already ships and nothing they advertise disagrees with
+their geometry. `scale` is for contradictions, not for taste.

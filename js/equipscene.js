@@ -247,13 +247,21 @@ export class EquipPreview {
     const w = weaponDef(), s = shieldDef();
     try {
       const [wg, sg] = await Promise.all([loadGLB(w.file), loadGLB(s.file)]);
+      // THE ARMOURY MUST NOT LIE ABOUT SIZE either — it is where a child
+      // decides. `def.scale` (items.js) is applied here exactly as player.js
+      // applies it, so the pike Kael is holding in the preview is the pike
+      // they walk out with.
       if (this._handR) {
         this._handR.clear();
-        this._handR.add(tintClone(prepareCharacter(SkeletonUtils.clone(wg.scene)), w.tint));
+        const blade = tintClone(prepareCharacter(SkeletonUtils.clone(wg.scene)), w.tint);
+        if (w.scale) blade.scale.setScalar(w.scale);
+        this._handR.add(blade);
       }
       if (this._handL) {
         this._handL.clear();
-        this._handL.add(tintClone(prepareCharacter(SkeletonUtils.clone(sg.scene)), s.tint));
+        const guard = tintClone(prepareCharacter(SkeletonUtils.clone(sg.scene)), s.tint);
+        if (s.scale) guard.scale.setScalar(s.scale);
+        this._handL.add(guard);
       }
     } catch (e) {
       console.warn('[equip] preview could not mount gear', e);
