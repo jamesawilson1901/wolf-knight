@@ -900,19 +900,40 @@ export class Boreal {
     this.core.add(dragon);
     this.dragon = dragon;
     this.mixer = new THREE.AnimationMixer(dragon);
-    const clip = (frag) => dragonGltf.animations.find((c) => c.name.includes(frag));
-    const mk = (frag, once) => {
-      const c = clip(frag);
+    // EXACT NAME FIRST, SUBSTRING SECOND.
+    //
+    // A plain `includes()` match is one clip-order change away from a bug on
+    // this body: it carries both "Attack" and "AttackPose", so whichever the
+    // exporter happens to write first is what a substring search returns — and
+    // AttackPose is a single held frame, which would make the dive a statue.
+    // (The shipped file lists Attack first, so a substring match works today;
+    // that is luck, not a guarantee, and re-exporting could quietly reverse
+    // it.) Exact match first, then a trailing "Rig|Name" form, then substring
+    // so the Quaternius body's "DragonArmature|Dragon_Attack" still resolves.
+    const clip = (name) => dragonGltf.animations.find((c) => c.name === name)
+      || dragonGltf.animations.find((c) => c.name.endsWith('|' + name))
+      || dragonGltf.animations.find((c) => c.name.includes(name));
+    const mk = (name, once) => {
+      const c = clip(name);
       if (!c) return null;
       const a = this.mixer.clipAction(c);
       if (once) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
       return a;
     };
-    this.flyAction = mk('Flying');
+    // Named for what the fight needs, then resolved against whichever dragon
+    // is mounted — the Quaternius body used Flying/Attack/Death/Hit; this one
+    // brings a ground game the fight never had a body for.
+    this.flyAction = mk('Flying_loop') || mk('Flying');
     if (this.flyAction) this.flyAction.play();
     this.attackAction = mk('Attack', true);
     this.deathAction = mk('Death', true);
     this.hitAction = mk('Hit', true);
+    // NEW, and the reason this body is worth the swap: she can now LIE on the
+    // ice and HEAVE herself back into the air, instead of sliding down and up
+    // an invisible wire playing the same flight loop the whole time.
+    this.idleGroundAction = mk('Idle_loop');
+    this.stalkAction = mk('Walk_menacing_loop');
+    this.riseAction = mk('GroundToFly', true);
     this.core.position.set(ORBIT_R, HOVER_Y, 0); // already on her wheel
     this.root.add(this.core);
 
@@ -1039,6 +1060,17 @@ export class Boreal {
     if (this.deathAction) {
       if (this.flyAction) this.flyAction.fadeOut(0.2);
       this.deathAction.reset().play();
+    } else if (this.riseAction) {
+      // NO DEATH CLIP ON THIS BODY — so take the one that carries her INTO
+      // the air and run it backwards: a dragon dropping out of flight is
+      // exactly what a beaten flyer should do, in her own motion rather than
+      // a pose borrowed from somewhere else. The dissolve below does the rest.
+      if (this.flyAction) this.flyAction.fadeOut(0.2);
+      if (this.idleGroundAction) this.idleGroundAction.fadeOut(0.2);
+      this.riseAction.reset();
+      this.riseAction.timeScale = -1;
+      this.riseAction.time = this.riseAction.getClip().duration;
+      this.riseAction.fadeIn(0.1).play();
     }
     this._dissolveT = 1.6;
     state.flags.borealDefeated = true;
@@ -1167,6 +1199,12 @@ export class Boreal {
       }
     } else if (A === 'grounded') {
       // wings folded, sprawled on the ice: hit it with everything
+      if (this.idleGroundAction && !this._onGroundClip) {
+        this._onGroundClip = true;
+        if (this.flyAction) this.flyAction.fadeOut(0.25);
+        if (this.riseAction) this.riseAction.stop();
+        this.idleGroundAction.reset().fadeIn(0.25).play();
+      }
       this.core.position.y += (0.2 - this.core.position.y) * Math.min(1, dt * 6);
       this.tiredRing.position.x = this.x + this.off.x;
       this.tiredRing.position.z = this.z + this.off.z;
@@ -1177,7 +1215,13 @@ export class Boreal {
         this.action = 'rise';
         this.actionT = 0.8;
         this.tiredRing.visible = false;
-        if (this.flyAction) this.flyAction.reset().fadeIn(0.2).play();
+        this._onGroundClip = false;
+        // GroundToFly is exactly this beat, so play it and let the flight loop
+        // take over underneath as it finishes. Bodies without that clip fall
+        // straight back to the loop, which is what shipped before.
+        if (this.idleGroundAction) this.idleGroundAction.fadeOut(0.2);
+        if (this.riseAction) this.riseAction.reset().fadeIn(0.1).play();
+        if (this.flyAction) this.flyAction.reset().fadeIn(this.riseAction ? 0.6 : 0.2).play();
         audio.play('whoosh', { volume: 0.7, rate: 1.2 });
       }
     } else if (A === 'rise') {

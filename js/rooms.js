@@ -4100,7 +4100,14 @@ export async function buildRoom(rawId, scene) {
     } else if (bs.kind === 'boreal') {
       // Frostpeak's guardian is no wolf — she FLIES, which is why bolts
       // (full damage to flyers, since region 1) finally decide a fight.
-      const dragonGltf = await loadGLB('./assets/chars/monsters/Dragon.glb');
+      // BOREAL'S BODY, 2026-09-01. She wore the Quaternius dragon, which has
+      // Flying/Attack/Death/Hit and nothing for the ground — so her crash
+      // window was the flight loop played while an invisible wire lowered her.
+      // This one (2,004 tris, one material) brings Idle_loop,
+      // Walk_menacing_loop and GroundToFly, which is the half of her fight
+      // that never had an animation. It is also the only character in James's
+      // upload batch that ships clips at all.
+      const dragonGltf = await loadGLB('./assets/chars/monsters/wyrm.glb');
       new Boreal(world, bs.x, bs.z, dragonGltf);
     } else {
       // Giant-wolf duels wear the same class: the Shadowgrip in Ember, Sylva
