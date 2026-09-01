@@ -618,7 +618,14 @@ export async function buildLa(scene) {
   wallRun(world, -16, -2, -11, -2, D);
   promiseGate(world, -11, -4, 3, 4, 0x9a8c6a, 'CRACKED — later', 'crack',
               { system: 'crack', id: 'l1_crack_gate' });
-  visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18 });
+  // A PROMISE GATE HAS TO PAY. The five looted weapons off the Army/Orc/Skeleton
+  // packs are spoil, not shop stock, so they went behind the five foreshadowed
+  // gates — the places a child already walked past once and remembered. Chest
+  // tier tracks the prize's worth (wood <220, silver <300, gold above), which is
+  // the only way a non-reader can tell the Legion Blade from the Iron Cleaver
+  // before opening it. verify-gear caught all five as unobtainable: they were in
+  // the tables, mounted in hand, and in no chest and no shop in the whole game.
+  visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18, gear: 'sword_legion' });
   return finish(world, spec, D);
 }
 export async function buildLa1(scene) {
@@ -884,7 +891,7 @@ export async function buildLb2(scene) {
   wallRun(world, -10, 4, 1, 4, D);
   promiseGate(world, 1, 0, 2, 8, 0xc0682d, 'SCORCHED — needs fire', 'fire',
               { system: 'burn', id: 'l1_scorched_gate' });
-  visibleReward(world, -4, 0, 'l1_scorched', { shards: 20 });
+  visibleReward(world, -4, 0, 'l1_scorched', { shards: 20, gear: 'shield_iron' }, 'gold');
   world.markers.firePromise = { x: 1, z: 0 };
   // the pup moved OUT of the scorched alcove — walling the alcove properly
   // would otherwise have locked a collectible behind a form two levels away

@@ -898,7 +898,7 @@ export async function buildVa1(scene) {
   world.markers.slimeSpots = [{ x: -3, z: 4 }, { x: 8, z: -6 }];
   // a cracked pile you meet BEFORE you have the tool — the promise, in situ
   crackedPile(world, 'l2_va1_a', -11, -7);
-  visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16 });
+  visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16, gear: 'staff_bone' }, 'silver');
   // THE GLIMMERWAY. The first cut, and the widest — the diggers worked this
   // seam long enough to build in it. Scaffold, stores, and the shrine at the
   // turn. The crystal light is cold, so everything it lands on is cold too.
@@ -1413,7 +1413,7 @@ export async function buildVc2(scene) {
   wallRun(world, 11, 0, 16, 0, D);
   promiseGate(world, 11, -3, 2.4, 6, 0x5fae4a, 'THORNS — later', 'rockSB',
               { system: 'cut', id: 'l2_bramble_gate', region: REGION });
-  visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24 });
+  visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24, gear: 'spear_legion' }, 'silver');
   world.markers.bramblePromise = { x: 11, z: -3 };
   // Where the wet workings meet the first green thing anyone has seen in three
   // rooms — the bramble behind the promise gate. Nothing is placed in the

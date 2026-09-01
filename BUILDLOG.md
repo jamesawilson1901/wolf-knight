@@ -3956,3 +3956,47 @@ would make them all the same shape and LOSE the element information a
 non-reader depends on. Where an emoji stands in for something the game
 already models, it is now gone; where it is genuinely the best pictogram
 available, it stays. Dad's call if he disagrees.
+
+---
+
+## The five weapons that were in the game and not in the world (2026-09-01)
+
+`verify-gear` failed the post-ship sweep on v3.83.0 with one line:
+
+```
+✗ no item is unobtainable — all are bought, found, or start on you
+  {"unreachable":["sword_legion","spear_legion","cleaver_orc","staff_bone",
+                  "shield_iron"],"total":33}
+```
+
+All five had been verified the day before — they load, they mount in the right
+hand, the gauges read correctly, the Armoury shows Kael holding the cleaver. What
+was never checked is the only question a child would ever ask: **where is it?**
+They were in `WEAPONS`/`SHIELDS`, in no chest, and in no shop line. A weapon
+nobody can pick up is a table entry, not a weapon, and "it equips" is not the
+same claim as "it exists in the game".
+
+They are spoil by design, not stock, so the fix is chests — and the five
+foreshadowed **promise gates** are exactly the right five chests. Each of those
+gates shows a child a reward through a barrier they cannot pass yet, and until
+now every one of them paid out in coins alone. A remembered place that pays a
+handful of coins on the return trip teaches that remembering is not worth much.
+
+| gate | room | opens with | prize | chest |
+|---|---|---|---|---|
+| `l1_crack_gate` | `la` | Stoneroot's crack | Legion Blade 190 | wood |
+| `l1_scorched_gate` | `lb2` | fire | Iron Wall 300 | gold |
+| `l2_va1_a` (cracked pile) | `va1` | Stoneroot's crack | Bonecap Staff 260 | silver |
+| `l2_bramble_gate` | `vc2` | Wild Woods' cut | Legion Pike 240 | silver |
+| `d3b_ghost` | `d3b` | the Shadow Court's dark | Iron Cleaver 350 | gold |
+
+**Chest tier now tracks the prize's worth** — wood under 220, silver under 300,
+gold above. That is the only signal a non-reader gets about what is behind a
+gate before they cross it, and it costs nothing: the chest kit already ships all
+three. `verify-density` re-measured afterwards (worst room `lb`, 123 of 125), so
+the two new gold chests fit inside the draw budget.
+
+Verified by real play, not by re-reading the tables: a probe set each gate's own
+already-opened flag (`promiseGate()` then builds no geometry at all, exactly as
+it does on a return visit), walked the player into each alcove on real WASD
+events, and read the bag afterwards. Five for five, no page errors.
