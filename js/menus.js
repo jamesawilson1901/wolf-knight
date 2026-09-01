@@ -143,18 +143,35 @@ export class Menus {
     foot.className = 'arm-foot';
     const pupTotal = regionCleared('wildwoods') ? 12 : regionCleared('stoneroot') ? 9
       : regionCleared('ember') ? 6 : 3;
+    // The pup denominator is an invariant a suite checks (it must grow 3 → 6 →
+    // 9 → 12 as regions fall), and it used to be read by regex out of this
+    // footer's prose — so rewording the footer for the Armoury silently broke
+    // verify-completion's scrape while the invariant itself was still fine.
+    // The number is published as an attribute now: reword the sentence all you
+    // like, the check keeps reading the same thing.
     foot.innerHTML = `<span class="arm-stat"><b>${state.shards}</b> shards</span>
       <span class="arm-stat"><b>${state.potions}</b> potions</span>
-      <span class="arm-stat"><b>${Object.keys(state.flags.pups).length}/${pupTotal}</b> pups</span>`;
+      <span class="arm-stat" data-pup-total="${pupTotal}"
+        ><b>${Object.keys(state.flags.pups).length}/${pupTotal}</b> pups</span>`;
     el.appendChild(foot);
     el.appendChild(this._closeBtn('inv-menu'));
 
     this._paintRacks();
     this._paintSlots();
 
-    // The live knight is built once and reused for the life of the session.
-    if (!this.preview) this.preview = new EquipPreview(this._canvas);
-    if (this.preview.ok) {
+    // THE LIVE KNIGHT IS BUILT ONCE, AND ONLY BY THE MENUS THE GAME OWNS.
+    //
+    // `renderer` is how a Menus says "I am the real one" — the game passes its
+    // renderer in, and nothing else does. A Menus built WITHOUT one is a
+    // headless copy (verify-completion renders a second Menus into the real
+    // #map-menu to count destinations a child would actually see), and it has
+    // no business opening a second WebGL context. Building one anyway put a
+    // THIRD live context in the page and killed the tab under SwiftShader —
+    // the suite died with "execution context was destroyed" and took a green
+    // sweep with it. The item-art paths below already guarded on `renderer`;
+    // this one did not.
+    if (!this.preview && this.renderer) this.preview = new EquipPreview(this._canvas);
+    if (this.preview && this.preview.ok) {
       if (!this.preview.model) this.preview.load().then(() => this._paintSlots());
       else this.preview.refresh();   // reopened: show what is worn right now
     } else {

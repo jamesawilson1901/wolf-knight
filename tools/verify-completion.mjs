@@ -67,9 +67,12 @@ const ladder = await page.evaluate(async () => {
     menus.showTravel();
     const dest = [...document.querySelectorAll('#map-menu .map-rooms > *')].length;
     menus.renderInventory();
-    const foot = [...document.querySelectorAll('#inv-menu div')]
-      .find((d) => d.textContent.includes('pups'));
-    const pups = (foot ? foot.textContent : '').match(/pups\s*\d+\/(\d+)/);
+    // Read the published number, not the sentence around it: the Armoury
+    // reworded this footer from "pups 0/3" to "0/3 pups" and the old regex
+    // silently started returning null for every row — a check that reports
+    // nothing looks exactly like a check that passed nothing.
+    const stat = document.querySelector('#inv-menu [data-pup-total]');
+    const pups = stat ? [null, stat.getAttribute('data-pup-total')] : null;
     document.getElementById('map-menu').style.display = 'none';
     document.getElementById('inv-menu').style.display = 'none';
     rows.push({ label, dest, pupTotal: pups ? Number(pups[1]) : null });

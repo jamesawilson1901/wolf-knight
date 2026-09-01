@@ -231,6 +231,23 @@ function artHtml(url, cls) {
   return url ? `<img class="hud-art ${cls}" src="${url}" alt="">` : '';
 }
 
+// AN ICON + A NUMBER, WHERE ONLY THE NUMBER CHANGES.
+//
+// renderShards() runs on EVERY coin picked up and a gold chest pays twelve of
+// them inside a second. Rewriting innerHTML each time re-parses an <img> whose
+// src is a 128px PNG data URL — twelve times, to show the same picture again.
+// The icon is built once and only the count is touched after that; `data-art`
+// records which icon is in place so the art landing late (it is preloaded in
+// the background) still swaps the glyph fallback out exactly once.
+function paintCounter(el, url, cls, glyph, text) {
+  if (!url) { el.textContent = `${glyph} ${text}`; return; }
+  if (el.dataset.art !== cls) {
+    el.dataset.art = cls;
+    el.innerHTML = `${artHtml(url, cls)}<span class="cnum"></span>`;
+  }
+  el.querySelector('.cnum').textContent = text;
+}
+
 const heartsEl = document.getElementById('hearts');
 function renderHearts(player) {
   // blocked hits cost half a heart → 💔 shows the half
@@ -284,9 +301,7 @@ function renderPups() {
   // ahead of the ladder must not read "5/3"
   const total = Math.max(hit ? hit[1] : 3, found);
   const el = document.getElementById('pups');
-  el.innerHTML = hudArt.pup
-    ? `${artHtml(hudArt.pup, 'pup')}<span>${found}/${total}</span>`
-    : `\u{1F43A} ${found}/${total}`;
+  paintCounter(el, hudArt.pup, 'pup', '\u{1F43A}', `${found}/${total}`);
   ctxShow(el);
 }
 
@@ -1354,9 +1369,7 @@ function updateMusic() {
 
 function renderShards() {
   const el = document.getElementById('shards');
-  el.innerHTML = hudArt.shard
-    ? `${artHtml(hudArt.shard, 'shard')}<span>${state.shards}</span>`
-    : `\u{1F538} ${state.shards}`;
+  paintCounter(el, hudArt.shard, 'shard', '\u{1F538}', String(state.shards));
   ctxShow(el);
 }
 
