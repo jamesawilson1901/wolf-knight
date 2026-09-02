@@ -1568,7 +1568,29 @@ class SkeletonBase extends Enemy {
       const clip = cfg.anims.find((c) => c.name === name);
       if (clip) this.actions[key] = this.mixer.clipAction(clip);
     }
-    this._current = null;
+    // THE NUMBER HAS TO COME FROM THE ASSET (2026-09-02). Every skeleton
+    // subclass hardcodes an `awakenTime` — how long it stays in the get-up
+    // state before it is allowed to chase — and two of them were SHORTER than
+    // the clip they were waiting on:
+    //
+    //   SkeletonMinion  Skeletons_Awaken_Floor     2.30s clip, awakenTime 1.9
+    //   SkeletonShield  Skeletons_Awaken_Floor     2.30s clip, awakenTime 1.9
+    //   SkeletonRogue   Skeletons_Awaken_Standing  1.00s clip, awakenTime 1.1
+    //   BoneWarden      Skeletons_Awaken_Standing  1.00s clip, awakenTime 1.3
+    //
+    // Exactly the two that rise OUT OF THE FLOOR were short, and that is not a
+    // coincidence — the floor clip is the only one a skeleton plays that spends
+    // time below y=0 (lowest toe bone -0.044; walk, idle and the punch are all
+    // positive). Cutting it 0.4s early handed `walk` a pose that still had its
+    // legs in the ground, and the 0.16s crossfade carried them into the walk
+    // cycle: a skeleton visibly animating with no shins. Dad, on Level 1's
+    // Ember Wretches — "the skeletons is animated but his legs are partially in
+    // the ground."
+    //
+    // The clip's own duration is the floor now, so the number cannot drift from
+    // the asset again; a subclass value still wins where it is LONGER, which is
+    // what the two standing wakers use for their telegraph.
+    this._awakenClip = this.actions.awaken ? this.actions.awaken.getClip().duration : 0;
 
     // gear mounts on the sanitized handslot bones (dots stripped by GLTFLoader)
     this._handR = null;
@@ -1583,6 +1605,22 @@ class SkeletonBase extends Enemy {
     this.stateT = 0;
     const inactive = this.actions.inactive;
     if (inactive) { inactive.play(); inactive.paused = true; }
+    // ...AND THE SLEEPING POSE HAS TO BE RETIRED, NOT JUST PAUSED.
+    //
+    // `inactive` is played and paused so a sleeping skeleton holds its pile-of-
+    // bones pose. `_current` was left null, so the FIRST _play() found no
+    // outgoing action and skipped its crossFadeTo — and a paused action is not
+    // stopped, it is a still frame held at full weight. Every skeleton
+    // therefore walked, idled and punched with `Skeletons_Inactive_Floor_Pose`
+    // — a body lying flat on the ground — mixed in at weight 1 for the rest of
+    // its life, which drags the hips and legs down through the floor.
+    //
+    // It hid because `AnimationAction.isRunning()` is `enabled && !paused &&
+    // ...`: every debug dump of "what is running on this skeleton" answered
+    // "only the walk", while the mixer's own action list showed the floor pose
+    // sitting there at weight 1. Naming it as the current clip is all it takes
+    // — _play() then crossfades away from it the way it always meant to.
+    this._current = inactive ? 'inactive' : null;
   }
 
   _play(name, fade = 0.16, { once = false } = {}) {
@@ -1593,8 +1631,31 @@ class SkeletonBase extends Enemy {
     next.paused = false;
     if (once) { next.setLoop(THREE.LoopOnce); next.clampWhenFinished = true; }
     next.play();
-    if (this._current && this.actions[this._current]) {
-      this.actions[this._current].crossFadeTo(next, fade, false);
+    const from = this._current ? this.actions[this._current] : null;
+    if (from) {
+      from.crossFadeTo(next, fade, false);
+    } else {
+      // NOTHING NAMED TO FADE FROM — BUT SOMETHING IS STILL POSING THIS RIG.
+      //
+      // Twelve attack states end with `this._current = null` to force the next
+      // _play('walk') past its own early-return, and the constructor left it
+      // null too. Each of those skipped the crossFadeTo above and left the
+      // outgoing action exactly where it was: a paused hold (the sleeping
+      // floor pose) or a LoopOnce clamped at its last frame (a finished
+      // lunge), both sitting at weight 1 and both blended into everything
+      // that followed for the rest of the enemy's life.
+      //
+      // `isRunning()` is `enabled && !paused && ...`, so it answers FALSE for
+      // both — which is why every "what is running on this skeleton" dump said
+      // "only the walk" while the mixer's own action list showed the floor
+      // pose at weight 1 beside it. Fade out anything of ours that still has
+      // weight, and fade the new clip in against it, so a null `_current`
+      // means the same thing as a named one.
+      for (const k in this.actions) {
+        const a = this.actions[k];
+        if (a !== next && a.enabled && a.getEffectiveWeight() > 0) a.fadeOut(fade);
+      }
+      next.fadeIn(fade);
     }
     this._current = name;
   }
@@ -1648,7 +1709,9 @@ class SkeletonBase extends Enemy {
     }
     if (this.state === 'awaken') {
       this.stateT += dt;
-      if (this.stateT >= this.awakenTime) { this.state = 'chase'; this.stateT = 0; }
+      if (this.stateT >= Math.max(this.awakenTime, this._awakenClip)) {
+        this.state = 'chase'; this.stateT = 0;
+      }
       this.mixer.update(dt);
       return true;
     }

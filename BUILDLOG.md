@@ -4028,3 +4028,69 @@ game has: `hammer_a` ships at 0.61u with the highest damage in the game (3.0).
 Small-and-heavy is an established look in this art, so those two are inside
 the range the game already ships and nothing they advertise disagrees with
 their geometry. `scale` is for contradictions, not for taste.
+
+---
+
+## The skeletons walking with their legs in the floor (2026-09-02)
+
+Dad, on Level 1's Ember Wretches: *"the skeletons is animated but his legs are
+partially in the ground."* Right on both counts, and it was two bugs, not one.
+
+Measured on a woken minion, lowest foot BONE against a floor at y=0 — with Kael
+standing on the same floor in the same frame as the control:
+
+```
+la   Ember Wretch   -0.0384        Kael  +0.0082
+la1  Cinder Imp     -0.0685        Kael  +0.0034
+```
+
+**Both bugs hid behind the same three.js quirk.** `AnimationAction.isRunning()`
+is `enabled && !paused && ...`, so it answers FALSE for a paused action AND for
+a finished `LoopOnce` clamped at its last frame — while both of those still
+pose the rig at **weight 1**. Every debug dump of "what is running on this
+skeleton" said "only the walk"; the mixer's own `_actions` list showed a second
+clip sitting beside it at full weight.
+
+1. **The sleeping pose was paused, never retired.** `inactive` is played and
+   paused so a sleeping skeleton holds its bone-pile pose, and `_current` was
+   left `null` — so the first `_play()` found no outgoing action and skipped
+   its `crossFadeTo`. Every skeleton then walked, idled and punched with
+   `Skeletons_Inactive_Floor_Pose` — *a body lying flat on the ground* — mixed
+   in at weight 1 for the rest of its life. That is the legs in the floor.
+2. **Twelve attack states end with `_current = null`** to push the next
+   `_play('walk')` past its own early-return. Same skipped crossfade, so every
+   finished lunge stayed clamped at weight 1 on top of everything after it.
+
+Fixed centrally in `_play` rather than at twelve call sites: a null `_current`
+now fades out every action of ours that still has weight and fades the new clip
+in against it, so a null `_current` means the same thing as a named one.
+
+**And a second, independent fault in the same area.** `awakenTime` — how long a
+skeleton stays in the get-up state before it may chase — is hardcoded per
+subclass, and two of the four were SHORTER than the clip they were waiting on:
+
+```
+SkeletonMinion  Skeletons_Awaken_Floor     2.30s clip, awakenTime 1.9   0.4s short
+SkeletonShield  Skeletons_Awaken_Floor     2.30s clip, awakenTime 1.9   0.4s short
+SkeletonRogue   Skeletons_Awaken_Standing  1.00s clip, awakenTime 1.1   fine
+BoneWarden      Skeletons_Awaken_Standing  1.00s clip, awakenTime 1.3   fine
+```
+
+Exactly the two that rise OUT OF THE FLOOR were short, which is not a
+coincidence: the floor clip is the only one a skeleton plays that spends time
+below y=0 (lowest toe -0.044; walk, idle and the punch are all positive). The
+clip's own duration is the floor now, so the number cannot drift from the asset
+again; a subclass value still wins where it is longer, which is what the two
+standing wakers use for their telegraph.
+
+Result, same measurement: `la` **+0.0099**, `la1` **+0.0100**, `vb2` -0.0016 —
+all at or above Kael's own worst.
+
+**A method note worth keeping.** `Box3.setFromObject` reads a SkinnedMesh's
+BIND pose and cannot see an animation at all, so the first three measurements
+of this bug were meaningless — one of them reported the floor pose and the walk
+cycle as identical. Bone world positions are the only honest answer for a
+skinned character, and `tools/verify-footing.mjs` uses them: it wakes each
+skeleton class through real key presses and watches the lowest foot bone from
+asleep into the settled chase. Kael is its control, and the tolerance is 5mm on
+a body 1.08 units tall — under a pixel at any zoom a child plays at.
