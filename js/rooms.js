@@ -694,7 +694,7 @@ async function buildDen(scene) {
     return root;
   };
   const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, mageGltf, generalAnims,
-    barrelGltf, crateGltf, torchGltf] =
+    barrelGltf, crateGltf, torchGltf, manikinGltf, targetGltf] =
     await Promise.all([
       loadGLB('./assets/env/den-survival/tent.glb'),
       loadGLB('./assets/env/den-town/cart.glb'),
@@ -710,6 +710,17 @@ async function buildDen(scene) {
       loadGLB('./assets/env/dungeon/Barrel.glb'),
       loadGLB('./assets/env/dungeon/Crate.glb'),
       loadGLB('./assets/env/dungeon/Torch.glb'),
+      // THE ARMOURY NEEDS TO LOOK LIKE ONE. Maren sells weapons and armour at
+      // (5.9, -3.7) and the Den had nothing beside her that says so. Two props
+      // out of the Small Props Pack vendored for the Village (CC0, RG Poly —
+      // assets/env/village, see MANIFEST.json): an armour stand and a straw
+      // target. Both are the same shared atlas as every village prop, so they
+      // are ONE extra material and one extra draw call — which matters here
+      // more than anywhere, because the Den measured 106 of its 125 budget
+      // before this and has been over the ceiling once already (170, the day
+      // it was rebuilt at 24x18).
+      loadGLB('./assets/env/village/Manequin_1_A.glb'),
+      loadGLB('./assets/env/village/PracticeTarget_1_A.glb'),
     ]);
 
   // THE DEN IS A PLACE PEOPLE LIVE, AND IT WAS THE SIZE OF A CORRIDOR.
@@ -1013,6 +1024,21 @@ async function buildDen(scene) {
     { Wood: 0x8a6a44, DarkWood: 0x6a4e30 });
   instAt(barrelGltf, [[10.1, -5.6, 1.0], [-10.4, -2.2, 1.0]],
     { Wood: 0x8a6a44, DarkWood: 0x6a4e30 });
+
+  // MAREN'S PITCH. The stand and the target flank her counter at (5.9, -3.7):
+  // a child who cannot read the sign can still see that this is where armour
+  // and fighting live. Tints are null — these are textured props, not the
+  // flat-coloured kit, so the atlas shows as the artist painted it.
+  //
+  // BUDGET, WRITTEN DOWN BECAUSE IT IS TIGHT. These two took the Den's
+  // worst-case from 131 to 133 draw calls against its 135 ceiling — each is
+  // its own geometry, so each is its own instanced call however much material
+  // they share. Two spare in a room that measured 170 the day it was rebuilt.
+  // If anything else has to go in here, the practice target is the one to
+  // drop: the armour stand is the stronger signal, standing next to a shop
+  // that sells armour.
+  instAt(manikinGltf, [[7.4, -4.6, 1.0, -0.5]], null, true);
+  instAt(targetGltf, [[4.2, -5.4, 1.0, 0.4]], null, true);
 
   // light somebody hung up, along the way people actually walk after dark
   instAt(torchGltf, [[-1.9, 6.6, 1.15, 0], [1.9, 6.6, 1.15, 0], [-4.6, -1.2, 1.15, 0],

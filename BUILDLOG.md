@@ -4173,3 +4173,17 @@ drying skin measured **1.77u under the floor**, buried whole and invisible.
 `clutter()` now measures each placed group and lifts it until its lowest point
 rests on the ground, so no future addition can be buried by an authoring
 convention nobody checked. Lowest prop in all seven dressed rooms: exactly 0.
+
+### ...and two of them in the Den (same day)
+
+Maren sells weapons and armour at (5.9, -3.7) and the Den had nothing beside
+her that said so. An armour stand and a straw target now flank her counter —
+a child who cannot read the sign can still see what lives there.
+
+Budget, written down because it is tight: those two took the Den's worst case
+from 131 to **133 draw calls against its 135 ceiling**. Each prop is its own
+geometry, so each is its own instanced call however much material they share.
+Two spare, in a room that measured 170 the day it was rebuilt at 24x18. If
+anything else has to go in there, the practice target is the one to drop — the
+armour stand is the stronger signal, standing next to a shop that sells armour.
+Both sit at exactly y=0.
