@@ -4267,3 +4267,22 @@ instead, and the rule is written into the design file for the next one.
 Draw calls 91 / 67 / 96 against the 125 budget. `tools/verify-emberdeep.mjs`
 holds it: the Kiln's door exists, all three rooms build with content, and the
 Fire Wolf's slam — through a real key press — burns the road open.
+
+### verify-level1 found two more, and one of them was the suite
+
+**"no door leads to a room that does not exist" — and the door was fine.**
+`verify-level1` kept THREE hand-kept lists: every Level 1 room id, which of
+them are the spine, and which pocket hangs off which host. Ember Deep made all
+three wrong at once, and the way that surfaced was the suite calling a correct
+level broken. Appending three strings would have fixed today and rotted again
+at the next room, so the lists are now DERIVED from `L1` — the room table the
+builders themselves read, which already carries `spine: true` and `loopsTo`.
+A room cannot exist without this suite knowing about it now. Same fix the
+game-wide suites already took ("kill the hand-kept-list rot").
+
+**Two breakables in the blind strip**, and that one was real. The last 2.5u
+before a room's edge is the band the fixed camera cannot show, so an
+interactive thing in it is a thing a child never learns is there. `lk3`'s jar
+and box sat at z 6.2 and 6.4 against an edge of 8.5. Moved to 5.4 and 5.6.
+
+`verify-level1` ALL CLEAN afterwards, seventeen rooms.

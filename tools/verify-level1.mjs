@@ -80,9 +80,26 @@ const snap = () => page.evaluate(() => {
   };
 });
 
-const SPACES = ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le'];
-const SPINE = ['la', 'lg1', 'lb', 'lg2', 'lc', 'lg3', 'ld', 'lg4', 'le'];
-const POCKETS = { la1: 'la', lb1: 'lb', lb2: 'lb', lc1: 'lc', ld1: 'ld' };
+// ASK THE LEVEL WHAT ROOMS IT HAS. These were three hand-kept lists — every
+// room id, which of them are the spine, and which pocket hangs off which host —
+// and the day Ember Deep added three rooms all three were wrong at once: the
+// new door out of the Kiln read as "a door to a room that does not exist",
+// which is the suite calling a correct level broken.
+//
+// js/level1.js already publishes all of it. `L1` is the room table the builders
+// themselves read: `spine: true` marks the road, `loopsTo` names the room a
+// pocket hangs off. Deriving from it means a room cannot exist without this
+// suite knowing, which is the same fix the game-wide suites already took
+// (BUILDLOG, "kill the hand-kept-list rot").
+const { SPACES, SPINE, POCKETS } = await page.evaluate(async () => {
+  const { L1 } = await import('/js/level1.js');
+  const ids = Object.keys(L1);
+  return {
+    SPACES: ids,
+    SPINE: ids.filter((id) => L1[id].spine),
+    POCKETS: Object.fromEntries(ids.filter((id) => L1[id].loopsTo).map((id) => [id, L1[id].loopsTo])),
+  };
+});
 
 console.log(`\nmode: ${DRESSED ? 'DRESSED (art)' : 'GREYBOX'}`);
 console.log('\n── 1. every space builds ────────────────────────────────');
@@ -94,8 +111,10 @@ for (const id of [...SPACES, 'zoo']) {
   console.log(`  ${id.padEnd(4)} doors→[${S[id].doors.map((d) => d.to).join(',')}]  ` +
     `calls ${String(S[id].calls).padStart(3)}  tris ${String(S[id].tris).padStart(6)}  boxes ${S[id].boxes}`);
 }
-check('all 14 Level 1 spaces + the zoo build', Object.keys(S).length === 15,
-  { built: Object.keys(S).length, missing: [...SPACES, 'zoo'].filter((i) => !S[i]) });
+check(`all ${SPACES.length} Level 1 spaces + the zoo build`,
+  Object.keys(S).length === SPACES.length + 1,
+  { built: Object.keys(S).length, want: SPACES.length + 1,
+    missing: [...SPACES, 'zoo'].filter((i) => !S[i]) });
 
 console.log('\n── 2. the spine is traversable, in order ────────────────');
 let broken = null;

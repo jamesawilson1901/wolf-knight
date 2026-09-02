@@ -1611,7 +1611,11 @@ export async function buildLk3(scene) {
   world.markers.emberWretchSpots = [{ x: -2.5, z: 4.5 }, { x: 2.5, z: 4.8 }];
   world.markers.breakables = [
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
-    { x: -3.5, z: 6.2, kind: 'jar' }, { x: 3.5, z: 6.4, kind: 'box' },
+    // z <= 5.8: the last 2.5u before a room's edge is the BLIND STRIP the fixed
+    // camera cannot show, and an interactive thing in it is a thing a child
+    // never learns is there. These two were at 6.2 and 6.4 (edge 8.5) and
+    // verify-level1 caught them.
+    { x: -3.5, z: 5.4, kind: 'jar' }, { x: 3.5, z: 5.6, kind: 'box' },
   ];
   wayshrine(world, -6.5, -5.5, 0.4, D);
   fallenColumn(world, -5, 6.5, 0.7, D, 3.0);
