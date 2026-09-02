@@ -326,7 +326,15 @@ function clutter(world, D, list) {
     // invisible, buried whole. Measuring the placed group and lifting it until
     // its lowest point rests on `base` grounds every prop by construction, so
     // no future addition can be buried by an authoring convention nobody
-    // checked. `base` above 0 is how the ones that really do hang get hung.
+    // checked. `base` above 0 is how the ones that really do hang get hung —
+    // and the rope coil and the drying skin were hung that way on the first
+    // pass, which verify-grounded promptly failed three rooms for. It was
+    // right to. Nothing in this game HANGS FROM NOTHING: a coil floating 1.6u
+    // up with no peg under it is the same defect dad reported as "floating
+    // rocks", and the honest fix was to set them down rather than to widen
+    // that suite's allow-list until it stopped asking. A coil of rope on the
+    // ground and a stretched hide on its own frame both read fine. `base`
+    // stays for a prop hung on something that is actually there.
     const bb = new THREE.Box3().setFromObject(g);
     if (isFinite(bb.min.y)) g.position.y += base - bb.min.y;
     if (SOLID_PROPS.has(key)) {
@@ -567,7 +575,7 @@ export async function buildYhs(scene) {
     // THE HIGH STREET — the shopfronts. Washing across the gap between two
     // houses is the single loudest "people live here" signal the pack has.
     clutter(world, D, [['laundry', -4.5, 4.2, 1.0, 0.2], ['basin', -3.0, 3.2, 1.0, 0.8],
-      ['stool', -2.2, 2.6, 1.0, 1.4], ['coil', 5.5, 5.2, 1.0, 0.9, 1.6],
+      ['stool', -2.2, 2.6, 1.0, 1.4], ['coil', 5.5, 5.2, 1.0, 0.9],
       ['firewood', 6.6, 4.4, 1.0, -0.5]]);
     world.addBox(1.3, 4.7, 3.6, 8.4);
   }
@@ -611,7 +619,7 @@ export async function buildYlw(scene) {
     // THE LOW LANES — the working end of town: the mill stone, firewood, the
     // hides out to dry against the wall.
     clutter(world, D, [['grinder', -6.5, 3.5, 1.0, 0.7], ['firewood', -5.2, 4.4, 1.0, 0.2],
-      ['hide', -3.4, -5.0, 1.0, 0.35, 1.2], ['pitchfork', 4.5, 4.0, 1.0, -0.4],
+      ['hide', -3.4, -5.0, 1.0, 0.35], ['pitchfork', 4.5, 4.0, 1.0, -0.4],
       ['cartwheel', 5.6, 3.2, 1.0, 0.9]]);
     world.addBox(-7.4, -0.6, -6.6, -4.4);
     placeOne(world, villageKit.wall2, 'wall2', 3, 5, WALL_S, -0.5, D.propTint);
@@ -762,7 +770,7 @@ export async function buildYg4(scene) {
   if (!GREY()) {
     placeOne(world, villageKit.tower2, 'tower2', 4, -4, TOWER_S, 0, D.propTint);
     clutter(world, D, [['target', 6.5, -1.5, 1.0, 0.3], ['manikin', 7.6, -2.6, 1.0, -0.4],
-      ['coil', 5.4, -2.8, 1.0, 0.8, 1.6]]);
+      ['coil', 5.4, -2.8, 1.0, 0.8]]);
     world.addBox(1.9, 6.1, -6.1, -1.9);
   }
   world.markers.wraithArcherSpots = [{ x: 4, z: 0 }];

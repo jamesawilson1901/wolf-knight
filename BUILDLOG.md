@@ -4187,3 +4187,21 @@ Two spare, in a room that measured 170 the day it was rebuilt at 24x18. If
 anything else has to go in there, the practice target is the one to drop — the
 armour stand is the stronger signal, standing next to a shop that sells armour.
 Both sit at exactly y=0.
+
+### verify-grounded caught the three that were hung, and was right
+
+The first Village pass HUNG two props — the rope coil at 1.6u and the drying
+skin at 1.2u — on the reasoning that they are modelled to hang from a hook.
+`verify-grounded` failed three rooms for it immediately (`yhs`, `ylw`, `yg4`;
+worst offender `Rope_1_A`, gap 1.6 on a 1.77u prop).
+
+It was right, and the tempting fix was the wrong one. That suite carries an
+ALLOWED list for things meant to be off the ground — `banner|torch|cobweb|
+flame|…` — and adding `rope|skinhang` to it would have made the red go away
+without making the village any better. **Nothing in this game hangs from
+nothing.** A coil floating 1.6u up with no peg under it is the same defect dad
+reported as "floating rocks" in Ember Hollow, which is the reason that suite
+exists at all. Both are on the floor now: a coil of rope on the ground and a
+hide stretched on its own frame read fine, and the check keeps its teeth.
+`base` above 0 stays in `clutter()` for a prop hung on something that is
+actually there.
