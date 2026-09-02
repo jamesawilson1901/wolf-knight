@@ -111,6 +111,34 @@ export function tintedModel(gltf, key, tint, darken = 1) {
   return root;
 }
 
+// ONE TEXTURE, MANY FILES.
+//
+// loadGLB caches per FILE, so a pack whose GLBs all name the same external
+// atlas still ends up with one THREE.Texture per file — and tintedModel above
+// keys its material cache on `map.uuid`, so N files means N materials and N
+// draw calls that flattenStatic can never merge, however identical the pixels.
+// Hand it the loaded gltfs of one pack and every mesh in them ends up sharing
+// the first texture object, which is what makes the cache key collapse.
+//
+// Only ever call this on gltfs from a SINGLE pack that genuinely shares one
+// atlas — it is a claim about the pixels, and pointing two different images at
+// one object would repaint half of them.
+export function shareTexture(gltfs) {
+  let shared = null;
+  for (const g of gltfs) {
+    if (!g || !g.scene) continue;
+    g.scene.traverse((n) => {
+      if (!n.isMesh || !n.material) return;
+      for (const m of (Array.isArray(n.material) ? n.material : [n.material])) {
+        if (!m.map) continue;
+        if (!shared) { shared = m.map; continue; }
+        if (m.map !== shared) { m.map = shared; m.needsUpdate = true; }
+      }
+    });
+  }
+  return shared;
+}
+
 // Kit materials are named per surface — Kenney's floor-tile.glb is `grass`,
 // cliff-block.glb is `grass` + `dirt`, Quaternius dungeon pieces are `Stone`,
 // `StoneDark`, `Wood`. Naming every one is how a single kit becomes eight

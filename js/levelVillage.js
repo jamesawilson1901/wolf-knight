@@ -36,13 +36,19 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, shareTexture } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { registerDistrictTints } from './districts.js';
 
 export const REGION = 'village';
+
+// The Small Props Pack keys, listed once: the kit loader shares their atlas by
+// this list and the dressers pick from it by name.
+const PROP_KEYS = ['cart', 'trough', 'trough2', 'bucket', 'basin', 'broom', 'stool',
+  'laundry', 'hearth', 'coil', 'sack', 'firewood', 'cartwheel', 'grinder',
+  'pitchfork', 'target', 'manikin', 'rod', 'fish', 'boat', 'hide'];
 
 let villageKit = null;
 const GREY = () => !villageKit || state.settings.greybox !== false;
@@ -63,6 +69,41 @@ export async function loadVillageKit() {
     flowerA: './assets/env/flower-a.glb',
     flowerB: './assets/env/flower-b.glb',
     bush: './assets/env/bush-large.glb',
+    // THE VILLAGE HAD BUILDINGS AND NOTHING PEOPLE OWN (2026-09-02). RG Poly's
+    // Small Props Pack (CC0) is a workshop-and-yard set, which is exactly the
+    // gap: a restored village that is huts and walls and no cart, no washing,
+    // no firewood reads as a model of a village rather than a place someone
+    // came back to. Twenty-one picked out of 115, one per family, biased to
+    // the ones that say SOMEBODY LIVES HERE rather than the ones that are just
+    // shapes.
+    //
+    // They arrived 12.3MB for 13,000 triangles: every prop shipped its own
+    // embedded copy of the pack's ONE 541KB atlas, twenty-one identical
+    // downloads (verified byte-identical, sha256). tools/deduct-atlas.mjs
+    // lifts it out once and repoints each GLB at it by URI — the same way the
+    // KayKit gear next door names weapons_bits_texture.png — which is 1.5MB
+    // for the same pixels and the same geometry.
+    cart: './assets/env/village/Cart_1_A.glb',
+    trough: './assets/env/village/Trough_1_A.glb',
+    trough2: './assets/env/village/Trough_2_A.glb',
+    bucket: './assets/env/village/Bucket_1_A.glb',
+    basin: './assets/env/village/Basin_A.glb',
+    broom: './assets/env/village/Broom_A.glb',
+    stool: './assets/env/village/Stool_A.glb',
+    laundry: './assets/env/village/Laundry_A.glb',
+    hearth: './assets/env/village/FirePlace_1_1_A.glb',
+    coil: './assets/env/village/Rope_1_A.glb',
+    sack: './assets/env/village/Bag_1_A.glb',
+    firewood: './assets/env/village/CutedWood_1_A.glb',
+    cartwheel: './assets/env/village/Wheel_A.glb',
+    grinder: './assets/env/village/Grinder_A.glb',
+    pitchfork: './assets/env/village/Pitchfork_A.glb',
+    target: './assets/env/village/PracticeTarget_1_A.glb',
+    manikin: './assets/env/village/Manequin_1_A.glb',
+    rod: './assets/env/village/FishingRod_A.glb',
+    fish: './assets/env/village/DriedFish_1_A.glb',
+    boat: './assets/env/village/BoatFrame_A.glb',
+    hide: './assets/env/village/SkinHang_A.glb',
   };
   // fantasy-house.glb (5 materials it can't be tinted to one colour without
   // flattening its roof/wall/window distinction, and noticeably higher-poly
@@ -99,6 +140,14 @@ export async function loadVillageKit() {
   // split AFTER the collider strip, or every townhouse keeps a ghost double
   // of itself baked in
   villageKit.townhouses = splitBuildings(villageKit.houses);
+  // ONE TEXTURE OBJECT FOR THE WHOLE PROP PACK, or the download saving buys
+  // nothing on screen. loadGLB caches per FILE, so twenty-one GLBs naming the
+  // same props_atlas.png still build twenty-one THREE.Texture objects — and
+  // tintedModel keys its material cache on `map.uuid`, so that is twenty-one
+  // materials and twenty-one draw calls that flattenStatic can never merge.
+  // Point them all at the first one and the whole village's clutter collapses
+  // to a single batched call.
+  shareTexture(PROP_KEYS.map((k) => villageKit[k]).filter(Boolean));
   return villageKit;
 }
 
@@ -243,6 +292,50 @@ function placeOne(world, gltf, key, x, z, s, ry, tint) {
   return g;
 }
 
+// THE THINGS PEOPLE OWN.
+//
+// A restored village of huts and walls and nothing else reads as a MODEL of a
+// village. What says somebody came back is a cart left where it was unloaded,
+// washing out, firewood cut but not stacked. So each street gets a few, chosen
+// for what that street is rather than scattered at random.
+//
+// Two rules, both learned the hard way elsewhere in this file:
+//   * Only the things a grown-up could not walk through get a collider. A
+//     bucket that stops Kael dead is a bug a five-year-old reads as the game
+//     being broken, and the pack is mostly buckets.
+//   * `centre: true` on every one. These props are not modelled on their own
+//     pivot (Cart_1_A sits well off its origin), and this file already has the
+//     scar from Vase.glb being drawn a metre from where it was asked for.
+const SOLID_PROPS = new Set(['cart', 'boat', 'trough', 'trough2', 'grinder', 'hearth']);
+
+function clutter(world, D, list) {
+  if (GREY() || !villageKit) return;
+  for (const [key, x, z, s = 1, ry = 0, base = 0] of list) {
+    const gltf = villageKit[key];
+    if (!gltf) continue;
+    const g = new THREE.Group();
+    place(world, g, gltf, key, x, 0, z, s, ry, 0, D.propTint, true, true);
+    world.add(g);
+    // STAND IT ON THE FLOOR, WHATEVER ITS PIVOT.
+    //
+    // `centre: true` fixes the X/Z pivot problem this file already has a scar
+    // from (Vase.glb), but says nothing about Y — and this pack contains props
+    // modelled to HANG from a hook, whose geometry sits entirely below their
+    // origin. Placed at y=0 they measured 1.77u UNDER the floor: the rope coil
+    // in the High Street and the drying skin in the Low Lanes were both
+    // invisible, buried whole. Measuring the placed group and lifting it until
+    // its lowest point rests on `base` grounds every prop by construction, so
+    // no future addition can be buried by an authoring convention nobody
+    // checked. `base` above 0 is how the ones that really do hang get hung.
+    const bb = new THREE.Box3().setFromObject(g);
+    if (isFinite(bb.min.y)) g.position.y += base - bb.min.y;
+    if (SOLID_PROPS.has(key)) {
+      const sz = new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3());
+      world.addBox(x - sz.x / 2, x + sz.x / 2, z - sz.z / 2, z + sz.z / 2);
+    }
+  }
+}
+
 // STREET SCALE, DERIVED ONCE FROM THE CHARACTER. Kael stands 1.7u; a town
 // door should clear his head with room to spare and a house should be a
 // storey or two above that. The split townhouses measure ~7.4u tall at scale
@@ -385,6 +478,11 @@ export async function buildYsq(scene) {
   townhouse(world, 3, 13, -9, -2.6, D.propTint);
   if (!GREY()) {
     placeOne(world, villageKit.wagons, 'wagons', 8, 4, 1.15, 1.2, D.propTint);
+    // THE SQUARE — the market that stopped. A cart still half unloaded by the
+    // wagons, sacks beside it, the water trough the whole town shares.
+    clutter(world, D, [['cart', 6.2, 6.0, 1.0, 0.6], ['sack', 7.6, 5.0, 1.0, 1.1],
+      ['sack', 8.4, 5.6, 1.0, 2.3], ['trough', -7.5, 5.5, 1.0, Math.PI / 2],
+      ['bucket', -6.4, 4.4, 1.0, 0.4], ['broom', -8.2, 4.0, 1.0, -0.3]]);
     world.addBox(6.2, 9.8, 1.5, 6.5);
   }
 
@@ -466,6 +564,11 @@ export async function buildYhs(scene) {
   townhouse(world, 5, 9, -7, -1.5, D.propTint);
   if (!GREY()) {
     placeOne(world, villageKit.wagons, 'wagons', 3, 6, 1.1, 0.25, D.propTint);
+    // THE HIGH STREET — the shopfronts. Washing across the gap between two
+    // houses is the single loudest "people live here" signal the pack has.
+    clutter(world, D, [['laundry', -4.5, 4.2, 1.0, 0.2], ['basin', -3.0, 3.2, 1.0, 0.8],
+      ['stool', -2.2, 2.6, 1.0, 1.4], ['coil', 5.5, 5.2, 1.0, 0.9, 1.6],
+      ['firewood', 6.6, 4.4, 1.0, -0.5]]);
     world.addBox(1.3, 4.7, 3.6, 8.4);
   }
   // the alley chest, behind the east row against the wall
@@ -505,6 +608,11 @@ export async function buildYlw(scene) {
   // in" means at this scale
   if (!GREY()) {
     placeOne(world, villageKit.wall1, 'wall1', -4, -5.5, WALL_S, 0.35, D.propTint);
+    // THE LOW LANES — the working end of town: the mill stone, firewood, the
+    // hides out to dry against the wall.
+    clutter(world, D, [['grinder', -6.5, 3.5, 1.0, 0.7], ['firewood', -5.2, 4.4, 1.0, 0.2],
+      ['hide', -3.4, -5.0, 1.0, 0.35, 1.2], ['pitchfork', 4.5, 4.0, 1.0, -0.4],
+      ['cartwheel', 5.6, 3.2, 1.0, 0.9]]);
     world.addBox(-7.4, -0.6, -6.6, -4.4);
     placeOne(world, villageKit.wall2, 'wall2', 3, 5, WALL_S, -0.5, D.propTint);
     world.addBox(0.1, 5.9, 3.6, 6.4);
@@ -551,6 +659,8 @@ export async function buildYg1(scene) {
   // shieldUp block borrows from Stoneroot (design doc §3).
   if (!GREY()) {
     placeOne(world, villageKit.hut, 'hut', -5.5, -4.5, 1.9, 0.9, D.propTint);
+    clutter(world, D, [['trough2', -3.0, -3.2, 1.0, 0.9], ['bucket', -1.8, -2.4, 1.0, 0.2],
+      ['sack', -4.4, -2.8, 1.0, 1.7]]);
     world.addBox(-10, -1, -8, -1);
     placeOne(world, villageKit.wall1, 'wall1', 6, -6.5, WALL_S, Math.PI / 2, D.propTint);
     world.addBox(2.6, 9.4, -7.7, -5.3);
@@ -606,6 +716,8 @@ export async function buildYg3(scene) {
   let wheel = null;
   if (!GREY()) {
     placeOne(world, villageKit.hut, 'hut', -5, -5, 1.7, 0.4, D.propTint);
+    clutter(world, D, [['hearth', -3.2, -3.4, 1.0, 0.4], ['stool', -2.0, -2.6, 1.0, 1.1],
+      ['firewood', -4.2, -2.2, 1.0, -0.6]]);
     world.addBox(-9.3, -0.7, -8, -2);
     const wg = new THREE.Group();
     const rim = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.16, 6, 14),
@@ -649,6 +761,8 @@ export async function buildYg4(scene) {
   // reason a ranged kiter belongs here rather than on open ground.
   if (!GREY()) {
     placeOne(world, villageKit.tower2, 'tower2', 4, -4, TOWER_S, 0, D.propTint);
+    clutter(world, D, [['target', 6.5, -1.5, 1.0, 0.3], ['manikin', 7.6, -2.6, 1.0, -0.4],
+      ['coil', 5.4, -2.8, 1.0, 0.8, 1.6]]);
     world.addBox(1.9, 6.1, -6.1, -1.9);
   }
   world.markers.wraithArcherSpots = [{ x: 4, z: 0 }];
@@ -678,6 +792,9 @@ export async function buildYg5(scene) {
     townhouse(world, 5, -5, -6, 0.15, D.propTint, 0.55);
     townhouse(world, 7, 2.5, -6.2, -0.15, D.propTint, 0.55);
     placeOne(world, villageKit.wall2, 'wall2', 3, 3, WALL_S, Math.PI / 2, D.propTint);
+    // THE WATERSIDE END — the boat frame nobody finished, rods, fish drying.
+    clutter(world, D, [['boat', -6.5, -4.5, 1.0, 0.5], ['rod', -4.0, -5.4, 1.0, 1.2],
+      ['fish', -8.0, -3.0, 1.0, 0.2], ['basin', -3.2, -3.6, 1.0, 0.6]]);
     world.addBox(-0.4, 6.4, 2.4, 3.6);
   }
   world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y3' };

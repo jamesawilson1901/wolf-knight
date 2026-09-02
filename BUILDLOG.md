@@ -4094,3 +4094,82 @@ skinned character, and `tools/verify-footing.mjs` uses them: it wakes each
 skeleton class through real key presses and watches the lowest foot bone from
 asleep into the settled chase. Kael is its control, and the tolerance is 5mm on
 a body 1.08 units tall — under a pixel at any zoom a child plays at.
+
+---
+
+## Two packs, and a pack that turned out to be one we already had (2026-09-02)
+
+Ten packs arrived. Three of them (craftpix's desert mountains, winter mountains
+and shields) ship only a link to `craftpix.net/file-licenses`, which forbids
+redistributing the asset files — and this repo is PUBLIC, so every `.glb` in it
+is directly downloadable. Dad's call, asked and answered: leave those three out.
+
+### The weapons pack was already vendored
+
+The KayKit Fantasy Weapons Bits upload turned out to be the pack the game has
+been using since the beginning. Not "similar" — `cmp` says the gltf files are
+**byte-identical** to the ones in `assets/gear`, and the atlas beside them is
+the same `weapons_bits_texture.png`. So there was no style match to judge and
+no licence to trace: the CC0 claim in MANIFEST.json already covers
+`assets/gear`. What the upload actually offered was the thirteen pieces the
+game never took.
+
+Nine of those were left on the floor, because they repeat a silhouette the game
+already owns — another axe, another dagger, another sword. More rows in the
+Armoury, no new information for a child who reads a weapon by its shape. Four
+were shapes the game did not have:
+
+- **Warden's Halberd** (330) — fills the hole between the Legion Pike (reach,
+  little damage) and the Iron Cleaver (damage, no reach).
+- **Bearded Axe** (210) and **Bell Maul** (380) — distinct heads, sold by Maren.
+- **bow_A_withString** and **wand_A** — not player gear at all. Every ranged
+  class in `enemies.js` shot **from empty hands**, so a child watching a fight
+  could not tell who was about to shoot at them from who was about to run at
+  them — the single most important thing to read in a room. Archers
+  (`wraith-archer`, `thornstalker`, `quiverbones`) now hold a bow; the caster
+  (`stormcaller`) holds a wand. Deliberately opposite silhouettes: long-and-low
+  reads as "shoots", short-and-high as "throws magic". Verified on four real
+  spawns across four rooms — a 700-triangle mesh under `_handL` at 1.0 span on
+  a 1.34 body.
+
+**A suite hole, found the hard way.** The three weapons were pasted against a
+`shield_iron:` anchor and landed in the SHIELDS registry. `verify-gear` stayed
+green through all of it — they equipped, they mounted, they counted as
+obtainable — because it only ever asked "does something with this id exist".
+Maren's shelf asks `WEAPONS[id]`, got undefined, and silently dropped all three;
+only `verify-shop` noticed. `verify-gear` now also asserts that a stock line's
+`kind` matches the registry the item actually lives in.
+
+### The props pack, and 12.3MB of the same image
+
+RG Poly's Small Props Pack (CC0) is a workshop-and-yard set — carts, troughs,
+washing, firewood, a practice target, an armour mannequin. That is exactly the
+Village's gap: a restored village of huts and walls and nothing people OWN
+reads as a model of a village rather than a place someone came back to. Twenty-
+one picked out of 115, one per family, biased to the ones that say somebody
+lives here.
+
+They arrived at **12.3MB for 13,000 triangles**. The geometry was never the
+problem — `Cart_1_A` is 2,828 triangles, right next to this project's own
+`campfire.glb` at 264 — the problem is that every prop embedded its own copy of
+the pack's ONE 541KB atlas. Twenty-one copies, verified byte-identical by
+sha256. `tools/deduct-atlas.mjs` lifts the atlas out once and repoints each GLB
+at it by URI, which is how the KayKit gear next door has always named
+`weapons_bits_texture.png`: **1.5MB for the same pixels and the same geometry.**
+
+That fixes a rendering cost too, but only with a second step. `loadGLB` caches
+per FILE, so twenty-one GLBs naming one PNG still build twenty-one
+`THREE.Texture` objects — and `tintedModel` keys its material cache on
+`map.uuid`, so that is twenty-one materials `flattenStatic` can never merge.
+The new `shareTexture()` in levelkit points them all at one object. Measured in
+the built square: a single `kit_Atlas 1` material, and the whole village's
+clutter is one batched draw call. Rooms sit at 46-57 of the 125 budget.
+
+**And every prop is grounded by construction.** `centre: true` fixes the X/Z
+pivot problem this file already had a scar from (Vase.glb), but says nothing
+about Y — and this pack contains props modelled to HANG from a hook, whose
+geometry sits entirely below their origin. Placed at y=0 the rope coil and the
+drying skin measured **1.77u under the floor**, buried whole and invisible.
+`clutter()` now measures each placed group and lifts it until its lowest point
+rests on the ground, so no future addition can be buried by an authoring
+convention nobody checked. Lowest prop in all seven dressed rooms: exactly 0.

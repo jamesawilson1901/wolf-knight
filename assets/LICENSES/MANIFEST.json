@@ -344,6 +344,16 @@
     "assets/gear/shield_tower_iron.glb"
    ],
    "note": "Only the STATIC weapon props were taken (v3.83.0). The fourteen characters in the same packs were rejected: rigged, but shipping zero animation clips on a Rigify skeleton this game's KayKit library cannot retarget onto. Converted from FBX and re-textured with each pack's own atlas. OUTSTANDING: identify the source pages."
+  },
+  {
+   "pack": "RG Poly — Small Props Pack",
+   "licence": "rgpoly-small-props-pack.txt",
+   "states": "License: (Creative Commons Zero, CC0) — No Attribution Required. \"The Assets may not be resold, redistributed, or made available for download as standalone items\" (they ship inside the game, not as a downloadable pack).",
+   "source": "supplied by James 2026-09-02; License.txt shipped inside the pack",
+   "covers": [
+    "assets/env/village"
+   ],
+   "note": "21 of 115 props taken. Every prop arrived with the pack's ONE 541KB atlas embedded in it — 21 byte-identical copies, sha256-verified, 12.3MB for 13,000 triangles. tools/deduct-atlas.mjs lifts the atlas out once and repoints each GLB at props_atlas.png by URI (the same way the KayKit gear names weapons_bits_texture.png): 1.5MB for the same pixels and the same geometry."
   }
  ],
  "distribution": {

@@ -1,0 +1,17 @@
+	RG Poly : Small Props Pack
+
+	Created/distributed by RG Poly
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+	 No Attribution Required
+
+	The Assets may not be resold, redistributed, or made available for download
+	as standalone items, either directly or through a third-party platform.
+	The Licensee may not use the Assets in a way that implies endorsement.
+
+	(Transcribed from License.txt shipped inside the pack, supplied 2026-09-02.
+	 The 21 props used here ship as part of the game, not as a downloadable
+	 asset pack, which is what that clause is about.)

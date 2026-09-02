@@ -2450,6 +2450,14 @@ export class RangedKiter extends SkeletonBase {
     this._windup = 0;
     this._bolts = [];
     this._boltColor = opts.boltColor ?? 0xdcd0b0;
+    // AN ARCHER SHOULD BE HOLDING A BOW. Every ranged class in this file shot
+    // from empty hands — a child watching a fight had no way to tell who was
+    // about to shoot at them from who was about to run at them, which is the
+    // one thing they most need to read. The bow is bow_A_withString out of the
+    // SAME KayKit Fantasy Weapons Bits pack the skeletons' blades and axes
+    // already come from (the uploaded copy was byte-identical to the vendored
+    // one), so it needs no style judgement at all.
+    if (opts.bowGltf) this.mount('l', opts.bowGltf, 0.9);
   }
 
   _fire(player) {
@@ -2628,6 +2636,12 @@ export class RangedBolter extends SkeletonBase {
     this._shotT = 0.9;
     this._windup = 0;
     this._bolts = [];
+    // A CASTER SHOULD BE HOLDING SOMETHING TO CAST WITH. Same reasoning as the
+    // archer's bow above, and the opposite silhouette on purpose: a short wand
+    // held high reads as "this one throws magic", a long bow as "this one
+    // shoots". Two ranged classes that a child could not tell apart now differ
+    // at a glance, before either has fired. wand_A, same KayKit pack.
+    if (opts.wandGltf) this.mount('r', opts.wandGltf, 0.9);
   }
 
   _fire(player) {
@@ -3642,16 +3656,16 @@ const KAYKIT_ROSTER = {
   'shade-knight': { cls: MirrorKael, hp: 7, weakness: 'moon', mount: 'blade' },
   'maskbone': { cls: Flanker, hp: 3, weakness: 'moon', mount: 'blade' },
   'lurker': { cls: Stalker, hp: 4, weakness: 'moon' },
-  'wraith-archer': { cls: RangedKiter, hp: 3, weakness: 'moon' },
+  'wraith-archer': { cls: RangedKiter, hp: 3, weakness: 'moon', mount: 'bow' },
   'glacier-warden': { cls: ShieldAdvancer, hp: 8, weakness: 'fire', mount: 'shield' },
   'visored-wight': { cls: Duellist, hp: 6, mount: 'blade' },
   'tower-wight': { cls: SlowStomper, hp: 14 },
   'stone-colossus': { cls: HeavySwinger, hp: 12, mount: 'axe' },
   'bonelord': { cls: Commander, hp: 10, mount: 'axe' },
   'rotcaster': { cls: RangedLobber, hp: 3, weakness: 'fire' },
-  'thornstalker': { cls: RangedKiter, hp: 4, weakness: 'fire' },
-  'quiverbones': { cls: RangedKiter, hp: 3, weakness: 'fire' },
-  'stormcaller': { cls: RangedBolter, hp: 4 },
+  'thornstalker': { cls: RangedKiter, hp: 4, weakness: 'fire', mount: 'bow' },
+  'quiverbones': { cls: RangedKiter, hp: 3, weakness: 'fire', mount: 'bow' },
+  'stormcaller': { cls: RangedBolter, hp: 4, mount: 'wand' },
   'arc-knight': { cls: DashStriker, hp: 7, mount: 'blade' },
   'gilded-husk': { cls: Duellist, hp: 8, weakness: 'moon', mount: 'blade' },
   'emberfang': { cls: Flanker, hp: 3, weakness: 'moon', mount: 'blade' },
@@ -3786,10 +3800,12 @@ export async function spawnEnemies(world) {
     // body (assets/generated/enemies/<id>.glb) on the same shared rig
     if (rosterIds.length) {
       const needsProp = (kind) => rosterIds.some((id) => KAYKIT_ROSTER[id].mount === kind);
-      const [bladeGltf, axeGltf2, shieldGltf2] = await Promise.all([
+      const [bladeGltf, axeGltf2, shieldGltf2, bowGltf, wandGltf] = await Promise.all([
         needsProp('blade') ? loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf') : null,
         needsProp('axe') ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
         needsProp('shield') ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
+        needsProp('bow') ? loadGLB('./assets/gear/bow_A_withString.gltf') : null,
+        needsProp('wand') ? loadGLB('./assets/gear/wand_A.gltf') : null,
       ]);
       for (const id of rosterIds) {
         const cfg = KAYKIT_ROSTER[id];
@@ -3798,6 +3814,8 @@ export async function spawnEnemies(world) {
         if (cfg.mount === 'blade') opts.bladeGltf = bladeGltf;
         if (cfg.mount === 'axe') opts.axeGltf = axeGltf2;
         if (cfg.mount === 'shield') { opts.shieldGltf = shieldGltf2; opts.bladeGltf = bladeGltf; }
+        if (cfg.mount === 'bow') opts.bowGltf = bowGltf;
+        if (cfg.mount === 'wand') opts.wandGltf = wandGltf;
         for (const s of mk[rosterKey(id)]) {
           const e = cfg.cls === SkeletonMinion
             ? new SkeletonMinion(world, s.x, s.z, bodyGltf, anims) // reuse as-is (swarm)

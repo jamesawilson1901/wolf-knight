@@ -156,6 +156,33 @@ export const WEAPONS = {
     dmg: 1.3, lock: 0.5, range: 2.7, price: 260, arc: 62, stun: 0.55,
     blurb: 'Something rattles inside the top of it.',
   },
+  // THE PIECES OF THE WEAPONS PACK THE GAME NEVER TOOK (2026-09-02).
+  //
+  // The pack dad uploaded turned out to be the one already vendored — the
+  // gltf files compare BYTE-IDENTICAL against assets/gear, and the atlas
+  // beside them is the same weapons_bits_texture.png. So this is not a new
+  // pack to style-match, it is the rest of a pack the game has been using all
+  // along, and the CC0 claim in MANIFEST.json already covers assets/gear.
+  //
+  // Nine of the thirteen unused pieces were left on the floor because they
+  // repeat a silhouette the game already has (another axe, another dagger,
+  // another sword) — more rows in the Armoury, no new information for a child
+  // who reads weapons by shape. These three are shapes the game did not own.
+  halberd: {
+    name: 'Warden’s Halberd', icon: '🪓', file: './assets/gear/halberd.gltf',
+    dmg: 2.2, lock: 0.7, range: 2.8, price: 330, arc: 76, stun: 0.3,
+    blurb: 'Long AND heavy. Slow to swing.',
+  },
+  axe_c: {
+    name: 'Bearded Axe', icon: '🪓', file: './assets/gear/axe_C.gltf',
+    dmg: 2.0, lock: 0.62, range: 1.95, price: 210, arc: 80,
+    blurb: 'A big hooked cheek. Bites deep.',
+  },
+  hammer_c: {
+    name: 'Bell Maul', icon: '🔨', file: './assets/gear/hammer_C.gltf',
+    dmg: 2.8, lock: 0.8, range: 1.85, price: 380, arc: 88, stun: 0.5,
+    blurb: 'It rings when it lands.',
+  },
 };
 
 export const SHIELDS = {
@@ -288,6 +315,14 @@ export const SHOP_STOCK = [
   { kind: 'weapon', id: 'spear_tide', price: 290, tier: 4 },
   { kind: 'armour', id: 'frost', price: 300, tier: 4 },
   { kind: 'weapon', id: 'staff_moon', price: 300, tier: 5 },
+  // Bought, not found: unlike the five looted spoil weapons these are ordinary
+  // smith's work, so Maren sells them. Rungs match their price the way every
+  // line above does. (verify-gear checks the rung EXISTS, not just that a line
+  // names one — five items once shipped on tier 5 while the ladder stopped at
+  // four, and were unbuyable for a whole playthrough.)
+  { kind: 'weapon', id: 'axe_c', price: 210, tier: 3 },
+  { kind: 'weapon', id: 'halberd', price: 330, tier: 4 },
+  { kind: 'weapon', id: 'hammer_c', price: 380, tier: 5 },
   { kind: 'weapon', id: 'sword_storm', price: 320, tier: 5 },
   { kind: 'shield', id: 'shield_moon', price: 340, tier: 5 },
   { kind: 'weapon', id: 'hammer_earth', price: 420, tier: 5 },

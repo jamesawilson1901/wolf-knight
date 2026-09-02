@@ -111,3 +111,37 @@ which `tools/check-licences.mjs` enforces; this file is the prose version.
   and four PBR textures each, against the 232-322 triangles and single flat
   texture of the chests already in the game. It is a realistic baked-PBR set
   and this is a flat-shaded low-poly game.
+
+## Traced but NOT used — AlbGD RPG Signs (2026-09-02)
+
+Supplied 2026-09-02 as `AlbGD_RPGSigns.zip`. Traced to **"Starter RPG signs
+pack"** by **Alberto Luviano (AlbGD)**, https://alberto-luviano.itch.io/starter-rpg-signs
+— free / pay-what-you-want. **No licence file ships inside the pack and no
+formal terms were found**, so nothing here is claimable and none of it is in
+the game.
+
+Not used for a second reason, which stands even if the licence is cleared for
+the shop-sign idea below: it was considered for the FORM BADGES, the last
+emoji in the game, and it does not fit. The pack carries `Fire` and `Thunder`
+and no other element, out of roughly eight — so it would leave two real models
+beside six emoji in one badge row. A mismatched set reads worse than a
+consistent one, which is the same reason the badges were left alone the first
+time (see BUILDLOG, "Deliberately not done, and why").
+
+What it would genuinely be good for is SHOP SIGNAGE — Heart, Beer mug,
+Chicken, Armour, Shield, Sword, Potion are a tavern-and-shopfront set, and a
+picture-sign hung over Maren's door is exactly the wayfinding a non-reader
+needs. Blocked on the licence, not on the idea.
+
+## Still outstanding
+
+- **craftpix packs** (free desert mountain, free winter mountain, free shield —
+  supplied 2026-09-02). Their `License.txt` is a bare link to
+  https://craftpix.net/file-licenses/, whose free-file terms forbid
+  redistributing the asset files. This repository is PUBLIC, so every `.glb`
+  in it is directly downloadable. Left out by dad's decision, 2026-09-02.
+- **PolyDesertFree (RunemarkStudio)** and **Rocks** — supplied 2026-09-02, no
+  licence file, not traced, not used.
+- **RPGWeapons_Free** — supplied 2026-09-02, no licence file, not traced, not
+  used. (292 GLBs; the game's weapon rack is already 30 items off a pack whose
+  CC0 licence is on file, so there is no pressure to add these.)

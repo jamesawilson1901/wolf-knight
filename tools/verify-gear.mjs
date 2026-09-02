@@ -164,6 +164,25 @@ const reach = await page.evaluate(async () => {
 });
 check('every stock line names an item that exists', reach.badStock.length === 0, reach.badStock);
 
+// ...AND IN THE REGISTRY ITS `kind` SAYS.
+//
+// The check above asks "does SOMETHING with this id exist", which a weapon
+// accidentally defined in SHIELDS answers yes to. Three weapons shipped that
+// way (2026-09-02): pasted against a `shield_iron:` anchor, so halberd, axe_c
+// and hammer_c landed in the shield registry. Everything here stayed green —
+// they equipped, they mounted, they were "obtainable" — while Maren's shelf
+// looked them up as `WEAPONS[id]`, got undefined, and silently dropped all
+// three. Only verify-shop caught it, and only because it counts what is
+// actually on the shelf against what the table promises.
+const misfiled = await page.evaluate(async () => {
+  const items = await import('/js/items.js');
+  const reg = { weapon: items.WEAPONS, shield: items.SHIELDS, armour: items.ARMOURS };
+  return items.SHOP_STOCK.filter((s) => s.kind !== 'potion' && !(reg[s.kind] || {})[s.id])
+    .map((s) => ({ id: s.id, kind: s.kind,
+      actuallyIn: ['weapon', 'shield', 'armour'].filter((k) => reg[k][s.id]) }));
+});
+check('...and in the registry its `kind` says', misfiled.length === 0, misfiled);
+
 // FOUND COUNTS TOO. The first version of this check only knew about the shop,
 // which would have called a chest prize "unobtainable" — a suite that is wrong
 // in the other direction is no better. The level sources are read for chest
