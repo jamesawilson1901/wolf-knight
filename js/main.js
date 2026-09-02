@@ -13,7 +13,7 @@ import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import { FETCH } from './mg-fetch.js';
 import { Player } from './player.js';
-import { state, resolveRoom, regionCleared } from './state.js';
+import { state, resolveRoom, regionCleared, formsAvailable } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
@@ -2204,8 +2204,10 @@ async function start() {
   // form button tap = cycle to the next unlocked form
   input.onFormTap = () => {
     if (transitioning) return;
-    const unlocked = FORM_CYCLE.filter((f) => state.formsUnlocked.includes(f));
-    const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
+    // Under a Trial lock formsAvailable() is a single form, so the cycle has
+    // nowhere to go and the tap is a no-op rather than a silent refusal.
+    const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+    const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
     if (player.setForm(next)) ui.refreshBadge();
   };
 
@@ -2268,8 +2270,8 @@ async function start() {
     if (!transitioning) {
       // Keyboard shortcuts: Tab cycles forms, K fires the special
       if (input.consumeFormCycle()) {
-        const unlocked = FORM_CYCLE.filter((f) => state.formsUnlocked.includes(f));
-        const next = unlocked[(unlocked.indexOf(state.form) + 1) % unlocked.length];
+        const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+        const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
         if (player.setForm(next)) ui.refreshBadge();
       }
       if (input.consumeSpecial()) { if (!player.trySpecial(effects, world)) triggerSurge(); }

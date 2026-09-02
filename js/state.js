@@ -19,6 +19,11 @@ export const state = {
   },
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',
+  // THE TRIAL LOCKS YOU INTO ONE FORM (design/LEVEL-DESIGN-TRIAL.md). null
+  // everywhere else in the game. Persisted rather than transient because a
+  // child who quits mid-fight must come back still locked — the wolf they
+  // spent at that arch has been spent.
+  formLock: null,
   maxHearts: 5,
   potions: 2,
   shards: 0,                    // ember shards (currency)
@@ -81,6 +86,22 @@ export const RETIRED_ROOMS = {
 // Resolve any room id — new, retired, or unknown — to the one to actually
 // build. Everything that loads a room goes through this: doors, saves,
 // respawns and the cheat menu, so there is no path that can miss it.
+// WHICH FORMS MAY BE WORN RIGHT NOW.
+//
+// Every path that changes form — setForm(), the form button's cycle, the Tab
+// shortcut, the radial picker — asked `state.formsUnlocked` directly, which
+// made "lock the player into one wolf" four separate edits that could drift
+// apart. It is one question, so it is one function, and setForm() consults it
+// too: no caller can route around the lock by accident.
+//
+// Returns the unlocked list normally. Under a Trial lock it returns exactly
+// the locked form, so the picker greys out everything else, the cycle has
+// nowhere to go, and setForm() refuses.
+export function formsAvailable() {
+  if (state.formLock && state.formsUnlocked.includes(state.formLock)) return [state.formLock];
+  return state.formsUnlocked;
+}
+
 export function resolveRoom(id) {
   return RETIRED_ROOMS[id] || id;
 }

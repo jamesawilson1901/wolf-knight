@@ -65,11 +65,14 @@ That is the whole design, and everything else follows from it:
 
 Ten boss fights back to back is a lot for this age band. Per CONFIG.DIFFICULTY:
 
-- **Gentle** — a fall restarts the ROOM. Campfire + potion between every fight.
-- **Cozy** — a fall restarts the room; campfire every second fight.
+- **Gentle** — a fall restarts the room AND refunds the wolf. Nobody is ever
+  stuck behind their own bad draft. Campfire + potion between every fight.
+- **Cozy** (default) — a fall restarts the room and the wolf STAYS SPENT. The
+  draft keeps its teeth; the ring keeps its progress. Campfire every second.
 - **Brave** — a fall restarts the TRIAL from the ring. Campfire every third.
 
-The trial's progress is saved per arch, so a child can leave and come back.
+Progress saves per arch on every profile, so a child can leave and come back
+without losing the ring.
 
 ### The bosses — ten of them, out of six
 
@@ -89,24 +92,29 @@ exist. Two things supply it:
 Draft (arch → boss → the wolf it answers to). Order in the ring is fixed; the
 child chooses which wolf to spend, not which boss to face:
 
-| arch | boss | base skin | new move | weak to |
+**Dad's calls, 2026-09-02.** Bosses are RE-KEYED FOR THE TRIAL ONLY — a Trial
+boss is a re-themed fight already, and the shipped Vale/Woods/Ember bosses keep
+the weaknesses they have always had. And the Knight OPENS the Trial: arch one
+locks a child into plain Kael, sword and shield, no element and no special,
+just the parry the game taught him first. That is what makes the ten genuinely
+ten — ten FORMS, not nine wolves and a spare.
+
+| arch | boss | base skin | new move | locked form |
 |---|---|---|---|---|
-| g1 | The Shadowgrip, Rekindled | shadowgrip | — | moon (dark wolf) |
-| g2 | Sylva, Rooted Deeper | sylva | snares + gales | fire |
+| g1 | The First Lesson | shadowgrip | — (no element answers it) | **knight** |
+| g2 | The Shadowgrip, Rekindled | shadowgrip | legacyPhases | dark_wolf (moon) |
 | g3 | Aria, Unbound | aria | gales, faster | earth |
-| g4 | Meri, Full Tide | meri | floods (from the start) | fire → **verdant** |
-| g5 | The Bone Warden Crowned | warden | — | fire |
+| g4 | Sylva, Rooted Deeper | sylva | snares + gales | fire |
+| g5 | Meri, Full Tide | meri | floods from the start | verdant |
 | g6 | Boreal, Wingbroken | boreal | grounded phases | frost |
-| g7 | (new skin) | shadowgrip | floods | tide |
-| g8 | (new skin) | sylva | adapts | storm |
-| g9 | (new skin) | aria | snares | ghost |
+| g7 | The Gale Remade | aria | snares | storm |
+| g8 | The Drowned Crown | meri | adapts | tide |
+| g9 | The Hollow Warden | sylva | adapts | ghost |
 | g10 | Shadow-Grimm's Shadow | grimm | adapts + snares | elemental |
 
-**Open, and dad's call:** g4 currently duplicates fire with g2 and g5. Meri's
-weakness is fire because that is the Vale's mook weakness — changing it for the
-Trial only is defensible (a different fight, explicitly), but it is a change to
-a shipped boss's identity and I would rather ask. Same question for whether the
-Knight (no wolf at all) deserves an arch of his own instead of one of the ten.
+g1 answers to no element at all: the Knight has none, so the fight is carried
+by gear and the parry, which is the correct opening statement for a trial about
+what a child has actually learned.
 
 ### Reward
 

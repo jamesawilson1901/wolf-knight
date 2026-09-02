@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
-import { state } from './state.js';
+import { state, formsAvailable } from './state.js';
 import { audio } from './audio.js';
 import { weaponDef, shieldDef, armourDef } from './items.js';
 import { CONFIG } from './config.js';
@@ -905,7 +905,7 @@ export class Player {
 
   setForm(name, { silent = false } = {}) {
     if (!this.forms[name]) return false;
-    if (!state.formsUnlocked.includes(name)) return false;
+    if (!formsAvailable().includes(name)) return false;   // Trial lock, js/state.js
     // The surge locks Kael into the Dark Wolf until it ends.
     if (!silent && (this._surge || this._ceremony)) return false;
     if (state.form === name && !silent) return true;

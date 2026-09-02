@@ -2,7 +2,7 @@
 // button with cooldown ring, active-form badge. Big targets, icon-first —
 // built for small thumbs.
 
-import { state } from './state.js';
+import { state, formsAvailable } from './state.js';
 
 const FORM_META = {
   knight: { icon: '⚔️', label: 'Knight', color: '#8f9bb0' },
@@ -72,7 +72,9 @@ export class UI {
 
     FORM_ORDER.forEach((id, i) => {
       const meta = FORM_META[id];
-      const locked = !state.formsUnlocked.includes(id);
+      // A Trial lock greys out every form but the one you spent at this arch,
+      // so the ring SHOWS the constraint rather than silently refusing taps.
+      const locked = !formsAvailable().includes(id);
       // five forms fan a little tighter so the ring stays on-screen
       const spread = FORM_ORDER.length >= 6 ? 0.62 : FORM_ORDER.length >= 5 ? 0.74 : 0.92;
       const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * spread;
