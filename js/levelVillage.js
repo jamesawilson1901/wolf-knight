@@ -48,7 +48,7 @@ export const REGION = 'village';
 // this list and the dressers pick from it by name.
 const PROP_KEYS = ['cart', 'trough', 'trough2', 'bucket', 'basin', 'broom', 'stool',
   'laundry', 'hearth', 'coil', 'sack', 'firewood', 'cartwheel', 'grinder',
-  'pitchfork', 'target', 'manikin', 'rod', 'fish', 'boat', 'hide'];
+  'target', 'manikin', 'rod', 'fish', 'boat', 'hide'];
 
 let villageKit = null;
 const GREY = () => !villageKit || state.settings.greybox !== false;
@@ -97,7 +97,6 @@ export async function loadVillageKit() {
     firewood: './assets/env/village/CutedWood_1_A.glb',
     cartwheel: './assets/env/village/Wheel_A.glb',
     grinder: './assets/env/village/Grinder_A.glb',
-    pitchfork: './assets/env/village/Pitchfork_A.glb',
     target: './assets/env/village/PracticeTarget_1_A.glb',
     manikin: './assets/env/village/Manequin_1_A.glb',
     rod: './assets/env/village/FishingRod_A.glb',
@@ -619,8 +618,16 @@ export async function buildYlw(scene) {
     // THE LOW LANES — the working end of town: the mill stone, firewood, the
     // hides out to dry against the wall.
     clutter(world, D, [['grinder', -6.5, 3.5, 1.0, 0.7], ['firewood', -5.2, 4.4, 1.0, 0.2],
-      ['hide', -3.4, -5.0, 1.0, 0.35], ['pitchfork', 4.5, 4.0, 1.0, -0.4],
-      ['cartwheel', 5.6, 3.2, 1.0, 0.9]]);
+      ['hide', -3.4, -5.0, 1.0, 0.35], ['cartwheel', 5.6, 3.2, 1.0, 0.9]]);
+    // THE PITCHFORK IS NOT PLACED, and that is the whole note. Pitchfork_A is
+    // two separate top-level objects — a head and a shaft — that only make
+    // sense assembled, and assembled the shaft starts 0.42u off the ground
+    // with the head under it. clutter() grounds the group it places, so the
+    // ASSEMBLY sits on the floor correctly, but verify-grounded reads each
+    // top-level object on its own and sees a shaft hanging in the air. Rather
+    // than special-case one prop in a suite that exists to catch exactly that
+    // shape of thing, it is left out: there are twenty other props and no
+    // street needs this one.
     world.addBox(-7.4, -0.6, -6.6, -4.4);
     placeOne(world, villageKit.wall2, 'wall2', 3, 5, WALL_S, -0.5, D.propTint);
     world.addBox(0.1, 5.9, 3.6, 6.4);

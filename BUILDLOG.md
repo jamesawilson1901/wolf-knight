@@ -4205,3 +4205,13 @@ exists at all. Both are on the floor now: a coil of rope on the ground and a
 hide stretched on its own frame read fine, and the check keeps its teeth.
 `base` above 0 stays in `clutter()` for a prop hung on something that is
 actually there.
+
+Then it caught a twenty-first thing, and the answer there was to drop the prop.
+`Pitchfork_A` is **two separate top-level objects** — a head and a shaft — that
+only make sense assembled, and assembled the shaft starts 0.42u off the ground
+with the head beneath it. `clutter()` grounds the group it places, so the
+assembly sits on the floor correctly; `verify-grounded` reads each top-level
+object on its own and sees a shaft hanging in the air. Special-casing one prop
+inside a suite that exists to catch exactly that shape of thing would have been
+the wrong trade for a prop no street needs, so it is simply not placed. Twenty
+props, not twenty-one.
