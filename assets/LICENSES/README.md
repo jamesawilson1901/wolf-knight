@@ -112,6 +112,21 @@ which `tools/check-licences.mjs` enforces; this file is the prose version.
   texture of the chests already in the game. It is a realistic baked-PBR set
   and this is a flat-shaded low-poly game.
 
+## DROPPED for want of a licence (2026-09-02)
+
+Dad: "if you can't find the license to the rpg signs then just drop it. same
+for the potions pack."
+
+Both are out. Neither ships, neither is vendored, and neither should be
+revisited unless a licence turns up:
+
+- **AlbGD RPG Signs** — traced to alberto-luviano.itch.io/starter-rpg-signs
+  (Alberto Luviano), free / pay-what-you-want, but no licence file in the pack
+  and no formal terms findable. Details below.
+- **Potions Asset Pack v2** — supplied as a .rar this container cannot open
+  (the rar reader's crypto backend is broken here), and no licence sighted
+  either way. Never extracted, never inspected, never used.
+
 ## Traced but NOT used — AlbGD RPG Signs (2026-09-02)
 
 Supplied 2026-09-02 as `AlbGD_RPGSigns.zip`. Traced to **"Starter RPG signs
