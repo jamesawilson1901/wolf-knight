@@ -176,6 +176,12 @@ export function applySave(profileId, profileName, data) {
     state.inventory.equipped = state.inventory.equipped || {};
     if (!state.inventory.equipped.armour) state.inventory.equipped.armour = 'plain';
     if (!state.inventory.armours) state.inventory.armours = ['plain'];
+    // SAME REASON, and it would have thrown rather than merely degraded.
+    // `state.inventory = data.inventory` above replaces the WHOLE object, so a
+    // save written without a field arrives without it — and addTreasure()
+    // pushes onto this array. A profile from before treasures existed would
+    // have crashed on the first one found rather than quietly missing it.
+    if (!state.inventory.treasures) state.inventory.treasures = [];
   }
   state.moonGauge = data.moonGauge || 0; // additive: old saves start empty
   state.xp = data.xp || 0;

@@ -4286,3 +4286,59 @@ interactive thing in it is a thing a child never learns is there. `lk3`'s jar
 and box sat at z 6.2 and 6.4 against an edge of 8.5. Moved to 5.4 and 5.6.
 
 `verify-level1` ALL CLEAN afterwards, seventeen rooms.
+
+## Treasures — the reward that is not a wolf (2026-09-02)
+
+Dad: "we are going to add a new level that doesn't reward a wolf but something
+else inbetween all existing levels." The levels between regions cannot pay in
+wolves — the ladder is finished at ten and the tenth is the ending's gift — so
+they pay in **keepsakes**: one object per place, kept forever, worth nothing in
+a fight and everything to a child who is collecting.
+
+**`state.inventory.treasures` had been in the save file since the beginning.**
+Declared in the default state, deep-copied by `persist()` on every write, and
+read by *absolutely nothing*. A whole reward channel already plumbed through
+the save and completely empty. `js/treasures.js` is the thing that was missing,
+not a system bolted on.
+
+Four rules, and `tools/verify-treasures.mjs` holds all four:
+
+1. **Found, never bought** — nothing here goes in `SHOP_STOCK`.
+2. **A treasure does nothing.** No stat, no slot, no unlock. The moment one
+   grants a heart, a child who wants to keep up has to hunt them, and the whole
+   point is that they are optional. The suite rejects any entry carrying a
+   stat, a price or a grant.
+3. **The registry may not run ahead of the world.** An entry with no home shows
+   in the collection as a `???` that can never be filled, which teaches a
+   non-reader they missed something that was never there. The suite reads the
+   level sources for `treasure: 'id'` the same way verify-gear reads them for
+   gear — the world is the authority, not the table. This is why the table
+   starts at ONE entry: six are designed, one is built.
+4. **One per level**, so the collection reads as a map of where you have been.
+
+The first is **The Banked Ember**, in Ember Deep's gold chest. The branch is
+about fire as something you carry, so what you carry out is a piece of the
+hearth that was cold when you got there.
+
+**A save bug that would have thrown, not degraded.** `load()` does
+`state.inventory = data.inventory` — the whole object, replaced. `equipped` and
+`armours` are patched back afterwards for old profiles; `treasures` was not. A
+profile written before this existed would have arrived without the array and
+`addTreasure()` would have pushed onto `undefined` — a crash on the first
+keepsake found, not a quiet miss. One line, and the suite tests it by deleting
+the field and finding one anyway.
+
+**Two art defects, caught by looking.** The first render came out muddy red: I
+had tinted the topaz to the Kiln's orange, and every model in
+`assets/loot/treasure` is a single white material over a shared ATLAS — the
+colour lives in the map, so a tint multiplies rather than replaces. Rendered
+untinted it is already an ember. Pick the right model instead of recolouring
+the wrong one; the rest of the set reads the same way for the levels to come
+(diamond is frost, emerald is the woods). The second was the tile itself: an
+`<img>` at `height:100%` grew the frame and pushed the NAME out of the bottom,
+so the first version showed a picture with no label — for a non-reader, the
+entire point of the screen missing. It paints as a `background-image` on a
+fixed 44px frame now, exactly as the Armoury does for gear.
+
+Also: a new module has to join `sw.js`'s precache list or the PWA is missing it
+offline. Easy to forget, invisible until someone plays on a train.

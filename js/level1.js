@@ -1606,7 +1606,8 @@ export async function buildLk3(scene) {
 
   // The payoff, visible from the doorway from the first step in — a child
   // should WANT the ring lit, which means seeing what lighting it is for.
-  visibleReward(world, 0, -6.2, 'lk3_banked', { shards: 40, heartPiece: 1, gear: 'hammer_c' }, 'gold');
+  visibleReward(world, 0, -6.2, 'lk3_banked',
+    { shards: 40, heartPiece: 1, gear: 'hammer_c', treasure: 'banked_ember' }, 'gold');
 
   world.markers.emberWretchSpots = [{ x: -2.5, z: 4.5 }, { x: 2.5, z: 4.8 }];
   world.markers.breakables = [

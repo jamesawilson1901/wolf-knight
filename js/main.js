@@ -26,6 +26,7 @@ import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUP
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
+import { TREASURES, addTreasure, treasureCount } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
@@ -1461,6 +1462,18 @@ function giveLoot(chest) {
     // matches the colour swatch the armoury shows for the same item.
     spawnGearDrop(world, chest.x, chest.z,
       { file: './assets/loot/platformer/jewel.glb', tint: ARMOURS[L.armour].tint || 0x9aa4b0, size: 1.1 }, seat++);
+  }
+  // A KEEPSAKE, AND IT DOES NOTHING ON PURPOSE (js/treasures.js). It pops as
+  // its own model like every other find — dad's no-emoji law — and it is the
+  // only loot line that can be in a chest a child has already opened without
+  // being lost, because addTreasure() is idempotent.
+  if (L.treasure && TREASURES[L.treasure]) {
+    const td = TREASURES[L.treasure];
+    if (addTreasure(L.treasure)) {
+      lines.push(td.name);
+      spawnGearDrop(world, chest.x, chest.z,
+        { file: td.file, tint: td.tint, size: 1.0 }, seat++);
+    }
   }
   if (L.key) {
     state.flags.keys[L.key] = true;

@@ -6,6 +6,7 @@ import { state, regionCleared } from './state.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
+import { TREASURES, ownsTreasure, treasureCount } from './treasures.js';
 import { persist } from './save.js';
 import { villageCleared } from './levelVillage.js';
 import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
@@ -524,6 +525,46 @@ export class Menus {
       grid.appendChild(d);
     }
     el.appendChild(grid);
+
+    // WHAT YOU BROUGHT HOME. Treasures share this screen because a child
+    // looking for "what have I found" comes to one place, and they are shown
+    // with their REAL MODELS rather than an emoji — the same rendered-thumb
+    // path the Armoury uses (js/equipscene.js), which is dad's no-emoji law
+    // applied to the one screen that is entirely about collecting.
+    //
+    // Unfound ones are `???` exactly like unearned stickers. That is only
+    // honest because TREASURES may not list a keepsake with nowhere to find it
+    // (js/treasures.js rule 3, held by tools/verify-treasures.mjs) — a slot
+    // that can never be filled would teach a non-reader they had missed
+    // something that was never there.
+    const tIds = Object.keys(TREASURES);
+    if (tIds.length) {
+      const th = document.createElement('h2');
+      th.textContent = `Treasures (${treasureCount()}/${tIds.length})`;
+      el.appendChild(th);
+      const tgrid = document.createElement('div');
+      tgrid.className = 'grid tre-grid';
+      for (const id of tIds) {
+        const t = TREASURES[id];
+        const has = ownsTreasure(id);
+        const d = document.createElement('div');
+        d.className = 'sticker' + (has ? ' owned' : '');
+        d.innerHTML = `<div class="ic tre-art"></div><div>${has ? t.name : '???'}</div>`;
+        tgrid.appendChild(d);
+        if (has && this.renderer) {
+          // background-image on a fixed-size frame, exactly as _paintArt does
+          // for gear. An <img> at height:100% grew the tile and pushed the
+          // name out of the bottom of it — the first version of this shipped a
+          // picture with no label, which for a non-reader is the whole point
+          // of the screen missing.
+          itemThumb(this.renderer, { file: t.file }, { zoom: 1.15 })
+            .then((url) => { if (url) d.querySelector('.ic').style.backgroundImage = `url(${url})`; })
+            .catch(() => { /* keep the empty frame rather than break the screen */ });
+        }
+      }
+      el.appendChild(tgrid);
+    }
+
     el.appendChild(this._closeBtn('sticker-menu'));
     this._open('sticker-menu');
   }
