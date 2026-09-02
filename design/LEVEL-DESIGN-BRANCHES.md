@@ -6,6 +6,28 @@ Dad, 2026-09-02:
 >
 > "Ember Deep — burn gates only twice in the entire game."
 
+## THE LAW THAT CAME OUT OF SCRAPPING IT
+
+Dad, asked why the Trial went: **post-game content is the wrong target — the
+kids are not finishing the game yet.**
+
+That is the most useful sentence in this file and it outranks every clever
+idea. A level nobody reaches is worth nothing however good it is, and this
+project has one real audience whose progress is known. So, standing rule for
+every level proposal from here:
+
+**Build where the players actually are.** Region 1-3 content beats region 6-7
+content beats post-game content, every time, regardless of which is the more
+interesting design problem.
+
+It has an immediate consequence this file has to be honest about. **Ember Deep
+is Level 1 — the kids will walk into it.** The Drowned Market is off the Vale,
+which is REGION 6, and by dad's own reasoning is nearly as unreachable as the
+Trial was. Its premise still holds (tide is the least-used verb in the game)
+but its audience problem is the same one that killed the Trial. Ember Deep is
+therefore first, and the Market should be re-examined against a cheaper
+mid-game alternative before it is built rather than after.
+
 ## SCRAPPED: the Trial of the Ten
 
 A third level was specced here and dad scrapped it before any of it was built:
@@ -58,7 +80,7 @@ downloads.**
 
 **The verb, mastered:** stalls and walkways that are only reachable on foot
 over deep water, so the whole branch is walking on water — the thing the Tide
-Wolf is for. One key/lock, three pups, a gold chest at the end.
+Wolf is for. One key/lock, a gold chest at the end, and NO PUPS (see below).
 
 **No boss.** A branch is not a region; it ends in a reward, not a duel. That
 keeps the Vale's own boss the Vale's climax.
@@ -85,9 +107,17 @@ for traversal rather than as a lock on a door.
 
 Kept, because they are what makes a place worth walking:
 
-- shaped layouts, loop-back, ≥1 secret per room, 3 pups per branch
+- shaped layouts, loop-back, ≥1 secret per room
 - a headless verify script each, and both branches pushed
 - narration lines per STORY-BIBLE; a `?dev=1`-drivable route
+
+**NO BRANCH MAY CARRY PUPS.** Found building Ember Deep, 2026-09-02, before it
+shipped. The extra-heart awards in main.js `onPupCollected()` are keyed on a
+GLOBAL RUNNING COUNT — 3 pups is Ember's heart, 6 is Stoneroot's, 9 the Wild
+Woods', 12 Frostpeak's. Three pups in a branch off region 1 would have handed a
+child Stoneroot's heart before they reached Stoneroot and fired
+`all_pups_stone` in the wrong region. While that counter is global, a branch
+pays in shards, gear, heart pieces and potions — never pups.
 
 Waived, with the reason:
 

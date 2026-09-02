@@ -4215,3 +4215,55 @@ object on its own and sees a shaft hanging in the air. Special-casing one prop
 inside a suite that exists to catch exactly that shape of thing would have been
 the wrong trade for a prop no street needs, so it is simply not placed. Twenty
 props, not twenty-one.
+
+---
+
+## EMBER DEEP — the burn branch under the Kiln (2026-09-02)
+
+Dad picked it off a shortlist, and the reason he gave for scrapping the level
+alongside it is the more useful half: **post-game content is the wrong target —
+the kids are not finishing the game yet.** That is now a standing rule in
+design/LEVEL-DESIGN-BRANCHES.md: build where the players actually are. Ember
+Deep is Level 1. They will walk into it.
+
+**Why it exists, measured rather than felt.** Counting promise gates across
+every level file: `crack` 4, `shatter` 3, `burn` 2, `cut` 2. Fire is the FIRST
+wolf a child earns and it gates two things in the whole game. The Kiln taught
+burning — introduce, then develop — and the game then stopped asking.
+
+Three rooms west off the Kiln, the one wall that room had left:
+
+```
+lk1  THE UNDERSTAIR   pocket   the road is GROWN OVER — burn west, + a secret
+lk2  THE CHARRED SPAN island   the floor is gone; two burnable nooks
+lk3  THE BANKED FIRE  pocket   a cold hearth, five lamps, gold
+```
+
+**The idea is fire as WALKING, not fire as a key**, and that came out of reading
+the room next door rather than out of the design. `ld1` is already "dark hall,
+braziers, light them in the order their pilot flames flicker" — TEACH 3's
+twist. The first draft of `lk1` was a second dark brazier hall, which a child
+would have read as the first one done again. Ember Deep has no dark zone at
+all now; it is burning to make ground.
+
+### Two things caught before they shipped
+
+**The rooms hung forever with no error.** Every room must be declared in the
+`L1` spec table (size, district, label) and the three new ones were not, so
+`base()` read `spec.district` off undefined — inside an async builder, whose
+rejection `pageerror` does not see. `transitioning` stayed true and the console
+stayed empty. The same unhandled-rejection blind spot this codebase has been
+bitten by before; calling the builder directly in the page and catching gave
+the answer in one shot.
+
+**NO BRANCH MAY CARRY PUPS.** The branch had three, per the region checklist.
+But the extra-heart awards in `main.js onPupCollected()` key on a GLOBAL RUNNING
+COUNT — 3 pups is Ember's heart, 6 is Stoneroot's, 9 the Wild Woods', 12
+Frostpeak's. Three pups in a branch off region 1 would have handed a child
+Stoneroot's heart **before they reached Stoneroot** and fired `all_pups_stone`
+in the wrong region. The branch pays in shards, gear, a heart piece and a potion
+instead, and the rule is written into the design file for the next one.
+
+Draw calls 91 / 67 / 96 against the 125 budget. `tools/verify-emberdeep.mjs`
+holds it: the Kiln's door exists, all three rooms build with content, and the
+Fire Wolf's slam — through a real key press — burns the road open.

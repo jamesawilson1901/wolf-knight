@@ -116,6 +116,16 @@ export const L1 = {
          label: 'THE BOSS DOOR', beat: 'REST · flame + potion' },
   le:  { kind: 'arena',  w: 26, d: 26, district: 'heart',    spine: true,
          label: 'E · HEART OF THE HOLLOW', beat: 'THE SHADOWGRIP' },
+  // EMBER DEEP — the burn branch under the Kiln. Two pockets and one island:
+  // a branch must not out-scale the road it hangs off, and the Kiln district
+  // already owns four rooms. `spine: false` throughout — this is optional, and
+  // the table is where that is checkable without walking the level.
+  lk1: { kind: 'pocket', w: 20, d: 16, district: 'kiln',     loopsTo: 'ld',
+         label: 'THE UNDERSTAIR', beat: 'optional · BURN: the road is grown over' },
+  lk2: { kind: 'island', w: 32, d: 26, district: 'kiln',
+         label: 'THE CHARRED SPAN', beat: 'optional · burn + the crossing' },
+  lk3: { kind: 'pocket', w: 20, d: 16, district: 'kiln',     loopsTo: 'lk2',
+         label: 'THE BANKED FIRE', beat: 'optional · light the ring · gold' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -212,13 +222,21 @@ export async function loadEmberKit() {
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, pit,
   darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
   });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
+
+// Importing main.js for its toast would make main and level1 a cycle, so the
+// room asks the window for it and stays quiet if it is not there (headless
+// builds, tests). Same helper level3.js keeps, for the same reason.
+function bigToastSafe(msg) {
+  const t = typeof window !== 'undefined' && window.__game && window.__game.bigToast;
+  if (t) t(msg);
+}
 
 // A DODO. Just a dodo. No mechanic, no reward, nothing required — a secret
 // for its own sake ("more secrets and easter eggs... the things that make
@@ -1173,7 +1191,7 @@ export async function buildLd(scene) {
   // Moving the forge would cost the room its centrepiece. Moving the DOOR costs
   // nothing and reads better: you come up the Hollow, the forge fills the way
   // ahead, and you go round it. tools/verify-reachable.mjs holds this now.
-  const { halfW, halfD } = shell(world, spec, [gap('n', undefined, -6), gap('s'), gap('e')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('n', undefined, -6), gap('s'), gap('e'), gap('w')], D, {
     patches: [{ x: 0, z: -8, r: 6.5, kind: 'scorch' }, { x: -11, z: 6, r: 4.4, kind: 'gravel' },
               { x: -12, z: -6, r: 4.0, kind: 'scorch' }, { x: 9.5, z: 6, r: 4.0, kind: 'ash' },
               { x: 13, z: -8, r: 3.6, kind: 'rubble' }],
@@ -1186,6 +1204,10 @@ export async function buildLd(scene) {
   sideDoor(world, 's', halfW, halfD, 'lg3', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lg4', { x: 0, z: 3.2, angle: Math.PI }, { centre: -6 });
   sideDoor(world, 'e', halfW, halfD, 'ld1', { x: -7, z: 0, angle: Math.PI / 2 });
+  // DOWN INTO EMBER DEEP (design/LEVEL-DESIGN-BRANCHES.md). The Kiln is where
+  // fire is taught, so the Kiln is where the branch that MASTERS it hangs off.
+  // West, the one wall this room had left.
+  sideDoor(world, 'w', halfW, halfD, 'lk1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
 
   heroProp(world, 0, -8, 'bowl', D.tint, D);               // ▲ THE FORGE HEART
   world.markers.heroSpot = { x: 0, z: -8 };
@@ -1424,11 +1446,189 @@ function buildZooInner(scene) {
   return world;
 }
 
+// ===========================================================================
+// EMBER DEEP — the branch under the Kiln (design/LEVEL-DESIGN-BRANCHES.md)
+// ===========================================================================
+//
+// WHY IT EXISTS, measured rather than felt. Counting promise gates across every
+// level file in the game: crack 4, shatter 3, burn 2, cut 2. Fire is the FIRST
+// wolf a child earns and it gates two things in the whole game. The Kiln taught
+// burning — introduce, then develop — and then the game simply stopped asking.
+//
+// So this is TEACH 3: master. Three rooms hanging west off the Kiln, and the
+// through-line is that fire is a thing you TRAVEL with rather than a key you
+// turn. Dark that your flame pushes back, growth that has closed the road, and
+// a cold hearth that only a full ring of fire brings back.
+//
+// It is a RETURN TRIP by construction: the Fire Wolf is granted when Ember's
+// boss falls (main.js), so a child walks past this door on the way up, sees
+// what it costs, and comes back able to pay. That is the promise-gate pattern
+// the region already runs on, applied to a whole branch instead of one chest.
+//
+// AND IT HAS NO PUPS, WHICH IS NOT AN OVERSIGHT. The extra-heart awards in
+// main.js onPupCollected() are keyed on a GLOBAL RUNNING COUNT — 3 pups is
+// Ember's heart, 6 is Stoneroot's, 9 the Wild Woods', 12 Frostpeak's. Three
+// pups down here would have handed a child Stoneroot's heart before they ever
+// reached Stoneroot, and fired `all_pups_stone` in the wrong region. A branch
+// off region N cannot carry pups while that counter is global. It pays in
+// shards, gear, a heart piece and a potion instead.
+//
+// No boss, no new form, no new verb — a branch is not a region (GAME-CONTRACT's
+// checklist, waived in writing in the design file with the reasons).
+
+// --- EMBER DEEP 1 — THE UNDERSTAIR (introduce: fire is light) ---------------
+export async function buildLk1(scene) {
+  const { world, spec, D } = base(scene, 'lk1');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -4, z: 0, r: 3.2, kind: 'rubble' }, { x: 4, z: -3, r: 2.6, kind: 'ash' }],
+    pathWidth: 2.4,
+    paths: [[[9, 0], [2, 1], [-9, 0]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'ld', { x: -9.5, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'lk2', { x: 9.5, z: 0, angle: -Math.PI / 2 });
+
+  // NOT ANOTHER DARK BRAZIER HALL. `ld1` next door is already TEACH 3's twist —
+  // four braziers lit in the order their pilot flames flicker, in a room dark
+  // enough that only the Dark Wolf can read the order. Two dark brazier rooms
+  // in one district is one too many, and a child would read the second as the
+  // first done again.
+  //
+  // So Ember Deep's own idea is BURNING AS WALKING. The stair down is not
+  // locked, it is OVERGROWN: char-thorn has closed it the way years close a
+  // path, and every step west is a thing you burn out of the way. The Kiln
+  // taught fire as a switch you throw; this teaches it as the ground you make.
+  promiseGate(world, 3.2, 0, 2.2, 4.0, 0xc0682d, 'OVERGROWN — needs fire', 'fire',
+              { system: 'burn', id: 'lk1_first' });
+  world.markers.firePromise = { x: 3.2, z: 0 };
+  promiseGate(world, -2.6, 0, 2.2, 4.0, 0xc0682d, '', 'fire',
+              { system: 'burn', id: 'lk1_second' });
+
+  // ...and one that is NOT on the road, so burning is rewarded and not merely
+  // demanded. The alcove reads as wall until the thorn in front of it is gone.
+  wallRun(world, -2, -5, 3, -5, D);
+  promiseGate(world, 0.5, -4.4, 2.0, 1.8, 0xc0682d, '', 'fire',
+              { system: 'burn', id: 'lk1_alcove_thorn' });
+  visibleReward(world, 0.5, -6.4, 'lk1_alcove', { shards: 18, potion: 1 }, 'silver');
+
+  world.markers.cinderImpSpots = [{ x: 6.5, z: 3.5 }];
+  world.markers.breakables = [
+    { x: 7.5, z: -3.5, kind: 'crate' }, { x: -6.5, z: -3, kind: 'barrel' },
+    { x: -1, z: 5.5, kind: 'jar' },
+  ];
+  fallenColumn(world, 5.5, 5.5, 0.9, D, 3.0);
+  rubbleField(world, -4, 2.5, 2.0, D, 9);
+  aftermath(world, 6.5, -1, 1.8, D, 12);
+  scatter(world, halfW, halfD, D, 71, 5);
+  return finish(world, spec, D);
+}
+
+// --- EMBER DEEP 2 — THE CHARRED SPAN (develop: fire opens the way) ----------
+export async function buildLk2(scene) {
+  const { world, spec, D } = base(scene, 'lk2');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 5.0, kind: 'scorch' }, { x: -10, z: -5, r: 3.4, kind: 'rubble' },
+              { x: 10, z: 5, r: 3.2, kind: 'ash' }],
+    pathWidth: 2.6,
+    // the road bends NORTH around the span, because the span is the crossing
+    paths: [[[13, 0], [5, 5], [-5, 5], [-13, 0]]],
+  });
+  world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'lk1', { x: -13.5, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'lk3', { x: 13.5, z: 0, angle: -Math.PI / 2 });
+
+  // THE SPAN ITSELF — the floor is gone through the middle of the room, so the
+  // way on is the north path. The pit is the reason the route bends, not
+  // decoration: LEVEL-DESIGN-2's rule that a shape must be a REASON.
+  pit(world, -6, 6, -4.5, -1.0);
+
+  // WHAT CLOSED THE ROAD. Three burnable chokes, and only the middle one is on
+  // the route — the other two are alcoves with something in them, so burning is
+  // rewarded rather than merely required.
+  promiseGate(world, 0, 1.6, 4.0, 2.0, 0xc0682d, 'CHARRED — needs fire', 'fire',
+              { system: 'burn', id: 'lk2_span' });
+  world.markers.firePromise = { x: 0, z: 1.6 };
+  promiseGate(world, -11, 6.5, 2.2, 2.2, 0xc0682d, '', 'fire',
+              { system: 'burn', id: 'lk2_westnook' });
+  visibleReward(world, -13, 8.5, 'lk2_westnook_prize', { shards: 22, gear: 'axe_c' });
+  promiseGate(world, 11, -6.5, 2.2, 2.2, 0xc0682d, '', 'fire',
+              { system: 'burn', id: 'lk2_eastnook' });
+  visibleReward(world, 13, -8.5, 'lk2_eastnook_prize', { shards: 20, heartPiece: 1 }, 'silver');
+
+  world.markers.cinderImpSpots = [{ x: 6, z: 7 }, { x: -6, z: 7.5 }];
+  world.markers.emberWretchSpots = [{ x: 0, z: 8.5 }];
+  world.markers.breakables = [
+    { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
+    { x: 4, z: -9, kind: 'barrel' },
+  ];
+  cartWreck(world, -4, -8.5, 0.4, D);
+  fallenColumn(world, 8, 2, -0.6, D, 3.6);
+  lowWall(world, -9, 2.5, 0.2, D, 3.2);
+  rubbleField(world, 11, 1, 2.6, D, 11);
+  aftermath(world, -10, 8, 2.2, D, 13);
+  scatter(world, halfW, halfD, D, 72, 6);
+  return finish(world, spec, D);
+}
+
+// --- EMBER DEEP 3 — THE BANKED FIRE (master: fire brings a place back) ------
+export async function buildLk3(scene) {
+  const { world, spec, D } = base(scene, 'lk3');
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    patches: [{ x: 0, z: -1, r: 4.4, kind: 'scorch' }, { x: -7, z: 4, r: 2.6, kind: 'gravel' },
+              { x: 7, z: 4, r: 2.6, kind: 'gravel' }],
+    pathWidth: 2.6,
+    paths: [[[9, 0], [4, -0.5], [0, -1]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'lk2', { x: -9.5, z: 0, angle: Math.PI / 2 });
+
+  // THE BANKED FIRE — the great hearth this whole branch is named for, cold.
+  heroProp(world, 0, -1, 'bowl', D.tint, D);
+  world.markers.heroSpot = { x: 0, z: -1 };
+
+  // THE RING. Five lamps around the hearth, and the chamber only comes back
+  // when every one of them is burning. No dark zone here, for the same reason
+  // lk1 has none: the readout is the RING itself — each brazier's act-here halo
+  // goes out as it catches (js/gates.js), so what is left to do is countable at
+  // a glance, which is the only kind of progress bar a non-reader can use.
+  const ring = [{ x: -4.6, z: 2.6 }, { x: 4.6, z: 2.6 }, { x: -5.4, z: -3.4 },
+                { x: 5.4, z: -3.4 }, { x: 0, z: 5.2 }];
+  let lit = 0;
+  teachBraziers(world, ring, 'lk3_ring', () => {
+    lit++;
+    if (lit < ring.length) return;
+    // EVERY LAMP BURNING. The reward is not handed over by a counter a child
+    // cannot see — the room itself says so, and the chest has been in plain
+    // sight the whole time so they knew what they were working toward.
+    bigToastSafe('The Deep remembers its fire.');
+  });
+  world.markers.teachBrazier = ring[0];
+
+  // The payoff, visible from the doorway from the first step in — a child
+  // should WANT the ring lit, which means seeing what lighting it is for.
+  visibleReward(world, 0, -6.2, 'lk3_banked', { shards: 40, heartPiece: 1, gear: 'hammer_c' }, 'gold');
+
+  world.markers.emberWretchSpots = [{ x: -2.5, z: 4.5 }, { x: 2.5, z: 4.8 }];
+  world.markers.breakables = [
+    { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
+    { x: -3.5, z: 6.2, kind: 'jar' }, { x: 3.5, z: 6.4, kind: 'box' },
+  ];
+  wayshrine(world, -6.5, -5.5, 0.4, D);
+  fallenColumn(world, -5, 6.5, 0.7, D, 3.0);
+  fallenColumn(world, 5, 6.5, -0.7, D, 3.0);
+  rubbleField(world, -8, -4.5, 2.0, D, 9);
+  rubbleField(world, 8, -4.5, 2.0, D, 9);
+  aftermath(world, 0, 6.8, 2.0, D, 14);
+  scatter(world, halfW, halfD, D, 73, 5);
+  return finish(world, spec, D);
+}
+
 export const LEVEL1_ROOMS = {
   la: buildLa, la1: buildLa1, lg1: buildLg1,
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
   lc: buildLc, lc1: buildLc1, lg3: buildLg3,
   ld: buildLd, ld1: buildLd1, lg4: buildLg4,
+  lk1: buildLk1, lk2: buildLk2, lk3: buildLk3,   // EMBER DEEP
   le: buildLe,
   zoo: buildZoo,
 };
