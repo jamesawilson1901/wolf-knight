@@ -4556,3 +4556,92 @@ now. Same fix, fourth time.
 (`node tools/verify-density.mjs n1 n2`), which turns a twenty-minute suite into
 a twenty-second one while dressing a room. The completeness check still runs on
 the whole registry, so a filtered run can still tell you a room is missing.
+
+## QUEUED NEXT — the whole board, in order (2026-09-03, after v3.95.0)
+
+Every item below was checked against the code today, not carried forward from
+an older list. Items from the previous queues that are DONE and are therefore
+not repeated: pots for regions 3/5/6 (every level file writes
+`markers.breakables` now), music for Stormreach and the Sunken Vale, the
+retired-room narration port (no dead `state.room === 'r1'`-style comparisons
+survive in main.js), and shop tiers 3-5 (`CONFIG.SHOP.TIERS` runs to five rungs
+gated on `WS.get(region,'restored')`).
+
+### A · Wrong in the game a child is playing
+
+1. **`state.room` keeps the RAW room id.** `js/main.js:1721` sets
+   `state.room = id` while `buildRoom` builds `resolveRoom(id)`. Frostpeak's
+   `f1` still has a live door home to `'w5'` (`js/rooms.js:3749`), which is
+   RETIRED and redirects to `tgl` — so walking out of Frostpeak into the Wild
+   Woods leaves `state.room === 'w5'` with `tgl` on screen. Music, narration
+   triggers, the map's "you are here" and every `state.room === '…'` comparison
+   key off that string. The fix is one line plus an audit of what compares raw
+   ids, and it wants a suite.
+2. **The map screen is two regions and one rebuild out of date**
+   (`js/menus.js:463-482`). Ember's rows are `r1/r1b/r2/r2b/k1/r3` — all
+   retired — so the ⭐ can never light up in Level 1; Stoneroot is the only
+   other region listed. The Wild Woods, Frostpeak, Stormreach, the Sunken Vale,
+   the Shadow Court, the Village, the Spire and both roads are simply absent.
+3. **The `vgb` frozen-bot intermittent** (PROGRESS.md "Intermittents flagged"):
+   one unreproduced occurrence, zero movement across three 60s tries, and a
+   live probe walked the same spot freely. Flagged MUST-re-examine if it fires
+   again; the run-l2 tripwire is in place.
+
+### B · The safety net
+
+4. **The nightly sweep has not gone green since at least 2026-08-31** — 31 Aug
+   failure, 1 Sep failure (shard 4/8 only, seven shards green), 2 Sep cancelled.
+   The 1 Sep failure is on `85f4515`, which predates the Frostpeak-floor and
+   Village fixes, so it may already be stale — what is missing is one confirmed
+   green run. A permanently red nightly teaches everyone to ignore it, which is
+   docs/TESTING.md §1's own lesson.
+5. **Three arrival-density rooms below the floor** — `ysq` 30/32, `f1` 26/32,
+   `f4` 29/32 (tools/known-fail.txt, down from twenty on 2026-09-03). Two of the
+   three are Frostpeak's, so item 6 subsumes them.
+
+### C · Content, where the players actually are
+
+6. **Frostpeak was never rebuilt.** It is the only region still hand-built in
+   `rooms.js` (f1, f1b, f2, f2b, f3, f4, f5 — seven rooms) against 17-21 for
+   every rebuilt region, with no `level4.js`, no spec table, no district
+   palette, and doors pointing at retired ids. It is region FOUR: the kids will
+   walk into it, and both remaining density failures live there.
+7. **Interstitial gap 2 — Stoneroot → Wild Woods.** Earth is the freshest verb
+   at that point and the Wild Woods is region three, so this is the next road by
+   the same "build where the players are" law that put the Night Road first.
+8. **Interstitial gap 3 — Wild Woods → Frostpeak.**
+9. **Interstitials gaps 5 and 6** (Stormreach → Vale, Vale → Court). Region five
+   and six: worth building, worth building last.
+
+Each road adds its keepsake to `js/treasures.js` **the day its rooms ship** —
+rule 3 of that file, enforced by `verify-treasures`.
+
+### D · Consistency and polish
+
+10. **Emoji are still on screen in six places**: the form badge and radial
+    picker (`js/ui.js:88,132`), perk cards (`menus.js:366`), the sticker book
+    (`421`), mystery cards (`496`), the map rows, and the shop's fallback icon
+    when a 3D thumbnail fails (`310-311`). The RPG-signs pack was dropped for a
+    missing licence; the Kenney Game Icons are already vendored and cleared.
+11. **Three of the four spirit lights never arrive at the Den.** `regions.js`
+    carries "polish list: Sylva's leaf-light / Boreal's rime-light / Aria's
+    stormlight / Meri's tidelight joining the den fire" — Cinder's ember is the
+    only one built. Four small, warm set pieces in the room a child returns to
+    most.
+12. **Two music "tracks" are aliases** (`js/audio.js`): `kiln` is
+    `causeway.mp3` and `ember-calm` is `den.ogg`, and the Wild Woods shares
+    `causeway` with the Kiln. Nothing is silent; three places are just wearing
+    another place's sound.
+13. **Profile isolation has never been checked** (PROGRESS.md item 3, TODO since
+    RUN 3): two children's saves, proven not to bleed into each other.
+
+### E · Dad's call / needs the kids
+
+14. **Economy and XP balance pass.** Marked in two previous queues as *needs the
+    kids — do not do this overnight*: the caps and a fifth perk change what a
+    child gets.
+15. **Recorded voice for Pip.** `design/VOICE-RECORDING-SCRIPT.md` is written
+    and every line is grouped by character with recording instructions; the game
+    still speaks through browser TTS. One file per line id, and the wiring is
+    already shaped for it.
+16. **Hard landscape lock** — still best-effort (CSS and layout only).
