@@ -119,7 +119,7 @@ const others = await wk.page.evaluate(async () => {
     const mesh = b.dragon || b.model || b.root;
     mesh.updateWorldMatrix(true, true);
     const bb = new THREE.Box3().setFromObject(mesh);
-    out[key] = { name: b.name, hp: b.maxHp || b.maxHp, stands: +(bb.max.y - bb.min.y).toFixed(2) };
+    out[key] = { name: b.name || key, hp: b.maxHp || b.maxHp || null, stands: +(bb.max.y - bb.min.y).toFixed(2) };
   }
   return out;
 });

@@ -342,6 +342,7 @@ export class Shadowgrip {
       // own units BELOW its origin, which at this scale is ankle-deep grass.
       // `hover` then lifts a body that is not supposed to be standing at all.
       wolf.position.y = -bb.min.y * (B.stands / h) + (B.hover || 0);
+      this._bodyY = wolf.position.y;
     } else {
       wolf.scale.setScalar(1.3);
     }
@@ -738,7 +739,16 @@ export class Shadowgrip {
     }
 
     this.mixer.update(dt);
-    this.dragon.position.y = 0; // paws on the ground, always
+    // PAWS ON THE GROUND, ALWAYS — but "the ground" is not always y 0.
+    //
+    // This forced the body to zero every frame, which was right while every
+    // boss was the same wolf standing on its own origin. It is wrong the
+    // moment a skin brings its own body: the minotaur's mesh sits five of its
+    // own units BELOW its origin, and Aria is supposed to HOVER. Both of those
+    // are set once at build time and were being wiped sixty times a second.
+    // `_bodyY` is where this body belongs; the line still does its real job,
+    // which is refusing to let anything else drift the body vertically.
+    this.dragon.position.y = this._bodyY || 0;
 
     if (this._hurtFlash > 0) {
       this._hurtFlash -= dt;

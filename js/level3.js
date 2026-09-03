@@ -30,6 +30,7 @@ import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
+import { audio } from './audio.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
 
 let forceGrey = false;
@@ -659,7 +660,9 @@ function rootBar(world, x, z, w, D) {
     m.position.set(x, 1.2, z);
     world.add(m);
     world.addBox(x - w / 2, x + w / 2, z - 0.8, z + 0.8);
-    return;
+    const gc = world.boxColliders[world.boxColliders.length - 1];
+    return { open() { world.root.remove(m);
+      const i = world.boxColliders.indexOf(gc); if (i >= 0) world.boxColliders.splice(i, 1); } };
   }
   const g = new THREE.Group();
   const n = 5;
@@ -692,7 +695,22 @@ function rootBar(world, x, z, w, D) {
   world.add(glow);
   world.onAnimate((t) => { glow.intensity = 1.8 + Math.sin(t * 1.9) * 0.5; });
   world.addBox(x - w / 2, x + w / 2, z - 0.9, z + 0.9);
+  const collider = world.boxColliders[world.boxColliders.length - 1];
   world.reserve(x, z, w * 0.5 + 1.0, 'rootbar');
+  // IT HAS TO BE ABLE TO OPEN WHERE THE CHILD IS STANDING. tc4's knot is cut
+  // in a different room, so a rebuild is enough there — the Knot's own plate
+  // is pressed in the SAME room, and a barrier that only lifts on re-entry is
+  // the exact bug openTheWayOn() exists to stop (js/main.js).
+  return {
+    open() {
+      world.root.remove(g);
+      world.root.remove(glow);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      audio.play('burn', { volume: 0.6, rate: 0.8 });
+      audio.play('puff', { volume: 0.7, rate: 0.9 });
+    },
+  };
 }
 
 function northGate(world, kind, D) {
@@ -1207,6 +1225,12 @@ export async function buildTkn(scene) {
   sideDoor(world, 's', halfW, halfD, 't3b', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc3', { x: 0, z: 7, angle: Math.PI },
     { when: () => !!state.flags.plates.l3_knot_p1 });
+  // ...and the way north is CHOKED until it is (rootBar). Same fault as tc4's
+  // boss door: the gate lived entirely in a `when` condition, so a child
+  // walked up to an open arch and nothing happened. This one opens LIVE, off
+  // the plate, because the plate is in this room.
+  const knotBar = !state.flags.plates.l3_knot_p1
+    ? rootBar(world, 0, -halfD + 1.0, DOOR_HALF * 2 + 1.2, D) : null;
 
   // ---------------------------------------------------------------------
   // THE KNOT — an honest push-and-plate room, the same shared furniture as
@@ -1240,6 +1264,7 @@ export async function buildTkn(scene) {
 
   plateSwitch(world, 'l3_knot_p1', 6, 2, () => {
     state.flags.plates.l3_knot_p1 = true;
+    if (knotBar) knotBar.open();       // the roots let go where the child stands
   });
   world.markers.plateSpots = [{ x: 6, z: 2, id: 'l3_knot_p1' }];
 
