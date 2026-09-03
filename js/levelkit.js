@@ -597,6 +597,14 @@ export function makeBuilders({ kit, isGrey }) {
     }
     world.add(g);
 
+    // EVERY GATE SIGNS THE REGISTER. tools/verify-promises.mjs drives each one
+    // with the real verb, and its table is hand-kept BY NECESSITY — the
+    // approach geometry (where a child stands, which way they face to swing)
+    // is nowhere in the game data. Its own header already admitted the list
+    // had rotted once ("Ember Deep's burn nooks are still missing from it").
+    // A list that cannot be derived can still be CHECKED: this is the roll
+    // call, so a gate that ships without a test says so out loud.
+    (world.promiseGates || (world.promiseGates = [])).push({ id, system, x, z, w, d, label });
     // A gate across a doorway blocks with a BOX, not the circle a rock clump
     // uses, so it hands its own collider-removal to whichever system takes it.
     const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };

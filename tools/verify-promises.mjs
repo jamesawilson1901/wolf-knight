@@ -203,6 +203,40 @@ for (const [room, marker, id] of MARKED) {
   check(room + ' · ' + marker + ' lands on the map as ???', got.logged === true, got);
 }
 
+// ---------------------------------------------------------------------------
+console.log('\n── the roll call: is every gate in the game in this file? ──');
+// The GATES table above cannot be derived — the approach geometry (where a
+// child stands and which way they face to swing) is nowhere in the game data —
+// and its own comment already recorded it rotting once. A list that cannot be
+// derived can still be CHECKED. js/levelkit.js's promiseGate signs a register
+// (`world.promiseGates`) as it builds; this walks the whole live room registry
+// and names anything in that register the table above has never heard of.
+const { allRooms } = await import('./all-rooms.mjs');
+const everyGate = await page.evaluate(async (ids) => {
+  const rooms = await import('/js/rooms.js');
+  const THREE = await import('three');
+  const st = await import('/js/state.js');
+  // built with NOTHING opened, so a gate that only exists while shut is seen
+  for (const k of Object.keys(st.state.flags)) {
+    if (typeof st.state.flags[k] === 'boolean') st.state.flags[k] = false;
+  }
+  st.state.flags.cracked = {}; st.state.flags.burned = {}; st.state.flags.world = {};
+  const out = [];
+  for (const id of ids) {
+    let w;
+    try { w = await rooms.buildRoom(id, new THREE.Scene()); } catch { continue; }
+    for (const g of (w.promiseGates || [])) out.push({ room: id, id: g.id, system: g.system });
+  }
+  return out;
+}, await allRooms(page));
+const named = new Set(GATES.map((g) => g.gate));
+// 'none' gates open by being walked (Stormreach's sea cave is water, not a
+// verb) — there is no tool to drive, so they are outside this suite's remit.
+const untested = everyGate.filter((g) => g.system !== 'none' && !named.has(g.id));
+for (const g of everyGate) console.log(`   ${g.room.padEnd(5)} ${g.system.padEnd(8)} ${g.id}${named.has(g.id) ? '' : g.system === 'none' ? '   (opens by walking — not a verb)' : '   ← NOT DRIVEN BY THIS SUITE'}`);
+check(`every promise gate in the game is driven here (${everyGate.length} found)`,
+  untested.length === 0, untested);
+
 console.log('\n' + (errors.length ? '✗ ' + errors.length + ' FAILED\n' + errors.join('\n') : '✓ all promise gates open to the tool they advertise'));
 await b.close();
 process.exit(errors.length ? 1 : 0);
