@@ -544,19 +544,30 @@
       background: rgba(20,14,26,.42); border-radius: 16px;
       padding: 2px 10px 2px 5px;
     }
+    /* THE TOP-LEFT STRIP IS A ROW, NOT THREE GUESSES.
+       The coin counter, the level badge and the buff chips each carried their
+       own fixed `left` — 200, 262, 370 — measured against a counter reading
+       "0". At three digits the coin chip is 95px wide and ran straight under
+       "Lv 1"; dad's first screenshot of the session is the two of them on top
+       of each other. Numbers grow, so the layout has to grow with them: one
+       flex row, and they can never collide again whatever the child is
+       carrying. */
+    #hud-top {
+      position: fixed; left: calc(200px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top));
+      z-index: 5; display: flex; align-items: flex-start; gap: 12px; pointer-events: none;
+    }
     #shards {
-      position: fixed; left: calc(200px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); z-index: 5;
       color: #ffd76a; font-size: 20px; font-weight: 800;
       text-shadow: 0 2px 6px rgba(0,0,0,.7); pointer-events: none;
     }
     #level-badge {
-      position: fixed; left: calc(262px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); z-index: 5; width: 92px;
+      width: 92px; flex: none;
       color: #cdb8ff; font-size: 15px; font-weight: 800; pointer-events: none;
       text-shadow: 0 2px 6px rgba(0,0,0,.7);
     }
     #xp-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.18); margin-top: 3px; overflow: hidden; }
     #xp-fill { height: 100%; width: 0%; background: #b48aff; border-radius: 3px; transition: width .3s ease; }
-    #buffs { position: fixed; left: calc(370px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+    #buffs { display: flex; gap: 6px; pointer-events: none; }
     .buff-chip {
       width: 34px; height: 34px; border-radius: 10px; font-size: 19px;
       display: flex; align-items: center; justify-content: center;
@@ -1169,9 +1180,11 @@
   <div id="btn-defend" class="action-btn ui"><span class="ctl-glyph ctl-shield"></span></div>
   <div id="btn-jump" class="action-btn ui"><span class="ctl-glyph ctl-jump"></span></div>
   <div id="potions"></div>
-  <div id="shards">🔸 0</div>
-  <div id="level-badge">Lv 1<div id="xp-bar"><div id="xp-fill"></div></div></div>
-  <div id="buffs"></div>
+  <div id="hud-top">
+    <div id="shards">0</div>
+    <div id="level-badge">Lv 1<div id="xp-bar"><div id="xp-fill"></div></div></div>
+    <div id="buffs"></div>
+  </div>
   <div id="inv-btn" class="ui"><svg class="ico"><use href="#ico-pack"/></svg></div>
   <div id="inv-menu" class="panel"></div>
   <div id="shop-menu" class="panel"></div>
@@ -1182,7 +1195,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.99.0</div>
+  <div id="badge">Wolf Knight &middot; v3.100.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

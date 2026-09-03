@@ -74,7 +74,7 @@ export const STICKERS = [
   { id: 'parry1', icon: '🛡️', name: 'Perfect Block!', counter: 'parries', at: 1 },
   { id: 'parry10', icon: '✨', name: 'Parry Master', counter: 'parries', at: 10 },
   { id: 'smasher', icon: '📦', name: 'Pot Smasher', counter: 'pots', at: 5 },
-  { id: 'rich', icon: '🪙', name: 'Shard Collector', counter: 'shardsEarned', at: 100 },
+  { id: 'rich', icon: '🪙', name: 'Coin Collector', counter: 'shardsEarned', at: 100 },
   { id: 'chest1', icon: '🎁', name: 'Treasure Finder', counter: 'chests', at: 1 },
   { id: 'shopper', icon: '🛒', name: 'First Purchase', counter: 'purchases', at: 1 },
   { id: 'pups', icon: '🐺', name: 'Pup Rescuer', counter: 'pupsFound', at: 3 },

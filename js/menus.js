@@ -151,7 +151,7 @@ export class Menus {
     // verify-completion's scrape while the invariant itself was still fine.
     // The number is published as an attribute now: reword the sentence all you
     // like, the check keeps reading the same thing.
-    foot.innerHTML = `<span class="arm-stat"><b>${state.shards}</b> shards</span>
+    foot.innerHTML = `<span class="arm-stat"><b>${state.shards}</b> coins</span>
       <span class="arm-stat"><b>${state.potions}</b> potions</span>
       <span class="arm-stat" data-pup-total="${pupTotal}"
         ><b>${Object.keys(state.flags.pups).length}/${pupTotal}</b> pups</span>`;
@@ -272,7 +272,7 @@ export class Menus {
     el.appendChild(h);
     const shardLine = document.createElement('div');
     shardLine.style.cssText = 'font-size:18px;color:#ffd76a;font-weight:800';
-    shardLine.textContent = `You have ${state.shards} shards`;
+    shardLine.textContent = `You have ${state.shards} coins`;
     el.appendChild(shardLine);
 
     const grid = document.createElement('div');
@@ -298,7 +298,7 @@ export class Menus {
       // the potion — which has no model, being code-built — keeps its icon.
       card.innerHTML = `<div class="ic"></div><div class="nm">${def.name}</div>
         <div>${def.blurb || statLine(s.id, def, s.kind)}</div>
-        <div class="price">${s.price} shards${full ? ' (bag full)' : ''}</div>`;
+        <div class="price">${s.price} coins${full ? ' (bag full)' : ''}</div>`;
       const ic = card.querySelector('.ic');
       ic.className = 'ic shop-art';
       if (s.kind === 'potion') {

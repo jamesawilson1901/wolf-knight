@@ -1,4 +1,4 @@
-// Loot: ember shards (currency coins), breakable pots/crates, and chests.
+// Loot: coins (the currency), breakable pots/crates, and chests.
 // Shards scatter with a little hop, sparkle, and fly to Kael when close (or
 // from far away with the Magnet buff). Chests persist per save; breakables
 // respawn with the room (small change, not farming gold).
@@ -68,7 +68,15 @@ export async function preloadLoot() {
 //
 // The span is a TARGET WIDTH, not a scale factor — each coin in the kit is
 // measured and scaled to it, so swapping in a different model needs no maths.
-const COIN_SPAN = 0.27;
+// A COIN IS ONE EIGHTH OF KAEL. Dad's number, from play: "the coins should be
+// one eighth the height of the user." Written as a RATIO of his measured
+// height rather than as a span, so it survives the day somebody rescales the
+// knight — the same discipline the chests and the crate had to learn. Kael the
+// Knight stands 1.265u (measured off his own model, not typed at it), so a
+// coin is 0.158u across. The three coin models are discs in XY and thin in Z,
+// which is why the spin below reads: they stand upright and turn edge-on.
+const KAEL_HEIGHT = 1.265;
+const COIN_SPAN = KAEL_HEIGHT / 8;
 const SHARD_SCALE = 3.4;                      // legacy disc only
 const SHARD_REST = 0.4 * SHARD_SCALE * 0.5;   // sit ON the floor, not in it
 
@@ -176,7 +184,7 @@ export function spawnShards(world, x, z, n) {
       // it lands, THEN it is yours.
       //
       // 0.85, not 0.5, since v3.70. `arm` gates the MAGNET as well as the
-      // pickup, and the magnet reaches 2.2u — so a child standing at the chest
+      // pickup, and the pull reaches 3.2u — so a child standing at the chest
       // they just opened had the whole payout land and be hoovered up inside
       // about a third of a second. Dad: "I can't see them at all." Bigger coins
       // alone would not have fixed that; they also have to still be there. This
@@ -254,7 +262,7 @@ export function spawnPotionDrop(world, x, z) {
 // Purely additive and purely visual — the grant already happened by the
 // time this is called, so there is nothing to pick up and nothing to lose;
 // it only needs to arc, land, and fade, the same physics as a coin's hop
-// with no magnet/collection step after it.
+// with no collection step after it.
 // THE THING ITSELF COMES OUT OF THE CHEST. Dad: "when shields and weapons
 // come out the chest, don't use a generic round orange dot like you have.
 // there are shield assets available. use them." He is right twice over: the
@@ -409,7 +417,6 @@ export function spawnRewardPop(world, x, z, icon, seatIndex = 0) {
 
 export function updateShards(world, dt, t, player) {
   if (!world.shards) return;
-  const magnet = player.buffs && player.buffs.magnet > 0;
   for (const s of world.shards) {
     if (s.taken) continue;
     s.life -= dt;
@@ -478,12 +485,13 @@ export function updateShards(world, dt, t, player) {
     // expires unpaid. The launch speeds above (up to 2.2 m/s, three hops at
     // 0.55 skid damping) put the far edge of a scatter right on 2.2, and a
     // five-coin chest spreads wider still. 3.2 covers the whole scatter while
-    // staying far short of the magnet powerup's 8, so "flies out, lands, THEN
-    // is yours" reads exactly as before.
-    const pullR = magnet ? 8 : 3.2;
+    // and it is now the only pull radius there is: the Magnet Charm that used
+    // to widen it to 8 was cut (js/powerups.js). "Flies out, lands, THEN is
+    // yours" reads exactly as before.
+    const pullR = 3.2;
     if (s.arm <= 0 && s.settled && d2 < pullR * pullR && d2 > 0.3 * 0.3) {
       const d = Math.sqrt(d2);
-      const pull = (magnet ? 10 : 6) * dt;
+      const pull = 6 * dt;
       s.x += (dx / d) * pull;
       s.z += (dz / d) * pull;
     }

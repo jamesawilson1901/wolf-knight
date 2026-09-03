@@ -1,8 +1,14 @@
 // Momentary power-ups: glowing pickups that grant short, BIG buffs.
+//
+// THE MAGNET IS GONE (dad, from play: "get rid of the magnet in the game").
+// It was the one buff with nothing to look at and nothing to do — coins
+// already walk themselves to a child inside 3.2u, so twelve seconds of a wider
+// radius was a power-up whose whole effect was that the same thing happened
+// slightly further away. Four buffs that change how Kael moves and hits, and
+// no fifth that changes an invisible number.
 //   ⭐ Star of Luna    — 8s invincible + fast, sparkling trail
 //   🔥 Ember Fury      — 10s triple damage
 //   🪶 Feather         — 10s floaty triple-jump
-//   🧲 Magnet Charm    — 12s drops fly to Kael
 //   🌙 Moon Shard      — special recharges instantly
 // Sources: golden chests, rare pot drops, boss rewards.
 
@@ -14,7 +20,6 @@ export const POWERUPS = {
   star: { icon: '⭐', name: 'Star of Luna', time: 8, color: 0xfff2a8 },
   fury: { icon: '🔥', name: 'Ember Fury', time: 10, color: 0xff6a2a },
   feather: { icon: '🪶', name: 'Feather', time: 10, color: 0xbfe8ff },
-  magnet: { icon: '🧲', name: 'Magnet Charm', time: 12, color: 0xd88aff },
   moonshard: { icon: '🌙', name: 'Moon Shard', time: 0, color: 0xff4a5a },
 };
 

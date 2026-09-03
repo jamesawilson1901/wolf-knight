@@ -52,7 +52,7 @@ export const LINES = {
   brazier_hint: { voice: 'pip', text: 'A cold brazier! Your fiery slam can light it. Try it!' },
   kiln_order: { voice: 'pip', text: 'Look — these braziers wear little rings. One, two, three… light them in that order!' },
   gate_promise: { voice: 'pip', text: 'We can’t open this yet… but let’s remember it. We WILL come back.', repeat: true },
-  gear_hint: { voice: 'pip', text: 'I sense something special in there — not just shards. A weapon, maybe! Let’s look — you can equip whatever we find.' },
+  gear_hint: { voice: 'pip', text: 'I sense something special in there — not just coins. A weapon, maybe! Let’s look — you can equip whatever we find.' },
   dodo_secret: { voice: 'pip', text: 'Wait… is that a DODO?! I thought they were make-believe! Don’t tell anyone we saw this, Kael — it’s our secret.' },
   boss_door: { voice: 'pip', text: 'The spirit is near… but something’s wrong. Be ready, Kael.' },
   boss_intro: { voice: 'pip', text: 'There! The fire spirit — a shadow has it in its grip! Free it!' },
@@ -75,7 +75,7 @@ export const LINES = {
   cinder_den: { voice: 'pip', text: 'Cinder’s ember came to live by our fire! The Den feels warmer already.' },
   scar_r1: { voice: 'pip', text: 'This one patch won’t heal… so we remember. That’s okay.' },
   ripple_shoot: { voice: 'pip', text: 'A green shoot — all the way down here! Ember Hollow’s light is spreading.' },
-  shop_intro: { voice: 'pip', text: 'That’s Maren the trader. Smash pots and beat shadows for shards, then buy something shiny!' },
+  shop_intro: { voice: 'pip', text: 'That’s Maren the trader. Smash pots and beat shadows for coins, then buy something shiny!' },
   moonstone_intro: { voice: 'pip', text: 'Luna’s moonstone! Touch it and it will carry us to any land we’ve freed.' },
 
   // Teaching lines — each one reveals its button when it first fires

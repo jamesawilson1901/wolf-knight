@@ -375,7 +375,7 @@ export class Player {
     this.carrying = null;        // id of a carried puzzle item (js/carry.js), or null
     this._carryModel = null;     // the held mesh itself, parented to player.root
     this.onHitConnected = null;  // melee landed → main triggers hit-stop
-    this.buffs = { star: 0, fury: 0, feather: 0, magnet: 0 }; // timed power-ups
+    this.buffs = { star: 0, fury: 0, feather: 0 }; // timed power-ups
     this._vel = { x: 0, z: 0 };     // ramped velocity (CONFIG accel/decel)
     this._softLock = false;         // attack locks allow slow drift; specials don't
     this._queuedAttack = false;     // buffered tap from the tail of a swing

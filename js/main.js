@@ -242,7 +242,11 @@ function artHtml(url, cls) {
 // records which icon is in place so the art landing late (it is preloaded in
 // the background) still swaps the glyph fallback out exactly once.
 function paintCounter(el, url, cls, glyph, text) {
-  if (!url) { el.textContent = `${glyph} ${text}`; return; }
+  // NO EMOJI IN THE FALLBACK EITHER. The coin counter's stand-in while its art
+  // loads was an orange diamond 🔸 — dad's no-emoji law, and it was also the
+  // wrong shape for the thing it stood in for. A glyph is optional now, and
+  // the counter that has none is simply the number.
+  if (!url) { el.textContent = glyph ? `${glyph} ${text}` : text; return; }
   if (el.dataset.art !== cls) {
     el.dataset.art = cls;
     el.innerHTML = `${artHtml(url, cls)}<span class="cnum"></span>`;
@@ -1393,7 +1397,7 @@ function updateMusic() {
 
 function renderShards() {
   const el = document.getElementById('shards');
-  paintCounter(el, hudArt.shard, 'shard', '\u{1F538}', String(state.shards));
+  paintCounter(el, hudArt.shard, 'shard', '', String(state.shards));
   ctxShow(el);
 }
 
@@ -1425,7 +1429,7 @@ function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
   let seat = 0; // several rewards from one chest fan out as they spring, not stack
-  if (L.shards) lines.push(`${L.shards} shards`);
+  if (L.shards) lines.push(`${L.shards} coins`);
   if (L.potion) {
     state.potions = Math.min(3, state.potions + L.potion);
     renderPotions(player);
@@ -1637,7 +1641,7 @@ async function setupRoomExtras() {
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   // every so often a smashed pot hides a power-up
-  const potDrops = ['fury', 'feather', 'magnet', 'star'];
+  const potDrops = ['fury', 'feather', 'star'];
   world.onBreakableSmashed = (x, z) => {
     const n = state.counters.pots || 0;
     if (n % 9 === 4) spawnPowerup(world, x, z, potDrops[n % potDrops.length]);
@@ -1776,7 +1780,7 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xh') narration.say('court_wings');
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards }; // debug/testing hook
   initDevHarness();
   await fadeTo(0, ms);
   transitioning = false;
@@ -1950,7 +1954,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
   initDevHarness();
   await fadeTo(0, 400);
   transitioning = false;
@@ -2571,7 +2575,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
   initDevHarness();
 }
 

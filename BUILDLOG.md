@@ -4843,3 +4843,49 @@ in the first is the design. It found exactly one: the Ketsu.
 Both chest systems had tests before this. Both tests put the player where the
 chest was, which is the one thing a child cannot always do.
 
+
+## Coins, the top-left strip, and one buff fewer (2026-09-03, v3.100.0)
+
+Three more from the same play-test message.
+
+### The counter and the badge sat on top of each other
+
+Dad's first screenshot: "Lv 1" printed over the coin count. The coin chip, the
+level badge and the buff row each carried their own hand-measured `left` —
+200, 262, 370 — and those numbers were chosen when the counter read "0". At
+three digits the chip is 95px wide and runs to 295. Numbers grow; a layout
+built out of three guesses does not.
+
+They are one flex row now (`#hud-top`), so they cannot collide whatever the
+child is carrying. `tools/verify-hud.mjs` measures the real DOM rectangles at
+0, 7, 148 and 99999 coins and asserts nothing in the HUD overlaps anything
+else — including the hearts and the potion belt.
+
+### Shards were already coins everywhere except in words
+
+The currency has been a struck gold coin since v3.76; the *word* was still
+"shards" in the armoury footer, the shop, every price, the chest payout line
+and the sticker book, and the HUD's fallback glyph was 🔸 — an orange diamond
+standing in for a coin, and an emoji, which is against the house rule twice
+over. All of it now says coins.
+
+**And a coin is one eighth of Kael**, which was dad's number. Written as a
+ratio of his measured height (1.265u → 0.158u across) rather than as a typed
+span, so it survives a rescale. The three coin models are discs in XY and thin
+in Z — they stand upright, which is why the existing `rotation.y` spin reads as
+a coin turning rather than a plate rotating. The hop was already right: out on
+an arc, three or four bounces, then it settles and walks itself to the child.
+
+`verify-hud` measures the coin against the knight standing next to it and
+waits for it to settle rather than sleeping a fixed time — headless on
+SwiftShader the game can run at two frames a second, and a coin's half-second
+arc takes ten wall-clock seconds there.
+
+### The Magnet Charm is gone
+
+Dad: "get rid of the magnet in the game." It was the one buff with nothing to
+look at and nothing to do — coins already walk themselves to a child inside
+3.2u, so twelve seconds of Magnet was a power-up whose entire effect was that
+the same thing happened slightly further away. Four buffs that change how Kael
+moves and hits; no fifth that changes an invisible number.
+
