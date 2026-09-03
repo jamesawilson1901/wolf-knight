@@ -3575,6 +3575,36 @@ function buildSnowShell(world, w, d, gaps = []) {
   }
   if (flats.length) world.add(instancePlacements(skit.flat.scene, flats, { castShadow: false }));
 
+  // THE MOUNTAIN INSIDE THE ROOM, not only around its edge.
+  //
+  // Everything above dresses the BORDER — a ring of firs and a south hem of
+  // drifts — and then the middle of every Frostpeak room is bare snow. It read
+  // as a white floor with a picture frame round it, and verify-density measured
+  // exactly that once it was finally pointed at these rooms (f2b showed 13
+  // things on arrival against a floor of 20).
+  //
+  // Ten small outcrops, scattered by the same cheap hash the drifts use so each
+  // room gets its own arrangement without a seed argument. Each is its OWN
+  // instancePlacements call on purpose: one call is one thing to look at, and a
+  // single 40-rock instanced mesh reads as one boulder to a child and counts as
+  // one to the suite. They keep out of the centre lanes the plates and boss
+  // charges need, and off the south hem where the camera looks over.
+  for (let c = 0; c < 10; c++) {
+    const cx = ((c * 53) % (w - 8)) - halfW + 4;
+    const cz = ((c * 37) % (d - 10)) - halfD + 5;
+    if (Math.abs(cx) < 3.0 && Math.abs(cz) < 6) continue;  // the lanes stay clear
+    if (cz > halfD - 4) continue;                          // and the blind strip
+    const kind = c % 3 === 0 ? skit.rockL : c % 3 === 1 ? skit.rockM : skit.pile;
+    const ps = [];
+    for (let i = 0; i < 3 + (c % 3); i++) {
+      const a2 = (c * 2.1 + i * 1.9);
+      ps.push({ x: cx + Math.cos(a2) * (1.1 + i * 0.5), z: cz + Math.sin(a2) * (1.1 + i * 0.4),
+        ry: a2 * 1.7, s: 0.8 + ((i + c) % 3) * 0.25 });
+    }
+    world.add(instancePlacements(kind.scene, ps));
+    world.addCircle(cx, cz, 1.5);
+  }
+
   // FALLING SNOW: one Points cloud, ~90 flakes, recycled forever. Cheap on a
   // phone and it is the single thing that says "you are up the mountain".
   const N = 90;

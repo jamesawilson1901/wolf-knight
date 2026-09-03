@@ -513,6 +513,20 @@ export async function buildYsq(scene) {
     }
   }
 
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', -9.0, 9.5, 1.0, 0.3], ['cart', 9.5, 8.0, 1.0, -0.5], ['trough', -10.0, 3.0, 1.0, 0.6], ['trough2', 10.0, 2.5, 1.0, -0.2], ['sack', -8.0, 13.5, 1.0, 0.9], ['bucket', 8.5, 13.0, 1.0, 0], ['coil', -6.0, 5.5, 1.0, 0.4], ['stool', 6.5, 5.0, 1.0, 1.1], ['firewood', -10.5, -0.5, 1.0, 0.2], ['cartwheel', 10.5, -0.5, 1.0, 0.7], ['laundry', -4.0, 15.0, 1.0, -0.3], ['basin', 4.5, 15.5, 1.0, 0.5],
+      ['broom', -7.0, 11.0, 1.0, 1.0], ['grinder', 7.5, 10.5, 1.0, -0.4],
+      ['stool', -2.5, 7.0, 1.0, 0.8], ['bucket', 2.5, 6.5, 1.0, 0.1],
+      ['sack', -11.0, 7.0, 1.0, 0.6], ['coil', 11.0, 6.0, 1.0, -0.7],
+      ['trough2', -5.5, 2.0, 1.0, 0.3], ['cartwheel', 5.5, 1.5, 1.0, -0.2],
+      ['firewood', -8.5, 16.0, 1.0, 0.4], ['cart', 8.0, 16.5, 1.0, -0.6],
+      ['bucket', -3.0, 3.5, 1.0, 0.7], ['sack', 3.0, 3.0, 1.0, -0.4],
+      ['stool', -9.5, 12.5, 1.0, 1.0], ['basin', 9.5, 12.0, 1.0, 0.2],
+      ['coil', -6.5, 8.5, 1.0, 0.4], ['broom', 6.0, 8.0, 1.0, -0.9],
+      ['cartwheel', -1.5, 11.5, 1.0, 0.6], ['sack', 1.5, 12.0, 1.0, -0.2]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
@@ -644,6 +658,11 @@ export async function buildYlw(scene) {
       loot: { shards: 30, armour: 'verdant' } },
   ];
   world.reserve(-3.5, 11, 2.2, 'chest');
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', 5.0, 9.0, 1.0, 0.4], ['cart', 9.0, -9.5, 1.0, -0.6], ['trough', 12.0, 7.5, 1.0, 0.2], ['trough2', 3.0, -8.0, 1.0, 0.7], ['sack', 15.0, 4.0, 1.0, 0], ['bucket', 14.0, -4.5, 1.0, 0.3], ['coil', 7.0, 6.0, 1.0, -0.4], ['stool', 6.0, -5.0, 1.0, 1.2], ['firewood', 16.5, 8.0, 1.0, 0.5], ['cartwheel', 2.0, 6.5, 1.0, -0.2], ['laundry', 11.0, -7.0, 1.0, 0.8], ['grinder', 16.0, -8.0, 1.0, 0.1]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
@@ -681,6 +700,11 @@ export async function buildYg1(scene) {
     world.addBox(2.6, 9.4, -7.7, -5.3);
   }
   world.markers.hollowSentinelSpots = [{ x: 0, z: -4 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', -8.5, 6.0, 1.0, 0.4], ['trough', 8.0, 5.0, 1.0, -0.3], ['sack', -7.0, 1.5, 1.0, 0.8], ['bucket', 7.5, 1.0, 1.0, 0], ['stool', -9.0, -3.0, 1.0, 1.1], ['coil', 8.5, -3.5, 1.0, 0.2], ['cartwheel', -6.5, 9.0, 1.0, 0.6], ['laundry', 6.5, 8.5, 1.0, -0.5], ['firewood', -9.5, -6.0, 1.0, 0.3], ['basin', 9.0, -6.5, 1.0, 0.7]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g1') || !world.enemies) return;
@@ -707,6 +731,11 @@ export async function buildYg2(scene) {
   }
   world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y2' };
   world.markers.shadeKnightSpots = [{ x: 0, z: -4 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['trough2', -8.0, 5.5, 1.0, -0.4], ['cart', 8.5, 6.5, 1.0, 0.5], ['bucket', -7.5, 2.0, 1.0, 0], ['sack', 7.0, 1.5, 1.0, 0.9], ['broom', -9.0, -2.5, 1.0, 1.0], ['stool', 8.0, -3.0, 1.0, -0.8], ['coil', -6.5, 8.5, 1.0, 0.2], ['firewood', 6.0, 9.0, 1.0, 0.4], ['grinder', -9.5, -6.5, 1.0, 0.6], ['cartwheel', 9.0, -6.0, 1.0, -0.2]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g2') || !world.enemies) return;
@@ -754,6 +783,11 @@ export async function buildYg3(scene) {
     world.onAnimate((tt, dt) => { spin += dt * 0.4; wheel.rotation.x = spin; });
   }
   world.markers.twinbladeHuskSpots = [{ x: 0, z: -4 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', -8.0, 6.5, 1.0, 0.3], ['laundry', 8.0, 5.5, 1.0, -0.6], ['basin', -7.5, 1.5, 1.0, 0.8], ['trough', 7.5, 1.0, 1.0, 0], ['sack', -9.0, -3.0, 1.0, 0.5], ['bucket', 8.5, -3.5, 1.0, 0.2], ['stool', -6.0, 9.0, 1.0, 1.2], ['coil', 6.5, 8.5, 1.0, -0.3], ['cartwheel', -9.5, -6.5, 1.0, 0.7], ['firewood', 9.0, -6.0, 1.0, 0.4]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g3') || !world.enemies) return;
@@ -770,7 +804,13 @@ export async function buildYg4(scene) {
   const cleared = guardianDown('g4');
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
-  world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
+  // FACING ACROSS THE ROOM, NOT AT THE NEAREST WALL. This spawned 6u from one
+  // side LOOKING AT IT — 7u of room ahead out of 26, with everything in the
+  // street behind the player's shoulder. Its three sisters yg1-yg3 spawn at
+  // (0, 6) facing -z and get 17u, which is what a first impression is supposed
+  // to be. Measured 2026-09-03 after verify-density read this room as showing
+  // ZERO things on arrival: not an empty room, a room seen backwards.
+  world.spawn = { x: -6, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'ylw', { x: -13.5, z: -7, angle: Math.PI / 2 });
   // THE BELL TOWER: real height, real sightlines — the design doc's own
   // reason a ranged kiter belongs here rather than on open ground.
@@ -781,6 +821,11 @@ export async function buildYg4(scene) {
     world.addBox(1.9, 6.1, -6.1, -1.9);
   }
   world.markers.wraithArcherSpots = [{ x: 4, z: 0 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', -8.5, 6.5, 1.0, 0.4], ['trough', -7.0, -6.5, 1.0, -0.3], ['sack', -2.0, 8.0, 1.0, 0.8], ['bucket', -1.5, -8.0, 1.0, 0], ['coil', 3.0, 7.5, 1.0, 0.2], ['stool', 2.5, -7.5, 1.0, 1.1], ['firewood', -9.5, 1.5, 1.0, 0.6], ['cartwheel', 5.5, 5.5, 1.0, -0.5], ['basin', 5.0, -5.0, 1.0, 0.3], ['laundry', -4.5, 9.5, 1.0, 0.7]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g4') || !world.enemies) return;
@@ -797,7 +842,13 @@ export async function buildYg5(scene) {
   const cleared = guardianDown('g5');
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
-  world.spawn = { x: -6, z: 0, angle: -Math.PI / 2 };
+  // FACING ACROSS THE ROOM, NOT AT THE NEAREST WALL. This spawned 6u from one
+  // side LOOKING AT IT — 7u of room ahead out of 26, with everything in the
+  // street behind the player's shoulder. Its three sisters yg1-yg3 spawn at
+  // (0, 6) facing -z and get 17u, which is what a first impression is supposed
+  // to be. Measured 2026-09-03 after verify-density read this room as showing
+  // ZERO things on arrival: not an empty room, a room seen backwards.
+  world.spawn = { x: -6, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'ylw', { x: 0, z: 10.5, angle: Math.PI });
   // THE BACK ALLEY: cramped on purpose — the one guardian that can be
   // approached quietly wants corners to be approached quietly FROM.
@@ -814,6 +865,11 @@ export async function buildYg5(scene) {
   }
   world.markers.pupSpot = { x: -6, z: 4, id: 'pup_y3' };
   world.markers.lurkerSpots = [{ x: 4, z: 0 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['trough2', -8.0, 6.0, 1.0, -0.4], ['cart', -6.5, -7.0, 1.0, 0.5], ['bucket', -1.5, 8.5, 1.0, 0], ['sack', -2.5, -8.0, 1.0, 0.9], ['broom', 3.5, 7.0, 1.0, 1.0], ['stool', 2.0, -7.0, 1.0, -0.8], ['coil', -9.5, 2.0, 1.0, 0.2], ['grinder', 5.0, 5.0, 1.0, 0.4], ['firewood', 4.5, -5.5, 1.0, 0.6], ['cartwheel', -4.0, 9.5, 1.0, -0.2]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g5') || !world.enemies) return;
@@ -830,7 +886,13 @@ export async function buildYg6(scene) {
   const cleared = guardianDown('g6');
   const D = cleared ? WARM_D : CORRUPT_D;
   const { halfW, halfD } = shell(world, spec, [gap('w')], D, {});
-  world.spawn = { x: 6, z: 0, angle: Math.PI / 2 };
+  // FACING ACROSS THE ROOM, NOT AT THE NEAREST WALL. This spawned 6u from one
+  // side LOOKING AT IT — 7u of room ahead out of 26, with everything in the
+  // street behind the player's shoulder. Its three sisters yg1-yg3 spawn at
+  // (0, 6) facing -z and get 17u, which is what a first impression is supposed
+  // to be. Measured 2026-09-03 after verify-density read this room as showing
+  // ZERO things on arrival: not an empty room, a room seen backwards.
+  world.spawn = { x: 6, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'ylw', { x: -13.5, z: 7, angle: Math.PI / 2 });
   // THE CHAPEL ROOF: the region's second, distinct tower (tower-3, not
   // tower-2 again) — height for the region's one aerial fight.
@@ -839,6 +901,11 @@ export async function buildYg6(scene) {
     world.addBox(-6.1, -1.9, -6.1, -1.9);
   }
   world.markers.shadowDragonlingSpots = [{ x: -4, z: 0 }];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['cart', 8.5, 6.5, 1.0, -0.4], ['trough', 7.0, -6.5, 1.0, 0.3], ['sack', 2.0, 8.0, 1.0, -0.8], ['bucket', 1.5, -8.0, 1.0, 0], ['coil', -3.0, 7.5, 1.0, -0.2], ['stool', -2.5, -7.5, 1.0, 1.1], ['firewood', 9.5, 1.5, 1.0, 0.6], ['cartwheel', -5.5, 5.5, 1.0, 0.5], ['basin', -5.0, -5.0, 1.0, 0.3], ['laundry', 4.5, 9.5, 1.0, -0.7]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g6') || !world.enemies) return;
@@ -858,7 +925,13 @@ export async function buildYrw(scene) {
   const { world, spec } = base(scene, 'yrw');
   const D = WARM_D;
   const { halfW, halfD } = shell(world, spec, [gap('w')], D, {});
-  world.spawn = { x: 6, z: 0, angle: Math.PI / 2 };
+  // FACING ACROSS THE ROOM, NOT AT THE NEAREST WALL. This spawned 6u from one
+  // side LOOKING AT IT — 7u of room ahead out of 26, with everything in the
+  // street behind the player's shoulder. Its three sisters yg1-yg3 spawn at
+  // (0, 6) facing -z and get 17u, which is what a first impression is supposed
+  // to be. Measured 2026-09-03 after verify-density read this room as showing
+  // ZERO things on arrival: not an empty room, a room seen backwards.
+  world.spawn = { x: 6, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'ysq', { x: 15, z: 0, angle: -Math.PI / 2 }, { centre: 0 });
   // the well-keeper's barn — the hut at the scale it honestly is
   if (!GREY()) {
@@ -871,6 +944,11 @@ export async function buildYrw(scene) {
   world.markers.chestDefs = [
     { id: 'c_yrw', tier: 'gold', x: -2, z: 3, ry: 0.6, loot: { shards: 30, heartPiece: 1 } },
   ];
+      // A STREET WITH NOTHING IN IT. Measured on arrival 2026-09-03 after this
+    // suite was finally pointed at the Village at all; the middle is left open
+    // because five of these rooms hold a guardian fight, so the goods line the
+    // edges the way a real street's do.
+    clutter(world, D, [['trough2', 8.0, 6.0, 1.0, 0.4], ['cart', 6.5, -7.0, 1.0, -0.5], ['bucket', 1.5, 8.5, 1.0, 0], ['sack', 2.5, -8.0, 1.0, -0.9], ['broom', -3.5, 7.0, 1.0, 1.0], ['stool', -2.0, -7.0, 1.0, 0.8], ['coil', 9.5, 2.0, 1.0, -0.2], ['grinder', -5.0, 5.0, 1.0, 0.4], ['firewood', -4.5, -5.5, 1.0, 0.6], ['cartwheel', 4.0, 9.5, 1.0, 0.2], ['laundry', -7.5, -2.0, 1.0, 0.5], ['basin', 7.5, -3.0, 1.0, -0.3]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
