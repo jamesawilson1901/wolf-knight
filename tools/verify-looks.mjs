@@ -197,7 +197,34 @@ const rows = await page.evaluate(async (ids) => {
       }
     }
 
-    out.push({ id, dark, pots, rings, hidden, blocking });
+    // --- nothing flat hangs in the air over the floor ---------------------
+    // The dark zones' veils used to be parked at y = 1.65: a translucent quad
+    // lying flat, at head height, over a rectangle of floor. From the game's
+    // 3/4 top-down camera that is a grey square hovering in mid-air with a
+    // hard edge, and there was one in every room with darkness in it — dad's
+    // "get rid of the random flying grey squares", photographed from play.
+    //
+    // A quad lying FLAT is either ground (on the ground) or a mistake. Things
+    // that legitimately hang — banners, cobwebs, portal haze — hang VERTICAL,
+    // facing the camera, so the test is about orientation and height, not
+    // about a list of names that would need touching every time a new hanging
+    // prop ships.
+    const floaters = [];
+    {
+      const up = new THREE.Vector3(0, 1, 0), n = new THREE.Vector3(), p = new THREE.Vector3();
+      w.root.updateWorldMatrix(true, true);
+      w.root.traverse((o) => {
+        if (!o.isMesh || !o.geometry || o.geometry.type !== 'PlaneGeometry') return;
+        n.set(0, 0, 1).transformDirection(o.matrixWorld);
+        if (Math.abs(n.dot(up)) < 0.94) return;          // not lying flat
+        o.getWorldPosition(p);
+        if (p.y < 0.6) return;                            // on the ground, fine
+        floaters.push({ y: +p.y.toFixed(2), name: o.name || '(unnamed plane)',
+          size: [o.geometry.parameters.width, o.geometry.parameters.height] });
+      });
+    }
+
+    out.push({ id, dark, pots, rings, hidden, blocking, floaters });
   }
   return out;
 }, ROOM_IDS);
@@ -238,6 +265,11 @@ const inTheFace = [];
 for (const r of rows) for (const p of (r.blocking || [])) inTheFace.push({ room: r.id, ...p });
 check('no prop fills the view a child arrives looking at',
   inTheFace.length === 0, inTheFace.slice(0, 12));
+
+console.log('\n── 7. nothing flat hangs in the air ───────────────────');
+const hanging = [];
+for (const r of rows) for (const f of (r.floaters || [])) hanging.push({ room: r.id, ...f });
+check('no flat quad is parked above the floor', hanging.length === 0, hanging.slice(0, 12));
 
 check('nothing threw during the run', errors.filter((e) => e.startsWith('PAGEERROR')).length === 0);
 await b.close();

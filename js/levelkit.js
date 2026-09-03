@@ -739,8 +739,13 @@ export function makeBuilders({ kit, isGrey }) {
       color: 0x0a0714, transparent: true, opacity: 0.62, depthWrite: false,
     });
     const veil = new THREE.Mesh(new THREE.PlaneGeometry(maxX - minX, maxZ - minZ), veilMat);
+    // ON THE GROUND, not at head height — see the long note on the twin of
+    // this function in js/rooms.js. y = 1.65 made every dark zone in the game
+    // a grey quad hanging in mid-air, which is dad's "random flying grey
+    // squares". The darkness is the light rig; this is only the hint.
     veil.rotation.x = -Math.PI / 2;
-    veil.position.set((minX + maxX) / 2, 1.65, (minZ + maxZ) / 2);
+    veil.position.set((minX + maxX) / 2, (world.deckY || 0) + 0.06, (minZ + maxZ) / 2);
+    veil.renderOrder = 3;                     // over the floor and its patches
     world.add(veil);
     world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
   }
