@@ -41,6 +41,7 @@ import { makeDressers } from './dressing.js';
 import { flattenStatic } from './batch.js';
 import { iceGate } from './gates.js';
 import { waterZone } from './water.js';
+import { registerDistrictTints } from './districts.js';
 
 export const REGION = 'market';
 
@@ -109,6 +110,13 @@ export const LQ = {
   q2: { kind: 'island', w: 32, d: 26, district: 'quay', spine: true,
         label: 'THE MARKET ROWS', beat: 'the stalls · the far quay you cannot reach' },
 };
+
+// Each room's district colour, so a DOORWAY can show what is beyond it and the
+// map screen can draw the room at all (js/districts.js). The Market shipped
+// without this call — every other level makes it — so its doorways bled no
+// colour and, once the map started reading the registry instead of a hand
+// list, the harbour was simply not on it. Found by verify-map on its first run.
+registerDistrictTints(LQ, DISTRICTS);
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 

@@ -106,6 +106,31 @@ export function resolveRoom(id) {
   return RETIRED_ROOMS[id] || id;
 }
 
+// WHICH PART OF THE WORLD IS THIS ROOM IN? Region = the room id's first letter
+// (rooms.js's kit dispatcher, main.js's music and the map all key on it). This
+// lived in main.js; it is here because the map screen (menus.js) needs the same
+// answer and must not import main to get it. Every prefix in ROOMS is named —
+// a new one has to be added here as well as in rooms.js's dispatcher, or it
+// falls through to Ember, which is how both roads played the Den's lullaby.
+export function regionOf(id) {
+  const r = resolveRoom(id);
+  if (r[0] === 'v') return 'stoneroot';
+  if (r[0] === 't') return 'wildwoods';
+  if (r[0] === 'f') return 'frostpeak';
+  if (r[0] === 's') return 'stormreach';
+  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
+  if (r[0] === 'x') return 'shadowcourt';
+  if (r[0] === 'y') return 'village';
+  if (r[0] === 'm') return 'spire';
+  if (r[0] === 'l') return 'ember_hollow';
+  if (r[0] === 'n') return 'night_road';   // the road out of Ember (levelNight.js)
+  if (r[0] === 'q') return 'market';       // the road into Stormreach (levelMarket.js)
+  // retired ids that somehow reach here keep their original mapping
+  if (r[0] === 'e') return 'stoneroot';
+  if (r[0] === 'w') return 'wildwoods';
+  return 'ember_hollow';
+}
+
 // ---------------------------------------------------------------------------
 // IS A REGION FINISHED?
 //

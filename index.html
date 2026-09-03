@@ -727,17 +727,27 @@
       transition: transform .3s cubic-bezier(.2, 1.6, .4, 1);
     }
     #big-toast.show { transform: translate(-50%, -50%) scale(1); }
-    .map-rooms { display: flex; align-items: center; gap: 8px; }
+    /* THE MAP. One row per region, the rooms of its spine in walk order, each
+       card wearing its DISTRICT COLOUR — the game's own wayfinding ("the
+       orange bit"), so a non-reader can match the card to the place. No icons:
+       the colour is the icon. A row scrolls sideways on a phone rather than
+       wrapping, so it keeps reading as a road. */
+    .map-region { width: 92vw; max-width: 820px; }
+    .map-title { font-size: 15px; opacity: .85; margin: 6px 0 3px; display: flex; align-items: center; gap: 8px; }
+    .map-title .done { font-size: 12px; color: #8aff9a; opacity: .9; }
+    .map-rooms { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 4px 2px 6px; }
     .map-room {
-      width: 106px; min-height: 74px; border-radius: 12px; position: relative;
-      font-size: 13px; padding: 2px;
-      background: rgba(255,140,60,.18); border: 2px solid rgba(255,170,90,.6);
-      font-size: 11px; font-weight: 700; color: #ffe9c8;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      flex: 0 0 auto; width: 104px; min-height: 66px; border-radius: 12px; position: relative;
+      padding: 6px 4px 5px; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.22);
+      font-size: 11px; font-weight: 700; color: #ffe9c8; line-height: 1.15;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
     }
-    .map-room.here { border-color: #8aff9a; box-shadow: 0 0 12px rgba(120,255,150,.4); }
-    .map-room .icons { font-size: 14px; }
-    .map-link { width: 22px; height: 4px; background: rgba(255,170,90,.5); border-radius: 2px; }
+    .map-room .swatch { width: 34px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
+    .map-room.pocket { opacity: .8; border-style: dashed; }
+    .map-room.here { border-color: #8aff9a; box-shadow: 0 0 14px rgba(120,255,150,.45); background: rgba(120,255,150,.10); }
+    .map-room .you { font-size: 10px; color: #8aff9a; letter-spacing: .04em; }
+    .map-link { flex: 0 0 auto; width: 18px; height: 4px; background: rgba(255,255,255,.28); border-radius: 2px; }
+    .map-hint { font-size: 14px; opacity: .8; }
     .sticker {
       width: 108px; padding: 10px 6px; border-radius: 14px; text-align: center;
       background: rgba(255,255,255,.07); border: 2px dashed rgba(255,255,255,.25); font-size: 12px;
@@ -1172,7 +1182,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.95.0</div>
+  <div id="badge">Wolf Knight &middot; v3.96.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

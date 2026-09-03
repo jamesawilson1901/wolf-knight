@@ -19,12 +19,43 @@
 
 const TINTS = new Map();
 
+// EVERYTHING THE MAP SCREEN NEEDS TO KNOW ABOUT A ROOM, recorded here at the
+// same moment as its tint and from the same table — the level's own spec
+// (`L1`, `L2`, … `LN`), which is the one place a room's name, kind and place on
+// the spine are already written down. The map used to keep its own hand list
+// of rooms, and that list rotted two rebuilds ago: Ember's rows pointed at
+// retired ids that `resolveRoom` redirects, so "you are here" could never
+// light in Level 1, and seven regions were simply not on it. A room cannot
+// exist without passing through here, so the map cannot be wrong about which
+// rooms exist. Insertion order is authoring order, which every table writes
+// as the walk.
+const META = new Map();
+
 // Called once per level module at load, from its own district table.
 export function registerDistrictTints(table, districts) {
   for (const [id, spec] of Object.entries(table)) {
     const d = districts[spec.district];
     if (d && d.tint !== undefined) TINTS.set(id, d.tint);
+    META.set(id, {
+      id,
+      label: spec.label || id,
+      kind: spec.kind || '',
+      spine: !!spec.spine,
+      loopsTo: spec.loopsTo || null,
+      district: d ? (d.name || spec.district) : spec.district,
+      tint: d && d.tint !== undefined ? d.tint : null,
+    });
   }
+}
+
+// Every registered room, in authoring order. The map screen filters this by
+// region; nothing else should need the whole list.
+export function registeredRooms() {
+  return [...META.values()];
+}
+
+export function roomMeta(id) {
+  return META.get(id) || null;
 }
 
 // The display tint of a room's district, or null if it is not a dressed

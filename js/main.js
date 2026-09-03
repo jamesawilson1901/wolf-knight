@@ -13,7 +13,7 @@ import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import { FETCH } from './mg-fetch.js';
 import { Player } from './player.js';
-import { state, resolveRoom, regionCleared, formsAvailable } from './state.js';
+import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { Pip, spawnPups } from './pip.js';
@@ -1872,24 +1872,7 @@ function initDevHarness() {
   };
 }
 
-function regionOf(id) {
-  const r = resolveRoom(id);
-  if (r[0] === 'v') return 'stoneroot';
-  if (r[0] === 't') return 'wildwoods';
-  if (r[0] === 'f') return 'frostpeak';
-  if (r[0] === 's') return 'stormreach';
-  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
-  if (r[0] === 'x') return 'shadowcourt';
-  if (r[0] === 'y') return 'village';
-  if (r[0] === 'm') return 'spire';
-  if (r[0] === 'n') return 'night_road';   // the road out of Ember (levelNight.js)
-  if (r[0] === 'q') return 'market';       // the road into Stormreach (levelMarket.js)
-  if (r[0] === 'l') return 'ember_hollow';
-  // retired ids that somehow reach here keep their original mapping
-  if (r[0] === 'e') return 'stoneroot';
-  if (r[0] === 'w') return 'wildwoods';
-  return 'ember_hollow';
-}
+// regionOf() lives in state.js now — the map screen needs it too.
 
 function applyRoomMood() {
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;

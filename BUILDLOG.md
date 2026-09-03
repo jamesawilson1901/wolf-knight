@@ -4569,14 +4569,14 @@ gated on `WS.get(region,'restored')`).
 
 ### A · Wrong in the game a child is playing
 
-1. **`state.room` keeps the RAW room id.** `js/main.js:1721` sets
-   `state.room = id` while `buildRoom` builds `resolveRoom(id)`. Frostpeak's
-   `f1` still has a live door home to `'w5'` (`js/rooms.js:3749`), which is
-   RETIRED and redirects to `tgl` — so walking out of Frostpeak into the Wild
-   Woods leaves `state.room === 'w5'` with `tgl` on screen. Music, narration
-   triggers, the map's "you are here" and every `state.room === '…'` comparison
-   key off that string. The fix is one line plus an audit of what compares raw
-   ids, and it wants a suite.
+1. ~~**`state.room` keeps the RAW room id.**~~ **Struck the same day — it was
+   already fixed, and this entry was wrong.** I read `state.room = id` at
+   `js/main.js:1721` without the line above it, `const id = resolveRoom(rawId)`
+   (Q6, with its own comment saying exactly why). Walked it for real to be sure:
+   `f1` → its `'w5'` door → `state.room` reads `tgl`, `world.roomId` reads
+   `tgl`, `state.region` reads `wildwoods`. Left here struck rather than deleted
+   so the next reader does not re-derive the same false alarm from the same
+   grep.
 2. **The map screen is two regions and one rebuild out of date**
    (`js/menus.js:463-482`). Ember's rows are `r1/r1b/r2/r2b/k1/r3` — all
    retired — so the ⭐ can never light up in Level 1; Stoneroot is the only
@@ -4645,3 +4645,34 @@ rule 3 of that file, enforced by `verify-treasures`.
     still speaks through browser TTS. One file per line id, and the wiring is
     already shaped for it.
 16. **Hard landscape lock** — still best-effort (CSS and layout only).
+
+
+## The map reads the game now (2026-09-03, v3.96.0)
+
+Board item 2. The map screen kept a hand list of rooms and it had rotted two
+rebuilds ago: Ember's rows named `r1/r1b/r2/r2b/k1/r3` — retired ids that
+`resolveRoom` redirects — so "you are here" could never light up in Level 1, and
+the Wild Woods, Frostpeak, Stormreach, the Vale, the Court, the Village, the
+Spire and both roads were simply not on it. Every row was also emoji.
+
+**It derives from the level tables now.** `districts.js` already received every
+level's spec table at load (for doorway colour bleed); it records the room's
+label, kind, spine flag and district colour at the same moment, and
+`registeredRooms()` hands the map the whole world in authoring order. Grouping
+uses `regionOf`, which moved from main.js to state.js so the map and the music
+answer the same question the same way. Each region shows its SPINE, plus the
+room the child is standing in if that is a pocket; each card wears its district
+colour as a swatch — the game's own wayfinding, no icons — and rows appear only
+once the boss before them is beaten, so a five-year-old is never shown eleven
+rows of places they cannot go.
+
+**Frostpeak is the one exception,** named by hand from its builders' headers,
+because it has no table — it is the region that was never rebuilt (board item
+6) — and that block goes away with the rebuild.
+
+**Found on the suite's first run: the Drowned Market never called
+`registerDistrictTints`.** Every other level does. Its doorways have bled no
+colour since it shipped, and it was the one place missing from the new map.
+`verify-map.mjs` holds the map to the registry both ways (nothing drawn that
+does not exist, every spine room drawn), lights "you are here" in eleven rooms
+through the real map button, and checks the gating and the absence of emoji.

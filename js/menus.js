@@ -2,7 +2,8 @@
 // region map, and the sticker book. All icon-first, big targets, and every
 // action gives audio + visual feedback.
 
-import { state, regionCleared } from './state.js';
+import { state, regionCleared, regionOf } from './state.js';
+import { registeredRooms } from './districts.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
@@ -432,6 +433,16 @@ export class Menus {
   }
 
   // ---- Map ---------------------------------------------------------------
+  // THE MAP READS THE GAME, NOT A LIST. Every room comes from its level's own
+  // spec table via districts.js (`registeredRooms()`), grouped by the same
+  // `regionOf` the music and the doors use, in the order a child walks the
+  // world. The old map was a hand list two rebuilds stale: Ember's rows named
+  // r1/r2/k1/r3 — retired ids `resolveRoom` redirects — so "you are here" could
+  // never light in Level 1, and seven regions plus both roads were missing.
+  //
+  // What it shows: the SPINE of each region (the rooms on the road), plus the
+  // room the child is actually standing in if that is a pocket off it. Every
+  // card wears its district colour — the game's own wayfinding — and no icons.
   showMap() {
     const el = $('map-menu');
     el.innerHTML = '';
@@ -439,11 +450,81 @@ export class Menus {
     h.textContent = 'The Kingdom';
     el.appendChild(h);
 
-    const addRegion = (title, rooms) => {
+    const F = state.flags;
+    const here = state.room;
+    const hereRegion = regionOf(here);
+    // The world in walk order. `open` is the thing that has to be true before
+    // a child can have set foot there — a region appears on the map once the
+    // one before it is beaten (or the child is standing in it), never before:
+    // a five-year-old should not see eleven rows of places they cannot go.
+    const AREAS = [
+      { key: 'den',         name: 'The Moonlit Den',   open: () => true },
+      { key: 'ember_hollow', name: 'Ember Hollow',     open: () => true,               done: () => F.bossDefeated },
+      { key: 'night_road',  name: 'The Night Road',    open: () => F.bossDefeated },
+      { key: 'stoneroot',   name: 'Stoneroot Caverns', open: () => F.bossDefeated,     done: () => F.wardenDefeated },
+      { key: 'wildwoods',   name: 'The Wild Woods',    open: () => F.wardenDefeated,   done: () => F.sylvaDefeated },
+      { key: 'frostpeak',   name: 'Frostpeak',         open: () => F.sylvaDefeated,    done: () => F.borealDefeated },
+      { key: 'market',      name: 'The Drowned Market', open: () => F.borealDefeated },
+      { key: 'stormreach',  name: 'Stormreach Cliffs', open: () => F.borealDefeated,   done: () => F.ariaDefeated },
+      { key: 'sunkenvale',  name: 'The Sunken Vale',   open: () => F.ariaDefeated,     done: () => F.meriDefeated },
+      { key: 'shadowcourt', name: 'The Shadow Court',  open: () => F.meriDefeated,     done: () => F.grimmFreed },
+      { key: 'village',     name: 'The Village',       open: () => F.grimmFreed,       done: () => villageCleared() },
+      { key: 'spire',       name: 'The Moonlit Spire', open: () => villageCleared() },
+    ];
+
+    // FROSTPEAK HAS NO SPEC TABLE — it is the one region never rebuilt (seven
+    // rooms hand-built in rooms.js), so it registers nothing with districts.js.
+    // Its rooms are named here, once, from the builders' own headers, and this
+    // block goes away the day the rebuild gives it a table like every other
+    // region has. The Den is a single room and lives here for the same reason.
+    const UNTABLED = {
+      den:       [{ id: 'den', label: 'The Moonlit Den', spine: true, tint: 0x6f8a4e }],
+      frostpeak: [
+        { id: 'f1',  label: 'The Rime Gate',     spine: true,  tint: 0x9fb8cc },
+        { id: 'f1b', label: 'The Frozen Cairn',  spine: false, tint: 0x9fb8cc, loopsTo: 'f1' },
+        { id: 'f2',  label: 'The Icebound Hall', spine: true,  tint: 0x8fb0c8 },
+        { id: 'f2b', label: 'The Glacier Nook',  spine: false, tint: 0x8fb0c8, loopsTo: 'f2' },
+        { id: 'f3',  label: 'The Frozen Lake',   spine: true,  tint: 0xb9d6e6 },
+        { id: 'f4',  label: 'The Windscour',     spine: true,  tint: 0x7f98b0 },
+        { id: 'f5',  label: "Boreal's Eyrie",    spine: true,  tint: 0xc4dbe8 },
+      ],
+    };
+
+    const all = registeredRooms();
+    const roomsOf = (key) => (UNTABLED[key] || all.filter((r) => regionOf(r.id) === key));
+    // Labels are authored SHOUTING for the greybox signs, with the level's own
+    // spoke letter in front ("A1 · THE GLIMMERWAY"); the map speaks quietly and
+    // drops the letter — it is a building code, not a place name.
+    const title = (t) => t.replace(/^[A-Z0-9]{1,3} · /, '')
+      .replace(/\S+/g, (w) => /^[A-Z0-9'’]+$/.test(w) ? w[0] + w.slice(1).toLowerCase() : w)
+      .replace(/(?<=\S )(Of|The|And)\b/g, (m) => m.toLowerCase());
+    const hex = (t) => '#' + (t == null ? 0x888888 : t).toString(16).padStart(6, '0');
+
+    for (const A of AREAS) {
+      if (!A.open() && hereRegion !== A.key) continue;
+      // ONE CARD PER PLACE. Levels 3, 5 and 6 build each island as two halves
+      // with the same name ('1A · THORNEDGE', '1B · THORNEDGE'), which is
+      // right for the greybox signs and reads as a stutter on a map. Adjacent
+      // rooms with the same name fold into one card that answers to both ids.
+      const rooms = [];
+      for (const r of roomsOf(A.key).filter((r) => r.spine || r.id === here)) {
+        const prev = rooms[rooms.length - 1];
+        if (prev && title(prev.label) === title(r.label) && prev.tint === r.tint) prev.ids.push(r.id);
+        else rooms.push({ ...r, ids: [r.id] });
+      }
+      if (!rooms.length) continue;
+      const wrap = document.createElement('div');
+      wrap.className = 'map-region';
       const t = document.createElement('div');
-      t.style.cssText = 'font-size:15px;opacity:.85;margin:4px 0 2px';
-      t.textContent = title;
-      el.appendChild(t);
+      t.className = 'map-title';
+      t.textContent = A.name;
+      if (A.done && A.done()) {
+        const d = document.createElement('span');
+        d.className = 'done';
+        d.textContent = '✓ freed';
+        t.appendChild(d);
+      }
+      wrap.appendChild(t);
       const row = document.createElement('div');
       row.className = 'map-rooms';
       rooms.forEach((r, i) => {
@@ -453,39 +534,34 @@ export class Menus {
           row.appendChild(link);
         }
         const d = document.createElement('div');
-        d.className = 'map-room' + (state.room === r.id ? ' here' : '');
-        d.innerHTML = `<div>${r.name}</div><div class="icons">${r.icons}</div>${state.room === r.id ? '<div>⭐ You are here</div>' : ''}`;
+        const isHere = r.ids.includes(here);
+        d.className = 'map-room' + (r.spine ? '' : ' pocket') + (isHere ? ' here' : '');
+        d.dataset.room = isHere ? here : r.ids[0];
+        d.dataset.rooms = r.ids.join(' ');
+        const sw = document.createElement('div');
+        sw.className = 'swatch';
+        sw.style.background = hex(r.tint);
+        d.appendChild(sw);
+        const nm = document.createElement('div');
+        nm.textContent = title(r.label);
+        d.appendChild(nm);
+        if (isHere) {
+          const you = document.createElement('div');
+          you.className = 'you';
+          you.textContent = 'YOU ARE HERE';
+          d.appendChild(you);
+        }
         row.appendChild(d);
       });
-      el.appendChild(row);
-    };
-
-    addRegion('🔥 Ember Hollow', [
-      { id: 'den', name: 'Moonlit Den', icons: '🛒🐺' },
-      { id: 'r1', name: 'Hollow Entrance', icons: '🐺▨' },
-      { id: 'r1b', name: 'Ash Warrens', icons: '🕳️🌑' },
-      { id: 'r2', name: 'Ember Causeway', icons: '⛲🐺' },
-      { id: 'r2b', name: 'Cinder Bridges', icons: '🌉🗝️' },
-      { id: 'k1', name: 'The Kiln', icons: '🌋🚪' },
-      { id: 'r3', name: 'Heart of the Hollow', icons: state.flags.bossDefeated ? '🔥✓' : '👁️' },
-    ]);
-    if (regionCleared('ember') || state.region === 'stoneroot') {
-      // The real Stoneroot: the Great Vault hub and its three spokes, then the
-      // Warden's Crypt. Room ids match the live rooms (js/level2.js) so "⭐ You
-      // are here" lights up — the retired e1/e2/e3 ids never matched anything.
-      addRegion('⛰️ Stoneroot Caverns', [
-        { id: 'vh', name: 'The Great Vault', icons: '🏛️🔦' },
-        { id: 'va3', name: 'Petra’s Shrine', icons: '🔥🕯️' },
-        { id: 'vb3', name: 'The Bone Quarry', icons: '💀🔔' },
-        { id: 'vc3', name: 'The Sunken Stair', icons: '💧🪵' },
-        { id: 'vz', name: 'Warden’s Crypt', icons: state.flags.wardenDefeated ? '🪨✓' : '💀' },
-      ]);
+      wrap.appendChild(row);
+      el.appendChild(wrap);
     }
+
     // the mystery log: promises the world made ("we'll come back")
     const mys = Object.entries(state.flags.mysteries || {}).filter(([, v]) => !v.found);
     if (mys.length) {
       const mt = document.createElement('div');
-      mt.style.cssText = 'font-size:15px;opacity:.85;margin-top:6px';
+      mt.className = 'map-title';
       mt.textContent = 'Mysteries';
       el.appendChild(mt);
       const row = document.createElement('div');
@@ -500,8 +576,8 @@ export class Menus {
       el.appendChild(row);
     }
     const hint = document.createElement('div');
-    hint.style.cssText = 'font-size:14px;opacity:.8';
-    hint.textContent = 'More regions will appear as Kael frees them…';
+    hint.className = 'map-hint';
+    hint.textContent = 'More of the kingdom appears as Kael frees it…';
     el.appendChild(hint);
     el.appendChild(this._closeBtn('map-menu'));
     this._open('map-menu');
