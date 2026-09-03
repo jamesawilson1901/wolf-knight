@@ -113,14 +113,22 @@ const rows = await page.evaluate(async (ids) => {
     }
     const MEANT_TO_BLOCK = /bars|gate|thorn|rootbar|ice|arch|plug|bramble/i;
 
-    // Where a child can stand: the arrival point first, then a ring of spots
-    // the collision solver agrees are floor. blocked() is the game's own
-    // ruler, so every viewpoint here is a place the child can really be.
+    // Where a child can stand: the arrival point, plus every spot on a 2-metre
+    // grid across the room that the collision solver agrees is floor. blocked()
+    // is the game's own ruler, so each viewpoint is a place a child really can
+    // be.
+    //
+    // A GRID, NOT A RING. The first cut sampled two rings at 0.35 and 0.62 of
+    // the half-extents, and in f3 every one of the 24 points landed in the
+    // mountain fill — so the room reported ONE standing spot, the spawn, and
+    // the whole test quietly collapsed back into the single-ray version it was
+    // written to replace. A sampler that can return almost nothing turns a
+    // question about the room into a question about where the sampler happened
+    // to look, so the count is now reported and asserted rather than trusted.
     const eyes = w.spawn ? [{ x: w.spawn.x, z: w.spawn.z }] : [];
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      for (const f of [0.35, 0.62]) {
-        const x = Math.cos(a) * w.halfW * f, z = Math.sin(a) * w.halfD * f;
+    const STEP = 2.0;
+    for (let x = -w.halfW + 1.2; x <= w.halfW - 1.2; x += STEP) {
+      for (let z = -w.halfD + 1.2; z <= w.halfD - 1.2; z += STEP) {
         if (!w.blocked(x, z, 0.6)) eyes.push({ x, z });
       }
     }
@@ -224,7 +232,8 @@ const rows = await page.evaluate(async (ids) => {
       });
     }
 
-    out.push({ id, dark, pots, rings, hidden, blocking, floaters });
+    out.push({ id, dark, pots, rings, hidden, blocking, floaters, eyes: eyes.length,
+      floor: +(w.halfW * w.halfD * 4).toFixed(0) });
   }
   return out;
 }, ROOM_IDS);
@@ -255,6 +264,13 @@ const marked = rows.filter((r) => r.rings > 0).map((r) => ({ room: r.id, rings: 
 check('no low-segment ring is painted on any floor', marked.length === 0, marked.slice(0, 10));
 
 console.log('\n── 5. you can see the way on from where you arrive ────');
+// A ROOM WITH NOWHERE TO STAND IS A BROKEN MEASUREMENT, NOT A CLEAN ROOM. If
+// the sampler finds almost no floor in a room the size of a house, it is the
+// sampler that is wrong, and every visibility answer it gave for that room is
+// worthless — including the ones that passed.
+const starved = rows.filter((r) => r.eyes !== undefined && r.eyes < 4 && r.floor > 200)
+  .map((r) => ({ room: r.id, standingSpots: r.eyes, floorArea: r.floor }));
+check('every room offers the sampler somewhere to stand', starved.length === 0, starved.slice(0, 8));
 const blocked = [];
 for (const r of rows) for (const h of (r.hidden || [])) blocked.push({ room: r.id, ...h });
 check('no doorway is invisible from every standing spot in its room',

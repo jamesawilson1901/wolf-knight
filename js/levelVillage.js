@@ -288,6 +288,17 @@ function placeOne(world, gltf, key, x, z, s, ry, tint) {
   const g = new THREE.Group();
   place(world, g, gltf, key, x, 0, z, s, ry, 0, tint, true, true);
   world.add(g);
+  // AND IT STANDS ON THE FLOOR. `clutter` has measured and set down every prop
+  // it places since the Small Props Pack shipped (see the long note there);
+  // placeOne — which puts down the huts, the walls, the towers, the wagons and
+  // the townhouses, every STRUCTURE in the Village — never did, and simply
+  // trusted each file's own idea of where its origin was. No structure is
+  // known to be hanging today; this is the same guard clutter already has, so
+  // that the next model added here cannot hang by an authoring convention
+  // nobody checked. Every caller below stands on the ground and none of them
+  // hangs from anything, so grounding all of them is the whole rule.
+  const bb = new THREE.Box3().setFromObject(g);
+  if (isFinite(bb.min.y)) g.position.y -= bb.min.y;
   return g;
 }
 
@@ -309,9 +320,43 @@ const SOLID_PROPS = new Set(['cart', 'boat', 'trough', 'trough2', 'grinder', 'he
 
 function clutter(world, D, list) {
   if (GREY() || !villageKit) return;
-  for (const [key, x, z, s = 1, ry = 0, base = 0] of list) {
+  for (const [key, ax, az, s = 1, ry = 0, base = 0] of list) {
     const gltf = villageKit[key];
     if (!gltf) continue;
+    // INSIDE THE ROOM, WHATEVER THE LIST SAYS.
+    //
+    // These lists are long lines of hand-typed coordinates, and the Village's
+    // rooms come in three sizes. The square's list dresses its south edge out
+    // to z 16.5 — a sensible number for a room 16 deep, and the square is 14 —
+    // so the washing, the basin, the firewood and a whole cart stood one to
+    // two and a half metres PAST the wall, out in the black. Every one of the
+    // six guardian pockets carries the same template at pocket scale, with z
+    // values out to 9.5 in a room whose half-depth is 8. Measured, not
+    // guessed: verify-bounds named seven of them, and reading the lists after
+    // that turned up a dozen more sitting exactly on the wall line. It is
+    // dad's "objects outside in the black" again, and it will keep happening
+    // as long as a typed number can put a prop outside the room it dresses.
+    //
+    // So the room's own extents are the ruler. A spot outside them is pulled
+    // to the wall band rather than dropped: the author was dressing the edge,
+    // and an edge prop one metre in is what they meant. verify-bounds still
+    // asks the question afterwards, so this cannot quietly paper over a spot
+    // that lands somewhere else entirely.
+    const lim = (v, half) => (half ? Math.max(-(half - 1.4), Math.min(half - 1.4, v)) : v);
+    const x = lim(ax, world.halfW), z = lim(az, world.halfD);
+    // ...AND A CLAMP MUST NOT PUT A COLLIDER IN A DOORWAY. Pulling a prop to
+    // the wall band puts it exactly where the doors are. Most of this pack is
+    // buckets and washing, which nothing walks into — but the square's stray
+    // cart sits at x 8, and x 8 is the centre of the Spire stair: clamped
+    // straight in, it would have parked a solid collider across the last door
+    // in the game, which is a worse bug than the one being fixed. A SOLID prop
+    // that lands in a doorway is dropped instead. One less cart in a dressed
+    // square is nothing; a door a child cannot walk through is the whole game.
+    if (SOLID_PROPS.has(key) && (x !== ax || z !== az)) {
+      const inDoor = (world.doors || []).some((d) =>
+        x >= d.minX - 1.6 && x <= d.maxX + 1.6 && z >= d.minZ - 1.6 && z <= d.maxZ + 1.6);
+      if (inDoor || world.blocked(x, z, 1.2)) continue;
+    }
     const g = new THREE.Group();
     place(world, g, gltf, key, x, 0, z, s, ry, 0, D.propTint, true, true);
     world.add(g);
