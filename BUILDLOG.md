@@ -5132,3 +5132,89 @@ LOOKING wrong, which nothing in the suite set could see.
 `tools/verify-looks.mjs` holds all of it: 146 rooms, no dark island, no pot
 standing inside anything, no low-segment ring painted on any floor.
 
+
+---
+
+## The Kiln nobody could get into, and three things hanging in the air (2026-09-03, later)
+
+The last four items on dad's play-test list, and the four suites that should
+have caught them and did not.
+
+**"You cannot access this room. When you walk through the door of the previous
+room to this one, you spawn behind the door and it keeps sending you back."**
+The Kiln branch's three landings were written with an ISLAND's numbers. `lk1`
+and `lk3` are pockets — 20 wide, half-extent 10 — and ±13.5 is only inside a
+32-wide room, so a child arriving through any of those three doors materialised
+four and a third metres OUTSIDE the room, in the wall band, where the only
+thing to walk into is the door they came from. The Understair and the Banked
+Fire, a gold chest among them, could not be entered at all. They land at ±8.5
+now, which is those rooms' own `world.spawn.x`, so arriving and starting agree.
+
+`verify-landings` has asked this question of every door since v3.47 and had
+never once asked it about the Kiln: its room list was hand-typed, and no `lk*`
+was in it. Pointed at the live registry it found all three in a single pass,
+and 304 legs now come back clean. It also gained two things it needed to be
+usable: it takes room names on the command line (an hour per re-check is how a
+fix goes unverified overnight), and a narrowed run pulls in one hop of
+destinations and then FAILS if a destination the registry lists went unbuilt —
+because every check here needs the destination's extents, and `if (!dest)
+continue` is a silent pass, which is the same rot in a faster wrapper.
+
+Two more landings came out of the same sweep. The Warden's crypt dressed a
+2.8-radius rubble field at (0, −11.5), dead centre on the onward gap the boss
+is guarding, and the Greenway's door lands a child at (0, −10.5) — one metre
+inside it. Split into two corner piles: the same stone in the room, none of it
+in the doorway. And the Drowned Market's landing into the summit clipped the
+rime plug's collider by two centimetres, safe only because you cannot walk that
+road until Boreal is calmed and the plug is gone. A landing that is safe only
+because of a flag is a landing waiting to break, so it moved clear of both
+states.
+
+**"Move the door to the left more so players can see it. It's currently not
+viable behind the giant pillar."** n2 planted a roadside column at (0.0, 7.5)
+while the child arrives at (0, 11) facing north — so the first thing they saw
+was stone, three and a half metres away, filling the middle of the screen, with
+the road behind it. Moving the door would have bent the road and the region
+entrance behind it; the pillar moved instead.
+
+The check that found it had to be rewritten twice. The first cut cast one ray
+from the spawn to each doorway and named twelve rooms, eleven of them a
+pedestal eight metres into a twenty-two metre sightline — a thing a child walks
+two steps around. The question a hidden door deserves is *is there anywhere in
+this room you can stand and see it*, so it is measured now from the spawn plus
+a ring of spots the collision solver agrees are floor; monsters are excused,
+and so are bars, roots and ice, because a gate blocking a door is the gate
+working. The other half of dad's complaint needed its own check: a fan of rays
+along the spawn's own facing, four metres, all stopped by the same prop, is a
+wall in the middle of the ARRIVAL VIEW. Nothing in the suite set had ever
+measured a first frame.
+
+**"Get rid of the random flying grey squares."** Every dark zone in the game
+hung its veil at y = 1.65: a translucent quad lying flat, at head height, over
+a rectangle of floor. From a 3/4 top-down camera that is a grey square floating
+in mid-air with a hard edge, and there was one in every room with darkness in
+it. The darkness was never that quad — main.js dims the global light rig when
+the child stands inside the zone — so the quad, which is only the hint that the
+road ahead is dark, now lies on the ground, where dark ground looks like dark
+ground.
+
+**"There is a random flying wood pile above a burnable wood pile."** `cartWreck`
+laid its second log stack at y = 0.35 with a roll of half a radian, meant as
+timber tumbling off the cart. At scale 0.8 that roll is twenty-nine degrees,
+nowhere near enough to put an edge down, and the offset carried it clear of the
+heap below — so it hung there, in every room the kit dresses.
+
+Which is the same bug as the floating stone structure, and as the barrels, and
+as the dead trees. **Every place the dressing kit tips a prop onto its side, it
+raised it by a hand-picked constant**: 0.28 for a barrel, 0.42 for a column
+drum, 0.5 for a bare tree, 0.35 for those logs. Each was correct for one model
+at one scale with one roll and wrong the moment any of the three moved, which
+is why these keep coming back with different props on. The kit measures now —
+`restOnFloor` poses the prop, takes its box and sets its underside on the floor
+— and all four constants are gone.
+
+`verify-looks` §7 is the check none of it could have hidden from, and it is
+deliberately not a list of names: a quad lying FLAT more than 0.6 above the
+floor is either ground that has left the ground or a mistake, while everything
+that legitimately hangs — banners, cobwebs, portal haze — hangs vertical. A
+name list would need touching every time a new hanging prop ships.

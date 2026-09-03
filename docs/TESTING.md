@@ -350,6 +350,35 @@ reason as the three above.
    when crowded carried the child out of the swipe cone). Neither would have
    been visible from the code.
 
+8. **"Can you see it?" is not "is anything in the way?"** (`verify-looks.mjs`
+   §5-§6.) The first cut of the hidden-door check cast one ray, from the spawn,
+   to each doorway, and named twelve rooms. Eleven were a pedestal or a column
+   eight metres into a twenty-two metre sightline — a thing a child walks two
+   steps around and never notices. Dad's complaint was not "a prop crossed my
+   line", it was a door he could not find at all, so the question had to become
+   *is there anywhere in this room you can stand and see this doorway*: the
+   spawn plus a ring of spots the collision solver agrees are floor. A monster
+   is excused, because a monster is supposed to be between you and the way on,
+   and so are bars, roots and ice, because a gate blocking a door is the gate
+   working. The complaint's other half needed its own check: **the arrival
+   view**. A fan of rays along the spawn's own facing, four metres, all of them
+   stopped by the same prop, is a wall in the middle of the first frame — which
+   is what n2's roadside pillar was, planted on the axis three and a half
+   metres ahead of where the child appears. Nothing in the suite set had ever
+   measured a first frame.
+9. **A magic constant is a bug with a delay.** (`verify-looks.mjs` §7.) Three
+   of dad's screenshots were props hanging in the air, and all three came from
+   the same habit: every place the dressing kit tips something onto its side,
+   it raised it by a hand-picked number — 0.28 for a barrel, 0.42 for a column
+   drum, 0.5 for a dead tree, 0.35 for a log stack. Each was right for one
+   model at one scale with one roll, and wrong the moment any of the three
+   moved. The fix is to measure (`restOnFloor`: pose it, take its box, set its
+   underside on the floor), and the check is orientation-based rather than
+   name-based — a quad lying FLAT above the floor is either ground that has
+   left the ground or a mistake, while everything that legitimately hangs
+   (banners, cobwebs, portal haze) hangs vertical. A name list would have
+   needed touching every time a new hanging prop shipped; this does not.
+
 And the recurring lesson of the whole batch, for the fourth time: **a hand-kept
 list rots.** `verify-landings` carried a 130-name array whose own header already
 recorded it rotting once — and it had rotted again past the Night Road, the
@@ -358,6 +387,25 @@ a child down somewhere they can stand" had no opinion at all about six new
 rooms. `verify-level3`'s dangling-door check had a two-name neighbour list and
 reported a real door as broken when the Greenway shipped next to it. Both read
 the live registry now. If a suite names rooms, that is the bug.
+
+The registry rewrite paid for itself in one run. Pointed at the whole game for
+the first time, `verify-landings` found the Kiln branch — three doors that had
+never been asked the question, written with an ISLAND's landing coordinates
+(+-13.5, correct for a 32-wide room) on doors that open into POCKETS (20 wide,
+half-extent 10). A child arriving through any of them materialised four and a
+third metres outside the room and was bounced straight back, which is dad's
+image three word for word: "you spawn behind the door and it keeps sending you
+back to the previous room." The Understair and the Banked Fire, a gold chest
+among them, could not be entered at all. The suite that exists to catch exactly
+this had been reporting ALL CLEAN over them for months.
+
+One more thing the same rewrite needed: **a narrowed run must still be able to
+answer the question.** Every landing check needs the DESTINATION room's
+extents, and `if (!dest) continue` is a silent pass — so naming rooms on the
+command line (which the suite now accepts, because an hour per re-check is how
+a fix goes unverified) pulls in one hop of destinations automatically, and the
+run fails if a destination the live registry lists went unbuilt. A shortcut
+that can quietly narrow what is checked is the same rot in a faster wrapper.
 
 ### 7b · A suite that lies is worse than no suite (2026-08-31)
 
