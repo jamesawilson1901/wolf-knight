@@ -5160,12 +5160,25 @@ destinations and then FAILS if a destination the registry lists went unbuilt —
 because every check here needs the destination's extents, and `if (!dest)
 continue` is a silent pass, which is the same rot in a faster wrapper.
 
-Two more landings came out of the same sweep. The Warden's crypt dressed a
-2.8-radius rubble field at (0, −11.5), dead centre on the onward gap the boss
-is guarding, and the Greenway's door lands a child at (0, −10.5) — one metre
-inside it. Split into two corner piles: the same stone in the room, none of it
-in the doorway. And the Drowned Market's landing into the summit clipped the
-rime plug's collider by two centimetres, safe only because you cannot walk that
+Two more landings came out of the same sweep, and the first of them took two
+goes. The Greenway's door lands a child at (0, −10.5) in the Warden's crypt and
+something there pushed them 0.92. Reading the builder said: the 2.8-radius
+rubble field dressed at (0, −11.5), dead centre on the onward gap the boss is
+guarding. It was split into two corner piles, which is worth doing on its own
+because nothing should be drawn across the way on — and the landing still
+measured 0.92 afterwards.
+
+Asked directly, `world.blocked` names the claim and `resolveCircle` gives the
+push, and they said the Warden's THRONE: a 2.1 circle at (0, −9), a metre and
+a half from where the child appears. `rubbleField` lays no colliders at all and
+never pushed anybody. The whole of x = 0 is unusable between z −13 and −7.5
+for the same reason, so the landing steps aside to (2.6, −10.8) rather than
+back — the throne is the composition of that arena and the door is behind it by
+design. Second time in one night that reading a builder gave a confident wrong
+answer which a single measurement overturned.
+
+And the Drowned Market's landing into the summit clipped the rime plug's
+collider by two centimetres, safe only because you cannot walk that
 road until Boreal is calmed and the plug is gone. A landing that is safe only
 because of a flag is a landing waiting to break, so it moved clear of both
 states.

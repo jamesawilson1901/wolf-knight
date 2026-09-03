@@ -243,7 +243,18 @@ export async function buildG1(scene) {
   });
   world.spawn = { x: 0, z: 11, angle: Math.PI };
   // BACK DOWN INTO THE WARDEN'S CRYPT, and on up to the first trees.
-  sideDoor(world, 's', halfW, halfD, 'vz', { x: 0, z: -10.5, angle: 0 });
+  //
+  // OFF THE THRONE'S AXIS. The crypt's onward gap is cut in its north wall and
+  // the Warden's throne stands at (0, -9) with a 2.1 collider, so a landing at
+  // (0, -10.5) put a child one and a half metres inside it: resolveCircle shoved
+  // them to (0, -11.42), wedged between the throne and the rock plug that seals
+  // the gap. Measured, not read — world.blocked names the claim and
+  // resolveCircle gives the push (verify-landings §3, 0.92).
+  //
+  // The whole of x = 0 is unusable between z -13 and -7.5 for the same reason,
+  // so the landing steps aside rather than back: the throne is the composition
+  // of that arena and the door is behind it by design.
+  sideDoor(world, 's', halfW, halfD, 'vz', { x: 2.6, z: -10.8, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'g2', { x: 0, z: 11, angle: Math.PI });
 
   // THE ROCKFALL. The old way up came down years ago, and the road north is
