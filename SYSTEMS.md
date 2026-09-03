@@ -151,6 +151,28 @@ lights the other), `m3` the crown (Luna's shrine → `markers.sparkSpot
 `state.flags.plates.m_sigil_stone` + `WS.get('spire','sigil_flame')`.
 Played end-to-end through real key events by `tools/run-spire.mjs`.
 
+## Bosses (js/boss.js) — seven fights, seven creatures
+`SKINS` is the table: each entry names its own `body` (model, how tall it
+stands, which materials are its eyes, which to leave as modelled, whether
+it hovers), its `clips`, its stats, and its DIFFICULTY — `tier` (the
+region number), `guard`, `gap`, `tellMult` and `moves`. A skin that names
+no body wears `wolf.gltf`, which is what the Shadowgrip and Shadow-Grimm
+are supposed to be: he IS the great wolf and the Shadowgrip was a piece of
+him, so the first fight and the last being the same animal is the story's
+bookend and `tools/verify-bosses.mjs` names that pair so it stays a
+decision. Sylva is the minotaur, Aria the Quaternius dragon (hovering),
+Meri the slime; Boreal (`wyrm.glb`) and the Bone Warden are their own
+classes.
+
+DIFFICULTY (2026-09-03). A boss GUARDS between openings — hits ring off a
+reduction, never immunity — so damage lives in the windows the fight
+teaches: the charge's 2.6s collapse, the pounce's 1.4s daze, the swipe's
+recover. Three shared moves (swipe / charge / pounce) picked so the same
+one never comes twice running, and a boss crowded inside 2.4u answers
+sooner. Guard rises and the gap falls with `tier`; **no telegraph ever
+goes under 0.9s and no punish window under 1.0s** (combat context LAW 1
+and LAW 6). `tools/probe-masher.mjs` measures the result by mashing.
+
 ## Den villagers (js/npcs.js)
 spawnDenNpcs(world) populates the Den from VILLAGERS data (id, model,
 spot, arrival condition): Wren (Rogue_Hooded, always) · Rook (Ranger,

@@ -78,7 +78,40 @@ const rows = await page.evaluate(async (ids) => {
       if (t === 'RingGeometry' && (n.geometry.parameters.thetaSegments || 0) <= 8) rings++;
     });
 
-    out.push({ id, dark, pots, rings });
+    // --- the doors: can you SEE the way on from where you arrive? ---------
+    // Dad, from play: "move the door to the left more so players can see it.
+    // it's currently not viable behind the giant pillar." A doorway a child
+    // cannot see is a doorway that does not exist, and nothing had ever
+    // stood at the arrival point and LOOKED.
+    //
+    // A ray from eye height at the spawn to the middle of each doorway. If it
+    // hits anything before it gets there, something is standing in the way.
+    const ray = new THREE.Raycaster();
+    const from = new THREE.Vector3(w.spawn.x, 1.15, w.spawn.z);
+    const hidden = [];
+    for (const dr of (w.doors || [])) {
+      const cx = (dr.minX + dr.maxX) / 2, cz = (dr.minZ + dr.maxZ) / 2;
+      // aim a little INSIDE the doorway, so the shell wall around it is not
+      // itself the thing we hit
+      const inx = cx * 0.86, inz = cz * 0.86;
+      const to = new THREE.Vector3(inx, 1.15, inz);
+      const dir = to.clone().sub(from);
+      const dist = dir.length();
+      if (dist < 1.5) continue;                 // standing in it already
+      ray.set(from, dir.normalize());
+      ray.far = dist - 0.6;
+      const hits = ray.intersectObject(w.root, true)
+        .filter((h) => h.object.isMesh && h.object.visible
+          && !(h.object.material && h.object.material.transparent))
+        .filter((h) => h.distance > 0.8);
+      if (hits.length) {
+        hidden.push({ to: dr.to, at: { x: +cx.toFixed(1), z: +cz.toFixed(1) },
+          blockedBy: hits[0].object.name || hits[0].object.geometry.type,
+          atDistance: +hits[0].distance.toFixed(1), doorAt: +dist.toFixed(1) });
+      }
+    }
+
+    out.push({ id, dark, pots, rings, hidden });
   }
   return out;
 }, ROOM_IDS);
@@ -107,6 +140,12 @@ check('no pot, crate or jar is standing inside something else',
 console.log('\n── 4. nothing draws a geometric mark on the floor ─────');
 const marked = rows.filter((r) => r.rings > 0).map((r) => ({ room: r.id, rings: r.rings }));
 check('no low-segment ring is painted on any floor', marked.length === 0, marked.slice(0, 10));
+
+console.log('\n── 5. you can see the way on from where you arrive ────');
+const blocked = [];
+for (const r of rows) for (const h of (r.hidden || [])) blocked.push({ room: r.id, ...h });
+check('no doorway is hidden behind something from the room\'s own arrival point',
+  blocked.length === 0, blocked.slice(0, 12));
 
 check('nothing threw during the run', errors.filter((e) => e.startsWith('PAGEERROR')).length === 0);
 await b.close();

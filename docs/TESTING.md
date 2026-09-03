@@ -307,6 +307,58 @@ generalizes: a hunch from reading code is a lead, never a finding: what
 found the previous six bugs, and what should be trusted to say "clean",
 is always the thing that actually built the room and measured it.
 
+### 7a(ii) · Four more classes, from dad's twenty-screenshot batch (2026-09-03)
+
+Twenty screenshots, and the sweep was green through every one of them. The
+same question as before — what did no suite ask? — gave four more full-registry
+classes. Each is a permanent suite over `tools/all-rooms.mjs`, for the same
+reason as the three above.
+
+4. **Can a child actually REACH the reward?** (`verify-chests.mjs`.) Both chest
+   systems already had tests, and both tests put the player where the chest
+   was — the one thing a child cannot always do. This flood-fills every room
+   from its spawn over the real colliders (`resolveCircle`) and asks whether
+   each chest is inside the opening radius, twice: once as the room builds, and
+   once over a REBUILD with every flag map answering true, every wolf granted,
+   and every gate, crack, burn, cut, ice, watcher and water collider cleared.
+   Unreachable in the second pass is a bug; unreachable only in the first is the
+   design. It found one: Ember's Ketsu vault, sealed by the very block that
+   unlocked it, permanently, with the puzzle flag set and the room reporting
+   success.
+5. **Does the reward arrive where the child is STANDING?** (`verify-onward.mjs`.)
+   Three boss arenas hung their onward door at build time behind the defeated
+   flag, so the room a child stood in the moment they won was a room whose
+   reward had not arrived. Two things it had to learn on the way, both worth
+   keeping: **`narration.blocking` is a getter**, so every driver that "quieted"
+   narration by assigning `false` to it was writing to a read-only property and
+   doing nothing (`narration.skip()` plus captions off is the real dismiss); and
+   **winning levels a child up, and the perk card pauses the world**, which is
+   exactly what a game-time countdown is for and exactly what a wall-clock one
+   would have got wrong.
+6. **Do the rooms LOOK like places?** (`verify-looks.mjs`.) Four of the twenty
+   screenshots were not bugs in any system — a jar standing inside a column, a
+   rectangle of darkness lying in a lit floor, a grey diamond painted round every
+   pit, a doorway behind a pillar. Nothing could see any of them: `verify-density`
+   counts things and `verify-grounded` catches what hovers, and neither has an
+   opinion about how a room reads. This one does, over every room at once.
+7. **Is the claim about difficulty measurable?** (`tools/probe-masher.mjs`, run
+   inside `verify-bosses.mjs`.) "Beatable by spamming the attack button" is a
+   claim about play, and the only honest test of it is to spam the attack button
+   — walk at the boss, press J, no reading, no dodging, no shield. It found that
+   the first fix did not work (a masher still took the region-one boss down in
+   ninety seconds) and that the second one made the fight EASIER (backing off
+   when crowded carried the child out of the swipe cone). Neither would have
+   been visible from the code.
+
+And the recurring lesson of the whole batch, for the fourth time: **a hand-kept
+list rots.** `verify-landings` carried a 130-name array whose own header already
+recorded it rotting once — and it had rotted again past the Night Road, the
+Greenway and the Drowned Market, so the one check that asks "does this door put
+a child down somewhere they can stand" had no opinion at all about six new
+rooms. `verify-level3`'s dangling-door check had a two-name neighbour list and
+reported a real door as broken when the Greenway shipped next to it. Both read
+the live registry now. If a suite names rooms, that is the bug.
+
 ### 7b · A suite that lies is worse than no suite (2026-08-31)
 
 Three separate lessons from one night, all the same shape: **a check whose
