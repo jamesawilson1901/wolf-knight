@@ -309,10 +309,16 @@ export async function buildN2(scene) {
               { system: 'crack', id: 'n2_wardstone_crack' });
   visibleReward(world, -14.0, -1.0, 'n2_crack_prize', { shards: 26, heartPiece: 1 }, 'silver');
 
-  // THE DARK SIDE OF THE ROAD. Smaller than n1's and doing a different job: n1
-  // asked a child to WALK through the dark, and this one asks them to look
-  // into it and see that there is something there. The keepsake is in it.
-  darkZone(world, 5.0, halfW, -halfD, -1.5);
+  // THE DARK SIDE OF THE ROAD. n1 asked a child to WALK through the dark; this
+  // one asks them to look into it and see there is something there. The
+  // keepsake is in it.
+  //
+  // IT IS A BAND, NOT A PATCH. This used to be an east-corner rectangle
+  // (x 5..halfW, z -halfD..-1.5) with lit floor all round two of its sides,
+  // which is exactly the "random dark spot partially in a room" dad called out
+  // from play. It now runs wall to wall from the far end back, the same shape
+  // n1 uses: the road ahead is dark, and the ground you are standing on is not.
+  darkZone(world, -halfW, halfW, -halfD, -1.5);
 
   // THE ROAD'S KEEPSAKE (js/treasures.js). One per level, found and never
   // bought, and worth nothing in a fight — a thing a child keeps because they

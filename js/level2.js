@@ -27,7 +27,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS, restorationOf } from './worldstate.js';
-import { brazier } from './gates.js';
+import { brazier, stompSigil } from './gates.js';
 
 let forceGrey = false;
 let caveKit = null;
@@ -1269,18 +1269,12 @@ export async function buildVb3(scene) {
       world.add(c);
     }
   } else {
-    const plate = tinted(caveKit.pedestal, 'rattlePlate', 0xd8c78a);
-    plate.position.set(0, 0, 0);
-    plate.scale.set(2.4, 0.5, 2.4);
-    world.add(plate);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.5, 1.9, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5,
-        side: THREE.DoubleSide, depthWrite: false })
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(0, world.deckY + 0.05, 0);
-    world.add(ring);
+    // THE RESONANT MARK, cut into the floor rather than stood on top of it
+    // (js/gates.js stompSigil, and the note there is dad's own words). The
+    // squashed kit pedestal that used to be here read as furniture, and a
+    // child stomping ON a thing is not the same picture as a child stomping
+    // INTO the stone that answers.
+    stompSigil(world, 0, 0, 2.0);
     for (const s of world.markers.stalactiteSpots) {
       const c = tinted(caveKit.column, 'stal', 0xc8bda0);
       c.position.set(s.x, 5.4, s.z);
@@ -1513,7 +1507,14 @@ export async function buildVc3(scene) {
 
   // The dark sits over the broken half only: you can SEE that the room goes
   // wrong from the doorway, which is the invitation to change form.
-  darkZone(world, -halfW, halfW, -8, 3.2);
+  //
+  // AND IT RUNS TO THE WALL. Dad, from play: "do not have random dark spots
+  // partially in a room. either the whole room is dark or it's not." This
+  // stopped at z -8 with five metres of lit floor beyond it, so the dark read
+  // as a rectangle lying in the middle of the room rather than as the far end
+  // of it going wrong. Wall to wall, and from the north wall back: a
+  // THRESHOLD, which is the thing a child understands.
+  darkZone(world, -halfW, halfW, -halfD, 3.2);
 
   // THE LANTERN, past the gaps. Lighting it opens the Warden's crypt.
   world.markers.deepLanternSpot = { x: 0, z: -6.4 };

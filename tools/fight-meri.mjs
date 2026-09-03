@@ -75,7 +75,11 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
   const dist = Math.hypot(dx, dz);
   if (b.action === 'windup' || b.action === 'swipe') {
     await d.holdShield(1000 / TS);
-  } else if (b.action === 'crouch' || b.action === 'charge') {
+  // THE POUNCE, 2026-09-03. `rear` is its on-body tell (it RISES rather than
+  // coiling) and `pounce` is the leap; both are answered by not being there,
+  // the same as the charge. `dazed` is its opening — shorter than the collapse
+  // and right on top of you, so it is punished the same way `tired` is.
+  } else if (b.action === 'crouch' || b.action === 'charge' || b.action === 'rear' || b.action === 'pounce') {
     // out of the red lane — step perpendicular, but stay in the DRY-ISH
     // middle (|x|<6): the flanks flood at half health and, since noCollide
     // keeps them walkable-but-slow rather than walled, straying into them
@@ -86,7 +90,7 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     const tz = Math.max(-9, Math.min(9, s.pos.z + pz * 4 * side));
     await d.walkTo(tx, tz, { timeout: 1.6, arrive: 0.8 });
     seen.dashes++;
-  } else if (b.action === 'tired') {
+  } else if (b.action === 'tired' || b.action === 'dazed') {
     if (dist > 1.6) await d.walkTo(b.x, b.z, { timeout: 2, arrive: 1.3 });
     else {
       const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');

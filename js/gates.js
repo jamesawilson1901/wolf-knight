@@ -255,6 +255,82 @@ export function waterGate(world, x, z, w, d) {
 
 // Brazier — a cold iron bowl the Fire Wolf's ground-slam ignites. Rooms
 // wire consequences through onLit; world.igniteAt is called by the slam.
+// MARKINGS ON THE GROUND, NOT A THING TO STAND ON.
+//
+// Dad, from play, about the Rattle's resonant plate: "to progress you need to
+// stomp where the user is in the image. that object needs to be removed.
+// replace it with some sort of cool markings or something on the ground to
+// stomp."
+//
+// He is right twice over. It was a kit PEDESTAL squashed to (2.4, 0.5, 2.4) —
+// a raised stone slab a child climbs onto, which reads as furniture rather
+// than as a place, and which the stomp then happens ON TOP of rather than
+// into. And it cost two draw calls (the slab plus its act-here ring) to say
+// less than one does.
+//
+// This is one plane carrying a struck-stone sigil: concentric rings, eight
+// radiating chevrons pointing in, and a cracked star at the centre where the
+// paw lands. It lies flush with the deck, it pulses gold the way every
+// act-here mark in the game pulses, and there is nothing to stand on.
+let sigilTex = null;
+function sigilTexture() {
+  if (sigilTex) return sigilTex;
+  const N = 256, C = N / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, N, N);
+  g.lineCap = 'round';
+  const ring = (rr, w, a) => {
+    g.beginPath(); g.arc(C, C, rr * C, 0, Math.PI * 2);
+    g.lineWidth = w; g.strokeStyle = `rgba(255,215,106,${a})`; g.stroke();
+  };
+  ring(0.94, 5, 0.85);
+  ring(0.86, 2, 0.45);
+  ring(0.58, 3, 0.6);
+  // eight chevrons pointing at the middle — "the blow goes HERE"
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const px = (r, o) => C + Math.cos(a + o) * r * C;
+    const py = (r, o) => C + Math.sin(a + o) * r * C;
+    g.beginPath();
+    g.moveTo(px(0.80, -0.10), py(0.80, -0.10));
+    g.lineTo(px(0.66, 0), py(0.66, 0));
+    g.lineTo(px(0.80, 0.10), py(0.80, 0.10));
+    g.lineWidth = 6; g.strokeStyle = 'rgba(255,215,106,0.75)'; g.stroke();
+  }
+  // the cracked star in the middle: where the stone already gave once
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    g.beginPath();
+    g.moveTo(C, C);
+    g.lineTo(C + Math.cos(a) * 0.34 * C, C + Math.sin(a) * 0.34 * C);
+    g.lineWidth = 4; g.strokeStyle = 'rgba(255,236,170,0.9)'; g.stroke();
+  }
+  sigilTex = new THREE.CanvasTexture(cv);
+  sigilTex.colorSpace = THREE.SRGBColorSpace;
+  return sigilTex;
+}
+
+export function stompSigil(world, x, z, radius = 1.9) {
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 2, radius * 2),
+    new THREE.MeshBasicMaterial({ map: sigilTexture(), transparent: true,
+      depthWrite: false, opacity: 0.85 })
+  );
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, (world.deckY || 0) + 0.04, z);
+  world.add(m);
+  world.keepLoose(m);
+  // the same act-here pulse every gold mark in the game carries
+  world.onAnimate((t) => {
+    m.material.opacity = 0.68 + 0.22 * Math.sin(t * 2.4 + x);
+    const sc = 1 + 0.035 * Math.sin(t * 2.4 + x);
+    m.scale.set(sc, sc, 1);
+  });
+  return m;
+}
+
 export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
   const stand = prepareModel(torchGltf.scene.clone());
   stand.scale.setScalar(2.0);
@@ -268,15 +344,25 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
   });
   world.add(stand);
   world.addCircle(x, z, 0.3);
+  // A LIT LAMP HAS TO CHANGE THE ROOM.
+  //
+  // Dad, from play: "the lamps do nothing when lit." Every brazier in the game
+  // has a real job wired to it — the vault's spark, Frostpeak's three, Ember's
+  // cage — so nothing was broken; the problem is that lighting one LOOKED like
+  // nothing. The flame was a 16cm cone on a stand scaled to two metres, and its
+  // light was intensity 5 over a six-metre falloff: in a cave that is a faint
+  // smudge round the base and no more.
+  //
+  // A real flame, and a pool of light a child can stand in.
   const flame = new THREE.Mesh(
-    new THREE.ConeGeometry(0.16, 0.5, 6),
-    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa03a, emissiveIntensity: 2.4, roughness: 1 })
+    new THREE.ConeGeometry(0.26, 0.85, 7),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa03a, emissiveIntensity: 2.8, roughness: 1 })
   );
-  flame.position.set(x, 1.65, z);
+  flame.position.set(x, 1.78, z);
   flame.visible = false;
   world.add(flame);
-  const light = new THREE.PointLight(0xffa03a, 0, 6, 1.9);
-  light.position.set(x, 1.9, z);
+  const light = new THREE.PointLight(0xffa03a, 0, 11, 1.8);
+  light.position.set(x, 2.15, z);
   world.add(light);
 
   // ACT-HERE ring while COLD (v3.20): an unlit brazier in a dark room is
@@ -306,11 +392,29 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
         if (dx * dx + dz * dz > r * r) continue;
         br.lit = true;
         br.flame.visible = true;
-        br.light.intensity = 5;
+        br.light.intensity = 8;
         if (br.waiting) br.waiting.visible = false; // it's lit: stop asking
         audio.play('burn', { volume: 0.7 });
         if (br.onLit) br.onLit(br);
         n++;
+        // ...AND THE ROOM ITSELF LIFTS when the last one catches. This is the
+        // second half of the same complaint: one lamp is a pool of light, but
+        // a room whose lamps are ALL burning should feel like a room somebody
+        // has come back to. The rig brightens over a beat and a bit rather
+        // than snapping, so it reads as fire taking hold.
+        if (world.braziers.every((q) => q.lit)) {
+          audio.play('checkpoint', { volume: 0.75, rate: 1.15 });
+          const from = world.lightScale !== undefined ? world.lightScale : 1;
+          const to = Math.min(1.15, from * 1.4);
+          if (to > from + 0.01) {
+            let ramp = 0;
+            world.onAnimate((tt, dtt) => {
+              if (ramp >= 1) return;
+              ramp = Math.min(1, ramp + (dtt || 0.016) / 1.2);
+              world.lightScale = from + (to - from) * ramp;
+            });
+          }
+        }
       }
       return n;
     };
@@ -326,7 +430,7 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
         }
         if (!br.lit) continue;
         br.flame.scale.setScalar(1 + 0.15 * Math.sin(t * 9 + br.x));
-        br.light.intensity = 4.5 + Math.sin(t * 11 + br.z);
+        br.light.intensity = 7.4 + Math.sin(t * 11 + br.z) * 1.4;
         if (br.gutterAfter) { // timed braziers die back down (the "twist")
           br.gutterT += dt;
           if (br.gutterT > br.gutterAfter) {

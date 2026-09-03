@@ -848,13 +848,39 @@ export async function spawnBreakables(world, spots) {
   for (const s of spots) {
     const kind = BREAK_KINDS[s.kind] ? s.kind : 'crate';
     const def = BREAK_KINDS[kind];
+    // A POT STANDS CLEAR OR IT DOES NOT STAND.
+    //
+    // Dad, from play: "breakables like the jar should be clean of other
+    // objects. not half through them." potSpots() (js/levelkit.js) already
+    // refuses a spot inside a collider — but it only ever ran for the spots it
+    // CHOSE, and every hand-authored `world.markers.breakables` in the game
+    // (Ember's rooms, Stoneroot's, the Night Road's) bypasses it completely: a
+    // typed coordinate is taken on trust and a jar ends up half inside a
+    // fallen column.
+    //
+    // Every breakable now gets the same test at spawn, whoever chose the spot:
+    // if its own footprint is inside something, walk it out along the shortest
+    // way and put it down where there is room. Nudged, never dropped — a room
+    // that loses its pot to a rounding error is worse than a pot half a metre
+    // from where the author typed.
+    let sx = s.x, sz = s.z;
+    if (world.resolveCircle) {
+      const foot = 0.62;                     // the widest smashable's collider
+      const solved = world.resolveCircle(sx, sz, foot);
+      if (Math.abs(solved.x - sx) > 1e-4 || Math.abs(solved.z - sz) > 1e-4) {
+        // resolveCircle pushes to the nearest free point; take it, then check
+        // once more in case it landed against a second thing
+        const again = world.resolveCircle(solved.x, solved.z, foot);
+        sx = again.x; sz = again.z;
+      }
+    }
     // collapsed per KIND, not per url: `jar` is a tinted vase and must not
     // share the vase's baked material
     if (breakCollapsed[kind] === undefined) breakCollapsed[kind] = collapse(breakGltf[def.url]);
     // `kind` last and resolved: a spot naming something that does not exist
     // falls back to the crate, and must sound like the crate it became rather
     // than like the name it asked for.
-    world.enemies.push(new Breakable(world, breakGltf[def.url], s.x, s.z,
+    world.enemies.push(new Breakable(world, breakGltf[def.url], sx, sz,
       { ...def, ...s, collapsed: breakCollapsed[kind], kind }));
   }
 }

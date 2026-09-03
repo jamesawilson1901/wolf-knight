@@ -742,29 +742,33 @@ export function makeBuilders({ kit, isGrey }) {
   // — in a dark room the child needs the shape of the gap, and the Dark Wolf's
   // sight is what turns that shape from a guess into a route. The rim is a
   // separate ring so the edge stays visible when the veil is at its darkest.
+  // A HOLE IN THE FLOOR, AND NOT A SHAPE DRAWN ON IT.
+  //
+  // Dad, from play: "keep the pitfalls but remove the grey geometric marks on
+  // them." He was looking at a four-segment RingGeometry rotated forty-five
+  // degrees — a grey diamond outline painted around every pit in the game. It
+  // was there for a real reason (the note it replaces: "a pale lip so the edge
+  // is findable: this is the thing the Dark Wolf sees") and it looked like a
+  // debug gizmo somebody forgot to take out.
+  //
+  // The edge still has to be findable, so the cue moved INTO the hole: one
+  // plane carrying a soft radial falloff with a crumbled, uneven lip, so the
+  // washout fades from black at its centre to nothing at its rim the way a
+  // real hole does. It is also one draw call FEWER than the hole-plus-ring it
+  // replaces.
   function pit(world, minX, maxX, minZ, maxZ) {
     world.pitZones.push({ minX, maxX, minZ, maxZ });
     if (isGrey()) return;
     const w = maxX - minX, d = maxZ - minZ;
     const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
     const hole = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, d),
-      new THREE.MeshBasicMaterial({ color: 0x05040a })
+      new THREE.PlaneGeometry(w * 1.18, d * 1.18),   // the fade needs room outside the fall line
+      new THREE.MeshBasicMaterial({ map: pitTexture(), transparent: true,
+        depthWrite: false, color: 0xffffff })
     );
     hole.rotation.x = -Math.PI / 2;
     hole.position.set(cx, (world.deckY || 0) + 0.05, cz);
     world.add(hole);
-    // a pale lip so the edge is findable: this is the thing the Dark Wolf sees
-    const rim = new THREE.Mesh(
-      new THREE.RingGeometry(Math.min(w, d) * 0.48, Math.min(w, d) * 0.5 + 0.12, 4, 1),
-      new THREE.MeshBasicMaterial({ color: 0x6b6480, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false })
-    );
-    rim.rotation.x = -Math.PI / 2;
-    rim.rotation.z = Math.PI / 4;
-    rim.scale.set(w / Math.min(w, d), 1, d / Math.min(w, d));
-    rim.position.set(cx, (world.deckY || 0) + 0.06, cz);
-    world.add(rim);
   }
 
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
@@ -794,6 +798,51 @@ export function makeBuilders({ kit, isGrey }) {
 // than as paint. flattenStatic already skips transparent MeshBasicMaterial, so
 // it is left alone by the batcher without needing to be marked.
 // ---------------------------------------------------------------------------
+// THE WASHOUT'S OWN TEXTURE — one canvas, cached for the session, shared by
+// every pit in the game. Black in the middle, a crumbled rock lip, and a soft
+// alpha falloff to nothing at the edge: the hole reads as depth instead of as
+// a rectangle of paint, and the lip is still the bright thing the Dark Wolf
+// picks out in the dark.
+let pitTex = null;
+function pitTexture() {
+  if (pitTex) return pitTex;
+  const N = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const img = g.createImageData(N, N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const nx = (x / (N - 1)) * 2 - 1, ny = (y / (N - 1)) * 2 - 1;
+      // a rounded-rectangle distance rather than a circle, so a long thin
+      // washout still reads as a hole and not as a lens
+      const r = Math.max(Math.abs(nx), Math.abs(ny)) * 0.55 + Math.hypot(nx, ny) * 0.45;
+      // crumble the edge: a cheap two-octave wobble keyed off the angle, so no
+      // two pits in a room show the same outline
+      const a = Math.atan2(ny, nx);
+      const wob = Math.sin(a * 7) * 0.035 + Math.sin(a * 13 + 1.7) * 0.022;
+      const e = r + wob;
+      let alpha, lum;
+      if (e < 0.62) { alpha = 1; lum = 8; }                      // the dark
+      else if (e < 0.78) {                                        // the lip
+        const f = (e - 0.62) / 0.16;
+        alpha = 1; lum = 8 + f * 78;                              // stone catching light
+      } else if (e < 0.98) {                                      // the fade
+        const f = (e - 0.78) / 0.20;
+        alpha = 1 - f; lum = 86 - f * 30;
+      } else { alpha = 0; lum = 0; }
+      const i = (y * N + x) * 4;
+      img.data[i] = lum * 0.86; img.data[i + 1] = lum * 0.82; img.data[i + 2] = lum;
+      img.data[i + 3] = Math.round(alpha * 255);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  pitTex = new THREE.CanvasTexture(cv);
+  pitTex.colorSpace = THREE.SRGBColorSpace;
+  SHARED.add(pitTex);   // session-shared: a room teardown must never free it
+  return pitTex;
+}
+
 let glowTex = null;
 function thresholdTexture() {
   if (glowTex) return glowTex;

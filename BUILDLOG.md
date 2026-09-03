@@ -5018,3 +5018,117 @@ unchanged. `frost-dragonling` and `shadow-dragonling` keep the dragon body on
 purpose: Frostpeak's boss IS a dragon, so its region's flyer sharing that
 family is the law working rather than being worked around.
 
+
+## Bosses you cannot mash through (2026-09-03, v3.104.0)
+
+Dad: *"boss fights are far too easy and are all beatable by spamming the attack
+button. there needs to be multiple different attacks, different attack
+patterns, different timing, different openings. difficulty of bosses should
+scale with the increasing levels."*
+
+He is right, and the reason was structural rather than a number being too low.
+Read the old machine: `prowl` ran 2.2–3.2 seconds and did nothing but circle,
+`recover` was 1.6s of panting and `tired` 2.6s of lying down — so the great
+majority of the fight WAS a free-hit window, and a child standing next to the
+boss swinging never had to read anything. `tools/fight-sylva.mjs` proved it in
+its own log: **twenty of her twenty-four health came off during `prowl`.**
+
+### What changed, and what could not
+
+Four changes, and every one respects §2 of `docs/wolf-knight-combat-context.md`:
+
+1. **A guard between openings.** While a boss is up and watching, hits land for
+   a fraction and ring off with a clang — the Bone Warden's shield grammar,
+   which the kids already read, applied to the whole duel family. It is a
+   REDUCTION, never immunity: a five-year-old who only swings still gets there,
+   just slowly, and a child who waits for the gold ring gets there fast.
+2. **A third shared attack, the pounce** (`boss_pounce` in js/attacks.js): rear
+   up, leap onto where you stood, land with a 2.4u shockwave. Its opening is a
+   different SHAPE — 1.4s dazed on its feet and right next to you, against the
+   charge's 2.6s collapse across the arena. Different openings was half of what
+   was asked for.
+3. **A no-repeat picker.** The old chooser was a distance test and two coin
+   flips, so it settled into swipe / charge / swipe / charge and a child learned
+   the whole fight in one cycle. `_pickMove` never plays the same move twice
+   running, and drops whatever the current distance makes nonsense.
+4. **Pacing by region.** `tier` is the region number. Guard rises with it
+   (0.35 → 0.75), the gap between attacks falls (3.2s → 1.9s), the move list
+   grows, and the tell multiplier walks down to the floor.
+
+**What is NOT scaled, because §2 forbids it:** no telegraph goes below the 0.9s
+boss floor (LAW 1 — a child's choice reaction is around 800ms) and no punish
+window below 1.0s (LAW 6). `tellMult` only ever makes an EARLY boss telegraph
+*longer* than the floor. Difficulty is spent on what a child has to DO, never
+on taking their reading time away.
+
+### The measurement, because "harder" is a claim
+
+`tools/probe-masher.mjs` walks at the boss and presses the attack key. Nothing
+else: no reading, no dodging, no shield. It is the only honest test of "beatable
+by spamming the attack button", and it found two things the reasoning missed.
+
+- **The guard alone did not fix it.** A masher still took the Shadowgrip down in
+  ninety seconds. So the boss now ANSWERS when crowded (`attackIn` drains 2.5x
+  faster inside 2.4u): press your face into a wolf and the wolf is on you
+  sooner.
+- **The first idea made it EASIER.** The wolf originally backed off when
+  crowded, and the retreat carried the child out of the swipe cone — a masher
+  lost one heart in ninety seconds instead of eating the paw. Measured, reverted,
+  and the note is in the code so nobody tries it again.
+
+Where it landed, per `tools/verify-bosses.mjs` §9, which now runs the masher as
+part of the suite:
+
+| | bar per second | hits taken |
+|---|---|---|
+| the Shadowgrip (region 1) | 0.0151 | 3 |
+| Shadow-Grimm (region 7) | 0.0083 | 4 |
+
+Region one is still winnable by a child who only swings — it has to be, or the
+game stops at its first boss — and it now costs three of five hearts. Region
+seven **kills a masher**: a 150-second run took Grimm to half health and died
+once doing it. A reader still beats Sylva with no deaths at all
+(`tools/fight-sylva.mjs`), which is the shape that was wanted: mashing works and
+hurts, reading works and doesn't.
+
+## Four rooms that looked wrong (2026-09-03, v3.104.0)
+
+The same play-test, and none of these was a bug in any system — they were rooms
+LOOKING wrong, which nothing in the suite set could see.
+
+- **"keep the pitfalls but remove the grey geometric marks on them."** A
+  four-segment `RingGeometry` rotated 45° — a grey diamond painted round every
+  pit, there for a real reason (the Dark Wolf needs a findable edge) and looking
+  like a debug gizmo. The cue moved INTO the hole: one plane carrying a soft
+  radial falloff with a crumbled lip, so the washout fades to nothing at its rim
+  the way a real hole does. One draw call fewer than the hole-plus-ring.
+- **"do not have random dark spots partially in a room."** Two zones were
+  islands: n2's east corner and vc3's band, which stopped five metres short of
+  the north wall. Both now run wall to wall from the far end back — a threshold,
+  which is the thing a child understands.
+- **"the lamps do nothing when lit."** Every brazier in the game has a real job
+  wired to it; the problem was that lighting one LOOKED like nothing — a 16cm
+  flame on a two-metre stand, lit at intensity 5 over a six-metre falloff. Real
+  flame, a pool of light you can stand in, and when the LAST lamp in a room
+  catches, the room itself lifts over a beat and a bit.
+- **"that object needs to be removed. replace it with some sort of cool markings
+  on the ground to stomp."** The Rattle's resonant plate was a kit pedestal
+  squashed to (2.4, 0.5, 2.4) — furniture, climbed onto rather than stomped
+  into. It is a struck-stone sigil now (`stompSigil`, js/gates.js): concentric
+  rings, eight chevrons pointing in, a cracked star where the paw lands, flush
+  with the floor and pulsing gold like every other act-here mark.
+- **"the roots need to look bigger and more menacing and be blocking entrance to
+  the boss."** tc4's boss door was `when`-gated on `knotCut` — the doorway was
+  cut in the wall and the trigger simply did not fire, so a child walked up to
+  an open arch and nothing happened. Nothing was ever in the way. Five bare
+  trees now lie across the mouth at almost twice the region's scale, blight-black
+  with a sick green glow, behind a real box collider.
+- **"breakables should be clean of other objects. not half through them."**
+  `potSpots` refused a spot inside a collider — but only for the spots it CHOSE.
+  Every hand-authored `world.markers.breakables` in the game bypassed it. Every
+  breakable is now tested at spawn, whoever picked the spot, and nudged out
+  rather than dropped.
+
+`tools/verify-looks.mjs` holds all of it: 146 rooms, no dark island, no pot
+standing inside anything, no low-segment ring painted on any floor.
+

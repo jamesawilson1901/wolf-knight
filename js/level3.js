@@ -634,6 +634,67 @@ function heroProp(world, x, z, kind, D, scale = 1) {
 // architecture a child can walk up to, and it makes the ring's north gates read
 // as gates.
 const GATE = { x: 3.6, z: -11.2, scale: 0.45 };
+// THE THORN-KNOT ACROSS THE BOSS DOOR.
+//
+// Dad, from play: "the roots need to look bigger and more menacing and be
+// blocking entrance to the boss."
+//
+// He was standing in tc4. The boss door there is `when`-gated on the region's
+// `knotCut` milestone — so the DOORWAY is cut in the wall and the trigger
+// simply does not fire until the knot is cut, which means a child walks up to
+// a perfectly open arch and nothing happens. Nothing was ever in the way; the
+// gate lived entirely in a condition.
+//
+// Now the way to Sylva is CHOKED. Five bare trees laid across the mouth on
+// their sides, scaled well past anything else in the region, tinted near-black
+// with the blight — and behind a real box collider, so a child meets it with
+// their body and not with a shrug. It goes when the knot is cut, which is
+// exactly the promise the room was already making and never keeping.
+function rootBar(world, x, z, w, D) {
+  if (GREY()) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w, 2.4, 1.6),
+      protoMaterial(0x2a3320, 2, 2)
+    );
+    m.position.set(x, 1.2, z);
+    world.add(m);
+    world.addBox(x - w / 2, x + w / 2, z - 0.8, z + 0.8);
+    return;
+  }
+  const g = new THREE.Group();
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const f = (i / (n - 1) - 0.5) * (w - 1.2);
+    // the bare trees are the blighted ones, and laid on their SIDE they read
+    // as roots heaved up across the way rather than as a hedge
+    const src = i % 2 ? woodKit.bareQ2 : woodKit.bareQ1;
+    const piece = tinted(src, 'rootbar', 0x24301c, 0.55);
+    piece.position.set(f, 0.35 + (i % 3) * 0.28, 0);
+    piece.rotation.z = Math.PI / 2 + (i % 2 ? 0.22 : -0.28);
+    piece.rotation.y = i * 1.1;
+    piece.scale.setScalar(1.9 + (i % 3) * 0.35);   // BIGGER than anything else here
+    g.add(piece);
+  }
+  // and a low tangle woven through the middle of it
+  for (let i = 0; i < 3; i++) {
+    const b = tinted(woodKit.bushQ3, 'rootbar_b', 0x1c2616, 0.5);
+    b.position.set((i - 1) * (w / 3), 0.1, (i % 2 ? 0.35 : -0.35));
+    b.scale.setScalar(1.5);
+    g.add(b);
+  }
+  g.position.set(x, 0, z);
+  world.add(g);
+  world.keepLoose(g);
+  // a sick green glow off the thorns so it reads as the blight and not as
+  // scenery somebody left in the doorway
+  const glow = new THREE.PointLight(0x6fae4a, 2.2, 7, 1.9);
+  glow.position.set(x, 1.3, z);
+  world.add(glow);
+  world.onAnimate((t) => { glow.intensity = 1.8 + Math.sin(t * 1.9) * 0.5; });
+  world.addBox(x - w / 2, x + w / 2, z - 0.9, z + 0.9);
+  world.reserve(x, z, w * 0.5 + 1.0, 'rootbar');
+}
+
 function northGate(world, kind, D) {
   for (const side of [-1, 1]) {
     const gx = side * GATE.x;
@@ -1448,6 +1509,8 @@ export async function buildTc4(scene) {
   // the glade waits on the great thorn-knot: the conclude step IS the door
   sideDoor(world, 'n', halfW, halfD, 'tgl', { x: 0, z: 9.5, angle: Math.PI },
     { half: BOSS_DOOR_HALF, when: () => WS.get(REGION, 'knotCut') });
+  // ...and until the knot is cut, the way is PHYSICALLY shut (rootBar above).
+  if (!WS.get(REGION, 'knotCut')) rootBar(world, 0, -halfD + 1.0, BOSS_DOOR_HALF * 2 + 1.2, D);
   world.markers.restSpot = { x: -3, z: 0 };
   world.markers.potionSpot = { x: 3, z: 0 };
   grove(world, -4.4, 2.6, 2.2, D, { sick: 0.82, trees: 3 });

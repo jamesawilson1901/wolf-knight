@@ -66,7 +66,11 @@ while ((Date.now() - t0) / 1000 < 80 * 60) {
   if (s.hearts <= 1.5 && s.hearts > 0.5) { await d.tap('h'); }
   const dx = b.x - s.pos.x, dz = b.z - s.pos.z;
   const dist = Math.hypot(dx, dz);
-  if (b.action === 'crouch' || b.action === 'charge') {
+  // THE POUNCE, 2026-09-03. `rear` is its on-body tell (it RISES rather than
+  // coiling) and `pounce` is the leap; both are answered by not being there,
+  // the same as the charge. `dazed` is its opening — shorter than the collapse
+  // and right on top of you, so it is punished the same way `tired` is.
+  if (b.action === 'crouch' || b.action === 'charge' || b.action === 'rear' || b.action === 'pounce') {
     // sidestep the telegraphed line: strafe perpendicular
     await hold(null); await d.tap('i').catch(() => {});
     const perp = Math.abs(dx) > Math.abs(dz) ? (dz > 0 ? 'w' : 's') : (dx > 0 ? 'a' : 'd');
@@ -77,7 +81,7 @@ while ((Date.now() - t0) / 1000 < 80 * 60) {
     await hold(null);
     if (!shielded) { await d.page.keyboard.down('i'); shielded = true; }
     await d.page.waitForTimeout(250);
-  } else if (b.action === 'tired') {
+  } else if (b.action === 'tired' || b.action === 'dazed') {
     await hold(null);
     if (dist > 1.4) await d.walkTo(b.x, b.z, { timeout: 3, arrive: 1.2 });
     await face(b); await d.tap('j'); await d.page.waitForTimeout(200); await d.tap('j');

@@ -201,7 +201,7 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
   const c = await coreOf();
   const cx = c ? c.x : b.x, cz = c ? c.z : b.z;
   const dist = Math.hypot(cx - s.pos.x, cz - s.pos.z);
-  if (b.action === 'tired') {
+  if (b.action === 'tired' || b.action === 'dazed') {
     await punish(['tired'], 2.6);
   } else if (b.action === 'recover') {
     await punish(['recover'], 1.6);       // free hits while he pants
@@ -210,7 +210,11 @@ while ((Date.now() - t0) / 1000 < 45 * 60) {
     await backOff(cx, cz, 4.5);           // and leave the frontal cone
   } else if (b.action === 'windup') {
     await backOff(cx, cz, 4.0);           // the swipe is coming — open distance
-  } else if (b.action === 'crouch') {
+  // THE POUNCE, 2026-09-03. `rear` is its on-body tell (it RISES rather than
+  // coiling) and `pounce` is the leap; both are answered by not being there,
+  // the same as the charge. `dazed` is its opening — shorter than the collapse
+  // and right on top of you, so it is punished the same way `tired` is.
+  } else if (b.action === 'crouch' || b.action === 'rear' || b.action === 'pounce') {
     await sidestep(cx, cz, 4.0);          // charge telegraph — get off the lane
   } else if (b.action === 'charge') {
     await d.tap('Space');                 // airborne clears the charge

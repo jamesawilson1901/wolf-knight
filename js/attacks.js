@@ -132,6 +132,18 @@ export const ATTACK = {
     damage: 'aoe', element: 'steel',
     counterplay: ['back_off', 'dodge_roll'],
   },
+  // THE THIRD SHARED MOVE (2026-09-03), added because two attacks and a coin
+  // flip is a fight a child solves in one cycle. Rear up, leap onto where they
+  // stood, land with a 2.4u shockwave — and the opening it leaves is a
+  // different SHAPE from the charge's: 1.4s dazed ON ITS FEET and right next
+  // to them, rather than 2.6s collapsed across the arena. Different openings
+  // was half of what dad asked for.
+  boss_pounce: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    windup: 1.0, active: 0.70, recover: 1.4, gap: 1.6,
+    damage: 'aoe', element: 'steel',
+    counterplay: ['dodge_roll', 'keep_moving', 'jump'],
+  },
   boreal_dive: {
     owner: 'Boreal', tier: 'boss', source: 'js/boss.js',
     windup: 0.9, active: 0.9, recover: 1.4, gap: 1.6,

@@ -30,8 +30,51 @@ const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Atta
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
 // grammar the kids mastered (bosses fight like their family), new skin/stats.
-export const SKINS = {
+export // ---------------------------------------------------------------------------
+// DIFFICULTY, AND WHY IT IS SHAPED LIKE THIS
+//
+// Dad, 2026-09-03: "boss fights are far too easy and are all beatable by
+// spamming the attack button. there needs to be multiple different attacks,
+// different attack patterns, different timing, different openings. difficulty
+// of bosses should scale with the increasing levels."
+//
+// He is right, and the reason is structural rather than a number being too
+// low. Read the old machine: `prowl` lasted 2.2-3.2 seconds and did nothing
+// but circle, `recover` was 1.6s of panting and `tired` 2.6s of lying down —
+// so the great majority of the fight WAS a free-hit window. A child standing
+// next to the boss swinging never had to read anything. tools/fight-sylva.mjs
+// proves it in its own log: twenty of her twenty-four health came off during
+// `prowl`.
+//
+// Four changes, and every one of them respects §2 of the combat context:
+//
+//   1. A GUARD BETWEEN OPENINGS. While the boss is up and watching, hits land
+//      for a FRACTION and ring off with a clang. It is the Bone Warden's
+//      shield grammar, which the kids already read, applied to the whole
+//      family. Crucially it never blocks a child completely — `guard` is a
+//      reduction, not immunity — so mashing still wins, slowly, and the taught
+//      answer wins fast. That is the kid-appropriate version of "not beatable
+//      by spamming": make mashing SLOW, not impossible.
+//   2. A THIRD SHARED ATTACK, the POUNCE — rear up, leap onto where you stood,
+//      land with a shockwave — and it leaves a DIFFERENT-SHAPED opening: 1.4s
+//      dazed but on its feet and right next to you, against the charge's 2.6s
+//      collapse across the room. Different openings, which is what was asked.
+//   3. A NO-REPEAT PICKER. The old chooser was a distance test and two coin
+//      flips, so it settled into swipe/charge/swipe/charge. `_pickMove` never
+//      plays the same move twice running.
+//   4. PACING BY REGION. `tier` is the region number. `guard` rises with it,
+//      the gap between attacks falls with it, and the move list grows with it.
+//
+// WHAT IS *NOT* SCALED, because §2 forbids it: no telegraph goes below the
+// 0.9s boss floor (LAW 1 — a child's choice reaction is ~800ms) and no punish
+// window below 1.0s (LAW 6). `tellMult` therefore only ever makes an EARLY
+// boss telegraph LONGER than the floor; it reaches 1.0 and stops. Difficulty
+// comes from what a child has to DO, never from taking their reading time away.
+// ---------------------------------------------------------------------------
+const SKINS = {
   shadowgrip: {
+    tier: 1, guard: 0.35, gap: 3.2, tellMult: 1.15,
+    moves: ['swipe', 'charge'],
     name: 'The Shadowgrip',
     hide: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
     maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
@@ -67,6 +110,8 @@ export const SKINS = {
   // rename is deliberate rather than an alias — a field that means a hex in
   // four entries and a model in one is the shape of a bug waiting to happen.
   sylva: {
+    tier: 3, guard: 0.50, gap: 2.8, tellMult: 1.08,
+    moves: ['swipe', 'charge', 'pounce', 'root'],
     name: 'Sylva, Thornbound',
     body: {
       url: './assets/chars/monsters/minotaur.glb',
@@ -111,6 +156,8 @@ export const SKINS = {
   // Dragon.glb has no idle and no walk, only Flying — which is exactly right
   // here. A thing that never touches the stone has no walk cycle to play.
   aria: {
+    tier: 5, guard: 0.60, gap: 2.4, tellMult: 1.02,
+    moves: ['swipe', 'charge', 'pounce'],
     name: 'Aria, the Galebound',
     body: {
       url: './assets/chars/monsters/Dragon.glb',
@@ -145,6 +192,8 @@ export const SKINS = {
   // What is new is the FLOOR. As she loses she floods it: standing ground
   // shrinks, deep water grows, and the gift the region gave stops being optional.
   meri: {
+    tier: 6, guard: 0.65, gap: 2.2, tellMult: 1.0,
+    moves: ['swipe', 'charge', 'pounce'],
     name: 'Meri, the Drowned',
     // Her body was already a slime — but it was hard-coded in the SPAWNER
     // (js/rooms.js) while this table still said nothing, so the table lied
@@ -194,6 +243,8 @@ export const SKINS = {
   //
   // He is FREED, not killed.
   grimm: {
+    tier: 7, guard: 0.75, gap: 1.9, tellMult: 1.0,
+    moves: ['swipe', 'charge', 'pounce'],
     name: 'Shadow-Grimm',
     hide: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
     maxHp: 32, dmg: 1.5, saveKey: 'grimmHp', legacyPhases: false,
@@ -458,6 +509,25 @@ export class Shadowgrip {
       audio.play('parry', { volume: 0.5, rate: 0.7 });
       juice.burst(bx, 1.4, bz, 0x8f7fc0, 5);
       return;
+    }
+    // THE GUARD. A boss that is UP AND WATCHING turns most of a blow aside —
+    // clang, spark, a fraction of the damage — and a boss in an opening does
+    // not. It is the Bone Warden's shield grammar (js/enemies.js) applied to
+    // the whole duel family, and it is why mashing no longer wins a fight on
+    // its own: the openings the fight already teaches are now where the damage
+    // actually is.
+    //
+    // IT IS A REDUCTION, NEVER IMMUNITY. A five-year-old who only ever swings
+    // still gets there, just slowly; a child who waits for the gold ring gets
+    // there fast. `guard` rises with the region number (SKINS.tier), which is
+    // the difficulty ramp dad asked for, spent on what a child has to DO
+    // rather than on taking their reading time away.
+    if (this._guarded()) {
+      const g = this.skin.guard || 0;
+      const bx0 = this.x + this.core.position.x, bz0 = this.z + this.core.position.z;
+      n *= (1 - g);
+      audio.play('parry', { volume: 0.35, rate: 1.35, vary: 0.1 });
+      juice.burst(bx0, 1.5, bz0, 0xcfd6de, 4);
     }
     const weak = this._isWeak(element);
     if (weak) n *= 1.5;
@@ -757,20 +827,58 @@ export class Shadowgrip {
       let mx = -nzr * this.orbitSign, mz = nxr * this.orbitSign; // tangent
       if (d > R + 0.8) { mx = mx * 0.4 + nxr * 0.8; mz = mz * 0.4 + nzr * 0.8; }
       else if (d < R - 1.2) { mx = mx * 0.4 - nxr * 0.8; mz = mz * 0.4 - nzr * 0.8; }
+      // IT WILL NOT BE STOOD ON.
+      //
+      // The guard made mashing SLOWER; it did not make it stop working — a
+      // masher still took the Shadowgrip down in ninety seconds without once
+      // reading a tell (tools/probe-masher.mjs). The reason is that standing
+      // inside a prowling wolf's face was FREE: it circled politely at whatever
+      // distance the child chose and let them swing into it all day.
+      //
+      // A wary animal does not do that. Crowd it while it is up and watching
+      // and it gives ground — backs off fast, keeps its eyes on you — so the
+      // child has to chase, and the damage they can land outside an opening is
+      // whatever they get in before it is gone. No new attack, no telegraph to
+      // read, nothing taken away from a five-year-old: it is the hounds' own
+      // orbit, honest about its personal space.
+      //
+      // It never retreats out of the ARENA, and it never retreats while it is
+      // winding up, attacking, or open — only while it is guarded, which is
+      // exactly the window a child should not be free-hitting in.
+      // MEASURED, NOT GUESSED. The first cut of this had the wolf BACK OFF when
+      // crowded, and tools/probe-masher.mjs said that made it easier: the
+      // retreat carried the child out of the swipe cone, so a masher lost one
+      // heart in ninety seconds instead of eating the paw. It holds its ground
+      // and ANSWERS instead — press your face into a wolf and the wolf is on
+      // you sooner, which is the thing a child learns in one go.
+      const CROWD = 2.4;
+      if (d < CROWD) this.attackIn -= dt * 2.5;
       move(mx, mz, (enraged ? 2.7 : 2.1) * SM);
       this.attackIn -= dt;
       if (this.attackIn <= 0) {
         if (Math.random() < 0.35) this.orbitSign *= -1; // keep the circling fresh
-        if (this.skin.snares && enraged && Math.random() < 0.5) {
+        const move = this._pickMove(d);
+        if (move === 'root') {
           // HER UNIQUE MOVE (P7 tell): thorns erupt where she stands.
           this.action = 'root';
-          this.actionT = 1.0; // js/attacks.js sylva_thornburst.windup
+          this.actionT = this._tell(1.0); // js/attacks.js sylva_thornburst.windup
           this._setAnim('idle');
           audio.play('growl', { volume: 0.7, rate: 0.5 }); // lower, different growl — new pattern
-        } else if (d < 3.2) {
+        } else if (move === 'pounce') {
+          // THE POUNCE (js/attacks.js boss_pounce) — rears up, leaps onto
+          // where you stood, lands with a shockwave. Its opening is a
+          // different SHAPE: 1.4s dazed on its feet and right next to you,
+          // against the charge's 2.6s collapse the length of the arena away.
+          this.action = 'rear';
+          this.actionT = this._tell(1.0);
+          this._scrapeAcc = 0;
+          this._setAnim('idle');
+          facePlayer();
+          audio.play('growl', { volume: 0.85, rate: 0.62, vary: 0.05 });
+        } else if (move === 'swipe') {
           // close enough: the SWIPE (shield lesson)
           this.action = 'windup';
-          this.actionT = 0.9;
+          this.actionT = this._tell(0.9);
           this._setAnim('idle');
           audio.play('growl', { volume: 0.6, rate: 0.42, vary: 0.05 }); // GROWL
         } else if (Math.random() < 0.4) {
@@ -780,7 +888,7 @@ export class Shadowgrip {
         } else {
           // THE CHARGE (dodge lesson) — hound telegraph, boss-sized
           this.action = 'crouch';
-          this.actionT = 1.0;
+          this.actionT = this._tell(1.0);
           this._scrapeAcc = 0;
           facePlayer();
           audio.play('growl', { volume: 0.9, rate: 0.5 }); // deep snarl wind-up
@@ -922,6 +1030,72 @@ export class Shadowgrip {
         this.action = 'recover';
         this.actionT = 1.8; // js/attacks.js sylva_thornburst.recover
       }
+    } else if (A === 'rear') {
+      // ON-BODY tell (LAW 4): it RISES instead of crouching — the opposite
+      // shape to the charge's coil, so a child can tell the two apart at a
+      // glance without reading a decal. Eyes flare, dust falls off it.
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / this._tell(1.0);
+      this.core.scale.y = 1 + 0.26 * f;
+      this.core.position.y = 0.35 * f;
+      this.eyeMat.emissiveIntensity = 1.3 + f * 3.0;
+      this._scrapeAcc += dt;
+      if (this._scrapeAcc > 0.2) {
+        this._scrapeAcc = 0;
+        juice.burst(wx, 1.6, wz, this.skin.burst, 4);
+      }
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        // it leaps at WHERE YOU STAND WHEN IT COMMITS, not at where you end
+        // up — the whole answer is to be somewhere else by the time it lands.
+        this._pounceFrom = { x: wx, z: wz };
+        this._pounceTo = { x: px, z: pz };
+        this.action = 'pounce';
+        this.actionT = 0.7;   // js/attacks.js boss_pounce.active
+        this._pounceHit = false;
+        if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
+        audio.play('whoosh', { volume: 0.95, rate: 0.8 });
+      }
+    } else if (A === 'pounce') {
+      const f = 1 - Math.max(0, this.actionT) / 0.7;
+      const from = this._pounceFrom, to = this._pounceTo;
+      const nx = from.x + (to.x - from.x) * f, nz = from.z + (to.z - from.z) * f;
+      const solved = this.world.resolveCircle(nx, nz, 0.85);
+      this.wolfOff.x = solved.x - this.x;
+      this.wolfOff.z = solved.z - (this.z - 1.4);
+      this.core.position.x = this.wolfOff.x;
+      this.core.position.z = -1.4 + this.wolfOff.z;
+      this.core.position.y = Math.sin(f * Math.PI) * 1.5;      // the arc
+      this.core.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      if (this.actionT <= 0 && !this._pounceHit) {
+        this._pounceHit = true;
+        this.core.position.y = 0;
+        // THE LANDING. One shockwave, one hit, never a grinder — and it is
+        // 2.4u so standing where it landed is the mistake and rolling out is
+        // the answer, the same reading the Bone Warden's stomp teaches.
+        const lx = this.x + this.core.position.x, lz = this.z + this.core.position.z;
+        const ddx = px - lx, ddz = pz - lz;
+        if (ddx * ddx + ddz * ddz < 2.4 * 2.4) {
+          player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+        }
+        juice.burst(lx, 0.4, lz, this.skin.burst, 14);
+        juice.burst(lx, 0.25, lz, 0x9a8f80, 10);
+        if (juice.effects) juice.effects.shake(0.32, 0.4);
+        audio.play('slam', { volume: 0.9, rate: 0.75 });
+        // ...and it is OPEN where it landed: on its feet, dazed, in reach.
+        this.action = 'dazed';
+        this.actionT = 1.4;   // js/attacks.js boss_pounce.recover — LAW 6 floor is 1.0
+        this.tiredRing.visible = true;
+        this.eyeMat.emissiveIntensity = 0.4;
+        this._setAnim('idle');
+      }
+    } else if (A === 'dazed') {
+      // the pounce's own opening: shorter than the collapse, but the boss is
+      // standing right on top of the child, so it is the easiest one to reach
+      if (this.actionT <= 0) {
+        this.tiredRing.visible = false;
+        this._backToProwl();
+      }
     } else if (A === 'tired') {
       // COLLAPSED under the gold ring: eyes dim — pile the hits on
       this.eyeMat.emissiveIntensity = 0.3;
@@ -940,10 +1114,52 @@ export class Shadowgrip {
     }
   }
 
+  // UP AND WATCHING = GUARDED. Every other action is either the boss winding
+  // up (which is the child's cue, not their punish) or the boss OPEN. The two
+  // openings that matter are named here rather than inferred, so adding a move
+  // can never quietly turn a punish window into a guarded one.
+  _guarded() {
+    return this.action === 'prowl' || this.action === 'stalk';
+  }
+
+  // NEVER THE SAME MOVE TWICE RUNNING.
+  //
+  // The old chooser was a distance test and two coin flips, so in practice it
+  // settled into swipe / charge / swipe / charge and a child learned the whole
+  // fight in one cycle. This picks from the moves the SKIN carries, drops
+  // whatever it just did, and drops anything the current distance makes
+  // nonsense — a lunge from across the arena, a swipe from six metres away.
+  _pickMove(d) {
+    const all = this.skin.moves || ['swipe', 'charge'];
+    let legal = all.filter((m) => {
+      if (m === 'swipe') return d < 3.4;          // close work only
+      if (m === 'pounce') return d > 2.2 && d < 8.5;
+      if (m === 'root') return !!(this.skin.snares && this._halfHowled);
+      return true;                                 // charge works at any range
+    });
+    if (legal.length > 1) legal = legal.filter((m) => m !== this._lastMove);
+    if (!legal.length) legal = [d < 3.4 ? 'swipe' : 'charge'];
+    const pick = legal[Math.floor(Math.random() * legal.length)];
+    this._lastMove = pick;
+    return pick;
+  }
+
+  // A TELL IS NEVER SHORTER THAN THE LAW. 0.9s is the boss floor (combat
+  // context §2 LAW 1 — a child's choice reaction is around 800ms), and
+  // `tellMult` only ever stretches it: region one telegraphs at 1.15x and the
+  // last fight sits on the floor. Difficulty never buys itself reading time.
+  _tell(base) {
+    return Math.max(0.9, base * (this.skin.tellMult || 1));
+  }
+
   _backToProwl() {
     this.action = 'prowl';
     this.eyeMat.emissiveIntensity = 1.2;
-    this.attackIn = this._halfHowled ? 2.2 : 3.2;
+    // ...and the GAP between attacks is the region's, not one number for
+    // everyone. Floored at 1.6s so even Shadow-Grimm leaves a child room to
+    // breathe, reposition and pick a wolf.
+    const base = this.skin.gap || 3.2;
+    this.attackIn = Math.max(1.6, this._halfHowled ? base - 1.0 : base);
   }
 }
 

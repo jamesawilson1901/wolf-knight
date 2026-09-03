@@ -23,6 +23,7 @@
 //      they get bounced somewhere they did not choose, usually straight back,
 //      which is a room you cannot enter.
 import { launchBrowser } from './launch.mjs';
+import { allRooms } from './all-rooms.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -30,15 +31,18 @@ const check = (n, ok, d) => {
   if (!ok) errors.push(n);
 };
 
-const ROOMS = ['la', 'la1', 'lg1', 'lb', 'lb1', 'lb2', 'lg2', 'lc', 'lc1', 'lg3', 'ld', 'ld1', 'lg4', 'le', 'vh', 'vga', 'va1', 'va2', 'vap', 'va3', 'vgb', 'vb1', 'vb2', 'vbp', 'vb3', 'vgc', 'vc1', 'vc2', 'vcp', 'vc3', 'vz', 't1a', 't1b', 't1p', 'tc1', 't2a', 't2b', 't2p', 'tsh', 'tc2', 't3a', 't3b', 't3p', 'tkn', 'tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl', 's1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2', 's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'd1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2', 'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp', 'x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3', 'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth',
-  // THE LIST ROTTED, EXACTLY AS ITS OWN HEADER WARNED A HAND-KEPT LIST WOULD.
-  // The Village shipped ten rooms and the Spire five, and neither region was
-  // ever added here — so the one check in the game that asks "does this door
-  // put a child down inside a room" had no opinion at all about the Village's
-  // six guardian doors, or about the stair the Square grew to the Spire.
-  // Added 2026-08-29 with the Spire; both regions pass.
-  'ysq', 'yhs', 'ylw', 'yg1', 'yg2', 'yg3', 'yg4', 'yg5', 'yg6', 'yrw',
-  'm1', 'm2', 'ma', 'mb', 'm3'];
+// EVERY ROOM, ASKED OF THE GAME (tools/all-rooms.mjs).
+//
+// This was a 130-name hand-kept array, and its own header already carried the
+// note that it "rotted, exactly as its own header warned a hand-kept list
+// would" when the Village and the Spire shipped. It rotted again: the Night
+// Road, the Greenway and the Drowned Market were all built after it was last
+// touched, so the one check in the game that asks "does this door put a child
+// down somewhere they can stand" had no opinion at all about six new rooms —
+// and dad walked into one of them and could not get out.
+//
+// It reads the live registry now. A region built next door cannot fall out of
+// this suite's coverage again.
 
 const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
@@ -57,6 +61,9 @@ await page.evaluate(() => {
     'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
   g.player.iframes = 999999;
 });
+const ROOM_IDS = await allRooms(page);
+console.log(`asking the game: ${ROOM_IDS.length} rooms in the registry`);
+
 const go = async (room) => {
   for (let a = 0; a < 8; a++) {
     await page.evaluate((r) => { const g = window.__game;
@@ -75,7 +82,7 @@ const go = async (room) => {
 // they put you down in someone else's room.
 console.log('── reading every room once ───────────────────────────');
 const rooms = {};
-for (const room of ROOMS) {
+for (const room of ROOM_IDS) {
   if (!(await go(room))) { check(`${room} builds`, false); continue; }
   rooms[room] = await page.evaluate(() => {
     const w = window.__game.world;
@@ -178,7 +185,7 @@ console.log('\n── 4. and you can stand in front of it without burning ─');
 // verify-reachable never saw it because it checks the landing in the room you
 // are GOING TO. This checks the doorway in the room you are LEAVING.
 const burning = [];
-for (const room of ROOMS) {
+for (const room of ROOM_IDS) {
   if (!rooms[room] || !rooms[room].triggers.length) continue;
   if (!(await go(room))) continue;
   const bad = await page.evaluate(() => {
