@@ -19,7 +19,7 @@ const check = (n, ok, d) => {
 };
 const wk = await launch({ timescale: 1 });
 await wk.newGame('HUD');
-const quiet = () => wk.page.evaluate(() => { window.__game.narration.blocking = false; });
+const quiet = () => wk.page.evaluate(() => { window.__game.state.settings.captions = false; window.__game.narration.skip(); });
 await quiet();
 
 const boxes = () => wk.page.evaluate(() => {

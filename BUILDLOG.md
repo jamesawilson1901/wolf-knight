@@ -4889,3 +4889,52 @@ look at and nothing to do — coins already walk themselves to a child inside
 the same thing happened slightly further away. Four buffs that change how Kael
 moves and hits; no fifth that changes an invisible number.
 
+
+## The way on opens where you beat the boss (2026-09-03, v3.101.0)
+
+Dad, from play: *"at the end of the boss fight the doorway to the next level
+should appear. it doesn't."*
+
+He is describing a shape this codebase already had a name for. An arena's
+onward door was REBUILD-GATED: the gap in the wall was cut and the door hung at
+build time, gated on the defeated flag. So the room a child stood in the moment
+they won was a room whose reward had not arrived — they had to walk back the
+way they came and return before the way on existed.
+
+Three arenas were fixed for it in v3.76 (`f5`, `scr`, `ddp`). **The three the
+kids reach first were not** — Ember's `le`, Stoneroot's `vz`, the Wild Woods'
+`tgl`. And `vz` could not have been, because the v3.76 fix hung off
+`world.boss.onDefeated` and the Bone Warden is the one boss in the game not
+stored as `world.boss` at all. Exactly the failure mode `BOSS_ROOMS`' own
+comment warned about: *"a new arena can never again be a boss room for one
+system and an ordinary room for the other."* It could, and it was.
+
+### What changed
+
+- `openTheWayOn(arena)` in main.js is now one function, called from the boss
+  death hook AND from `onWardenDefeated`.
+- `le`, `vz` and `tgl` cut their onward gaps always and plug them with region
+  rock while the boss lives, the same shape `scr` uses.
+- `onwardPlug` CHAINS. Ember's arena has two ways out the Shadowgrip holds —
+  the road on and the walked loop-back home — and a second call used to
+  overwrite the first, leaving one of them a rock pile forever. `onwardSpot`
+  stays the last registered, so the smoke lands on the door that matters.
+- The Shadow Court throne (`xth`) has no onward door, and the suite says so out
+  loud rather than leaving a hole in its coverage: the ending is the way on.
+
+### Two things the suite had to learn
+
+- **`narration.blocking` is a getter.** Every driver that "quieted" narration
+  with `narration.blocking = false` was writing to a read-only property and
+  silently doing nothing. The dismiss is `narration.skip()` (plus captions off),
+  which is what tapping the caption bubble does.
+- **Winning levels you up, and the perk card pauses the world.** The plug's
+  countdown is in GAME time on purpose, so it waits there — exactly as it does
+  for a child reading the three cards. The suite picks one, the way they would.
+
+`tools/verify-onward.mjs` asks every boss room whether the way on is shut while
+the boss lives, whether the room carries a live opener, whether pulling it hangs
+the door, whether the live result matches what a returning child sees on a
+rebuild — and then fires the real defeat hook and **walks through the new door
+on real keys**.
+

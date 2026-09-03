@@ -223,7 +223,7 @@ export async function loadCaveKit() {
   return caveKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone, pit } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -1548,7 +1548,11 @@ export async function buildVz(scene) {
   const beaten = !!state.flags.wardenDefeated;
   // ONWARD to the Wild Woods once the Warden is down (fix plan A1). Before
   // that the crypt is a dead end on purpose — it is the boss room.
-  const gaps = [gap('s', BOSS_DOOR_HALF), ...(beaten ? [gap('n')] : [])];
+  // The north gap is ALWAYS cut, plugged with fallen crypt stone while the
+  // Warden holds it. openTheWayOn() in main.js pulls the plug where the child
+  // is standing — the Warden is not stored as world.boss, so his own death
+  // hook calls it (js/main.js onWardenDefeated).
+  const gaps = [gap('s', BOSS_DOOR_HALF), gap('n')];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: -2, r: 7, kind: 'gravel' }, { x: -10, z: 8, r: 3.4, kind: 'rubble' },
               { x: 10, z: 8, r: 3.4, kind: 'rubble' }, { x: 0, z: 10, r: 3.0, kind: 'water' }],
@@ -1561,7 +1565,9 @@ export async function buildVz(scene) {
   sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -10.2, angle: 0 }, { half: BOSS_DOOR_HALF });
   // ...ONTO THE GREENWAY (js/levelGreen.js), the road up out of the stone;
   // g2's north door is the one that reaches Thornedge.
-  if (beaten) sideDoor(world, 'n', halfW, halfD, 'g1', { x: 0, z: 11, angle: Math.PI });
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'g1', { x: 0, z: 11, angle: Math.PI });
+  if (beaten) roadOn();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 
   heroProp(world, 0, -9, 'throne', D);           // ▲ THE WARDEN'S THRONE
   world.markers.heroSpot = { x: 0, z: -9 };

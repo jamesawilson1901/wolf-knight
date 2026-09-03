@@ -27,9 +27,9 @@ const go = async (room) => {
   await wk.page.evaluate(({ r, f }) => window.__wkJump(r, f), { r: room, f: FORMS });
   await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
     && !window.__wk.gates.transitioning, room, { timeout: 60000 });
-  await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.narration.blocking = false; });
+  await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.state.settings.captions = false; window.__game.narration.skip(); });
 };
-const quiet = () => wk.page.evaluate(() => { window.__game.narration.blocking = false; });
+const quiet = () => wk.page.evaluate(() => { window.__game.state.settings.captions = false; window.__game.narration.skip(); });
 const reachable = (x, z, r = 1.3) => wk.page.evaluate(([x, z, r]) => {
   const w = window.__game.world, step = 0.5, rad = 0.32;
   const solid = (a, b) => { const s = w.resolveCircle(a, b, rad); return Math.abs(s.x - a) > 1e-6 || Math.abs(s.z - b) > 1e-6; };

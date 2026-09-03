@@ -222,7 +222,7 @@ export async function loadEmberKit() {
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, pit,
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, pit, onwardPlug,
   darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
@@ -1354,7 +1354,11 @@ export async function buildLg4(scene) {
 export async function buildLe(scene) {
   const { world, spec, D } = base(scene, 'le');
   const onward = !!state.flags.bossDefeated;
-  const gaps = [gap('s'), ...(onward ? [gap('w'), gap('n')] : [])];
+  // ALL THREE GAPS ARE ALWAYS CUT NOW, and the two the Shadowgrip holds are
+  // plugged with cage rubble rather than never existing. See openTheWayOn()
+  // in main.js: a door that only arrives on a rebuild leaves the child who
+  // just WON standing in a room with no way out.
+  const gaps = [gap('s'), gap('w'), gap('n')];
   // A BOSS ARENA IS DRESSED AT THE EDGES ONLY. The Shadowgrip's charge runs
   // about eight units and needs somewhere to run; anything a child can snag on
   // mid-arena turns a readable dodge into an unfair hit. So the floor carries
@@ -1367,7 +1371,9 @@ export async function buildLe(scene) {
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg4', { x: 0, z: -3.2, angle: 0 });
   // THE LOOP-BACK: a one-way walked door home, opened by the boss (rule 4).
-  if (onward) sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
+  const loopHome = () => sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
+  if (onward) loopHome();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, loopHome);
   // ...and ONWARD. Level 1 is now the game's first level rather than a demo
   // reachable only from the cheat menu (fix plan A1), so beating the Shadowgrip
   // has to actually lead somewhere.
@@ -1377,7 +1383,11 @@ export async function buildLe(scene) {
   // step; js/levelNight.js is the two rooms of walking between them, and it is
   // where the Dark Wolf — earned in the Den, barely asked for since — finally
   // gets a place of its own. n2's north door is the one that opens on `vh`.
-  if (onward) sideDoor(world, 'n', halfW, halfD, 'n1', { x: 0, z: 11, angle: Math.PI });
+  // ...registered SECOND, so main.js puffs its smoke on the road on rather
+  // than on the walk home (js/levelkit.js onwardPlug).
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'n1', { x: 0, z: 11, angle: Math.PI });
+  if (onward) roadOn();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 
   heroProp(world, 0, -2, 'cage', D.tint, D);               // ▲ CINDER'S CAGE
   world.markers.heroSpot = { x: 0, z: -2 };

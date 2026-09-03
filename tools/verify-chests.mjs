@@ -184,7 +184,7 @@ for (const [room, x, z, kind] of [['tsh', 2.68, -0.1, 'chest'], ['t3b', -1.4, -1
   await wk.page.evaluate((r) => window.__wkJump(r, ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']), room);
   await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
     && !window.__wk.gates.transitioning, room, { timeout: 60000 });
-  await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.narration.blocking = false; });
+  await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.state.settings.captions = false; window.__game.narration.skip(); });
   const before = await wk.page.evaluate(() => ({ coins: window.__game.state.shards,
     pots: (window.__game.world.enemies || []).filter((e) => e.opensOnTouch && !e.dead).length }));
   await wk.walkTo(x, z, { timeout: 40, arrive: 0.8 });

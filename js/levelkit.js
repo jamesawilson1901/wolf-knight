@@ -684,12 +684,22 @@ export function makeBuilders({ kit, isGrey }) {
     const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
     world.boxColliders.push(collider);
     world.onwardSpot = { x, z, w: Math.max(w, 2.6), d: Math.max(d, 1.6) };
+    // TWO PLUGS, ONE OPENING. Ember's arena has TWO ways out that the
+    // Shadowgrip holds shut — the road on, and the walked loop-back home — and
+    // a second call used to overwrite the first, so one of them stayed a rock
+    // pile forever. Each plug keeps whatever was already registered and calls
+    // it after its own, so a room may carry as many as it likes. `onwardSpot`
+    // is the LAST one registered, which is where main.js puffs the smoke:
+    // register the loop-back first and the way on second, so the smoke lands
+    // on the door that matters.
+    const alsoOpen = world.openOnward;
     world.openOnward = () => {
       world.root.remove(g);
       const i = world.boxColliders.indexOf(collider);
       if (i >= 0) world.boxColliders.splice(i, 1);
       addTheDoor();
       world.openOnward = null;
+      if (alsoOpen) alsoOpen();
     };
   }
 

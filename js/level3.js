@@ -252,7 +252,7 @@ export async function loadWoodKit() {
   return woodKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward,
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -1470,7 +1470,10 @@ export async function buildTgl(scene) {
   // The ring closes west to Thornedge, always. North opens ONWARD to Frostpeak
   // once Sylva is freed (fix plan A1) — Frostpeak was never rebuilt and is
   // reached exactly as it always was.
-  const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), ...(beaten ? [gap('n')] : [])];
+  // North is ALWAYS cut, choked with blighted deadfall while Sylva is bound —
+  // see openTheWayOn() in main.js. A way on that only exists after a rebuild
+  // leaves the child who just won standing in a room with no way out.
+  const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), gap('n')];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -9, z: 8, r: 3.9, kind: 'moss' },
               { x: 9, z: -8, r: 3.6, kind: 'corruption', alpha: 0.66 },
@@ -1483,7 +1486,9 @@ export async function buildTgl(scene) {
   // why nothing had ever measured these.
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10.9, z: 9.4, angle: -Math.PI / 2 });
   // f1 is a 32x26 island since the Frostpeak rebuild (level4.js): land inside its south door
-  if (beaten) sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 11, angle: Math.PI });
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 11, angle: Math.PI });
+  if (beaten) roadOn();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 
   heroProp(world, 0, -2, 'standingStones', D);
   world.markers.heroSpot = { x: 0, z: -2 };

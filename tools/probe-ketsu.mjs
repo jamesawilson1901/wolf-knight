@@ -17,7 +17,7 @@ await wk.newGame('KETSU');
 await wk.page.evaluate(() => window.__wkJump('lc1', ['knight', 'dark_wolf', 'fire_wolf']));
 await wk.page.waitForFunction(() => window.__wk.room === 'lc1' && !window.__wk.gates.transitioning,
   null, { timeout: 60000 });
-await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.narration.blocking = false; });
+await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.state.settings.captions = false; window.__game.narration.skip(); });
 
 const block = () => wk.page.evaluate(() => {
   const b = (window.__game.world.boulders || [])[0];

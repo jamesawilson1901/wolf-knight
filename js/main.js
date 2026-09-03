@@ -1321,6 +1321,47 @@ function narrationTriggers(dt, t) {
   }
 }
 
+// THE WAY ON OPENS WHERE YOU STAND (dad's request, 2026-08-30, and again from
+// play 2026-09-03: "at the end of the boss fight the doorway to the next level
+// should appear. it doesn't").
+//
+// An arena's onward door used to arrive only on a REBUILD — the gap was cut
+// and the door hung at build time, gated on the defeated flag — so a child who
+// had just won stood in a room with no way out and had to walk back the way
+// they came and return before the reward existed. Three arenas (f5, scr, ddp)
+// were fixed for it; the three the kids actually reach first (le, vz, tgl)
+// were not, because this ran off `world.boss.onDefeated` and the Bone Warden
+// is not stored as world.boss at all.
+//
+// It is one function now, called from both deaths, so an arena can never again
+// be a boss room for one system and an ordinary room for the other.
+//
+// GAME TIME, NOT WALL TIME: the countdown lives in the arena's own animate
+// list rather than a setTimeout, so it ticks only while the child is still
+// standing there, and throttled page timers cannot fire a different subset of
+// rooms on every headless run. If they have already left, the rebuild-time
+// path shows the open door anyway.
+function openTheWayOn(arena) {
+  if (!arena || !arena.openOnward) return;
+  let poofIn = 1.5;   // a beat and a half, so the coin shower lands first
+  arena.onAnimate((tNow, dt) => {
+    if (poofIn <= 0) return;
+    poofIn -= dt || 0.016;
+    if (poofIn > 0) return;
+    if (arena.openOnward) arena.openOnward();
+    const s = arena.onwardSpot;
+    if (!s || arena !== world) return;
+    for (let i = 0; i < 8; i++) {
+      juice.burst(s.x + (Math.random() * 2 - 1) * (s.w / 2),
+        0.4 + Math.random() * 1.3,
+        s.z + (Math.random() * 2 - 1) * (s.d / 2),
+        i % 2 ? 0xcfd6de : 0x9aa4b0, 6);
+    }
+    audio.play('puff', { volume: 0.9, rate: 0.6, vary: 0.1 });
+    effects.shake(0.18, 0.35);
+  });
+}
+
 function updateMusic() {
   // BOSS MUSIC, FROM THE ONE LIST THAT KNOWS WHICH ROOMS ARE BOSS ROOMS.
   //
@@ -1621,6 +1662,7 @@ async function setupRoomExtras() {
     grantXp(80);
     spawnShards(world, w.x, w.z + 1.5, 18);
     spawnPowerup(world, w.x, w.z + 2, 'star');
+    openTheWayOn(world);   // the crypt's north road, opened where the child stands
     if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
     ui.refreshBadge();
     narration.say('warden_defeat');
@@ -2360,26 +2402,7 @@ async function start() {
             // the arena's own animate list instead: it ticks only while the
             // child is still standing in the arena, and if they have already
             // run out, the rebuild-time path shows the open door anyway.
-            const arena = world;
-            if (arena.openOnward) {
-              let poofIn = 1.5;
-              arena.onAnimate((tNow, dt) => {
-                if (poofIn <= 0) return;
-                poofIn -= dt || 0.016;
-                if (poofIn > 0) return;
-                if (arena.openOnward) arena.openOnward();
-                const s = arena.onwardSpot;
-                if (!s || arena !== world) return;
-                for (let i = 0; i < 8; i++) {
-                  juice.burst(s.x + (Math.random() * 2 - 1) * (s.w / 2),
-                    0.4 + Math.random() * 1.3,
-                    s.z + (Math.random() * 2 - 1) * (s.d / 2),
-                    i % 2 ? 0xcfd6de : 0x9aa4b0, 6);
-                }
-                audio.play('puff', { volume: 0.9, rate: 0.6, vary: 0.1 });
-                effects.shake(0.18, 0.35);
-              });
-            }
+            openTheWayOn(world);
             if (state.room === 'f5') {
               // BOREAL FALLS — the storm lifts off Frostpeak and the Frost
               // Wolf is earned (boss.js set the flags; here is the party)
