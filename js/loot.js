@@ -727,6 +727,28 @@ export class Breakable {
     this.potionChance = potion;
     world.addCircle(x, z, Math.max(0.34, foot * 0.46));
     this._collider = world.circleColliders[world.circleColliders.length - 1];
+    // A CHEST OPENS WHEN YOU WALK INTO IT. ALL OF THEM.
+    //
+    // Dad, on three screenshots of three different rooms: "all of these types
+    // of chests through every level do not open or give anything." He was
+    // right, and nothing was broken — the game had TWO chests with two
+    // different grammars. The standing ones (the animated kit, below) open
+    // when you walk up. These ones are pots that happen to be chest-shaped,
+    // and a pot has to be HIT. A five-year-old walks up to a chest; they do
+    // not stand in front of it and swing. So a chest-shaped breakable now
+    // opens on touch as well as on a hit, and it GLOWS the way its standing
+    // cousins do, because a reward you cannot see is not a reward.
+    this.opensOnTouch = kind === 'chest' || kind === 'goldchest';
+    if (this.opensOnTouch) {
+      const gold = kind === 'goldchest';
+      const glow = new THREE.PointLight(gold ? 0xffd76a : 0xbfe6ff, gold ? 3 : 1.7,
+        gold ? 5 : 3.6, 1.9);
+      glow.position.set(x, 0.8, z);
+      world.add(glow);
+      const base = glow.intensity * 0.8, swing = glow.intensity * 0.27;
+      world.onAnimate((t) => { if (!this.dead) glow.intensity = base + Math.sin(t * 2.6) * swing; });
+      this._glow = glow;
+    }
   }
 
   takeStun() {}
@@ -747,6 +769,12 @@ export class Breakable {
     // coming apart so the break has a body, not just a click.
     const smash = SMASH_SFX[this.kind] || SMASH_SFX.crate;
     for (const s of smash) audio.play(s.n, { volume: s.v, rate: s.r, vary: 0.09 });
+    // ...and a chest gets the same chime the standing ones ring, so opening one
+    // sounds like a reward wherever in the game it stands
+    if (this.opensOnTouch) {
+      audio.play('checkpoint', { volume: 0.7, rate: 0.8 });
+      if (this._glow) this._glow.intensity = 0;
+    }
     // wooden debris: chunks fly and fade
     const bits = [];
     for (let i = 0; i < 6; i++) {
@@ -787,7 +815,15 @@ export class Breakable {
     // rare bonus: a power-up pops out (wired by powerups.js via hook)
     if (this.world.onBreakableSmashed) this.world.onBreakableSmashed(this.x, this.z);
   }
-  update() {}
+  // The only breakable that does anything on its own: a chest opens when the
+  // child reaches it. 1.15u matches the standing chests' 1.1u opening radius
+  // plus the half-metre of chest between the two centres.
+  update(dt, t, player) {
+    if (!this.opensOnTouch || this.dead || !player || !player.root) return;
+    const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+    if (dx * dx + dz * dz > 1.15 * 1.15) return;
+    this.takeDamage();
+  }
 }
 
 export const BREAKABLE_KINDS = Object.keys(BREAK_KINDS);

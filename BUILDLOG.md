@@ -4788,3 +4788,58 @@ failures were the *driver* misreading a level that was already right:
   the waypoints a child would.
 - The one real defect: the nook walls, which is the item above.
 
+
+## Chests that never opened (2026-09-03, v3.99.0)
+
+Dad, on three screenshots of three different rooms: *"all of these types of
+chests through every level do not open or give anything. fix it."*
+
+Two separate causes, and neither of them was in the chest code.
+
+### 1. The game had two chests with two different grammars
+
+The **standing** chests (`assets/env/props/chest-kit.glb`, `world.chests`)
+open when a child walks within 1.1u. The **breakable** chests
+(`chest-wood.glb`, `chest-gold.glb`, kinds `chest`/`goldchest` in
+`potSpots`) are pots that happen to be chest-shaped: they had to be HIT.
+There are 32 of them, roughly one in every third room from the Wild Woods
+onward, and they look exactly like treasure.
+
+A five-year-old walks up to a chest. They do not square up and swing. So a
+chest-shaped breakable now **opens on touch as well as on a hit**, rings the
+same reward chime the standing ones do, and carries the same pulsing glow —
+a reward you cannot see is not a reward. One grammar for every chest in the
+game: walk into it, it opens.
+
+### 2. lc1's vault was sealed by the block that unlocked it
+
+The Ketsu — Ember Hollow's push-block conclusion — ran a two-metre corridor
+wall to wall, deliberately, so the long push could not be fumbled. The plate
+sat in the middle of that corridor at x 2.2 and the chest a metre and a half
+further west. **A block is 1.24u across and a child is 0.64u; two metres
+holds one or the other, not both.** So the child pushed the block the whole
+length of the tunnel, the bars went up in front of them, and the prize was
+sealed behind the very thing that opened it — permanently, silently, with the
+puzzle flag set and the room reporting success.
+
+The corridor now steps south west of x 3.5 (three metres instead of two), so
+the parked block has a lane beside it. The bars grew to match: bars sealing
+two metres of a three-metre mouth are a decoration with a gap in it. The push
+itself is unchanged — the narrow half is the half that carries the long leg.
+
+`tools/probe-ketsu.mjs` drives the whole beat on real keys: north leg, corner,
+west leg, plate, bars, then walks ROUND the parked block and opens the vault.
+
+### The suite that should have existed
+
+`tools/verify-chests.mjs` asks the only question that matters of every chest
+in every room: **can a child get to it?** Reachability is a flood-fill from
+the spawn over the real colliders, run twice — once as the room builds, and
+once over a REBUILD of the room with every flag map answering true, every
+wolf granted, and every gate, crack, burn, cut, ice, watcher and water
+collider cleared. Unreachable in the second pass is a bug; unreachable only
+in the first is the design. It found exactly one: the Ketsu.
+
+Both chest systems had tests before this. Both tests put the player where the
+chest was, which is the one thing a child cannot always do.
+

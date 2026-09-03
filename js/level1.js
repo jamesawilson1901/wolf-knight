@@ -1070,7 +1070,10 @@ export async function buildLc1(scene) {
   // which is a hazard tile — walk back through the door and take a hit for it,
   // every time, with nothing to dodge. Nothing had ever checked a landing.
   sideDoor(world, 'w', halfW, halfD, 'lc', { x: 12.2, z: 1.7, angle: -Math.PI / 2 });  // LOOPS BACK
-  wallRun(world, -2, -5, 6, -5, D);
+  // THE FORGE WALL — and it STEPS SOUTH at the vault end. See the ketsu note
+  // below: a two-metre corridor is a corridor the answer plugs.
+  wallRun(world, 4.0, -5, 6, -5, D);
+  wallRun(world, -2, -4.0, 4.0, -4.0, D);
 
   // THE KETSU: push_block's conclusion beat, and the last hole in Ember's
   // four-beat arc (dungeons.json carried it as a known gap; verify-graphs sat
@@ -1094,15 +1097,36 @@ export async function buildLc1(scene) {
   // lives at the corridor's FAR END, sealed on three sides (shell north, a
   // short wall west, the forge wall south), its prize visible down the
   // tunnel through the bars. The child only ever pushes from the east.
+  //
+  // AND THE THIRD THING IT GOT WRONG, which shipped: THE ANSWER PLUGGED THE
+  // PRIZE. The corridor was two metres wide wall to wall — deliberately, so
+  // the long push could not be fumbled — and the plate sat in the middle of
+  // it at x 2.2 with the chest a metre and a half further west. A block is
+  // 1.24u across and a child is 0.64u; two metres holds one or the other, not
+  // both. So the child pushed the block the whole length of the tunnel, the
+  // bars went up in front of them, and the prize was sealed behind the very
+  // thing that opened it. Forever, and silently: the room built, the puzzle
+  // solved, the flag set, and the chest simply could never be walked to.
+  // (verify-chests, 2026-09-03. It is the only one in the game.)
+  //
+  // The corridor now STEPS SOUTH west of x 3.5 — three metres there instead of
+  // two — so the parked block has a lane beside it a child walks round. The
+  // push itself is unchanged: the narrow half is the half that carries the
+  // long leg, and the plate still snaps the block dead-centre at the end of it.
   for (let z = -2.6; z >= -6.8; z -= 1.2) world.reserve(7, z, 1.4, 'ketsuLane');
   for (let x = 0.2; x <= 8.6; x += 1.2) world.reserve(x, -6.8, 1.4, 'ketsuLane');
+  for (let x = 0.2; x <= 3.4; x += 1.2) world.reserve(x, -5.2, 1.4, 'ketsuRound');
   if (!GREY()) pushableBoulder(world, prepareModel, emberKit.rockSA, 7, -2.6,
     { solved: () => !!state.flags.plates.l1_lc1_ketsu, restAt: { x: 2.2, z: -6.8 } });
-  wallRun(world, -1.2, -5.6, -1.2, -7.2, D);          // the vault pocket's west seal
+  // the vault pocket's west seal, carried south to meet the stepped forge wall
+  // so the wider corridor does not open a way in AROUND the bars
+  wallRun(world, -1.2, -4.6, -1.2, -7.2, D);
   visibleReward(world, 0.2, -6.8, 'l1_lc1_ketsu', { shards: 26, potion: 1 }, 'silver');
+  // ...and the bars grew with the corridor. Bars that seal two metres of a
+  // three-metre mouth are a decoration with a gap in it.
   const ketsuBars = GREY() ? { open() {} }
-    : plateBars(world, prepareModel, emberKit.bars, 'l1_lc1_ketsu', 0.9, -6.8,
-        { span: 2.0, ry: Math.PI / 2 });
+    : plateBars(world, prepareModel, emberKit.bars, 'l1_lc1_ketsu', 0.9, -6.0,
+        { span: 3.6, ry: Math.PI / 2 });
   plateSwitch(world, 'l1_lc1_ketsu', 2.2, -6.8, () => { ketsuBars.open(); });
   // Ember's third pup, in the corner the forge water never reached
   world.markers.pupSpot = { x: -7, z: 5.5, id: 'pup_l3' };
