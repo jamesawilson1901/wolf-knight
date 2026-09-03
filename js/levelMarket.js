@@ -92,7 +92,11 @@ export async function loadMarketKit() {
 // are tinted the pale blue of things left out in a hard winter.
 export const DISTRICTS = {
   quay: { tint: 0x9fb4c4, floorTint: 0xa8c2d2, wallTint: 0x46525e, propTint: 0x8fa2b2,
-          ground: 'snow', name: 'THE DROWNED MARKET', hero: 'THE FROZEN QUAY' },
+          // `snowfield`, not `snow` — GROUND_STYLES names it in full, and a
+          // district naming a style that does not exist falls back to generic
+          // earth with only a console warning. Caught reading ground.js while
+          // fixing Frostpeak's floors, which had the same class of miss.
+          ground: 'snowfield', name: 'THE DROWNED MARKET', hero: 'THE FROZEN QUAY' },
 };
 
 const M = MODULES;

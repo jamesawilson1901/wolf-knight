@@ -4409,3 +4409,29 @@ was reading a hand-written list of level modules that had never heard of
 now, which is the one list that cannot be incomplete: a JS file missing from it
 is missing from the PWA offline, so the deploy rule already forces it to be
 total.
+
+## Frostpeak had no floor (2026-09-03)
+
+Seven rooms, since the day the region shipped, laid a bare `PlaneGeometry` in a
+single pale blue with **no texture at all** — while every other region in the
+game calls `ground()`, which paints a canvas per room: snow grain, drift
+patches, and **a worn route out of every doorway**, which is the cheapest and
+most-used piece of wayfinding the game has. Frostpeak had none of it. Measured
+floor sigma: **0.0, in all seven**.
+
+`snowfield` was a real `GROUND_STYLES` entry the whole time — pattern 'snow',
+wear 0.30, a strong 1.10 path — authored and never once drawn.
+
+It survived because `verify-density` kept a hand-written room list and every
+f-room was missing from it, so the suite printed ALL CLEAN over them for months.
+The completeness check added the day before is what found it. One call, seven
+rooms fixed, and the sweep went from twenty failures to fifteen with every
+remaining one being arrival density rather than floor.
+
+**And the same class of miss in code one day old.** The Drowned Market's
+district named `ground: 'snow'`. There is no style called `snow`. A district
+naming a style that does not exist falls back to generic earth with nothing but
+a console warning — so the frozen harbour was drawing a dirt floor, and the only
+reason it measured a healthy sigma was that the fallback is textured. Caught by
+reading `ground.js` while fixing Frostpeak, not by any suite: the check asks
+whether a floor VARIES, not whether it is the floor you asked for.

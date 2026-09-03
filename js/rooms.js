@@ -11,7 +11,7 @@ import { World } from './world.js';
 import { flattenStatic } from './batch.js';
 import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
-import { setRoomSeed } from './ground.js';
+import { setRoomSeed, pathsThroughDoors } from './ground.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal } from './boss.js';
 import { audio } from './audio.js';
@@ -3488,13 +3488,29 @@ function buildSnowShell(world, w, d, gaps = []) {
   // bounce and a white-blue sun. Nothing else in the game changes.
   world.lightTint = { sky: 0xbcd4ea, ground: 0x6c7f96, key: 0xeaf4ff };
 
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(w + 8, d + 8),
-    new THREE.MeshStandardMaterial({ color: 0xeaf2fa, roughness: 1 })
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  world.add(ground);
+  // A FLOOR THAT IS ONE FLAT COLOUR, FOR SEVEN ROOMS, SINCE FROSTPEAK SHIPPED.
+  //
+  // This laid a bare PlaneGeometry in a single pale blue with no texture at all,
+  // while every other region in the game calls ground() — which paints a canvas
+  // per room: snow grain, drift patches, and a WORN ROUTE FROM EVERY DOORWAY
+  // that is the game's cheapest and most-used piece of wayfinding. Frostpeak had
+  // none of it: no grain, no wear, and no path telling a child which way the
+  // room goes.
+  //
+  // It survived because verify-density kept a hand-written room list and all
+  // seven f-rooms were missing from it, so the suite printed ALL CLEAN over
+  // them for months (2026-09-03; the completeness check added the same day is
+  // what found it). Measured floor sigma: 0.0, in every one.
+  //
+  // `snowfield` is a real GROUND_STYLES entry and always was — pattern 'snow',
+  // wear 0.30, a strong 1.10 path — authored and never once drawn.
+  const snowD = { tint: 0xc8d8e8, floorTint: 0xeaf2fa, wallTint: 0x6c7f96,
+    propTint: 0xc8d8e8, ground: 'snowfield' };
+  ground(world, w + 8, d + 8, snowD, {
+    // the doorways this room actually has, so the worn routes go where a child
+    // walks rather than to a compass rose
+    paths: pathsThroughDoors(gaps, halfW, halfD, { pathWidth: 2.6 }),
+  });
 
   const inGap = (side, coord) =>
     gaps.some((g) => g.side === side && coord > g.from && coord < g.to);
