@@ -178,7 +178,8 @@ export async function buildQ1(scene) {
     paths: [[[0, 12], [-4, 6], [-8, 0], [-4, -6], [0, -12]]],
   });
   world.spawn = { x: 0, z: 11, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'f5', { x: 0, z: -9, angle: 0 });
+  // f5 is a 26x26 arena since the Frostpeak rebuild (level4.js): land inside its north door
+  sideDoor(world, 's', halfW, halfD, 'f5', { x: 0, z: -11, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'q2', { x: 0, z: 11, angle: Math.PI });
 
   // THE HARBOUR IS FROZEN, AND FROZEN GROUND BEHAVES. Same flag the Frozen Lake

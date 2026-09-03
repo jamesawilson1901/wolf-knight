@@ -4676,3 +4676,60 @@ colour since it shipped, and it was the one place missing from the new map.
 `verify-map.mjs` holds the map to the registry both ways (nothing drawn that
 does not exist, every spine room drawn), lights "you are here" in eleven rooms
 through the real map button, and checks the gating and the absence of emoji.
+
+## Frostpeak rebuilt — the last region out of rooms.js (2026-09-03, v3.97.0)
+
+Board item 6. Frostpeak was the one region never rebuilt: seven hand-built
+rooms of 18x12 and smaller in rooms.js, no spec table, no district palette,
+no dressers, and — until three days ago — no textured floor. It is region
+FOUR, the kids will walk into it, and both of the game's remaining
+arrival-density failures lived there.
+
+**What is kept, exactly.** The v3.21 design is good and dad has played it, so
+`js/level4.js` keeps the seven-room graph, both puzzle doors, Boreal, every
+room id (nothing joins RETIRED_ROOMS) and every world-state key — a child
+half-way up the mountain on an old save is exactly as far up it on the new
+one. The Frozen Lake's stopper arithmetic is copied to the decimal: lanes at
+x ±3.0 with a true 2.0u collider corridor, stoppers at (±1.6, 1.6) r 0.75 so a
+boulder rests at x ∓3.0, plates at (±3.0, −4.6). A skid ends at a wall, a rock
+or a plate (world.js), so the plates catch the boulders whatever the room's
+height — the room is bigger, the puzzle is not.
+
+**What changes.** Module sizes (island 32x26, pocket 20x16, arena 26x26),
+the shared shell/door/dresser vocabulary, a five-district palette that cools
+as you climb, `ground()` snowfield with ice patches and worn routes, and the
+mountain INSIDE the room: fir stands with colliders, drifts, outcrops, falling
+snow, and what the mountain's people left — gateposts at the Rime GATE,
+two rows of columns in the Icebound HALL, standing stones on the eyrie.
+Campfires and floor potions stay (the rebuilt levels dropped them; the
+rest-before-the-boss law and the fires are how a child remembers the mountain).
+
+**Measured:** arrival density f1 50, f1b 33, f2 53, f2b 34, f3 33, f4 41,
+f5 33 against floors of 32/20/14 — f1 was 26 and f4 29 the day before. Draw
+calls 67–114. 738 lines left rooms.js.
+
+### Three promise gates that never sealed anything
+
+Flood-filling each room from its spawn on the real colliders — the fill
+`verify-reachable` uses — showed the ice in f1b, f4 and f5 standing BESIDE its
+chest on open ground. In v3.21 every one of those chests could be walked to
+round the block; `f_cairn`, `f_scour` and `f_eyrie` are in regions.js as
+frost-wolf gates and were decoration. Each sits in a real nook now — ridge on
+two sides, cliff on the others, the ice's 1.0u collider in a 2.8u mouth that
+leaves slivers narrower than Kael — and `verify-level4` proves all three
+unreachable with the ice up and `f_scour` reachable once frost breath breaks it.
+
+### The driver, again
+
+`verify-level4` walks both puzzles with real keys, and three of its four
+failures on the way to green were the driver's. A breath is a cone, so Kael
+has to face the bowl (the last step of the walk does that). A skid begins
+0.12s of LEAN after the key, not on it, so waiting for "nothing sliding" the
+instant the key came up read the stone's old position. And at 1x speed the
+lean takes the best part of a second to accrue (Kael jitters against the
+collider at 0.94u, the lean resets past 1.04u — measured 0.11s at 900ms), so a
+fixed 600ms hold pushed the west stone by luck and the east one not at all;
+the key is held until the stone commits now.
+
+**Not done here:** `tools/run-l4.mjs`, the real-play route driver, is written
+against the old room coordinates and needs re-porting to the new layout.

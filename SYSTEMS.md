@@ -99,6 +99,22 @@ ROOMS registry builds each room from kit pieces; flat-plane collisions
 (kilnLandmark). Region = room id prefix. LEVEL-DESIGN-2.md holds the
 seven layout rules + region graphs.
 
+## Frostpeak (js/level4.js) — region 4, rebuilt 2026-09-03
+The last region to leave rooms.js. Same seven rooms and ids as v3.21
+(`f1` Rime Gate, `f1b` Frozen Cairn, `f2` Icebound Hall, `f2b` Glacier
+Nook, `f3` Frozen Lake, `f4` Windscour, `f5` Boreal's Eyrie), same
+world-state keys (WS `frost` braziers/restored/ice_*/cut_f2b_alcove,
+plates `f3_p1`/`f3_p2`), rebuilt at module scale on the shared
+shell/door/dresser vocabulary with a five-district palette that cools
+as you climb. Puzzle doors: `frostGate` (gold act-here ring) opened by
+three melted-then-lit braziers in f2 and by both lake plates in f3;
+the lake's stopper arithmetic is v3.21's to the decimal (lanes x ±3,
+stoppers (±1.6, 1.6) r 0.75, plates (±3, -4.6)). Three promise ice
+blocks sit in real nooks now (f1b, f4, f5 — flood-fill proven sealed).
+Campfires + floor potions kept (`campfire()`/`potion()` in the file).
+`tools/verify-level4.mjs` walks the chain, both puzzles with real keys,
+the seals, and the summit.
+
 ## The roads between regions (js/levelNight.js, js/levelMarket.js)
 INTERSTITIALS: two-room levels that sit ON the road between two regions
 and pay in a KEEPSAKE rather than a wolf (js/treasures.js — the form

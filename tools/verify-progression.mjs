@@ -40,7 +40,12 @@ console.log('\n── A1: the three levels chain to each other ─────�
 await page.evaluate(() => { window.__game.state.flags.bossDefeated = true; });
 await go('le');
 const le = await doorsOf();
-check('beating the Shadowgrip opens the way to Level 2 (vh)', le.includes('vh'), { doors: le });
+// ...by way of THE NIGHT ROAD (js/levelNight.js, 2026-09-03): the boss door
+// opens onto n1, and it is n2's north door that reaches the Great Vault.
+check('beating the Shadowgrip opens the way onto the Night Road (n1)', le.includes('n1'), { doors: le });
+await go('n2');
+const n2 = await doorsOf();
+check('...and the road reaches Level 2 (vh)', n2.includes('vh'), { doors: n2 });
 // Level 2 warden down → onward to Wild Woods
 await page.evaluate(() => { window.__game.state.flags.wardenDefeated = true; });
 await go('vz');

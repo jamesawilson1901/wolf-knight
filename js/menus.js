@@ -472,22 +472,11 @@ export class Menus {
       { key: 'spire',       name: 'The Moonlit Spire', open: () => villageCleared() },
     ];
 
-    // FROSTPEAK HAS NO SPEC TABLE — it is the one region never rebuilt (seven
-    // rooms hand-built in rooms.js), so it registers nothing with districts.js.
-    // Its rooms are named here, once, from the builders' own headers, and this
-    // block goes away the day the rebuild gives it a table like every other
-    // region has. The Den is a single room and lives here for the same reason.
+    // The Den is a single room with no level table, so it is named here. (The
+    // Frostpeak block that used to sit beside it went with the rebuild —
+    // js/level4.js registers its rooms like every other level.)
     const UNTABLED = {
-      den:       [{ id: 'den', label: 'The Moonlit Den', spine: true, tint: 0x6f8a4e }],
-      frostpeak: [
-        { id: 'f1',  label: 'The Rime Gate',     spine: true,  tint: 0x9fb8cc },
-        { id: 'f1b', label: 'The Frozen Cairn',  spine: false, tint: 0x9fb8cc, loopsTo: 'f1' },
-        { id: 'f2',  label: 'The Icebound Hall', spine: true,  tint: 0x8fb0c8 },
-        { id: 'f2b', label: 'The Glacier Nook',  spine: false, tint: 0x8fb0c8, loopsTo: 'f2' },
-        { id: 'f3',  label: 'The Frozen Lake',   spine: true,  tint: 0xb9d6e6 },
-        { id: 'f4',  label: 'The Windscour',     spine: true,  tint: 0x7f98b0 },
-        { id: 'f5',  label: "Boreal's Eyrie",    spine: true,  tint: 0xc4dbe8 },
-      ],
+      den: [{ id: 'den', label: 'The Moonlit Den', spine: true, tint: 0x6f8a4e }],
     };
 
     const all = registeredRooms();

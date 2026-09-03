@@ -123,8 +123,8 @@ const walkThrough = async (x, z, from) => {
 console.log('\n── the case the queue named: f1 south, which targets `w5` ─────');
 if (!await park('f1')) { check('f1 builds', false); await b.close(); process.exit(1); }
 check('f1 builds', true);
-// f1's south door: addDoor(-1.3, 1.3, 5.85, 7.2, 'w5', …)
-const viaF1 = await walkThrough(0, 6.4, 'f1');
+// f1's south door (level4.js): a 32x26 island, the door zone at z 12.85+
+const viaF1 = await walkThrough(0, 12.9, 'f1');
 check('walking f1 south lands somewhere', !!viaF1, viaF1);
 if (viaF1) {
   check('...and the id stored is the room built', viaF1.room === viaF1.resolved, viaF1.room);

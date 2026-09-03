@@ -1482,7 +1482,8 @@ export async function buildTgl(scene) {
   // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
   // why nothing had ever measured these.
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10.9, z: 9.4, angle: -Math.PI / 2 });
-  if (beaten) sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 4.2, angle: Math.PI });
+  // f1 is a 32x26 island since the Frostpeak rebuild (level4.js): land inside its south door
+  if (beaten) sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 11, angle: Math.PI });
 
   heroProp(world, 0, -2, 'standingStones', D);
   world.markers.heroSpot = { x: 0, z: -2 };

@@ -86,7 +86,7 @@ W1 Thorn Gate ── W1b Mossy Dell  [pup7 + the ICE-SEALED SPRING: region 4's
    W5 Sylva's Glade (boss; the Verdant Wolf + the grant-payout bramble)
 ```
 
-### Frostpeak  [BUILT v3.21 — seven rooms; the first FLYING boss]
+### Frostpeak  [BUILT v3.21 — seven rooms; the first FLYING boss. REBUILT 2026-09-03 at module scale in js/level4.js — same graph, same ids, same puzzles]
 ```
 F1 Rime Gate ── F1b Frozen Cairn  [pup10 + ice-sealed chest: the Frost Wolf
    │               arrives at the END of this region, so every ice block on

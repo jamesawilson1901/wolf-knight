@@ -720,13 +720,14 @@ function guideTarget() {
   const f = state.flags;
   switch (state.room) {
     case 'den': return { x: 0, z: 7.4 };    // stairs up to the Hollow (south gate)
-    case 'f1': return { x: 0, z: -5.6 };    // deeper: the Icebound Hall
-    case 'f1b': return { x: -2.2, z: -3.4 }; // the pup by the cairn
-    case 'f2': return { x: 0, z: -6.4 };    // braziers lit → the opened gate
-    case 'f2b': return { x: 4.4, z: -3.2 };
-    case 'f3': return { x: 0, z: -6.4 };    // plates pressed → the opened gate
-    case 'f4': return { x: 0, z: -5.6 };    // the summit door
-    case 'f5': return f.borealDefeated ? { x: 6.4, z: -6.0 } : { x: 0, z: -1.0 };
+    // Frostpeak's rooms are module-sized since the rebuild (js/level4.js)
+    case 'f1': return { x: 0, z: -11.5 };   // deeper: the Icebound Hall
+    case 'f1b': return { x: 0.5, z: -5.5 }; // the pup by the cairn
+    case 'f2': return { x: 0, z: -11.5 };   // braziers lit → the opened gate
+    case 'f2b': return { x: 6.5, z: -4.5 };
+    case 'f3': return { x: 0, z: -11.5 };   // plates pressed → the opened gate
+    case 'f4': return { x: 0, z: -11.5 };   // the summit door
+    case 'f5': return f.borealDefeated ? { x: 8.4, z: -8.0 } : { x: 0, z: -1.0 };
     default: return null;
   }
 }
