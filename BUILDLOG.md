@@ -5218,3 +5218,56 @@ deliberately not a list of names: a quad lying FLAT more than 0.6 above the
 floor is either ground that has left the ground or a mistake, while everything
 that legitimately hangs — banners, cobwebs, portal haze — hangs vertical. A
 name list would need touching every time a new hanging prop ships.
+
+---
+
+## The Village dressed itself out past its own walls (2026-09-03, later still)
+
+`verify-bounds`, pointed at all 146 rooms, named seven props rendering outside
+the room they belong to — washing, a basin, firewood, a cartwheel and a whole
+cart, in the square and four of the guardian pockets.
+
+The first hypothesis was wrong and worth recording as such. These props come
+from the Small Props Pack, whose twenty-one GLBs were cut from one source scene
+with their layout positions baked in, so a pivot bug looked overwhelmingly
+likely — `place()`'s `centre: true` measures the model in one frame and
+corrects it in another, which is exactly the shape of a latent frame error. It
+was rewritten to be frame-proof, and then a probe put every prop's DRAWN
+position next to its ASKED-FOR position: they matched, to two decimals, before
+and after. The rewrite changed nothing, so it was reverted rather than kept on
+a justification the measurement had just disproved.
+
+The real bug is plainer. The coordinates in the file are outside the room. The
+square's list dresses its south edge out to z 16.5 — a sensible number for a
+room 16 deep, and the square is 14. Every guardian pocket carries the same
+template at pocket scale, with z values out to 9.5 in a room whose half-depth
+is 8. Reading the lists after the suite pointed at them turned up a dozen more
+sitting exactly on the wall line.
+
+Editing fifty numbers would fix today's Village and none of tomorrow's, so the
+room's own extents are the ruler now: a spot outside them is pulled into the
+wall band, where the author was plainly aiming, and verify-bounds still asks
+the question afterwards so nothing can be quietly papered over.
+
+With one exception that matters, and it is the reason a blind clamp would have
+been worse than the bug. Pulling a prop to the wall band puts it exactly where
+the doors are — and the square's stray cart sits at x 8, which is the centre of
+the Spire stair. Clamped straight in, it would have parked a solid collider
+across the last door in the game. A prop with a collider that lands in a
+doorway is dropped instead.
+
+`verify-bounds` also learned to look INSIDE a prop. It measures each top-level
+group as one unit on purpose — a house's forty wall fragments are one thing —
+but that is exactly how the floating log stack hid: the group's lowest point
+was the stack sitting on the ground, so the group passed while its sibling hung
+in the air a metre away. Any single mesh clear of the floor with nothing under
+it — no other mesh overlapping its footprint and reaching up to meet it — is a
+finding now. A lantern on a post is held up by the post.
+
+And `verify-looks` swapped its ring sampler for a grid, because the ring put 24
+points at fixed radii and in f3 every one landed in the mountain fill. The room
+reported ONE standing spot, the spawn, and the whole "can you see the door from
+anywhere" test collapsed back into the single-ray version it was written to
+replace — silently, while printing a finding that looked real. The count is
+asserted now rather than trusted: a sampler that can return almost nothing
+turns a question about the room into a question about where the sampler looked.
