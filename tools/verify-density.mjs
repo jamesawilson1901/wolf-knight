@@ -22,6 +22,7 @@
 // behind. Every room is therefore checked at its own SPAWN POINT, in the exact
 // frame that opens when a child walks in.
 import { launchBrowser } from './launch.mjs';
+import { allRooms } from './all-rooms.mjs';
 
 // design/METRICS.md, measured (C3), at the shipping 740x360 landscape aspect
 const AHEAD = 12.9, BEHIND = 4.5, HALF_W = 22.2 / 2;
@@ -84,6 +85,15 @@ const go = async (room) => {
 // exemptions down beside the rule is the difference between a standard and a
 // nuisance: a blanket minimum would push clutter into exactly the two rooms
 // where clutter is a bug.
+// AND THE LIST HAS TO BE COMPLETE. Unlike verify-level1's room lists, this one
+// cannot be derived — the `kind` beside each id is a JUDGEMENT (a boss arena is
+// SUPPOSED to have an empty middle) and no table in the game carries it. What
+// can be checked is whether it covers the live registry, and on 2026-09-02 it
+// did not: Ember Deep's three rooms had shipped that morning and this suite had
+// never looked at them, then the Drowned Market's two arrived the same way. A
+// room missing from here is not a failure, it is SILENCE — the suite prints ALL
+// CLEAN over content it never opened. The check at the bottom of this file
+// turns that silence into a failure.
 const ROOMS = [
   // Ember Hollow
   { id: 'la',  kind: 'island' }, { id: 'la1', kind: 'pocket' }, { id: 'lg1', kind: 'choke' },
@@ -91,6 +101,36 @@ const ROOMS = [
   { id: 'lg2', kind: 'choke' },  { id: 'lc',  kind: 'island' }, { id: 'lc1', kind: 'pocket' },
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
+  { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
+  // The Drowned Market — the road between Frostpeak and Stormreach
+  { id: 'q1',  kind: 'island' }, { id: 'q2',  kind: 'island' },
+  // ── AUDITED IN 2026-09-03 ────────────────────────────────────────────────
+  // Twenty-six live rooms had never been looked at by this suite: the whole
+  // Moonlit Spire, the whole Village, the Den, and all of Frostpeak. Not
+  // failing — SILENT, which is worse, because the run printed ALL CLEAN over
+  // them. The completeness check below is what found them; these kinds are
+  // read off each area's own spec table where it has one (levelVillage's LV,
+  // levelSpire's LM) and from the room's job where it does not.
+  // The Moonlit Spire
+  { id: 'm1',  kind: 'choke' },  { id: 'm2',  kind: 'choke' },
+  { id: 'ma',  kind: 'pocket' }, { id: 'mb',  kind: 'pocket' },
+  { id: 'm3',  kind: 'arena' },
+  // The Village — the square is the hub, the rest are streets
+  { id: 'ysq', kind: 'island' }, { id: 'yhs', kind: 'pocket' },
+  { id: 'ylw', kind: 'pocket' }, { id: 'yg1', kind: 'pocket' },
+  { id: 'yg2', kind: 'pocket' }, { id: 'yg3', kind: 'pocket' },
+  { id: 'yg4', kind: 'pocket' }, { id: 'yg5', kind: 'pocket' },
+  { id: 'yg6', kind: 'pocket' }, { id: 'yrw', kind: 'pocket' },
+  // The Den is the safe hub: no combat, and its density is villagers and homes
+  { id: 'den', kind: 'island' },
+  // Live legacy rooms (the eleven audited in 2026-08-29, see all-rooms.mjs)
+  { id: 'e2',  kind: 'island' }, { id: 'e2b', kind: 'pocket' },
+  { id: 'w3',  kind: 'island' },
+  // Frostpeak, never rebuilt and never measured
+  { id: 'f1',  kind: 'island' }, { id: 'f1b', kind: 'pocket' },
+  { id: 'f2',  kind: 'island' }, { id: 'f2b', kind: 'pocket' },
+  { id: 'f3',  kind: 'island' }, { id: 'f4',  kind: 'island' },
+  { id: 'f5',  kind: 'arena' },
   // Stoneroot Caverns
   { id: 'vh',  kind: 'island' }, { id: 'vga', kind: 'choke' },  { id: 'va1', kind: 'island' },
   { id: 'va2', kind: 'island' }, { id: 'vap', kind: 'pocket' }, { id: 'va3', kind: 'puzzle' },
@@ -139,6 +179,13 @@ const ROOMS = [
   { id: 'xp1', kind: 'pocket' }, { id: 'xp2', kind: 'pocket' },
   { id: 'xst', kind: 'choke' },  { id: 'xth', kind: 'arena' },
 ];
+
+// EVERY LIVE ROOM IS IN THE LIST ABOVE, or this suite is lying by omission.
+const LIVE = await allRooms(page);
+const listed = new Set(ROOMS.map((r) => r.id));
+const unwatched = LIVE.filter((id) => !listed.has(id));
+check('every live room is in this suite\'s list', unwatched.length === 0,
+  { unwatched, note: 'add it with its kind — a missing room is not checked at all' });
 // THRESHOLDS ARE CALIBRATED, NOT GUESSED — and the first pass of this file got
 // that wrong. It shipped with an island minimum of 12 while the dressed islands
 // measure 69-75, which means it would have passed a room stripped back to a

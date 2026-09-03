@@ -4342,3 +4342,70 @@ fixed 44px frame now, exactly as the Armoury does for gear.
 
 Also: a new module has to join `sw.js`'s precache list or the PWA is missing it
 offline. Easy to forget, invisible until someone plays on a train.
+
+## The Drowned Market — the first interstitial (2026-09-03)
+
+Dad: "make the drowned market a mid game level. we are going to add a new level
+that doesn't reward a wolf but something else inbetween all existing levels."
+
+Two rooms ON the road between Frostpeak and Stormreach — `f5`'s north door used
+to open straight onto Stormreach's cliffs and now opens onto a harbour first.
+It does the two things a road between two places can do that neither place can:
+
+- **Graduates the verb you just earned.** You come down off the summit with the
+  Frost Wolf and nothing else new, so the whole town is under ice and every
+  stall worth opening is sealed in it.
+- **Shows the lock for the one ahead.** The black channels are deep water — a
+  hard wall until Meri's gift in region SIX — with the far quay and its goods in
+  plain sight the whole way through. Two regions of wanting it.
+
+**It moved regions because of dad's own reasoning.** Designed as a branch off
+the Sunken Vale, and the sentence that killed the Trial of the Ten — "post-game
+content is the wrong target, the kids are not finishing the game yet" — kills a
+region-6 branch just as dead. Frozen instead of drowned it lands at region four,
+and every prop still fits: a fishing town reads the same under ice as under
+water. Nothing new was vendored; `loadGLB` caches by URL, so the Village's props
+come back as the same objects, already atlas-shared.
+
+Built from three systems that already existed: `world.slickFloor` (the Frozen
+Lake's), `iceGate`, and `waterZone({deep:true})` — which is a box collider until
+the Tide Wolf, so it stops Kael with no special case in movement.
+
+### A new room prefix has to be NAMED, or it is greybox forever
+
+`rooms.js` dispatches kit loading on the room id's first letter, and `q` was in
+none of the branches, so the market fell through to the default and built in
+plain boxes. The tell was not a crash: `visibleReward` hands back a proto cube
+in greybox instead of registering a chest, so **the market's first run had no
+loot in it at all** and nothing anywhere said so. The suite caught it as
+`chests: 0`.
+
+### verify-density had never looked at 26 live rooms
+
+It keeps a hand-written room list with a `kind` beside each id, and unlike
+verify-level1's lists that one cannot be derived — the kind is a JUDGEMENT (a
+boss arena is SUPPOSED to have an empty middle). What CAN be checked is whether
+the list covers the live registry, and it did not: **the whole Moonlit Spire,
+the whole Village, the Den and all of Frostpeak** were never measured. Ember
+Deep had shipped that morning and was not in it either.
+
+A missing room is not a failure, it is SILENCE — the suite prints ALL CLEAN over
+content it never opened. There is a completeness check now that turns that
+silence into a failure.
+
+**It found twenty real defects on its first run.** All seven Frostpeak rooms
+measure floor sigma 0 — a completely flat floor — and `yrw`, `yg6` and `yg4`
+show 0, 1 and 2 things in the arrival frame. Pre-existing: Frostpeak's builders
+have not been touched, and this session only ADDED props to the Village.
+Recorded in `tools/known-fail.txt` with that proof and queued as its own job
+rather than folded into the commit that surfaced it.
+
+### The third hand-kept list of the session, in a suite two hours old
+
+`verify-treasures` rule 3 — the registry may not run ahead of the world —
+reported the market's keepsake as homeless. The keepsake was placed; the scan
+was reading a hand-written list of level modules that had never heard of
+`js/levelMarket.js`. Both it and `verify-gear` read **sw.js's precache array**
+now, which is the one list that cannot be incomplete: a JS file missing from it
+is missing from the PWA offline, so the deploy rule already forces it to be
+total.

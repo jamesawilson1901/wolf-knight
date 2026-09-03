@@ -49,6 +49,16 @@ export const TREASURES = {
     blurb: 'Still warm, after all that time.',
     from: 'Ember Deep',
   },
+  // THE DROWNED MARKET's keepsake. Teal, because the whole town is under ice
+  // and this is the one thing in it that was worth keeping — and because the
+  // set wants to read as a map of where you have been, which only works if no
+  // two look alike.
+  frozen_tear: {
+    name: 'The Frozen Tear',
+    file: './assets/loot/treasure/gem-diamond.glb',
+    blurb: 'The harbour, keeping one thing back.',
+    from: 'The Drowned Market',
+  },
 };
 
 export function ownsTreasure(id) {

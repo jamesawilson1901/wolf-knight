@@ -27,6 +27,7 @@ import { LEVEL5_ROOMS, loadSkyKit } from './level5.js';
 import { LEVEL6_ROOMS, loadValeKit } from './level6.js';
 import { LEVEL7_ROOMS, loadCourtKit } from './level7.js';
 import { LEVELVILLAGE_ROOMS, loadVillageKit } from './levelVillage.js';
+import { LEVELMARKET_ROOMS, loadMarketKit } from './levelMarket.js';
 import { LEVELSPIRE_ROOMS } from './levelSpire.js';   // built from Ember's kit — no loader of its own
 import { buildPotionMesh } from './loot.js';
 
@@ -3990,6 +3991,11 @@ async function buildF5(scene) {
   // THE WAY ON. Once Boreal is calmed the summit's north side opens: the cliff
   // path down off the mountain and out onto the Stormreach sea cliffs.
   const onward = !!state.flags.borealDefeated;
+  // AND THE ROAD DOWN NOW HAS A TOWN ON IT (js/levelMarket.js). This door said
+  // 's1a' — straight onto Stormreach's cliffs — and says 'q1' instead: the
+  // Drowned Market, two rooms, frost's graduation and the first sight of deep
+  // water a child cannot cross. q2's own north door carries on to s1a, so the
+  // road is longer and goes to exactly the same place.
   // The north gap is ALWAYS cut now — plugged with rime-caked boulders while
   // Boreal flies, opened live (smoke poof, main.js) the moment she is calmed,
   // so the way on appears where the child is standing instead of on re-entry.
@@ -4001,7 +4007,7 @@ async function buildF5(scene) {
   world.spawn = { x: 0, z: 7.2, angle: Math.PI };
   world.addDoor(-1.3, 1.3, 8.85, 10.2, 'f4', { x: 0, z: -4.9, angle: 0 });
   if (onward) {
-    world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
+    world.addDoor(-1.3, 1.3, -10.2, -8.85, 'q1', { x: 0, z: 9, angle: Math.PI });
   } else {
     const plug = new THREE.Group();
     for (const [kind, x, z, s, ry] of [
@@ -4023,7 +4029,7 @@ async function buildF5(scene) {
       world.root.remove(plug);
       const i = world.boxColliders.indexOf(collider);
       if (i >= 0) world.boxColliders.splice(i, 1);
-      world.addDoor(-1.3, 1.3, -10.2, -8.85, 's1a', { x: 0, z: 9, angle: Math.PI });
+      world.addDoor(-1.3, 1.3, -10.2, -8.85, 'q1', { x: 0, z: 9, angle: Math.PI });
       world.openOnward = null;
     };
   }
@@ -4074,7 +4080,7 @@ async function buildF5(scene) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -4096,6 +4102,13 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadCourtKit();
   } else if (id[0] === 'y') {
     if (state.settings.greybox === false) await loadVillageKit();
+  } else if (id[0] === 'q') {
+    // THE DROWNED MARKET. A new prefix has to be named HERE or the room falls
+    // through to the default branch and builds in greybox forever — which is
+    // exactly what it did on the first run: two rooms of plain boxes, and
+    // `visibleReward` handing back a proto cube instead of registering a chest,
+    // so the market shipped with no loot at all and no error anywhere.
+    if (state.settings.greybox === false) await loadMarketKit();
   } else if (id[0] === 'm') {
     // THE MOONLIT SPIRE wears Ember's masonry, re-tinted cold (levelSpire.js) —
     // one kit, two regions, nothing new vendored for four rooms.

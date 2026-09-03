@@ -195,9 +195,23 @@ const sources = await page.evaluate(async () => {
   // because all three happen to be stocked in the shop too — but a weapon
   // placed ONLY in one of those regions would have been called unobtainable
   // and turned this suite red for a prize that was sitting in a chest.
-  for (const f of ['level1', 'level2', 'level3', 'level5', 'level6', 'level7',
-                   'levelVillage', 'levelSpire', 'rooms']) {
-    const src = await (await fetch(`/js/${f}.js`)).text();
+  // WHICH FILES HOLD THE WORLD? Asked of sw.js, not written out here.
+  //
+  // This was a hand-written list of level modules and it was wrong within two
+  // hours of being written: the Drowned Market shipped as js/levelMarket.js,
+  // its treasure was placed in it, and this scan — not knowing the file existed
+  // — reported the keepsake as homeless. A check whose own list can rot is a
+  // check that fails correct work, which is the third time that shape of bug
+  // has bitten in one session (verify-level1's room lists, verify-density's).
+  //
+  // sw.js's precache array is the one list that CANNOT be incomplete: a JS file
+  // missing from it is missing from the PWA offline, so the deploy rule already
+  // forces it to be total. Read the world's files out of that.
+  const sw = await (await fetch('/sw.js')).text();
+  const files = [...sw.matchAll(/'\.\/(js\/(?:level[A-Za-z0-9]*|rooms)\.js)'/g)]
+    .map((m) => m[1]);
+  for (const f of files) {
+    const src = await (await fetch(`/${f}`)).text();
     for (const m of src.matchAll(/\b(?:gear|armour):\s*'([a-z0-9_]+)'/g)) found.add(m[1]);
   }
   return [...found];
