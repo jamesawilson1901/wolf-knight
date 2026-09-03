@@ -3344,7 +3344,19 @@ export class Dragonling extends Enemy {
     this.flying = true;
     this.home = { x, z };
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    model.scale.setScalar(opts.scale ?? 0.5);
+    // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN. Dragon.glb has always come
+    // in at a flat 0.5; a body that is not Dragon.glb is a different size in
+    // its own units, and typing a second constant at it is how the chests, the
+    // crate and the vase each went wrong in turn. `fitHeight` scales a model
+    // so it stands exactly that tall, whatever it was modelled at.
+    if (opts.fitHeight) {
+      model.updateWorldMatrix(true, true);
+      const bb = new THREE.Box3().setFromObject(model);
+      const h = Math.max(0.01, bb.max.y - bb.min.y);
+      model.scale.setScalar(opts.fitHeight / h);
+    } else {
+      model.scale.setScalar(opts.scale ?? 0.5);
+    }
     if (opts.tint) {
       model.traverse((n) => {
         if (!n.isMesh) return;
@@ -3357,7 +3369,12 @@ export class Dragonling extends Enemy {
     this.model = model;
     this.mixer = new THREE.AnimationMixer(model);
     this.actions = {};
-    for (const [k, n] of Object.entries({
+    // A BODY BRINGS ITS OWN CLIP NAMES. Dragon.glb calls them
+    // 'DragonArmature|Dragon_Flying' / '...Attack'; the Ember Wasp calls them
+    // 'Idle_Flying' / 'Attacking'. Hard-coding one body's names into the class
+    // is the exact fault that left Meri frozen in her bind pose for a month
+    // (js/boss.js SKINS.meri) — a clip lookup that finds nothing is silent.
+    for (const [k, n] of Object.entries(opts.clips || {
       fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
     })) {
       const clip = gltf.animations.find((c) => c.name === n);
@@ -3674,8 +3691,20 @@ const KAYKIT_ROSTER = {
 };
 
 const MONSTER_ROSTER = {
-  'ember-dragonling': { cls: Dragonling, base: 'dragon', hp: 6, weakness: 'frost', scale: 0.5,
-    tint: { Main: 0x8f2f10, Belly: 0xff9a2a, Claws: 0x2a1410, Wings: 0xc23c00, Eyes: 0xfff07a } },
+  // THE EMBER WASP replaces the Ember Dragonling (dad, 2026-09-03: "id like to
+  // get rid of the flying dragonling in the first level and replace it").
+  //
+  // It keeps the Dragonling CLASS, which is the point: the hover / red-lane
+  // telegraph / dive / grounded-by-a-shield grammar is what a child learns in
+  // Ember and reads again at boss scale on Boreal. What changes is the body —
+  // and a yellow-and-black wasp says "sting" to a five-year-old before it has
+  // done anything at all, which a small red dragon does not. It also stops the
+  // first region's flyer from being a shrunken copy of the fourth region's
+  // boss. wasp.glb: 1606 tris, two skinned meshes, Idle_Flying / Attacking /
+  // Death — its own clip vocabulary, so no motion is borrowed.
+  'ember-wasp': { cls: Dragonling, base: 'wasp', hp: 6, weakness: 'frost', fitHeight: 1.75,
+    puffTint: 0xffb25a,
+    clips: { fly: 'Idle_Flying', bite: 'Attacking' } },
   'frost-dragonling': { cls: Dragonling, base: 'dragon', hp: 6, weakness: 'fire', scale: 0.5,
     tint: { Main: 0x3e5c73, Belly: 0xcfe3ee, Claws: 0x1a2630, Wings: 0x7d97ad, Eyes: 0x9fe6ff } },
   'shadow-dragonling': { cls: Dragonling, base: 'dragon', hp: 7, weakness: 'moon', scale: 0.5,
@@ -3837,6 +3866,7 @@ export async function spawnEnemies(world) {
       const loaded = {};
       await Promise.all(bases.map(async (b) => {
         const path = b === 'dragon' ? './assets/chars/monsters/Dragon.glb'
+          : b === 'wasp' ? './assets/chars/monsters/wasp.glb'
           : b === 'bat' ? './assets/chars/monsters/Bat.glb' : './assets/chars/monsters/Slime.glb';
         loaded[b] = await loadGLB(path);
       }));
@@ -3848,6 +3878,7 @@ export async function spawnEnemies(world) {
           if (cfg.cls === Dragonling) {
             e = new Dragonling(world, s.x, s.z, gltf, {
               hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist, scale: cfg.scale,
+              fitHeight: cfg.fitHeight, clips: cfg.clips, puffTint: cfg.puffTint,
               tint: cfg.tint ? makeMonsterTint(cfg.tint) : undefined,
             });
           } else if (cfg.cls === Hopper) {

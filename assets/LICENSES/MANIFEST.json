@@ -354,6 +354,19 @@
     "assets/env/village"
    ],
    "note": "21 of 115 props taken. Every prop arrived with the pack's ONE 541KB atlas embedded in it — 21 byte-identical copies, sha256-verified, 12.3MB for 13,000 triangles. tools/deduct-atlas.mjs lifts the atlas out once and repoints each GLB at props_atlas.png by URI (the same way the KayKit gear names weapons_bits_texture.png): 1.5MB for the same pixels and the same geometry."
+  },
+  {
+   "pack": "Uploader-supplied creature batch (2026-09-03)",
+   "licence": null,
+   "states": "Uploader states the licences for every model in this batch are held on their Google Drive; the documents themselves are not in this repository, so nothing here can be checked against them.",
+   "evidence": "uploader-batch-2026-09-03-attestation.txt",
+   "source": "supplied by the repository owner",
+   "covers": [
+    "assets/chars/monsters/wasp.glb"
+   ],
+   "note": "SHIPPING NOW: wasp.glb is the Ember Wasp, Ember Hollow's flyer (replaces the Ember Dragonling). FIX: copy the per-model licence documents out of Google Drive into assets/LICENSES/ and split this entry per source. If any is CC-BY, its author needs a CREDITS.md row.",
+   "accepted": "private-family-use 2026-09-03",
+   "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. The FIX line above is still what would clear it."
   }
  ],
  "distribution": {

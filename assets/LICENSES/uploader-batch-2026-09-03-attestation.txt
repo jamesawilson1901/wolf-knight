@@ -1,0 +1,32 @@
+UPLOADER ATTESTATION — CREATURE MODEL BATCH, 2026-09-03
+=======================================================
+Recorded: 2026-09-03
+
+The repository owner supplied the .glb models listed under this pack in
+assets/LICENSES/MANIFEST.json and stated, in their own words:
+
+    "I have license for all of these saved on my google drive."
+    "I have licenses to use these on my google drive."
+
+This file records that permission in plain words. It is NOT a formal licence
+grant: the per-model licence documents live on the owner's Google Drive and
+have not been copied into this repository, so nothing here can be checked
+against them.
+
+WHAT WOULD CLEAR IT
+Copy each model's licence document out of Google Drive into this directory,
+one file per source, and replace this attestation with them in MANIFEST.json.
+Several of these look like Sketchfab free downloads, and many of those are
+CC-BY — which requires the author to be NAMED wherever the work is used. If any
+of them turns out to be CC-BY, its author needs a row in CREDITS.md, the same
+way bocdagla was credited for Dragon2.glb (BUILDLOG, task #95).
+
+WHAT IS SHIPPING FROM THIS BATCH
+  assets/chars/monsters/wasp.glb   — the Ember Wasp (Ember Hollow's flyer)
+
+The rest of the batch was inspected (tools/probe-newassets.mjs) and is either
+held back or rejected; the reasons are recorded in BUILDLOG.md under
+"The creature batch, measured before it was believed (2026-09-03)".
+
+This build is private family use — see .distribution and the standing decision
+recorded in tools/check-licences.mjs.

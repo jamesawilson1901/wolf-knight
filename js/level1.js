@@ -799,10 +799,10 @@ export async function buildLb(scene) {
     { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }];
-  world.markers.emberDragonlingSpots = [{ x: 4, z: 2 }];
+  world.markers.emberWaspSpots = [{ x: 4, z: 2 }];
   // NO SPITTER — a design call and a budget call that agree. The room gained
   // a two-block push puzzle, and a ranged harasser sniping a child mid-push
-  // is frustration, not challenge; three signatures (moth, dragonling,
+  // is frustration, not challenge; three signatures (moth, wasp,
   // marauder) match la's density. It was also ~6 draw calls in the room that
   // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
