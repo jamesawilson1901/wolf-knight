@@ -30,10 +30,10 @@ const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Atta
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
 // grammar the kids mastered (bosses fight like their family), new skin/stats.
-const SKINS = {
+export const SKINS = {
   shadowgrip: {
     name: 'The Shadowgrip',
-    body: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
+    hide: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
     maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
     cinder: 0xffb25a, // the caged fire spirit
     // ELEMENT AUDIT (2026-08-23): matches Ember Hollow's own mook weakness
@@ -48,9 +48,36 @@ const SKINS = {
   // half health she plants down and thorns erupt in a ring around her —
   // foreshadows the Vine-Lash's own root effect, the exact form she's
   // about to grant.
+  //
+  // SHE IS NOT A WOLF ANY MORE (2026-09-03). She was the second wolf of four,
+  // and the P7 note above already caught her being "the same boss, no
+  // different moves, recoloured" once. Now she is the horned thing the Wild
+  // Woods grew around a stolen heart: minotaur.glb, 3,234 tris, six flat
+  // materials in exactly the Quaternius register, and — the reason it was
+  // chosen over nine other candidates — its OWN idle / Walk / Attack /
+  // Attack Double / Death clips. `Attack Double` is a second swing the wolf
+  // never had, which is what her `swipe` reaches for below half health.
+  //
+  // Her horns and hooves keep their modelled colour; only the hide takes the
+  // forest green, so she reads as a creature with a coat rather than a
+  // silhouette painted one flat colour.
+  //
+  // NAMING: `body` used to be the skin's COLOUR. It is the skin's MODEL now,
+  // and the colour moved to `hide`. Both are read in this file only, and the
+  // rename is deliberate rather than an alias — a field that means a hex in
+  // four entries and a model in one is the shape of a bug waiting to happen.
   sylva: {
     name: 'Sylva, Thornbound',
-    body: 0x24381c, glow: 0x2e5220, eyes: 0xcaff8a, burst: 0x8fdc6a,
+    body: {
+      url: './assets/chars/monsters/minotaur.glb',
+      // the wolf bosses stand 3.47u (2.67u model x 1.3). She stands with them.
+      stands: 3.5,
+      eyes: ['material'],          // the model's own red eye material
+      keep: ['black', 'Material.002', 'Material.001'],  // horns, hooves, belt
+    },
+    clips: { idle: 'Armature|idle', walk: 'Armature|Walk', run: 'Armature|Walk',
+      attack: 'Armature|Attack', death: 'Armature|Death' },
+    hide: 0x24381c, glow: 0x2e5220, eyes: 0xcaff8a, burst: 0x8fdc6a,
     maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
     speedMult: 1.08,  // the forest is quicker than the shadow
@@ -72,9 +99,29 @@ const SKINS = {
   // game already gives, and the open middle band (|x|<5) is room enough to
   // clear it on foot (see tools/fight-aria.mjs). The gale is what the fight
   // is FOR, not a lock only the reward can open.
+  //
+  // AND SHE IS NOT A WOLF EITHER (2026-09-03). She was the third of four, and
+  // the most obviously wrong of them: a wolf that prowls a clifftop is not
+  // what "the Galebound" means. She wears the Quaternius dragon now — the body
+  // Boreal used to wear before Frostpeak's rebuild moved her onto the wyrm, so
+  // this costs the build nothing new — and she HOVERS: `body.hover` lifts her
+  // half a metre off the crown, so the storm-spirit reads as airborne while
+  // still fighting the ground fight the class gives her.
+  //
+  // Dragon.glb has no idle and no walk, only Flying — which is exactly right
+  // here. A thing that never touches the stone has no walk cycle to play.
   aria: {
     name: 'Aria, the Galebound',
-    body: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
+    body: {
+      url: './assets/chars/monsters/Dragon.glb',
+      stands: 3.4,
+      hover: 0.55,                 // she does not land
+      eyes: ['Eyes'],
+    },
+    clips: { idle: 'DragonArmature|Dragon_Flying', walk: 'DragonArmature|Dragon_Flying',
+      run: 'DragonArmature|Dragon_Flying', attack: 'DragonArmature|Dragon_Attack',
+      death: 'DragonArmature|Dragon_Death' },
+    hide: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
     maxHp: 26, dmg: 1.5, saveKey: 'ariaHp', legacyPhases: false,
     cinder: 0xfff4b0, // her own stormlight, held down by the gale
     speedMult: 1.14,  // the sky is quicker than the forest
@@ -99,7 +146,17 @@ const SKINS = {
   // shrinks, deep water grows, and the gift the region gave stops being optional.
   meri: {
     name: 'Meri, the Drowned',
-    body: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
+    // Her body was already a slime — but it was hard-coded in the SPAWNER
+    // (js/rooms.js) while this table still said nothing, so the table lied
+    // about a third of what it described. Naming it here is what lets
+    // tools/verify-bosses.mjs check that a skin's clips exist on the body it
+    // actually wears; that check is exactly what would have caught her fighting
+    // in her bind pose for a month.
+    body: {
+      url: './assets/chars/monsters/Slime.glb',
+      stands: 2.54,   // Slime.glb is 1.95u; the old flat 1.3x scalar made 2.54
+    },
+    hide: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
     maxHp: 28, dmg: 1.5, saveKey: 'meriHp', legacyPhases: false,
     cinder: 0x8fe4ff, // her own tide-light, held under
     speedMult: 0.92,  // deep water is not quick
@@ -138,7 +195,7 @@ const SKINS = {
   // He is FREED, not killed.
   grimm: {
     name: 'Shadow-Grimm',
-    body: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
+    hide: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
     maxHp: 32, dmg: 1.5, saveKey: 'grimmHp', legacyPhases: false,
     cinder: 0xd8cfff,
     speedMult: 1.1,
@@ -183,25 +240,79 @@ export class Shadowgrip {
     this.defeated = false;
     this.onDefeated = null;
 
-    // --- the boss body: the same Quaternius wolf as Kael's forms and the
-    // hounds, ~2.3x their size, near-black with violet eyes.
+    // --- THE BOSS BODY, AND IT IS NOT ALWAYS A WOLF.
+    //
+    // Dad, 2026-09-03: "every boss fight should be a different asset. scale
+    // assets, change their colour schemes, their bodies, their health and
+    // attack sets. the first boss is a giant wolf, no more giant wolf bosses
+    // after that." He was right and the count was worse than it looks: FOUR of
+    // the seven wore wolf.gltf — the Shadowgrip, Sylva, Aria and Grimm — so
+    // more than half the game's bosses were the same animal in a different
+    // colour.
+    //
+    // A skin now names its own `body`: which model, how tall it stands, which
+    // of its materials are eyes, and which to leave alone. The wolf's own
+    // numbers are the DEFAULTS, so the Shadowgrip and Grimm are untouched.
+    //
+    // Grimm stays a wolf on purpose, and it is not an oversight: he IS the
+    // great wolf. The Shadowgrip was a piece of him, and every form Kael
+    // carries is a piece of his stolen strength (STORY-BIBLE, "The reveal").
+    // The first fight in the game and the last being the same animal is the
+    // bookend the whole story is built on. Everything BETWEEN them is now its
+    // own creature.
+    const B = this.skin.body || {};
     this.core = new THREE.Group();
     const wolf = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
-    wolf.scale.setScalar(1.3);
+    // MEASURE, OR TAKE THE WOLF'S OWN 1.3. Every model in this batch arrives
+    // in different units — the minotaur is modelled 193 units tall — so a
+    // second typed scalar would be the crate/vase/chest mistake for the fifth
+    // time. `stands` is how tall the boss should be in the room, in metres.
+    if (B.stands) {
+      // MEASURE THE SOURCE, NOT THE CLONE — and this one cost an evening.
+      //
+      // three.js's Box3.setFromObject walks a SkinnedMesh through
+      // SkinnedMesh.computeBoundingBox(), which poses every vertex through the
+      // CURRENT skeleton. On a clone whose bone matrices have not been updated
+      // yet, those matrices are garbage, and the box comes back garbage with
+      // them: the minotaur measured 19,372 units tall instead of 193, so the
+      // scale came out a hundred times too small and the boss rendered as
+      // nothing at all — present in the graph, visible:true, correct bounding
+      // box, and simply not there.
+      //
+      // The loaded gltf's own scene has settled matrices and is never posed by
+      // a mixer, so it is the honest ruler. Measured once per body, and the
+      // clone is scaled to match.
+      const src = wolfGltf.scene;
+      src.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(src);
+      const h = Math.max(0.01, bb.max.y - bb.min.y);
+      wolf.scale.setScalar(B.stands / h);
+      // ...and put its feet ON the floor: the minotaur's mesh sits five of its
+      // own units BELOW its origin, which at this scale is ankle-deep grass.
+      // `hover` then lifts a body that is not supposed to be standing at all.
+      wolf.position.y = -bb.min.y * (B.stands / h) + (B.hover || 0);
+    } else {
+      wolf.scale.setScalar(1.3);
+    }
+    const eyeNames = B.eyes || ['Eyes_Black'];
+    const keepNames = B.keep || ['Nose'];
     this.eyeMat = null;
     wolf.traverse((n) => {
       if (!n.isMesh) return;
       const mats = Array.isArray(n.material) ? n.material : [n.material];
       n.material = mats.map((m) => {
         const c = m.clone();
-        if (m.name === 'Eyes_Black') {
+        if (eyeNames.includes(m.name)) {
           c.emissive = new THREE.Color(this.skin.eyes);
           c.emissiveIntensity = 1.2;
           this.eyeMat = c;
-        } else if (m.name === 'Nose') {
+        } else if (keepNames.includes(m.name)) {
+          // the wolf's nose goes near-black; a body that names its own keeps
+          // (the minotaur's horns and hooves) keeps them exactly as modelled
+          if (B.keep) return c;
           c.color.setHex(0x0a0710);
         } else {
-          if (c.color) c.color.setHex(this.skin.body);
+          if (c.color) c.color.setHex(this.skin.hide);
           c.emissive = new THREE.Color(this.skin.glow);
           c.emissiveIntensity = 0.35;
         }

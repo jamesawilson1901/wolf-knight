@@ -13,7 +13,7 @@ import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
 import { setRoomSeed, pathsThroughDoors } from './ground.js';
 import { spawnEnemies } from './enemies.js';
-import { Shadowgrip, Boreal } from './boss.js';
+import { Shadowgrip, Boreal, SKINS as BOSS_SKINS } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
@@ -3461,13 +3461,7 @@ export async function buildRoom(rawId, scene) {
   await spawnEnemies(world);
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
-    if (bs.kind === 'meri') {
-      // The Sunken Vale's guardian is a TIDE BLOB, enormous — the family the
-      // kids have fought all region, so the hop and the helpless landing are
-      // reads they already own.
-      const slimeGltf = await loadGLB('./assets/chars/monsters/Slime.glb');
-      new Shadowgrip(world, bs.x, bs.z, slimeGltf, 'meri');
-    } else if (bs.kind === 'boreal') {
+    if (bs.kind === 'boreal') {
       // Frostpeak's guardian is no wolf — she FLIES, which is why bolts
       // (full damage to flyers, since region 1) finally decide a fight.
       // BOREAL'S BODY, 2026-09-01. She wore the Quaternius dragon, which has
@@ -3480,10 +3474,21 @@ export async function buildRoom(rawId, scene) {
       const dragonGltf = await loadGLB('./assets/chars/monsters/wyrm.glb');
       new Boreal(world, bs.x, bs.z, dragonGltf);
     } else {
-      // Giant-wolf duels wear the same class: the Shadowgrip in Ember, Sylva
-      // the Thornbound in the Wild Woods (bosses fight like their family).
-      const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-      new Shadowgrip(world, bs.x, bs.z, wolfGltf, bs.skin || 'shadowgrip');
+      // THE DUEL CLASS IS SHARED; THE BODY IS NOT (2026-09-03). The crouch,
+      // the red lane and the gold collapse ring are the grammar every one of
+      // these bosses speaks — that is the law working, and it is why a child
+      // who beat the Shadowgrip can read Sylva at a glance. What each of them
+      // now brings is its own animal: js/boss.js SKINS[..].body names the
+      // model, and a skin that names none wears the wolf, which is what the
+      // Shadowgrip and Shadow-Grimm are supposed to be.
+      // `kind` is the older spelling of `skin` and level6 still uses it for
+      // Meri. One resolution, so a room can say either and the body always
+      // comes from the skin table rather than from a branch up here.
+      const skinName = bs.skin || bs.kind || 'shadowgrip';
+      const bodyUrl = (BOSS_SKINS[skinName] && BOSS_SKINS[skinName].body
+        && BOSS_SKINS[skinName].body.url) || './assets/chars/wolf.gltf';
+      const bodyGltf = await loadGLB(bodyUrl);
+      new Shadowgrip(world, bs.x, bs.z, bodyGltf, skinName);
     }
   }
   return world;

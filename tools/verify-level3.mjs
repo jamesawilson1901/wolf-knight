@@ -188,9 +188,19 @@ for (const [p, host] of Object.entries(POCKETS)) {
 }
 const dead = SPACES.filter((id) => S[id] && S[id].doors.length === 0);
 check('no space is a dead end', dead.length === 0, { dead });
-// the level's OUTSIDE edges: south through the vine to the crypt (vz — the
-// den door was the run-3 stranding trap, D1), north to Frostpeak once freed
-const ALL = new Set([...SPACES, 'vz', 'f1']);
+// THE OUTSIDE EDGES ARE ASKED OF THE GAME, NOT LISTED HERE.
+//
+// This was `new Set([...SPACES, 'vz', 'f1'])` — the two neighbours the Wild
+// Woods had on the day it was written. The Greenway shipped between Stoneroot
+// and Thornedge (2026-09-03) and t1a's south door moved to g2, so a check
+// whose whole job is "no door leads nowhere" reported a REAL door as a broken
+// one. A hand-kept list of room ids rots every time a level is built next
+// door; the live registry cannot.
+const REGISTERED = await page.evaluate(async () => {
+  const m = await import('/js/rooms.js');
+  return Object.keys(m.ROOMS || {});
+});
+const ALL = new Set([...SPACES, ...REGISTERED]);
 const dangling = [];
 for (const id of SPACES) for (const d of (S[id] ? S[id].doors : [])) if (!ALL.has(d.to)) dangling.push(`${id}→${d.to}`);
 check('no door leads to a room that does not exist', dangling.length === 0, { dangling });

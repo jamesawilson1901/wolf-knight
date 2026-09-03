@@ -22,7 +22,8 @@ of them turns out to be CC-BY, its author needs a row in CREDITS.md, the same
 way bocdagla was credited for Dragon2.glb (BUILDLOG, task #95).
 
 WHAT IS SHIPPING FROM THIS BATCH
-  assets/chars/monsters/wasp.glb   — the Ember Wasp (Ember Hollow's flyer)
+  assets/chars/monsters/wasp.glb      — the Ember Wasp (Ember Hollow's flyer)
+  assets/chars/monsters/minotaur.glb  — Sylva, Thornbound (the Wild Woods boss)
 
 The rest of the batch was inspected (tools/probe-newassets.mjs) and is either
 held back or rejected; the reasons are recorded in BUILDLOG.md under

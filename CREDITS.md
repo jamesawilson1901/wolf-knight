@@ -46,7 +46,7 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 | ⚠ Animated Monster Pack | Quaternius | Cave Slime + Cave Bat enemies (FBX converted to GLB offline; Dragon is the Shadowgrip boss body) | https://quaternius.com |
 | Stylish Plants | Nobiax / yughues | Decorative flora (OBJ/FBX) | https://opengameart.org/users/yughues |
 | ✓ Modular Dungeon Pack | Quaternius | Stoneroot Caverns interiors — walls, floors, torches, traps, statues (converted OBJ→GLB) | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
-| ⚠ **Uploader-supplied creature batch (2026-09-03)** | various (see note) | **The Ember Wasp** (`assets/chars/monsters/wasp.glb`) — Ember Hollow's flyer. Licences held by the repository owner on Google Drive; not copied into the repo, so no author can be named here yet. Several look like Sketchfab free downloads, and many of those are CC-BY — if any of these is, its author needs a row of their own. | supplied by the repository owner |
+| ⚠ **Uploader-supplied creature batch (2026-09-03)** | various (see note) | **The Ember Wasp** (`assets/chars/monsters/wasp.glb`) — Ember Hollow's flyer — and **Sylva, Thornbound** (`assets/chars/monsters/minotaur.glb`), the Wild Woods boss. Licences held by the repository owner on Google Drive; not copied into the repo, so no author can be named here yet. Several look like Sketchfab free downloads, and many of those are CC-BY — if any of these is, its author needs a row of their own. | supplied by the repository owner |
 | Particle Pack | Kenney | FX sprites — later phases | https://kenney.nl/assets/particle-pack |
 | UI Pack | Kenney | HUD graphics — later phases | https://kenney.nl/assets/ui-pack |
 

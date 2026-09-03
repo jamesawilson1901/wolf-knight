@@ -362,9 +362,10 @@
    "evidence": "uploader-batch-2026-09-03-attestation.txt",
    "source": "supplied by the repository owner",
    "covers": [
-    "assets/chars/monsters/wasp.glb"
+    "assets/chars/monsters/wasp.glb",
+    "assets/chars/monsters/minotaur.glb"
    ],
-   "note": "SHIPPING NOW: wasp.glb is the Ember Wasp, Ember Hollow's flyer (replaces the Ember Dragonling). FIX: copy the per-model licence documents out of Google Drive into assets/LICENSES/ and split this entry per source. If any is CC-BY, its author needs a CREDITS.md row.",
+   "note": "SHIPPING NOW: wasp.glb is the Ember Wasp, Ember Hollow's flyer (replaces the Ember Dragonling); minotaur.glb is Sylva, Thornbound, the Wild Woods boss. FIX: copy the per-model licence documents out of Google Drive into assets/LICENSES/ and split this entry per source. If any is CC-BY, its author needs a CREDITS.md row.",
    "accepted": "private-family-use 2026-09-03",
    "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. The FIX line above is still what would clear it."
   }

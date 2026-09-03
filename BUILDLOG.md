@@ -4938,3 +4938,83 @@ the door, whether the live result matches what a returning child sees on a
 rebuild — and then fires the real defeat hook and **walks through the new door
 on real keys**.
 
+
+## The creature batch, measured before it was believed (2026-09-03, v3.103.0)
+
+Fourteen models arrived with "see what fits the build, what works enlarged as a
+boss or shrunk down to work as a everyday minion enemy." So the first thing
+built was not a boss — it was two tools:
+
+- **`tools/probe-newassets.mjs`** measures each candidate against the three
+  things CLAUDE.md's 2026-08-23 amendment actually asks: is it a real mesh
+  (tris, meshes, materials), does it sit in the low-poly register (textures,
+  texture size, vertex colours, draw cost), and is it *rigged with the same
+  clip vocabulary* — idle / walk / attack / death — so it animates to the same
+  standard rather than being a static prop wearing a monster's shape. It prints
+  `wolf.gltf`, `Slime.glb`, `Dragon.glb` and `Skeleton_Warrior.glb` on the same
+  scale underneath, so "does it fit" is a comparison rather than an opinion.
+- **`tools/probe-assetshots.mjs`** renders each one at a fixed three-quarter
+  angle, normalised to Kael's own height, because a triangle count cannot tell
+  you whether something looks like it belongs next to a wolf.
+
+### What the measurements said
+
+| model | verdict |
+|---|---|
+| **minotaur** | **IN.** 3,234 tris, six flat materials in exactly the Quaternius register, and its own idle / Walk / Attack / **Attack Double** / Death / Jump. The best asset in the batch by a distance. |
+| **cartoony wasp** | **IN.** 1,606 tris, Idle_Flying / Attacking / Death, and already near game scale. |
+| griffin | **OUT, and it hurt.** 670 tris, beautifully faceted, perfect for a sky guardian — and its only clip is a 7.8-second near-idle. Rendered six frames across it (`asset-raw/…/strips/`): nothing moves. It would be a statue in a fight. |
+| skeleton dragon | **HELD.** Full attack/fly/dive/walk/idle vocabulary and a superb blocky look — and **394 separate meshes** against a 125 draw-call ceiling. It cannot ship as it is. |
+| young dragon | held — 1,920 tris, one clip (`cyclewalk`). A whelp minion if it ever gets an attack. |
+| 4 stylized dragons | out on budget: 15k, 24k, 48.8k and 49.1k tris. The whole game's smashables cost one draw call each on purpose. |
+| bennu, orc archer, rhino rider, low-poly dragon, fantasy owl | out as creatures — no rig or no clips at all. The orc archer's vertex-coloured look is the closest thing in the batch to the shipped kits; all five are noted as **statue/monument** candidates for a dressing pass. |
+
+### Seven bosses, seven creatures
+
+Dad: *"every boss fight should be a different asset… the first boss is a giant
+wolf, no more giant wolf bosses after that."* The count was worse than it
+looked: **four of the seven wore `wolf.gltf`** — the Shadowgrip, Sylva, Aria
+and Shadow-Grimm — and Meri's slime body was hard-coded in the *spawner* while
+the skin table said nothing about it, so the table lied about a third of what
+it described.
+
+A skin now names its own `body`: which model, how tall it stands, which of its
+materials are eyes, which to leave alone, and whether it hovers.
+
+- **Sylva, Thornbound** is the minotaur, green-hided with her leaf-light in her
+  eyes; horns and hooves keep their modelled colour so she reads as a creature
+  with a coat rather than a silhouette painted one flat colour.
+- **Aria, the Galebound** wears the Quaternius dragon — the body Boreal used to
+  wear before Frostpeak's rebuild moved her onto the wyrm, so it costs the
+  build nothing new — and she **hovers**: a thing that never touches the stone
+  has no walk cycle to play, which is why `Dragon.glb` having only `Flying` is
+  exactly right for her.
+- **Shadow-Grimm stays a wolf on purpose.** He IS the great wolf; the
+  Shadowgrip was a piece of him and every form Kael carries is a piece of his
+  stolen strength. The first fight and the last being the same animal is the
+  bookend the story rests on. `tools/verify-bosses.mjs` names that pair
+  explicitly so it stays a decision instead of drifting back into an oversight.
+
+### The evening this cost, written down so it is not spent twice
+
+The minotaur went in and rendered as **nothing**: present in the scene graph,
+`visible: true`, a correct-looking bounding box, and simply not there.
+
+`THREE.Box3.setFromObject` walks a `SkinnedMesh` through
+`SkinnedMesh.computeBoundingBox()`, which poses every vertex through the
+**current** skeleton. On a fresh `SkeletonUtils.clone` whose bone matrices have
+not been updated yet, those matrices are garbage — so she measured **19,372
+units tall instead of 193**, the scale came out a hundred times too small, and
+the skinning collapsed. The fix is to measure the loaded gltf's own scene,
+which has settled matrices and is never posed by a mixer. It is the same
+lesson as the chest, the crate and the vase — *measure the model* — with a new
+edge on it: **measure the ruler, not the puppet.**
+
+### And the Ember Wasp
+
+`ember-dragonling` is gone; `ember-wasp` replaces it, keeping the `Dragonling`
+class so the hover / red-lane / dive / grounded-by-a-shield grammar is
+unchanged. `frost-dragonling` and `shadow-dragonling` keep the dragon body on
+purpose: Frostpeak's boss IS a dragon, so its region's flyer sharing that
+family is the law working rather than being worked around.
+
