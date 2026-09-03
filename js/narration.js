@@ -27,6 +27,14 @@ export const LINES = {
   intro_arrival: { voice: 'pip', text: 'This is Ember Hollow, Kael. The shadows crept in here… I feel it. Stay close.' },
   first_enemy: { voice: 'pip', text: 'Careful — a shadow! Tap to swing your sword.' },
   dark_nook: { voice: 'pip', text: 'It’s too dark to see in there. Hold the wolf button — the round one down there — and pick the Dark Wolf. He can see in the shadows.' },
+  // THE NIGHT ROAD (js/levelNight.js). Two lines, because a road at night is
+  // the one place in the game where a child can be genuinely unsure there is a
+  // way on at all — and the answer is a wolf they were given in the first ten
+  // minutes and have not needed since. The second REPEATS on purpose: this is
+  // the level's whole idea, it is optional, and a hint you hear once at four
+  // years old is a hint you did not hear.
+  night_road_enter: { voice: 'pip', text: 'The old road out of the Hollow… nobody has lit these lamps in a long time. Stay on the path, Kael.' },
+  night_road_dark: { voice: 'pip', text: 'I can’t see a thing out there! Be the Dark Wolf — hold the wolf button and pick him. He can see in the dark.', repeat: true },
   obstacle_first: { voice: 'pip', text: 'Burnt vines block the way. We’ll need fire for these. Let’s remember this spot.' },
   r2_enter: { voice: 'pip', text: 'Watch your step — lava ahead. Stay on the stone.' },
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },

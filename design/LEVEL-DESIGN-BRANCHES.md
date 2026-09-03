@@ -125,3 +125,72 @@ Waived, with the reason:
 - **new enemy family** — both branches are traversal, not new bestiary
 - **new world verb** — all four are already taught
 - **new music track** — each branch reuses its parent region's
+
+---
+
+# THE IN-BETWEEN LEVELS (2026-09-03)
+
+Dad: *"we are going to add a new level that doesn't reward a wolf but something
+else inbetween all existing levels. give me ideas for the additional levels
+inbetween."*
+
+Both branches above became this instead, and it is a better shape. A BRANCH
+hangs off a region and can be missed entirely; an INTERSTITIAL sits ON the road
+between two regions, so every child walks it, which is the same "build where the
+players actually are" argument one step further. Seven regions have six gaps
+between them:
+
+| gap | between | owns | built |
+|-----|---------|------|-------|
+| 1 | Ember Hollow → Stoneroot | fire, dark | **THE NIGHT ROAD** (`n1`/`n2`) |
+| 2 | Stoneroot → Wild Woods | + earth | — |
+| 3 | Wild Woods → Frostpeak | + verdant | — |
+| 4 | Frostpeak → Stormreach | + frost | **THE DROWNED MARKET** (`q1`/`q2`) |
+| 5 | Stormreach → Sunken Vale | + storm | — |
+| 6 | Sunken Vale → Shadow Court | + tide | — |
+
+## The rules every one of them keeps
+
+1. **No wolf.** The ladder is finished at ten and the tenth is the ending's
+   gift. They pay in a KEEPSAKE — `js/treasures.js`, one per level, found never
+   bought, and doing absolutely nothing.
+2. **No pups**, for the reason recorded above: the heart awards are keyed on a
+   global running count.
+3. **No boss and no new verb.** A road is not a region.
+4. **Two rooms.** A road must not out-scale the regions it joins.
+5. **Graduate the verb behind, show the lock ahead.** The one job a road can do
+   that neither of the places it joins can. Both built ones do it literally:
+   Frost opens the Market's stalls and its deep water is region six's; the Dark
+   Wolf reads the Night Road and its cracked rock is region two's.
+6. **Nothing new vendored.** Each wears a shipped kit re-tinted.
+
+## 1 — THE NIGHT ROAD (`js/levelNight.js`, prefix `n`) — BUILT
+
+Ember Hollow's boss door used to open straight into Stoneroot's Great Vault; it
+opens onto two rooms of moor at night now, and `n2`'s north door is the one that
+reaches `vh`.
+
+**Why this gap first:** it is the earliest gap in the game, which under dad's own
+law outranks every other idea in this file. And it is the only place where a
+child has almost nothing — two wolves — so the level had to be about one of the
+two: the DARK WOLF, whose senses (hidden things shimmer) and sight (dark zones
+black the rig out for every other form) are the most interesting tools a beginner
+owns and the least used after the Den hands them over.
+
+**The road is the puzzle, and the puzzle is not a gate.** `n1` is unlit wall to
+wall past the camp — the biggest dark zone in the game, against `ld1`'s 20x16
+pocket — with a washout across its middle, a thorn nook to burn off the road, and
+a chest in the heather with nothing in front of it at all: a thing a child in the
+wrong shape walks straight past. But NOTHING is locked: the road is walkable in
+any form, the pit's rim is drawn with an unlit material so the edge is findable
+in the blackout, and a fall costs the walk and never a heart. A child who never
+opens the form wheel still gets to Stoneroot. A child who does gets the level.
+
+Keepsake: **The Wayfarer's Key** — an old iron key with no lock left that fits it.
+
+## 2, 3, 5, 6 — not built
+
+Each one's design is decided when it is built, against the table above: what the
+child owns coming in, and what the region ahead will ask for. Its keepsake lands
+in `js/treasures.js` **the same day its rooms do** — rule 3 of that file, and
+`tools/verify-treasures.mjs` fails if that order slips.

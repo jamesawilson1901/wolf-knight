@@ -28,6 +28,7 @@ import { LEVEL6_ROOMS, loadValeKit } from './level6.js';
 import { LEVEL7_ROOMS, loadCourtKit } from './level7.js';
 import { LEVELVILLAGE_ROOMS, loadVillageKit } from './levelVillage.js';
 import { LEVELMARKET_ROOMS, loadMarketKit } from './levelMarket.js';
+import { LEVELNIGHT_ROOMS } from './levelNight.js';   // built from Ember's kit, pulled cold — no loader of its own
 import { LEVELSPIRE_ROOMS } from './levelSpire.js';   // built from Ember's kit — no loader of its own
 import { buildPotionMesh } from './loot.js';
 
@@ -4126,7 +4127,7 @@ async function buildF5(scene) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
+export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5, f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -4155,6 +4156,13 @@ export async function buildRoom(rawId, scene) {
     // `visibleReward` handing back a proto cube instead of registering a chest,
     // so the market shipped with no loot at all and no error anywhere.
     if (state.settings.greybox === false) await loadMarketKit();
+  } else if (id[0] === 'n') {
+    // THE NIGHT ROAD (levelNight.js) wears Ember's kit pulled cold, the same
+    // way the Spire below does. The prefix has to be named HERE: a room id
+    // whose first letter is not in this chain falls through to the default
+    // branch and builds in GREYBOX forever, which is how the Drowned Market
+    // shipped with proto cubes for chests and no error anywhere.
+    if (state.settings.greybox === false) await loadEmberKit();
   } else if (id[0] === 'm') {
     // THE MOONLIT SPIRE wears Ember's masonry, re-tinted cold (levelSpire.js) —
     // one kit, two regions, nothing new vendored for four rooms.

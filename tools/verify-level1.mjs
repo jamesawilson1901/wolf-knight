@@ -147,7 +147,18 @@ console.log('\n── 4. no dead ends ──────────────
 const dead = SPACES.filter((id) => S[id] && S[id].doors.length === 0);
 check('no space is a dead end', dead.length === 0, { dead });
 // and nothing points at a room that does not exist
-const ALL = new Set([...SPACES, 'zoo', 'den']);
+// ...and "exists" means EXISTS IN THE GAME, not "is one of Level 1's own".
+// This was `[...SPACES, 'zoo', 'den']` — a hand-built set, one level wide, and
+// the same class of rot the room lists above were derived out of. Every door
+// Level 1 has that leaves Level 1 (le → the Night Road, ld → Ember Deep, la →
+// the Den) was a dangling door by that definition and only stayed green
+// because the onward door needs `bossDefeated`. The live registry cannot be
+// wrong about which rooms exist.
+const LIVE = await page.evaluate(async () => {
+  const { ROOMS } = await import('/js/rooms.js');
+  return Object.keys(ROOMS);
+});
+const ALL = new Set([...SPACES, ...LIVE, 'zoo', 'den']);
 const dangling = [];
 for (const id of SPACES) for (const d of (S[id] ? S[id].doors : [])) if (!ALL.has(d.to)) dangling.push(`${id}→${d.to}`);
 check('no door leads to a room that does not exist', dangling.length === 0, { dangling });

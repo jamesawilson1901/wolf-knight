@@ -99,6 +99,25 @@ ROOMS registry builds each room from kit pieces; flat-plane collisions
 (kilnLandmark). Region = room id prefix. LEVEL-DESIGN-2.md holds the
 seven layout rules + region graphs.
 
+## The roads between regions (js/levelNight.js, js/levelMarket.js)
+INTERSTITIALS: two-room levels that sit ON the road between two regions
+and pay in a KEEPSAKE rather than a wolf (js/treasures.js — the form
+ladder is finished at ten). No boss, no new verb, and NO PUPS (the
+heart awards key on a global running count). Each graduates the verb
+the child just earned and shows the lock for the region ahead.
+`n1`/`n2` THE NIGHT ROAD (Ember → Stoneroot): unlit moor, the biggest
+dark zone in the game, a washout across the middle whose pale rim is
+drawn unlit so it is findable in any form, one thorn nook to burn and
+one chest out in the heather that only the Dark Wolf's senses find;
+cracked rock at the far end for the Earth Wolf ahead. Wears Ember's kit
+pulled cold (`emberKitRef()`).
+`q1`/`q2` THE DROWNED MARKET (Frostpeak → Stormreach): a fishing town
+under ice, `slickFloor` + `iceGate` stalls for the Frost Wolf, deep
+`waterZone` channels (a box collider until region six) with the far
+quay in sight. Wears the Village's props.
+Both are `stone-deep` musically, and both prefixes are named in
+rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
+
 ## The Moonlit Spire (js/levelSpire.js) — the finale
 Four rooms behind the `m` prefix, opened by restoring the Village and
 granting the ELEMENTAL WOLF at the top. An epilogue capstone like the

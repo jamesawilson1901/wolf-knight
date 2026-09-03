@@ -164,6 +164,17 @@ hours. Symptoms already diagnosed here:
   match itself, or poll the artifact (the log file) instead of the process.
 - **Anonymous GitHub API calls return nothing** through the proxy — use the
   authenticated MCP tools for CI status instead of `curl`.
+- **A long suite left running in the BACKGROUND can be restarted under you**
+  (2026-09-03). The log kept replaying from its first line and `ps -o etime`
+  on both the wrapper shell and its node child read about a minute while
+  wall-clock minutes went by — the run was being relaunched, not running
+  slowly, and three "hangs" chased that afternoon were three fresh runs. Two
+  responses, both worth having: run a driver in the FOREGROUND under
+  `timeout 580`, and keep each suite short enough to fit there. Which is a
+  design constraint on the suite, not a workaround — `verify-nightroad` asked
+  seven questions with eleven room rebuilds until it was rewritten to ask them
+  all in one visit per room, and a rebuild is the most expensive thing this
+  harness does.
 
 ---
 
@@ -196,6 +207,25 @@ so there is nothing to gate on at all.
   `renderer.info.render.calls` in a live probe (ceiling: 125, target <100
   per `design/METRICS.md`). The town's streets were measured at 42–53
   before shipping, not assumed to fit.
+- **Flood-fill before you trust a wall.** A promise gate only means anything
+  if it is the ONLY way in, and reading the builder cannot tell you that: the
+  Night Road's thorn nook was walled at the mouth and open along the back of
+  the room, so the chest could be taken without burning anything. Flooding the
+  real colliders from the real spawn (the fill in `verify-reachable.mjs`,
+  copied into a scratch probe with an ASCII map of the room) answers it in one
+  run — and printing the map is what shows you the lane you thought you left.
+- **A lane a flood-fill calls connected can still be a wall to a child.**
+  The same room's east fork measured three units wide between a fallen column
+  and a ruin; the driver wedged in it twice while the fill happily called the
+  far side reachable. Connectivity is the floor, not the bar.
+- **Drive the room in the shape a child will be in.** `verify-nightroad`
+  walks the dark road twice — once measuring that the dark is real and the
+  Dark Wolf lifts it, once walking the whole thing as the Knight, in the
+  black, to prove the level is not gated on knowing the trick.
+- **`verify-density` takes room ids** — `node tools/verify-density.mjs n1 n2`
+  measures only those, which is a twenty-second loop instead of a twenty-minute
+  one while dressing a new room. The completeness check still runs on the whole
+  live registry.
 - **Look at the screenshot.** After the numbers pass, a human-eye check of
   a real frame catches what no assertion does — the corrupted-tint town
   read as "black slabs" until a warm-state screenshot confirmed the houses

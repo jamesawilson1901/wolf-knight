@@ -1344,10 +1344,16 @@ export async function buildLe(scene) {
   sideDoor(world, 's', halfW, halfD, 'lg4', { x: 0, z: -3.2, angle: 0 });
   // THE LOOP-BACK: a one-way walked door home, opened by the boss (rule 4).
   if (onward) sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
-  // ...and ONWARD to Stoneroot. Level 1 is now the game's first level rather
-  // than a demo reachable only from the cheat menu (fix plan A1), so beating
-  // the Shadowgrip has to actually lead somewhere.
-  if (onward) sideDoor(world, 'n', halfW, halfD, 'vh', { x: 0, z: 10, angle: Math.PI });
+  // ...and ONWARD. Level 1 is now the game's first level rather than a demo
+  // reachable only from the cheat menu (fix plan A1), so beating the Shadowgrip
+  // has to actually lead somewhere.
+  //
+  // IT LEADS ONTO THE ROAD NOW, not straight into the Great Vault. This door
+  // used to hand a child from Ember's boss arena to Stoneroot's hub in one
+  // step; js/levelNight.js is the two rooms of walking between them, and it is
+  // where the Dark Wolf — earned in the Den, barely asked for since — finally
+  // gets a place of its own. n2's north door is the one that opens on `vh`.
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'n1', { x: 0, z: 11, angle: Math.PI });
 
   heroProp(world, 0, -2, 'cage', D.tint, D);               // ▲ CINDER'S CAGE
   world.markers.heroSpot = { x: 0, z: -2 };

@@ -60,12 +60,19 @@ const trackIn = async (room) => {
   });
 };
 
-// one ordinary room per region, in the order a child walks them
+// one ordinary room per region, in the order a child walks them — and that
+// order now includes the two ROADS between regions, which is exactly where the
+// adjacency rule below has to hold hardest: a road exists to make the change of
+// place felt, and one that sounds like the region behind it has failed at its
+// only job. Neither was routed at all until 2026-09-03; both fell through to
+// Ember's `bossDefeated` branch and played the Den's lullaby.
 const REGIONS = [
   { id: 'la',  region: 'Ember Hollow' },
+  { id: 'n1',  region: 'The Night Road' },
   { id: 'va1', region: 'Stoneroot' },
   { id: 't1b', region: 'Wild Woods' },
   { id: 'f1',  region: 'Frostpeak' },
+  { id: 'q1',  region: 'The Drowned Market' },
   { id: 's1b', region: 'Stormreach' },
   { id: 'd1b', region: 'Sunken Vale' },
   { id: 'x1',  region: 'Shadow Court' },

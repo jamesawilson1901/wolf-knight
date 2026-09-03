@@ -102,6 +102,8 @@ const ROOMS = [
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
   { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
+  // The Night Road — the road between Ember Hollow and Stoneroot
+  { id: 'n1',  kind: 'island' }, { id: 'n2',  kind: 'island' },
   // The Drowned Market — the road between Frostpeak and Stormreach
   { id: 'q1',  kind: 'island' }, { id: 'q2',  kind: 'island' },
   // ── AUDITED IN 2026-09-03 ────────────────────────────────────────────────
@@ -207,12 +209,25 @@ const MIN_IN_FRAME = { island: 32, pocket: 20, choke: 21, puzzle: 15, arena: 14 
 // number exists to make impossible to repeat.
 const MIN_MODELS = { island: 14, pocket: 10, choke: 7, puzzle: 7, arena: 10 };
 
+// NAME ROOMS ON THE COMMAND LINE to measure only those — `node
+// tools/verify-density.mjs n1 n2`. The completeness check above always runs on
+// the whole registry, so a filtered run can still tell you a room is missing;
+// what it skips is the ninety-odd room rebuilds you did not ask about, which is
+// the difference between a twenty-minute suite and a twenty-second one while
+// dressing a new room. An unfiltered run is unchanged.
+const ONLY = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const MEASURE = ONLY.length ? ROOMS.filter((r) => ONLY.includes(r.id)) : ROOMS;
+if (ONLY.length) {
+  check('every named room exists in the list', MEASURE.length === ONLY.length,
+    { asked: ONLY, found: MEASURE.map((r) => r.id) });
+}
+
 console.log(`Arrival frame: ${HALF_W * 2}u wide, ${AHEAD}u ahead of spawn, ${BEHIND}u behind.\n`);
 console.log('room   inFrame  models  colliders  breakables  chests  floorσ  calls');
 console.log('─'.repeat(74));
 
 const rows = [];
-for (const R of ROOMS) {
+for (const R of MEASURE) {
   if (!(await go(R.id))) { check('build ' + R.id, false); continue; }
   const m = await page.evaluate(async ({ ahead, behind, halfW }) => {
     const g = window.__game;

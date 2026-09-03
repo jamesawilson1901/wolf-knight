@@ -4435,3 +4435,124 @@ a console warning — so the frozen harbour was drawing a dirt floor, and the on
 reason it measured a healthy sigma was that the fallback is textured. Caught by
 reading `ground.js` while fixing Frostpeak, not by any suite: the check asks
 whether a floor VARIES, not whether it is the floor you asked for.
+
+## The Night Road — the interstitial the kids will actually walk (2026-09-03)
+
+Dad's own sentence, from scrapping the Trial of the Ten: *"post-game content is
+the wrong target — the kids are not finishing the game yet."* The Drowned
+Market shipped the day before at gap FOUR, between Frostpeak and Stormreach,
+which is already further than they have got. This one is gap ONE.
+
+Two rooms of moor at night, `n1`/`n2`, on the road out of Ember Hollow. `le`'s
+north door used to hand a child straight from the Shadowgrip's arena into
+Stoneroot's Great Vault; it opens onto the road now, and `n2`'s north door is
+the one that reaches `vh`.
+
+### Why the Dark Wolf
+
+At gap one a child owns exactly two wolves. Fire, which Ember spent five rooms
+teaching — and the DARK WOLF, which the Den hands over in the first ten minutes
+and the game then barely mentions again. Its senses (hidden things shimmer,
+`player.js` FORM_DEFS.senses) and its sight (dark zones black the light rig out
+for every other form) are the most interesting tools a beginner owns and the
+least used. `ld1`, the Order Hall, is the only room in the game built on them,
+and it is a 20x16 pocket.
+
+So the road is unlit wall to wall past the camp: the biggest dark zone in the
+game. A washout across the middle of `n1`, a thorn nook off the road to burn,
+and a chest out in the heather with **nothing in front of it at all** — no gate,
+no wall, no puzzle, just somewhere a child in the wrong shape walks straight
+past and a child in the right one sees from ten units away. That is the whole
+lesson of the level in one object.
+
+### ...and nothing is locked behind it
+
+The failure mode of a "you must be the Dark Wolf" room is a five-year-old
+stranded on the road out of level one, which is the worst place in the game to
+strand somebody. So: the road is walkable in any form, the washout's pale rim is
+drawn with an UNLIT material (`MeshBasicMaterial` — it ignores the blacked-out
+rig, which is why the edge stays findable in the dark), and a fall costs the walk
+and never a heart. `tools/verify-nightroad.mjs` walks it BOTH ways for that
+reason: once measuring that the dark is real and the wolf lifts it, and once
+walking the whole road as the Knight, in the black, to the far door.
+
+Keepsake: **The Wayfarer's Key** (`js/treasures.js`), an old iron key with no
+lock left in the world that fits it — and the plainest read in the treasure set,
+which matters most for the first keepsake a child is ever handed.
+
+Nothing new was vendored. It wears Ember's kit pulled cold and blue through
+`emberKitRef()`, exactly as the Spire does.
+
+### Three things a new level has to be NAMED in, and two nobody had noticed
+
+The Market's lesson held: `rooms.js` dispatches its art-kit load on a room id's
+first letter, so `n` had to be named there or the road builds in greybox forever
+with proto cubes for chests. It also has to join `sw.js`'s precache list, and
+`verify-density`'s ROOMS with its kind.
+
+Two more that the Market itself had missed, found while wiring this one:
+
+- **`regionOf()` in main.js.** Both roads fell through its final `return
+  'ember_hollow'`.
+- **`updateMusic()`.** Same hole one paragraph later: neither road was routed,
+  so both fell to the `bossDefeated` branch — always true by the time a child
+  can reach either — and the frozen harbour and the night moor both played the
+  DEN'S LULLABY. Both are `stone-deep` now, the game's darkest loop, and nothing
+  adjacent to either uses it. `verify-music`'s region walk includes both roads
+  now, which is where the "no two adjacent places sound the same" rule has to
+  hold hardest: a road exists to make a change of place felt.
+
+### What the walk found that reading the code did not
+
+Four real defects, all in the first cut, all caught by driving the room rather
+than by looking at it:
+
+1. **The painted path ran through the hole.** `ground()`'s path spline went
+   (-8,-2) → (-4,-9), which clips the washout's west corner. A floor that draws
+   a road across a pit is the exact lie `vh`'s own path comment warns about, and
+   the Knight walking the west lane fell twice and never reached the far door.
+2. **The thorn nook was open at the back.** The mouth was walled and nothing
+   else, and the room's north strip runs the full width — so the chest could be
+   taken by walking round the wall along z -11, without burning anything. A
+   promise gate has to be the only way in or it is decoration. Found by
+   flood-filling from the spawn: the nook's floor came back reachable with the
+   thorn still standing.
+3. **The east lane was three units wide.** A fallen column plus a ruin left a
+   gap a flood-fill calls connected and a five-year-old on a joystick calls a
+   wall — the driver wedged in it twice. The column moved and the ruin went into
+   the corner; the lane is seven units now.
+4. **A torch stood in the middle of the west lane, in the pitch dark.** 0.42u of
+   collider on a 2.8u road, at the one point in the game where a child cannot
+   see what stopped them.
+
+And one design rule that came out of it rather than out of a suite: **what you
+fight in the dark has to be visible in the dark.** A Shade is near-black by
+design (colour 0x241a38 over emissive 0x2a1b3a at 0.35) and simply vanishes in a
+blacked-out rig; a Moth carries emissive 0xffb25a at 1.4 and reads as a pair of
+burning wings whatever the light is doing. The shades stand on the lit side of
+the line and the dark half is patrolled by the things that glow.
+
+### Two tools that were lying
+
+- **`wk-drive`'s wedge diagnostic read `g.state.clock`, which does not exist.**
+  Every stuck report therefore said `clockMoved: false` — "the world is frozen"
+  — for what was always ordinary geometry, and it cost two passes chasing the
+  wrong thing. It reads `player._time` now, which is the clock the 'dead'
+  verdict two lines above it already uses.
+- **`verify-nightroad` killed its own bot.** Section 4 dropped the player's
+  iframes to prove a fall costs nothing — but a pit deals no damage in the first
+  place, so all that achieved was letting the moths kill the bot in the dark and
+  stall the run in the respawn path.
+
+### And one hand-kept list, again
+
+`verify-level1`'s "no door leads to a room that does not exist" compared against
+`[...SPACES, 'zoo', 'den']` — a set one level wide. Every door Level 1 has that
+LEAVES Level 1 was a dangling door by that definition, and it only stayed green
+because the onward door needs `bossDefeated`. It reads the live `ROOMS` registry
+now. Same fix, fourth time.
+
+`verify-density` also learned to take room ids on the command line
+(`node tools/verify-density.mjs n1 n2`), which turns a twenty-minute suite into
+a twenty-second one while dressing a room. The completeness check still runs on
+the whole registry, so a filtered run can still tell you a room is missing.

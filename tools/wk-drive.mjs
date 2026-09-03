@@ -119,11 +119,18 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
             // cannot advance the game clock. Read both while it is happening.
             const guts = await page.evaluate(async () => {
               const g = window.__game;
-              const c1 = g.state.clock;
+              // `g.state.clock` DOES NOT EXIST — there is no such field in
+              // js/state.js, so this read was always undefined and
+              // `clockMoved` was always false, which made every wedge look
+              // like a frozen world and sent two debugging sessions after the
+              // wrong thing. The player's own accumulated time is the clock
+              // that a halted loop stops advancing (it is what the 'dead'
+              // verdict above already uses).
+              const c1 = g.player._time;
               await new Promise((r2) => setTimeout(r2, 600));
               const vis = (id) => { const el = document.getElementById(id);
                 return el ? getComputedStyle(el).display !== 'none' : null; };
-              return { clockMoved: g.state.clock !== c1,
+              return { clockMoved: g.player._time !== c1,
                 inv: vis('inv-menu'), shop: vis('shop-menu'), map: vis('map-menu'),
                 mg: vis('mg-tap'), pausePanel: vis('pause-menu'),
                 caption: !!document.querySelector('#caption.show, .caption.show'),

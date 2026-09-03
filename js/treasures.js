@@ -49,6 +49,18 @@ export const TREASURES = {
     blurb: 'Still warm, after all that time.',
     from: 'Ember Deep',
   },
+  // THE NIGHT ROAD's keepsake — the road between Ember Hollow and Stoneroot.
+  // An old iron key, and no lock left anywhere that fits it: the road had
+  // houses on it once, and this is the one thing on the whole moor that is
+  // proof of it. It is also the plainest READ in the set — a five-year-old
+  // knows what a key is from across the room, which matters most for the
+  // earliest keepsake, the first one a child will ever be handed.
+  wayfarers_key: {
+    name: "The Wayfarer's Key",
+    file: './assets/loot/treasure/key-skeleton.glb',
+    blurb: 'Somebody\'s door, a long time ago.',
+    from: 'The Night Road',
+  },
   // THE DROWNED MARKET's keepsake. Teal, because the whole town is under ice
   // and this is the one thing in it that was worth keeping — and because the
   // set wants to read as a map of where you have been, which only works if no

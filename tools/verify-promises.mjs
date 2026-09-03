@@ -102,7 +102,7 @@ const useVerb = (form, gx, gz, ox, oz, ry) => page.evaluate(async (a) => {
 
 // facings: forward is (sin ry, cos ry) — ry 0 faces +z, PI faces -z,
 // PI/2 faces +x, -PI/2 faces -x.
-const W = -Math.PI / 2, E = Math.PI / 2;
+const W = -Math.PI / 2, E = Math.PI / 2, N = Math.PI;
 
 const GATES = [
   { room: 'la',  name: 'L1 · the cracked wall',   chest: 'l1_crack_promise', gate: 'l1_crack_gate',
@@ -115,6 +115,15 @@ const GATES = [
     form: 'verdant_wolf', gx: -11, gz: -6, ox: 2.4, oz: 0, ry: W },
   { room: 't1b', name: 'L3 · the ice-sealed spring', chest: 'l3_t1b_ice', gate: 'l3_spring_ice',
     form: 'frost_wolf',   gx: 11, gz: 4,  ox: -2.4, oz: 0, ry: E },
+  // THE NIGHT ROAD's two, added the day it shipped (js/levelNight.js). This
+  // list is hand-kept and cannot be derived — the approach geometry (where a
+  // child stands and which way they face to swing) is nowhere in the game
+  // data — so the only defence against it rotting is adding the entry with the
+  // gate. Ember Deep's burn nooks are still missing from it.
+  { room: 'n1', name: 'Night Road · the thorn nook', chest: 'n1_thorn_prize', gate: 'n1_thorn',
+    form: 'fire_wolf',    gx: 13.5, gz: -7, ox: 0, oz: 2.2, ry: N },
+  { room: 'n2', name: 'Night Road · the wardstone crack', chest: 'n2_crack_prize', gate: 'n2_wardstone_crack',
+    form: 'earth_wolf',   gx: -11.5, gz: -1, ox: 2.4, oz: 0, ry: W },
 ];
 
 for (const G of GATES) {

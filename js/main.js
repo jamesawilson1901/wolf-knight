@@ -790,6 +790,17 @@ function narrationTriggers(dt, t) {
     if (m.scarSpot && nearSpot(m.scarSpot, 2.4)) narration.say('scar_r1');
   }
 
+  // THE NIGHT ROAD. Pip names the road on arrival and then, at the edge of the
+  // dark, says the one thing a non-reader needs: which button turns the lights
+  // on. `night_road_dark` repeats — the road is walkable without it, so a child
+  // who ignores the hint is not stuck, and a child who missed it gets it again.
+  if (state.room === 'n1') {
+    narration.say('night_road_enter');
+    if (m.darkMouth && nearSpot(m.darkMouth, 3.2) && state.form !== 'dark_wolf') {
+      narration.say('night_road_dark');
+    }
+  }
+
   if (state.room === 'den') {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
@@ -1349,6 +1360,13 @@ function updateMusic() {
   // the cold high hush — a moonlit tower over a sleeping world — until the
   // crown, which is the warmest room in the game and sounds like it.
   else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'village-dark');
+  // THE TWO ROADS BETWEEN REGIONS. Neither was routed either, and both fell
+  // through to the bossDefeated branch below — which is always true by the time
+  // a child can reach them — so the frozen harbour and the night road were both
+  // playing the Den's lullaby. `stone-deep` is the game's darkest loop and
+  // nothing adjacent to either road uses it (Ember has region-ember, Stoneroot
+  // region-stone, Frostpeak and Stormreach their own).
+  else if (state.room[0] === 'n' || state.room[0] === 'q') audio.playMusic('stone-deep');
   else if (state.room === 'm3') audio.playMusic('ember-calm');
   else if (state.room[0] === 'm') audio.playMusic('spire');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
@@ -1864,6 +1882,8 @@ function regionOf(id) {
   if (r[0] === 'x') return 'shadowcourt';
   if (r[0] === 'y') return 'village';
   if (r[0] === 'm') return 'spire';
+  if (r[0] === 'n') return 'night_road';   // the road out of Ember (levelNight.js)
+  if (r[0] === 'q') return 'market';       // the road into Stormreach (levelMarket.js)
   if (r[0] === 'l') return 'ember_hollow';
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
