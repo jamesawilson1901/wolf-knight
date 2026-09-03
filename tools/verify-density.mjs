@@ -104,6 +104,8 @@ const ROOMS = [
   { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
   // The Night Road — the road between Ember Hollow and Stoneroot
   { id: 'n1',  kind: 'island' }, { id: 'n2',  kind: 'island' },
+  // The Greenway — the road between Stoneroot and the Wild Woods
+  { id: 'g1',  kind: 'island' }, { id: 'g2',  kind: 'island' },
   // The Drowned Market — the road between Frostpeak and Stormreach
   { id: 'q1',  kind: 'island' }, { id: 'q2',  kind: 'island' },
   // ── AUDITED IN 2026-09-03 ────────────────────────────────────────────────

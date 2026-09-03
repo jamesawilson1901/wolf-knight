@@ -802,6 +802,9 @@ function narrationTriggers(dt, t) {
     }
   }
 
+  // THE GREENWAY: Pip names the road once, on the way up out of the stone.
+  if (state.room === 'g1') narration.say('green_road_enter');
+
   if (state.room === 'den') {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
@@ -1367,7 +1370,7 @@ function updateMusic() {
   // playing the Den's lullaby. `stone-deep` is the game's darkest loop and
   // nothing adjacent to either road uses it (Ember has region-ember, Stoneroot
   // region-stone, Frostpeak and Stormreach their own).
-  else if (state.room[0] === 'n' || state.room[0] === 'q') audio.playMusic('stone-deep');
+  else if (state.room[0] === 'n' || state.room[0] === 'g' || state.room[0] === 'q') audio.playMusic('stone-deep');
   else if (state.room === 'm3') audio.playMusic('ember-calm');
   else if (state.room[0] === 'm') audio.playMusic('spire');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the

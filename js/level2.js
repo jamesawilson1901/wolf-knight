@@ -1559,7 +1559,9 @@ export async function buildVz(scene) {
   // the dead centre of the stair dressing, so leaving the crypt materialised
   // the child inside the geometry.
   sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -10.2, angle: 0 }, { half: BOSS_DOOR_HALF });
-  if (beaten) sideDoor(world, 'n', halfW, halfD, 't1a', { x: 0, z: 9, angle: Math.PI });
+  // ...ONTO THE GREENWAY (js/levelGreen.js), the road up out of the stone;
+  // g2's north door is the one that reaches Thornedge.
+  if (beaten) sideDoor(world, 'n', halfW, halfD, 'g1', { x: 0, z: 11, angle: Math.PI });
 
   heroProp(world, 0, -9, 'throne', D);           // ▲ THE WARDEN'S THRONE
   world.markers.heroSpot = { x: 0, z: -9 };

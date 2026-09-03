@@ -37,6 +37,11 @@ const ONWARD = {
   // --- Frostpeak: still the old build, and still played --------------------
   f1: 'f2', f2: 'f3', f3: 'f4', f4: 'f5',
   f1b: 'f1', f2b: 'f2',
+  // --- The roads between regions (levelNight, levelGreen, levelMarket): two
+  // rooms each, one way on.
+  n1: 'n2', n2: 'vh',
+  g1: 'g2', g2: 't1a',
+  q1: 'q2', q2: 's1a',
 
   // --- Stormreach: a switchback -------------------------------------------
   s1a: 's1b', s1b: 'sc1', sc1: 's2a', s2a: 's2b', s2b: 'ssh', ssh: 'sc2',

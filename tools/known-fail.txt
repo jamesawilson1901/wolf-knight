@@ -19,4 +19,3 @@
 # Removing an entry: once the underlying room/system is actually fixed, the
 # suite will show as a stale known-fail on its own; delete the line then,
 # don't wait for someone to notice the warning.
-verify-density.mjs | ONE room misses the arrival-density floor by two things — ysq 30/32 — down from twenty on 2026-09-03 and three the same afternoon: the two Frostpeak rooms that were short (f1 26, f4 29) came off this line when the region was rebuilt at module scale (js/level4.js; f1 measures 50 and f4 41 now). The Village square is the last, and it is two things short of a heuristic in a room that is a hub by design. | 2026-09-03 proven

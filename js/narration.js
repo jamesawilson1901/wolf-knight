@@ -35,6 +35,9 @@ export const LINES = {
   // years old is a hint you did not hear.
   night_road_enter: { voice: 'pip', text: 'The old road out of the Hollow… nobody has lit these lamps in a long time. Stay on the path, Kael.' },
   night_road_dark: { voice: 'pip', text: 'I can’t see a thing out there! Be the Dark Wolf — hold the wolf button and pick him. He can see in the dark.', repeat: true },
+  // THE GREENWAY (js/levelGreen.js): one line, because the road explains
+  // itself — the vine from the crypt wall runs up it, and a child follows it.
+  green_road_enter: { voice: 'pip', text: 'The vine goes UP, Kael — out of the stone! I can smell trees. Follow it.' },
   obstacle_first: { voice: 'pip', text: 'Burnt vines block the way. We’ll need fire for these. Let’s remember this spot.' },
   r2_enter: { voice: 'pip', text: 'Watch your step — lava ahead. Stay on the stone.' },
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },

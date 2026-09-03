@@ -4733,3 +4733,58 @@ the key is held until the stone commits now.
 
 **Not done here:** `tools/run-l4.mjs`, the real-play route driver, is written
 against the old room coordinates and needs re-porting to the new layout.
+
+## The Greenway — the road out of the stone (2026-09-03, v3.98.0)
+
+Board item 7, and the second of the three interstitials: the gap between
+Stoneroot Caverns and the Wild Woods. Two rooms, `g1` and `g2`, prefix `g`,
+spliced in between `vz` (the Warden's crypt) and `t1a` (Thornedge). Like the
+Night Road it rewards no wolf — an interstitial's job is to make the wolf you
+already have feel like *yours* before the next region asks for a new one.
+
+### What it is for
+
+Stoneroot teaches the stone-stomp in a side room and then never asks for it
+again on the critical path. The Greenway is the graduation: **the road north
+out of `g1` is cracked rock wall to wall**, so the stomp a child learned as a
+detour is now the way they walk. Two more piles off the road, one each side,
+each with something behind it, so stomping becomes a thing you go *looking*
+to do rather than a thing a room makes you do.
+
+`g2` is the handover to the Wild Woods: the first bramble in the game seals a
+spoil there, visible and unopenable, and it stays shut until Sylva hands over
+the Verdant Wolf two rooms later. A lock you meet before you meet the key.
+
+### Decisions
+
+- **The rockfall is walled to the pile.** The first cut left 2.4u either side
+  of the rock and a flood-fill walked straight round it. A gate that is not
+  the only way in is decoration. `wallRun` pads its box collider 0.5u past
+  each end, so runs to ±1.8 reach ±1.3 and the big pile's 1.2u collider closes
+  the rest. Proved by flood-filling the real colliders (`resolveCircle`) from
+  the spawn, standing and stomped: `reach:false` then `reach:true`.
+- **The keepsake is the Rootstone** (`gem-emerald.glb`), behind the third
+  crack in a walled east nook — a treasure a child can open *today* with the
+  wolf they already have, which is rule 3 of `js/treasures.js`.
+- **The vine is geometry, and it is not kept loose.** A green line of leaning
+  stones runs the length of the road, so the way on reads without a word. Left
+  out of the static batch it cost `g1` its whole draw budget (132 calls against
+  125); allowed to batch it is 117.
+- **`registerDistrictTints(LG, DISTRICTS)`**, so the Greenway colours its own
+  doorways and shows up on the rebuilt map screen without a hand-kept list.
+
+### What the suite caught that reading the source did not
+
+`tools/verify-greenway.mjs` walks it with real keys, and two of its three
+failures were the *driver* misreading a level that was already right:
+
+- **The stomp has an eight-second cooldown.** The helper pressed the key five
+  times 600ms apart — three seconds — so every press after the first landed
+  inside the cooldown of the one before. The second pile in a run never broke,
+  and the suite reported it as "the chest gave nothing", which is exactly the
+  shape of a real bug. It now waits the cooldown out before each press.
+- **A straight line into the east nook drives into the rockfall wall.** The
+  wall spans the room at z −4 with one 2.6u mouth at x 0; the driver now walks
+  the waypoints a child would.
+- The one real defect: the nook walls, which is the item above.
+

@@ -29,7 +29,8 @@ import { LEVEL7_ROOMS, loadCourtKit } from './level7.js';
 import { LEVELVILLAGE_ROOMS, loadVillageKit } from './levelVillage.js';
 import { LEVELMARKET_ROOMS, loadMarketKit } from './levelMarket.js';
 import { LEVELNIGHT_ROOMS } from './levelNight.js';
-import { LEVEL4_ROOMS, loadFrostKit } from './level4.js';   // built from Ember's kit, pulled cold — no loader of its own
+import { LEVEL4_ROOMS, loadFrostKit } from './level4.js';
+import { LEVELGREEN_ROOMS, loadGreenKit } from './levelGreen.js';   // built from Ember's kit, pulled cold — no loader of its own
 import { LEVELSPIRE_ROOMS } from './levelSpire.js';   // built from Ember's kit — no loader of its own
 import { buildPotionMesh } from './loot.js';
 
@@ -3397,7 +3398,7 @@ function blockRowRocks(world, x0, z0, x1, z1) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
+export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -3419,6 +3420,9 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadCourtKit();
   } else if (id[0] === 'y') {
     if (state.settings.greybox === false) await loadVillageKit();
+  } else if (id[0] === 'g') {
+    // THE GREENWAY (levelGreen.js): Stoneroot's stone and the Woods' trees
+    if (state.settings.greybox === false) await loadGreenKit();
   } else if (id[0] === 'f') {
     // FROSTPEAK, rebuilt (js/level4.js) — the last region out of this file
     if (state.settings.greybox === false) await loadFrostKit();

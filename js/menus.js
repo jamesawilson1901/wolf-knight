@@ -462,6 +462,7 @@ export class Menus {
       { key: 'ember_hollow', name: 'Ember Hollow',     open: () => true,               done: () => F.bossDefeated },
       { key: 'night_road',  name: 'The Night Road',    open: () => F.bossDefeated },
       { key: 'stoneroot',   name: 'Stoneroot Caverns', open: () => F.bossDefeated,     done: () => F.wardenDefeated },
+      { key: 'greenway',    name: 'The Greenway',      open: () => F.wardenDefeated },
       { key: 'wildwoods',   name: 'The Wild Woods',    open: () => F.wardenDefeated,   done: () => F.sylvaDefeated },
       { key: 'frostpeak',   name: 'Frostpeak',         open: () => F.sylvaDefeated,    done: () => F.borealDefeated },
       { key: 'market',      name: 'The Drowned Market', open: () => F.borealDefeated },

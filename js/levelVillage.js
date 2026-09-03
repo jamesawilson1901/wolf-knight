@@ -499,6 +499,18 @@ export async function buildYsq(scene) {
   // time, so a child glancing at the hub always knows the score without a
   // UI read (design doc §4). Real from day one — guardiansDown() is real
   // state, not a placeholder — so nothing downstream waits on art.
+  // TWO THINGS SHORT. The square measured 30 in its arrival frame against a
+  // floor of 32 for months — the clutter above is one atlas material and
+  // flattenStatic folds it into a handful of batches, so piling on more of it
+  // never moved the count (the Market learned the same). Two felled logs by
+  // the south way, each its own model and its own collider, are two things.
+  if (!GREY()) {
+    for (const [x, z, ry] of [[-4.6, 9.4, 0.9], [4.6, 9.2, -1.1]]) {
+      if (world.blocked(x, z, 0.9)) continue;
+      placeOne(world, villageKit.stump, 'stump', x, z, 1.25, ry, 0x6a5a48);
+      world.addCircle(x, z, 0.6);
+    }
+  }
   world.markers.villageTreeSpot = { x: 0, z: 0 };
   if (!GREY()) {
     placeOne(world, villageKit.stump, 'stump', 0, 0, 5.0, 0.4, 0x5a4a3a);

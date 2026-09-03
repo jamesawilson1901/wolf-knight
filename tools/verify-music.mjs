@@ -70,6 +70,7 @@ const REGIONS = [
   { id: 'la',  region: 'Ember Hollow' },
   { id: 'n1',  region: 'The Night Road' },
   { id: 'va1', region: 'Stoneroot' },
+  { id: 'g1',  region: 'The Greenway' },
   { id: 't1b', region: 'Wild Woods' },
   { id: 'f1',  region: 'Frostpeak' },
   { id: 'q1',  region: 'The Drowned Market' },

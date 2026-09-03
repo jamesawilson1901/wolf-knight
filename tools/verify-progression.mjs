@@ -50,7 +50,12 @@ check('...and the road reaches Level 2 (vh)', n2.includes('vh'), { doors: n2 });
 await page.evaluate(() => { window.__game.state.flags.wardenDefeated = true; });
 await go('vz');
 const vz = await doorsOf();
-check('beating the Bone Warden opens the way to Level 3 (t1a)', vz.includes('t1a'), { doors: vz });
+// ...by way of THE GREENWAY (js/levelGreen.js): the crypt opens onto g1, and
+// g2's north door is the one that reaches Thornedge.
+check('beating the Bone Warden opens the way onto the Greenway (g1)', vz.includes('g1'), { doors: vz });
+await go('g2');
+const g2 = await doorsOf();
+check('...and the road reaches Level 3 (t1a)', g2.includes('t1a'), { doors: g2 });
 // Level 3 Sylva down → onward to Frostpeak
 await page.evaluate(() => { window.__game.state.flags.sylvaDefeated = true; });
 await go('tgl');

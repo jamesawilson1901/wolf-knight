@@ -61,6 +61,16 @@ export const TREASURES = {
     blurb: 'Somebody\'s door, a long time ago.',
     from: 'The Night Road',
   },
+  // THE GREENWAY's keepsake — the road up out of Stoneroot into the Wild
+  // Woods. Emerald is the woods (the note above), and this is the first green
+  // thing a child is handed: something that was a seed once, or a stone, and
+  // has been both for long enough that it is hard to say which.
+  rootstone: {
+    name: 'The Rootstone',
+    file: './assets/loot/treasure/gem-emerald.glb',
+    blurb: 'A seed once. Or a stone. Hard to say.',
+    from: 'The Greenway',
+  },
   // THE DROWNED MARKET's keepsake. Teal, because the whole town is under ice
   // and this is the one thing in it that was worth keeping — and because the
   // set wants to read as a map of where you have been, which only works if no
