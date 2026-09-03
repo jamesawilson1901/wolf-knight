@@ -379,6 +379,20 @@ reason as the three above.
    (banners, cobwebs, portal haze) hangs vertical. A name list would have
    needed touching every time a new hanging prop shipped; this does not.
 
+10. **A finding you cannot act on the next morning is half a finding.**
+   (`verify-looks.mjs` §6.) The arrival-view check fired on yg1 across two
+   consecutive full sweeps and printed one field: the prop's name. No
+   distance, no hit position, no spawn. Reproducing it took an afternoon of
+   probes — yg1 built alone is clear, yg1 built after its three neighbours is
+   clear, a narrowed five-room run passes every section — and then the third
+   full sweep passed too, with no change in between that could move a wall in
+   X. So it is order- or state-dependent across 146 rooms, it is NOT fixed,
+   and it stopped reproducing. Every one of those hours was spent recovering
+   information the check had had in its hand and thrown away. Print the
+   measurement, not just the verdict: §6 now reports the distance, the point
+   the ray stopped at and the room's own spawn, so the next firing is
+   actionable on sight.
+
 And the recurring lesson of the whole batch, for the fourth time: **a hand-kept
 list rots.** `verify-landings` carried a 130-name array whose own header already
 recorded it rotting once — and it had rotted again past the Night Road, the

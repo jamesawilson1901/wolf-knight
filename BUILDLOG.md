@@ -5271,3 +5271,26 @@ anywhere" test collapsed back into the single-ray version it was written to
 replace — silently, while printing a finding that looked real. The count is
 asserted now rather than trusted: a sampler that can return almost nothing
 turns a question about the room into a question about where the sampler looked.
+
+### The yg1 finding that stopped reproducing
+
+`verify-looks` §6 named yg1 on two consecutive full sweeps — a village wall
+filling the view a child arrives looking at — and then passed on the third.
+Everything below is measurement, not reading:
+
+* yg1 built on its own: all five rays of the arrival fan CLEAR.
+* yg1 built after ysq, yhs and ylw in the same page: CLEAR.
+* `verify-looks yg1 ysq yhs ylw f3`: every section passes.
+* Neither Village change made between the failing and the passing sweep can
+  move a wall in X. The clutter clamp only touches `clutter()` props, and the
+  wall comes from `placeOne`; the `placeOne` grounding only moves Y, and in
+  the direction that would produce MORE hits at eye height, not fewer.
+
+So it is order- or state-dependent across 146 rooms, and it is **not fixed** —
+it stopped firing. It stays on the board (task #122) rather than being closed,
+because "it went away" is how a bug comes back.
+
+The expensive part was not the bug. §6 printed the prop's NAME and nothing
+else — no distance, no hit position, no spawn — so recovering enough to think
+about took an afternoon of probes, all of it re-measuring what the check had
+already had in its hand. It reports the measurement now, not just the verdict.

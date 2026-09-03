@@ -185,6 +185,7 @@ const rows = await page.evaluate(async (ids) => {
     if (w.spawn && typeof w.spawn.angle === 'number') {
       const eye = new THREE.Vector3(w.spawn.x, 1.15, w.spawn.z);
       const hitNames = [];
+      let first = null;
       for (let i = -2; i <= 2; i++) {
         const a = w.spawn.angle + i * 0.14;          // ±16° across the fan
         const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a)).normalize();
@@ -197,11 +198,22 @@ const rows = await page.evaluate(async (ids) => {
           .filter((x) => !foeMeshes.has(x.object))
           .filter((x) => !/floor|ground|path|patch|water|road/i.test(x.object.name || ''))[0];
         hitNames.push(h ? (h.object.name || h.object.geometry.type) : null);
+        if (h && !first) first = { d: +h.distance.toFixed(2),
+          at: [+(eye.x + dir.x * h.distance).toFixed(1), +(eye.z + dir.z * h.distance).toFixed(1)] };
       }
       // all five rays stopped, and on the same thing: that is a wall of prop,
       // not a fencepost the eye slides past
+      //
+      // REPORT ENOUGH TO ACT ON. The first version printed the prop's name and
+      // nothing else, and when yg1 fired once and then stopped firing there was
+      // no distance, no position and no spawn to work back from — which turned
+      // a five-minute fix into an afternoon of probes that could not reproduce
+      // it. A finding that cannot be acted on the next morning is half a
+      // finding.
       if (hitNames.every(Boolean) && new Set(hitNames).size === 1) {
-        blocking.push({ prop: hitNames[0] });
+        blocking.push({ prop: hitNames[0], hit: first,
+          spawn: { x: +w.spawn.x.toFixed(1), z: +w.spawn.z.toFixed(1),
+            angle: +w.spawn.angle.toFixed(2) } });
       }
     }
 
