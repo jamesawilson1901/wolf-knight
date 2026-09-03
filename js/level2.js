@@ -1585,7 +1585,15 @@ export async function buildVz(scene) {
   }
   rubbleField(world, -11.5, 0, 2.6, D, 11);
   rubbleField(world, 11.5, 0, 2.6, D, 11);
-  rubbleField(world, 0, -11.5, 2.8, D, 12);
+  // THE NORTH DOORWAY IS NOT DRESSING SPACE. This pile used to sit at
+  // (0, -11.5) with a 2.8 radius, dead centre on the crypt's onward gap — and
+  // the Greenway's own door lands a child at (0, -10.5), one metre inside it,
+  // so coming back down from g1 materialised them in a heap of rubble
+  // (verify-landings §3: "g1 → vz lands inside a prop, pushed 0.92"). Split in
+  // two and moved to the corners either side: same amount of stone in the
+  // room, none of it in the way of the door the boss was guarding.
+  rubbleField(world, -7.0, -11.5, 2.2, D, 6);
+  rubbleField(world, 7.0, -11.5, 2.2, D, 6);
   aftermath(world, -9, -10, 2.0, D, 36);
   aftermath(world, 9, -10, 2.0, D, 37);
   scatter(world, halfW, halfD, D, 111, 6, { spin: 0, kinds: ['column', 'skull', 'brick'] });

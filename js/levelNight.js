@@ -342,8 +342,18 @@ export async function buildN2(scene) {
   // upright, with the road running past it — you are somewhere now, and the
   // next place has a name.
   wayshrine(world, 2.5, 6.5, 0.3, D);
+  // THE PILLAR CAME OFF THE ROAD'S CENTRE LINE. It stood at (0.0, 7.5) — and
+  // a child arrives at (0, 11) facing north, so the first thing they saw was
+  // a stone column three and a half metres dead ahead, filling the middle of
+  // the screen, with the way on hidden behind it. Dad photographed it: "move
+  // the door to the left more so players can see it. it's currently not
+  // viable behind the giant pillar." Moving the DOOR would have bent the road
+  // and the region entrance behind it; moving the PILLAR off the axis costs
+  // nothing and clears the view down the road, which is the thing he wanted.
+  // verify-looks §6 stands at every spawn now and looks, so no room can grow
+  // one of these again in silence.
   roadside(world, D, [
-    ['pillar', 0.0, 7.5, 1.1, 0], ['pillar', -3.0, 4.0, 0.9, 0.4],
+    ['pillar', -3.6, 7.2, 1.1, 0], ['pillar', -3.0, 4.0, 0.9, 0.4],
     ['column', 5.5, 8.5, 1.0, 0], ['column', -6.5, 9.0, 1.0, 0.2],
     ['torch', -1.5, 11.0, 1.0, 0.3], ['torch', 4.0, 10.0, 1.0, -0.4],
     ['torch', -4.0, 1.0, 1.0, 0.6], ['torch', 6.5, 3.0, 1.0, -0.2],

@@ -178,8 +178,14 @@ export async function buildQ1(scene) {
     paths: [[[0, 12], [-4, 6], [-8, 0], [-4, -6], [0, -12]]],
   });
   world.spawn = { x: 0, z: 11, angle: Math.PI };
-  // f5 is a 26x26 arena since the Frostpeak rebuild (level4.js): land inside its north door
-  sideDoor(world, 's', halfW, halfD, 'f5', { x: 0, z: -11, angle: 0 });
+  // f5 is a 26x26 arena since the Frostpeak rebuild (level4.js): land inside its
+  // north door — and clear of the rime plug that seals it while Boreal flies.
+  // That plug's collider runs to z = -11.3, so a landing at -11 clipped it by
+  // two centimetres (verify-landings §3). A child only walks back down this
+  // road with Boreal already calmed and the plug gone, so nothing was broken
+  // in play — but a landing that is only safe because of a flag is a landing
+  // waiting to break, and -10.6 is clear of it in either state.
+  sideDoor(world, 's', halfW, halfD, 'f5', { x: 0, z: -10.6, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'q2', { x: 0, z: 11, angle: Math.PI });
 
   // THE HARBOUR IS FROZEN, AND FROZEN GROUND BEHAVES. Same flag the Frozen Lake

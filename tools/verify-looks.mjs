@@ -38,6 +38,9 @@ const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const ROOM_IDS = only.length ? only : await allRooms(page);
 console.log(`asking the game: ${ROOM_IDS.length} rooms`);
 
+// UNBATCHED, for the door raycast below: flattenStatic merges scenery by
+// material and cell, and a ray that hits "batched" cannot say what it hit.
+await page.evaluate(() => { window.__noBatch = true; });
 const rows = await page.evaluate(async (ids) => {
   const rooms = await import('/js/rooms.js');
   const THREE = await import('three');
@@ -86,32 +89,115 @@ const rows = await page.evaluate(async (ids) => {
     //
     // A ray from eye height at the spawn to the middle of each doorway. If it
     // hits anything before it gets there, something is standing in the way.
+    // WHAT COUNTS AS "IN THE WAY" IS MUCH NARROWER THAN "SOMETHING IS THERE".
+    // The first cut of this test cast ONE ray, from the spawn, and reported
+    // twelve rooms. Eleven were a pedestal or a column standing eight metres
+    // off in a twenty-two metre sightline — a thing a child walks two steps
+    // around and never notices. Dad's complaint was not "a prop crossed my
+    // line": it was "it's currently not viable behind the giant pillar", a
+    // door you cannot find AT ALL. So the question the suite asks is the one
+    // he actually asked: is there ANYWHERE in this room you can stand and see
+    // this doorway? Spawn plus a ring of standing spots around the room; a
+    // door seen from none of them is hidden, a door seen from one is fine.
+    //
+    //   * a monster is not level design — it moves, and it is supposed to be
+    //     between you and the way on;
+    //   * a puzzle gate blocking a door is the gate WORKING (bars, roots, ice);
+    //   * and the room must be measured UNBATCHED, because flattenStatic
+    //     merges forty props into one mesh called "batched" and then the
+    //     answer to "what is in the way" is always the same useless word.
+    const foeMeshes = new Set();
+    for (const e of (w.enemies || [])) {
+      if (!e.root) continue;
+      e.root.traverse((n) => { if (n.isMesh) foeMeshes.add(n); });
+    }
+    const MEANT_TO_BLOCK = /bars|gate|thorn|rootbar|ice|arch|plug|bramble/i;
+
+    // Where a child can stand: the arrival point first, then a ring of spots
+    // the collision solver agrees are floor. blocked() is the game's own
+    // ruler, so every viewpoint here is a place the child can really be.
+    const eyes = w.spawn ? [{ x: w.spawn.x, z: w.spawn.z }] : [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      for (const f of [0.35, 0.62]) {
+        const x = Math.cos(a) * w.halfW * f, z = Math.sin(a) * w.halfD * f;
+        if (!w.blocked(x, z, 0.6)) eyes.push({ x, z });
+      }
+    }
+
     const ray = new THREE.Raycaster();
-    const from = new THREE.Vector3(w.spawn.x, 1.15, w.spawn.z);
     const hidden = [];
     for (const dr of (w.doors || [])) {
       const cx = (dr.minX + dr.maxX) / 2, cz = (dr.minZ + dr.maxZ) / 2;
       // aim a little INSIDE the doorway, so the shell wall around it is not
       // itself the thing we hit
       const inx = cx * 0.86, inz = cz * 0.86;
-      const to = new THREE.Vector3(inx, 1.15, inz);
-      const dir = to.clone().sub(from);
-      const dist = dir.length();
-      if (dist < 1.5) continue;                 // standing in it already
-      ray.set(from, dir.normalize());
-      ray.far = dist - 0.6;
-      const hits = ray.intersectObject(w.root, true)
-        .filter((h) => h.object.isMesh && h.object.visible
-          && !(h.object.material && h.object.material.transparent))
-        .filter((h) => h.distance > 0.8);
-      if (hits.length) {
+      let seen = 0, firstBlock = null;
+      for (const eye of eyes) {
+        const from = new THREE.Vector3(eye.x, 1.15, eye.z);
+        const dir = new THREE.Vector3(inx, 1.15, inz).sub(from);
+        const dist = dir.length();
+        if (dist < 1.5) { seen++; continue; }   // standing in it already
+        ray.set(from, dir.normalize());
+        ray.far = dist - 0.6;
+        const hits = ray.intersectObject(w.root, true)
+          .filter((h) => h.object.isMesh && h.object.visible
+            && !(h.object.material && h.object.material.transparent))
+          .filter((h) => h.distance > 0.8)
+          .filter((h) => !foeMeshes.has(h.object))
+          .filter((h) => {
+            let n = h.object, name = '';
+            while (n) { name += ' ' + (n.name || ''); n = n.parent; }
+            return !MEANT_TO_BLOCK.test(name);
+          });
+        if (!hits.length) seen++;
+        else if (!firstBlock) firstBlock = { name: hits[0].object.name
+          || hits[0].object.geometry.type, at: +hits[0].distance.toFixed(1) };
+      }
+      if (seen === 0) {
         hidden.push({ to: dr.to, at: { x: +cx.toFixed(1), z: +cz.toFixed(1) },
-          blockedBy: hits[0].object.name || hits[0].object.geometry.type,
-          atDistance: +hits[0].distance.toFixed(1), doorAt: +dist.toFixed(1) });
+          blockedBy: firstBlock && firstBlock.name,
+          atDistance: firstBlock && firstBlock.at, standingSpots: eyes.length });
       }
     }
 
-    out.push({ id, dark, pots, rings, hidden });
+    // --- the arrival view: what is standing right in front of a child? ----
+    // The door test above asks "can this doorway be seen from ANYWHERE", and
+    // that is the right question for a door. It is not the whole of what dad
+    // photographed. He arrives in a room, and a pillar is dead ahead of him,
+    // three metres away, filling the middle of the screen — and the way on is
+    // behind it. n2 was exactly that: spawn at (0, 11) facing north, a road
+    // running north, and a roadside pillar planted at (0.0, 7.5), on the axis.
+    //
+    // So this measures the first frame. A narrow fan along the spawn's own
+    // facing angle — the direction the camera is pointed the instant the room
+    // loads — and if EVERY ray in it hits the same prop close in, that prop is
+    // standing in the doorway of the child's own view.
+    const blocking = [];
+    if (w.spawn && typeof w.spawn.angle === 'number') {
+      const eye = new THREE.Vector3(w.spawn.x, 1.15, w.spawn.z);
+      const hitNames = [];
+      for (let i = -2; i <= 2; i++) {
+        const a = w.spawn.angle + i * 0.14;          // ±16° across the fan
+        const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a)).normalize();
+        ray.set(eye, dir);
+        ray.far = 4.2;                                // "right in front of me"
+        const h = ray.intersectObject(w.root, true)
+          .filter((x) => x.object.isMesh && x.object.visible
+            && !(x.object.material && x.object.material.transparent))
+          .filter((x) => x.distance > 0.8)
+          .filter((x) => !foeMeshes.has(x.object))
+          .filter((x) => !/floor|ground|path|patch|water|road/i.test(x.object.name || ''))[0];
+        hitNames.push(h ? (h.object.name || h.object.geometry.type) : null);
+      }
+      // all five rays stopped, and on the same thing: that is a wall of prop,
+      // not a fencepost the eye slides past
+      if (hitNames.every(Boolean) && new Set(hitNames).size === 1) {
+        blocking.push({ prop: hitNames[0] });
+      }
+    }
+
+    out.push({ id, dark, pots, rings, hidden, blocking });
   }
   return out;
 }, ROOM_IDS);
@@ -144,8 +230,14 @@ check('no low-segment ring is painted on any floor', marked.length === 0, marked
 console.log('\n── 5. you can see the way on from where you arrive ────');
 const blocked = [];
 for (const r of rows) for (const h of (r.hidden || [])) blocked.push({ room: r.id, ...h });
-check('no doorway is hidden behind something from the room\'s own arrival point',
+check('no doorway is invisible from every standing spot in its room',
   blocked.length === 0, blocked.slice(0, 12));
+
+console.log('\n── 6. nothing stands in the middle of the arrival view ─');
+const inTheFace = [];
+for (const r of rows) for (const p of (r.blocking || [])) inTheFace.push({ room: r.id, ...p });
+check('no prop fills the view a child arrives looking at',
+  inTheFace.length === 0, inTheFace.slice(0, 12));
 
 check('nothing threw during the run', errors.filter((e) => e.startsWith('PAGEERROR')).length === 0);
 await b.close();

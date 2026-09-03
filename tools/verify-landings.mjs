@@ -61,7 +61,13 @@ await page.evaluate(() => {
     'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
   g.player.iframes = 999999;
 });
-const ROOM_IDS = await allRooms(page);
+// Naming rooms on the command line runs just those — the full registry takes
+// most of an hour, and a fix to one branch should be re-checkable in minutes.
+// No argument still means everything, so the sweep is never narrowed by
+// accident: this is an iteration shortcut, not a filter the suite remembers.
+const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const REGISTRY = await allRooms(page);
+const ROOM_IDS = only.length ? only : REGISTRY;
 console.log(`asking the game: ${ROOM_IDS.length} rooms in the registry`);
 
 const go = async (room) => {
@@ -82,8 +88,15 @@ const go = async (room) => {
 // they put you down in someone else's room.
 console.log('── reading every room once ───────────────────────────');
 const rooms = {};
-for (const room of ROOM_IDS) {
-  if (!(await go(room))) { check(`${room} builds`, false); continue; }
+// A NARROWED RUN MUST STILL BE ABLE TO ANSWER THE QUESTION. Every check below
+// needs the DESTINATION room's extents, and `if (!dest) continue` is a silent
+// pass — the exact shape of rot that let the Kiln's three broken landings sit
+// unseen for months. So a narrowed run pulls in one hop of destinations
+// automatically, and then counts what it still could not reach and says so out
+// loud. A full run must reach everything, and that is checked, not assumed.
+const readRoom = async (room) => {
+  if (rooms[room]) return;
+  if (!(await go(room))) { check(`${room} builds`, false); return; }
   rooms[room] = await page.evaluate(() => {
     const w = window.__game.world;
     return {
@@ -94,8 +107,33 @@ for (const room of ROOM_IDS) {
         x: d.entry && d.entry.x, z: d.entry && d.entry.z, angle: d.entry && d.entry.angle })),
     };
   });
+};
+for (const room of ROOM_IDS) await readRoom(room);
+if (only.length) {
+  const wanted = new Set();
+  for (const r of Object.values(rooms)) for (const e of r.exits) wanted.add(e.to);
+  for (const dest of wanted) await readRoom(dest);
 }
 console.log(`read ${Object.keys(rooms).length} rooms`);
+
+// Two kinds of unreached, and only one of them is a bug. A destination the
+// live registry lists but this run did not build is a hole in the sweep. A
+// destination the registry does not list at all (the Den builds outside the
+// room tables) is out of this suite's declared scope — named, so it is never
+// just quiet, but not failed. Asked only of the rooms this run was ASKED
+// about: the extra hop pulled in above is a ruler, not a subject.
+const missed = new Set(), offRegistry = new Set();
+for (const id of ROOM_IDS) {
+  const r = rooms[id];
+  if (!r) continue;
+  for (const e of r.exits) {
+    if (e.x === undefined || e.x === null || rooms[e.to]) continue;
+    (REGISTRY.includes(e.to) ? missed : offRegistry).add(e.to);
+  }
+}
+if (offRegistry.size) console.log(`   (outside the room registry, not checked: ${[...offRegistry].join(', ')})`);
+check('every door destination in the registry was actually built',
+  missed.size === 0, missed.size ? [...missed] : undefined);
 
 // The wall band plus the door trigger's own inner lip. A landing this close to
 // the edge is standing in the wall even when nothing pushes it.

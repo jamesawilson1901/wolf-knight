@@ -1231,7 +1231,19 @@ export async function buildLd(scene) {
   // DOWN INTO EMBER DEEP (design/LEVEL-DESIGN-BRANCHES.md). The Kiln is where
   // fire is taught, so the Kiln is where the branch that MASTERS it hangs off.
   // West, the one wall this room had left.
-  sideDoor(world, 'w', halfW, halfD, 'lk1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
+  // ±8.5 IN A POCKET, NOT ±13.5. The Kiln branch's three landings were written
+  // with an ISLAND's numbers (32 wide, so ±13.5 is just inside the wall) and
+  // used on doors that open into POCKETS — lk1 and lk3 are 20 wide, half-extent
+  // 10, so ±13.5 put a child four and a third metres OUTSIDE the room. Dad
+  // walked into it: "you cannot access this room... you spawn behind the door
+  // and it keeps sending you back to the previous room." The Understair and the
+  // Banked Fire — a gold chest among them — could not be entered at all.
+  //
+  // verify-landings has asked this question of every door since v3.47 and never
+  // once asked it about the Kiln: its room list was hand-typed and had no `lk*`
+  // in it. It reads the live registry now, and found all three in one pass.
+  // 8.5 is the rooms' own spawn x, so arriving and starting there agree.
+  sideDoor(world, 'w', halfW, halfD, 'lk1', { x: 8.5, z: 0, angle: -Math.PI / 2 });
 
   heroProp(world, 0, -8, 'bowl', D.tint, D);               // ▲ THE FORGE HEART
   world.markers.heroSpot = { x: 0, z: -8 };
@@ -1574,8 +1586,10 @@ export async function buildLk2(scene) {
     paths: [[[13, 0], [5, 5], [-5, 5], [-13, 0]]],
   });
   world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
-  sideDoor(world, 'e', halfW, halfD, 'lk1', { x: -13.5, z: 0, angle: Math.PI / 2 });
-  sideDoor(world, 'w', halfW, halfD, 'lk3', { x: 13.5, z: 0, angle: -Math.PI / 2 });
+  // ...and the same correction on both of the Span's doors (see the note in
+  // buildLd above): lk1 and lk3 are pockets, so their landings are ±8.5.
+  sideDoor(world, 'e', halfW, halfD, 'lk1', { x: -8.5, z: 0, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'lk3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
 
   // THE SPAN ITSELF — the floor is gone through the middle of the room, so the
   // way on is the north path. The pit is the reason the route bends, not
