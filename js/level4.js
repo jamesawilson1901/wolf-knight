@@ -34,7 +34,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB, prepareModel, instancePlacements } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, bossGate,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, spiritShrine } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
@@ -960,17 +960,15 @@ export async function buildF5(scene) {
   } else {
     // THE CALMED SUMMIT: the storm lifts, her rime-light rests on the stones
     world.bgColor = 0x2c4560;
-    const heart = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.24, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x9be3ff, emissiveIntensity: 2.2, roughness: 1 })
-    );
-    heart.position.set(0, 1.4, -2.5);
-    world.add(heart);
-    world.keepLoose(heart);
-    const hl = new THREE.PointLight(0x9be3ff, 5, 12, 1.8);
-    hl.position.set(0, 1.7, -2.5);
-    world.add(hl);
-    world.onAnimate((t) => { heart.position.y = 1.4 + Math.sin(t * 1.5) * 0.14; heart.rotation.y = t * 0.8; });
+    // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a
+    // bare glowing ball hovering at y 1.4 over open arena floor, the same shape
+    // dad tapped twice in the shrine rooms and called a floating orb. The game
+    // already has one treatment for a light that means something (levelkit's
+    // spiritShrine: a heart over a floor ring, a halo, and a column standing
+    // out of it), used at Ember, the Vault, the Woods and the Spire — so the
+    // memorials use it too, and every meaningful light in the game now reads
+    // the same way.
+    spiritShrine(world, 0, -2.5, 0x9be3ff, 0.7);
     world.markers.borealShrine = { x: 0, z: -2.5 };
     world.markers.healed = true;
   }

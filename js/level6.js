@@ -20,7 +20,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings, DOOR_HALF } from './levelkit.js';
+  reserveLandings, DOOR_HALF, spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -761,29 +761,30 @@ export async function buildDsh(scene) {
   // detours instead.
   world.markers.sparkSpot = { x: 0, z: -4.6 };
   world.markers.teachDeep = { x: -5.6, z: 0 };
-  world.reserve(0, -4.6, 3.0, 'spark');
   // INTRODUCE — one channel, across the way out, and nothing else to think about
   waterZone(world, { x: -5.6, z: 0, w: 4.4, d: 15, deep: true, id: 'd_shrine' });
   // GRANT + 30s — and the chest is visible through the water from the spring
   waterZone(world, { x: 7.0, z: -5.4, w: 4.6, d: 4.6, deep: true, id: 'd_shrine_pay' });
   visibleReward(world, 8.4, -5.4, 'd6_shrine', { shards: 30, heartPiece: 1 });
+  // THE SAME FLOATING ORB AS THE STORM SHRINE, and gone the same way — see the
+  // note in buildSsh (js/level5.js). Dad tapped both: "get rid of floating orb".
+  // ...except here the orb was hanging over the SPRING. Every square within
+  // four metres of it is water, and `wayshrine` will not build on water, which
+  // is why this room has never actually had a shrine in it — the call at
+  // z -6.8 was being refused silently and the glowing ball was the only thing
+  // standing (floating) in for it.
+  //
+  // So the shrine goes to the far bank, which is the first dry ground past the
+  // water and sits dead ahead of the doorway: a child walks in at z 6 looking
+  // north and sees it lit across the spring. The light goes with it.
   if (!GREY()) {
-    const spark = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fe4ff, emissiveIntensity: 2.4, roughness: 1 })
-    );
-    spark.position.set(0, 1.5, -4.6);
-    world.add(spark);
-    const sl = new THREE.PointLight(0x4fd0e0, 5, 13, 1.8);
-    sl.position.set(0, 1.8, -4.6);
+    wayshrine(world, 0, -8.5, 0, washed(D, 0.5));
+    const sl = new THREE.PointLight(0x4fd0e0, 6, 15, 1.8);
+    sl.position.set(0, 1.6, -8.5);
     world.add(sl);
-    world.onAnimate((t) => {
-      spark.position.y = 1.5 + Math.sin(t * 1.6) * 0.15;
-      spark.rotation.y = t * 1.0;
-      sl.intensity = 4.2 + Math.abs(Math.sin(t * 5)) * 1.6;
-    });
-    wayshrine(world, 0, -6.8, 0, washed(D, 0.5));
+    world.onAnimate((t) => { sl.intensity = 5.0 + Math.abs(Math.sin(t * 5)) * 1.8; });
   }
+  world.reserve(0, -4.6, 3.0, 'spark');
   scatter(world, halfW, halfD, D, 614, 4, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6141, { homes: 1, loose: 16 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1167,16 +1168,15 @@ export async function buildDdp(scene) {
     world.markers.bossSpot = { x: 0, z: -2.0, kind: 'meri' };
   } else {
     world.bgColor = 0x2a5f74;
-    const heart = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fe4ff, emissiveIntensity: 2.2, roughness: 1 })
-    );
-    heart.position.set(0, 1.4, -3.0);
-    world.add(heart);
-    const hl = new THREE.PointLight(0x4fd0e0, 5, 13, 1.8);
-    hl.position.set(0, 1.7, -3.0);
-    world.add(hl);
-    world.onAnimate((t) => { heart.position.y = 1.4 + Math.sin(t * 1.5) * 0.14; heart.rotation.y = t * 0.8; });
+    // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a
+    // bare glowing ball hovering at y 1.4 over open arena floor, the same shape
+    // dad tapped twice in the shrine rooms and called a floating orb. The game
+    // already has one treatment for a light that means something (levelkit's
+    // spiritShrine: a heart over a floor ring, a halo, and a column standing
+    // out of it), used at Ember, the Vault, the Woods and the Spire — so the
+    // memorials use it too, and every meaningful light in the game now reads
+    // the same way.
+    spiritShrine(world, 0, -3.0, 0x8fe4ff, 0.7);
     world.markers.meriShrine = { x: 0, z: -3.0 };
     world.markers.healed = true;
     world.markers.chestDefs = [

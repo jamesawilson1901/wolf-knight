@@ -25,7 +25,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings, DOOR_HALF } from './levelkit.js';
+  reserveLandings, DOOR_HALF, spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -800,7 +800,6 @@ export async function buildSsh(scene) {
   // and become optional "come back once you have the dash" detours.
   world.markers.sparkSpot = { x: 0, z: -4.4 };
   world.markers.teachGale = { x: -5.4, z: 0 };
-  world.reserve(0, -4.4, 3.0, 'spark');
 
   // INTRODUCE: one gale, across the way out, and nothing else in the room to
   // think about. Level 3's shrine did exactly this with one bramble.
@@ -811,22 +810,24 @@ export async function buildSsh(scene) {
   galeLane(world, { x: 7.2, z: -5.6, w: 4.0, d: 4.6, dir: 'e', strength: 'gale', id: 's_shrine_pay' });
   visibleReward(world, 8.6, -5.6, 's5_shrine', { shards: 30, heartPiece: 1 });
 
+  // THE LIGHT SITS ON THE SHRINE. There used to be a glowing ball hanging at
+  // y 1.5 over bare floor at z -4.4, with the wayshrine standing 2.2 metres
+  // behind it — dad tapped the ball and said "get rid of the floating orb",
+  // and the same orb was in the Drowned Spring doing the same thing.
+  //
+  // It is a leftover: the L5/L6 re-key moved the storm grant onto Aria, so
+  // nothing has fired off this spot since (see the note above). What is left
+  // is the room's light, and a light wants a lamp under it. The shrine moves
+  // onto the spot instead and carries the glow, so the beat still reads as a
+  // place to stop — and the reserve is taken AFTER it, or the shrine's own
+  // `blocked` check would refuse to stand on the circle meant to keep it clear.
+  if (!GREY()) wayshrine(world, 0, -4.4, 0, D);
+  world.reserve(0, -4.4, 3.0, 'spark');
   if (!GREY()) {
-    const spark = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xfff4b0, emissiveIntensity: 2.4, roughness: 1 })
-    );
-    spark.position.set(0, 1.5, -4.4);
-    world.add(spark);
     const sl = new THREE.PointLight(0xc9d4ff, 5, 13, 1.8);
-    sl.position.set(0, 1.8, -4.4);
+    sl.position.set(0, 1.6, -4.4);
     world.add(sl);
-    world.onAnimate((t) => {
-      spark.position.y = 1.5 + Math.sin(t * 1.7) * 0.16;
-      spark.rotation.y = t * 1.1;
-      sl.intensity = 4.2 + Math.abs(Math.sin(t * 6)) * 1.8;
-    });
-    wayshrine(world, 0, -6.6, 0, D);
+    world.onAnimate((t) => { sl.intensity = 4.2 + Math.abs(Math.sin(t * 6)) * 1.8; });
   }
   scatter(world, halfW, halfD, D, 514, 4, { spin: 1, kinds: ['rockSA', 'rockSB'] });
   lowWall(world, -8, 5, 0, D, 3.5);
@@ -1235,16 +1236,15 @@ export async function buildScr(scene) {
   } else {
     // THE QUIET CROWN: the gale has dropped and her light rests on the stones
     world.bgColor = 0x3c5878;
-    const heart = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.26, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xfff4b0, emissiveIntensity: 2.2, roughness: 1 })
-    );
-    heart.position.set(0, 1.4, -3.0);
-    world.add(heart);
-    const hl = new THREE.PointLight(0xc9d4ff, 5, 13, 1.8);
-    hl.position.set(0, 1.7, -3.0);
-    world.add(hl);
-    world.onAnimate((t) => { heart.position.y = 1.4 + Math.sin(t * 1.5) * 0.14; heart.rotation.y = t * 0.8; });
+    // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a
+    // bare glowing ball hovering at y 1.4 over open arena floor, the same shape
+    // dad tapped twice in the shrine rooms and called a floating orb. The game
+    // already has one treatment for a light that means something (levelkit's
+    // spiritShrine: a heart over a floor ring, a halo, and a column standing
+    // out of it), used at Ember, the Vault, the Woods and the Spire — so the
+    // memorials use it too, and every meaningful light in the game now reads
+    // the same way.
+    spiritShrine(world, 0, -3.0, 0xfff4b0, 0.7);
     world.markers.ariaShrine = { x: 0, z: -3.0 };
     world.markers.healed = true;
     world.markers.chestDefs = [

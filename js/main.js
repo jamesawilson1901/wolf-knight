@@ -1836,7 +1836,7 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xh') narration.say('court_wings');
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } }; // debug/testing hook
   initDevHarness();
   initDevMode();
   await fadeTo(0, ms);
@@ -2011,7 +2011,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
   initDevHarness();
   initDevMode();
   await fadeTo(0, 400);
@@ -2547,9 +2547,6 @@ async function start() {
     const rig = world.lightScale !== undefined ? world.lightScale : 1;
     hemi.intensity = HEMI_BASE * rig * (1 - 0.94 * darkness);
     key.intensity = KEY_BASE * rig * (1 - 0.97 * darkness);
-    for (const zone of world.darkZones) {
-      zone.veilMat.opacity = state.form === 'dark_wolf' ? 0.12 : 0.62 * (1 - darkness * 0.85);
-    }
 
     effects.update(dt, t);
     juice.update(dt);
@@ -2614,7 +2611,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
   initDevHarness();
   initDevMode();
 }

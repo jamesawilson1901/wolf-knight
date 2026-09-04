@@ -15,7 +15,7 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
@@ -372,28 +372,23 @@ export async function buildXsh(scene) {
   sideDoor(world, 's', halfW, halfD, 'x1', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'xh', { x: 0, z: 12, angle: Math.PI });
   world.markers.sparkSpot = { x: 0, z: -1.5, grants: 'ghost_wolf' };
-  world.reserve(0, -1.5, 3.0, 'spark');
   world.markers.teachWatcher = { x: 0, z: -5.5 };
   world.markers.pupSpot = { x: -6.5, z: 3, id: 'pup_x3' };
   // INTRODUCE: one watcher, across the way out, and nothing else in the room.
   watcher(world, 0, -5.5, D);
+  // THE THIRD FLOATING ORB (see buildSsh in js/level5.js). A glowing ball at
+  // y 1.5 over bare floor with the shrine standing six and a half metres behind
+  // it. The shrine comes to the light.
   if (!GREY()) {
-    const spark = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.28, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd8cfff, emissiveIntensity: 2.6, roughness: 1 })
-    );
-    spark.position.set(0, 1.5, -1.5);
-    world.add(spark);
+    wayshrine(world, 0, -1.5, 0, aged(D, 0.4));
     const sl = new THREE.PointLight(0xd8cfff, 5.5, 14, 1.8);
-    sl.position.set(0, 1.8, -1.5);
+    sl.position.set(0, 1.6, -1.5);
     world.add(sl);
-    world.onAnimate((t) => {
-      spark.position.y = 1.5 + Math.sin(t * 1.5) * 0.16;
-      spark.rotation.y = t * 0.9;
-      sl.intensity = 4.6 + Math.abs(Math.sin(t * 4)) * 1.6;
-    });
-    wayshrine(world, 0, -8, 0, aged(D, 0.4));
+    world.onAnimate((t) => { sl.intensity = 4.6 + Math.abs(Math.sin(t * 4)) * 1.6; });
   }
+  // AFTER the shrine, not before — `wayshrine` refuses to stand on a reserved
+  // circle, so taking the claim first would have quietly dropped it.
+  world.reserve(0, -1.5, 3.0, 'spark');
   scatter(world, halfW, halfD, D, 702, 4, { spin: 1, kinds: ['brick', 'rockSB'] });
   dressCourt(world, halfW, halfD, D, 7021, { homes: 1, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -890,16 +885,15 @@ export async function buildXth(scene) {
     // THE COURT AT PEACE. He is not gone — he is sitting there, old and tired
     // and himself, which is the whole point of the ending.
     world.bgColor = 0x2a2440;
-    const heart = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.3, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd8cfff, emissiveIntensity: 2.4, roughness: 1 })
-    );
-    heart.position.set(0, 1.6, -6.5);
-    world.add(heart);
-    const hl = new THREE.PointLight(0xd8cfff, 6, 16, 1.8);
-    hl.position.set(0, 1.9, -6.5);
-    world.add(hl);
-    world.onAnimate((t) => { heart.position.y = 1.6 + Math.sin(t * 1.3) * 0.15; heart.rotation.y = t * 0.7; });
+    // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a
+    // bare glowing ball hovering at y 1.4 over open arena floor, the same shape
+    // dad tapped twice in the shrine rooms and called a floating orb. The game
+    // already has one treatment for a light that means something (levelkit's
+    // spiritShrine: a heart over a floor ring, a halo, and a column standing
+    // out of it), used at Ember, the Vault, the Woods and the Spire — so the
+    // memorials use it too, and every meaningful light in the game now reads
+    // the same way.
+    spiritShrine(world, 0, -6.5, 0xd8cfff, 0.9);
     world.markers.grimmSeat = { x: 0, z: -6.5 };
     world.markers.healed = true;
     world.markers.chestDefs = [

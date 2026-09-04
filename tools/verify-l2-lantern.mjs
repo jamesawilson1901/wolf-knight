@@ -81,9 +81,12 @@ check('falling in costs no hearts', fall.after === fall.before, fall);
 check('falling in puts you back at the door', Math.abs(fall.z - 5.5) < 0.6, fall);
 
 // ---- 3. the Dark Wolf sees what the others cannot --------------------------
+// Reads the LIGHT RIG, which is the darkness. It used to read a veil quad's
+// opacity — a proxy that is now gone, because painting a volume of darkness
+// onto a plane is what put a visible seam across dad's floor.
 const sight = await page.evaluate(async () => {
   const g = window.__game;
-  const read = () => (g.world.darkZones[0] || {}).veilMat.opacity;
+  const read = () => g.lights.hemi.intensity / g.lights.HEMI_BASE;
   const settle = async () => { for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r)); };
   g.player.setForm('knight', { silent: true });
   await settle();
@@ -94,7 +97,7 @@ const sight = await page.evaluate(async () => {
   return { asKnight: +asKnight.toFixed(3), asDark: +asDark.toFixed(3) };
 });
 check('the Dark Wolf lifts the dark, other forms do not',
-  sight.asDark < sight.asKnight - 0.2, sight);
+  sight.asKnight < 0.15 && sight.asDark > 0.8, sight);
 
 // ---- 4. the crypt opens on the lantern, not on a hand ----------------------
 const crypt = await page.evaluate(async () => {

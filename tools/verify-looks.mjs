@@ -50,14 +50,24 @@ const rows = await page.evaluate(async (ids) => {
     try { w = await rooms.buildRoom(id, new THREE.Scene()); }
     catch (e) { out.push({ id, error: String(e && e.message || e) }); continue; }
 
-    // --- the dark: is it a BAND or an island? ---------------------------
+    // --- the dark: does it cover the room, or part of it? ---------------
+    // The bar used to be "a band, not an island" — three walls out of four.
+    // Dad raised it himself from play, twice: "either the whole room is dark or
+    // it's not", and then of the Night Road, "not half and half". A band still
+    // draws a seam across the floor at the end where it stops, so the bar is
+    // now all four walls, and the room's own flag has to agree with the rect.
     const dark = (w.darkZones || []).map((z) => {
       const touch = [
         z.minX <= -w.halfW + 1.2, z.maxX >= w.halfW - 1.2,
         z.minZ <= -w.halfD + 1.2, z.maxZ >= w.halfD - 1.2,
       ].filter(Boolean).length;
+      // and the thing the game actually reads: darknessAt is per-ROOM now, so
+      // it must answer the same at the spawn as it does at the far corner
+      const here = w.darknessAt(w.spawn.x, w.spawn.z);
+      const far = w.darknessAt(-w.halfW + 0.5, -w.halfD + 0.5);
       return { minX: +z.minX.toFixed(1), maxX: +z.maxX.toFixed(1),
-        minZ: +z.minZ.toFixed(1), maxZ: +z.maxZ.toFixed(1), walls: touch };
+        minZ: +z.minZ.toFixed(1), maxZ: +z.maxZ.toFixed(1), walls: touch,
+        uniform: here === far && here === 1 };
     });
 
     // --- the pots: does any stand inside something? ----------------------
@@ -254,16 +264,16 @@ console.log('\n── 1. every room builds ────────────�
 const broke = rows.filter((r) => r.error);
 check('no room threw', broke.length === 0, broke.slice(0, 5));
 
-console.log('\n── 2. the dark is a threshold, never a patch ───────────');
-// A band reaches three walls (full width plus one end). An island reaches two
-// or fewer, and that is dad's "random dark spot partially in a room".
+console.log('\n── 2. a room is dark, or it is not ─────────────────────');
+// All four walls, and the same answer everywhere inside. Anything less is the
+// "half and half" dad photographed on the Night Road.
 const islands = [];
 for (const r of rows) for (const z of (r.dark || [])) {
-  if (z.walls < 3) islands.push({ room: r.id, zone: z });
+  if (z.walls < 4 || !z.uniform) islands.push({ room: r.id, zone: z });
 }
-check('no dark zone is an island in a lit floor', islands.length === 0, islands);
+check('every dark room is dark wall to wall, and evenly', islands.length === 0, islands);
 const zoneCount = rows.reduce((n, r) => n + (r.dark ? r.dark.length : 0), 0);
-console.log(`   (${zoneCount} dark zones across ${rows.length} rooms, all of them bands)`);
+console.log(`   (${zoneCount} dark rooms of ${rows.length}, none of them half-lit)`);
 
 console.log('\n── 3. every breakable stands clear ────────────────────');
 const jammed = [];

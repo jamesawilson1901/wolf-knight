@@ -167,12 +167,15 @@ export async function buildN1(scene) {
   world.markers.restSpot = { x: -5.5, z: 9 };
   world.markers.potionSpot = { x: -3.5, z: 9.5 };
 
-  // THE DARK. Everything past the camp, wall to wall — main.js blacks the light
-  // rig out to six percent for every form but one, and lifts the veil to almost
-  // nothing for the Dark Wolf. This is the biggest dark zone in the game on
-  // purpose: ld1 (Ember's order hall) is a 20x16 pocket, and a child who solved
-  // that one has been told what the answer to a dark room is.
-  darkZone(world, -halfW, halfW, -halfD, 2.0);
+  // THE DARK, AND ALL OF IT. main.js blacks the light rig out to six percent
+  // for every form but the Dark Wolf, whose eyes are the answer — a child who
+  // solved ld1 (Ember's order hall) has already been told that.
+  //
+  // It used to stop at z 2.0, leaving the camp end lit, and dad photographed
+  // the join: "rooms either need to be full dark or light. not half and half."
+  // The camp is still the lit part — but because the FIRE is lighting it, not
+  // because the floor was painted a different colour up to a line.
+  darkZone(world, -halfW, halfW, -halfD, halfD);
 
   // THE WASHOUT. The road went into the ravine years ago and the middle of the
   // room is a hole. It costs the walk and never a heart (player.js, "A HOLE IN
@@ -313,12 +316,10 @@ export async function buildN2(scene) {
   // one asks them to look into it and see there is something there. The
   // keepsake is in it.
   //
-  // IT IS A BAND, NOT A PATCH. This used to be an east-corner rectangle
-  // (x 5..halfW, z -halfD..-1.5) with lit floor all round two of its sides,
-  // which is exactly the "random dark spot partially in a room" dad called out
-  // from play. It now runs wall to wall from the far end back, the same shape
-  // n1 uses: the road ahead is dark, and the ground you are standing on is not.
-  darkZone(world, -halfW, halfW, -halfD, -1.5);
+  // AND IT IS THE WHOLE ROOM. This was an east-corner rectangle first, then a
+  // band from the far end back; both were the "random dark spot partially in a
+  // room" dad called out, just at different sizes. A room is dark or it is not.
+  darkZone(world, -halfW, halfW, -halfD, halfD);
 
   // THE ROAD'S KEEPSAKE (js/treasures.js). One per level, found and never
   // bought, and worth nothing in a fight — a thing a child keeps because they

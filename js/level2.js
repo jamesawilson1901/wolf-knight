@@ -1505,16 +1505,13 @@ export async function buildVc3(scene) {
   pit(world, -1.0, 1.0, -4.4, 1.8);
   pit(world, 2.6, 9.0, -1.2, 1.8);
 
-  // The dark sits over the broken half only: you can SEE that the room goes
-  // wrong from the doorway, which is the invitation to change form.
-  //
-  // AND IT RUNS TO THE WALL. Dad, from play: "do not have random dark spots
-  // partially in a room. either the whole room is dark or it's not." This
-  // stopped at z -8 with five metres of lit floor beyond it, so the dark read
-  // as a rectangle lying in the middle of the room rather than as the far end
-  // of it going wrong. Wall to wall, and from the north wall back: a
-  // THRESHOLD, which is the thing a child understands.
-  darkZone(world, -halfW, halfW, -halfD, 3.2);
+  // THE WHOLE ROOM IS DARK. It went in as a rectangle over the broken half, so
+  // the child could see from the doorway that the far end had gone wrong; then
+  // as a band from the north wall back. Dad called out both — "either the whole
+  // room is dark or it's not" — and the reason is that the invitation was being
+  // drawn on the floor. Now the doorway itself is the invitation: you step in,
+  // it is black, and the lantern you are looking for is the one light in it.
+  darkZone(world, -halfW, halfW, -halfD, halfD);
 
   // THE LANTERN, past the gaps. Lighting it opens the Warden's crypt.
   world.markers.deepLanternSpot = { x: 0, z: -6.4 };

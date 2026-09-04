@@ -935,8 +935,8 @@ export async function buildT2a(scene) {
   northGate(world, 'watchingTree', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -8, z: 5 };
-  // the dark: the Dark Wolf's eyes are the way through, as in Ember
-  darkZone(world, -halfW, halfW, -halfD, 4);
+  // the dark, wall to wall: the Dark Wolf's eyes are the way through, as in Ember
+  darkZone(world, -halfW, halfW, -halfD, halfD);
   world.markers.mothSpots = [{ x: -5, z: -6, variant: 'wisp' }, { x: 6, z: -4, variant: 'wisp' }];
   // A ground shape in the dark. Moths dive and wheel; a Bramble Blob crawls at
   // 1.2 u/s, which is the only kind of thing that is fair to put where a child
@@ -969,7 +969,7 @@ export async function buildT2b(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tsh', { x: 0, z: 5.5, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 't2p', { x: 7.5, z: 0, angle: -Math.PI / 2 });
 
-  darkZone(world, -halfW, halfW, -halfD, 2);
+  darkZone(world, -halfW, halfW, -halfD, halfD);
   world.markers.mothSpots = [{ x: -4, z: 4, variant: 'wisp' }, { x: 5, z: -2, variant: 'wisp' },
     { x: -7, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: 7, z: 5, variant: 'bramble' }];

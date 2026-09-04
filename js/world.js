@@ -53,7 +53,8 @@ export class World {
     this.safeZones = [];       // {minX, maxX, minZ, maxZ} — bridge decks etc.
                                // that OVERRIDE hazards underneath them
     this.geysers = [];         // {x, z, r, active} — managed by room animate
-    this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
+    this.darkZones = [];       // {minX, maxX, minZ, maxZ} — always the whole room
+    this.roomDark = false;     // a room is dark or it is not; see darknessAt
     // A HOLE IN THE FLOOR. Not a hazard: falling in costs no hearts, it puts
     // the child back at `pitReturn` (the room's entry) and they walk it again.
     // That is the whole punishment, and it is the right one for five-year-olds
@@ -682,11 +683,24 @@ export class World {
     return n;
   }
 
-  darknessAt(x, z) {
-    for (const zone of this.darkZones) {
-      if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) return 1;
-    }
-    return 0;
+  // A ROOM IS DARK OR IT IS NOT.
+  //
+  // This used to test the point against each zone rectangle, so a room could be
+  // dark down one end and lit down the other. Dad has now said the same thing
+  // twice from play — "do not have random dark spots partially in a room" and
+  // then, of the Night Road, "rooms either need to be full dark or light, not
+  // half and half" — and he is right for a reason worth writing down: darkness
+  // in this game is the LIGHT RIG dimming, which is a global effect with no
+  // edge, so drawing an edge for it meant painting one on the floor, and a
+  // painted edge is what he kept photographing.
+  //
+  // So the rectangle is gone as a test. `darkZone()` marks the room, the room
+  // is uniformly dark, and the only lit things in it are real lights — a
+  // campfire, a brazier, a lava pool — which is what a dark room ought to look
+  // like anyway. The rect is still recorded on the zone because tools measure
+  // it, but nothing reads it to decide whether a square of floor is in shadow.
+  darknessAt(x, z) {          // eslint-disable-line no-unused-vars
+    return this.roomDark ? 1 : 0;
   }
 
   // Is this square open floor or a hole? Bridge decks win here exactly as they
