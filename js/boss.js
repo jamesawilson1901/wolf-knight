@@ -199,7 +199,11 @@ const SKINS = {
   // shrinks, deep water grows, and the gift the region gave stops being optional.
   meri: {
     tier: 6, gap: 2.2, tellMult: 1.0,
-    moves: ['swipe', 'charge', 'pounce'],
+    // SKILL IS HERS ALONE. Every duel boss draws from swipe/charge/pounce; she
+    // is the only one with a fourth, because her body is the only one that
+    // brought a fourth animation. That is the P7 law satisfied by the asset
+    // rather than by a number: a move no other fight in the game has.
+    moves: ['swipe', 'charge', 'pounce', 'skill'],
     // Water armour, and the region has been teaching its counter all along.
     open: { by: 'element', secs: 2.4, hint: 'HIT HER WITH WHAT SHE FEARS' },
     name: 'Meri, the Drowned',
@@ -254,7 +258,9 @@ const SKINS = {
     // Arise, Skill and Hurt are on the body and not yet spoken for; they are
     // the raw material for giving her a move of her own (board item #127).
     clips: { idle: 'Stalk', walk: 'Walk', run: 'Run',
-      attack: 'Attack', death: 'Death', stagger: 'Stagger' },
+      attack: 'Attack', death: 'Death', stagger: 'Stagger',
+      // the three that were on the body doing nothing until 2026-09-04
+      skill: 'Skill', hurt: 'Hurt', arise: 'Arise' },
   },
   // SHADOW-GRIMM — the last fight (region 7).
   //
@@ -432,6 +438,23 @@ export class Shadowgrip {
     this.runAction = clip('run') ? this.mixer.clipAction(clip('run')) : null;
     this.attackAction = clip('attack') ? this.mixer.clipAction(clip('attack')) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    // HER SPECIAL, HER FLINCH, AND HER GETTING BACK UP. All three optional:
+    // a body without them simply never enters the states that use them, so
+    // every wolf-bodied boss is untouched.
+    this.skillAction = clip('skill') ? this.mixer.clipAction(clip('skill')) : null;
+    if (this.skillAction) this.skillAction.setLoop(THREE.LoopOnce);
+    this.hurtAction = clip('hurt') ? this.mixer.clipAction(clip('hurt')) : null;
+    if (this.hurtAction) {
+      this.hurtAction.setLoop(THREE.LoopOnce);
+      this.hurtAction.clampWhenFinished = true;   // it stays down until it rises
+    }
+    this.ariseAction = clip('arise') ? this.mixer.clipAction(clip('arise')) : null;
+    if (this.ariseAction) this.ariseAction.setLoop(THREE.LoopOnce);
+    this._skillSecs = clip('skill') ? clip('skill').duration : 1.6;
+    this._hurtSecs = clip('hurt') ? clip('hurt').duration : 1.4;
+    this._ariseSecs = clip('arise') ? clip('arise').duration : 1.6;
+    this._openHits = 0;
+
     // THE PUNISH WINDOW HAS ITS OWN POSE, on a body that brought one. Optional:
     // a skin whose clips map has no `stagger` falls back to idle exactly as
     // before, so this costs the wolf-bodied bosses nothing.
@@ -621,6 +644,17 @@ export class Shadowgrip {
     const weak = this._isWeak(element);
     if (weak) n *= 1.5;
     this._lastElement = element;
+    // KEEP SWINGING AND SHE GOES OVER. Dad: "when he's staggered if the user
+    // keeps attacking cause a knock down, this lets us use the get up motion
+    // then afterwards." Three landed blows inside one window: the third puts
+    // her down, which buys the child MORE time rather than ending the window
+    // early — pressing the advantage has to pay, or the lesson is "hit twice
+    // and back off".
+    if (this.openT > 0 && this.hurtAction && this.action !== 'downed'
+        && this.action !== 'rising') {
+      this._openHits = (this._openHits || 0) + 1;
+      if (this._openHits >= 3) this._knockDown();
+    }
     this.coreHp -= n;
     // SNAP the floating-point residual: elemental damage (1.5, 2.2, ...) leaves
     // coreHp at ~1e-15 instead of 0, so `coreHp <= 0` below never fired and the
@@ -647,6 +681,23 @@ export class Shadowgrip {
       juice.burst(wx, 1.2, wz, this.skin.burst, 14);
       this._raiseGales();
       this._flood();
+      // ...and on a body that brought a flinch, she WEARS it. Dad: "add a hurt
+      // motion when health hits half way and make him immune while he does
+      // it." Immunity is the point of the beat — it says the fight just
+      // changed and there is nothing to hit for a moment, so a child looks up
+      // from the health bar. openT is cleared going in, or a window that was
+      // already open would carry straight through the one moment that is
+      // supposed to interrupt it.
+      if (this.hurtAction) {
+        this.openT = 0;
+        this._openHits = 0;
+        this.tiredRing.visible = false;
+        this.action = 'flinch';
+        this.actionT = this._hurtSecs;
+        if (this.attackAction) this.attackAction.fadeOut(0.1);
+        if (this.skillAction) this.skillAction.fadeOut(0.1);
+        this.hurtAction.reset().fadeIn(0.08).play();
+      }
     }
     if (this.coreHp <= 0) this._defeat();
   }
@@ -736,6 +787,13 @@ export class Shadowgrip {
   takeStun(sec) {
     if ((this.skin.open && this.skin.open.by) === 'stomp' && this.topple('stomp')) return;
     if (this.defeated || this.action === 'tired') return;
+    // AND NOT OUT OF THE BEATS THAT ARE MEANT TO BE UNINTERRUPTIBLE. A stun
+    // does no damage, so the immunity held — but it still yanked her out of
+    // the half-health flinch into `recover`, which is the same interruption
+    // wearing a different name. `downed` and `rising` are here for the same
+    // reason: a knockdown that a stun can cancel is not a knockdown.
+    if (this.action === 'flinch' || this.action === 'downed'
+        || this.action === 'rising') return;
     this.action = 'recover';
     this.actionT = Math.max(1.4, sec);
     this.core.scale.y = 1;
@@ -980,6 +1038,16 @@ export class Shadowgrip {
           this._setAnim('idle');
           facePlayer();
           audio.play('growl', { volume: 0.85, rate: 0.62, vary: 0.05 });
+        } else if (move === 'skill') {
+          // HER SPECIAL. The tell is the law's floor and then some: she rears
+          // and gathers the tide for a full second and a bit before anything
+          // comes out, because this is the biggest thing she does and a
+          // five-year-old has to see it coming from across the arena.
+          this.action = 'gather';
+          this.actionT = this._tell(1.1);
+          this._setAnim('idle');
+          facePlayer();
+          audio.play('growl', { volume: 0.9, rate: 0.38, vary: 0.04 });
         } else if (move === 'swipe') {
           // close enough: the SWIPE (shield lesson)
           this.action = 'windup';
@@ -1200,6 +1268,74 @@ export class Shadowgrip {
         this.eyeMat.emissiveIntensity = 0.4;
         this._setAnim('idle');
       }
+    } else if (A === 'gather') {
+      // THE TELL FOR HER SPECIAL: she rises and the water climbs with her.
+      // Nothing damages during this; it is a whole second of shape.
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / this._tell(1.1);
+      this.core.scale.y = 1 + 0.16 * f;
+      this.eyeMat.emissiveIntensity = 1.2 + f * 3.4;
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        this.action = 'skill';
+        this.actionT = this._skillSecs;
+        this._skillHit = false;
+        if (this.skillAction) this.skillAction.reset().fadeIn(0.06).play();
+        audio.play('whoosh', { volume: 1, rate: 0.45 });
+      }
+    } else if (A === 'skill') {
+      // THE SPECIAL ITSELF: a ring, not a cone — it does not matter which way
+      // she is facing, it matters how far away you are. That is what makes it
+      // a different lesson from the swipe: the swipe is answered by the
+      // shield, this one is answered by NOT BEING THERE.
+      if (!this._skillHit && this.actionT <= this._skillSecs * 0.55) {
+        this._skillHit = true;
+        if (d < 4.6) this._strike(player, this.skin.dmg);
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2;
+          juice.burst(wx + Math.cos(a) * 3.2, 0.35, wz + Math.sin(a) * 3.2, this.skin.burst, 4);
+        }
+        audio.play('slam', { volume: 1, rate: 0.5 });
+        if (juice.effects) juice.effects.shake(0.5, 0.45);
+      }
+      if (this.actionT <= 0) {
+        // and a long recover, because a big move has to be worth punishing
+        this.action = 'recover';
+        this.actionT = 1.5;
+        this.eyeMat.emissiveIntensity = 0.5;
+      }
+    } else if (A === 'flinch') {
+      // HALF HEALTH: she is hurt, and for a moment nothing can touch her.
+      // Dad's spec. It is the one time in the fight the child is told to
+      // stop swinging and watch — and `openT` is cleared going in, so a
+      // window that happened to be open does not carry through it.
+      this.eyeMat.emissiveIntensity = 2.4;
+      if (this.actionT <= 0) {
+        this._setAnim('idle');
+        this._backToProwl();
+      }
+    } else if (A === 'downed') {
+      // KNOCKED OFF HER FEET by a child who kept swinging in the window.
+      // She stays hittable here — this is the reward for pressing the
+      // advantage, not a second armour phase.
+      this.eyeMat.emissiveIntensity = 0.25;
+      if (this.actionT <= 0) {
+        this.action = 'rising';
+        this.actionT = this._ariseSecs;
+        this.openT = 0;                       // getting up is HER frames again
+        this.tiredRing.visible = false;
+        if (this.hurtAction) this.hurtAction.fadeOut(0.15);
+        if (this.ariseAction) this.ariseAction.reset().fadeIn(0.1).play();
+        audio.play('growl', { volume: 0.8, rate: 0.5 });
+      }
+    } else if (A === 'rising') {
+      // getting back up: armoured again, and slow enough to read as a beat
+      if (this.actionT <= 0) {
+        if (this.ariseAction) this.ariseAction.fadeOut(0.2);
+        this._anim = 'x';
+        this._setAnim('idle');
+        this._backToProwl();
+      }
     } else if (A === 'dazed') {
       // the pounce's own opening: shorter than the collapse, but the boss is
       // standing right on top of the child, so it is the easiest one to reach
@@ -1257,10 +1393,18 @@ export class Shadowgrip {
   // child plays is the same fight with more room to answer it in.
   topple(reason = 'open') {
     if (this.defeated || this.openT > 0) return false;
+    // NOT DURING THE FLINCH, AND NOT WHILE SHE IS GETTING UP. Both are
+    // immunity beats by design — the half-health flinch because dad asked for
+    // it, the get-up because it is the warning that the armour is back. An
+    // element hit lands on `_hitCore`'s opener check before it reaches the
+    // guard, so without this line the one moment that is supposed to
+    // interrupt the fight could itself be interrupted.
+    if (this.action === 'flinch' || this.action === 'rising') return false;
     const secs = ((this.skin.open && this.skin.open.secs) || 2.4)
       * (state.settings.easy ? 1.5 : 1);
     this.openT = secs;
     this._pingedOff = 0;
+    this._openHits = 0;         // three inside THIS window, not three ever
     this.action = 'dazed';
     this.actionT = secs;
     // DOWN SHOULD LOOK DOWN. This played the idle, so the one window a child
@@ -1271,6 +1415,34 @@ export class Shadowgrip {
     juice.burst(bx, 1.2, bz, 0xffe14a, 16);
     if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.6, bz, 'DOWN!');
     if (this.world.onBossOpen) this.world.onBossOpen(this, reason, secs);
+    return true;
+  }
+
+  // OFF HER FEET. Only reachable from inside an open window (see _hitCore),
+  // so it can never be an opening in its own right — it is the window getting
+  // BIGGER because the child earned it. She stays hittable the whole time she
+  // is down; `rising` is where the armour comes back, and the get-up animation
+  // is the honest warning that it is about to.
+  _knockDown() {
+    if (this.defeated) return false;
+    this._openHits = 0;
+    this.action = 'downed';
+    this.actionT = this._hurtSecs + 0.7;      // the fall, then a beat on the floor
+    this.openT = Math.max(this.openT, this.actionT + 0.25);
+    this.tiredRing.visible = true;
+    if (this.attackAction) this.attackAction.fadeOut(0.1);
+    if (this.skillAction) this.skillAction.fadeOut(0.1);
+    if (this.staggerAction) this.staggerAction.fadeOut(0.12);
+    this.hurtAction.reset().fadeIn(0.06).play();
+    const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
+    audio.play('slam', { volume: 1, rate: 0.55 });
+    juice.burst(bx, 0.5, bz, this.skin.burst, 16);
+    juice.burst(bx, 0.3, bz, 0x9a8f80, 12);
+    if (juice.effects) {
+      juice.effects.shake(0.5, 0.5);
+      if (juice.effects.slow) juice.effects.slow(0.7, 0.5);
+    }
+    if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.8, bz, 'KNOCKED DOWN!');
     return true;
   }
 
@@ -1301,6 +1473,8 @@ export class Shadowgrip {
       if (m === 'swipe') return d < 3.4;          // close work only
       if (m === 'pounce') return d > 2.2 && d < 8.5;
       if (m === 'root') return !!(this.skin.snares && this._halfHowled);
+      // her special: mid range, and only on a body that actually has the clip
+      if (m === 'skill') return !!this.skillAction && d > 1.6 && d < 7.0;
       return true;                                 // charge works at any range
     });
     if (legal.length > 1) legal = legal.filter((m) => m !== this._lastMove);
@@ -1492,6 +1666,17 @@ export class Boreal {
     // but the grounded window doubles up (that is where the fight is won)
     const weak = element === BOREAL_WEAKNESS;
     if (weak) n *= 1.5;
+    // KEEP SWINGING AND SHE GOES OVER. Dad: "when he's staggered if the user
+    // keeps attacking cause a knock down, this lets us use the get up motion
+    // then afterwards." Three landed blows inside one window: the third puts
+    // her down, which buys the child MORE time rather than ending the window
+    // early — pressing the advantage has to pay, or the lesson is "hit twice
+    // and back off".
+    if (this.openT > 0 && this.hurtAction && this.action !== 'downed'
+        && this.action !== 'rising') {
+      this._openHits = (this._openHits || 0) + 1;
+      if (this._openHits >= 3) this._knockDown();
+    }
     this.coreHp -= n;
     state.flags.borealHp = Math.max(0, this.coreHp);
     const wx = this.x + this.off.x, wz = this.z + this.off.z;
