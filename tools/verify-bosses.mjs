@@ -131,9 +131,20 @@ console.log('   neither is a Shadowgrip skin, so neither can collide with the fi
 
 console.log('\n── 6. a boss cannot be mashed through ─────────────────');
 // Dad: "boss fights are far too easy and are all beatable by spamming the
-// attack button." The fix is a GUARD while the boss is up and watching, and
-// this measures it the only way that means anything: land the SAME blow in a
-// guarded state and in an open one, and compare what it cost.
+// attack button." — and then, having played the fix: "make it you can only
+// hurt it when it's down."
+//
+// THIS MEASURED A MECHANIC THAT NO LONGER EXISTS. The first answer was a GUARD:
+// a per-skin multiplier that made blows land soft while the boss was up, and
+// this section landed the same blow in `prowl` and in `tired` and compared the
+// two. The second answer replaced it — the guard multiplier is gone, `skin.guard`
+// with it, and a boss is now flatly IMMUNE until its own verb opens a window.
+// So both readings came back 0.000 and the section failed for three bosses
+// while describing a design that had been deleted.
+//
+// It measures the law that is actually in force: nothing outside the window,
+// something inside it. And it no longer uses `action` as the ruler — the gate
+// is `openT`, and testing the wrong field is how this went stale unnoticed.
 const guardTest = await wk.page.evaluate(async () => {
   const rooms = await import('/js/rooms.js');
   const THREE = await import('three');
@@ -147,25 +158,34 @@ const guardTest = await wk.page.evaluate(async () => {
     const w = await rooms.buildRoom(room, new THREE.Scene());
     const b = w.boss;
     if (!b) { out[skin] = { error: 'no boss' }; continue; }
-    const hit = (action) => {
-      b.action = action;
+    const hit = () => {
       const before = b.coreHp;
       b.coreHittable.takeDamage(2, 'steel');
       const cost = before - b.coreHp;
       b.coreHp = before;                      // put it back; this is a ruler, not a fight
       return +cost.toFixed(3);
     };
-    out[skin] = { guarded: hit('prowl'), open: hit('tired'), declared: b.skin.guard };
+    b.openT = 0; b.action = 'prowl';
+    const armoured = hit();
+    b.topple('ruler');                        // the window, opened the way the game opens it
+    const inWindow = hit();
+    out[skin] = { armoured, inWindow, openFor: +(b.openT || 0).toFixed(2),
+      by: (b.skin.open && b.skin.open.by) || null };
   }
   return out;
 });
 for (const [skin, r] of Object.entries(guardTest)) {
   if (r.error) { check(`${skin} has a boss to measure`, false, r); continue; }
-  check(`${skin}: a blow lands harder in the opening than through the guard`,
-    r.open > r.guarded * 1.15, r);
-  check(`${skin}: and the guard still lets damage through (never a wall)`,
-    r.guarded > 0, r);
+  check(`${skin}: a plain blow does nothing while it is up`, r.armoured === 0, r);
+  check(`${skin}: ...and lands once it is down`, r.inWindow > 0, r);
 }
+// AND THE WINDOW HAS TO BE REACHABLE, which this section cannot see: it opens
+// the window by calling topple() directly. verify-bossopen.mjs is what performs
+// each skin's own verb — block, cut, stomp, element, switch — through the same
+// call the game makes, and probe-blocker.mjs proves a child who plays that way
+// actually wins. Green here plus red there means the fights are unbeatable.
+console.log('   (topple() is called directly here; verify-bossopen.mjs is what');
+console.log('    proves each skin\'s own verb can open the window in play)');
 
 console.log('\n── 7. no tell is shorter than the law ─────────────────');
 // LAW 1 (combat context §2): every boss telegraph is at least 0.9s, because a
