@@ -1033,8 +1033,14 @@ export class Shadowgrip {
         // THE COLLAPSE — the charge spends everything and the wolf visibly
         // FALLS OVER (Death clip, held). Slow-mo blip sells the crash and
         // stretches the window for small hands.
-        this.action = 'tired';
-        this.actionT = 2.6;
+        // IT NO LONGER FALLS OVER ON ITS OWN. The collapse — gold ring, eyes
+        // out, pile the hits on — is what BEING TOPPLED looks like, and it has
+        // to stay honest: a ring that appears without the child earning it
+        // taught them the ring means "free hits are coming round again". The
+        // charge now ends with the boss winded ON ITS FEET, which reads as
+        // "that cost it something" without paying out.
+        this.action = 'recover';
+        this.actionT = 1.1;
         if (this.runAction) this.runAction.fadeOut(0.2);
         if (this.attackAction) this.attackAction.fadeOut(0.15);
         if (this.collapseAction) {
@@ -1178,7 +1184,22 @@ export class Shadowgrip {
   // openings that matter are named here rather than inferred, so adding a move
   // can never quietly turn a punish window into a guarded one.
   _guarded() {
-    return this.action === 'prowl' || this.action === 'stalk';
+    // THE ONLY WAY IN IS THE ONE YOU EARNED.
+    //
+    // This used to name the two "open" states and guard the rest, and the
+    // masher took the Shadowgrip from 20 to 0 in 120 seconds against it. The
+    // numbers said why: of 762 attack taps, 613 landed while the boss was
+    // `tired` — because it COLLAPSES BY ITSELF at the end of every charge and
+    // hands over 2.6 seconds of free hits, seventeen times, for nothing. The
+    // child never had to block, dodge or read anything; they just had to be
+    // standing there when it fell over.
+    //
+    // So there is no such thing as an unearned opening any more. A boss is
+    // armoured in every state it has, and `openT` — set only by topple(), and
+    // only by that boss's own verb — is the whole of its vulnerability. It is
+    // exactly what dad asked for: "make it you can only hurt it when it's
+    // down."
+    return !(this.openT > 0);
   }
 
   // THE WINDOW. Whatever opened it, this is what being open looks like: the
