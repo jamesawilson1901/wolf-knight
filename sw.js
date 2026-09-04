@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.106.0';
+const CACHE_NAME = 'wolfknight-v3.106.1';
 
 const PRECACHE = [
   './',
@@ -293,15 +293,44 @@ const PRECACHE = [
   './assets/icons/icon-512.png',
 ];
 
+// THE CODE INSTALLS; THE ART FOLLOWS AFTERWARDS.
+//
+// This used to hand all three hundred and eight files to one cache.addAll, and
+// that has two teeth in it. addAll is ALL OR NOTHING: a single flaky response —
+// one file out of three hundred, on a tablet joining wifi — rejects the whole
+// thing, install fails, the new worker never activates, and the update silently
+// never arrives. And three hundred simultaneous requests with cache: 'reload'
+// is a burst that competes with the game's OWN loading on the same connection,
+// which is how a coin model came back as a failure and put a dead-end error
+// screen in front of dad the first time he opened v3.106.0.
+//
+// So install waits only for the shell: the HTML, the modules, the manifest —
+// the handful of files without which there is no game at all. Everything else
+// is warmed one at a time after activation, and any single failure is shrugged
+// off, because a missing model gets fetched from the network on demand anyway.
+// Offline readiness arrives a few seconds later than it used to; an update that
+// installs at all is worth vastly more than that.
+const CORE = PRECACHE.filter((u) => /\.(html|js|mjs|json|webmanifest|css)$/i.test(u));
+const REST = PRECACHE.filter((u) => !CORE.includes(u));
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       // cache: 'reload' bypasses the browser HTTP cache (GitHub Pages serves
       // max-age=600), so a new CACHE_NAME never gets filled with stale files.
-      .then((cache) => cache.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' }))))
+      .then((cache) => cache.addAll(CORE.map((u) => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
+
+// One at a time, and never fatal. Sequential on purpose: the point is to stop
+// competing with the page for bandwidth, not to finish quickly.
+function warmTheRest() {
+  return caches.open(CACHE_NAME).then((cache) => REST.reduce(
+    (chain, u) => chain.then(() => cache.match(u).then((hit) => hit
+      || cache.add(new Request(u, { cache: 'reload' })).catch(() => {}))),
+    Promise.resolve()));
+}
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -310,6 +339,7 @@ self.addEventListener('activate', (event) => {
         keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
+      .then(() => warmTheRest())
   );
 });
 

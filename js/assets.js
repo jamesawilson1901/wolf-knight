@@ -105,15 +105,44 @@ function loadOnce(url, timeoutMs = 20000) {
       (e) => { clearTimeout(timer); reject(e); });
   });
 }
+// WHO IS ALLOWED TO SAY THE GAME IS BROKEN.
+//
+// Not the LoadingManager. Its onError fires the instant ONE request fails, and
+// loadGLB right below retries after exactly that — so the screen that said
+// "Something went wrong: Failed to load ..." was routinely thrown up over a
+// load that then succeeded a moment later. Dad hit it on a tablet the first
+// time he opened v3.106.0: a blip on one coin model, a dead end, and a game
+// that was in fact fine underneath.
+//
+// So the fatal screen belongs HERE, at the point where the retries are spent
+// and the file really is not coming. main.js registers the handler; the
+// manager only warns.
+let giveUp = null;
+export function setLoadGiveUpHandler(fn) { giveUp = fn; }
+
+// THREE RETRIES, WITH A PAUSE THAT GROWS. One retry was not enough on a phone
+// joining wifi, and it is nowhere near enough on the first load of a new
+// version: the service worker is fetching three hundred files at that moment
+// and the game's own requests are queued behind them.
+function loadWithRetries(url, tries = 3) {
+  let attempt = 0;
+  const go = () => loadOnce(url).catch((e) => {
+    attempt++;
+    if (attempt >= tries) throw e;
+    console.warn(`[assets] ${url} failed (${attempt}/${tries}), retrying:`,
+      String(e && e.message || e));
+    return new Promise((r) => setTimeout(r, 350 * attempt)).then(go);
+  });
+  return go();
+}
+
 export function loadGLB(url) {
   if (!gltfCache.has(url)) {
-    gltfCache.set(url, loadOnce(url).catch((e) => {
-      console.warn('[assets] retrying after', String(e && e.message || e));
-      return loadOnce(url);
-    }).catch((e) => {
+    gltfCache.set(url, loadWithRetries(url).catch((e) => {
       // a failed promise must not poison the cache forever — the next room
       // that needs this model deserves a fresh attempt
       gltfCache.delete(url);
+      if (giveUp) giveUp(url, e);
       throw e;
     }));
   }

@@ -4,7 +4,7 @@
 // Rooms rebuild on every entry (anti-soft-lock reset).
 
 import * as THREE from 'three';
-import { manager } from './assets.js';
+import { manager, setLoadGiveUpHandler } from './assets.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { villageCleared } from './levelVillage.js';
@@ -171,7 +171,12 @@ function showError(text) {
   document.getElementById('error-text').textContent = text;
   document.getElementById('error').style.display = 'flex';
 }
-manager.onError = (url) => showError('Failed to load: ' + url);
+// A SINGLE FAILED REQUEST IS NOT A BROKEN GAME. The manager fires on the first
+// failure and js/assets.js retries three times after it, so this used to put a
+// dead-end error screen over loads that went on to succeed. It warns; the
+// give-up handler below is what actually means "this file is not coming".
+manager.onError = (url) => console.warn('[assets] load error (will retry):', url);
+setLoadGiveUpHandler((url) => showError('Failed to load: ' + url));
 
 // A SAVE THAT CANNOT WRITE MUST SAY SO. Quota exceeded, private browsing, a
 // full disk — the child otherwise plays a whole evening and loses it silently.
