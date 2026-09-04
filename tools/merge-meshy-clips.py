@@ -78,18 +78,24 @@ for src_name, label in WANTED[1:]:
     js['animations'].append({'name': label, 'samplers': samplers, 'channels': channels})
     print(f'  + {label:<9} {len(channels)} channels')
 
-# THE TEXTURE GOES. Every creature in this game is a single-material model that
-# VARIANTS tints, so a 3.9MB PNG would be loaded, decoded and never seen.
+# THE MATERIAL. Two ways to finish, and the flag chooses.
+#
+# Either way the EMISSIVE goes. Meshy wires the same image in twice — once as
+# baseColour and once as emissive with a factor of 1 — which makes the creature
+# self-lit, so it ignores the room's light entirely and looks like a sticker.
+# Dropping the emissive is what lets the game's own lighting land on it.
+KEEP_TEXTURE = '--keep-texture' in sys.argv
 for m in js.get('materials', []):
     m.pop('emissiveTexture', None)
     m.pop('emissiveFactor', None)
-    m.pop('extensions', None)
+    m.pop('extensions', None)            # specular x2 and an ior it does not need
     pbr = m.setdefault('pbrMetallicRoughness', {})
-    pbr.pop('baseColorTexture', None)
-    pbr['baseColorFactor'] = [0.72, 0.74, 0.70, 1.0]
     pbr['metallicFactor'] = 0.0
-    pbr['roughnessFactor'] = 0.9
-    m['doubleSided'] = False
+    pbr['roughnessFactor'] = 0.85
+    m['doubleSided'] = False             # a closed body needs one side drawn
+    if not KEEP_TEXTURE:
+        pbr.pop('baseColorTexture', None)
+        pbr['baseColorFactor'] = [0.72, 0.74, 0.70, 1.0]
 js['buffers'] = [{'byteLength': len(bin_)}]
 write_glb(OUT, js, bin_)
 print(f'\n{OUT}: {os.path.getsize(OUT)/1024:.0f}KB, {len(js["animations"])} clips')

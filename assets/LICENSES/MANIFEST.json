@@ -387,7 +387,7 @@
    "covers": [
     "assets/chars/monsters/cave-biped.glb"
    ],
-   "note": "Nine separate 12MB exports (one per animation, each carrying a full copy of the mesh and a 3.9MB texture, 106MB in total) reduced to one 767KB file with nine clips. Mesh simplified 203,207 -> 4,470 triangles with @gltf-transform/cli; clips merged by tools/merge-meshy-clips.py; texture dropped because VARIANTS tints creatures flat. 24-joint humanoid rig with conventional bone names. Verified: all nine clips drive all 24 bones, no orphan tracks."
+   "note": "Nine separate 12MB exports (one per animation, each carrying a full copy of the mesh and a 3.9MB texture, 106MB in total) reduced to one 850KB file with nine clips. Mesh simplified 203,207 -> 4,470 triangles with @gltf-transform/cli; clips merged by tools/merge-meshy-clips.py; James's own texture KEPT, resized 2048 -> 512 and re-encoded as JPEG (3.9MB -> 101KB). 512 rather than 256 because the UV atlas is hundreds of small islands and 256 visibly bleeds colour across their seams. 24-joint humanoid rig with conventional bone names. Verified: all nine clips drive all 24 bones, no orphan tracks."
   }
  ],
  "distribution": {

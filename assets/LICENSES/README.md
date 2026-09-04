@@ -193,11 +193,25 @@ needs. Blocked on the licence, not on the idea.
 
       203,207 -> 4,470 triangles   @gltf-transform/cli simplify (meshoptimizer)
       9 files -> 1 file            tools/merge-meshy-clips.py
-      106 MB  -> 767 KB            the above, plus dropping the texture
+      2048 -> 512 px, PNG -> JPEG  gltf-transform resize + jpeg (3.9MB -> 101KB)
+      106 MB  -> 850 KB            all of the above
 
-  The texture went because every creature in this game is a single-material
-  model that `VARIANTS` tints, so it would have been downloaded, decoded and
-  never seen.
+  **THE TEXTURE STAYED, on a second look.** It was dropped first, on the rule
+  that every creature here is a single-material model `VARIANTS` tints — but
+  James asked for it back, and putting it on the simplified mesh and LOOKING
+  settled it: the paintwork survives a 98% decimation almost perfectly. Dark
+  charcoal body, coral spines and horns, bone claws, one yellow eye. It is a
+  far better creature textured than tinted.
+
+  512 pixels rather than 256 for a measured reason. The UV atlas is hundreds of
+  small islands scattered over the sheet, so downscaling eventually samples
+  across their seams: at 256 the colours visibly smear and the eye goes muddy,
+  at 512 it is clean. 101KB is not worth saving 43KB for.
+
+  One consequence to remember when wiring it: `boss.js` recolours a body's
+  materials from the skin (`hide`/`glow`), which would wash this paintwork out.
+  The body entry needs `keep: ['Material_1']` — the same escape hatch the
+  minotaur's horns and hooves already use — so the texture shows as authored.
 
 ## Still outstanding
 
