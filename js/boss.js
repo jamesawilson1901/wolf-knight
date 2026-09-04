@@ -73,8 +73,10 @@ export // ----------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 const SKINS = {
   shadowgrip: {
-    tier: 1, guard: 0.35, gap: 3.2, tellMult: 1.15,
+    tier: 1, gap: 3.2, tellMult: 1.15,
     moves: ['swipe', 'charge'],
+    // Dad's own design, and the first shield lesson in the game.
+    open: { by: 'block', secs: 2.8, hint: 'RAISE YOUR SHIELD WHEN IT LUNGES' },
     name: 'The Shadowgrip',
     hide: 0x161020, glow: 0x2a1040, eyes: 0xb9a8ff, burst: 0x8f6bff,
     maxHp: MAX_HP, dmg: ATTACK_DMG, saveKey: 'bossHp', legacyPhases: true,
@@ -110,8 +112,10 @@ const SKINS = {
   // rename is deliberate rather than an alias — a field that means a hex in
   // four entries and a model in one is the shape of a bug waiting to happen.
   sylva: {
-    tier: 3, guard: 0.50, gap: 2.8, tellMult: 1.08,
+    tier: 3, gap: 2.8, tellMult: 1.08,
     moves: ['swipe', 'charge', 'pounce', 'root'],
+    // She anchors to gore-charge; the roots are the thing to hit, not her.
+    open: { by: 'cut', secs: 2.6, hint: 'CUT THE ROOTS SHE STANDS ON' },
     name: 'Sylva, Thornbound',
     body: {
       url: './assets/chars/monsters/minotaur.glb',
@@ -156,8 +160,10 @@ const SKINS = {
   // Dragon.glb has no idle and no walk, only Flying — which is exactly right
   // here. A thing that never touches the stone has no walk cycle to play.
   aria: {
-    tier: 5, guard: 0.60, gap: 2.4, tellMult: 1.02,
+    tier: 5, gap: 2.4, tellMult: 1.02,
     moves: ['swipe', 'charge', 'pounce'],
+    // Her gale turns blades aside, but not a shock through the floor.
+    open: { by: 'stomp', secs: 2.4, hint: 'STOMP - THE SHOCK GOES THROUGH THE GALE' },
     name: 'Aria, the Galebound',
     body: {
       url: './assets/chars/monsters/Dragon.glb',
@@ -192,8 +198,10 @@ const SKINS = {
   // What is new is the FLOOR. As she loses she floods it: standing ground
   // shrinks, deep water grows, and the gift the region gave stops being optional.
   meri: {
-    tier: 6, guard: 0.65, gap: 2.2, tellMult: 1.0,
+    tier: 6, gap: 2.2, tellMult: 1.0,
     moves: ['swipe', 'charge', 'pounce'],
+    // Water armour, and the region has been teaching its counter all along.
+    open: { by: 'element', secs: 2.4, hint: 'HIT HER WITH WHAT SHE FEARS' },
     name: 'Meri, the Drowned',
     // Her body was already a slime — but it was hard-coded in the SPAWNER
     // (js/rooms.js) while this table still said nothing, so the table lied
@@ -243,8 +251,10 @@ const SKINS = {
   //
   // He is FREED, not killed.
   grimm: {
-    tier: 7, guard: 0.75, gap: 1.9, tellMult: 1.0,
+    tier: 7, gap: 1.9, tellMult: 1.0,
     moves: ['swipe', 'charge', 'pounce'],
+    // The whole game's lesson asked once more, against a form that keeps changing.
+    open: { by: 'element', secs: 2.2, hint: 'MATCH THE COLOUR SHE IS WEARING' },
     name: 'Shadow-Grimm',
     hide: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
     maxHp: 32, dmg: 1.5, saveKey: 'grimmHp', legacyPhases: false,
@@ -470,6 +480,7 @@ export class Shadowgrip {
       }
     });
     this._hurtFlash = 0;
+    this.openT = 0;      // seconds of real vulnerability left
 
     world.boss = this;
   }
@@ -523,12 +534,44 @@ export class Shadowgrip {
     // there fast. `guard` rises with the region number (SKINS.tier), which is
     // the difficulty ramp dad asked for, spent on what a child has to DO
     // rather than on taking their reading time away.
-    if (this._guarded()) {
-      const g = this.skin.guard || 0;
+    // THE OTHER FOUR VERBS, checked before the armour so they work whatever
+    // the boss is doing. A blow that opens a boss is not a blow that hurts it:
+    // it knocks the guard away and the damage comes from the swings after.
+    const openBy = (this.skin.open && this.skin.open.by) || null;
+    if (!(this.openT > 0) && !this.defeated) {
+      if (openBy === 'element' && this._isWeak(element)) { this.topple(element); return; }
+      // Sylva anchors herself to gore-charge. While she is rooted the roots are
+      // what a blow reaches, and cutting them puts her on the floor.
+      if (openBy === 'cut' && this.action === 'root') { this.topple('cut'); return; }
+    }
+    if (this._guarded() && !(this.openT > 0)) {
+      // IT IS IMMUNITY NOW, AND THAT IS A REVERSAL.
+      //
+      // This was a REDUCTION, on the reasoning that a five-year-old who only
+      // ever swings should still get there in the end, just slowly. Dad played
+      // it and the reasoning was the bug: "I can attack spam this boss", "kill
+      // it in ten seconds flat", "fix all bosses". A reduction does not change
+      // what the child DOES, it only changes how long the same button takes,
+      // and a fight you can hold one button through has not taught anything.
+      //
+      // So: while a boss is up and watching, a blow rings off it and does
+      // nothing at all. Damage lives entirely in the window, and each boss
+      // opens its window a different way — its own verb, one the child has
+      // already been taught (`open.by` in SKINS). The accessibility worry the
+      // reduction was answering is answered instead where it belongs: the
+      // window is long (>= 1.0s, LAW 6), it is gold and unmissable, Pip names
+      // the verb after two failed swings, and Gentle mode lengthens it.
       const bx0 = this.x + this.core.position.x, bz0 = this.z + this.core.position.z;
-      n *= (1 - g);
-      audio.play('parry', { volume: 0.35, rate: 1.35, vary: 0.1 });
-      juice.burst(bx0, 1.5, bz0, 0xcfd6de, 4);
+      audio.play('parry', { volume: 0.45, rate: 1.35, vary: 0.1 });
+      juice.burst(bx0, 1.5, bz0, 0xcfd6de, 5);
+      if (this.world.onDmgNum) this.world.onDmgNum(bx0, 2.2, bz0, 'CLANG!');
+      this._pingedOff = (this._pingedOff || 0) + 1;
+      // TELL THEM THE VERB, not that they failed. Two rings off is a child
+      // doing the only thing they know; the third is the game owing them an
+      // answer, and it is the same nudge Pip gives for every other locked door.
+      if (this._pingedOff === 3 && this.skin.open && this.skin.open.hint
+        && this.world.onBossHint) this.world.onBossHint(this.skin.open.hint);
+      return;
     }
     const weak = this._isWeak(element);
     if (weak) n *= 1.5;
@@ -642,7 +685,11 @@ export class Shadowgrip {
 
   // A perfect parry (or a stunning blow) staggers even the great wolf —
   // the shield is a real answer, not just a wall.
+  // A STOMP IS A SHOCK THROUGH THE FLOOR, and that is the one thing a gale
+  // cannot turn aside. Every stunning blow arrives here, so the boss whose
+  // window a stomp opens says so in the table rather than in the stomp.
   takeStun(sec) {
+    if ((this.skin.open && this.skin.open.by) === 'stomp' && this.topple('stomp')) return;
     if (this.defeated || this.action === 'tired') return;
     this.action = 'recover';
     this.actionT = Math.max(1.4, sec);
@@ -749,6 +796,8 @@ export class Shadowgrip {
     // `_bodyY` is where this body belongs; the line still does its real job,
     // which is refusing to let anything else drift the body vertically.
     this.dragon.position.y = this._bodyY || 0;
+
+    if (this.openT > 0) this.openT = Math.max(0, this.openT - dt);
 
     if (this._hurtFlash > 0) {
       this._hurtFlash -= dt;
@@ -938,7 +987,7 @@ export class Shadowgrip {
         // (attacker passed so a perfect parry STAGGERS the wolf), and a
         // jump clears it (groundAttack).
         const cone = (dx * this.chargeDir.x + dz * this.chargeDir.z) / d;
-        if (d < 2.8 && cone > 0.35) player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+        if (d < 2.8 && cone > 0.35) this._strike(player, this.skin.dmg);
         juice.burst(wx + this.chargeDir.x * 1.6, 0.4, wz + this.chargeDir.z * 1.6, this.skin.burst, 8);
         audio.play('slam', { volume: 0.6, rate: 1.1 });
       }
@@ -978,7 +1027,7 @@ export class Shadowgrip {
       this._chargeDist += (enraged ? 11.5 : 10.0) * SM * dt;
       if (!this._chargeHit && d < 1.4) {
         this._chargeHit = true; // one hit per charge — never a grinder
-        player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+        this._strike(player, this.skin.dmg);
       }
       if (this._chargeDist > 6.5 || this.actionT <= 0) {
         // THE COLLAPSE — the charge spends everything and the wolf visibly
@@ -1033,7 +1082,7 @@ export class Shadowgrip {
         juice.burst(wx, 0.4, wz, 0x8fdc6a, 16);
         if (juice.effects) juice.effects.shake(0.2, 0.3);
         if (d < this.skin.snares.radius) {
-          player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+          this._strike(player, this.skin.dmg);
         }
       }
       if (this.actionT <= 0) {
@@ -1086,7 +1135,7 @@ export class Shadowgrip {
         const lx = this.x + this.core.position.x, lz = this.z + this.core.position.z;
         const ddx = px - lx, ddz = pz - lz;
         if (ddx * ddx + ddz * ddz < 2.4 * 2.4) {
-          player.hurt(this.skin.dmg, { attacker: this, groundAttack: true });
+          this._strike(player, this.skin.dmg);
         }
         juice.burst(lx, 0.4, lz, this.skin.burst, 14);
         juice.burst(lx, 0.25, lz, 0x9a8f80, 10);
@@ -1130,6 +1179,44 @@ export class Shadowgrip {
   // can never quietly turn a punish window into a guarded one.
   _guarded() {
     return this.action === 'prowl' || this.action === 'stalk';
+  }
+
+  // THE WINDOW. Whatever opened it, this is what being open looks like: the
+  // boss goes down, the gold ring the game already uses for "act here" comes
+  // up, and every hit lands for real until the timer runs out.
+  //
+  // `secs` is per boss and never below the 1.0s punish floor (LAW 6); Gentle
+  // mode stretches it rather than weakening the boss, so the fight a struggling
+  // child plays is the same fight with more room to answer it in.
+  topple(reason = 'open') {
+    if (this.defeated || this.openT > 0) return false;
+    const secs = ((this.skin.open && this.skin.open.secs) || 2.4)
+      * (state.settings.easy ? 1.5 : 1);
+    this.openT = secs;
+    this._pingedOff = 0;
+    this.action = 'dazed';
+    this.actionT = secs;
+    this._setAnim('idle');
+    const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
+    audio.play('parry', { volume: 1, rate: 0.6 });
+    juice.burst(bx, 1.2, bz, 0xffe14a, 16);
+    if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.6, bz, 'DOWN!');
+    if (this.world.onBossOpen) this.world.onBossOpen(this, reason, secs);
+    return true;
+  }
+
+  // A BLOW FROM A CHILD BEHIND A RAISED SHIELD is the Shadowgrip's own undoing,
+  // and dad wrote the design himself: "make it you can only hurt it when it's
+  // down. Blocking its attack makes it fall over." It is a BLOCK, not a parry —
+  // the parry window is a sixth of a second and this is a five-year-old with a
+  // shield button. Every boss routes its hit through here so the one that is
+  // toppled by blocking is a line in the table rather than a special case in
+  // the fight.
+  _strike(player, dmg) {
+    const openBy = (this.skin.open && this.skin.open.by) || null;
+    const blocked = player.defending && player.form.def && player.form.def.shield;
+    player.hurt(dmg, { attacker: this, groundAttack: true });
+    if (openBy === 'block' && blocked) this.topple('block');
   }
 
   // NEVER THE SAME MOVE TWICE RUNNING.

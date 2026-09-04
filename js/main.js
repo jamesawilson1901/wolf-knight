@@ -1656,6 +1656,12 @@ function onPupCollected() {
 
 async function setupRoomExtras() {
   world.onDmgNum = spawnDmgNum;
+  // A BOSS THAT CANNOT BE HURT MUST SAY WHAT WOULD HURT IT. Three blows ringing
+  // off armour is a child doing the only thing they know; the game owes them
+  // the verb at that point, in the same big words every other locked thing in
+  // the game uses. Dad's report was "I can attack spam this boss" — the answer
+  // is not only to stop the spam working, it is to say what does.
+  world.onBossHint = (text) => bigToast(text);
   // The Bone Warden falls → Petra is freed, the Earth Wolf is earned.
   // Fired from the warden's death (not polled) so a simultaneous level-up
   // perk card can't swallow the celebration.
