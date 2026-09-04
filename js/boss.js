@@ -209,9 +209,23 @@ const SKINS = {
     // tools/verify-bosses.mjs check that a skin's clips exist on the body it
     // actually wears; that check is exactly what would have caught her fighting
     // in her bind pose for a month.
+    // HER BODY, 2026-09-04 — and this one James made himself.
+    //
+    // "make him the boss of the sunken vale." It is the first creature in the
+    // game that nobody else authored: modelled and rigged in Meshy from his own
+    // prompt, then brought down from 203,207 triangles and nine 12MB files to
+    // 4,470 triangles and one 850KB file (see assets/LICENSES/README.md). A
+    // hunched crocodilian biped with coral spines, bone claws and one yellow
+    // eye — which is a far better Drowned than a slime was.
+    //
+    // `keep` is load-bearing here. The loader recolours every material it does
+    // not recognise to the skin's `hide`/`glow`, which would wash his own
+    // paintwork flat — the same escape hatch the minotaur uses for its horns
+    // and hooves. Named, so his colours arrive as authored.
     body: {
-      url: './assets/chars/monsters/Slime.glb',
-      stands: 2.54,   // Slime.glb is 1.95u; the old flat 1.3x scalar made 2.54
+      url: './assets/chars/monsters/cave-biped.glb',
+      stands: 2.7,           // 1.66u as modelled; a boss reads at nearly twice Kael
+      keep: ['Material_1'],  // his own texture, not the skin tint
     },
     hide: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
     maxHp: 28, dmg: 1.5, saveKey: 'meriHp', legacyPhases: false,
@@ -222,17 +236,25 @@ const SKINS = {
       { x: 9.5, z: 0, w: 7.0, d: 24 },
     ],
     weakness: 'fire', // matches the Sunken Vale's own mook weakness
-    // BOSS OVERHAUL (2026-08-23): she is the one SKINS entry whose body
-    // (Slime.glb) isn't wolf.gltf, and its clips are named
-    // 'Armature|Slime_Idle' etc, not the bare 'Idle'/'Walk'/... DEFAULT_CLIPS
-    // looks for — so every mixer.clipAction() lookup below was silently
-    // finding nothing and she has been fighting fully unanimated (frozen bind
-    // pose) since the day this class started taking a slimeGltf. No 'Gallop'
-    // equivalent exists on Slime.glb, so `run` reuses the walk cycle — a
-    // faster-paced walk during her charge, not a true gallop, but real motion
-    // instead of none.
-    clips: { idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk',
-      run: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack', death: 'Armature|Slime_Death' },
+    // NINE CLIPS, AND THE CLASS ONLY EVER ASKED FOR FIVE.
+    //
+    // The body carries Arise, Walk, Stalk, Stagger, Run, Attack, Skill, Hurt
+    // and Death. Two notes on the mapping:
+    //
+    //   `idle` is STALK, not a standing pose, because the body has no standing
+    //   pose and does not want one. Stalk is a slow menacing walk, and a boss
+    //   that shifts its weight while it watches you is the thing the prowl was
+    //   always describing.
+    //
+    //   `stagger` is new — see _setAnim and topple(). Every boss until now
+    //   played its IDLE through the punish window, so the one moment a child
+    //   is supposed to read as "it is down, hit it NOW" looked like the animal
+    //   standing about. This body has a real unsteady stagger, so it uses it.
+    //
+    // Arise, Skill and Hurt are on the body and not yet spoken for; they are
+    // the raw material for giving her a move of her own (board item #127).
+    clips: { idle: 'Stalk', walk: 'Walk', run: 'Run',
+      attack: 'Attack', death: 'Death', stagger: 'Stagger' },
   },
   // SHADOW-GRIMM — the last fight (region 7).
   //
@@ -399,9 +421,9 @@ export class Shadowgrip {
     this.dragon = wolf; // legacy name kept: the boss's body
     this.mixer = new THREE.AnimationMixer(wolf);
     // BOSS OVERHAUL (2026-08-23): a skin can override DEFAULT_CLIPS with its
-    // own clip names — Meri's Slime.glb needs this (see her SKINS entry);
-    // every other skin still shares wolf.gltf, whose clips ARE named Idle/
-    // Walk/Gallop/Attack/Death, so they're unaffected by this indirection.
+    // own clip names — Meri's body needs this (see her SKINS entry); every
+    // other skin still shares wolf.gltf, whose clips ARE named Idle/Walk/
+    // Gallop/Attack/Death, so they're unaffected by this indirection.
     const clipNames = this.skin.clips || DEFAULT_CLIPS;
     const clip = (key) => wolfGltf.animations.find((c) => c.name === clipNames[key]);
     this.flyAction = clip('idle') ? this.mixer.clipAction(clip('idle')) : null;
@@ -410,6 +432,10 @@ export class Shadowgrip {
     this.runAction = clip('run') ? this.mixer.clipAction(clip('run')) : null;
     this.attackAction = clip('attack') ? this.mixer.clipAction(clip('attack')) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    // THE PUNISH WINDOW HAS ITS OWN POSE, on a body that brought one. Optional:
+    // a skin whose clips map has no `stagger` falls back to idle exactly as
+    // before, so this costs the wolf-bodied bosses nothing.
+    this.staggerAction = clip('stagger') ? this.mixer.clipAction(clip('stagger')) : null;
     // THE COLLAPSE: the Death clip plays and HOLDS while the wolf lies tired
     this.collapseAction = clip('death') ? this.mixer.clipAction(clip('death')) : null;
     if (this.collapseAction) {
@@ -858,7 +884,8 @@ export class Shadowgrip {
   // Crossfaded locomotion so the walk/gallop always match the movement.
   _setAnim(name) {
     if (this._anim === name) return;
-    const map = { idle: this.flyAction, walk: this.walkAction, run: this.runAction };
+    const map = { idle: this.flyAction, walk: this.walkAction, run: this.runAction,
+      stagger: this.staggerAction || this.flyAction };
     const next = map[name];
     const prev = map[this._anim];
     if (next) next.reset().fadeIn(0.2).play();
@@ -1236,7 +1263,9 @@ export class Shadowgrip {
     this._pingedOff = 0;
     this.action = 'dazed';
     this.actionT = secs;
-    this._setAnim('idle');
+    // DOWN SHOULD LOOK DOWN. This played the idle, so the one window a child
+    // has to read as "hit it NOW" looked like the animal standing about.
+    this._setAnim(this.staggerAction ? 'stagger' : 'idle');
     const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
     audio.play('parry', { volume: 1, rate: 0.6 });
     juice.burst(bx, 1.2, bz, 0xffe14a, 16);

@@ -1166,7 +1166,20 @@ export async function buildDdp(scene) {
   // slams are what make it deeper
   waterZone(world, { x: 0, z: 0, w: 22, d: 22, deep: false });
   if (!state.flags.meriDefeated) {
-    world.markers.bossSpot = { x: 0, z: -2.0, kind: 'meri' };
+    // IN FRONT OF HER THRONE, NOT BEHIND IT.
+    //
+    // She stood at z -2 with the throne at 0 and the door at +10, which puts
+    // the biggest prop in the room exactly on the line between the child and
+    // the thing they have to fight. Screenshotted walking in: the health bar
+    // says "Meri, the Drowned" and there is no monster anywhere on screen.
+    // That was true of the slime too and nobody had looked; it only surfaced
+    // when the new body went in and could not be found.
+    //
+    // Forward of the throne instead, so the first frame of the room is her
+    // standing in front of it. The throne stops being an obstruction and
+    // becomes what it always should have been — the backdrop that says whose
+    // hall this is.
+    world.markers.bossSpot = { x: 0, z: 2.5, kind: 'meri' };
   } else {
     world.bgColor = 0x2a5f74;
     // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a
