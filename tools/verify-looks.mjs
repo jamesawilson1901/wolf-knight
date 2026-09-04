@@ -50,6 +50,26 @@ const rows = await page.evaluate(async (ids) => {
     try { w = await rooms.buildRoom(id, new THREE.Scene()); }
     catch (e) { out.push({ id, error: String(e && e.message || e) }); continue; }
 
+    // POSE THE ROOM BEFORE MEASURING IT, or the rays below are fiction.
+    //
+    // This builds into a detached Scene that is never added to the renderer
+    // and never rendered, so nothing ever calls updateMatrixWorld on it — and
+    // a raycast reads matrixWorld, not position. Measured 2026-09-05: between
+    // 29 and 100 of the meshes in a room were still parked at the origin at
+    // the moment §5 and §6 fired their rays. Both checks were therefore
+    // shooting at a room that was mostly stacked on top of itself, which is
+    // why they almost never reported anything: doors were never "hidden"
+    // because the pillar in front of them was at (0,0).
+    //
+    // It surfaced from the other end. solidifyProps() calls
+    // Box3.setFromObject once per placed prop, and that updates world matrices
+    // as a side effect — so turning that pass on PARTIALLY posed the room
+    // (7/73 left at the origin instead of 29/73 in vga) and §6 started
+    // reporting three rooms as blocked by a wall or an arch. Neither reading
+    // was true: with every matrix correct, all three fans are clear. The bug
+    // was never in the rooms, it was in measuring an unposed graph.
+    w.root.updateMatrixWorld(true);
+
     // --- the dark: does it cover the room, or part of it? ---------------
     // The bar used to be "a band, not an island" — three walls out of four.
     // Dad raised it himself from play, twice: "either the whole room is dark or
@@ -192,6 +212,7 @@ const rows = await page.evaluate(async (ids) => {
     // loads — and if EVERY ray in it hits the same prop close in, that prop is
     // standing in the doorway of the child's own view.
     const blocking = [];
+    let fanHits = 0;
     if (w.spawn && typeof w.spawn.angle === 'number') {
       const eye = new THREE.Vector3(w.spawn.x, 1.15, w.spawn.z);
       const hitNames = [];
@@ -220,6 +241,9 @@ const rows = await page.evaluate(async (ids) => {
       // a five-minute fix into an afternoon of probes that could not reproduce
       // it. A finding that cannot be acted on the next morning is half a
       // finding.
+      // How many of the five hit ANYTHING is kept even when the room passes —
+      // see the vacuous-pass guard under §6.
+      fanHits = hitNames.filter(Boolean).length;
       if (hitNames.every(Boolean) && new Set(hitNames).size === 1) {
         blocking.push({ prop: hitNames[0], hit: first,
           spawn: { x: +w.spawn.x.toFixed(1), z: +w.spawn.z.toFixed(1),
@@ -254,7 +278,7 @@ const rows = await page.evaluate(async (ids) => {
       });
     }
 
-    out.push({ id, dark, pots, rings, hidden, blocking, floaters, eyes: eyes.length,
+    out.push({ id, dark, pots, rings, hidden, blocking, floaters, fanHits, eyes: eyes.length,
       floor: +(w.halfW * w.halfD * 4).toFixed(0) });
   }
   return out;
@@ -303,6 +327,25 @@ const inTheFace = [];
 for (const r of rows) for (const p of (r.blocking || [])) inTheFace.push({ room: r.id, ...p });
 check('no prop fills the view a child arrives looking at',
   inTheFace.length === 0, inTheFace.slice(0, 12));
+
+// AND THE RAYS HAVE TO BE HITTING SOMETHING SOMEWHERE.
+//
+// This check spent its whole life passing for the wrong reason. The rooms are
+// built into a detached Scene that is never rendered, so until 2026-09-05
+// nothing called updateMatrixWorld on them and between 29 and 100 meshes per
+// room were still stacked at the origin — the fan was firing into a room that
+// had not been laid out yet, hit nothing, and reported clean. A green tick
+// from a test that cannot see is worse than no test.
+//
+// So the pass is now conditional on the instrument working: across 146 rooms
+// the fan must land on real geometry somewhere. It does not matter which
+// rooms or how many — only that a ray CAN stop, which is the one thing the
+// broken version could never do. Measured at the fix: 62 rays across 29
+// rooms, and no room with all five.
+const firedRays = rows.reduce((n, r) => n + (r.fanHits || 0), 0);
+const firedRooms = rows.filter((r) => (r.fanHits || 0) > 0).length;
+check('...and the fan is actually hitting the room, not an unposed graph',
+  firedRays > 0, { rays: firedRays, rooms: firedRooms, of: rows.length });
 
 console.log('\n── 7. nothing flat hangs in the air ───────────────────');
 const hanging = [];

@@ -283,6 +283,19 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = nul
   if (!regrows && alreadyCut(REGION, id)) return null;
   const colour = 0x4f8f3a;
   const g = new THREE.Group();
+  // A GATE HAS TO SAY IT IS A GATE.
+  //
+  // The pieces below are Quaternius forest models and they keep the names
+  // they shipped with — `Tree_Bare_1_A_Color1` and friends. Nothing in the
+  // scene graph then distinguishes "five trees planted across a doorway
+  // because it is a thorn gate" from "five trees somebody left in front of a
+  // door", and tools/verify-looks.mjs §5 reported exactly that for tkn→tc3
+  // and tc4→tgl (the door to Sylva's arena) the moment it started measuring
+  // a properly posed room. Its MEANT_TO_BLOCK list walks the parent chain,
+  // so naming the group is the whole fix — and it is the right one: widening
+  // the regex to forgive `Tree_Bare` would forgive every real tree in the
+  // Wild Woods and hand the check straight back its blind spot.
+  g.name = `bramble-gate-${id}`;
 
   if (GREY()) {
     const m = new THREE.Mesh(
@@ -665,6 +678,18 @@ function rootBar(world, x, z, w, D) {
       const i = world.boxColliders.indexOf(gc); if (i >= 0) world.boxColliders.splice(i, 1); } };
   }
   const g = new THREE.Group();
+  // AND IT HAS TO SAY SO IN THE SCENE GRAPH, not just in the tint key.
+  //
+  // The pieces are Quaternius forest models keeping their shipped names
+  // (`Tree_Bare_1_A_Color1`), so nothing here distinguished "five trees
+  // heaved across the boss door because that is the gate" from "five trees
+  // somebody left in front of a door". tools/verify-looks.mjs §5 walks the
+  // parent chain against its MEANT_TO_BLOCK list — which has named `rootbar`
+  // since it was written — and reported tkn→tc3 and tc4→tgl as unreachable
+  // doors the moment it started measuring a properly posed room. Naming the
+  // group is the fix. Widening the regex to forgive `Tree_Bare` would forgive
+  // every real tree in the Wild Woods and hand the check back its blind spot.
+  g.name = 'rootbar-gate';
   const n = 5;
   for (let i = 0; i < n; i++) {
     const f = (i / (n - 1) - 0.5) * (w - 1.2);
