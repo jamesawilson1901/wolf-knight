@@ -378,6 +378,16 @@
     "assets/chars/monsters/sea-dragon.glb"
    ],
    "note": "CREDIT IS REQUIRED AND THIS IS WHERE IT IS GIVEN: \"Sea-Dragon\" (https://skfb.ly/oO9OV) by Jenosuke, licensed under Creative Commons Attribution. Meri the Drowned wears it. One SkinnedMesh, one material, 39 bones, 2,173 triangles — the cleanest character body in any batch so far, and the only one that needed no conversion to fit the draw-call budget. It shipped a death clip and two idles and NO attack or swim, so those two are authored onto its own rig (js/seaclips.js); the mesh, the skeleton and the skinning are all Jenosuke's, unaltered."
+  },
+  {
+   "pack": "James — ocean-cave biped (Meshy AI)",
+   "licence": null,
+   "states": "MADE BY JAMES. Generated with Meshy AI from his own prompt and rigged there; the first asset in this game with no third-party licence question at all.",
+   "source": "made in-house, 2026-09-04",
+   "covers": [
+    "assets/chars/monsters/cave-biped.glb"
+   ],
+   "note": "Nine separate 12MB exports (one per animation, each carrying a full copy of the mesh and a 3.9MB texture, 106MB in total) reduced to one 767KB file with nine clips. Mesh simplified 203,207 -> 4,470 triangles with @gltf-transform/cli; clips merged by tools/merge-meshy-clips.py; texture dropped because VARIANTS tints creatures flat. 24-joint humanoid rig with conventional bone names. Verified: all nine clips drive all 24 bones, no orphan tracks."
   }
  ],
  "distribution": {

@@ -177,6 +177,28 @@ needs. Blocked on the licence, not on the idea.
   which is the right state, because every creature in this game is a
   single-material model that `VARIANTS` tints.
 
+## 2026-09-04 — the first asset with no licence question at all
+
+- **`assets/chars/monsters/cave-biped.glb` — made by James.** Generated and
+  rigged with Meshy AI from his own prompt, so nothing here is anyone else's
+  and there is no attribution condition to meet. That makes it the only
+  character in the game whose provenance needs no caveat.
+
+  It arrived as nine separate 12MB GLBs, one per animation, each carrying a
+  full copy of the mesh and the same 3.9MB texture — 106MB for one creature.
+  All nine were checked to share an identical node list in identical order
+  first, which is what made merging them safe.
+
+  What was done to it, and by what:
+
+      203,207 -> 4,470 triangles   @gltf-transform/cli simplify (meshoptimizer)
+      9 files -> 1 file            tools/merge-meshy-clips.py
+      106 MB  -> 767 KB            the above, plus dropping the texture
+
+  The texture went because every creature in this game is a single-material
+  model that `VARIANTS` tints, so it would have been downloaded, decoded and
+  never seen.
+
 ## Still outstanding
 
 - **`assets/chars/monsters/skeleton-dragon.gltf`** — vendored 2026-09-04 from
