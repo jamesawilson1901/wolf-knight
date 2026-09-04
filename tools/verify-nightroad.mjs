@@ -125,20 +125,29 @@ check('the road is dark end to end — no lit half, no seam',
 // number and then decides the dark is broken. (Measured: rig pinned at 0.589
 // for four seconds after the call, with state.form still reporting the OLD
 // shape.) The lantern suite already had this right.
+// STILL IS NOT THE SAME AS SETTLED. The first cut of this stopped as soon as
+// two reads matched, and read 0.386, then 0.249 on a re-run — because a room
+// jump kills the player and plays an arrival, and while that runs the world
+// clock does not advance at all, so the ramp FREEZES mid-way and every read
+// agrees with the last one. A stopped clock passes a stability test.
+//
+// So the settle waits on the world's own clock (player._time, the same signal
+// wk-drive uses to tell a stalled world from a stuck bot): a reading only
+// counts as settled if time has moved since the one before it.
 const rigIn = async (form) => {
   await wk.page.evaluate((f) => window.__game.player.setForm(f, { silent: true }), form);
   const read = () => wk.page.evaluate(() => {
     const L = window.__game.lights;
-    return L.hemi.intensity / L.HEMI_BASE;
+    return { rig: L.hemi.intensity / L.HEMI_BASE, t: window.__game.player._time };
   });
   let last = await read();
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 60; i++) {
     await frames(6);
     const now = await read();
-    if (Math.abs(now - last) < 0.001) return +now.toFixed(3);
+    if (now.t > last.t && Math.abs(now.rig - last.rig) < 0.001) return +now.rig.toFixed(3);
     last = now;
   }
-  return +last.toFixed(3);
+  return +last.rig.toFixed(3);
 };
 const litKnight = await rigIn('knight');
 const litWolf = await rigIn('dark_wolf');
