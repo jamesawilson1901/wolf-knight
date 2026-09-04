@@ -54,6 +54,27 @@ const shut = await page.evaluate(() => {
 });
 check('...and that gate is shut before the puzzle is solved', shut === false, { open: shut });
 
+// AND THE GATE IS A THING, NOT ONLY A PREDICATE.
+//
+// Every check above this line asks the `when` condition and nothing else, and
+// that is exactly the hole this room was rebuilt to close: the way on used to
+// live entirely in a predicate, so a child walked up to an open arch and
+// nothing happened (js/level3.js, the rootBar note). A physical bar went
+// across the doorway to fix that — and this suite, written before it existed,
+// would still have passed green if the bar never opened, or opened and left
+// its collider standing. verify-playthrough was the only thing in seventy-odd
+// suites that noticed, and it noticed by failing to walk through.
+//
+// So: measure the doorway itself, with the game's own collision, on both
+// sides of the puzzle.
+const barred = await page.evaluate(() => {
+  const w = window.__game.world;
+  const z = -w.halfD + 1.0;                       // where rootBar() puts it
+  return { blocked: w.blocked(0, z, 0.35), boxes: w.boxColliders.length, z };
+});
+check('the roots PHYSICALLY block the doorway before the plate is pressed',
+  barred.blocked === true, barred);
+
 console.log('\n── a KNIGHT (no verdant at all) can push it home ───────');
 // updateBoulders is the real physics: standing within reach for >0.12s
 // (b._lean) starts a cardinal step AWAY from the player, exactly the lean
@@ -84,6 +105,15 @@ const nowOpen = await page.evaluate(() => {
   return d.when ? d.when() : true;
 });
 check('solving the puzzle OPENS the way onward', nowOpen === true, { open: nowOpen });
+
+const cleared = await page.evaluate((z) => {
+  const w = window.__game.world;
+  return { blocked: w.blocked(0, z, 0.35), boxes: w.boxColliders.length };
+}, barred.z);
+check('...and the roots LET GO of it, where the child is standing',
+  cleared.blocked === false, { before: barred, after: cleared });
+check('...and the bar took its collider with it',
+  cleared.boxes === barred.boxes - 1, { before: barred.boxes, after: cleared.boxes });
 
 console.log(errors.length ? `\n${errors.length} PROBLEM(S):\n`+errors.join('\n') : '\nALL CLEAN.');
 await b.close();
