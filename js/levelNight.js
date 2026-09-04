@@ -126,13 +126,14 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
-    world.sweepKeepClear();
+  world.sweepKeepClear();
     thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#b9c6e0', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#6f7c96', y: 2.4, size: 1.4 });
     return world;
   }
   world.lightTint = { sky: D.tint, ground: D.wallTint, key: D.floorTint };
+  world.solidifyProps();   // drawn obstacles become solid ones
   world.sweepKeepClear();
   thresholdGlow(world);
   flattenStatic(world);

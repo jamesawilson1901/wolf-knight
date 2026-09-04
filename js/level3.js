@@ -733,7 +733,7 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
-    world.sweepKeepClear();
+  world.sweepKeepClear();
     thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#d8f0c8', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#93a68c', y: 2.4, size: 1.4 });
@@ -744,6 +744,7 @@ function finish(world, spec, D) {
   // could not have consulted them, so anything still standing on a gameplay
   // square loses its collider here and says so on the console. See
   // World.sweepKeepClear.
+  world.solidifyProps();   // drawn obstacles become solid ones
   world.sweepKeepClear();
   thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);

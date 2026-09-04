@@ -261,6 +261,120 @@ export class World {
   //
   // A prop the dressing placed is tagged 'decor' and may be swept. Anything
   // else belongs to the room's design and is left alone, whatever it overlaps.
+  // IF IT LOOKS LIKE IT BLOCKS, IT BLOCKS.
+  //
+  // Dad, from play: "it's not solid, the player should have to jump over the
+  // column"; "rumble should be solid"; "no asset is actually blocking the
+  // chest"; and three times, "a jar is inside something — check all the jars
+  // in the game." Those are one bug.
+  //
+  // dressing.js `place()` is the single funnel every prop in every room goes
+  // through, and it registers no collider at all. Colliders are added by hand
+  // afterwards, helper by helper — so `fallenColumn` and `lowWall` remember
+  // and `rubbleField` and `aftermath` do not, and a ruin's doorway arch, a
+  // Stoneroot bush and a waist-high rock are all things a child walks straight
+  // through. Measured across the whole game before this went in: 563 drawn
+  // obstacles with nothing solid under them.
+  //
+  // The jars are the same bug wearing a different face. The pot placer pushes
+  // pots out of COLLIDERS (resolveCircle), so a prop with no collider is
+  // invisible to it — the jar is placed inside the arch and the check that
+  // exists for exactly this ("no pot stands inside something else") passes,
+  // because as far as the collision world is concerned nothing is there.
+  //
+  // So the register is built from what is DRAWN, once, after the room is
+  // dressed. Rules, each one there to stop this from making the game sticky:
+  //
+  //   * per placed MODEL, never per group — a rubble field is nine rocks a
+  //     child steps between, not one four-metre block in the middle of a room;
+  //   * knee-height and up (0.9), because anything lower reads as ground;
+  //   * standing on the floor — a hanging banner or a lamp on a bracket has
+  //     air under it and is not an obstacle at knee height;
+  //   * inset to 0.78 of the drawn footprint, so a child brushes the silhouette
+  //     rather than being stopped short of it by an axis-aligned box around a
+  //     prop that is turned;
+  //   * nothing added where something solid already is;
+  //   * nothing added across a doorway, ever.
+  //
+  // Tagged 'decor', so sweepKeepClear() — which runs straight after — still
+  // takes back anything that landed on gameplay ground. Props already standing
+  // on reserved ground never get a collider in the first place; they are
+  // counted on the world as `_solidified.onReserved` so a suite can name them.
+  solidifyProps() {
+    // The same escape hatch flattenStatic has (`window.__noBatch`), for the
+    // same reason: a probe needs to be able to measure the room WITHOUT this
+    // pass to say what it cost. Never set in the game.
+    if (typeof window !== 'undefined' && window.__noSolid) return 0;
+    const bb = new THREE.Box3();
+    const deck = this.deckY || 0;
+    const onReserved = [];
+    let added = 0;
+    const overlapsDoor = (minX, maxX, minZ, maxZ) => this.doors.some((d) =>
+      maxX > d.minX - 1.2 && minX < d.maxX + 1.2
+      && maxZ > d.minZ - 1.2 && minZ < d.maxZ + 1.2);
+
+    const consider = (o) => {
+      bb.setFromObject(o);
+      if (!isFinite(bb.min.x)) return;
+      const h = bb.max.y - bb.min.y;
+      if (h < 0.9) return;                       // ground, not an obstacle
+      if (bb.min.y > deck + 0.55) return;        // hanging: nothing to walk into
+      const fx = bb.max.x - bb.min.x, fz = bb.max.z - bb.min.z;
+      if (fx > 7 || fz > 7) return;              // a wall or a room-scale piece
+      if (fx < 0.35 || fz < 0.35) return;        // a post a child slips past
+      const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+      const hx = (fx / 2) * 0.78, hz = (fz / 2) * 0.78;
+      if (overlapsDoor(cx - hx, cx + hx, cz - hz, cz + hz)) return;
+      const r = Math.max(0.3, Math.min(hx, hz));
+
+      // STANDING ON RESERVED GROUND: COUNTED, NOT REMOVED.
+      //
+      // lg1 is where this got interesting. Dad tapped a column there — "it's
+      // not solid, the player should have to jump over it" — and the first cut
+      // of this pass DID make it solid, and then sweepKeepClear took the
+      // collider straight back off, because the column stands on the reserved
+      // lane the push-block rolls down. Nothing changed, and the reason was
+      // invisible.
+      //
+      // The obvious next move was to remove the PROP as well: ground that has
+      // to stay clear should be clear of the thing you can see, not just of the
+      // thing you can bump into. Measured across all 146 rooms before trusting
+      // it, that would have removed 79 props from f1, 63 from f4, 57 from f5
+      // and 44 from f3 — Frostpeak and the Market gutted, because `blocked()`
+      // answers for every gameplay MARKER too and whole regions are dressed
+      // around them at radii that overlap.
+      //
+      // So it counts and says so. A room dressing dozens of props onto its own
+      // reserved ground is a real problem, but it is a level-design problem to
+      // be fixed room by room with the count in hand, not something to solve
+      // by emptying the rooms in the dark.
+      const claim = this.blocked(cx, cz, r, true);
+      if (claim) { onReserved.push(`${claim} @ (${cx.toFixed(1)}, ${cz.toFixed(1)})`); return; }
+
+      // Already solid? Probe the middle with a body-sized circle.
+      const solved = this.resolveCircle(cx, cz, 0.35);
+      if (Math.hypot(solved.x - cx, solved.z - cz) > 0.02) return;
+      // A CIRCLE, because that is what sweepKeepClear can take back, and
+      // because a turned prop under an axis-aligned box blocks its own corners
+      // that are not there. The radius is the SHORT half-axis, so a fallen
+      // column is a line of stone a child walks along rather than a slab.
+      this.addCircle(cx, cz, r, 'decor');
+      added++;
+    };
+
+    // Top-level props are groups of placed models; the models are the things.
+    // A model that is itself a leaf mesh (a single-piece prop) counts as one.
+    for (const child of this.root.children) {
+      if (child.isInstancedMesh) continue;        // the shell's wall cells
+      if (this._keepLoose && this._keepLoose.includes(child)) continue;
+      const kids = child.children || [];
+      if (child.isMesh || !kids.length) consider(child);
+      else for (const model of [...kids]) consider(model);
+    }
+    this._solidified = { added, onReserved: onReserved.length, claims: onReserved };
+    return this._solidified;
+  }
+
   sweepKeepClear() {
     const hits = [];
     this.circleColliders = this.circleColliders.filter((c) => {
