@@ -1585,7 +1585,20 @@ export async function buildVz(scene) {
   }
   rubbleField(world, -11.5, 0, 2.6, D, 11);
   rubbleField(world, 11.5, 0, 2.6, D, 11);
-  rubbleField(world, 0, -11.5, 2.8, D, 12);
+  // THE NORTH DOORWAY IS NOT DRESSING SPACE. This pile used to sit at
+  // (0, -11.5) with a 2.8 radius, dead centre on the crypt's onward gap — the
+  // way out that the Warden is standing between you and. Split in two and
+  // moved to the corners either side: the same amount of stone in the room,
+  // none of it drawn across the door.
+  //
+  // It is NOT what pushed the Greenway's landing, though it was moved while
+  // chasing that. rubbleField lays no colliders at all, so it never pushed
+  // anybody; the 0.92 in verify-landings §3 was the Warden's THRONE, a 2.1
+  // circle at (0, -9), and the fix for that is in js/levelGreen.js where the
+  // landing is written. Measured with world.blocked, which names the claim —
+  // reading the builder had already produced one wrong answer here.
+  rubbleField(world, -7.0, -11.5, 2.2, D, 6);
+  rubbleField(world, 7.0, -11.5, 2.2, D, 6);
   aftermath(world, -9, -10, 2.0, D, 36);
   aftermath(world, 9, -10, 2.0, D, 37);
   scatter(world, halfW, halfD, D, 111, 6, { spin: 0, kinds: ['column', 'skull', 'brick'] });

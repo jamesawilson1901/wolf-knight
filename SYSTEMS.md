@@ -99,6 +99,25 @@ ROOMS registry builds each room from kit pieces; flat-plane collisions
 (kilnLandmark). Region = room id prefix. LEVEL-DESIGN-2.md holds the
 seven layout rules + region graphs.
 
+THREE RULES ABOUT WHERE A THING ENDS UP, all of them learned from dad
+photographing the failure and all of them now enforced by construction rather
+than by the number whoever wrote the line happened to pick:
+
+* **A prop tipped on its side is MEASURED down, never lifted by a constant.**
+  `restOnFloor` (js/dressing.js) poses the prop, takes its box and sets its
+  underside on the floor. It replaced four hand-picked lifts (0.28 barrel,
+  0.42 column drum, 0.5 dead tree, 0.35 log stack), each correct for one model
+  at one scale with one roll and wrong the moment any of the three changed.
+* **A dressing coordinate cannot leave its room.** `clutter` (js/levelVillage.js)
+  clamps every spot to the room's own half-extents — with the exception that a
+  prop carrying a COLLIDER is dropped rather than clamped if it would land in a
+  doorway, because a cart across the Spire stair is worse than a missing cart.
+* **A dark zone's veil lies ON the ground.** The darkness itself is the light
+  rig (main.js dims it when the child stands in the zone); the quad is only the
+  hint, and at head height it read as a grey square hanging in mid-air.
+
+`verify-bounds` and `verify-looks` hold all three, over the live registry.
+
 ## Frostpeak (js/level4.js) — region 4, rebuilt 2026-09-03
 The last region to leave rooms.js. Same seven rooms and ids as v3.21
 (`f1` Rime Gate, `f1b` Frozen Cairn, `f2` Icebound Hall, `f2b` Glacier

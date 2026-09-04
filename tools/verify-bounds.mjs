@@ -75,7 +75,7 @@ const go = async (room) => {
 // way SEALED_BY_DESIGN in verify-openholes documents its own exceptions.
 const HANGING_HINTS = /banner|cobweb|lantern|light|torch|chandelier|vine|moss|sigil|glow|gem|rune|crystal/i;
 
-const outsideFound = [], floatingFound = [];
+const outsideFound = [], floatingFound = [], hangingFound = [];
 for (const room of ROOMS) {
   if (!(await go(room))) { check(`${room} builds`, false); continue; }
   const r = await page.evaluate(() => {
@@ -94,6 +94,7 @@ for (const room of ROOMS) {
     const enemyRoots = new Set((w.enemies || []).map((e) => e.root).filter(Boolean));
     const isEnemy = (o) => { for (let n = o; n && n !== w.root; n = n.parent) if (enemyRoots.has(n)) return true; return false; };
     const tops = new Map();
+    const parts = [];
     w.root.traverse((o) => {
       if (!o.isMesh || !o.geometry) return;
       if (!isVisible(o) || isEnemy(o)) return;
@@ -144,6 +145,7 @@ for (const room of ROOMS) {
       rec.minY = Math.min(rec.minY, bb.min.y); rec.maxY = Math.max(rec.maxY, bb.max.y);
       rec.minX = Math.min(rec.minX, bb.min.x); rec.maxX = Math.max(rec.maxX, bb.max.x);
       rec.minZ = Math.min(rec.minZ, bb.min.z); rec.maxZ = Math.max(rec.maxZ, bb.max.z);
+      parts.push({ bb, name: name.trim().slice(0, 50), isFireFX });
     });
     const outside = [], floating = [];
     const MARGIN = 1.2;   // scatter() legitimately touches the wall band
@@ -168,12 +170,51 @@ for (const room of ROOMS) {
         floating.push({ name: rec.name, gap: +gap.toFixed(2), at: [+cx.toFixed(1), +cz.toFixed(1)] });
       }
     }
-    return { outside, floating };
+    // AND THE SAME QUESTION ASKED OF THE PARTS.
+    //
+    // Everything above measures a top-level prop as ONE unit, on purpose: a
+    // house's forty wall fragments are one thing, and flagging each of them
+    // would bury a real bug in thirty identical lines. But that is exactly how
+    // cartWreck's floating log stack hid for months — the group's LOWEST point
+    // was the stack sitting on the ground, so the group passed, while the
+    // second stack hung in the air a metre away inside it. Dad photographed
+    // that one: "a random flying wood pile above a burnable wood pile."
+    //
+    // So: any single mesh whose underside is clear of the floor, and which has
+    // NOTHING UNDER IT — no other mesh in the room overlapping its footprint
+    // and reaching up to meet it. That is the suite's own stated rule ("with
+    // nothing under it") finally applied at the scale the bugs happen at. A
+    // lantern on a post is supported by the post; a log stack floating beside
+    // a cart is not supported by anything.
+    const hanging = [];
+    for (const p of parts) {
+      const gap = p.bb.min.y - (w.deckY || 0);
+      if (gap <= 0.45 || p.isFireFX) continue;
+      if (p.bb.min.y > 4) continue;                       // roof height, another question
+      const fx = p.bb.max.x - p.bb.min.x, fz = p.bb.max.z - p.bb.min.z;
+      if (fx > hw * 1.2 || fz > hd * 1.2) continue;       // a room-scale overlay, not a prop
+      let held = false;
+      for (const q of parts) {
+        if (q === p) continue;
+        if (q.bb.max.x < p.bb.min.x || q.bb.min.x > p.bb.max.x) continue;
+        if (q.bb.max.z < p.bb.min.z || q.bb.min.z > p.bb.max.z) continue;
+        // reaches up to meet it, and starts lower than it does
+        if (q.bb.max.y >= p.bb.min.y - 0.35 && q.bb.min.y < p.bb.min.y - 0.02) { held = true; break; }
+      }
+      if (!held) hanging.push({ name: p.name, gap: +gap.toFixed(2),
+        at: [+((p.bb.min.x + p.bb.max.x) / 2).toFixed(1), +((p.bb.min.z + p.bb.max.z) / 2).toFixed(1)] });
+    }
+
+    return { outside, floating, hanging };
   });
   for (const o of r.outside) outsideFound.push({ room, ...o });
   for (const f of r.floating) {
     if (HANGING_HINTS.test(f.name)) continue;   // excused by height class, not a guess
     floatingFound.push({ room, ...f });
+  }
+  for (const h of (r.hanging || [])) {
+    if (HANGING_HINTS.test(h.name)) continue;
+    hangingFound.push({ room, ...h });
   }
 }
 
@@ -184,6 +225,10 @@ check('no prop in the game renders outside its own room', outsideFound.length ==
 for (const f of floatingFound) check(`${f.room}: "${f.name}" is not floating`, false, f);
 check('no non-hanging prop in the game floats above the floor', floatingFound.length === 0,
   { rooms: ROOMS.length });
+
+for (const h of hangingFound.slice(0, 20)) check(`${h.room}: "${h.name}" has something under it`, false, h);
+check('no piece of any prop hangs with nothing beneath it', hangingFound.length === 0,
+  { rooms: ROOMS.length, found: hangingFound.length });
 
 console.log(errors.length ? `\n${errors.length} PROBLEM(S)`
   : `\nALL CLEAN — every prop in all ${ROOMS.length} rooms sits inside its own room, on the floor.`);

@@ -16,6 +16,9 @@ import { Player } from './player.js';
 import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
+// DEV MODE (js/devmode.js) — the play-test report loop. Inert without ?dev=1:
+// no DOM, no listeners, no renderer wrap.
+import { initDevMode } from './devmode.js';
 import { Pip, spawnPups } from './pip.js';
 import { audio } from './audio.js';
 import { Narration } from './narration.js';
@@ -1822,8 +1825,9 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xh') narration.say('court_wings');
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards }; // debug/testing hook
   initDevHarness();
+  initDevMode();
   await fadeTo(0, ms);
   transitioning = false;
 }
@@ -1996,8 +2000,9 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
   initDevHarness();
+  initDevMode();
   await fadeTo(0, 400);
   transitioning = false;
 }
@@ -2598,8 +2603,9 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards };
   initDevHarness();
+  initDevMode();
 }
 
 // Settings (pause menu) — wired to state.settings; persisted in Phase 9.

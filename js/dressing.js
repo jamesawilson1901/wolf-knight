@@ -110,6 +110,32 @@ export function makeDressers({ kit, tint, isGrey }) {
   // Solid props ask the world before they stand anywhere. `place` itself stays
 // dumb — clutter with no collider may sit wherever it likes, and stopping a
 // tuft of grass from overlapping a spawn point would only make rooms emptier.
+
+// LAY IT DOWN AND THEN PUT IT DOWN.
+//
+// Every place in this kit that tips a prop onto its side has to raise it by
+// however much the roll pushed its underside below the floor — and every one
+// of them did it with a hand-picked number: 0.28 for a barrel, 0.42 for a
+// column drum, 0.5 for a dead tree. A hand-picked number is right for exactly
+// one model at exactly one scale. Change the scale, swap the asset, use a
+// different roll, and the thing hangs in the air; that is what dad kept
+// photographing ("a random flying wood pile", "a weird floating stone
+// structure"), and it is why those numbers keep coming back.
+//
+// So: pose the prop first, then MEASURE it and set it on the floor. These are
+// static meshes with settled matrices — no skeleton, no mixer — so the box is
+// the truth about where the model's underside actually is. The group is still
+// at y = 0 when this runs, so local y = 0 IS the floor.
+function restOnFloor(m) {
+  if (!m) return m;
+  m.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(m);
+  if (!isFinite(bb.min.y)) return m;
+  m.position.y -= bb.min.y;
+  m.updateMatrixWorld(true);
+  return m;
+}
+
 function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x808080, shadow = true,
     centre = false) {
     if (!gltf) return null;
@@ -206,8 +232,9 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       // leaves it hanging 0.28 above the floor, which is what the Court's
       // pockets were doing.
       const round = gltf !== K().crate;
-      place(world, g, gltf, 'ruinGoods', px, down && round ? 0.28 : 0, pz,
+      const gm = place(world, g, gltf, 'ruinGoods', px, 0, pz,
         sc, r() * 6.28, down ? Math.PI / 2 : 0, P, false, true);
+      if (down && round) restOnFloor(gm);        // measured, not guessed at 0.28
     }
     // brick spill from the fallen courses — small, so you walk through it
     for (let i = 0; i < 6 + r() * 6; i++) {
@@ -285,9 +312,9 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     for (let i = 1; i <= 3; i++) {                    // the drums, lying down
       const t = i * (len / 3);
       if (world.blocked(x + dx * t, z + dz * t, 0.6)) continue;
-      place(world, g, K().column2, 'fallCol',
-        dx * t + (r() - 0.5) * 0.5, 0.42, dz * t + (r() - 0.5) * 0.5,
-        0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint);
+      restOnFloor(place(world, g, K().column2, 'fallCol',
+        dx * t + (r() - 0.5) * 0.5, 0, dz * t + (r() - 0.5) * 0.5,
+        0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint));
       world.addCircle(x + dx * t, z + dz * t, 0.5, 'decor');
     }
     g.position.set(x, 0, z);
@@ -342,7 +369,19 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const r = srnd(Math.round(x * 51 + z * 23));
     const P = D.propTint || D.floorTint;
     place(world, g, K().logStack, 'cart', 0, 0, 0, 1.0, 0, 0, P);
-    place(world, g, K().logStack, 'cart', 0.9, 0.35, -0.6, 0.8, 0.7, 0.5, P);
+    // THE SECOND HEAP IS ON THE GROUND. It used to be lifted 0.35 and rolled
+    // half a radian, meant as timber tumbling off the cart — but at scale 0.8
+    // that roll is twenty-nine degrees, nowhere near enough to put an edge
+    // down, and the offset (0.9, -0.6) carries it clear of the heap below. So
+    // it hung in the air, a wood pile floating over a wood pile, in every room
+    // the kit dresses. Dad photographed one: "there is a random flying wood
+    // pile above a burnable wood pile. get rid of it."
+    //
+    // The same mistake the barrels three lines down already carry a warning
+    // about — a lift without a tip that actually lays the thing over. Timber
+    // spilled beside a wreck reads perfectly well sitting on the floor, turned
+    // a different way, so that is what it does now.
+    place(world, g, K().logStack, 'cart', 1.15, 0, -0.85, 0.8, 0.7, 0, P);
     for (let i = 0; i < 4; i++) {
       const gl = r() < 0.5 ? K().barrel : K().crate;
       // ONE decision about whether this thing fell over, not two. The lift and
@@ -352,8 +391,9 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       // rests on its curve, a crate stays a box.
       const down = r() < 0.6;
       const round = gl !== K().crate;
-      place(world, g, gl, 'cart', (r() - 0.5) * 3.4, down && round ? 0.28 : 0, (r() - 0.5) * 2.8,
+      const cm = place(world, g, gl, 'cart', (r() - 0.5) * 3.4, 0, (r() - 0.5) * 2.8,
         1.0, r() * 6.28, down ? Math.PI / 2 : 0, P, false);
+      if (down && round) restOnFloor(cm);
     }
     world.addCircle(x, z, 1.0, 'decor');        // the wreck itself blocks; the spill does not
     g.position.set(x, 0, z);
@@ -518,8 +558,9 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       if (world.blocked(x + px, z + pz, 0.8)) continue;
       const down = r() < 0.3;
       const sc = 0.75 + r() * 0.5;
-      place(world, g, pick(BARE, r), 'blight', px, down ? 0.5 : 0, pz, sc,
+      const bm = place(world, g, pick(BARE, r), 'blight', px, 0, pz, sc,
         r() * 6.28, down ? Math.PI / 2 : 0, P);
+      if (down) restOnFloor(bm);
       world.addCircle(x + px, z + pz, (down ? 0.75 : 0.5) * sc, 'decor');
     }
     for (let i = 0; i < rad * 2.5; i++) {

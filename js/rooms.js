@@ -463,8 +463,21 @@ function darkZone(world, minX, maxX, minZ, maxZ) {
     new THREE.PlaneGeometry(maxX - minX, maxZ - minZ),
     veilMat
   );
+  // THE VEIL LIES ON THE GROUND. It used to hang at y = 1.65 — a translucent
+  // quad floating at head height over the dark stretch, which from a 3/4
+  // top-down camera is a grey rectangle hovering in mid-air with a visible
+  // edge. Dad photographed it and said "get rid of the random flying grey
+  // squares", and there was one in every room that has darkness in it.
+  //
+  // The darkness itself was never this quad: main.js dims the global light rig
+  // when the child stands inside the zone, and that is the mechanic. The quad
+  // is only the HINT — the way the road ahead reads as dark before you walk
+  // into it — so it belongs on the floor, where a dark stretch of ground looks
+  // like dark ground. main.js still writes veilMat.opacity every frame, so the
+  // material stays exactly where it was; only its height changed.
   veil.rotation.x = -Math.PI / 2;
-  veil.position.set((minX + maxX) / 2, 1.65, (minZ + maxZ) / 2);
+  veil.position.set((minX + maxX) / 2, (world.deckY || 0) + 0.06, (minZ + maxZ) / 2);
+  veil.renderOrder = 3;                       // over the floor and its patches
   world.add(veil);
   world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
 }
