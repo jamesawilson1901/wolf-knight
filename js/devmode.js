@@ -254,11 +254,27 @@ function shrink(canvas) {
 // the report form forever and lose the note he was about to type. After a beat
 // the report goes ahead without a picture, which is still worth having: the
 // room, the position and the words are most of what makes it actionable.
-function grabFrame(ms = 700) {
+function grabFrame(ms = 2500) {
   return new Promise((res) => {
     let done = false;
     pendingShot = (data) => { if (!done) { done = true; res(data); } };
-    setTimeout(() => { if (!done) { done = true; pendingShot = null; res(null); } }, ms);
+    // ASK FOR THE FRAME, DO NOT WAIT FOR ONE.
+    //
+    // The first cut armed the hook and waited for the loop to come round, and
+    // the suite caught it capturing nothing at all: every field of the report
+    // was right and the picture was empty. Worse, the cases where it would
+    // most often fail are the ones that matter — the armoury, the map and the
+    // pause menu all hold the world still, and a HUD complaint is exactly the
+    // kind he wants to photograph. Rendering one frame on demand is
+    // synchronous, so the wrapper fires before this function returns and
+    // toDataURL sees pixels that certainly exist. The timeout stays as a
+    // backstop for the case where the loop has died and taken the scene with
+    // it; a report with no picture still carries the room and the words.
+    try {
+      const g = window.__game;
+      if (g && g.renderer && g.scene && g.camera) g.renderer.render(g.scene, g.camera);
+    } catch (e) { console.warn('[dev] forced render failed', e); }
+    if (!done) setTimeout(() => { if (!done) { done = true; pendingShot = null; res(null); } }, ms);
   });
 }
 
@@ -553,4 +569,20 @@ export function initDevMode() {
     clear: async () => { await dbClear(); reports = []; seq = 0; paint(); toast('cleared'); } };
 
   console.log('[dev] DEV MODE on — REPORT / NOTE / EXPORT, bottom left');
+}
+
+// UP BEFORE THE GAME IS. main.js calls initDevMode() when a room is entered,
+// which is three call sites too late for two real cases: a bug on the title
+// screen or in a menu, and a RELOAD — after which the panel would not come back
+// until a profile had been picked, and the carried-over session looked lost.
+// The panel needs nothing from the game to exist (the renderer hook heals
+// itself on the first capture), so it comes up as soon as there is a body to
+// put it in. Every call is idempotent, so the ones in main.js stay as the
+// visible wiring.
+if (ON) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initDevMode(), { once: true });
+  } else {
+    initDevMode();
+  }
 }
