@@ -182,7 +182,43 @@ check('...and the machine-readable data underneath',
   !!html && html.includes('"room"') && html.includes('"camera"'));
 
 check('nothing threw during the run', pageErrors.length === 0, pageErrors.slice(0, 3));
+// --- 8. the way in that needs no address bar -------------------------------
+// manifest.json is display:fullscreen, so the installed app has no URL bar at
+// all. If ?dev=1 were the only gate, dev mode would be unreachable on exactly
+// the device the bugs are found on.
+console.log('\n── 8. reachable from the installed app ────────────────');
+{
+  const p2 = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
+  await p2.goto('http://localhost:8901/index.html', { waitUntil: 'load' });   // NO ?dev=1
+  await p2.waitForSelector('#title', { state: 'visible', timeout: 20000 });
+  check('off to begin with, as the children see it',
+    !(await p2.evaluate(() => !!document.getElementById('dev-badge'))));
+
+  // a long press on the version badge, the way a thumb does it
+  await p2.evaluate(() => {
+    const el = document.getElementById('badge');
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  });
+  await p2.waitForSelector('#dev-badge', { timeout: 15000 });
+  check('a long press on the version badge turns it on, with no URL typed', true);
+
+  // and it STAYS on across a fresh load, which is what the installed app does
+  await p2.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
+  await p2.waitForSelector('#title', { state: 'visible', timeout: 20000 });
+  check('...and it is still on after a plain reload',
+    await p2.evaluate(() => !!document.getElementById('dev-badge')));
+
+  // ?dev=0 is the way back out
+  await p2.goto('http://localhost:8901/index.html?dev=0', { waitUntil: 'load' });
+  await p2.waitForSelector('#title', { state: 'visible', timeout: 20000 });
+  check('?dev=0 turns it off again',
+    !(await p2.evaluate(() => !!document.getElementById('dev-badge'))));
+  await p2.close();
+}
+
 await b.close();
+
+
 console.log(errors.length ? `\n✗ FAIL — ${errors.length} problem(s)`
   : '\n✓ PASS — dev mode reports where, not just what');
 process.exit(errors.length ? 1 : 0);

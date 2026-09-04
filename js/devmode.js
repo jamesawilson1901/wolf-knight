@@ -45,7 +45,37 @@
 // absent this module creates no DOM, adds no listener and wraps nothing.
 import * as THREE from 'three';
 
-const ON = typeof location !== 'undefined' && /[?&]dev=1/.test(location.search);
+// HOW YOU GET IN, AND WHY THERE ARE TWO WAYS.
+//
+// `?dev=1` was the whole gate, and it shipped broken for the one person it is
+// for: manifest.json is `"display": "fullscreen"` with `start_url: "./"`, so
+// the installed app has NO ADDRESS BAR. Dad opens Wolf Knight from the home
+// screen like the kids do, and there is physically nowhere to type a query
+// string. A dev mode reachable only from a browser tab is a dev mode he cannot
+// use on the device he finds the bugs on.
+//
+// So the URL still works and now STICKS: `?dev=1` remembers itself, `?dev=0`
+// forgets. And there is a way in with no URL at all — a long press on the
+// version badge in the corner, which is already the developer's own label,
+// sits outside every control, and is not something a five-year-old presses for
+// a second and a half by accident.
+const DEV_KEY = 'wk-dev';
+function urlSays() {
+  const m = /[?&]dev=([01])/.exec(location.search || '');
+  return m ? m[1] === '1' : null;
+}
+function remembered() {
+  try { return localStorage.getItem(DEV_KEY) === '1'; } catch { return false; }
+}
+function remember(on) {
+  try { localStorage.setItem(DEV_KEY, on ? '1' : '0'); } catch { /* private mode */ }
+}
+let ON = (() => {
+  const fromUrl = urlSays();
+  if (fromUrl === null) return remembered();
+  remember(fromUrl);
+  return fromUrl;
+})();
 
 const DB_NAME = 'wolfknight-dev';
 const STORE = 'reports';
@@ -571,6 +601,33 @@ export function initDevMode() {
   console.log('[dev] DEV MODE on — REPORT / NOTE / EXPORT, bottom left');
 }
 
+// THE WAY IN WITH NO URL. Armed whether dev mode is on or off, because when it
+// is off it is the only way to turn it on from the installed app. It is one
+// listener on one element and it creates nothing until it fires.
+function armBadgeToggle() {
+  const badge = document.getElementById('badge');
+  if (!badge || badge.__devArmed) return;
+  badge.__devArmed = true;
+  badge.style.pointerEvents = 'auto';
+  let timer = null;
+  const start = () => {
+    timer = setTimeout(() => {
+      timer = null;
+      const now = !ON;
+      remember(now);
+      // A reload is the honest switch: turning dev mode ON has to run the
+      // module's setup, and turning it OFF has to leave nothing behind. Both
+      // are exactly what a fresh load does.
+      location.reload();
+    }, 1500);
+  };
+  const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  badge.addEventListener('pointerdown', start);
+  badge.addEventListener('pointerup', stop);
+  badge.addEventListener('pointercancel', stop);
+  badge.addEventListener('pointerleave', stop);
+}
+
 // UP BEFORE THE GAME IS. main.js calls initDevMode() when a room is entered,
 // which is three call sites too late for two real cases: a bug on the title
 // screen or in a menu, and a RELOAD — after which the panel would not come back
@@ -579,10 +636,12 @@ export function initDevMode() {
 // itself on the first capture), so it comes up as soon as there is a body to
 // put it in. Every call is idempotent, so the ones in main.js stay as the
 // visible wiring.
-if (ON) {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => initDevMode(), { once: true });
-  } else {
-    initDevMode();
-  }
+function boot() {
+  armBadgeToggle();          // always — it is the way back in when ON is false
+  if (ON) initDevMode();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot, { once: true });
+} else {
+  boot();
 }
