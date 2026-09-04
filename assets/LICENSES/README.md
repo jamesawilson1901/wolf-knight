@@ -150,7 +150,7 @@ needs. Blocked on the licence, not on the idea.
 
 ## 2026-09-04 — the sea dragon
 
-- **`assets/chars/monsters/sea-dragon.glb` — Meri's body. SETTLED, WITH A
+- **`assets/chars/monsters/sea-dragon.glb` — Aria's body. SETTLED, WITH A
   CONDITION.** It is Jenosuke's *Sea-Dragon*, https://skfb.ly/oO9OV, released
   under **Creative Commons Attribution 4.0**
   (http://creativecommons.org/licenses/by/4.0/). Credit is required, and this
@@ -173,9 +173,24 @@ needs. Blocked on the licence, not on the idea.
   rig in `js/seaclips.js` and live in this repository, not in the model.
 
   It is also the cleanest character body anyone has supplied: one SkinnedMesh,
-  one material, 39 bones, 2,173 triangles, one draw call, and no textures —
-  which is the right state, because every creature in this game is a
-  single-material model that `VARIANTS` tints.
+  one material, 39 bones, 2,173 triangles, one draw call.
+
+  **2026-09-05 — it is Aria's, not Meri's, and it is painted now.** It was
+  earmarked for Meri when it arrived and before James's own creature did.
+  Meri's fight is built out of the nine clips `cave-biped.glb` brought — her
+  Skill, the half-health flinch, the knockdown and the rise; this body has
+  three. So it went where the animation was actually missing: Aria wore the
+  Quaternius dragon, whose five clips are three usable ones with no idle and
+  no walk in them. Stormreach is sea cliffs, and the model is posed rearing,
+  which is what her `hover` was already pretending.
+
+  It shipped with a flat 0.8 grey and no image at all — a white plastic snake
+  on screen. It DOES ship clean UVs, so a texture is baked from its own
+  anatomy by `tools/paint-sea-dragon.mjs` and injected by
+  `tools/inject-texture.py`; the 512×512 PNG is an addition to the file and
+  40 KB of it. **No vertex, bone or weight was touched**, and the original is
+  recoverable by dropping the image, the sampler, the texture and the one
+  `baseColorTexture` line back out of the glTF JSON.
 
 ## 2026-09-04 — the first asset with no licence question at all
 

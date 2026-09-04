@@ -56,6 +56,13 @@ const JAW = 'Bone032_031';
 const FIN_L = ['Bone001_020', 'Bone022_021', 'Bone023_00'];
 const FIN_R = ['Bone033_024', 'Bone027_025', 'Bone028_026'];
 
+// The map is exported because a SECOND tool needs the same anatomy:
+// tools/paint-sea-dragon.mjs bakes the body's texture by asking which bone
+// drives each vertex. Two hand-copied lists of thirty bone names would drift
+// the first time one of them was edited, and the drift would be silent —
+// the paint would simply land on the wrong part of the animal.
+export const SEA_DRAGON_BONES = { SPINE, NECK, SKULL, JAW, FIN_L, FIN_R };
+
 // The body lies along Z with the head at +z, so a serpent's side-to-side
 // undulation is rotation about Y, and rearing back is rotation about X
 // (negative, which lifts +z).
@@ -247,9 +254,12 @@ export function fitSeaDragon(gltf) {
   return gltf;
 }
 
-// The clip names Meri's SKINS entry points at. `run` reuses the weave on
-// purpose: a serpent has one way of moving and does it faster, and the boss
-// class plays `run` at a raised timeScale during a charge.
+// The clip names ARIA's SKINS entry points at (js/boss.js) — it was written
+// for Meri and moved on 2026-09-05, because Meri's fight is built out of the
+// nine clips her own body brought and Aria's had no idle and no walk at all.
+// `run` reuses the weave on purpose: a serpent has one way of moving and does
+// it faster, and the boss class plays `run` at a raised timeScale during a
+// charge.
 export const SEA_DRAGON_CLIPS = {
   idle: 'Sea-Dragon|Idol',
   walk: 'Authored|Weave',

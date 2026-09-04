@@ -14,6 +14,7 @@ import { smokePuff } from './enemies.js';
 import { state } from './state.js';
 import { galeLane } from './wind.js';
 import { waterZone, buildWaterField } from './water.js';
+import { fitSeaDragon, SEA_DRAGON_CLIPS } from './seaclips.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 import { bumpCounter } from './progress.js';
@@ -30,7 +31,7 @@ const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Atta
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
 // grammar the kids mastered (bosses fight like their family), new skin/stats.
-export // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // DIFFICULTY, AND WHY IT IS SHAPED LIKE THIS
 //
 // Dad, 2026-09-03: "boss fights are far too easy and are all beatable by
@@ -71,7 +72,19 @@ export // ----------------------------------------------------------------------
 // boss telegraph LONGER than the floor; it reaches 1.0 and stops. Difficulty
 // comes from what a child has to DO, never from taking their reading time away.
 // ---------------------------------------------------------------------------
-const SKINS = {
+// A BODY THAT NEEDS WORK DONE TO IT BEFORE IT CAN FIGHT.
+//
+// Most bodies arrive with their own idle/walk/attack/death and need nothing.
+// Jenosuke's sea dragon ships a death clip and two idles and no fight at all,
+// so js/seaclips.js authors a weave and an attack onto its own rig. That has
+// to happen BEFORE the clip lookups below, and it has to happen everywhere the
+// body is loaded — the game, and tools/verify-bosses.mjs, which is exactly the
+// check that would catch it not happening. So it is named by the skin
+// (`body.fit`) and exported, rather than being a branch somewhere in the
+// loading path that a test can quietly skip.
+export const BODY_FITS = { seaDragon: fitSeaDragon };
+
+export const SKINS = {
   shadowgrip: {
     tier: 1, gap: 3.2, tellMult: 1.15,
     moves: ['swipe', 'charge'],
@@ -151,14 +164,41 @@ const SKINS = {
   //
   // AND SHE IS NOT A WOLF EITHER (2026-09-03). She was the third of four, and
   // the most obviously wrong of them: a wolf that prowls a clifftop is not
-  // what "the Galebound" means. She wears the Quaternius dragon now — the body
-  // Boreal used to wear before Frostpeak's rebuild moved her onto the wyrm, so
-  // this costs the build nothing new — and she HOVERS: `body.hover` lifts her
-  // half a metre off the crown, so the storm-spirit reads as airborne while
-  // still fighting the ground fight the class gives her.
+  // what "the Galebound" means. She HOVERS: `body.hover` lifts her half a
+  // metre off the crown, so the storm-spirit reads as airborne while still
+  // fighting the ground fight the class gives her.
   //
-  // Dragon.glb has no idle and no walk, only Flying — which is exactly right
-  // here. A thing that never touches the stone has no walk cycle to play.
+  // AND SHE IS NOT THE QUATERNIUS DRAGON EITHER (2026-09-05). That body was
+  // borrowed from Boreal and it was the thinnest-animated body in the game:
+  // Dragon.glb ships five clips of which three can be used — Flying, Attack,
+  // Death — and neither an idle nor a walk is among them, so every still
+  // second of her fight was the flight loop played in place. She is a
+  // SEA-DRAGON now (Jenosuke, CC-BY — CREDITS.md), and three separate things
+  // say she should be:
+  //
+  //   * Stormreach is not a clifftop, it is SEA CLIFFS (regions.js: "down off
+  //     the calmed summit onto the sea cliffs", a flooded sea-cave gate at
+  //     s1a, and Luna hearing the sea under them). A serpent off that sea,
+  //     held up in the gale, is the region's own geography.
+  //   * The body is posed REARING — coil below, forebody and head free above
+  //     (js/seaclips.js measured it) — which is what `hover` was already
+  //     pretending. It is a body that has no business standing, for a boss
+  //     who never lands.
+  //   * It brings her an IDLE, which she has never had, plus a weave, an
+  //     attack authored to the 0.9s telegraph law, and its own death clip.
+  //
+  // It is NOT Meri's body, and that was the other candidate. Meri's whole
+  // fight — her Skill, the half-health flinch, the knockdown and the rise —
+  // is built out of the nine clips her own body brought; the sea dragon has
+  // three. Moving her onto it would trade a nine-clip boss for a three-clip
+  // one to fix a boss that was already fine. The sea serpent goes where the
+  // animation was actually missing.
+  //
+  // `keep` names its one material, so it wears the paint that was baked for
+  // it (tools/paint-sea-dragon.mjs) instead of being flooded with `hide`.
+  // `hide`/`glow` below are therefore unused for her BODY, exactly as Meri's
+  // are; they stay because the ring, burst and cinder colours read from the
+  // same block and a half-filled skin is harder to read than a whole one.
   aria: {
     tier: 5, gap: 2.4, tellMult: 1.02,
     moves: ['swipe', 'charge', 'pounce'],
@@ -166,14 +206,13 @@ const SKINS = {
     open: { by: 'stomp', secs: 2.4, hint: 'STOMP - THE SHOCK GOES THROUGH THE GALE' },
     name: 'Aria, the Galebound',
     body: {
-      url: './assets/chars/monsters/Dragon.glb',
+      url: './assets/chars/monsters/sea-dragon.glb',
       stands: 3.4,
       hover: 0.55,                 // she does not land
-      eyes: ['Eyes'],
+      fit: 'seaDragon',            // the two clips the file did not come with
+      keep: ['Dragon'],            // its own baked paint, not the skin tint
     },
-    clips: { idle: 'DragonArmature|Dragon_Flying', walk: 'DragonArmature|Dragon_Flying',
-      run: 'DragonArmature|Dragon_Flying', attack: 'DragonArmature|Dragon_Attack',
-      death: 'DragonArmature|Dragon_Death' },
+    clips: SEA_DRAGON_CLIPS,
     hide: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
     maxHp: 26, dmg: 1.5, saveKey: 'ariaHp', legacyPhases: false,
     cinder: 0xfff4b0, // her own stormlight, held down by the gale
@@ -360,6 +399,12 @@ export class Shadowgrip {
     // bookend the whole story is built on. Everything BETWEEN them is now its
     // own creature.
     const B = this.skin.body || {};
+    // A BODY THAT NEEDED CLIPS AUTHORING GETS THEM HERE, before anything below
+    // looks a clip up by name — a lookup that finds nothing is silent, which
+    // is how Meri spent a month fighting in her bind pose. Idempotent: the fit
+    // checks for its own clips, and the loaded gltf is cached and shared by
+    // every rebuild of the room.
+    if (B.fit && BODY_FITS[B.fit]) BODY_FITS[B.fit](wolfGltf);
     this.core = new THREE.Group();
     const wolf = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
     // MEASURE, OR TAKE THE WOLF'S OWN 1.3. Every model in this batch arrives

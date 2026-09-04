@@ -377,7 +377,7 @@
    "covers": [
     "assets/chars/monsters/sea-dragon.glb"
    ],
-   "note": "CREDIT IS REQUIRED AND THIS IS WHERE IT IS GIVEN: \"Sea-Dragon\" (https://skfb.ly/oO9OV) by Jenosuke, licensed under Creative Commons Attribution. Meri the Drowned wears it. One SkinnedMesh, one material, 39 bones, 2,173 triangles — the cleanest character body in any batch so far, and the only one that needed no conversion to fit the draw-call budget. It shipped a death clip and two idles and NO attack or swim, so those two are authored onto its own rig (js/seaclips.js); the mesh, the skeleton and the skinning are all Jenosuke's, unaltered."
+   "note": "CREDIT IS REQUIRED AND THIS IS WHERE IT IS GIVEN: \"Sea-Dragon\" (https://skfb.ly/oO9OV) by Jenosuke, licensed under Creative Commons Attribution. Aria the Galebound wears it (moved off Meri 2026-09-05: Meri's fight needs the nine clips her own body brought, and Aria's Quaternius dragon had no idle and no walk). One SkinnedMesh, one material, 39 bones, 2,173 triangles — the cleanest character body in any batch so far, and the only one that needed no conversion to fit the draw-call budget. It shipped a death clip and two idles and NO attack or swim, so those two are authored onto its own rig (js/seaclips.js), and it shipped no texture at all, so a 512x512 PNG is baked from its own anatomy (tools/paint-sea-dragon.mjs) and injected into the file (tools/inject-texture.py). The mesh, the skeleton and the skinning are all Jenosuke's, unaltered."
   },
   {
    "pack": "James — ocean-cave biped (Meshy AI)",

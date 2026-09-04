@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.107.0';
+const CACHE_NAME = 'wolfknight-v3.108.0';
 
 const PRECACHE = [
   './',
@@ -49,6 +49,7 @@ const PRECACHE = [
   './js/ui.js',
   './js/enemies.js',
   './js/boss.js',
+  './js/seaclips.js',
   './js/pip.js',
   './js/audio.js',
   './js/narration.js',
@@ -205,6 +206,12 @@ const PRECACHE = [
   './assets/chars/monsters/wasp.glb',
   './assets/chars/monsters/minotaur.glb',
   './assets/chars/monsters/wyrm.glb',
+  // BOSS BODIES ARE NOT OPTIONAL OFFLINE. sea-dragon is Aria's; cave-biped is
+  // Meri's and was missed when she got it — an uncached body means the fight
+  // simply does not load without a network, and the two newest bosses were
+  // the two that would have failed.
+  './assets/chars/monsters/sea-dragon.glb',
+  './assets/chars/monsters/cave-biped.glb',
   // spoil: weapons off the packs whose characters could not be animated
   './assets/gear/sword_legion.glb',
   './assets/gear/spear_legion.glb',

@@ -53,12 +53,14 @@ const go = async (room) => {
   return false;
 };
 
+const FAR = { aria: 1.7 };   // she rears; everything else stands
 for (const [room, id, name] of BOSSES) {
+  const DIST = FAR[id] || 3.0;
   if (!await go(room)) { console.log(`${id}: FAILED TO BUILD ${room}`); continue; }
   // The game owns the camera every frame, so a hand-parked camera is gone by
   // the next one. Stand the KNIGHT in front of the boss instead and let the
   // game frame them both — which is also the framing a child actually sees.
-  const info = await page.evaluate(async (secs) => {
+  const info = await page.evaluate(async ([secs, DIST]) => {
     const g = window.__game;
     const boss = g.world.boss || g.world.warden;
     if (!boss) return { found: false };
@@ -67,7 +69,11 @@ for (const [room, id, name] of BOSSES) {
     // the enemy's own x/z are the truth; a model root can sit at the origin
     const p = { x: boss.x !== undefined ? boss.x : o.position.x,
       z: boss.z !== undefined ? boss.z : o.position.z };
-    g.player.root.position.set(p.x, g.player.root.position.y, p.z + 3.0);
+    // A TALL BOSS NEEDS A CLOSER CAMERA, NOT A FURTHER ONE. The view is 3/4
+    // top-down, so backing away pushes the target UP the screen and under the
+    // health bar; stepping in brings it down into frame. Per-boss because
+    // Aria rears nearly four metres and the hounds do not.
+    g.player.root.position.set(p.x, g.player.root.position.y, p.z + (DIST || 3.0));
     g.player.iframes = 99999;
     const t0 = performance.now();
     await new Promise((res) => {
@@ -76,7 +82,7 @@ for (const [room, id, name] of BOSSES) {
       requestAnimationFrame(step);
     });
     return { found: true, at: { x: p.x, z: p.z }, boss: boss.name || boss.skin || 'warden' };
-  }, 2.2);
+  }, [2.2, DIST]);
   if (!info.found) { console.log(`${id}: no boss object in ${room}`); continue; }
   await page.screenshot({ path: `${OUT}/${id}.png` });
   console.log(`${id}: ${room} ${JSON.stringify(info)}`);

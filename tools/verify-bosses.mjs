@@ -35,7 +35,8 @@ const skins = await wk.page.evaluate(async () => {
   const out = {};
   for (const [k, s] of Object.entries(SKINS)) {
     out[k] = { name: s.name, url: (s.body && s.body.url) || './assets/chars/wolf.gltf',
-      stands: (s.body && s.body.stands) || null, hp: s.maxHp, dmg: s.dmg,
+      stands: (s.body && s.body.stands) || null, fit: (s.body && s.body.fit) || null,
+      hp: s.maxHp, dmg: s.dmg,
       speed: s.speedMult || 1, weakness: s.weakness || null,
       clips: s.clips ? Object.keys(s.clips) : null,
       hasSnares: !!s.snares, hasGales: !!s.gales, hasFloods: !!s.floods, adapts: !!s.adapts };
@@ -57,23 +58,38 @@ check('...and the bookend is exactly the first boss and the last',
   !shared.length || shared.every(([, ks]) => ks.join() === BOOKEND.join()), shared);
 
 console.log('\n── 2. every body loads, and stands where it says ──────');
-const bodies = await wk.page.evaluate(async (urls) => {
+// A BODY WITH A `fit` IS NOT FINISHED WHEN IT LOADS, and §3 below is exactly
+// the check that has to know that. Aria's sea dragon ships a death clip and
+// two idles; its weave and its attack are authored onto its own rig at build
+// time (js/seaclips.js, via boss.js's BODY_FITS). Reading the raw file here
+// would report two of her five clips missing — a red suite for a fight that
+// works. So the fit is applied the same way the game applies it, from the
+// same exported registry: if someone adds a fit and forgets to register it,
+// THAT still fails, which is the failure worth having.
+const bodies = await wk.page.evaluate(async (jobs) => {
   const THREE = await import('three');
   const { loadGLB } = await import('/js/assets.js');
+  const { BODY_FITS } = await import('/js/boss.js');
   const out = {};
-  for (const u of urls) {
+  for (const { url: u, fit } of jobs) {
     try {
       const g = await loadGLB(u);
+      if (fit) {
+        if (!BODY_FITS[fit]) throw new Error(`skin names body.fit '${fit}' — no such entry in BODY_FITS`);
+        BODY_FITS[fit](g);
+      }
       g.scene.updateMatrixWorld(true);
       const bb = new THREE.Box3().setFromObject(g.scene);
-      out[u] = { h: +(bb.max.y - bb.min.y).toFixed(2),
+      out[u] = { h: +(bb.max.y - bb.min.y).toFixed(2), fit: fit || null,
         clips: (g.animations || []).map((c) => c.name) };
     } catch (e) { out[u] = { error: String(e && e.message || e) }; }
   }
   return out;
-}, [...new Set(Object.values(skins).map((s) => s.url))]);
+}, Object.values(skins).reduce((acc, s) => (acc.some((j) => j.url === s.url)
+  ? acc : acc.concat({ url: s.url, fit: s.fit })), []));
 for (const [u, b] of Object.entries(bodies)) {
-  check(`${u.split('/').pop()} loads`, !b.error, b.error || { nativeHeight: b.h, clips: b.clips.length });
+  check(`${u.split('/').pop()} loads`, !b.error,
+    b.error || { nativeHeight: b.h, clips: b.clips.length, fit: b.fit });
 }
 
 console.log('\n── 3. every skin names clips its own body actually has ─');
