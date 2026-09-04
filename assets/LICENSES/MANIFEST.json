@@ -368,6 +368,16 @@
    "note": "SHIPPING NOW: wasp.glb is the Ember Wasp, Ember Hollow's flyer (replaces the Ember Dragonling); minotaur.glb is Sylva, Thornbound, the Wild Woods boss. FIX: copy the per-model licence documents out of Google Drive into assets/LICENSES/ and split this entry per source. If any is CC-BY, its author needs a CREDITS.md row.",
    "accepted": "private-family-use 2026-09-03",
    "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. The FIX line above is still what would clear it."
+  },
+  {
+   "pack": "Jenosuke — Sea-Dragon",
+   "licence": null,
+   "states": "Creative Commons Attribution 4.0 (http://creativecommons.org/licenses/by/4.0/) — stated by James with the model, quoting Sketchfab's own attribution line",
+   "source": "https://skfb.ly/oO9OV",
+   "covers": [
+    "assets/chars/monsters/sea-dragon.glb"
+   ],
+   "note": "CREDIT IS REQUIRED AND THIS IS WHERE IT IS GIVEN: \"Sea-Dragon\" (https://skfb.ly/oO9OV) by Jenosuke, licensed under Creative Commons Attribution. Meri the Drowned wears it. One SkinnedMesh, one material, 39 bones, 2,173 triangles — the cleanest character body in any batch so far, and the only one that needed no conversion to fit the draw-call budget. It shipped a death clip and two idles and NO attack or swim, so those two are authored onto its own rig (js/seaclips.js); the mesh, the skeleton and the skinning are all Jenosuke's, unaltered."
   }
  ],
  "distribution": {

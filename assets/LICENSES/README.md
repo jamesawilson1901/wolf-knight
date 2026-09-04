@@ -148,7 +148,43 @@ Chicken, Armour, Shield, Sword, Potion are a tavern-and-shopfront set, and a
 picture-sign hung over Maren's door is exactly the wayfinding a non-reader
 needs. Blocked on the licence, not on the idea.
 
+## 2026-09-04 — the sea dragon
+
+- **`assets/chars/monsters/sea-dragon.glb` — Meri's body. SETTLED, WITH A
+  CONDITION.** It is Jenosuke's *Sea-Dragon*, https://skfb.ly/oO9OV, released
+  under **Creative Commons Attribution 4.0**
+  (http://creativecommons.org/licenses/by/4.0/). Credit is required, and this
+  is it —
+
+      "Sea-Dragon" (https://skfb.ly/oO9OV) by Jenosuke is licensed under
+      Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)
+
+  Recorded here rather than on the credits screen for the reason already
+  settled for bocdagla's dragon: that screen is the kids' ending and runs on
+  the game's no-reading rule.
+
+  Unlike every previous batch this one arrived with its licence line already
+  written, by James, alongside the file — so there is nothing to trace and
+  nothing quoted second-hand.
+
+  **What was changed, and what was not.** The mesh, the skeleton and the
+  skinning are Jenosuke's, untouched. The file ships a death clip and two
+  idles and no attack or swim, so those two clips are authored onto its own
+  rig in `js/seaclips.js` and live in this repository, not in the model.
+
+  It is also the cleanest character body anyone has supplied: one SkinnedMesh,
+  one material, 39 bones, 2,173 triangles, one draw call, and no textures —
+  which is the right state, because every creature in this game is a
+  single-material model that `VARIANTS` tints.
+
 ## Still outstanding
+
+- **`assets/chars/monsters/skeleton-dragon.gltf`** — vendored 2026-09-04 from
+  James's batch and NOT traced to a source or a licence. `check-licences.mjs`
+  reports the tree clean because it checks DIRECTORIES and that file sits in
+  one another pack already covers, which is a gap in the check worth knowing
+  about: a new model can arrive in a covered folder and be reported as
+  accounted for. It is not in the build yet. Trace it before it ships.
 
 - **craftpix packs** (free desert mountain, free winter mountain, free shield —
   supplied 2026-09-02). Their `License.txt` is a bare link to
