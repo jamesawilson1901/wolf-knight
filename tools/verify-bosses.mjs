@@ -223,9 +223,22 @@ console.log('\n── 9. and mashing is measured, not assumed ──────
 // reading, no dodging, no shield — for a minute, against the FIRST fight in
 // the game and the LAST one, and compares what it buys.
 //
-// Region one must still be winnable this way: a five-year-old who only mashes
-// has to be able to get through the Shadowgrip, or the game stops at its first
-// boss. Region seven must not be.
+// THIS SECTION USED TO ASSERT THE OPPOSITE, and the change is dad's.
+//
+// It said region one must still be winnable by mashing — "a five-year-old who
+// only mashes has to be able to get through the Shadowgrip, or the game stops
+// at its first boss" — and measured that the masher took at least 35% of the
+// bar off. Then he played it and wrote, of that exact fight: "Boss can be beat
+// by button mashing. Make it you can only hurt it when it's down. Blocking its
+// attack makes it fall over." Every boss is armoured now until its own verb
+// opens it, so a masher takes off nothing at all, by design.
+//
+// Rewriting a test to match the code it is testing is normally how a suite
+// becomes a lie, so this is only safe because the OTHER half is proven
+// separately and by real play: probe-blocker.mjs plays the fight the way it is
+// meant to be played — shield up on the tell, swing only in the window — and
+// insists a child who does that WINS. Masher must lose; blocker must win. This
+// file owns the first half; do not let it own both.
 const mash = async (room, forms, seconds) => {
   await wk.page.evaluate(({ r, f }) => window.__wkJump(r, f), { r: room, f: forms });
   await wk.page.waitForFunction((r) => window.__wk.room === r && !window.__wk.gates.transitioning,
@@ -266,15 +279,22 @@ const last = await mash('xth', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'
   'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'], 60);
 console.log('   ', JSON.stringify(first));
 console.log('   ', JSON.stringify(last));
-check('mashing the FIRST boss still gets somewhere (a child who only swings must not be stuck)',
-  first.dealt > first.hp * 0.35, first);
+// A WHOLE MINUTE OF NOTHING BUT THE ATTACK BUTTON, and the bar must not move.
+check('a minute of mashing takes nothing off the FIRST boss', first.dealt === 0, first);
+check('...nor off the LAST one', last.dealt === 0, last);
+// and it has to COST something, or "immune" just reads as a boss that is
+// asleep. A masher should be losing hearts while it learns nothing.
 check('mashing costs hearts even in region one', first.hitsTaken >= 1, first);
-check('...and the LAST boss gives a masher far less of its bar for the same minute',
-  last.barPerSecond < first.barPerSecond * 0.75,
-  { first: first.barPerSecond, last: last.barPerSecond,
-    ratio: +(last.barPerSecond / first.barPerSecond).toFixed(2) });
 check('the last fight hurts a masher at least as much as the first',
   last.hitsTaken >= first.hitsTaken, { first: first.hitsTaken, last: last.hitsTaken });
+// THE OTHER HALF, NAMED SO IT CANNOT BE FORGOTTEN. Everything above passes
+// trivially if a boss is simply unbeatable, which would be far worse than one
+// that can be mashed. tools/probe-blocker.mjs is what stops that, and
+// tools/verify-bossopen.mjs proves every skin's verb opens it and that damage
+// lands inside the window. If this file is green and those are not, the fights
+// are broken and this file is the one lying.
+console.log('   (masher must lose; blocker must win — see probe-blocker.mjs '
+  + 'and verify-bossopen.mjs for the other half)');
 
 check('nothing threw during the run', wk.errors.length === 0, wk.errors.slice(0, 3));
 await wk.b.close();
