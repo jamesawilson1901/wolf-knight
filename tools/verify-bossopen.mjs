@@ -41,9 +41,20 @@ for (const room of ROOMS) {
   let r = null;
   for (let a = 0; a < 6 && !r; a++) {
     try {
-      await page.evaluate(({ rm, f }) => window.__wkJump(rm, f), { rm: room, f: ALL });
-      await page.waitForFunction(() => window.__game.world && window.__game.world.boss,
-        null, { timeout: 40000 });
+      await page.evaluate(({ rm, f }) => {
+        const g = window.__game;
+        g.player.iframes = 0;                 // never let a previous check pin the jump
+        window.__wkJump(rm, f);
+      }, { rm: room, f: ALL });
+      // WAIT FOR THE ROOM IT ASKED FOR, not merely for a boss to exist. The
+      // first cut waited for `world.boss` and got the previous room's boss,
+      // still standing, still wounded from the last check.
+      await page.waitForFunction((rm) => window.__game.world
+        && window.__game.world.roomId === window.__game.resolveRoom(rm)
+        && window.__game.world.boss, room, { timeout: 40000 });
+      // and a window left open by the previous boss is not this one's armour
+      await page.evaluate(() => { const b = window.__game.world.boss;
+        b.openT = 0; b.action = 'prowl'; });
       r = await page.evaluate(() => {
         const g = window.__game, boss = g.world.boss;
         const by = (boss.skin.open && boss.skin.open.by) || null;
@@ -63,8 +74,14 @@ for (const room of ROOMS) {
           p.defending = true;
           if (!p.form.def) p.form.def = {};
           const hadShield = p.form.def.shield; p.form.def.shield = true;
-          p.iframes = 999;                       // measuring the topple, not the damage
+          // MEASURING THE TOPPLE, NOT THE DAMAGE — but iframes must go back.
+          // __wkJump moves rooms by killing the player and letting the respawn
+          // path load the next one, so a probe that leaves iframes at 999
+          // silently pins every later jump: the first run of this suite tested
+          // the Shadowgrip five times and reported it as five different bosses.
+          p.iframes = 999;
           boss._strike(p, 0);
+          p.iframes = 0;
           p.defending = wasDef; p.form.def.shield = hadShield;
           opened = boss.openT > 0;
         } else if (by === 'stomp') {
@@ -72,6 +89,11 @@ for (const room of ROOMS) {
           opened = boss.openT > 0;
         } else if (by === 'element') {
           boss._hitCore(0.0001, boss.skin.weakness);
+          opened = boss.openT > 0;
+        } else if (by === 'switch') {
+          // two blows of DIFFERENT elements — her lesson, performed
+          boss._hitCore(0.0001, 'fire');
+          boss._hitCore(0.0001, 'frost');
           opened = boss.openT > 0;
         } else if (by === 'cut') {
           boss.action = 'root';

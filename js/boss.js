@@ -253,8 +253,18 @@ const SKINS = {
   grimm: {
     tier: 7, gap: 1.9, tellMult: 1.0,
     moves: ['swipe', 'charge', 'pounce'],
-    // The whole game's lesson asked once more, against a form that keeps changing.
-    open: { by: 'element', secs: 2.2, hint: 'MATCH THE COLOUR SHE IS WEARING' },
+    // SHE HAS NO WEAKNESS — SHE HAS A MEMORY, and that is her whole fight.
+    // `adapts` means she resists steel and moon below half, and below a third
+    // she resists whatever landed LAST. Wiring her opener to `weakness` was
+    // wiring it to a field she has never had: _isWeak read undefined, returned
+    // false every time, and the final boss of the game could not be opened or
+    // hurt AT ALL. verify-bossopen caught it; nothing else would have, because
+    // nobody plays to region seven to check a change made in region one.
+    //
+    // Her verb is the one she has always been teaching: CHANGE. A blow of a
+    // different element to the last one puts her down. Mash one element and
+    // she simply learns it.
+    open: { by: 'switch', secs: 2.2, hint: 'KEEP CHANGING - SHE LEARNS YOUR LAST BLOW' },
     name: 'Shadow-Grimm',
     hide: 0x0f0a18, glow: 0x3a1f5c, eyes: 0xd8cfff, burst: 0xb9a8ff,
     maxHp: 32, dmg: 1.5, saveKey: 'grimmHp', legacyPhases: false,
@@ -538,8 +548,17 @@ export class Shadowgrip {
     // the boss is doing. A blow that opens a boss is not a blow that hurts it:
     // it knocks the guard away and the damage comes from the swings after.
     const openBy = (this.skin.open && this.skin.open.by) || null;
+    const prevEl = this._openLastEl;
+    this._openLastEl = element;
     if (!(this.openT > 0) && !this.defeated) {
       if (openBy === 'element' && this._isWeak(element)) { this.topple(element); return; }
+      // Grimm: a DIFFERENT element to the last one thrown at her. Tracked on
+      // every blow including the ones that ring off her armour, because a child
+      // switching weapons against a guard is exactly the thing being rewarded.
+      if (openBy === 'switch' && prevEl && element !== prevEl) {
+        this.topple('switch');
+        return;
+      }
       // Sylva anchors herself to gore-charge. While she is rooted the roots are
       // what a blow reaches, and cutting them puts her on the floor.
       if (openBy === 'cut' && this.action === 'root') { this.topple('cut'); return; }
