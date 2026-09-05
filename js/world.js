@@ -329,6 +329,7 @@ export class World {
     const bb = new THREE.Box3();
     const deck = this.deckY || 0;
     const onReserved = [];
+    const mine = [];          // only what this pass added — see unsealDoors()
     let added = 0;
     const overlapsDoor = (minX, maxX, minZ, maxZ) => this.doors.some((d) =>
       maxX > d.minX - 1.2 && minX < d.maxX + 1.2
@@ -372,6 +373,19 @@ export class World {
       const claim = this.blocked(cx, cz, r, true);
       if (claim) { onReserved.push(`${claim} @ (${cx.toFixed(1)}, ${cz.toFixed(1)})`); return; }
 
+      // ...AND NOTHING STANDS INSIDE IT, which is the other half of the rule
+      // this pass is named for. Enemies are placed AFTER it runs (rooms.js
+      // calls spawnEnemies once the builder has returned), so the pass cannot
+      // see a creature — but it can see the MARKER the creature will be born
+      // on, because the builder writes those before finish(). Without this,
+      // making a prop solid quietly walls a mook inside it: measured at 8
+      // enemies inside geometry on main and 11 here, three of them newly
+      // stood in a prop that had just become real.
+      if (this._standsHere(cx, cz, r)) {
+        onReserved.push(`enemy @ (${cx.toFixed(1)}, ${cz.toFixed(1)})`);
+        return;
+      }
+
       // Already solid? Probe the middle with a body-sized circle.
       const solved = this.resolveCircle(cx, cz, 0.35);
       if (Math.hypot(solved.x - cx, solved.z - cz) > 0.02) return;
@@ -380,6 +394,7 @@ export class World {
       // that are not there. The radius is the SHORT half-axis, so a fallen
       // column is a line of stone a child walks along rather than a slab.
       this.addCircle(cx, cz, r, 'decor');
+      mine.push(this.circleColliders[this.circleColliders.length - 1]);
       added++;
     };
 
@@ -392,8 +407,110 @@ export class World {
       if (child.isMesh || !kids.length) consider(child);
       else for (const model of [...kids]) consider(model);
     }
-    this._solidified = { added, onReserved: onReserved.length, claims: onReserved };
+    const sealed = this.unsealDoors(mine);
+    this._solidified = { added: added - sealed, onReserved: onReserved.length,
+      unsealed: sealed, claims: onReserved };
     return this._solidified;
+  }
+
+  // Every spot a creature is going to be born on, from the markers a room
+  // builder publishes: `<family>Spots` arrays and the singular `wardenSpot` /
+  // `bossSpot` / `houndSpot` shapes both. Kept here rather than in the levels
+  // so a new family costs nothing — it is named `...Spot(s)` or it is not an
+  // enemy placement.
+  _standsHere(x, z, r) {
+    const near = (p) => p && typeof p.x === 'number' && typeof p.z === 'number'
+      && Math.hypot(p.x - x, p.z - z) < r + 0.55;
+    for (const [key, val] of Object.entries(this.markers || {})) {
+      if (!/Spots?$/.test(key)) continue;
+      if (Array.isArray(val)) { if (val.some(near)) return true; }
+      else if (near(val)) return true;
+    }
+    return false;
+  }
+
+  // A PROP MAY BLOCK. IT MAY NEVER SEAL THE WAY ON.
+  //
+  // levelkit already names this law in prose — level2's crypt stair carries
+  // "NO collider on purpose: a solid stair here would seal the only route into
+  // the boss room (levelkit's 'prop plugs a gap' law)" — but it was a thing
+  // authors had to remember per prop. solidifyProps is a BLANKET pass, so it
+  // cannot remember: it makes every qualifying prop solid and has no idea
+  // which of them happens to be standing in the only gap.
+  //
+  // It bit immediately. With the origin bug fixed the pass places colliders
+  // where the props really are, and xa1's seven new ones closed the Ash
+  // Barrows' way to xa2 — verify-reachable: "the doorway is open but walled
+  // off from where the player arrives", passing on main and failing here.
+  //
+  // So the law is mechanical now. Flood the room from the arrival point using
+  // the same ruler the game moves a body with, and if a doorway cannot be
+  // reached, give back the colliders THIS PASS added, nearest the door first,
+  // until it can. It only ever takes back its own: a gate, a boulder or a
+  // dressing collider placed on purpose is never touched, so a door that was
+  // already unreachable stays that way and stays reported.
+  unsealDoors(mine) {
+    if (!mine.length || !this.spawn || !(this.doors || []).length) return 0;
+    const STEP = 0.5, BODY = 0.32;
+    const halfW = this.halfW || 20, halfD = this.halfD || 20;
+    const nx = Math.max(1, Math.floor((halfW * 2) / STEP));
+    const nz = Math.max(1, Math.floor((halfD * 2) / STEP));
+    const at = (i, j) => ({ x: -halfW + (i + 0.5) * STEP, z: -halfD + (j + 0.5) * STEP });
+    const free = (x, z) => {
+      const r = this.resolveCircle(x, z, BODY);
+      return Math.abs(r.x - x) < 1e-6 && Math.abs(r.z - z) < 1e-6;
+    };
+    // flood from the arrival point
+    const reach = () => {
+      const seen = new Uint8Array(nx * nz);
+      const si = Math.min(nx - 1, Math.max(0, Math.round((this.spawn.x + halfW) / STEP - 0.5)));
+      const sj = Math.min(nz - 1, Math.max(0, Math.round((this.spawn.z + halfD) / STEP - 0.5)));
+      const stack = [si + sj * nx];
+      seen[si + sj * nx] = 1;
+      while (stack.length) {
+        const k = stack.pop();
+        const i = k % nx, j = (k - i) / nx;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const a = i + di, b = j + dj;
+          if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+          const m = a + b * nx;
+          if (seen[m]) continue;
+          const p = at(a, b);
+          if (!free(p.x, p.z)) continue;
+          seen[m] = 1; stack.push(m);
+        }
+      }
+      return seen;
+    };
+    const doorReached = (seen, d) => {
+      for (let i = 0; i < nx; i++) {
+        for (let j = 0; j < nz; j++) {
+          if (!seen[i + j * nx]) continue;
+          const p = at(i, j);
+          if (p.x >= d.minX - STEP && p.x <= d.maxX + STEP
+            && p.z >= d.minZ - STEP && p.z <= d.maxZ + STEP) return true;
+        }
+      }
+      return false;
+    };
+
+    let given = 0;
+    let seen = reach();
+    for (const d of this.doors) {
+      if (doorReached(seen, d)) continue;
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      const order = mine.filter((c) => this.circleColliders.includes(c))
+        .sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz));
+      for (const c of order) {
+        const i = this.circleColliders.indexOf(c);
+        if (i < 0) continue;
+        this.circleColliders.splice(i, 1);
+        given++;
+        seen = reach();
+        if (doorReached(seen, d)) break;
+      }
+    }
+    return given;
   }
 
   sweepKeepClear() {
