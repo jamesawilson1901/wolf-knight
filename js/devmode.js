@@ -404,7 +404,7 @@ function css() {
   s.textContent = `
  #dev-badge{position:fixed;left:8px;bottom:8px;z-index:9998;font:600 11px/1 system-ui,sans-serif;
    letter-spacing:.12em;color:#14121a;background:#ffd08a;padding:5px 8px;border-radius:4px;
-   pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+   pointer-events:auto;box-shadow:0 1px 4px rgba(0,0,0,.4)}
  #dev-bar{position:fixed;left:8px;bottom:32px;z-index:9998;display:flex;flex-direction:column;gap:6px}
  #dev-bar button{font:600 12px/1 system-ui,sans-serif;letter-spacing:.06em;color:#e8e4f0;
    background:rgba(30,27,40,.92);border:1px solid #3a3450;border-radius:6px;padding:9px 11px;
@@ -566,6 +566,12 @@ export function initDevMode() {
   bar.appendChild(shot); bar.appendChild(note); bar.appendChild(out); bar.appendChild(ui.link);
   ui.toast = el('div', 'dev-toast');
   document.body.appendChild(ui.badge);
+  // THE WAY OUT FROM INSIDE A GAME. The version label is only tappable on the
+  // title screen (index.html says why), so on its own it would strand anyone
+  // who turned dev mode on and then started playing. This chip is dev-only,
+  // always on top and always in the same corner, so the same 1.5s press that
+  // let you in also lets you out from wherever you are.
+  armBadgeToggle(ui.badge);
   document.body.appendChild(bar);
   document.body.appendChild(ui.toast);
 
@@ -604,11 +610,14 @@ export function initDevMode() {
 // THE WAY IN WITH NO URL. Armed whether dev mode is on or off, because when it
 // is off it is the only way to turn it on from the installed app. It is one
 // listener on one element and it creates nothing until it fires.
-function armBadgeToggle() {
-  const badge = document.getElementById('badge');
+function armBadgeToggle(el) {
+  const badge = el || document.getElementById('badge');
   if (!badge || badge.__devArmed) return;
   badge.__devArmed = true;
-  badge.style.pointerEvents = 'auto';
+  // NOTE: pointer-events is NOT forced here any more. It used to be set to
+  // 'auto' inline, which beats the stylesheet — and index.html now deliberately
+  // makes the version label inert during play so it cannot steal taps from the
+  // special button underneath it. Forcing it here would undo exactly that.
   let timer = null;
   const start = () => {
     timer = setTimeout(() => {
@@ -618,7 +627,14 @@ function armBadgeToggle() {
       // A reload is the honest switch: turning dev mode ON has to run the
       // module's setup, and turning it OFF has to leave nothing behind. Both
       // are exactly what a fresh load does.
-      location.reload();
+      //
+      // AND THE URL HAS TO LET GO. `?dev=1` re-asserts itself on every load
+      // (see ON, above), so reloading with it still on the address bar turned
+      // dev mode straight back on and the toggle looked dead. Strip the
+      // parameter and reload to the clean URL instead.
+      const u = new URL(location.href);
+      u.searchParams.delete('dev');
+      location.replace(u.toString());
     }, 1500);
   };
   const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
