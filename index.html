@@ -85,11 +85,26 @@
       background: linear-gradient(90deg, #a83a5a, #ff5a6b);
       transition: width .25s ease;
     }
+    /* THE VERSION LABEL IS ALSO THE WAY INTO DEV MODE (js/devmode.js arms a
+       1.5s long press on it), and for that it has to be REACHABLE. It was not:
+       at z-index 5 it sat under #title (z-index 20) on the menu and under
+       #special-btn in play, so document.elementFromPoint never returned it and
+       the press never landed anywhere. Dad could not get out of dev mode at
+       all — the toggle had never worked from a touch, in either direction.
+
+       So it sits above the title overlay now, and it accepts a pointer ONLY on
+       the title screen. That is deliberate: `body.titling` hides every thumb
+       button, so up there the corner is empty and nothing can be stolen; in
+       play the special button owns that corner and the label must stay inert,
+       or a 132x13 strip of the attack control would start eating taps. The way
+       OUT of dev mode from inside a game is the DEV MODE chip itself, which
+       js/devmode.js arms for the same long press. */
     #badge {
-      position: fixed; right: 10px; bottom: 8px; z-index: 5;
+      position: fixed; right: 10px; bottom: 8px; z-index: 30;
       color: rgba(232, 221, 208, .5); font-size: 11px; letter-spacing: .04em;
       pointer-events: none;
     }
+    body.titling #badge { pointer-events: auto; }
     #hearts {
       position: fixed; left: calc(12px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); z-index: 5;
       font-size: 26px; letter-spacing: 2px; pointer-events: none;
@@ -1195,7 +1210,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.109.2</div>
+  <div id="badge">Wolf Knight &middot; v3.109.3</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.
