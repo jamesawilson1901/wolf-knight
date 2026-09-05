@@ -421,6 +421,80 @@ a fix goes unverified) pulls in one hop of destinations automatically, and the
 run fails if a destination the live registry lists went unbuilt. A shortcut
 that can quietly narrow what is checked is the same rot in a faster wrapper.
 
+### 7a(iii) · The gate that died quietly (2026-09-05)
+
+The three property classes in §7a and the four in §7a(ii) were all answers to
+"what did no suite ask?". This one is different and worse: the suites asked,
+and **nobody was listening**.
+
+The measurement, from the run history rather than memory:
+
+| | |
+|---|---|
+| Nightly sweeps since CI existed (Aug 29 – Sep 4) | 7 run, **0 green** — 5 red, 2 cancelled at the shard limit |
+| Push runs from the evening of Sep 3 onward | **38 consecutive cancellations**, every one at exactly 20 minutes |
+| Entries in the known-fail manifest | 0 |
+| Suites in the serial/`--par` list vs on disk | 58 / 76 |
+
+The 38 cancellations have an exact mechanism, and it is worth keeping because
+every part of it was individually reasonable. `--quick` was boot + density +
+music. `verify-density` is a documented known-fail (board #124) and takes about
+eight minutes. Every failure earns one automatic serial re-run (job 3, and a
+good rule). The job's limit was 20 minutes. So the gate spent its entire budget
+failing the same suite twice and was killed before printing a verdict — and a
+cancelled run reports as neither pass nor fail, so from the outside the gate
+looked like it was simply not there. It wasn't there. Nobody noticed for two
+days, across dozens of pushes, because **nothing in any report mentioned it.**
+
+Four things changed, and each one closes a different part of it:
+
+1. **`--quick` is fast and cannot contain a known-fail.** Ten suites, about
+   three minutes measured, listed with their times in the script. Slow suites
+   and red suites belong to the nightly; the push gate belongs to speed.
+2. **The manifest is populated, with dates and proofs.** An empty manifest and
+   a red sweep are the same signal — no information — but only the manifest
+   can be fixed in a minute. Every entry names the board item and the date the
+   failure was proven pre-existing in a worktree off `main` (§6).
+3. **Every mode reads the glob.** `--shard` always did, which is why the
+   nightly was complete while every local run was eighteen suites short. Two
+   sources of truth for "what is the suite" is one too many.
+4. **The report leads with the verdict** (CLAUDE.md). Not the work, the gate:
+   the run link and its colour, and "cancelled" said out loud as the non-answer
+   it is.
+
+And the rot guard that had been printing those eighteen names on every single
+run was deleted rather than fixed. It was correct every time and it changed
+nothing, because a warning that is always on carries no information — the same
+lesson as §7b lesson 3, arriving from the other direction. **When a guard fires
+constantly, close the hole instead of watching it.**
+
+### 7a(iv) · What to send when you find something in play
+
+Most of what real play finds is visual and positional. Counting the three
+batches recorded in BUILDLOG:
+
+| Batch | Items | Visual / placement | Progression | Mechanical | Other |
+|---|---|---|---|---|---|
+| Phone playtest, v3.13 | 4 | 2 | 0 | 1 | 1 |
+| Replay batch 2, Aug 31 | 6 | 3 | 0 | 1 | 2 |
+| Twenty screenshots, Sep 3 | 12 | 8 | 2 | 1 | 1 |
+
+Thirteen of twenty-two were something looking wrong in a place. That class is
+what a contact sheet catches and what a green sweep never will, which is why
+CLAUDE.md now asks for an arrival-frame contact sheet before a merge that
+touches room contents.
+
+So a report needs exactly three things, and none of them is diagnosis:
+
+* **the room id** (the pause menu shows it under `?dev=1`);
+* **one screenshot**;
+* **one sentence** of what looks wrong.
+
+That is enough to reproduce, and it is deliberately not enough to guess from.
+Each item should then be answered with the §7a class it belongs to — and if it
+belongs to no existing class, that is a new full-registry suite, written the
+same day, exactly as the seven classes above were.
+
 ### 7b · A suite that lies is worse than no suite (2026-08-31)
 
 Three separate lessons from one night, all the same shape: **a check whose

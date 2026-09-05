@@ -21,13 +21,21 @@ non-readers), built by a dad with his kids. Static PWA, vendored three.js
 
 ## Running checks
 
+`sh tools/lint.sh` — one second, no browser, no server. Two rules only
+(`no-undef`, `no-unused-vars`); see `tools/eslint.config.mjs` for why those
+two and no others. Run it before anything slower.
+
 `sh tools/verify-all.sh` runs every `tools/verify-*.mjs` suite (serial,
 ~2h40m). `sh tools/verify-all.sh --par` runs them 3-at-a-time — **any `--par`
 FAIL must be re-run serially before it's trusted** (CPU contention under
-parallel load causes false failures). `sh tools/verify-all.sh --quick` is a
-smoke test (boot, density, music). Name a suite directly for just that one:
-`sh tools/verify-all.sh verify-level3.mjs`. The static server must be up
-first: `node tools/serve.mjs &`.
+parallel load causes false failures). `sh tools/verify-all.sh --quick` is the
+~3-minute push gate: boot, callable, graphs, story-beats, variant-names,
+formlock, hud, completion, progression, roomid. Name a suite directly for just
+that one: `sh tools/verify-all.sh verify-level3.mjs`. The static server must
+be up first: `node tools/serve.mjs &`.
+
+Every mode now takes its suite list from the `tools/verify-*.mjs` glob, so a
+new suite is covered the day the file exists and there is no list to keep.
 
 ## IMPORTANT standing rules
 
@@ -50,11 +58,31 @@ first: `node tools/serve.mjs &`.
   https://jamesawilson1901.github.io/wolf-knight/. Never push straight to
   `main` without being asked.
 - **Bump `CACHE_NAME` in `sw.js` on every deploy** that changes a cached
-  file, or the PWA serves stale assets from its own service worker. **Bump
-  the `#badge` version in `index.html` to match at the same time** — it is
-  hardcoded and does not follow CACHE_NAME on its own; letting them drift
-  once cost half an hour of chasing a phantom cache bug (2026-08-29).
+  file, or the PWA serves stale assets from its own service worker. Then run
+  **`node tools/sync-cache.mjs --write`**, which carries the version into the
+  `#badge` in `index.html` and regenerates the precache module list from what
+  the game actually imports. Both used to be kept by hand and both had
+  drifted: the badge cost half an hour chasing a phantom cache bug
+  (2026-08-29), and on 2026-09-05 the precache was missing five live modules,
+  three of them imported by every level file, which breaks an offline launch
+  right after an update. `verify-boot` fails if either drifts again.
 - **Never force-push or rewrite history.**
 - Saves are additive-forever — never remove a field a save might still read.
 - Verify fixes via real input paths (actual room jumps, real key presses
   through the `?dev=1` harness), not by inference from source alone.
+- **Nothing merges to `main` on a red nightly.** The gate is only a gate if
+  its answer is allowed to stop something. If the nightly is red, either fix
+  it or prove the failure pre-existing and put it in `tools/known-fail.txt`
+  with the date it was proven — never merge past it and never widen the
+  manifest to make a new failure quiet.
+- **Every report leads with the CI verdict**: the run link and its colour,
+  before any prose about what was built. A cancelled or missing run is not a
+  pass and must be said out loud. Thirty-eight consecutive cancelled runs and
+  seven red nightlies went unremarked through 2026-09 because reports opened
+  with the work instead of the gate.
+- **A human looks at the rooms before a merge.** Any change that touches a
+  room's contents or dressing gets an arrival-frame contact sheet of every
+  room it touched, reviewed by eye. Most of what play-testing actually finds
+  is visual and positional — a prop in the air, a wall filling the view, a
+  body inside a rock — and that class is bounded by suites but never replaced
+  by them (docs/TESTING.md §7b).

@@ -19,3 +19,31 @@
 # Removing an entry: once the underlying room/system is actually fixed, the
 # suite will show as a stale known-fail on its own; delete the line then,
 # don't wait for someone to notice the warning.
+# ---------------------------------------------------------------------------
+# POPULATED 2026-09-05. This file sat EMPTY for the week the nightly sweep was
+# red every single night — and an empty manifest beside a red sweep is the same
+# signal as a full one: no information. Seven nightlies ran, none was green,
+# nothing was learned from any of them.
+#
+# Every line below was proven the way §6 of docs/TESTING.md requires: a git
+# worktree detached at the live main (dd4de23, v3.108.0), a static server
+# serving THAT tree on 8901, and the suite run against it. The seconds are the
+# measured run. Nothing here is "probably pre-existing".
+#
+#   verify-density       FAIL   449s
+#   verify-promises      FAIL   320s
+#   verify-spawn-clear   FAIL   169s
+#   verify-storm         FAIL    93s
+#   verify-reachable     FAIL  1565s
+#   verify-playthrough   FAIL  1167s
+#
+# Each carries the board item that will delete it. That is the point: a line
+# here is a DEBT with a name on it, not a permission slip. If one of these
+# starts passing, verify-all prints a stale-known-fail warning — delete the
+# line then and close the board item.
+verify-density.mjs     | board #124 — ysq 25/32 and lk2 31/32 things on arrival; the rest of the game is dressed | 2026-09-05 proven on main dd4de23
+verify-promises.mjs    | board #125 — 13 of 20 promise gates exist but the suite never drives them; a coverage gap, not a broken gate | 2026-09-05 proven on main dd4de23
+verify-spawn-clear.mjs | board #129 — 8 of 165 bodies spawn inside geometry (q2, mb, la x2, vc1, d4a, dlg x2). tools/probe-freespot.mjs names the nearest clear ground for each | 2026-09-05 proven on main dd4de23
+verify-storm.mjs       | Aria never reaches half health in the harness, so the two gale assertions never get their chance — the suite asserts a law the fight no longer has. Rewrite it against the shipped fight, do not delete it | 2026-09-05 proven on main dd4de23
+verify-reachable.mjs   | calls working BOSS GATES unreachable doors — the same blind spot verify-looks section 5 had, where a door that opens on a condition reads as sealed. The rooms are reachable in play | 2026-09-05 proven on main dd4de23
+verify-playthrough.mjs | same boss-gate blind spot as verify-reachable; the route it cannot finish is one a child finishes | 2026-09-05 proven on main dd4de23

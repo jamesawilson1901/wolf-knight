@@ -65,7 +65,7 @@ const setup = async (dist) => page.evaluate(async (d) => {
   g.player.root.position.set(e.x + d, g.player.root.position.y, e.z);
   g.player.iframes = 99999;
   for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r));
-  return { alert: e.alert, eyes: eyeOf(e) };
+  return { alert: e.alert, eyes: window.eyeOf(e) };
 }, dist);
 
 // SECONDS, NOT FRAMES. Under SwiftShader a frame can be 30ms or 300, so a
@@ -78,7 +78,7 @@ const settleFrames = (secs) => page.evaluate(async (s) => {
   while (performance.now() < until) { g.player.iframes = 99999; await new Promise((r) => requestAnimationFrame(r)); }
   const e = (g.world.enemies || []).filter((x) => x._sleeps && !x.dead)[0];
   return e ? { alert: e.alert, susp: +(e._suspT || 0).toFixed(2),
-    eyes: eyeOf(e) } : null;
+    eyes: window.eyeOf(e) } : null;
 }, secs);
 
 console.log('\n── 1. far away, a shadow does not know you are there ──');
