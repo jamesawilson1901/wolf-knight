@@ -283,6 +283,19 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = nul
   if (!regrows && alreadyCut(REGION, id)) return null;
   const colour = 0x4f8f3a;
   const g = new THREE.Group();
+  // A GATE HAS TO SAY IT IS A GATE.
+  //
+  // The pieces below are Quaternius forest models and they keep the names
+  // they shipped with — `Tree_Bare_1_A_Color1` and friends. Nothing in the
+  // scene graph then distinguishes "five trees planted across a doorway
+  // because it is a thorn gate" from "five trees somebody left in front of a
+  // door", and tools/verify-looks.mjs §5 reported exactly that for tkn→tc3
+  // and tc4→tgl (the door to Sylva's arena) the moment it started measuring
+  // a properly posed room. Its MEANT_TO_BLOCK list walks the parent chain,
+  // so naming the group is the whole fix — and it is the right one: widening
+  // the regex to forgive `Tree_Bare` would forgive every real tree in the
+  // Wild Woods and hand the check straight back its blind spot.
+  g.name = `bramble-gate-${id}`;
 
   if (GREY()) {
     const m = new THREE.Mesh(
@@ -665,6 +678,18 @@ function rootBar(world, x, z, w, D) {
       const i = world.boxColliders.indexOf(gc); if (i >= 0) world.boxColliders.splice(i, 1); } };
   }
   const g = new THREE.Group();
+  // AND IT HAS TO SAY SO IN THE SCENE GRAPH, not just in the tint key.
+  //
+  // The pieces are Quaternius forest models keeping their shipped names
+  // (`Tree_Bare_1_A_Color1`), so nothing here distinguished "five trees
+  // heaved across the boss door because that is the gate" from "five trees
+  // somebody left in front of a door". tools/verify-looks.mjs §5 walks the
+  // parent chain against its MEANT_TO_BLOCK list — which has named `rootbar`
+  // since it was written — and reported tkn→tc3 and tc4→tgl as unreachable
+  // doors the moment it started measuring a properly posed room. Naming the
+  // group is the fix. Widening the regex to forgive `Tree_Bare` would forgive
+  // every real tree in the Wild Woods and hand the check back its blind spot.
+  g.name = 'rootbar-gate';
   const n = 5;
   for (let i = 0; i < n; i++) {
     const f = (i / (n - 1) - 0.5) * (w - 1.2);
@@ -733,7 +758,7 @@ function base(scene, id) {
 
 function finish(world, spec, D) {
   if (GREY()) {
-    world.sweepKeepClear();
+  world.sweepKeepClear();
     thresholdGlow(world);
     protoLabel(world, 0, 0, spec.label, { color: '#d8f0c8', y: 3.4, size: 2.2 });
     protoLabel(world, 0, 2.4, spec.beat, { color: '#93a68c', y: 2.4, size: 1.4 });
@@ -744,6 +769,7 @@ function finish(world, spec, D) {
   // could not have consulted them, so anything still standing on a gameplay
   // square loses its collider here and says so on the console. See
   // World.sweepKeepClear.
+  world.solidifyProps();   // drawn obstacles become solid ones
   world.sweepKeepClear();
   thresholdGlow(world);   // the next room's colour, spilled at each doorway
   flattenStatic(world);
@@ -935,8 +961,8 @@ export async function buildT2a(scene) {
   northGate(world, 'watchingTree', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -8, z: 5 };
-  // the dark: the Dark Wolf's eyes are the way through, as in Ember
-  darkZone(world, -halfW, halfW, -halfD, 4);
+  // the dark, wall to wall: the Dark Wolf's eyes are the way through, as in Ember
+  darkZone(world, -halfW, halfW, -halfD, halfD);
   world.markers.mothSpots = [{ x: -5, z: -6, variant: 'wisp' }, { x: 6, z: -4, variant: 'wisp' }];
   // A ground shape in the dark. Moths dive and wheel; a Bramble Blob crawls at
   // 1.2 u/s, which is the only kind of thing that is fair to put where a child
@@ -969,7 +995,7 @@ export async function buildT2b(scene) {
   sideDoor(world, 'n', halfW, halfD, 'tsh', { x: 0, z: 5.5, angle: Math.PI });
   sideDoor(world, 'w', halfW, halfD, 't2p', { x: 7.5, z: 0, angle: -Math.PI / 2 });
 
-  darkZone(world, -halfW, halfW, -halfD, 2);
+  darkZone(world, -halfW, halfW, -halfD, halfD);
   world.markers.mothSpots = [{ x: -4, z: 4, variant: 'wisp' }, { x: 5, z: -2, variant: 'wisp' },
     { x: -7, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: 7, z: 5, variant: 'bramble' }];

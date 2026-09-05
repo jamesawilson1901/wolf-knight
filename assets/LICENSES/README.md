@@ -148,7 +148,94 @@ Chicken, Armour, Shield, Sword, Potion are a tavern-and-shopfront set, and a
 picture-sign hung over Maren's door is exactly the wayfinding a non-reader
 needs. Blocked on the licence, not on the idea.
 
+## 2026-09-04 — the sea dragon
+
+- **`assets/chars/monsters/sea-dragon.glb` — Aria's body. SETTLED, WITH A
+  CONDITION.** It is Jenosuke's *Sea-Dragon*, https://skfb.ly/oO9OV, released
+  under **Creative Commons Attribution 4.0**
+  (http://creativecommons.org/licenses/by/4.0/). Credit is required, and this
+  is it —
+
+      "Sea-Dragon" (https://skfb.ly/oO9OV) by Jenosuke is licensed under
+      Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)
+
+  Recorded here rather than on the credits screen for the reason already
+  settled for bocdagla's dragon: that screen is the kids' ending and runs on
+  the game's no-reading rule.
+
+  Unlike every previous batch this one arrived with its licence line already
+  written, by James, alongside the file — so there is nothing to trace and
+  nothing quoted second-hand.
+
+  **What was changed, and what was not.** The mesh, the skeleton and the
+  skinning are Jenosuke's, untouched. The file ships a death clip and two
+  idles and no attack or swim, so those two clips are authored onto its own
+  rig in `js/seaclips.js` and live in this repository, not in the model.
+
+  It is also the cleanest character body anyone has supplied: one SkinnedMesh,
+  one material, 39 bones, 2,173 triangles, one draw call.
+
+  **2026-09-05 — it is Aria's, not Meri's, and it is painted now.** It was
+  earmarked for Meri when it arrived and before James's own creature did.
+  Meri's fight is built out of the nine clips `cave-biped.glb` brought — her
+  Skill, the half-health flinch, the knockdown and the rise; this body has
+  three. So it went where the animation was actually missing: Aria wore the
+  Quaternius dragon, whose five clips are three usable ones with no idle and
+  no walk in them. Stormreach is sea cliffs, and the model is posed rearing,
+  which is what her `hover` was already pretending.
+
+  It shipped with a flat 0.8 grey and no image at all — a white plastic snake
+  on screen. It DOES ship clean UVs, so a texture is baked from its own
+  anatomy by `tools/paint-sea-dragon.mjs` and injected by
+  `tools/inject-texture.py`; the 512×512 PNG is an addition to the file and
+  40 KB of it. **No vertex, bone or weight was touched**, and the original is
+  recoverable by dropping the image, the sampler, the texture and the one
+  `baseColorTexture` line back out of the glTF JSON.
+
+## 2026-09-04 — the first asset with no licence question at all
+
+- **`assets/chars/monsters/cave-biped.glb` — made by James.** Generated and
+  rigged with Meshy AI from his own prompt, so nothing here is anyone else's
+  and there is no attribution condition to meet. That makes it the only
+  character in the game whose provenance needs no caveat.
+
+  It arrived as nine separate 12MB GLBs, one per animation, each carrying a
+  full copy of the mesh and the same 3.9MB texture — 106MB for one creature.
+  All nine were checked to share an identical node list in identical order
+  first, which is what made merging them safe.
+
+  What was done to it, and by what:
+
+      203,207 -> 4,470 triangles   @gltf-transform/cli simplify (meshoptimizer)
+      9 files -> 1 file            tools/merge-meshy-clips.py
+      2048 -> 512 px, PNG -> JPEG  gltf-transform resize + jpeg (3.9MB -> 101KB)
+      106 MB  -> 850 KB            all of the above
+
+  **THE TEXTURE STAYED, on a second look.** It was dropped first, on the rule
+  that every creature here is a single-material model `VARIANTS` tints — but
+  James asked for it back, and putting it on the simplified mesh and LOOKING
+  settled it: the paintwork survives a 98% decimation almost perfectly. Dark
+  charcoal body, coral spines and horns, bone claws, one yellow eye. It is a
+  far better creature textured than tinted.
+
+  512 pixels rather than 256 for a measured reason. The UV atlas is hundreds of
+  small islands scattered over the sheet, so downscaling eventually samples
+  across their seams: at 256 the colours visibly smear and the eye goes muddy,
+  at 512 it is clean. 101KB is not worth saving 43KB for.
+
+  One consequence to remember when wiring it: `boss.js` recolours a body's
+  materials from the skin (`hide`/`glow`), which would wash this paintwork out.
+  The body entry needs `keep: ['Material_1']` — the same escape hatch the
+  minotaur's horns and hooves already use — so the texture shows as authored.
+
 ## Still outstanding
+
+- **`assets/chars/monsters/skeleton-dragon.gltf`** — vendored 2026-09-04 from
+  James's batch and NOT traced to a source or a licence. `check-licences.mjs`
+  reports the tree clean because it checks DIRECTORIES and that file sits in
+  one another pack already covers, which is a gap in the check worth knowing
+  about: a new model can arrive in a covered folder and be reported as
+  accounted for. It is not in the build yet. Trace it before it ships.
 
 - **craftpix packs** (free desert mountain, free winter mountain, free shield —
   supplied 2026-09-02). Their `License.txt` is a bare link to

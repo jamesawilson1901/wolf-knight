@@ -452,34 +452,28 @@ function potionPickup(world, x, z) {
   world.potionSpots.push({ x, z, group, taken: false });
 }
 
-// Dark zone: real-lighting darkness. The zone rect dims the global rig when
-// the player stands inside it (Knight form → near-black; the Dark Wolf will
-// counter it in Phase 3). A translucent veil shows the darkness from outside.
+// A DARK ROOM, AND NOTHING DRAWN ON THE FLOOR.
+//
+// The darkness is main.js dimming the light rig while the child is inside a
+// dark room; that is the whole mechanic, and it has always been the whole
+// mechanic. What kept going wrong was the HINT beside it — a translucent quad
+// covering the dark part of the room, so a child could see from the doorway
+// that the far end went wrong.
+//
+// That quad has now been photographed by dad twice, in two different places.
+// At head height it was one of the "random flying grey squares". Moved down to
+// the floor it became a black rectangle painted across half the ground: "get
+// rid of this hole", and then "rooms either need to be full dark or light, not
+// half and half". Both complaints are the same complaint. A volume of darkness
+// has no edge, so any surface you draw for it draws an edge that isn't there.
+//
+// So there is no quad. A room that calls this is dark end to end (see
+// World.darknessAt), and the only lit things in it are the lights actually
+// standing in it — the campfire, the brazier, the lava. The rect is kept on
+// the record because tools measure it; nothing uses it to shade a floor.
 function darkZone(world, minX, maxX, minZ, maxZ) {
-  const veilMat = new THREE.MeshBasicMaterial({
-    color: 0x0a0714, transparent: true, opacity: 0.62, depthWrite: false,
-  });
-  const veil = new THREE.Mesh(
-    new THREE.PlaneGeometry(maxX - minX, maxZ - minZ),
-    veilMat
-  );
-  // THE VEIL LIES ON THE GROUND. It used to hang at y = 1.65 — a translucent
-  // quad floating at head height over the dark stretch, which from a 3/4
-  // top-down camera is a grey rectangle hovering in mid-air with a visible
-  // edge. Dad photographed it and said "get rid of the random flying grey
-  // squares", and there was one in every room that has darkness in it.
-  //
-  // The darkness itself was never this quad: main.js dims the global light rig
-  // when the child stands inside the zone, and that is the mechanic. The quad
-  // is only the HINT — the way the road ahead reads as dark before you walk
-  // into it — so it belongs on the floor, where a dark stretch of ground looks
-  // like dark ground. main.js still writes veilMat.opacity every frame, so the
-  // material stays exactly where it was; only its height changed.
-  veil.rotation.x = -Math.PI / 2;
-  veil.position.set((minX + maxX) / 2, (world.deckY || 0) + 0.06, (minZ + maxZ) / 2);
-  veil.renderOrder = 3;                       // over the floor and its patches
-  world.add(veil);
-  world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
+  world.roomDark = true;
+  world.darkZones.push({ minX, maxX, minZ, maxZ });
 }
 
 // ---------------------------------------------------------------------------
@@ -523,7 +517,7 @@ async function buildR1(scene) {
   blockRow(world, 3.5, 1.5, 7.5, 1.5, 1.5);          // north edge of nook
   blockRow(world, 3.5, 2.5, 3.5, 2.9, 1.5);          // west edge, above gap
   blockRow(world, 3.5, 5.0, 3.5, 5.4, 1.5);          // west edge, below gap
-  darkZone(world, 3.9, 8, 2.0, 6);
+  darkZone(world, -7.9, 7.9, -5.9, 5.9);
   // BLIND-STRIP LAW (v3.21.1): the pup used to sit at z 4.2 — deep in the
   // ~2.5u strip of floor the camera can never see over the south wall. It is
   // now in the NORTH half of the same nook: still hidden by darkness (which
@@ -2559,12 +2553,11 @@ async function buildE2(scene) {
   world.markers.shieldSpots = [{ x: 2.8, z: 1.0 }]; // the wall walks the Deep Hall
   world.markers.batSpots = [{ x: 5.2, z: -4.6 }];
 
-  // the deep NORTH half is cave-dark — spikes and bones read through the
-  // Dark Wolf's eyes or the torch pools. The SOUTH half (entrance + the
-  // boulder puzzle) stays lit: v3.18 playtest law — a puzzle the player
-  // must SOLVE is never hidden in the dark ("there is no pressure plate"
-  // was a plate the dark had swallowed).
-  darkZone(world, -10, 10, -6, 0.2);
+  // cave-dark, wall to wall. The v3.18 playtest law still stands — a puzzle a
+  // child must SOLVE is never hidden in the dark — but it is the TORCH POOLS
+  // that keep the boulder puzzle readable now, not a lit half of the floor. A
+  // pool of firelight in a black room is a place; a lit rectangle is a seam.
+  darkZone(world, -10, 10, -6, 6);
   world.markers.pup4Spot = { x: -9.0, z: -5.0 };
   // ...and a second pup shivers in the far corner past the spikes
   world.markers.pup5Spot = { x: 9.2, z: -5.2 };

@@ -53,7 +53,8 @@ export class World {
     this.safeZones = [];       // {minX, maxX, minZ, maxZ} — bridge decks etc.
                                // that OVERRIDE hazards underneath them
     this.geysers = [];         // {x, z, r, active} — managed by room animate
-    this.darkZones = [];       // {minX, maxX, minZ, maxZ, veils: [materials]}
+    this.darkZones = [];       // {minX, maxX, minZ, maxZ} — always the whole room
+    this.roomDark = false;     // a room is dark or it is not; see darknessAt
     // A HOLE IN THE FLOOR. Not a hazard: falling in costs no hearts, it puts
     // the child back at `pitReturn` (the room's entry) and they walk it again.
     // That is the whole punishment, and it is the right one for five-year-olds
@@ -260,6 +261,258 @@ export class World {
   //
   // A prop the dressing placed is tagged 'decor' and may be swept. Anything
   // else belongs to the room's design and is left alone, whatever it overlaps.
+  // IF IT LOOKS LIKE IT BLOCKS, IT BLOCKS.
+  //
+  // Dad, from play: "it's not solid, the player should have to jump over the
+  // column"; "rumble should be solid"; "no asset is actually blocking the
+  // chest"; and three times, "a jar is inside something — check all the jars
+  // in the game." Those are one bug.
+  //
+  // dressing.js `place()` is the single funnel every prop in every room goes
+  // through, and it registers no collider at all. Colliders are added by hand
+  // afterwards, helper by helper — so `fallenColumn` and `lowWall` remember
+  // and `rubbleField` and `aftermath` do not, and a ruin's doorway arch, a
+  // Stoneroot bush and a waist-high rock are all things a child walks straight
+  // through. Measured across the whole game before this went in: 563 drawn
+  // obstacles with nothing solid under them.
+  //
+  // The jars are the same bug wearing a different face. The pot placer pushes
+  // pots out of COLLIDERS (resolveCircle), so a prop with no collider is
+  // invisible to it — the jar is placed inside the arch and the check that
+  // exists for exactly this ("no pot stands inside something else") passes,
+  // because as far as the collision world is concerned nothing is there.
+  //
+  // So the register is built from what is DRAWN, once, after the room is
+  // dressed. Rules, each one there to stop this from making the game sticky:
+  //
+  //   * per placed MODEL, never per group — a rubble field is nine rocks a
+  //     child steps between, not one four-metre block in the middle of a room;
+  //   * knee-height and up (0.9), because anything lower reads as ground;
+  //   * standing on the floor — a hanging banner or a lamp on a bracket has
+  //     air under it and is not an obstacle at knee height;
+  //   * inset to 0.78 of the drawn footprint, so a child brushes the silhouette
+  //     rather than being stopped short of it by an axis-aligned box around a
+  //     prop that is turned;
+  //   * nothing added where something solid already is;
+  //   * nothing added across a doorway, ever.
+  //
+  // Tagged 'decor', so sweepKeepClear() — which runs straight after — still
+  // takes back anything that landed on gameplay ground. Props already standing
+  // on reserved ground never get a collider in the first place; they are
+  // counted on the world as `_solidified.onReserved` so a suite can name them.
+  solidifyProps() {
+    // The same escape hatch flattenStatic has (`window.__noBatch`), for the
+    // same reason: a probe needs to be able to measure the room WITHOUT this
+    // pass to say what it cost. Never set in the game.
+    if (typeof window !== 'undefined' && window.__noSolid) return 0;
+    // POSE THE ROOM BEFORE MEASURING IT.
+    //
+    // This runs at the end of a room BUILD, and a freshly built room has never
+    // been rendered — so nothing has called updateMatrixWorld on it and most
+    // of its props still report a matrixWorld of identity. Box3.setFromObject
+    // reads matrixWorld, so without this line it measures prop after prop
+    // sitting at the ORIGIN and drops a collider there: an invisible post in
+    // the middle of the floor, in every room, at (0,0).
+    //
+    // It was caught in the Great Vault, where the post landed exactly on the
+    // sunken ring's centre and re-broke the promise dad raised twice ("a
+    // puddle of water with a character and a chest in the centre that you are
+    // unable to get to") — verify-level2-progress §5, which passes on main and
+    // failed here. The measurement: with this pass and no posing, a decor
+    // circle r0.33 sat at (0,0) and resolveCircle pushed a body 0.538u; with
+    // the pass off, nothing. No prop is anywhere near the middle of that room.
+    //
+    // The same call was needed in tools/verify-looks.mjs for the same reason,
+    // and this is the more serious half of it: that one only made a test lie,
+    // this one put real colliders in the shipped game.
+    this.root.updateMatrixWorld(true);
+    const bb = new THREE.Box3();
+    const deck = this.deckY || 0;
+    const onReserved = [];
+    const mine = [];          // only what this pass added — see unsealDoors()
+    let added = 0;
+    const overlapsDoor = (minX, maxX, minZ, maxZ) => this.doors.some((d) =>
+      maxX > d.minX - 1.2 && minX < d.maxX + 1.2
+      && maxZ > d.minZ - 1.2 && minZ < d.maxZ + 1.2);
+
+    const consider = (o) => {
+      bb.setFromObject(o);
+      if (!isFinite(bb.min.x)) return;
+      const h = bb.max.y - bb.min.y;
+      if (h < 0.9) return;                       // ground, not an obstacle
+      if (bb.min.y > deck + 0.55) return;        // hanging: nothing to walk into
+      const fx = bb.max.x - bb.min.x, fz = bb.max.z - bb.min.z;
+      if (fx > 7 || fz > 7) return;              // a wall or a room-scale piece
+      if (fx < 0.35 || fz < 0.35) return;        // a post a child slips past
+      const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+      const hx = (fx / 2) * 0.78, hz = (fz / 2) * 0.78;
+      if (overlapsDoor(cx - hx, cx + hx, cz - hz, cz + hz)) return;
+      const r = Math.max(0.3, Math.min(hx, hz));
+
+      // STANDING ON RESERVED GROUND: COUNTED, NOT REMOVED.
+      //
+      // lg1 is where this got interesting. Dad tapped a column there — "it's
+      // not solid, the player should have to jump over it" — and the first cut
+      // of this pass DID make it solid, and then sweepKeepClear took the
+      // collider straight back off, because the column stands on the reserved
+      // lane the push-block rolls down. Nothing changed, and the reason was
+      // invisible.
+      //
+      // The obvious next move was to remove the PROP as well: ground that has
+      // to stay clear should be clear of the thing you can see, not just of the
+      // thing you can bump into. Measured across all 146 rooms before trusting
+      // it, that would have removed 79 props from f1, 63 from f4, 57 from f5
+      // and 44 from f3 — Frostpeak and the Market gutted, because `blocked()`
+      // answers for every gameplay MARKER too and whole regions are dressed
+      // around them at radii that overlap.
+      //
+      // So it counts and says so. A room dressing dozens of props onto its own
+      // reserved ground is a real problem, but it is a level-design problem to
+      // be fixed room by room with the count in hand, not something to solve
+      // by emptying the rooms in the dark.
+      const claim = this.blocked(cx, cz, r, true);
+      if (claim) { onReserved.push(`${claim} @ (${cx.toFixed(1)}, ${cz.toFixed(1)})`); return; }
+
+      // ...AND NOTHING STANDS INSIDE IT, which is the other half of the rule
+      // this pass is named for. Enemies are placed AFTER it runs (rooms.js
+      // calls spawnEnemies once the builder has returned), so the pass cannot
+      // see a creature — but it can see the MARKER the creature will be born
+      // on, because the builder writes those before finish(). Without this,
+      // making a prop solid quietly walls a mook inside it: measured at 8
+      // enemies inside geometry on main and 11 here, three of them newly
+      // stood in a prop that had just become real.
+      if (this._standsHere(cx, cz, r)) {
+        onReserved.push(`enemy @ (${cx.toFixed(1)}, ${cz.toFixed(1)})`);
+        return;
+      }
+
+      // Already solid? Probe the middle with a body-sized circle.
+      const solved = this.resolveCircle(cx, cz, 0.35);
+      if (Math.hypot(solved.x - cx, solved.z - cz) > 0.02) return;
+      // A CIRCLE, because that is what sweepKeepClear can take back, and
+      // because a turned prop under an axis-aligned box blocks its own corners
+      // that are not there. The radius is the SHORT half-axis, so a fallen
+      // column is a line of stone a child walks along rather than a slab.
+      this.addCircle(cx, cz, r, 'decor');
+      mine.push(this.circleColliders[this.circleColliders.length - 1]);
+      added++;
+    };
+
+    // Top-level props are groups of placed models; the models are the things.
+    // A model that is itself a leaf mesh (a single-piece prop) counts as one.
+    for (const child of this.root.children) {
+      if (child.isInstancedMesh) continue;        // the shell's wall cells
+      if (this._keepLoose && this._keepLoose.includes(child)) continue;
+      const kids = child.children || [];
+      if (child.isMesh || !kids.length) consider(child);
+      else for (const model of [...kids]) consider(model);
+    }
+    const sealed = this.unsealDoors(mine);
+    this._solidified = { added: added - sealed, onReserved: onReserved.length,
+      unsealed: sealed, claims: onReserved };
+    return this._solidified;
+  }
+
+  // Every spot a creature is going to be born on, from the markers a room
+  // builder publishes: `<family>Spots` arrays and the singular `wardenSpot` /
+  // `bossSpot` / `houndSpot` shapes both. Kept here rather than in the levels
+  // so a new family costs nothing — it is named `...Spot(s)` or it is not an
+  // enemy placement.
+  _standsHere(x, z, r) {
+    const near = (p) => p && typeof p.x === 'number' && typeof p.z === 'number'
+      && Math.hypot(p.x - x, p.z - z) < r + 0.55;
+    for (const [key, val] of Object.entries(this.markers || {})) {
+      if (!/Spots?$/.test(key)) continue;
+      if (Array.isArray(val)) { if (val.some(near)) return true; }
+      else if (near(val)) return true;
+    }
+    return false;
+  }
+
+  // A PROP MAY BLOCK. IT MAY NEVER SEAL THE WAY ON.
+  //
+  // levelkit already names this law in prose — level2's crypt stair carries
+  // "NO collider on purpose: a solid stair here would seal the only route into
+  // the boss room (levelkit's 'prop plugs a gap' law)" — but it was a thing
+  // authors had to remember per prop. solidifyProps is a BLANKET pass, so it
+  // cannot remember: it makes every qualifying prop solid and has no idea
+  // which of them happens to be standing in the only gap.
+  //
+  // It bit immediately. With the origin bug fixed the pass places colliders
+  // where the props really are, and xa1's seven new ones closed the Ash
+  // Barrows' way to xa2 — verify-reachable: "the doorway is open but walled
+  // off from where the player arrives", passing on main and failing here.
+  //
+  // So the law is mechanical now. Flood the room from the arrival point using
+  // the same ruler the game moves a body with, and if a doorway cannot be
+  // reached, give back the colliders THIS PASS added, nearest the door first,
+  // until it can. It only ever takes back its own: a gate, a boulder or a
+  // dressing collider placed on purpose is never touched, so a door that was
+  // already unreachable stays that way and stays reported.
+  unsealDoors(mine) {
+    if (!mine.length || !this.spawn || !(this.doors || []).length) return 0;
+    const STEP = 0.5, BODY = 0.32;
+    const halfW = this.halfW || 20, halfD = this.halfD || 20;
+    const nx = Math.max(1, Math.floor((halfW * 2) / STEP));
+    const nz = Math.max(1, Math.floor((halfD * 2) / STEP));
+    const at = (i, j) => ({ x: -halfW + (i + 0.5) * STEP, z: -halfD + (j + 0.5) * STEP });
+    const free = (x, z) => {
+      const r = this.resolveCircle(x, z, BODY);
+      return Math.abs(r.x - x) < 1e-6 && Math.abs(r.z - z) < 1e-6;
+    };
+    // flood from the arrival point
+    const reach = () => {
+      const seen = new Uint8Array(nx * nz);
+      const si = Math.min(nx - 1, Math.max(0, Math.round((this.spawn.x + halfW) / STEP - 0.5)));
+      const sj = Math.min(nz - 1, Math.max(0, Math.round((this.spawn.z + halfD) / STEP - 0.5)));
+      const stack = [si + sj * nx];
+      seen[si + sj * nx] = 1;
+      while (stack.length) {
+        const k = stack.pop();
+        const i = k % nx, j = (k - i) / nx;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const a = i + di, b = j + dj;
+          if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+          const m = a + b * nx;
+          if (seen[m]) continue;
+          const p = at(a, b);
+          if (!free(p.x, p.z)) continue;
+          seen[m] = 1; stack.push(m);
+        }
+      }
+      return seen;
+    };
+    const doorReached = (seen, d) => {
+      for (let i = 0; i < nx; i++) {
+        for (let j = 0; j < nz; j++) {
+          if (!seen[i + j * nx]) continue;
+          const p = at(i, j);
+          if (p.x >= d.minX - STEP && p.x <= d.maxX + STEP
+            && p.z >= d.minZ - STEP && p.z <= d.maxZ + STEP) return true;
+        }
+      }
+      return false;
+    };
+
+    let given = 0;
+    let seen = reach();
+    for (const d of this.doors) {
+      if (doorReached(seen, d)) continue;
+      const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
+      const order = mine.filter((c) => this.circleColliders.includes(c))
+        .sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz));
+      for (const c of order) {
+        const i = this.circleColliders.indexOf(c);
+        if (i < 0) continue;
+        this.circleColliders.splice(i, 1);
+        given++;
+        seen = reach();
+        if (doorReached(seen, d)) break;
+      }
+    }
+    return given;
+  }
+
   sweepKeepClear() {
     const hits = [];
     this.circleColliders = this.circleColliders.filter((c) => {
@@ -682,11 +935,24 @@ export class World {
     return n;
   }
 
-  darknessAt(x, z) {
-    for (const zone of this.darkZones) {
-      if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) return 1;
-    }
-    return 0;
+  // A ROOM IS DARK OR IT IS NOT.
+  //
+  // This used to test the point against each zone rectangle, so a room could be
+  // dark down one end and lit down the other. Dad has now said the same thing
+  // twice from play — "do not have random dark spots partially in a room" and
+  // then, of the Night Road, "rooms either need to be full dark or light, not
+  // half and half" — and he is right for a reason worth writing down: darkness
+  // in this game is the LIGHT RIG dimming, which is a global effect with no
+  // edge, so drawing an edge for it meant painting one on the floor, and a
+  // painted edge is what he kept photographing.
+  //
+  // So the rectangle is gone as a test. `darkZone()` marks the room, the room
+  // is uniformly dark, and the only lit things in it are real lights — a
+  // campfire, a brazier, a lava pool — which is what a dark room ought to look
+  // like anyway. The rect is still recorded on the zone because tools measure
+  // it, but nothing reads it to decide whether a square of floor is in shadow.
+  darknessAt(x, z) {          // eslint-disable-line no-unused-vars
+    return this.roomDark ? 1 : 0;
   }
 
   // Is this square open floor or a hole? Bridge decks win here exactly as they

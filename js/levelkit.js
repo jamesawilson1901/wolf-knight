@@ -732,22 +732,14 @@ export function makeBuilders({ kit, isGrey }) {
     return null;
   }
 
-  // A dark zone. main.js writes `zone.veilMat.opacity` every frame, so the
-  // material is not optional — a zone without one crashes the render loop.
+  // A DARK ROOM. The twin of this function in js/rooms.js carries the long
+  // note; the short version is that darkness is the light rig dimming, it has
+  // no edge, and every attempt to draw it one put a rectangle on the floor that
+  // dad photographed. A room that calls this is dark wall to wall, and the lit
+  // pools in it are the fires and lanterns that are really standing there.
   function darkZone(world, minX, maxX, minZ, maxZ) {
-    const veilMat = new THREE.MeshBasicMaterial({
-      color: 0x0a0714, transparent: true, opacity: 0.62, depthWrite: false,
-    });
-    const veil = new THREE.Mesh(new THREE.PlaneGeometry(maxX - minX, maxZ - minZ), veilMat);
-    // ON THE GROUND, not at head height — see the long note on the twin of
-    // this function in js/rooms.js. y = 1.65 made every dark zone in the game
-    // a grey quad hanging in mid-air, which is dad's "random flying grey
-    // squares". The darkness is the light rig; this is only the hint.
-    veil.rotation.x = -Math.PI / 2;
-    veil.position.set((minX + maxX) / 2, (world.deckY || 0) + 0.06, (minZ + maxZ) / 2);
-    veil.renderOrder = 3;                     // over the floor and its patches
-    world.add(veil);
-    world.darkZones.push({ minX, maxX, minZ, maxZ, veilMat });
+    world.roomDark = true;
+    world.darkZones.push({ minX, maxX, minZ, maxZ });
   }
 
   // A HOLE IN THE FLOOR. Registers the fall zone and drops a black quad into
@@ -775,9 +767,15 @@ export function makeBuilders({ kit, isGrey }) {
     const w = maxX - minX, d = maxZ - minZ;
     const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
     const hole = new THREE.Mesh(
-      new THREE.PlaneGeometry(w * 1.18, d * 1.18),   // the fade needs room outside the fall line
-      new THREE.MeshBasicMaterial({ map: pitTexture(), transparent: true,
-        depthWrite: false, color: 0xffffff })
+      // 1.44 is 1/0.70 with a hair to spare: the texture's black ends at 0.70 of
+      // the quad, so the fall line lands just INSIDE the black. Anywhere it
+      // looks like a hole, it is one — the stone lip is all on solid ground.
+      new THREE.PlaneGeometry(w * 1.44, d * 1.44),
+      // LIT LIKE THE FLOOR IT IS PART OF. Basic material meant the rim ignored
+      // the light rig, which is how three holes became three clouds in a dark
+      // room. Black stays black under any light; the stone dims with the room.
+      new THREE.MeshStandardMaterial({ map: pitTexture(), transparent: true,
+        depthWrite: false, roughness: 1, metalness: 0, color: 0xffffff })
     );
     hole.rotation.x = -Math.PI / 2;
     hole.position.set(cx, (world.deckY || 0) + 0.05, cz);
@@ -812,10 +810,22 @@ export function makeBuilders({ kit, isGrey }) {
 // it is left alone by the batcher without needing to be marked.
 // ---------------------------------------------------------------------------
 // THE WASHOUT'S OWN TEXTURE — one canvas, cached for the session, shared by
-// every pit in the game. Black in the middle, a crumbled rock lip, and a soft
-// alpha falloff to nothing at the edge: the hole reads as depth instead of as
-// a rectangle of paint, and the lip is still the bright thing the Dark Wolf
-// picks out in the dark.
+// every pit in the game: black in the middle, a crumbled stone lip, and a hard
+// edge where the ground ends.
+//
+// THE EDGE IS HARD ON PURPOSE. It used to fade out over a fifth of the radius,
+// on the theory that a soft edge reads as depth. It does not. In a lit room the
+// fade made the hole a grubby SMEAR on the floor — dad tapped it in the Kiln
+// and said "get rid of this hole" — and in a dark room it was worse: the lip
+// was drawn unlit at three-quarters brightness so the Knight could find it in
+// the blackout, so while the room dimmed to six percent the pits stayed at full
+// and the Vault's three washouts became white clouds hanging over the ground.
+//
+// Ground ends at an edge. A black shape with a stone rim and a hard outline is
+// what a hole looks like from above, and it is what every top-down game in this
+// tradition draws. The lip is lit by the room now (MeshStandardMaterial, not
+// Basic) so it dims with everything else; the Dark Wolf is the answer to a dark
+// room, not a rim that ignores the dark.
 let pitTex = null;
 function pitTexture() {
   if (pitTex) return pitTex;
@@ -836,13 +846,15 @@ function pitTexture() {
       const wob = Math.sin(a * 7) * 0.035 + Math.sin(a * 13 + 1.7) * 0.022;
       const e = r + wob;
       let alpha, lum;
-      if (e < 0.62) { alpha = 1; lum = 8; }                      // the dark
-      else if (e < 0.78) {                                        // the lip
-        const f = (e - 0.62) / 0.16;
-        alpha = 1; lum = 8 + f * 78;                              // stone catching light
-      } else if (e < 0.98) {                                      // the fade
-        const f = (e - 0.78) / 0.20;
-        alpha = 1 - f; lum = 86 - f * 30;
+      if (e < 0.70) { alpha = 1; lum = 4; }                      // the dark
+      else if (e < 0.88) {                                        // the lip
+        const f = (e - 0.70) / 0.18;
+        // stone, brightest right at the break and settling into the floor
+        alpha = 1; lum = 4 + Math.sin(f * Math.PI) * 96 + f * 34;
+      } else if (e < 0.90) {                                      // the break
+        // two texels of taper, no more: enough to stop the outline crawling,
+        // far too little to read as a cloud
+        alpha = 1 - (e - 0.88) / 0.02; lum = 38;
       } else { alpha = 0; lum = 0; }
       const i = (y * N + x) * 4;
       img.data[i] = lum * 0.86; img.data[i + 1] = lum * 0.82; img.data[i + 2] = lum;

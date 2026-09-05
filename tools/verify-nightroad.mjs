@@ -100,19 +100,59 @@ const dark = await wk.page.evaluate(() => {
     onTheRoad: w.darknessAt(-6, -4), farEnd: w.darknessAt(0, -11),
     zone: { minZ: z.minZ, maxZ: z.maxZ } };
 });
-check('the camp end is lit and everything past it is not',
-  dark.atSpawn === 0 && dark.onTheRoad === 1 && dark.farEnd === 1, dark);
+// THE WHOLE ROOM, INCLUDING THE GROUND UNDER THE CAMP. This used to insist the
+// spawn end was lit and the road was not, which is precisely the "half and
+// half" dad called out from play — a seam across the floor where the darkness
+// stopped. The camp is still the bright part of n1, but the CAMPFIRE is what
+// makes it bright, and a light in a black room is measured by looking at it,
+// not by asking the floor which half it is on.
+check('the road is dark end to end — no lit half, no seam',
+  dark.atSpawn === 1 && dark.onTheRoad === 1 && dark.farEnd === 1, dark);
 
-// main.js writes the veil every frame off the CURRENT FORM, so this has to be
-// measured with the loop running, in each shape, not read off the material.
-await wk.page.evaluate(() => window.__game.player.setForm('knight'));
-await frames();
-const veilKnight = await wk.page.evaluate(() => window.__game.world.darkZones[0].veilMat.opacity);
-await wk.page.evaluate(() => window.__game.player.setForm('dark_wolf'));
-await frames();
-const veilWolf = await wk.page.evaluate(() => window.__game.world.darkZones[0].veilMat.opacity);
-check('the Dark Wolf lifts the veil the Knight cannot see through',
-  veilKnight > 0.5 && veilWolf < 0.2, { knight: +veilKnight.toFixed(2), wolf: +veilWolf.toFixed(2) });
+// MEASURE THE DARKNESS ITSELF. The old check read a veil quad's opacity, which
+// was a proxy for the dark and is now gone with it (there is no surface to
+// paint a volume on). main.js dims the light rig every frame off the CURRENT
+// FORM, so this reads the rig, with the loop running, in each shape.
+// SETTLE, DON'T GUESS A FRAME COUNT. main.js eases `darkness` toward its
+// target at about 5 per second, so a form change takes the better part of a
+// second to land. The check this replaced read a veil quad written straight off
+// `state.form`, which changed on the same frame — so eight frames was enough
+// for the proxy and nowhere near enough for the thing itself. Read until the
+// value stops moving.
+// SILENT, or the transform CEREMONY runs first. A plain setForm plays the
+// change — several seconds of it — and the light rig does not move while it
+// does, so a probe that reads during the ceremony reads a frozen mid-ramp
+// number and then decides the dark is broken. (Measured: rig pinned at 0.589
+// for four seconds after the call, with state.form still reporting the OLD
+// shape.) The lantern suite already had this right.
+// STILL IS NOT THE SAME AS SETTLED. The first cut of this stopped as soon as
+// two reads matched, and read 0.386, then 0.249 on a re-run — because a room
+// jump kills the player and plays an arrival, and while that runs the world
+// clock does not advance at all, so the ramp FREEZES mid-way and every read
+// agrees with the last one. A stopped clock passes a stability test.
+//
+// So the settle waits on the world's own clock (player._time, the same signal
+// wk-drive uses to tell a stalled world from a stuck bot): a reading only
+// counts as settled if time has moved since the one before it.
+const rigIn = async (form) => {
+  await wk.page.evaluate((f) => window.__game.player.setForm(f, { silent: true }), form);
+  const read = () => wk.page.evaluate(() => {
+    const L = window.__game.lights;
+    return { rig: L.hemi.intensity / L.HEMI_BASE, t: window.__game.player._time };
+  });
+  let last = await read();
+  for (let i = 0; i < 60; i++) {
+    await frames(6);
+    const now = await read();
+    if (now.t > last.t && Math.abs(now.rig - last.rig) < 0.001) return +now.rig.toFixed(3);
+    last = now;
+  }
+  return +last.rig.toFixed(3);
+};
+const litKnight = await rigIn('knight');
+const litWolf = await rigIn('dark_wolf');
+check('the Dark Wolf sees the road the Knight cannot',
+  litKnight < 0.15 && litWolf > 0.8, { knight: litKnight, wolf: litWolf });
 
 console.log('\n── 4. ...but the dark is not a wall ────────────────────');
 // The Knight walks the whole road, in the black, to the far door. Nothing here

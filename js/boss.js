@@ -14,6 +14,7 @@ import { smokePuff } from './enemies.js';
 import { state } from './state.js';
 import { galeLane } from './wind.js';
 import { waterZone, buildWaterField } from './water.js';
+import { fitSeaDragon, SEA_DRAGON_CLIPS } from './seaclips.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 import { bumpCounter } from './progress.js';
@@ -30,7 +31,7 @@ const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Atta
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
 // grammar the kids mastered (bosses fight like their family), new skin/stats.
-export // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // DIFFICULTY, AND WHY IT IS SHAPED LIKE THIS
 //
 // Dad, 2026-09-03: "boss fights are far too easy and are all beatable by
@@ -71,7 +72,19 @@ export // ----------------------------------------------------------------------
 // boss telegraph LONGER than the floor; it reaches 1.0 and stops. Difficulty
 // comes from what a child has to DO, never from taking their reading time away.
 // ---------------------------------------------------------------------------
-const SKINS = {
+// A BODY THAT NEEDS WORK DONE TO IT BEFORE IT CAN FIGHT.
+//
+// Most bodies arrive with their own idle/walk/attack/death and need nothing.
+// Jenosuke's sea dragon ships a death clip and two idles and no fight at all,
+// so js/seaclips.js authors a weave and an attack onto its own rig. That has
+// to happen BEFORE the clip lookups below, and it has to happen everywhere the
+// body is loaded — the game, and tools/verify-bosses.mjs, which is exactly the
+// check that would catch it not happening. So it is named by the skin
+// (`body.fit`) and exported, rather than being a branch somewhere in the
+// loading path that a test can quietly skip.
+export const BODY_FITS = { seaDragon: fitSeaDragon };
+
+export const SKINS = {
   shadowgrip: {
     tier: 1, gap: 3.2, tellMult: 1.15,
     moves: ['swipe', 'charge'],
@@ -151,14 +164,41 @@ const SKINS = {
   //
   // AND SHE IS NOT A WOLF EITHER (2026-09-03). She was the third of four, and
   // the most obviously wrong of them: a wolf that prowls a clifftop is not
-  // what "the Galebound" means. She wears the Quaternius dragon now — the body
-  // Boreal used to wear before Frostpeak's rebuild moved her onto the wyrm, so
-  // this costs the build nothing new — and she HOVERS: `body.hover` lifts her
-  // half a metre off the crown, so the storm-spirit reads as airborne while
-  // still fighting the ground fight the class gives her.
+  // what "the Galebound" means. She HOVERS: `body.hover` lifts her half a
+  // metre off the crown, so the storm-spirit reads as airborne while still
+  // fighting the ground fight the class gives her.
   //
-  // Dragon.glb has no idle and no walk, only Flying — which is exactly right
-  // here. A thing that never touches the stone has no walk cycle to play.
+  // AND SHE IS NOT THE QUATERNIUS DRAGON EITHER (2026-09-05). That body was
+  // borrowed from Boreal and it was the thinnest-animated body in the game:
+  // Dragon.glb ships five clips of which three can be used — Flying, Attack,
+  // Death — and neither an idle nor a walk is among them, so every still
+  // second of her fight was the flight loop played in place. She is a
+  // SEA-DRAGON now (Jenosuke, CC-BY — CREDITS.md), and three separate things
+  // say she should be:
+  //
+  //   * Stormreach is not a clifftop, it is SEA CLIFFS (regions.js: "down off
+  //     the calmed summit onto the sea cliffs", a flooded sea-cave gate at
+  //     s1a, and Luna hearing the sea under them). A serpent off that sea,
+  //     held up in the gale, is the region's own geography.
+  //   * The body is posed REARING — coil below, forebody and head free above
+  //     (js/seaclips.js measured it) — which is what `hover` was already
+  //     pretending. It is a body that has no business standing, for a boss
+  //     who never lands.
+  //   * It brings her an IDLE, which she has never had, plus a weave, an
+  //     attack authored to the 0.9s telegraph law, and its own death clip.
+  //
+  // It is NOT Meri's body, and that was the other candidate. Meri's whole
+  // fight — her Skill, the half-health flinch, the knockdown and the rise —
+  // is built out of the nine clips her own body brought; the sea dragon has
+  // three. Moving her onto it would trade a nine-clip boss for a three-clip
+  // one to fix a boss that was already fine. The sea serpent goes where the
+  // animation was actually missing.
+  //
+  // `keep` names its one material, so it wears the paint that was baked for
+  // it (tools/paint-sea-dragon.mjs) instead of being flooded with `hide`.
+  // `hide`/`glow` below are therefore unused for her BODY, exactly as Meri's
+  // are; they stay because the ring, burst and cinder colours read from the
+  // same block and a half-filled skin is harder to read than a whole one.
   aria: {
     tier: 5, gap: 2.4, tellMult: 1.02,
     moves: ['swipe', 'charge', 'pounce'],
@@ -166,14 +206,13 @@ const SKINS = {
     open: { by: 'stomp', secs: 2.4, hint: 'STOMP - THE SHOCK GOES THROUGH THE GALE' },
     name: 'Aria, the Galebound',
     body: {
-      url: './assets/chars/monsters/Dragon.glb',
+      url: './assets/chars/monsters/sea-dragon.glb',
       stands: 3.4,
       hover: 0.55,                 // she does not land
-      eyes: ['Eyes'],
+      fit: 'seaDragon',            // the two clips the file did not come with
+      keep: ['Dragon'],            // its own baked paint, not the skin tint
     },
-    clips: { idle: 'DragonArmature|Dragon_Flying', walk: 'DragonArmature|Dragon_Flying',
-      run: 'DragonArmature|Dragon_Flying', attack: 'DragonArmature|Dragon_Attack',
-      death: 'DragonArmature|Dragon_Death' },
+    clips: SEA_DRAGON_CLIPS,
     hide: 0x8f9bb8, glow: 0x5a6a94, eyes: 0xfff4b0, burst: 0xc9d4ff,
     maxHp: 26, dmg: 1.5, saveKey: 'ariaHp', legacyPhases: false,
     cinder: 0xfff4b0, // her own stormlight, held down by the gale
@@ -199,7 +238,11 @@ const SKINS = {
   // shrinks, deep water grows, and the gift the region gave stops being optional.
   meri: {
     tier: 6, gap: 2.2, tellMult: 1.0,
-    moves: ['swipe', 'charge', 'pounce'],
+    // SKILL IS HERS ALONE. Every duel boss draws from swipe/charge/pounce; she
+    // is the only one with a fourth, because her body is the only one that
+    // brought a fourth animation. That is the P7 law satisfied by the asset
+    // rather than by a number: a move no other fight in the game has.
+    moves: ['swipe', 'charge', 'pounce', 'skill'],
     // Water armour, and the region has been teaching its counter all along.
     open: { by: 'element', secs: 2.4, hint: 'HIT HER WITH WHAT SHE FEARS' },
     name: 'Meri, the Drowned',
@@ -209,9 +252,23 @@ const SKINS = {
     // tools/verify-bosses.mjs check that a skin's clips exist on the body it
     // actually wears; that check is exactly what would have caught her fighting
     // in her bind pose for a month.
+    // HER BODY, 2026-09-04 — and this one James made himself.
+    //
+    // "make him the boss of the sunken vale." It is the first creature in the
+    // game that nobody else authored: modelled and rigged in Meshy from his own
+    // prompt, then brought down from 203,207 triangles and nine 12MB files to
+    // 4,470 triangles and one 850KB file (see assets/LICENSES/README.md). A
+    // hunched crocodilian biped with coral spines, bone claws and one yellow
+    // eye — which is a far better Drowned than a slime was.
+    //
+    // `keep` is load-bearing here. The loader recolours every material it does
+    // not recognise to the skin's `hide`/`glow`, which would wash his own
+    // paintwork flat — the same escape hatch the minotaur uses for its horns
+    // and hooves. Named, so his colours arrive as authored.
     body: {
-      url: './assets/chars/monsters/Slime.glb',
-      stands: 2.54,   // Slime.glb is 1.95u; the old flat 1.3x scalar made 2.54
+      url: './assets/chars/monsters/cave-biped.glb',
+      stands: 2.7,           // 1.66u as modelled; a boss reads at nearly twice Kael
+      keep: ['Material_1'],  // his own texture, not the skin tint
     },
     hide: 0x2f7f96, glow: 0x14495c, eyes: 0x8fe4ff, burst: 0x4fd0e0,
     maxHp: 28, dmg: 1.5, saveKey: 'meriHp', legacyPhases: false,
@@ -222,17 +279,27 @@ const SKINS = {
       { x: 9.5, z: 0, w: 7.0, d: 24 },
     ],
     weakness: 'fire', // matches the Sunken Vale's own mook weakness
-    // BOSS OVERHAUL (2026-08-23): she is the one SKINS entry whose body
-    // (Slime.glb) isn't wolf.gltf, and its clips are named
-    // 'Armature|Slime_Idle' etc, not the bare 'Idle'/'Walk'/... DEFAULT_CLIPS
-    // looks for — so every mixer.clipAction() lookup below was silently
-    // finding nothing and she has been fighting fully unanimated (frozen bind
-    // pose) since the day this class started taking a slimeGltf. No 'Gallop'
-    // equivalent exists on Slime.glb, so `run` reuses the walk cycle — a
-    // faster-paced walk during her charge, not a true gallop, but real motion
-    // instead of none.
-    clips: { idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk',
-      run: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack', death: 'Armature|Slime_Death' },
+    // NINE CLIPS, AND THE CLASS ONLY EVER ASKED FOR FIVE.
+    //
+    // The body carries Arise, Walk, Stalk, Stagger, Run, Attack, Skill, Hurt
+    // and Death. Two notes on the mapping:
+    //
+    //   `idle` is STALK, not a standing pose, because the body has no standing
+    //   pose and does not want one. Stalk is a slow menacing walk, and a boss
+    //   that shifts its weight while it watches you is the thing the prowl was
+    //   always describing.
+    //
+    //   `stagger` is new — see _setAnim and topple(). Every boss until now
+    //   played its IDLE through the punish window, so the one moment a child
+    //   is supposed to read as "it is down, hit it NOW" looked like the animal
+    //   standing about. This body has a real unsteady stagger, so it uses it.
+    //
+    // Arise, Skill and Hurt are on the body and not yet spoken for; they are
+    // the raw material for giving her a move of her own (board item #127).
+    clips: { idle: 'Stalk', walk: 'Walk', run: 'Run',
+      attack: 'Attack', death: 'Death', stagger: 'Stagger',
+      // the three that were on the body doing nothing until 2026-09-04
+      skill: 'Skill', hurt: 'Hurt', arise: 'Arise' },
   },
   // SHADOW-GRIMM — the last fight (region 7).
   //
@@ -332,6 +399,12 @@ export class Shadowgrip {
     // bookend the whole story is built on. Everything BETWEEN them is now its
     // own creature.
     const B = this.skin.body || {};
+    // A BODY THAT NEEDED CLIPS AUTHORING GETS THEM HERE, before anything below
+    // looks a clip up by name — a lookup that finds nothing is silent, which
+    // is how Meri spent a month fighting in her bind pose. Idempotent: the fit
+    // checks for its own clips, and the loaded gltf is cached and shared by
+    // every rebuild of the room.
+    if (B.fit && BODY_FITS[B.fit]) BODY_FITS[B.fit](wolfGltf);
     this.core = new THREE.Group();
     const wolf = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
     // MEASURE, OR TAKE THE WOLF'S OWN 1.3. Every model in this batch arrives
@@ -399,9 +472,9 @@ export class Shadowgrip {
     this.dragon = wolf; // legacy name kept: the boss's body
     this.mixer = new THREE.AnimationMixer(wolf);
     // BOSS OVERHAUL (2026-08-23): a skin can override DEFAULT_CLIPS with its
-    // own clip names — Meri's Slime.glb needs this (see her SKINS entry);
-    // every other skin still shares wolf.gltf, whose clips ARE named Idle/
-    // Walk/Gallop/Attack/Death, so they're unaffected by this indirection.
+    // own clip names — Meri's body needs this (see her SKINS entry); every
+    // other skin still shares wolf.gltf, whose clips ARE named Idle/Walk/
+    // Gallop/Attack/Death, so they're unaffected by this indirection.
     const clipNames = this.skin.clips || DEFAULT_CLIPS;
     const clip = (key) => wolfGltf.animations.find((c) => c.name === clipNames[key]);
     this.flyAction = clip('idle') ? this.mixer.clipAction(clip('idle')) : null;
@@ -410,6 +483,27 @@ export class Shadowgrip {
     this.runAction = clip('run') ? this.mixer.clipAction(clip('run')) : null;
     this.attackAction = clip('attack') ? this.mixer.clipAction(clip('attack')) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    // HER SPECIAL, HER FLINCH, AND HER GETTING BACK UP. All three optional:
+    // a body without them simply never enters the states that use them, so
+    // every wolf-bodied boss is untouched.
+    this.skillAction = clip('skill') ? this.mixer.clipAction(clip('skill')) : null;
+    if (this.skillAction) this.skillAction.setLoop(THREE.LoopOnce);
+    this.hurtAction = clip('hurt') ? this.mixer.clipAction(clip('hurt')) : null;
+    if (this.hurtAction) {
+      this.hurtAction.setLoop(THREE.LoopOnce);
+      this.hurtAction.clampWhenFinished = true;   // it stays down until it rises
+    }
+    this.ariseAction = clip('arise') ? this.mixer.clipAction(clip('arise')) : null;
+    if (this.ariseAction) this.ariseAction.setLoop(THREE.LoopOnce);
+    this._skillSecs = clip('skill') ? clip('skill').duration : 1.6;
+    this._hurtSecs = clip('hurt') ? clip('hurt').duration : 1.4;
+    this._ariseSecs = clip('arise') ? clip('arise').duration : 1.6;
+    this._openHits = 0;
+
+    // THE PUNISH WINDOW HAS ITS OWN POSE, on a body that brought one. Optional:
+    // a skin whose clips map has no `stagger` falls back to idle exactly as
+    // before, so this costs the wolf-bodied bosses nothing.
+    this.staggerAction = clip('stagger') ? this.mixer.clipAction(clip('stagger')) : null;
     // THE COLLAPSE: the Death clip plays and HOLDS while the wolf lies tired
     this.collapseAction = clip('death') ? this.mixer.clipAction(clip('death')) : null;
     if (this.collapseAction) {
@@ -595,6 +689,17 @@ export class Shadowgrip {
     const weak = this._isWeak(element);
     if (weak) n *= 1.5;
     this._lastElement = element;
+    // KEEP SWINGING AND SHE GOES OVER. Dad: "when he's staggered if the user
+    // keeps attacking cause a knock down, this lets us use the get up motion
+    // then afterwards." Three landed blows inside one window: the third puts
+    // her down, which buys the child MORE time rather than ending the window
+    // early — pressing the advantage has to pay, or the lesson is "hit twice
+    // and back off".
+    if (this.openT > 0 && this.hurtAction && this.action !== 'downed'
+        && this.action !== 'rising') {
+      this._openHits = (this._openHits || 0) + 1;
+      if (this._openHits >= 3) this._knockDown();
+    }
     this.coreHp -= n;
     // SNAP the floating-point residual: elemental damage (1.5, 2.2, ...) leaves
     // coreHp at ~1e-15 instead of 0, so `coreHp <= 0` below never fired and the
@@ -621,6 +726,23 @@ export class Shadowgrip {
       juice.burst(wx, 1.2, wz, this.skin.burst, 14);
       this._raiseGales();
       this._flood();
+      // ...and on a body that brought a flinch, she WEARS it. Dad: "add a hurt
+      // motion when health hits half way and make him immune while he does
+      // it." Immunity is the point of the beat — it says the fight just
+      // changed and there is nothing to hit for a moment, so a child looks up
+      // from the health bar. openT is cleared going in, or a window that was
+      // already open would carry straight through the one moment that is
+      // supposed to interrupt it.
+      if (this.hurtAction) {
+        this.openT = 0;
+        this._openHits = 0;
+        this.tiredRing.visible = false;
+        this.action = 'flinch';
+        this.actionT = this._hurtSecs;
+        if (this.attackAction) this.attackAction.fadeOut(0.1);
+        if (this.skillAction) this.skillAction.fadeOut(0.1);
+        this.hurtAction.reset().fadeIn(0.08).play();
+      }
     }
     if (this.coreHp <= 0) this._defeat();
   }
@@ -710,6 +832,13 @@ export class Shadowgrip {
   takeStun(sec) {
     if ((this.skin.open && this.skin.open.by) === 'stomp' && this.topple('stomp')) return;
     if (this.defeated || this.action === 'tired') return;
+    // AND NOT OUT OF THE BEATS THAT ARE MEANT TO BE UNINTERRUPTIBLE. A stun
+    // does no damage, so the immunity held — but it still yanked her out of
+    // the half-health flinch into `recover`, which is the same interruption
+    // wearing a different name. `downed` and `rising` are here for the same
+    // reason: a knockdown that a stun can cancel is not a knockdown.
+    if (this.action === 'flinch' || this.action === 'downed'
+        || this.action === 'rising') return;
     this.action = 'recover';
     this.actionT = Math.max(1.4, sec);
     this.core.scale.y = 1;
@@ -858,7 +987,8 @@ export class Shadowgrip {
   // Crossfaded locomotion so the walk/gallop always match the movement.
   _setAnim(name) {
     if (this._anim === name) return;
-    const map = { idle: this.flyAction, walk: this.walkAction, run: this.runAction };
+    const map = { idle: this.flyAction, walk: this.walkAction, run: this.runAction,
+      stagger: this.staggerAction || this.flyAction };
     const next = map[name];
     const prev = map[this._anim];
     if (next) next.reset().fadeIn(0.2).play();
@@ -953,6 +1083,16 @@ export class Shadowgrip {
           this._setAnim('idle');
           facePlayer();
           audio.play('growl', { volume: 0.85, rate: 0.62, vary: 0.05 });
+        } else if (move === 'skill') {
+          // HER SPECIAL. The tell is the law's floor and then some: she rears
+          // and gathers the tide for a full second and a bit before anything
+          // comes out, because this is the biggest thing she does and a
+          // five-year-old has to see it coming from across the arena.
+          this.action = 'gather';
+          this.actionT = this._tell(1.1);
+          this._setAnim('idle');
+          facePlayer();
+          audio.play('growl', { volume: 0.9, rate: 0.38, vary: 0.04 });
         } else if (move === 'swipe') {
           // close enough: the SWIPE (shield lesson)
           this.action = 'windup';
@@ -1173,6 +1313,74 @@ export class Shadowgrip {
         this.eyeMat.emissiveIntensity = 0.4;
         this._setAnim('idle');
       }
+    } else if (A === 'gather') {
+      // THE TELL FOR HER SPECIAL: she rises and the water climbs with her.
+      // Nothing damages during this; it is a whole second of shape.
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / this._tell(1.1);
+      this.core.scale.y = 1 + 0.16 * f;
+      this.eyeMat.emissiveIntensity = 1.2 + f * 3.4;
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        this.action = 'skill';
+        this.actionT = this._skillSecs;
+        this._skillHit = false;
+        if (this.skillAction) this.skillAction.reset().fadeIn(0.06).play();
+        audio.play('whoosh', { volume: 1, rate: 0.45 });
+      }
+    } else if (A === 'skill') {
+      // THE SPECIAL ITSELF: a ring, not a cone — it does not matter which way
+      // she is facing, it matters how far away you are. That is what makes it
+      // a different lesson from the swipe: the swipe is answered by the
+      // shield, this one is answered by NOT BEING THERE.
+      if (!this._skillHit && this.actionT <= this._skillSecs * 0.55) {
+        this._skillHit = true;
+        if (d < 4.6) this._strike(player, this.skin.dmg);
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2;
+          juice.burst(wx + Math.cos(a) * 3.2, 0.35, wz + Math.sin(a) * 3.2, this.skin.burst, 4);
+        }
+        audio.play('slam', { volume: 1, rate: 0.5 });
+        if (juice.effects) juice.effects.shake(0.5, 0.45);
+      }
+      if (this.actionT <= 0) {
+        // and a long recover, because a big move has to be worth punishing
+        this.action = 'recover';
+        this.actionT = 1.5;
+        this.eyeMat.emissiveIntensity = 0.5;
+      }
+    } else if (A === 'flinch') {
+      // HALF HEALTH: she is hurt, and for a moment nothing can touch her.
+      // Dad's spec. It is the one time in the fight the child is told to
+      // stop swinging and watch — and `openT` is cleared going in, so a
+      // window that happened to be open does not carry through it.
+      this.eyeMat.emissiveIntensity = 2.4;
+      if (this.actionT <= 0) {
+        this._setAnim('idle');
+        this._backToProwl();
+      }
+    } else if (A === 'downed') {
+      // KNOCKED OFF HER FEET by a child who kept swinging in the window.
+      // She stays hittable here — this is the reward for pressing the
+      // advantage, not a second armour phase.
+      this.eyeMat.emissiveIntensity = 0.25;
+      if (this.actionT <= 0) {
+        this.action = 'rising';
+        this.actionT = this._ariseSecs;
+        this.openT = 0;                       // getting up is HER frames again
+        this.tiredRing.visible = false;
+        if (this.hurtAction) this.hurtAction.fadeOut(0.15);
+        if (this.ariseAction) this.ariseAction.reset().fadeIn(0.1).play();
+        audio.play('growl', { volume: 0.8, rate: 0.5 });
+      }
+    } else if (A === 'rising') {
+      // getting back up: armoured again, and slow enough to read as a beat
+      if (this.actionT <= 0) {
+        if (this.ariseAction) this.ariseAction.fadeOut(0.2);
+        this._anim = 'x';
+        this._setAnim('idle');
+        this._backToProwl();
+      }
     } else if (A === 'dazed') {
       // the pounce's own opening: shorter than the collapse, but the boss is
       // standing right on top of the child, so it is the easiest one to reach
@@ -1230,18 +1438,56 @@ export class Shadowgrip {
   // child plays is the same fight with more room to answer it in.
   topple(reason = 'open') {
     if (this.defeated || this.openT > 0) return false;
+    // NOT DURING THE FLINCH, AND NOT WHILE SHE IS GETTING UP. Both are
+    // immunity beats by design — the half-health flinch because dad asked for
+    // it, the get-up because it is the warning that the armour is back. An
+    // element hit lands on `_hitCore`'s opener check before it reaches the
+    // guard, so without this line the one moment that is supposed to
+    // interrupt the fight could itself be interrupted.
+    if (this.action === 'flinch' || this.action === 'rising') return false;
     const secs = ((this.skin.open && this.skin.open.secs) || 2.4)
       * (state.settings.easy ? 1.5 : 1);
     this.openT = secs;
     this._pingedOff = 0;
+    this._openHits = 0;         // three inside THIS window, not three ever
     this.action = 'dazed';
     this.actionT = secs;
-    this._setAnim('idle');
+    // DOWN SHOULD LOOK DOWN. This played the idle, so the one window a child
+    // has to read as "hit it NOW" looked like the animal standing about.
+    this._setAnim(this.staggerAction ? 'stagger' : 'idle');
     const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
     audio.play('parry', { volume: 1, rate: 0.6 });
     juice.burst(bx, 1.2, bz, 0xffe14a, 16);
     if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.6, bz, 'DOWN!');
     if (this.world.onBossOpen) this.world.onBossOpen(this, reason, secs);
+    return true;
+  }
+
+  // OFF HER FEET. Only reachable from inside an open window (see _hitCore),
+  // so it can never be an opening in its own right — it is the window getting
+  // BIGGER because the child earned it. She stays hittable the whole time she
+  // is down; `rising` is where the armour comes back, and the get-up animation
+  // is the honest warning that it is about to.
+  _knockDown() {
+    if (this.defeated) return false;
+    this._openHits = 0;
+    this.action = 'downed';
+    this.actionT = this._hurtSecs + 0.7;      // the fall, then a beat on the floor
+    this.openT = Math.max(this.openT, this.actionT + 0.25);
+    this.tiredRing.visible = true;
+    if (this.attackAction) this.attackAction.fadeOut(0.1);
+    if (this.skillAction) this.skillAction.fadeOut(0.1);
+    if (this.staggerAction) this.staggerAction.fadeOut(0.12);
+    this.hurtAction.reset().fadeIn(0.06).play();
+    const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
+    audio.play('slam', { volume: 1, rate: 0.55 });
+    juice.burst(bx, 0.5, bz, this.skin.burst, 16);
+    juice.burst(bx, 0.3, bz, 0x9a8f80, 12);
+    if (juice.effects) {
+      juice.effects.shake(0.5, 0.5);
+      if (juice.effects.slow) juice.effects.slow(0.7, 0.5);
+    }
+    if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.8, bz, 'KNOCKED DOWN!');
     return true;
   }
 
@@ -1272,6 +1518,8 @@ export class Shadowgrip {
       if (m === 'swipe') return d < 3.4;          // close work only
       if (m === 'pounce') return d > 2.2 && d < 8.5;
       if (m === 'root') return !!(this.skin.snares && this._halfHowled);
+      // her special: mid range, and only on a body that actually has the clip
+      if (m === 'skill') return !!this.skillAction && d > 1.6 && d < 7.0;
       return true;                                 // charge works at any range
     });
     if (legal.length > 1) legal = legal.filter((m) => m !== this._lastMove);
@@ -1463,6 +1711,17 @@ export class Boreal {
     // but the grounded window doubles up (that is where the fight is won)
     const weak = element === BOREAL_WEAKNESS;
     if (weak) n *= 1.5;
+    // KEEP SWINGING AND SHE GOES OVER. Dad: "when he's staggered if the user
+    // keeps attacking cause a knock down, this lets us use the get up motion
+    // then afterwards." Three landed blows inside one window: the third puts
+    // her down, which buys the child MORE time rather than ending the window
+    // early — pressing the advantage has to pay, or the lesson is "hit twice
+    // and back off".
+    if (this.openT > 0 && this.hurtAction && this.action !== 'downed'
+        && this.action !== 'rising') {
+      this._openHits = (this._openHits || 0) + 1;
+      if (this._openHits >= 3) this._knockDown();
+    }
     this.coreHp -= n;
     state.flags.borealHp = Math.max(0, this.coreHp);
     const wx = this.x + this.off.x, wz = this.z + this.off.z;
