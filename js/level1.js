@@ -666,6 +666,25 @@ export async function buildLa1(scene) {
     { x: 1, z: -5, kind: 'vase' }, { x: -8, z: 1.5, kind: 'box' },
   ];
   world.markers.cinderImpSpots = [{ x: 5, z: -5 }];
+  // THE FIRST HOUR HAD ALMOST NOTHING IN IT (2026-09-05).
+  //
+  // A census of all 146 rooms put Ember Hollow at SIXTEEN enemies across
+  // eighteen rooms — under one a room, the emptiest fighting in the game —
+  // in the region a child spends longest in. Its variety was never the
+  // problem:
+  // nine distinct types already, more than the Sunken Vale and the Shadow
+  // Court had between them. It was simply thin.
+  //
+  // So this adds COUNT, not kinds, and adds it gently, because region one is
+  // where a five-year-old is still learning that a red ring means move. Every
+  // addition is a body the region already uses and the two lightest it has —
+  // ember-wretch at 2hp and cinder-imp at 1 — plus a moth, which telegraphs
+  // for 0.8s before it dives. Nothing heavier, nothing new to read.
+  //
+  // Only rooms holding exactly ONE thing get a second, and only where there
+  // is measured headroom: `la` and `lb` are the dressed showpieces, already
+  // carry three apiece, and have 6 and 4 draw calls left. They get none.
+  world.markers.emberWretchSpots = [{ x: -5, z: 4 }];
   world.markers.pocketChest = { x: 7, z: 5 };
   cartWreck(world, -7, 4.5, 1.1, D);
   rubbleField(world, 2, -5.5, 3.0, D, 14);
@@ -886,6 +905,7 @@ export async function buildLb1(scene) {
   ];
   world.markers.pup1Spot = { x: 6, z: -4 };
   world.markers.mothSpots = [{ x: 4, z: 3 }];
+  world.markers.cinderImpSpots = [{ x: -5, z: -4 }];
   ruinedHome(world, -6, -4.5, 0.7, D, { w: 5.5, d: 4, keep: 0.55 });
   cartWreck(world, 5.5, 5, -0.4, D);
   rubbleField(world, -2, 6, 2.6, D, 12);
@@ -1040,6 +1060,7 @@ export async function buildLc(scene) {
     { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'jar' },
   ];
   world.markers.emberfangSpots = [{ x: 8, z: -8 }];
+  world.markers.mothSpots = [{ x: -6, z: 5 }];
   ruinedHome(world, -12, 7.5, 0.5, D, { w: 6, d: 4.5, keep: 0.45 });
   fallenColumn(world, -13.5, -6.5, 0.3, D, 4.4);
   fallenColumn(world, 12.5, 6.5, -1.4, D, 4.0);
@@ -1140,6 +1161,7 @@ export async function buildLc1(scene) {
   ];
   world.markers.pocketChest = { x: 6, z: -2 };
   world.markers.magmaSlimeSpots = [{ x: 2, z: 4 }];
+  world.markers.cinderImpSpots = [{ x: -4, z: -3 }];
   fallenColumn(world, -6.5, -1.5, 1.4, D, 3.4);
   fallenColumn(world, 2, 5.5, -0.3, D, 3.0);
   cartWreck(world, -7.5, 4.5, 0.9, D);
@@ -1565,6 +1587,7 @@ export async function buildLk1(scene) {
   visibleReward(world, 0.5, -6.4, 'lk1_alcove', { shards: 18, potion: 1 }, 'silver');
 
   world.markers.cinderImpSpots = [{ x: 6.5, z: 3.5 }];
+  world.markers.emberWretchSpots = [{ x: -5, z: -3 }];
   world.markers.breakables = [
     { x: 7.5, z: -3.5, kind: 'crate' }, { x: -6.5, z: -3, kind: 'barrel' },
     { x: -1, z: 5.5, kind: 'jar' },
@@ -1665,6 +1688,7 @@ export async function buildLk3(scene) {
     { shards: 40, heartPiece: 1, gear: 'hammer_c', treasure: 'banked_ember' }, 'gold');
 
   world.markers.emberWretchSpots = [{ x: -2.5, z: 4.5 }, { x: 2.5, z: 4.8 }];
+  world.markers.mothSpots = [{ x: 4, z: -5 }];
   world.markers.breakables = [
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
     // z <= 5.8: the last 2.5u before a room's edge is the BLIND STRIP the fixed

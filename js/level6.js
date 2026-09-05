@@ -584,6 +584,34 @@ export async function buildD1a(scene) {
   waterZone(world, { x: -13.5, z: 0, w: 7, d: 26, deep: true, id: 'd1a_edge' });
   waterZone(world, { x: -8.5, z: 0, w: 4.5, d: 26, deep: false });
   world.markers.slimeSpots = [{ x: 7, z: -5, variant: 'tide' }];
+  // THE VALE HAD FOUR KINDS OF ENEMY AND NO FIGHT SHAPES (2026-09-05).
+  //
+  // A census of all 146 rooms: the Sunken Vale ran FOUR distinct types across
+  // twenty rooms, the fewest of any region, and 53% of what stood in it was a
+  // slime. Its only humanoid was the bare SkeletonMinion — no shield to work
+  // around, no bow to close on, no duellist to trade with, nothing that lobs.
+  // A child crosses a whole region answering one question.
+  //
+  // Four fire-weak roster ids fix that without a single new asset, and fire
+  // is the element this region already teaches (js/enemies.js TRAITS):
+  // `visored-wight` is the duellist, `glacier-warden` the shield,
+  // `quiverbones` the bow and `rotcaster` the lobber. They are drowned
+  // soldiers in a drowned place, which is what the region was always
+  // describing. The fifth candidate, `tower-wight`, is NOT placed — see the
+  // note about the lagoon below.
+  //
+  // Placed against MEASURED headroom at the real ceiling of 125 — see the
+  // note in tools/probe-encounters.mjs about the 100 that was not it. Nine
+  // bodies across nine rooms, one apiece, re-measured afterwards: the
+  // tightest room in the region is d4b at 118 of 125, then d1b at 116.
+  //
+  // THE LAGOON GETS NONE OF THEM, and the world said so before the eye did.
+  // dlg answers "is this floor?" with NO for every spot in it, its own two
+  // slimes and two gulls included: it is open water, and those swim and fly
+  // over it. A tower wight in armour wading the lagoon is not a fight, it is
+  // a body being shoved back out by resolveCircle every frame. The heavy is
+  // held back for a room with a floor.
+  world.markers.visoredWightSpots = [{ x: -6, z: 4 }];
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -608,6 +636,7 @@ export async function buildD1b(scene) {
   world.markers.spitterSpots = [{ x: -3.2, z: 1.5 }];
   world.markers.slimeSpots = [{ x: 5, z: 3, variant: 'tide' }, { x: -2, z: -6, variant: 'tide' },
     { x: 7, z: -4, variant: 'tide' }];
+  world.markers.quiverbonesSpots = [{ x: 4, z: -3 }];
   // d1b is the busiest room in the region — the lock, the islet, the chest and
   // a pack of three — and it came in at 126 draw calls against a 125 ceiling.
   // It loses clutter, not content: 127 things in the arrival frame against a
@@ -680,6 +709,7 @@ export async function buildD2a(scene) {
   waterZone(world, { x: 7.5, z: 0, w: 5, d: 26, deep: false });
   world.markers.batSpots = [{ x: -6, z: -6, variant: 'gull' }, { x: 6, z: -7, variant: 'gull' }];
   world.markers.slimeSpots = [{ x: -7, z: 5, variant: 'tide' }];
+  world.markers.glacierWardenSpots = [{ x: 3, z: 5 }];
   scatter(world, halfW, halfD, D, 611, 6, { spin: 1, kinds: ['rockLA', 'bush', 'stump'] });
   dressShore(world, halfW, halfD, D, 6111, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -708,6 +738,7 @@ export async function buildD2b(scene) {
   world.markers.spitterSpots = [{ x: 6.8, z: -5.2 }];
   world.markers.slimeSpots = [{ x: -2, z: 2, variant: 'tide' }, { x: 4, z: -3, variant: 'deeptide' },
     { x: -7, z: -4, variant: 'tide' }];
+  world.markers.rotcasterSpots = [{ x: -6, z: -5 }];
   scatter(world, halfW, halfD, D, 612, 6, { spin: 1, kinds: ['rockLB', 'rockSB', 'bush'] });
   dressShore(world, halfW, halfD, D, 6121, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -873,6 +904,7 @@ export async function buildD3a(scene) {
   world.markers.restSpot = { x: 8, z: 7 };
   waterZone(world, { x: 3, z: 11.5, w: 24, d: 5, deep: true, id: 'd3a_edge' });
   world.markers.minionSpots = [{ x: -6, z: -5, variant: 'drowned' }, { x: 5, z: -6, variant: 'drowned' }];
+  world.markers.visoredWightSpots = [{ x: 6, z: 5 }];
   scatter(world, halfW, halfD, D, 621, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6211, { homes: 3 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -899,6 +931,7 @@ export async function buildD3b(scene) {
   world.markers.minionSpots = [{ x: -4, z: -3, variant: 'drowned' }, { x: 6, z: -6, variant: 'drowned' }];
   world.markers.spitterSpots = [{ x: 6.8, z: -5.2 }]; // on the east-south diagonal, like d2b
   world.markers.slimeSpots = [{ x: 8, z: 6, variant: 'deeptide' }];
+  world.markers.glacierWardenSpots = [{ x: -7, z: 5 }];
   scatter(world, halfW, halfD, D, 622, 6, { spin: 1, kinds: ['brick', 'rockSA', 'rockLC'] });
   dressShore(world, halfW, halfD, D, 6221, { homes: 3 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -960,6 +993,7 @@ export async function buildDtp(scene) {
   }
   world.markers.slimeSpots = [{ x: -10, z: 6, variant: 'tide' }, { x: 10, z: 6, variant: 'tide' }];
   world.markers.spitterSpots = [{ x: 0, z: 4 }];
+  world.markers.quiverbonesSpots = [{ x: -3, z: -4 }]; // NOT (0,-5): the brazier is there
   scatter(world, halfW, halfD, D, 624, 5, { spin: 1, kinds: ['rockSA', 'rockSB', 'brick'] });
   dressShore(world, halfW, halfD, D, 6241, { homes: 2, loose: 20 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1005,6 +1039,7 @@ export async function buildD4a(scene) {
   waterZone(world, { x: 0, z: -11.5, w: 30, d: 5, deep: true, id: 'd4a_edge' });
   world.markers.slimeSpots = [{ x: -6, z: 4, variant: 'deeptide' }];
   world.markers.batSpots = [{ x: 7, z: -5, variant: 'gull' }];
+  world.markers.rotcasterSpots = [{ x: 5, z: 5 }];
   scatter(world, halfW, halfD, D, 631, 6, { spin: 1, kinds: ['rockLC', 'rockSA', 'skull'] });
   dressShore(world, halfW, halfD, D, 6311, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1027,6 +1062,7 @@ export async function buildD4b(scene) {
   waterZone(world, { x: 5, z: 0, w: 5, d: 22, deep: false });
   world.markers.slimeSpots = [{ x: -10, z: -5, variant: 'deeptide' }, { x: -9, z: 5, variant: 'tide' }];
   world.markers.spitterSpots = [{ x: 3, z: -2 }];
+  world.markers.rotcasterSpots = [{ x: 8, z: 4 }];
   world.markers.minionSpots = [{ x: -12, z: 0, variant: 'drowned' }];
   scatter(world, halfW, halfD, D, 632, 6, { spin: 1, kinds: ['rockLB', 'skull', 'rockSB'] });
   dressShore(world, halfW, halfD, D, 6321, { homes: 2 });

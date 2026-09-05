@@ -1019,7 +1019,18 @@ export class World {
       const dz = z - c.z;
       const rr = r + c.r;
       const d2 = dx * dx + dz * dz;
-      if (d2 >= rr * rr || d2 < 1e-9) continue;
+      if (d2 >= rr * rr) continue;
+      // DEAD CENTRE IS STILL INSIDE (2026-09-05). This branch used to `continue`
+      // on d2 < 1e-9 — a body at the exact centre of a circle collider has no
+      // direction to be pushed in, so it was left there. The box branch above
+      // already handles its own degenerate case by axis of least penetration;
+      // the circle branch just gave up, and a body dead centre in a brazier, a
+      // boulder or a solidified prop walked around inside it until it drifted
+      // off-centre by chance. Found when verify-spawn-clear called a placement
+      // at dtp (0,-5) stuck while resolveCircle called the same point clear:
+      // the collider's centre was (0,-5) exactly. Any direction will do as long
+      // as it is the SAME one every frame, or the body jitters.
+      if (d2 < 1e-9) { x = c.x + rr; continue; }
       const d = Math.sqrt(d2);
       x = c.x + (dx / d) * rr;
       z = c.z + (dz / d) * rr;

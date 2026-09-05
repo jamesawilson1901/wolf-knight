@@ -45,7 +45,7 @@
 #
 # The static server must be up: (nohup node tools/serve.mjs &)
 cd "$(dirname "$0")/.."
-PASS=0; FAIL=0; FAILED=""
+PASS=0; FAIL=0; FAILED=""; RAN=""
 TIMES="/tmp/vall-times.$$"; : > "$TIMES"
 KNOWN_FAIL="tools/known-fail.txt"
 STALE_KNOWN_FAIL=""
@@ -95,6 +95,12 @@ report_verdict() {
 run() {
   [ -f "tools/$1" ] || { printf '%-26s SKIP (no such file)\n' "$1"; return; }
   t="$1"
+  # WHAT ACTUALLY RAN, recorded as it runs. The glob-append at the end of the
+  # serial block reads this rather than grepping this file for `run verify-x`
+  # lines: verify-formlock and verify-hud are named ONLY in the --quick block,
+  # so a text scan would call them "already listed" and the append would skip
+  # them in the very mode that is supposed to run everything.
+  RAN="$RAN $1"
   printf '%-26s ' "$t"
   attempt "$t"
   if [ "$ATT_V" = FAIL ] && ! is_known_fail "$t"; then
@@ -115,10 +121,31 @@ if [ "$1" = "--one" ]; then
   exit 0
 fi
 
-# Every suite file that exists, sorted — the one deterministic source both
-# --shard and the "unlisted suites" guard read from.
+# Every suite file that exists, sorted — the ONE deterministic source every
+# mode reads. If it is on disk, it runs. There is no second list anywhere.
 sorted_suite_files() {
   for f in tools/verify-*.mjs; do basename "$f"; done | grep -v '^verify-boot\.mjs$' | sort
+}
+
+# The suites measured to take the longest. Named once, used twice: --par starts
+# them first so a seventeen-minute giant never begins last, and --shard deals
+# them out first so they land on DIFFERENT machines.
+HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs verify-sequence.mjs"
+# Frame-timing measurements flake under CPU contention — --par runs these
+# serial, last. (--shard is already one suite at a time on its own machine.)
+TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
+
+# HEAVY first, then everything else, both in a stable order. Round-robin over
+# THIS is what balances the shards: dealing an alphabetical list meant shard 7
+# drew density AND several other long ones and ran 58m25s against a 60-minute
+# limit, while shard 6 finished in 3m44s (docs/TESTING.md §10). Alphabetical
+# order carries no information about cost; this does.
+heavy_first() {
+  ALLF=$(sorted_suite_files)
+  for t in $HEAVY; do echo "$ALLF" | grep -qx "$t" && echo "$t"; done
+  for t in $ALLF; do
+    case " $HEAVY " in *" $t "*) ;; *) echo "$t" ;; esac
+  done
 }
 
 # Boot first, always: twenty seconds, and it catches the errors that make every
@@ -127,8 +154,43 @@ run verify-boot.mjs
 
 case "$1" in
   --quick)
-    run verify-density.mjs
-    run verify-music.mjs
+    # THE PUSH GATE, AND IT HAS TO BE FAST OR IT STOPS BEING A GATE.
+    #
+    # This used to be density + music, and on 2026-09-05 that had cancelled
+    # THIRTY-EIGHT consecutive CI runs. The arithmetic: verify-density takes
+    # ~8 minutes and is a documented known-fail (board #124), every failure
+    # earns one automatic serial re-run, and the job's limit was 20 minutes —
+    # so the gate spent its whole budget failing the same suite twice and was
+    # killed before it reported anything. A cancelled run says nothing, so
+    # nobody could see the gate had died. Seven nightly sweeps in a row were
+    # red over the same period and nothing was learned from any of them.
+    #
+    # So: nothing here may be slow, and nothing here may be a known-fail.
+    # Measured on the CI-equivalent box, 2026-09-05, in this order:
+    #   boot 5s, callable 0s, graphs 0s, story-beats 0s, variant-names 0s,
+    #   formlock 14s, hud 14s, completion 23s, progression 49s, roomid 71s
+    # — about three minutes total, which leaves room for a re-run and still
+    # finishes four times inside the limit.
+    #
+    # What it buys: does the game boot with no page error, does every method
+    # a room calls exist, does every room id resolve, is every enemy variant
+    # name real, do the mission graphs hold, does a form lock behave, does the
+    # HUD lay out at phone size, can the game be progressed and completed.
+    # That is the "is it a game" question, in three minutes.
+    #
+    # NOT here, on purpose: verify-density (slow, known-fail) and
+    # verify-music (2.5 min, and the nightly shards run it). The nightly is
+    # where slow and known-red suites belong; the push gate is where speed
+    # belongs. If a suite is ever added here, add its measured time above.
+    run verify-callable.mjs
+    run verify-graphs.mjs
+    run verify-story-beats.mjs
+    run verify-variant-names.mjs
+    run verify-formlock.mjs
+    run verify-hud.mjs
+    run verify-completion.mjs
+    run verify-progression.mjs
+    run verify-roomid.mjs
     ;;
   --shard)
     KN="$2"
@@ -136,19 +198,21 @@ case "$1" in
     case "$K$N" in *[!0-9]*|'') echo "usage: --shard K/N (e.g. --shard 2/8)"; exit 2 ;; esac
     if [ "$K" -lt 1 ] || [ "$K" -gt "$N" ]; then echo "K must be between 1 and N ($KN)"; exit 2; fi
     i=0
-    for t in $(sorted_suite_files); do
+    for t in $(heavy_first); do
       i=$((i + 1))
       shard=$(( (i - 1) % N + 1 ))
       [ "$shard" = "$K" ] && run "$t"
     done
     ;;
   --par)
-    # The suite list is PARSED FROM THE SERIAL BLOCK BELOW — one list, no rot.
-    ALL=$(grep -oE '^ *run verify-[a-z0-9-]+\.mjs' "$0" | awk '{print $2}' | awk '!s[$0]++' | grep -v '^verify-boot')
-    # Longest suites first so a 17-minute giant never starts last and runs alone.
-    HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs"
-    # Frame-timing measurements flake under CPU contention — these run serial, last.
-    TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
+    # THE GLOB IS THE LIST. This used to parse the serial block below, which
+    # meant --par ran exactly what someone had remembered to type there — and
+    # on 2026-09-05 that was 58 of the 76 suites on disk. --shard has always
+    # read the glob, so the nightly was complete while every local run was
+    # eighteen suites short, including verify-looks, verify-chests and
+    # verify-onward. Two modes, two answers to "what is the suite?" is one
+    # answer too many.
+    ALL=$(sorted_suite_files)
     PARLIST=""
     for t in $HEAVY; do echo "$ALL" | grep -qx "$t" && PARLIST="$PARLIST $t"; done
     for t in $ALL; do
@@ -288,29 +352,46 @@ case "$1" in
     # one screen where it was still false, and checks the layout at PHONE size,
     # which is the only size that actually matters here.
     run verify-armoury.mjs
+    # AND THEN EVERYTHING ELSE ON DISK, FROM THE GLOB.
+    #
+    # The curated order above is worth keeping — it is "fails fastest and
+    # cheapest first", and the comments record why each suite exists. What is
+    # NOT worth keeping is the assumption that someone remembers to add a line
+    # here. Eighteen suites had not been added (verify-looks, verify-chests,
+    # verify-onward, verify-bosses, verify-level4, verify-map and twelve more),
+    # so every serial and --par run was short of them while the sharded nightly
+    # ran them all. The guard at the foot of this file DID print a warning, and
+    # the warning had been printing for long enough to become furniture.
+    #
+    # A list that maintains itself cannot rot, so this runs the difference.
+    # A new suite is covered the moment the file exists.
+    for t in $(sorted_suite_files); do
+      case " $RAN " in
+        *" $t "*) ;;
+        *) printf '(from the glob) '; run "$t" ;;
+      esac
+    done
     ;;
   *)
     for t in "$@"; do run "$t"; done
     ;;
 esac
 
-# AND A GUARD AGAINST THIS FILE ROTTING THE SAME WAY. A verifier that exists
-# but is not listed here is a verifier nobody runs, which is where this started.
-# --par parses its list from the serial block, so guarding the serial block
-# guards both modes. --shard reads the sorted file list directly, so it is
-# never short a suite even if this guard is what catches the gap.
-if [ -z "$1" ] || [ "$1" = "--par" ]; then
-  MISSING=""
-  for f in tools/verify-*.mjs; do
-    b=$(basename "$f")
-    grep -q "run $b" "$0" || MISSING="$MISSING $b"
-  done
-  if [ -n "$MISSING" ]; then
-    echo
-    echo "NOT RUN BY THIS SCRIPT — add them:$MISSING"
-    FAIL=$((FAIL+1)); FAILED="$FAILED unlisted-suites"
-  fi
-fi
+# THE ROT GUARD, RETIRED (2026-09-05) — and worth recording why.
+#
+# There used to be a check here that listed every verify-*.mjs not named in the
+# serial block and turned it into a synthetic FAILURE called "unlisted-suites".
+# It worked exactly as designed and it did not help: it printed eighteen names
+# every single run, went red every single run, and the red became scenery
+# (docs/TESTING.md §7b, lesson 3 — "a long-standing failure is a finding, not
+# furniture"). A guard that reports a gap on every run is a guard nobody reads.
+#
+# All three modes now read `sorted_suite_files` — the glob — so the gap it was
+# watching for cannot exist. Nothing to guard, so nothing here.
+#
+# The general lesson, which outlives this particular check: when a guard fires
+# constantly, close the hole instead of watching it. A warning that is always
+# on carries no information.
 
 # THE TIMING TABLE (job 3). Slowest FINAL-verdict attempt first — that is the
 # order clock-conversion work (TESTINGADDENDUM.md §10) should happen in.

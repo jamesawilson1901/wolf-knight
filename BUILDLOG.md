@@ -5307,3 +5307,124 @@ The expensive part was not the bug. §6 printed the prop's NAME and nothing
 else — no distance, no hit position, no spawn — so recovering enough to think
 about took an afternoon of probes, all of it re-measuring what the check had
 already had in its hand. It reports the measurement now, not just the verdict.
+
+## The gate had been dead for two days and nothing said so (2026-09-05, v3.109.0)
+
+Dad asked why so many simple things get through to his play-tests, and whether
+there is a better way to work. The answer was not in anyone's memory, so this
+is what the repository itself says, measured rather than recalled.
+
+### What the run history showed
+
+| Signal | Measured |
+|---|---|
+| Nightly sweeps since CI existed (Aug 29 – Sep 4) | 7 run, **0 green** — 5 red, 2 cancelled at the shard limit |
+| Push runs from the evening of Sep 3 | **38 consecutive cancellations**, every one at exactly 20 minutes |
+| Entries in the known-fail manifest | 0 |
+| Suites in the serial/`--par` list vs on disk | 58 / 76 |
+| Live modules missing from the service-worker precache | 5 of 59 |
+| `no-undef` findings in the shipped game | 0 (measured, first time) |
+
+The 38 cancellations had an exact and entirely mechanical cause, and every
+part of it was individually sensible. `--quick` was boot + density + music.
+`verify-density` is a documented known-fail (board #124) and takes about eight
+minutes. Every failure earns one automatic serial re-run — a good rule, added
+deliberately in the test-infra pass. The job's limit was 20 minutes. So the
+push gate spent its entire budget failing the same suite twice and was killed
+before printing a verdict. A cancelled run reports as neither pass nor fail,
+so from outside the gate simply looked absent. It was absent. Two days and
+dozens of pushes went by, including a merge to main, because no report ever
+mentioned the gate at all.
+
+### The five changes
+
+1. **`--quick` is fast, and may never contain a known-fail.** Ten suites,
+   about three minutes measured, each with its time written into the script:
+   boot, callable, graphs, story-beats, variant-names, formlock, hud,
+   completion, progression, roomid. That is the "is it a game" question —
+   does it boot clean, does every method a room calls exist, does every room
+   id resolve, is every variant name real, do the mission graphs hold, can it
+   be progressed and completed. Density and music move to the nightly, where
+   slow and known-red suites belong. The job's limit drops 20 → 12 minutes,
+   which is four times the measured cost: enough for a retry, short enough to
+   fail fast on a hang.
+2. **Every mode reads the glob.** `--shard` always did, which is why the
+   nightly was quietly complete while every local serial and `--par` run was
+   eighteen suites short — verify-looks, verify-chests, verify-onward,
+   verify-bosses, verify-level4, verify-map and twelve more. Two sources of
+   truth for "what is the suite" is one too many. The curated order stays,
+   because "cheapest failure first" is worth keeping; everything on disk that
+   is not in it now runs after it, automatically.
+3. **The rot guard is deleted, not fixed.** It had been correctly printing
+   those eighteen names on every single run, and turning them into a synthetic
+   failure, for long enough that the red had become scenery. That is §7b's
+   third lesson arriving from the other direction: **when a guard fires
+   constantly, close the hole instead of watching it.** A warning that is
+   always on carries no information.
+4. **Shards are dealt heavy-first.** Round-robin over an alphabetical list
+   gave shard 7 several long suites and 58m25s against a 60-minute limit,
+   while shard 6 finished in 3m44s — and on two nights both were killed
+   mid-run, so those sweeps reported nothing at all. Alphabetical order
+   carries no information about cost; the nine measured-heavy suites are now
+   dealt out first, one to each shard, and the limit is 90 minutes so it has
+   room to be wrong in.
+5. **One run per branch.** A `concurrency` group cancels superseded pushes.
+   Note for anyone reading run history later: from today a `cancelled` status
+   means *superseded*; before today it meant *the gate died*.
+
+### The precache had been missing five live modules
+
+Found while looking for hand-kept lists, and it is the sharpest bug of the
+batch. `sw.js`'s PRECACHE was typed by hand and did not list `attacks.js`,
+`districts.js`, `dressing.js`, `equipscene.js` or `ground.js` — and
+`districts`, `dressing` and `ground` are imported by *every level file*.
+`install` only waits for CORE, `activate` deletes every older cache, and the
+fetch handler throws "offline and not cached" for anything absent. So a child
+who opened the game just after an update, on a tablet with no signal, could
+reach the title screen and then fail to build any room.
+
+`tools/sync-cache.mjs` generates that block **from the import graph**, walking
+static and dynamic imports out from the entry in index.html. That is
+deliberately not `ls js/`: `js/skinify.js` is in the folder, is imported by
+nothing, and correctly stays out of the cache — a dead file should not cost a
+child bandwidth. The same tool carries CACHE_NAME into the `#badge` in
+index.html, which CLAUDE.md has asked a human to remember on every deploy
+since the drift cost half an hour on 2026-08-29. `verify-boot` runs the check,
+so neither list can rot quietly again. Both failure modes were then induced on
+purpose and confirmed to fail the check, because a guard that has never been
+seen to fail is a guard nobody has tested.
+
+### Two rules of lint, and an honest compromise
+
+`tools/eslint.config.mjs` — `no-undef` and `no-unused-vars`, nothing else. No
+root package.json, no build step; eslint sits in tools/ beside playwright. The
+bug class is the one that costs whole sessions rather than minutes:
+`juice.shake()` (a method that did not exist, which made Stoneroot's dam
+unreachable), and `resolveCircle(p, R)` against a signature of `(x, z, r)` —
+a probe earlier the same day that reported every point in a room as clear
+because the object argument made the arithmetic NaN and nothing threw.
+
+The measurement is genuinely reassuring: **zero `no-undef` findings across the
+whole shipped game**, so that rule is an error from day one and costs nothing.
+
+`no-unused-vars` found 69, all dead imports and bindings left by refactors,
+none behavioural. It ships as a **warning**, and that is a deliberate,
+temporary compromise recorded in the config: landing a gate that is red on
+arrival is exactly how the nightly became something everyone ignored. Burning
+the 69 down belongs in its own mechanical commit, after which the rule becomes
+an error. It is on the board so it does not become furniture.
+
+### And the part that is not automatable
+
+Counting dad's three play-test batches: of twenty-two findings, **thirteen were
+something looking wrong in a place** — a prop in the air, a wall filling the
+arrival view, a body inside a rock. That is the class a green sweep will never
+catch and a contact sheet will. So CLAUDE.md now asks for an arrival-frame
+contact sheet of every room a change touched, reviewed by eye, before a merge;
+and docs/TESTING.md §7a(iv) asks a play-test report for exactly three things —
+room id, one screenshot, one sentence — which is enough to reproduce and
+deliberately not enough to guess from.
+
+The honest framing, which §7b already insisted on and which this session
+proves again: "all green" is a claim about coverage, not about the game, and
+it is worth nothing at all if nobody checks whether the gate ran.

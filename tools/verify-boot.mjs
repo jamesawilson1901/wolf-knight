@@ -10,6 +10,7 @@
 // the title screen, and report any page error. Run it before anything longer.
 import { launchBrowser, assertWebGL } from './launch.mjs';
 import { readFileSync } from 'fs';
+import { execFileSync } from 'node:child_process';
 
 // --- STATIC CHECK: nothing after `return finish()` -------------------------
 //
@@ -90,7 +91,26 @@ if (titled) {
 console.log(titled ? '✓ the title screen appears' : '✗ the title screen never appeared');
 console.log(playing ? '✓ a new game starts and the world builds' : '✗ a new game did not start');
 if (errs.length) console.log('\n' + errs.length + ' page error(s):\n' + errs.join('\n'));
-const ok = titled && playing && !errs.length;
+// --- STATIC CHECK: the two hand-kept lists are still in sync ---------------
+//
+// sw.js's precache module block and index.html's #badge. Both were kept by
+// hand, and both had already drifted: five imported modules were absent from
+// the precache on 2026-09-05, three of them imported by every level file, so
+// an offline launch right after an update could boot to the title and then
+// fail to build any room. CLAUDE.md's rule about bumping the badge with
+// CACHE_NAME is the same rule, and it is enforced here rather than remembered.
+// One second, no browser. See tools/sync-cache.mjs.
+let synced = true;
+try {
+  execFileSync(process.execPath, [new URL('./sync-cache.mjs', import.meta.url).pathname], { stdio: 'pipe' });
+  console.log('\u2713 the precache and the badge match what the game imports');
+} catch (e) {
+  synced = false;
+  const out = (e.stdout ? e.stdout.toString() : '') + (e.stderr ? e.stderr.toString() : '');
+  console.log('\u2717 precache/badge drift \u2014 run: node tools/sync-cache.mjs --write\n' + out.trim());
+}
+
+const ok = titled && playing && synced && !errs.length;
 console.log('\n' + (ok ? '✓ the game boots clean' : '✗ THE GAME IS BROKEN'));
 await b.close();
 process.exit(ok ? 0 : 1);
