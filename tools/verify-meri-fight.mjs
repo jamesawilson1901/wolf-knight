@@ -4,7 +4,7 @@
 //   2. the half-health flinch fires ONCE and she is untouchable inside it
 //   3. three landed blows inside a window put her down
 //   4. she gets up, and the get-up is armoured again
-import { launchBrowser } from '/home/user/wolf-knight/tools/launch.mjs';
+import { launchBrowser } from './launch.mjs';
 const errors = [];
 const check = (n, ok, d) => {
   console.log((ok ? '✓ ' : '✗ ') + n, d !== undefined ? JSON.stringify(d) : '');

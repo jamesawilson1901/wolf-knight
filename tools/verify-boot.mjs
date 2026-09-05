@@ -9,7 +9,7 @@
 // This is the cheap check that actually catches those: load the page, wait for
 // the title screen, and report any page error. Run it before anything longer.
 import { launchBrowser, assertWebGL } from './launch.mjs';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { execFileSync } from 'node:child_process';
 
 // --- STATIC CHECK: nothing after `return finish()` -------------------------
@@ -91,6 +91,39 @@ if (titled) {
 console.log(titled ? '✓ the title screen appears' : '✗ the title screen never appeared');
 console.log(playing ? '✓ a new game starts and the world builds' : '✗ a new game did not start');
 if (errs.length) console.log('\n' + errs.length + ' page error(s):\n' + errs.join('\n'));
+// --- STATIC CHECK: nothing imports by a MACHINE-SPECIFIC path --------------
+//
+// verify-meri-fight.mjs imported `/home/user/wolf-knight/tools/launch.mjs`.
+// That path exists on exactly one machine, so the suite resolved locally and
+// died on every CI runner in about 25 milliseconds with ERR_MODULE_NOT_FOUND
+// — reported as "FAIL (0s)", twice, and never looked at because the sweep it
+// failed in had not been green since it was created. It had NEVER passed.
+//
+// The rule has to be careful, because a leading slash is AMBIGUOUS here. Tool
+// suites legitimately write `import('/js/rooms.js')` INSIDE page.evaluate(),
+// where the path is a URL the static server answers, not a file. So: an
+// absolute import is fine when its first segment names a real directory in
+// this repo (/js, /vendor, /assets — the things the server serves), and is a
+// finding otherwise (/home, /Users, /tmp, a drive letter). That distinction
+// maintains itself as the repo gains and loses directories.
+const repoDirs = new Set(readdirSync(new URL('..', import.meta.url).pathname));
+const absImports = [];
+for (const dir of ['tools', 'js']) {
+  const base = new URL(`../${dir}/`, import.meta.url).pathname;
+  for (const f of readdirSync(base)) {
+    if (!/\.(mjs|js)$/.test(f)) continue;
+    for (const m of readFileSync(base + f, 'utf8')
+      .matchAll(/(?:from|import\s*\()\s*['"](\/[^'"]*)['"]/g)) {
+      const first = m[1].split('/')[1] || '';
+      if (!repoDirs.has(first)) absImports.push(`${dir}/${f} -> ${m[1]}`);
+    }
+  }
+}
+console.log(absImports.length
+  ? '\u2717 imported by a MACHINE-SPECIFIC path (resolves on one box only):\n  '
+    + absImports.join('\n  ')
+  : '\u2713 no tool or module imports by a machine-specific path');
+
 // --- STATIC CHECK: the two hand-kept lists are still in sync ---------------
 //
 // sw.js's precache module block and index.html's #badge. Both were kept by
@@ -110,7 +143,7 @@ try {
   console.log('\u2717 precache/badge drift \u2014 run: node tools/sync-cache.mjs --write\n' + out.trim());
 }
 
-const ok = titled && playing && synced && !errs.length;
+const ok = titled && playing && synced && !absImports.length && !errs.length;
 console.log('\n' + (ok ? '✓ the game boots clean' : '✗ THE GAME IS BROKEN'));
 await b.close();
 process.exit(ok ? 0 : 1);
