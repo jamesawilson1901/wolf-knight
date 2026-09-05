@@ -47,3 +47,9 @@ verify-spawn-clear.mjs | board #129 — 8 of 165 bodies spawn inside geometry (q
 verify-storm.mjs       | Aria never reaches half health in the harness, so the two gale assertions never get their chance — the suite asserts a law the fight no longer has. Rewrite it against the shipped fight, do not delete it | 2026-09-05 proven on main dd4de23
 verify-reachable.mjs   | calls working BOSS GATES unreachable doors — the same blind spot verify-looks section 5 had, where a door that opens on a condition reads as sealed. The rooms are reachable in play | 2026-09-05 proven on main dd4de23
 verify-playthrough.mjs | same boss-gate blind spot as verify-reachable; the route it cannot finish is one a child finishes | 2026-09-05 proven on main dd4de23
+# Added 2026-09-05, later — found by the revived sweep's first real run and
+# proven pre-existing by A/B rather than by assumption: the suite fails
+# identically with and without that day's resolveCircle fix, so it is older
+# than the change in flight. (The same A/B showed the fix REPAIRED a second
+# chest, t3b's goldchest, which had not been paying out on a walk-in.)
+verify-chests.mjs      | board #135 — lg1/l1_lg1_vault@(4.5,4) is unreachable in the all-gates-cleared pass, which the suite defines as a bug; 68 of 69 chests open. Same family as the Kiln vault (#104) | 2026-09-05 proven by A/B against main dd4de23

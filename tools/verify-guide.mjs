@@ -90,7 +90,12 @@ const SPOTS = [
   { id: 'ld', region: 'Ember, the Kiln' },
   { id: 'vh', region: 'Stoneroot, the hub' }, { id: 'va1', region: 'Stoneroot' },
   { id: 't2a', region: 'The Wild Woods' }, { id: 't3p', region: 'Woods, a pocket' },
-  { id: 'f2', region: 'Frostpeak' },
+  // f3 JOINED THIS LIST 2026-09-05, and the reason is the list itself. Both
+  // Frostpeak puzzle rooms answer guideTarget() with an OBJECT rather than a
+  // door — the brazier and the push boulder — and only f2 was ever checked, so
+  // f3 pointed a stuck child at the inside of a rock for as long as it existed
+  // and nothing asked. Any room whose target is a prop belongs here.
+  { id: 'f2', region: 'Frostpeak' }, { id: 'f3', region: 'Frostpeak, the plates' },
   { id: 's2a', region: 'Stormreach' }, { id: 's3p', region: 'Stormreach, a pocket' },
   { id: 'd3a', region: 'The Sunken Vale' }, { id: 'd2p', region: 'Vale, a pocket' },
   { id: 'xh', region: 'The Shadow Court, the hall' }, { id: 'xa2', region: 'Court, the Ash Wing' },
