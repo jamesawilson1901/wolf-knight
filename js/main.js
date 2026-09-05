@@ -723,9 +723,21 @@ function guideTarget() {
   // which, one room after "Ice sealing a way… we'll come back" taught them
   // that ice means frost, manufactured dad's "you need the frost wolf to
   // proceed" read. The action beats the door here too.
-  if (state.room === 'f2' && !WS.get('frost', 'braziers')) return { x: 0, z: -4.2 };  // the middle brazier
+  //
+  // BESIDE THE OBJECT, NEVER INSIDE IT (2026-09-05). Both of these used to name
+  // the prop's own centre — the brazier at (0,-4.2) and the boulder at
+  // (-7.0,1.6) — and a child cannot stand in either. Pip's pin landed inside a
+  // fire and inside a rock. It went unseen because resolveCircle could not push
+  // a body out of a circle collider it was exactly centred in, so the very test
+  // that would have caught it (verify-guide: "is it floor") answered yes. The
+  // collision fix in world.js turned the light on; these are what it showed.
+  //
+  // Both coordinates below are MEASURED standable ground one step from the
+  // object, on the side the child arrives from — near enough that the arrow
+  // still reads as "that thing", far enough that they can stand where it points.
+  if (state.room === 'f2' && !WS.get('frost', 'braziers')) return { x: 0, z: -3.5 };  // beside the middle brazier
   if (state.room === 'f3' && !(state.flags.plates.f3_p1 && state.flags.plates.f3_p2)) {
-    return { x: -7.0, z: 1.6 };                                                       // the west boulder
+    return { x: -6.0, z: 1.6 };                                                       // beside the west boulder
   }
   const onward = onwardSpot(world);
   if (onward) return onward;
