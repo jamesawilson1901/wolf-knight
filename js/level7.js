@@ -563,15 +563,17 @@ export async function buildXa1(scene) {
   // The second body sits across the room from the first, so the beat is a
   // pincer to walk out of rather than one thing to walk up to.
   //
-  // NINE ROOMS GOT ONE, NOT ELEVEN, and the two that did not are the whole
-  // reason to measure twice. The first estimate came off the region as it
-  // stood — 1.4 draw calls an enemy, over nineteen samples of hounds, bats
-  // and slimes. These are not those: a roster body loads its own generated
-  // mesh AND a mounted weapon, and re-measured with them in place the cost
-  // is 2.2 calls, with the armed ones nearer nine. xr1 came out at 101 and
-  // xp2 at 105 against a budget of 100, so the Ruin's twinblade and the
-  // Path's lurker came straight back out. An average is not a measurement
-  // when the things being averaged are different sizes.
+  // A ROSTER BODY IS NOT AN AVERAGE ENEMY. The first estimate came off the
+  // region as it stood — 1.4 draw calls an enemy, over nineteen samples of
+  // hounds, bats and slimes. These are not those: a roster body loads its own
+  // generated mesh AND a mounted weapon, and the armed ones run nearer nine
+  // calls each. Worth knowing before placing eleven of them.
+  //
+  // (The Ruin's twinblade and the Path's lurker were briefly pulled back out
+  // over this, at 101 and 105 calls — against a ceiling of 100 that has not
+  // been the budget for a long time. tools/probe-encounters.mjs still had
+  // Level 3's old number hardcoded; every shipping suite asserts 125. Both
+  // are back, and the tool reads 125 now.)
   //
   // The coordinates are MEASURED, not eyeballed: every one is a point where
   // resolveCircle does not push a body, which is the question
@@ -643,6 +645,7 @@ export async function buildXr1(scene) {
     id: 'x_root_tangle', needs: 'verdant_wolf',
   });
   world.markers.houndSpots = [{ x: -8, z: 5, variant: 'shadewalker' }];
+  world.markers.twinbladeHuskSpots = [{ x: 7, z: -4 }];
   scatter(world, halfW, halfD, D, 721, 5, { spin: 1, kinds: ['stump', 'treeA', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7211, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -867,6 +870,7 @@ export async function buildXp2(scene) {
   world.markers.chestDefs = [{ id: 'c_xp2', tier: 'gold', x: 0, z: -4.2, ry: 0.3, loot: { shards: 40, heartPiece: 1, armour: 'moon' } }];
   world.reserve(0, -4.2, 2.6, 'chest');
   world.markers.houndSpots = [{ x: -5, z: 1, variant: 'shadewalker' }];
+  world.markers.lurkerSpots = [{ x: 5, z: -3 }];
   world.markers.pupSpot = { x: 6.5, z: -1, id: 'pup_x2' };
   scatter(world, halfW, halfD, D, 752, 4, { spin: 1, kinds: ['coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7521, { homes: 1, loose: 14 });

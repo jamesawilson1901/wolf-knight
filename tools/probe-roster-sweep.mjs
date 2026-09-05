@@ -25,10 +25,13 @@ await page.evaluate(() => {
   g.state.settings.greybox = false;
 });
 
-const allRooms = await page.evaluate(async () => {
-  const { ROOMS } = await import('/js/rooms.js');
-  return Object.keys(ROOMS);
-});
+// WK_ROOMS narrows the census to a region's own rooms; all 146 otherwise.
+const allRooms = process.env.WK_ROOMS
+  ? process.env.WK_ROOMS.split(',')
+  : await page.evaluate(async () => {
+    const { ROOMS } = await import('/js/rooms.js');
+    return Object.keys(ROOMS);
+  });
 const go = async (room) => {
   for (let a = 0; a < 6; a++) {
     await page.evaluate((r) => { const g = window.__game;
