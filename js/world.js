@@ -305,6 +305,27 @@ export class World {
     // same reason: a probe needs to be able to measure the room WITHOUT this
     // pass to say what it cost. Never set in the game.
     if (typeof window !== 'undefined' && window.__noSolid) return 0;
+    // POSE THE ROOM BEFORE MEASURING IT.
+    //
+    // This runs at the end of a room BUILD, and a freshly built room has never
+    // been rendered — so nothing has called updateMatrixWorld on it and most
+    // of its props still report a matrixWorld of identity. Box3.setFromObject
+    // reads matrixWorld, so without this line it measures prop after prop
+    // sitting at the ORIGIN and drops a collider there: an invisible post in
+    // the middle of the floor, in every room, at (0,0).
+    //
+    // It was caught in the Great Vault, where the post landed exactly on the
+    // sunken ring's centre and re-broke the promise dad raised twice ("a
+    // puddle of water with a character and a chest in the centre that you are
+    // unable to get to") — verify-level2-progress §5, which passes on main and
+    // failed here. The measurement: with this pass and no posing, a decor
+    // circle r0.33 sat at (0,0) and resolveCircle pushed a body 0.538u; with
+    // the pass off, nothing. No prop is anywhere near the middle of that room.
+    //
+    // The same call was needed in tools/verify-looks.mjs for the same reason,
+    // and this is the more serious half of it: that one only made a test lie,
+    // this one put real colliders in the shipped game.
+    this.root.updateMatrixWorld(true);
     const bb = new THREE.Box3();
     const deck = this.deckY || 0;
     const onReserved = [];
