@@ -5308,7 +5308,7 @@ else — no distance, no hit position, no spawn — so recovering enough to thin
 about took an afternoon of probes, all of it re-measuring what the check had
 already had in its hand. It reports the measurement now, not just the verdict.
 
-## The gate had been dead for two days and nothing said so (2026-09-05)
+## The gate had been dead for two days and nothing said so (2026-09-05, v3.109.0)
 
 Dad asked why so many simple things get through to his play-tests, and whether
 there is a better way to work. The answer was not in anyone's memory, so this
