@@ -538,6 +538,53 @@ export async function buildXa1(scene) {
     id: 'x_ash_bar', needs: 'fire_wolf',
   });
   world.markers.houndSpots = [{ x: -8, z: -5, variant: 'shadewalker' }];
+  // THE COURT WAS THE EMPTIEST ROOM IN THE HOUSE (2026-09-05).
+  //
+  // A census of all 146 rooms: the Shadow Court, the region the whole story
+  // ends in, held FOURTEEN enemies across nineteen rooms — fewer than
+  // Stoneroot's thirty-three — and nine of them were the same hound. Every
+  // room but the hub had exactly one thing in it.
+  //
+  // The cast to fix it was already built and already wired: `maskbone`,
+  // `lurker`, `wraith-archer`, `shade-knight`, `twinblade-husk`,
+  // `hollow-sentinel` and `gilded-husk` are all MOON-WEAK, which is the
+  // element this region teaches — they were made for the Court and then
+  // placed as single cameos in the Village and the Spire instead. So the
+  // Court is where they are common now, and the Village keeps one of each as
+  // the surprise it was meant to be.
+  //
+  // Placed against MEASURED headroom, never a wish list. A rig never merges
+  // into the static batch, so every body costs draw calls forever:
+  // tools/probe-encounters.mjs puts one enemy at 1.4 calls over 19 samples,
+  // and each room below had the room for what it got. Four Court rooms are
+  // ALREADY over the 100-call budget (x1 -1, xh -4, xp1 -4, xsh -16) and get
+  // nothing.
+  //
+  // The second body sits across the room from the first, so the beat is a
+  // pincer to walk out of rather than one thing to walk up to.
+  //
+  // NINE ROOMS GOT ONE, NOT ELEVEN, and the two that did not are the whole
+  // reason to measure twice. The first estimate came off the region as it
+  // stood — 1.4 draw calls an enemy, over nineteen samples of hounds, bats
+  // and slimes. These are not those: a roster body loads its own generated
+  // mesh AND a mounted weapon, and re-measured with them in place the cost
+  // is 2.2 calls, with the armed ones nearer nine. xr1 came out at 101 and
+  // xp2 at 105 against a budget of 100, so the Ruin's twinblade and the
+  // Path's lurker came straight back out. An average is not a measurement
+  // when the things being averaged are different sizes.
+  //
+  // The coordinates are MEASURED, not eyeballed: every one is a point where
+  // resolveCircle does not push a body, which is the question
+  // tools/verify-spawn-clear.mjs asks. The first cut put the Ruin's
+  // twinblade inside a box collider and the suite said so.
+  //
+  // It is the ONLY question to ask, too. The check that found it was first
+  // written as "resolveCircle does not push AND blocked() has no claim", and
+  // that reported 22 of the region's 34 spots as bad — including spots that
+  // have shipped for months. blocked() reads the keep-clear RESERVES, and a
+  // reserve means "no props on this ground", not "no creatures": half the
+  // Court stands on one by design. Two rulers, two questions (world.js).
+  world.markers.wraithArcherSpots = [{ x: 7, z: 4 }];
   scatter(world, halfW, halfD, D, 711, 5, { spin: 1, kinds: ['brick', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7111, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -558,6 +605,8 @@ export async function buildXa2(scene) {
     { system: 'crack', id: 'x_ash_vault', region: REGION });
   world.markers.wingSolve = { x: -6.5, z: 0, needs: 'earth_wolf' };
   world.markers.gloomSlimeSpots = [{ x: 3, z: -4 }];
+  world.markers.lurkerSpots = [{ x: -5.3, z: 4.7 }];
+  world.markers.maskboneSpots = [{ x: -3, z: -6 }];
   scatter(world, halfW, halfD, D, 712, 4, { spin: 1, kinds: ['brick', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7121, { homes: 1, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -574,6 +623,7 @@ export async function buildXa3(scene) {
   sideDoor(world, 'e', halfW, halfD, 'xa2', { x: -7.1, z: 3.3, angle: -Math.PI / 2 });
   relic(world, -6, 0, 'ember', D);
   world.markers.gildedHuskSpots = [{ x: 2, z: 5 }];
+  world.markers.maskboneSpots = [{ x: -4, z: -3 }];
   scatter(world, halfW, halfD, D, 713, 5, { spin: 1, kinds: ['brick', 'coins', 'vase'] });
   dressCourt(world, halfW, halfD, D, 7131, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -612,6 +662,7 @@ export async function buildXr2(scene) {
     { system: 'shatter', id: 'x_root_ice', region: REGION });
   world.markers.wingSolve = { x: -6.5, z: 0, needs: 'frost_wolf' };
   world.markers.slimeSpots = [{ x: 3, z: 4, variant: 'gloomblob' }];
+  world.markers.hollowSentinelSpots = [{ x: -4, z: -4 }];
   scatter(world, halfW, halfD, D, 722, 4, { spin: 1, kinds: ['rockSB', 'stump'] });
   dressCourt(world, halfW, halfD, D, 7221, { homes: 1, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -628,6 +679,7 @@ export async function buildXr3(scene) {
   sideDoor(world, 'e', halfW, halfD, 'xr2', { x: -7.1, z: 3.3, angle: -Math.PI / 2 });
   relic(world, -6, 0, 'thorn', D);
   world.markers.houndSpots = [{ x: 2, z: -5, variant: 'courtwarden' }];
+  world.markers.wraithArcherSpots = [{ x: -6, z: 4 }];
   scatter(world, halfW, halfD, D, 723, 5, { spin: 1, kinds: ['treeB', 'bush', 'flowerA'] });
   dressCourt(world, halfW, halfD, D, 7231, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -704,6 +756,7 @@ export async function buildXg3(scene) {
   sideDoor(world, 'w', halfW, halfD, 'xg2', { x: 8, z: 0, angle: Math.PI / 2 });
   relic(world, 6, 0, 'tide', D);
   world.markers.houndSpots = [{ x: -2, z: 5, variant: 'courtwarden' }];
+  world.markers.shadeKnightSpots = [{ x: 7, z: -4 }];
   scatter(world, halfW, halfD, D, 733, 5, { spin: 1, kinds: ['rockLB', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7331, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -767,6 +820,7 @@ export async function buildXm2(scene) {
     });
   }
   world.markers.houndSpots = [{ x: -9, z: 7, variant: 'shadewalker' }];
+  world.markers.maskboneSpots = [{ x: 5, z: -5 }];
   scatter(world, halfW, halfD, D, 742, 5, { spin: 1, kinds: ['column2', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7421, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -782,6 +836,7 @@ export async function buildXm3(scene) {
   sideDoor(world, 'w', halfW, halfD, 'xm2', { x: 8, z: 0, angle: Math.PI / 2 });
   relic(world, 6, 0, 'moon', D);
   world.markers.houndSpots = [{ x: -2, z: -5, variant: 'courtwarden' }];
+  world.markers.twinbladeHuskSpots = [{ x: 5, z: 4 }];
   scatter(world, halfW, halfD, D, 743, 5, { spin: 1, kinds: ['column', 'coins'] });
   dressCourt(world, halfW, halfD, D, 7431, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

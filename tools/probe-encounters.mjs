@@ -47,8 +47,8 @@ const go = async (room) => {
   return false;
 };
 
-const ROOMS = ['t1a', 't1b', 't1p', 'tc1', 't2a', 't2b', 't2p', 'tsh', 'tc2',
-  't3a', 't3b', 't3p', 'tkn', 'tc3', 't4a', 't4b', 't4p', 'tc4', 'tgl', 'tsA', 'tsB'];
+const ROOMS = (process.env.WK_ROOMS || 't1a,t1b,t1p,tc1,t2a,t2b,t2p,tsh,tc2,'
+  + 't3a,t3b,t3p,tkn,tc3,t4a,t4b,t4p,tc4,tgl,tsA,tsB').split(',');
 
 console.log('room   calls  bare  enemies  per-enemy  headroom  cast');
 console.log('─'.repeat(78));
