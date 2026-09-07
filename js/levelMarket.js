@@ -323,7 +323,8 @@ export async function buildQ2(scene) {
   visibleReward(world, -3.5, -9.5, 'q2_market',
     { shards: 36, treasure: 'frozen_tear' }, 'gold');
 
-  world.markers.rimeMinionSpots = [{ x: -4, z: 4 }, { x: 3, z: -5 }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+  world.markers.rimeMinionSpots = [{ x: -4.1, z: 4.5 }, { x: 3, z: -5 }];
   world.markers.glacierWardenSpots = [{ x: -6, z: -1 }];
   world.markers.breakables = [
     { x: -8, z: 2, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },

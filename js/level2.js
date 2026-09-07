@@ -1338,7 +1338,8 @@ export async function buildVc1(scene) {
   // better fight — two raised shields at once is a wall for a five-year-old,
   // where a shield plus a minion teaches "deal with the one you can hurt".
   world.markers.shieldSpots = [{ x: 5, z: 6 }];
-  world.markers.spitterSpots = [{ x: -2.6, z: 2.2 }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+  world.markers.spitterSpots = [{ x: -3.1, z: 2 }];
   world.markers.stoneColossusSpots = [{ x: -6, z: -1 }];
   // and no third body. Dropping one shield-bearer took this room 106 -> 102,
   // still over; a character costs far more than the room's own geometry here
