@@ -51,4 +51,4 @@ verify-playthrough.mjs | same boss-gate blind spot as verify-reachable; the rout
 # identically with and without that day's resolveCircle fix, so it is older
 # than the change in flight. (The same A/B showed the fix REPAIRED a second
 # chest, t3b's goldchest, which had not been paying out on a walk-in.)
-verify-chests.mjs      | board #135 — lg1/l1_lg1_vault@(4.5,4) is unreachable in the all-gates-cleared pass, which the suite defines as a bug; 68 of 69 chests open. Same family as the Kiln vault (#104) | 2026-09-05 proven by A/B against main dd4de23
+verify-chests.mjs      | board #1 — the lg1 vault half is FIXED (its approach lane is reserved now); what remains is the t3b walk-in, and that is the WALKER, not the game: the goldchest spot is reachable (nearest walkable cell 0.11u away) and the bot wedges at (-1.7,4.8), a point that is itself inside geometry | 2026-09-06 proven by flood fill
