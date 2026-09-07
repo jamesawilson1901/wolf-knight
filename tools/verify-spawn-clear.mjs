@@ -51,8 +51,26 @@ const rows = await page.evaluate(async (ids) => {
       // gameplay bodies.
       if (e.flying) continue;
       const x = e.x, z = e.z, R = e.radius || 0.4;
+      // ...AND DEEP WATER IS NOT GEOMETRY EITHER (2026-09-06).
+      //
+      // js/water.js lays a box collider over every deep zone, and says in its
+      // own comment why: "DEEP WATER IS A WALL until the gift" — it exists to
+      // stop KAEL before the Tide Wolf, exactly as a cliff does. It was never
+      // meant to occupy space for anything else. This suite counted it anyway,
+      // so the Sunken Vale's lagoon reported its two DEEPTIDE slimes as stuck
+      // in geometry. dlg is open water end to end (one 30x26 deep zone), the
+      // slimes are placed in it on purpose, and there is nowhere on its floor
+      // to move them TO — the nearest clear ground does not exist.
+      //
+      // Same distinction as the flyer above: a bat is not caged by what is
+      // under it, and a swimmer is not trapped by the water it lives in. The
+      // zones' own collider objects are matched by identity, so a real prop
+      // that happens to sit in a lake is still a finding.
+      const waterColliders = new Set(
+        (w.waterZones || []).map((zn) => zn.collider).filter(Boolean));
       let hit = null;
       for (const c of w.boxColliders) {
+        if (waterColliders.has(c)) continue;
         const cx = Math.max(c.minX, Math.min(x, c.maxX)), cz = Math.max(c.minZ, Math.min(z, c.maxZ));
         if ((x - cx) ** 2 + (z - cz) ** 2 < R * R) { hit = 'box'; break; }
       }

@@ -575,9 +575,11 @@ export async function buildLa(scene) {
     { x: 9.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.shadeSpots = [{ x: -6, z: 2 }];
-  world.markers.emberWretchSpots = [{ x: 6, z: -1 }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+  world.markers.emberWretchSpots = [{ x: 6.5, z: -0.8 }];
   // the ranged lesson, from the very first room: open ground is never free
-  world.markers.spitterSpots = [{ x: 3.4, z: -0.5 }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+  world.markers.spitterSpots = [{ x: 3.6, z: 0 }];
   world.markers.crackPromise = { x: -11, z: -4 };
   ruinedHome(world, -11.5, 7, 0.28, D, { w: 6, d: 5 });
   ruinedHome(world, -9.5, -10, -0.5, D, { w: 6.5, d: 4.5, keep: 0.5 });
@@ -743,6 +745,24 @@ export async function buildLg1(scene) {
   for (let z = 1; z <= 3.5; z += 1.2) lg1Lane.push([-5, z]);
   for (const [rx, rz] of lg1Lane) world.reserve(rx, rz, 1.1, 'lg1KiLane');
   world.reserve(4.5, 4.0, 1.8, 'lg1Vault');       // the vault and its mouth
+  // ...AND THE WALK UP TO IT, which is the half nobody reserved (2026-09-06).
+  //
+  // The vault's own footprint was held clear and the mouth with it, but the
+  // LANE a child walks to reach the mouth was left to the dressing, and the
+  // dressing took it: three `decor` circles came down across x 2.85-5.27 at
+  // z -0.2 to 0.7, right where the approach runs. Measured, the surviving gap
+  // let a 0.32-radius body through a window 0.09u wide — a hair, and only if
+  // it walked the exact centre. verify-chests flood-filled from the spawn and
+  // could not find the chest at all: everything inside the nook is standable,
+  // and the closest reachable cell to it was 2.25u away, outside the west wall.
+  //
+  // Same lesson as the ki lane six lines up, which this room already learned
+  // and wrote down: reserve the lane BEFORE the dressing and the props decline
+  // to stand in it. A reward you can see and cannot walk to is worse than no
+  // reward, and this one is the payout for the region's first taught puzzle.
+  const lg1VaultLane = [];
+  for (let z = 0.4; z <= 2.0; z += 0.8) lg1VaultLane.push([4.5, z]);
+  for (const [rx, rz] of lg1VaultLane) world.reserve(rx, rz, 1.1, 'lg1VaultLane');
   world.reserve(0, -4.2, 1.8, 'lg1DoorBars');
 
   pushableBoulder(world, prepareModel, emberKit.rockSA, -5, 1,

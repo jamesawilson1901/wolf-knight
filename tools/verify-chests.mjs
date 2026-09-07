@@ -187,8 +187,25 @@ for (const [room, x, z, kind] of [['tsh', 2.68, -0.1, 'chest'], ['t3b', -1.4, -1
   await wk.page.evaluate(() => { window.__game.player.iframes = 999999; window.__game.state.settings.captions = false; window.__game.narration.skip(); });
   const before = await wk.page.evaluate(() => ({ coins: window.__game.state.shards,
     pots: (window.__game.world.enemies || []).filter((e) => e.opensOnTouch && !e.dead).length }));
-  await wk.walkTo(x, z, { timeout: 40, arrive: 0.8 });
-  await wk.page.waitForTimeout(1800);
+  // WALK, THEN WAIT FOR THE CHEST — not for a guessed 1800ms, and not for one
+  // straight line (2026-09-06). walkTo drives real keys toward the target in a
+  // straight line, so a prop between here and there stops it: this check ended
+  // 6.6u short of t3b's goldchest and reported the chest broken, on a run where
+  // every geometry sweep above it passed and the same check had passed twice
+  // before. The claim is "walking into it opens it", and that claim is only
+  // tested if the walk arrives — so give it up to three legs, re-aiming from
+  // wherever it stopped, and then poll for the outcome instead of sleeping.
+  // Same trap as verify-formlock and verify-nightroad, third time today.
+  const potsNow = () => wk.page.evaluate(() =>
+    (window.__game.world.enemies || []).filter((e) => e.opensOnTouch && !e.dead).length);
+  for (let leg = 0; leg < 3; leg++) {
+    await wk.walkTo(x, z, { timeout: 40, arrive: 0.8 });
+    const p = await wk.wk('pos');
+    if (Math.hypot(p.x - x, p.z - z) < 0.8) break;
+  }
+  for (let i = 0; i < 30 && (await potsNow()) >= before.pots; i++) {
+    await wk.page.waitForTimeout(100);
+  }
   const after = await wk.page.evaluate(() => ({ coins: window.__game.state.shards,
     pots: (window.__game.world.enemies || []).filter((e) => e.opensOnTouch && !e.dead).length }));
   check(`${room}'s ${kind} opens when a child walks into it and pays out`,

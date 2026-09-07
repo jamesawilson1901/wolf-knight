@@ -1037,7 +1037,8 @@ export async function buildD4a(scene) {
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -8, z: 7 };
   waterZone(world, { x: 0, z: -11.5, w: 30, d: 5, deep: true, id: 'd4a_edge' });
-  world.markers.slimeSpots = [{ x: -6, z: 4, variant: 'deeptide' }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+  world.markers.slimeSpots = [{ x: -5.6, z: 4.4, variant: 'deeptide' }];
   world.markers.batSpots = [{ x: 7, z: -5, variant: 'gull' }];
   world.markers.rotcasterSpots = [{ x: 5, z: 5 }];
   scatter(world, halfW, halfD, D, 631, 6, { spin: 1, kinds: ['rockLC', 'rockSA', 'skull'] });

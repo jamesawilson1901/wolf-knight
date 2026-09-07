@@ -547,7 +547,8 @@ export async function buildMb(scene) {
     world.markers.arcKnightSpots = [{ x: 1.5, z: -3.5 }];
     world.markers.stormcallerSpots = [{ x: -3.5, z: 3.5 }];
     world.markers.gildedHuskSpots = [{ x: 2.5, z: 4.0 }];
-    world.markers.emberfangSpots = [{ x: -4.5, z: -3.5 }];
+  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
+    world.markers.emberfangSpots = [{ x: -4, z: -3.5 }];
   }
   // THE ROOM MUST HAVE HELD A FIGHT BEFORE IT CAN BE SAID TO BE WON.
   //
