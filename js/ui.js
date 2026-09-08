@@ -3,6 +3,7 @@
 // built for small thumbs.
 
 import { state, formsAvailable } from './state.js';
+import { PORTRAITS } from './titlescene.js';
 
 const FORM_META = {
   knight: { icon: '⚔️', label: 'Knight', color: '#8f9bb0' },
@@ -20,6 +21,30 @@ const FORM_META = {
   elemental_wolf: { icon: '🐺', label: 'Elemental Wolf', color: '#f2ecff' },
 };
 const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf', 'elemental_wolf'];
+
+// THE BADGE SHOWS THE ANIMAL, NOT AN EMOJI (2026-09-08).
+//
+// The form badge and the radial picker are the controls a child touches most,
+// and they were the last place in the game showing 🌩️ and 🪨 next to its own
+// low-poly art. js/titlescene.js already renders a real 3/4 portrait of every
+// wolf for the profile picker — one still frame per form, cached forever, no
+// download — so the badge shows THAT instead.
+//
+// The emoji stays as the fallback and that is not a leftover: portraits are
+// rendered in the background after boot (js/main.js), so for the first second
+// or so of a session there is nothing to show yet. `portraits-ready` refreshes
+// whatever is on screen the moment there is.
+//
+// The other emoji surfaces — perk cards, the sticker book, mystery cards, map
+// rows — are NOT converted, and the board item that asked for it was working
+// from a wrong premise: it said the Kenney Game Icons were "already vendored
+// and cleared", and only their LICENCE FILES are on disk. The pack itself is
+// not in the repo and kenney.nl is not reachable from the build environment.
+// Those surfaces are also the ones where an emoji is doing least harm: they
+// are lists a child reads, not a control they aim at.
+const formIcon = (id, meta) => (PORTRAITS[id]
+  ? `<img class="form-portrait" src="${PORTRAITS[id]}" alt="${meta.label}">`
+  : meta.icon);
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
@@ -85,7 +110,8 @@ export class UI {
       el.style.left = ox + 'px';
       el.style.top = oy + 'px';
       el.style.setProperty('--form-color', meta.color);
-      el.innerHTML = `<span class="pick-icon">${locked ? '🔒' : meta.icon}</span><span class="pick-label">${meta.label}</span>`;
+      el.innerHTML = `<span class="pick-icon">${locked ? '🔒' : formIcon(id, meta)}</span>`
+        + `<span class="pick-label">${meta.label}</span>`;
       this.picker.appendChild(el);
       this._options.push({ id, el, x: ox, y: oy, locked });
     });
@@ -129,7 +155,14 @@ export class UI {
 
   refreshBadge() {
     const meta = FORM_META[state.form];
-    this.badge.textContent = meta.icon;
+    // ...and once, when the portraits finish rendering in the background, so
+    // a badge drawn during the first second of a session swaps its emoji for
+    // the animal instead of keeping it until the next transformation.
+    if (!this._awaitingPortraits) {
+      this._awaitingPortraits = true;
+      window.addEventListener('portraits-ready', () => this.refreshBadge(), { once: true });
+    }
+    this.badge.innerHTML = formIcon(state.form, meta);
     // the rim, not the fill — see #form-badge in index.html
     this.badge.style.borderColor = meta.color;
     this.badge.style.boxShadow =

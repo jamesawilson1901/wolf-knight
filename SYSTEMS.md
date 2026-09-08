@@ -399,6 +399,23 @@ XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
 shop, stickers, map screen (regions + mysteries), fast travel via Luna's
 moonstone, pause/settings.
 
+## The form badge shows the animal (js/ui.js formIcon, js/titlescene.js)
+The badge and the radial picker are the controls a child touches most, and
+they were the last place in the game showing 🌩️ and 🪨 next to its own
+low-poly art. titlescene.js's `buildPortraits` already renders a 3/4 still of
+every wolf for the profile picker — one frame per form, cached forever, no
+download — and it now reads `WOLF_TINTS` instead of a hand-written list of the
+first three forms, so all ten have one and a future wolf gets a portrait the
+day it gets a colour. The emoji stays as the FALLBACK: portraits render in the
+background after boot, and `portraits-ready` refreshes the badge the moment
+there is something better to show.
+NOT converted, and the board item asking for it was working from a wrong
+premise — it said the Kenney Game Icons were "already vendored and cleared"
+and only their LICENCE FILES are on disk; the pack is not in the repo and
+kenney.nl is unreachable from the build environment. Perk cards, the sticker
+book, mystery cards and map rows keep their emoji, and they are the surfaces
+where an emoji does least harm: lists a child reads, not controls they aim at.
+
 ## The Armoury & item art (js/equipscene.js)
 The equipment screen and every place gear is *shown*. Two renderers, split
 by cost. `itemThumb()/meshThumb()` render ONE still frame of a real model

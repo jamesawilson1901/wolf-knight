@@ -402,6 +402,12 @@
       transition: transform .08s ease;
     }
     .pick-option .pick-icon { font-size: 34px; line-height: 1; }
+    /* THE REAL ANIMAL, where there is one. js/titlescene.js renders a 3/4
+       portrait of every wolf for the profile picker; the badge and the radial
+       show it instead of an emoji (js/ui.js formIcon). Sized to sit exactly
+       where the glyph did so nothing else in either layout moves. */
+    .form-portrait { width: 46px; height: 46px; display: block; object-fit: contain; }
+    #form-badge .form-portrait { width: 52px; height: 52px; }
     .pick-option .pick-label {
       font-size: 11px; color: #fff; font-weight: 700; letter-spacing: .02em;
       text-shadow: 0 1px 3px rgba(0,0,0,.7); margin-top: 2px;
@@ -1210,7 +1216,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.118.0</div>
+  <div id="badge">Wolf Knight &middot; v3.119.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.
