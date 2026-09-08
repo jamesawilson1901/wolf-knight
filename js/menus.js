@@ -464,10 +464,18 @@ export class Menus {
       { key: 'stoneroot',   name: 'Stoneroot Caverns', open: () => F.bossDefeated,     done: () => F.wardenDefeated },
       { key: 'greenway',    name: 'The Greenway',      open: () => F.wardenDefeated },
       { key: 'wildwoods',   name: 'The Wild Woods',    open: () => F.wardenDefeated,   done: () => F.sylvaDefeated },
+      // THE LAST THREE ROADS (2026-09-08). They went in as real regions with
+      // their own music and their own kits, and the map never heard of them —
+      // verify-map: six spine rooms built and not drawn. Each opens on the
+      // boss whose arena hands onto it, exactly as the Night Road, the
+      // Greenway and the Drowned Market already do above and below.
+      { key: 'coldclimb',   name: 'The Cold Climb',    open: () => F.sylvaDefeated },
       { key: 'frostpeak',   name: 'Frostpeak',         open: () => F.sylvaDefeated,    done: () => F.borealDefeated },
       { key: 'market',      name: 'The Drowned Market', open: () => F.borealDefeated },
       { key: 'stormreach',  name: 'Stormreach Cliffs', open: () => F.borealDefeated,   done: () => F.ariaDefeated },
+      { key: 'plunge',      name: 'The Plunge',        open: () => F.ariaDefeated },
       { key: 'sunkenvale',  name: 'The Sunken Vale',   open: () => F.ariaDefeated,     done: () => F.meriDefeated },
+      { key: 'hollowroad',  name: 'The Hollow Road',   open: () => F.meriDefeated },
       { key: 'shadowcourt', name: 'The Shadow Court',  open: () => F.meriDefeated,     done: () => F.grimmFreed },
       { key: 'village',     name: 'The Village',       open: () => F.grimmFreed,       done: () => villageCleared() },
       { key: 'spire',       name: 'The Moonlit Spire', open: () => villageCleared() },
