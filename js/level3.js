@@ -1599,8 +1599,12 @@ export async function buildTgl(scene) {
   // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
   // why nothing had ever measured these.
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10.9, z: 9.4, angle: -Math.PI / 2 });
-  // f1 is a 32x26 island since the Frostpeak rebuild (level4.js): land inside its south door
-  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 11, angle: Math.PI });
+  // THE ROAD, NOT THE REGION (2026-09-08). This used to open straight onto
+  // Frostpeak's f1: you freed a forest and arrived on a mountain with nothing
+  // in between to say the world had got colder. It opens onto the Cold Climb
+  // now (js/levelClimb.js, two rooms), and c1's own spawn is (0, 11), which is
+  // where this lands.
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'c1', { x: 0, z: 11, angle: Math.PI });
   if (beaten) roadOn();
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 

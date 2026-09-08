@@ -1495,6 +1495,10 @@ function updateMusic() {
   else if (state.room[0] === 'n') audio.playMusic('road-night');
   else if (state.room[0] === 'g') audio.playMusic('road-green');
   else if (state.room[0] === 'q') audio.playMusic('road-market');
+  // ...and the last three roads, built the same day the sixth loop arrived.
+  else if (state.room[0] === 'c') audio.playMusic('road-climb');
+  else if (state.room[0] === 'p') audio.playMusic('road-plunge');
+  else if (state.room[0] === 'h') audio.playMusic('road-hollow');
   // The Spire's crown is the warmest room in the game and now sounds like it,
   // instead of borrowing the Den's.
   else if (state.room === 'm3') audio.playMusic('crown');

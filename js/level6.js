@@ -1195,9 +1195,14 @@ export async function buildDdp(scene) {
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
-  if (onward) sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI });
+  // THE ROAD, NOT THE REGION (2026-09-08). Meri's hall used to open straight
+  // onto the Court's threshold: the last spirit freed, then the shadow's own
+  // door, with nothing between them. The Hollow Road is what goes there now
+  // (js/levelHollow.js, two rooms), and it is the only stretch of the game
+  // whose whole job is dread. h1's own spawn is (0, 11).
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI });
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSA', D.propTint,
-    () => sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI }));
+    () => sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI }));
   heroProp(world, 0, 0, 'throne', D);
   // the arena floor is shallow — the fight is fought ankle-deep, and Meri's
   // slams are what make it deeper

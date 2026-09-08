@@ -31,6 +31,11 @@ import { LEVELMARKET_ROOMS, loadMarketKit } from './levelMarket.js';
 import { LEVELNIGHT_ROOMS } from './levelNight.js';
 import { LEVEL4_ROOMS, loadFrostKit } from './level4.js';
 import { LEVELGREEN_ROOMS, loadGreenKit } from './levelGreen.js';   // built from Ember's kit, pulled cold — no loader of its own
+// THE LAST THREE ROADS (2026-09-08). Each wears the kit of the region it opens
+// onto, the way the Night Road wears Ember's, so none of them costs a download.
+import { LEVELCLIMB_ROOMS, loadClimbKit } from './levelClimb.js';    // Wild Woods → Frostpeak
+import { LEVELPLUNGE_ROOMS, loadPlungeKit } from './levelPlunge.js';  // Stormreach → the Vale
+import { LEVELHOLLOW_ROOMS, loadHollowKit } from './levelHollow.js';  // the Vale → the Court
 import { LEVELSPIRE_ROOMS } from './levelSpire.js';   // built from Ember's kit — no loader of its own
 import { buildPotionMesh } from './loot.js';
 
@@ -3429,7 +3434,7 @@ function blockRowRocks(world, x0, z0, x1, z1) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
+export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_ROOMS, ...LEVELCLIMB_ROOMS, ...LEVELPLUNGE_ROOMS, ...LEVELHOLLOW_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -3464,6 +3469,18 @@ export async function buildRoom(rawId, scene) {
     // `visibleReward` handing back a proto cube instead of registering a chest,
     // so the market shipped with no loot at all and no error anywhere.
     if (state.settings.greybox === false) await loadMarketKit();
+  } else if (id[0] === 'c') {
+    // THE COLD CLIMB (levelClimb.js). Each of the last three roads carries its
+    // own kit list — every URL in it already vendored and already fetched by a
+    // region either side, so it is free — because the DRESSERS pick props by
+    // key name and a region kit silently drops whichever names it lacks. A
+    // prefix not named in this chain builds in GREYBOX forever, which is how
+    // the Drowned Market shipped with proto cubes for chests.
+    if (state.settings.greybox === false) await loadClimbKit();
+  } else if (id[0] === 'p') {
+    if (state.settings.greybox === false) await loadPlungeKit();
+  } else if (id[0] === 'h') {
+    if (state.settings.greybox === false) await loadHollowKit();
   } else if (id[0] === 'n') {
     // THE NIGHT ROAD (levelNight.js) wears Ember's kit pulled cold, the same
     // way the Spire below does. The prefix has to be named HERE: a room id

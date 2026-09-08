@@ -104,6 +104,12 @@ const MUSIC_FILES = {
   'road-market': './assets/audio/music/road-market.ogg', // theme-3:  unhurried and mid — a town on a road, not a road
   'village-calm': './assets/audio/music/village-calm.ogg', // theme-12: what the Village was being fought for
   crown: './assets/audio/music/crown.ogg',               // theme-15: the biggest, warmest master in the pack, for the warmest room in the game
+  // ...AND THE THREE ROADS BUILT THE SAME DAY (levelClimb / levelPlunge /
+  // levelHollow). Same well, same casting method, and cast against the road
+  // either side of them so no two neighbours share a character either:
+  'road-climb': './assets/audio/music/road-climb.ogg',   // theme-6:  rms 0.076, thin and high — air getting colder
+  'road-plunge': './assets/audio/music/road-plunge.ogg', // theme-7:  zcr 2.80, the brightest in the pack — open sky and sea
+  'road-hollow': './assets/audio/music/road-hollow.ogg', // theme-11: zcr 0.52, the darkest — the light going out of the world
   // SIX REGIONS GET THEIR OWN SOUND (2026-08-30). Five loops had been
   // stretched across nine regions since the rebuilds; these six are the
   // Superpowers Medieval Fantasy themes (CC0, licence file on disk — the
@@ -153,6 +159,9 @@ const MUSIC_TRIM = {
   'road-market': 1.0,   // 0.133
   'village-calm': 1.05, // 0.122
   crown: 0.5,           // 0.265 — twice the game's average, pull it well back
+  'road-climb': 1.7,    // 0.076 — the quietest thing in either pack
+  'road-plunge': 0.75,  // 0.173
+  'road-hollow': 0.77,  // 0.169
 };
 
 class AudioSystem {
@@ -283,6 +292,63 @@ class AudioSystem {
       g.connect(this.sfxGain);
       src.start();
     } catch (e) { /* decode/fetch failure is non-fatal */ }
+  }
+
+  // ---- THE SPOKEN LINES ---------------------------------------------------
+  //
+  // PIP STOPS SOUNDING LIKE A ROBOT (dad, 2026-09-08: "I won't be recording a
+  // voice for pip so look into other options"). Every line in js/narration.js
+  // is rendered ONCE, offline, by a small local neural TTS and shipped as an
+  // ogg beside the music (tools/tts-narration.py). There is no model, no WASM
+  // and no inference on the child's tablet: playing a file is the cheapest
+  // thing a browser can do, and it sounds the same on every device instead of
+  // depending on whichever engine a phone happens to ship.
+  //
+  // Returns true if a clip started. FALSE IS NOT A FAILURE — it is how a line
+  // added after the last render still speaks: narration.js falls back to the
+  // Web Speech voice it has always used. tools/verify-narration.mjs is what
+  // notices that a line is missing its clip, rather than a child noticing.
+  //
+  // It plays through `sfxGain`, not `musicGain`: a voice is not music, and the
+  // duck that quiets the music while Pip talks must not quiet Pip.
+  async speakLine(id, onEnd) {
+    if (!this.ctx || !id) return false;
+    const url = `./assets/audio/vo/${id}.ogg`;
+    if (this._voMissing && this._voMissing.has(url)) return false;
+    let buf;
+    try {
+      buf = await this._buffer(url);
+    } catch (e) {
+      // Remember the miss so a repeatable line does not re-request it every
+      // time it fires. The buffers map caches the REJECTED promise otherwise,
+      // which would be fine, but this keeps the log to one line per id.
+      (this._voMissing || (this._voMissing = new Set())).add(url);
+      this.buffers.delete(url);
+      return false;
+    }
+    this.stopLine();
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.value = 1;
+    src.connect(g);
+    g.connect(this.sfxGain);
+    src.onended = () => {
+      if (this._voSource !== src) return;    // superseded by the next line
+      this._voSource = null;
+      if (onEnd) onEnd();
+    };
+    src.start();
+    this._voSource = src;
+    return true;
+  }
+
+  // Cut the current line off mid-word — what tapping the caption does.
+  stopLine() {
+    if (!this._voSource) return;
+    const src = this._voSource;
+    this._voSource = null;                   // so onended does not call back
+    try { src.stop(); } catch (e) { /* already ended */ }
   }
 
   // Loops `name`; pass {loop:false, then:'other'} for a one-shot sting, or

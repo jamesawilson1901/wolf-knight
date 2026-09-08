@@ -433,6 +433,7 @@ export class Narration {
   skip() {
     if (!this.speaking) return;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    audio.stopLine();          // ...and the rendered clip, if that is what is playing
     if (this._done) this._done();
   }
 
@@ -464,6 +465,30 @@ export class Narration {
     };
     this._done = done;
 
+    // THE RENDERED CLIP FIRST (js/audio.js speakLine, and the long note there).
+    // Every line in this file has been spoken once, offline, by a real neural
+    // voice and shipped as an ogg — so what a child hears does not depend on
+    // which speech engine their tablet happens to have, which is the whole of
+    // why the narration has sounded like a robot on every playtest.
+    //
+    // It is FIRE AND FALL BACK, not fire and hope: speakLine resolves false for
+    // a line with no clip (one added since the last render), and the device
+    // voice below still speaks it. The `finished` latch makes the race safe —
+    // whichever of the two paths ends first, `done` runs once.
+    if (state.settings.voice) {
+      audio.speakLine(id, done).then((played) => {
+        if (played || finished) return;
+        this._speakDevice(line, meta, done);
+      });
+    } else {
+      this._speakDevice(line, meta, done);
+    }
+  }
+
+  // The old path, unchanged, and still the one that carries a line the
+  // renderer has not seen. `state.settings.voice` off means captions only, and
+  // the caption pacing at the bottom is what times it.
+  _speakDevice(line, meta, done) {
     if (state.settings.voice && 'speechSynthesis' in window) {
       const u = new SpeechSynthesisUtterance(line.text);
       u.rate = meta.rate * (state.settings.voiceRate || 1);

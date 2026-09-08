@@ -155,6 +155,27 @@ All three roads have a track of their own now (`road-night`,
 felt, and three roads on one loop make it felt once. Every prefix is
 named in rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
 
+## The last three roads (js/levelClimb.js, levelPlunge.js, levelHollow.js)
+The six interstitials are all built now. `c1`/`c2` THE COLD CLIMB (Wild Woods →
+Frostpeak): the last green, then the snowline; graduates the Verdant Wolf's cut
+(a thorn wall across the road IS the way through, twice rewarded) and shows the
+Frost Wolf's ice one room early. `p1`/`p2` THE PLUNGE (Stormreach → the Vale):
+three crosswise gusts on the cliff stair — never a gale, so a child who has not
+worked out the dash still gets down — then the tide pools and the Tide Wolf's
+flooded gate. `h1`/`h2` THE HOLLOW ROAD (the Vale → the Court): a shallow
+causeway you simply wade, then the light going out, and the Moonlight's own
+wall of dark. Each pays in a keepsake (js/treasures.js rule 3 — the Sealed Map,
+the Harbour Key, the Moon-Coin), none pays in a wolf or a pup.
+Each has its OWN kit list even though every URL in it is already vendored and
+cached: the dressers pick props by key NAME (js/dressing.js `TREES`/`BUSHES`/
+`GRASS`), so pointing a road at a region's kit silently drops every prop that
+region happens not to carry — the first cut of the Cold Climb came out as a
+room with no trees in it and said nothing. Districts are read off the rooms at
+either END of each road rather than invented, so a road is two regions meeting.
+Prefixes `c`, `p`, `h` are named in rooms.js's dispatcher, state.js's
+`regionOf`, route.js's NEXT (which also gains `tgl`/`scr`/`ddp`, the three
+arenas that had no way-on entry at all) and main.js's `updateMusic`.
+
 ## The Moonlit Spire (js/levelSpire.js) — the finale
 Four rooms behind the `m` prefix, opened by restoring the Village and
 granting the ELEMENTAL WOLF at the top. An epilogue capstone like the
@@ -335,6 +356,32 @@ onsets-per-sec / dyn, decoded in a browser because that is the only ogg
 decoder in this toolchain) and mastered to the game's own loudness band
 via `MUSIC_TRIM`. Cost: +8.2 MB of a 112 MB asset tree. verify-music §6
 is what stops two sections quietly sharing a file again.
+
+## The spoken lines (assets/audio/vo, tools/tts-narration.py)
+Every one of the 202 narration lines is rendered ONCE, offline, by Piper (a
+local neural TTS) and shipped as a 31 kB ogg — 6.3 MB and 14 minutes of speech
+for the whole game. There is no model, no WASM and no inference on the child's
+tablet: playing a file is the cheapest thing a browser can do, and it sounds
+the same on every device instead of depending on whichever engine a phone
+happens to ship. That dependency is why the narration sounded like a robot on
+every playtest, and narration.js's voice PICK was already as careful as
+choosing a device voice can get.
+Fourteen characters out of THREE models: each game voice is a
+(model, speed, pitch) row in tools/tts-narration.py's CAST, and the pitch is a
+resample — the same trick narration.js's VOICES table plays with Web Speech's
+`pitch`, done once and properly, with the speed pre-compensated so the
+resample lands on the intended pace. Licences (three separate ones, quoted in
+full in assets/LICENSES/piper-voices.txt): jenny_dioco for Pip/Wren/Aria, alba
+for the spirits, northern_english_male for the men. No model and no dataset
+ships — only the clips.
+FIRE AND FALL BACK: `audio.speakLine(id, onEnd)` resolves false for a line
+with no clip and narration.js speaks it with the old device voice, so a line
+added tomorrow still talks. `tools/sync-cache.mjs` generates the precache list
+from what is on disk; `tools/verify-narration.mjs` is what notices a line
+without a clip, a clip without a line, a clip that decodes to silence, or a
+clip path that has quietly stopped playing (the fallback would hide it).
+Re-render after adding lines: `node tools/dump-lines.mjs > /tmp/lines.json &&
+python3 tools/tts-narration.py /tmp/lines.json assets/audio/vo`.
 
 ## Save (js/save.js)
 localStorage per-kid profiles, schema v2 (HUD-MENU-SAVE.md). Law:

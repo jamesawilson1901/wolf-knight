@@ -81,6 +81,32 @@ export const TREASURES = {
     blurb: 'The harbour, keeping one thing back.',
     from: 'The Drowned Market',
   },
+  // THE COLD CLIMB's keepsake. Somebody drew the way over the mountain and
+  // sealed it, and then nobody came this way again — which is the road in one
+  // object. The scroll is the only non-gem in the set so far, and it should
+  // be: four gems in a row would stop reading as a map of where you have been.
+  sealed_map: {
+    name: 'The Sealed Map',
+    file: './assets/loot/treasure/scroll-sealed.glb',
+    blurb: 'Someone drew the way over. Then nobody came back to open it.',
+    from: 'The Cold Climb',
+  },
+  // THE PLUNGE's keepsake. A harbour key, off a cliff stair, for a door that
+  // is now underwater — the joke a five-year-old gets without being told it.
+  harbour_key: {
+    name: 'The Harbour Key',
+    file: './assets/loot/treasure/key-gold.glb',
+    blurb: 'It opens nothing now. The door is under the water.',
+    from: 'The Plunge',
+  },
+  // THE HOLLOW ROAD's keepsake, and the last one. Struck for a court nobody
+  // remembers, found on the road to it.
+  moon_coin: {
+    name: 'The Moon-Coin',
+    file: './assets/loot/treasure/coin-mega.glb',
+    blurb: 'Struck for a king. Nobody remembers which one.',
+    from: 'The Hollow Road',
+  },
 };
 
 export function ownsTreasure(id) {
