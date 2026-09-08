@@ -322,9 +322,25 @@ export async function buildQ2(scene) {
   visibleReward(world, -3.5, -9.5, 'q2_market',
     { shards: 36, treasure: 'frozen_tear' }, 'gold');
 
-  // Nudged clear 2026-09-06: it was half inside a prop (verify-spawn-clear).
-  world.markers.rimeMinionSpots = [{ x: -4.1, z: 4.5 }, { x: 3, z: -5 }];
-  world.markers.glacierWardenSpots = [{ x: -6, z: -1 }];
+  // THE WARDEN STANDS IN THE ROAD, and that is the whole of this fight.
+  //
+  // verify-gauntlet had q2 as the one room in the game a child could cross at a
+  // dead run and never be touched — 27.2u, three foes, zero hits — and the cause
+  // was a fix. On 2026-09-06 verify-spawn-clear found these three bodies half
+  // inside props and they were nudged onto clear floor, which moved the ambush
+  // to 4.1u, 3.0u and 6.0u off the line between the two doors. Both suites were
+  // right and the room ended up wrong.
+  //
+  // The bodies are not interchangeable here. A rime minion is a SkeletonMinion:
+  // senseRange 3.4 and awakenTime 1.9, so a runner at 4.3u/s is six metres past
+  // before it finishes standing up — it cannot cost a crossing at any distance,
+  // and pretending otherwise by shuffling it 2u is how this comes back. What
+  // costs the crossing is the glacier warden, a ShieldAdvancer that chases from
+  // the first frame, so it is posted ON the through-line at the sealed row: it
+  // walks up the road to meet the child head on. The minions stay flanking, off
+  // the line, which is what an ambush beside a market row is.
+  world.markers.rimeMinionSpots = [{ x: -1.5, z: 6.5 }, { x: 2.2, z: -4.5 }];
+  world.markers.glacierWardenSpots = [{ x: -0.6, z: 3 }];
   world.markers.breakables = [
     { x: -8, z: 2, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },
     { x: -6, z: -8, kind: 'vase' }, { x: 2, z: -7.5, kind: 'box' },

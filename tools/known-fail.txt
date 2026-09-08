@@ -41,5 +41,4 @@
 # here is a DEBT with a name on it, not a permission slip. If one of these
 # starts passing, verify-all prints a stale-known-fail warning — delete the
 # line then and close the board item.
-verify-density.mjs     | board #124 — ysq 25/32 and lk2 31/32 things on arrival; the rest of the game is dressed | 2026-09-05 proven on main dd4de23
 verify-playthrough.mjs | same boss-gate blind spot as verify-reachable; the route it cannot finish is one a child finishes | 2026-09-05 proven on main dd4de23
