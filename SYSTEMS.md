@@ -386,6 +386,13 @@ python3 tools/tts-narration.py /tmp/lines.json assets/audio/vo`.
 ## Save (js/save.js)
 localStorage per-kid profiles, schema v2 (HUD-MENU-SAVE.md). Law:
 additive-forever — old saves always load; new fields get safe defaults.
+A FLAG A REGION HANGS OFF MUST BE IN persist() AND applySave(). Four were
+not, for as long as those regions have existed: ariaDefeated, meriDefeated,
+grimmFreed and gameComplete, plus three bosses' remembered wounds and the
+Trial's form lock. Beat Aria, close the app, and the Sunken Vale was locked
+again — while the Storm Wolf stayed in your paw, because formsUnlocked IS
+saved, which is exactly why it was never noticed. tools/verify-profiles.mjs
+round-trips the whole set now, so region eight cannot repeat it.
 
 ## Progression & menus (js/progress.js, js/menus.js, js/loot.js)
 XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
