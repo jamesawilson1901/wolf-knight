@@ -877,7 +877,19 @@ export async function buildVa1(scene) {
   // the crystal narrows: an L of rock splitting the island into two reads
   wallRun(world, 4, -3, 4, 7, D);
   wallRun(world, -6, -3, 4, -3, D);
-  world.markers.slimeSpots = [{ x: -3, z: 4 }, { x: 8, z: -6 }];
+  // ONE OF THEM GUARDS THE NARROWS, on the line between the two doors.
+  //
+  // verify-gauntlet walks the longest through-line in a room and asks whether a
+  // child who holds the stick straight is made to pay for it. In va1 that line
+  // is z = 0, and the L of rock above stands across it at x = 4 — so a straight
+  // runner wedges on the wall having met nothing at all, six metres from the
+  // nearer slime. Not free, but not a fight either: the room was stopping the
+  // run with geometry and calling it an encounter.
+  //
+  // The east slime moves onto the mouth of the narrows, which is where a thing
+  // guarding a gap belongs anyway. The west one stays where it is: it is the
+  // one you meet AFTER the turn, and moving both would empty the far half.
+  world.markers.slimeSpots = [{ x: -3, z: 4 }, { x: 7.5, z: -1.2 }];
   // a cracked pile you meet BEFORE you have the tool — the promise, in situ
   crackedPile(world, 'l2_va1_a', -11, -7);
   visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16, gear: 'staff_bone' }, 'silver');

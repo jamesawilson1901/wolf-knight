@@ -84,7 +84,12 @@ const REGIONS = [
       // puzzle IS the door. Setting knotCut left Kael standing 0.2u from a
       // doorway that had no reason to open.
       ['tkn'],
-      ['tc3', { plate: 'l3_knot_p1', ws: ['wild3', 'knotCut'] }],
+      // ...and the bar is PHYSICAL, so the flag alone is not enough: the plate's
+      // own callback is what lifts it in a live room, and writing the flag
+      // straight into state skips the callback. The room has to be rebuilt
+      // around what was earned — the same idiom Frostpeak's frost gate uses two
+      // regions down. The walk that follows is still walked.
+      ['tc3', { plate: 'l3_knot_p1', ws: ['wild3', 'knotCut'], reload: true }],
       ['t4a'], ['t4b'], ['tc4'], ['tgl']] },
 
   { name: 'frostpeak', label: 'Frostpeak', enter: 'f1',
