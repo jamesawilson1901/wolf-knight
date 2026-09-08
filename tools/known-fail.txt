@@ -41,4 +41,23 @@
 # here is a DEBT with a name on it, not a permission slip. If one of these
 # starts passing, verify-all prints a stale-known-fail warning — delete the
 # line then and close the board item.
-verify-playthrough.mjs | same boss-gate blind spot as verify-reachable; the route it cannot finish is one a child finishes | 2026-09-05 proven on main dd4de23
+# ---------------------------------------------------------------------------
+# EMPTY, 2026-09-08. All six lines are gone, and none of them was deleted for
+# going quiet — each was measured green after the thing it named was fixed:
+#
+#   verify-chests      routeTo: walkTo drives real keys with a grid route now,
+#                      so it stops wedging on a prop. 78 chests, 32 breakables.
+#   verify-storm       the suite, not the boss: a boss is immune outside its
+#                      window, so a takeDamage() loop never reduced its HP.
+#   verify-promises    seven of twenty gates were driven; the roll call of the
+#                      other thirteen is a second pass that drives them.
+#   verify-reachable   five working doors called sealed. Two join GATED; two
+#                      got BARRED, which names the mechanism AND proves it.
+#   verify-density     ysq 25 to 35 and lk2 31 to 48 things on arrival.
+#   verify-playthrough tkn to tc3 set the plate flag and walked at a bar that
+#                      was still there; the leg reloads the room now.
+#
+# An empty manifest beside a RED sweep is the same signal as a full one — see
+# the note above about the week in September when this file sat empty through
+# seven red nightlies. An empty manifest beside a green one is the point.
+# Nothing goes back in here without the §6 worktree proof and a date.
