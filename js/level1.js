@@ -1697,7 +1697,15 @@ export async function buildLk2(scene) {
               { system: 'burn', id: 'lk2_eastnook' });
   visibleReward(world, 13, -8.5, 'lk2_eastnook_prize', { shards: 20, heartPiece: 1 }, 'silver');
 
-  world.markers.cinderImpSpots = [{ x: 6, z: 7 }, { x: -6, z: 7.5 }];
+  // ONE IMP ON EACH SIDE OF THE CROSSING, not both up on the bend.
+  //
+  // The Span's road bends north around the pit, and everything that lived here
+  // lined the bend — so the straight line between the two doors, which is the
+  // fastest way through and the one a child holding the stick takes, was seven
+  // metres clear of every body in the room. verify-gauntlet crossed it in 7
+  // seconds untouched. The imps drop onto the crossing itself; the wretch stays
+  // up on the bend, which is where you meet it if you walk the road.
+  world.markers.cinderImpSpots = [{ x: 6, z: 1 }, { x: -6, z: 1 }];
   world.markers.emberWretchSpots = [{ x: 0, z: 8.5 }];
   world.markers.breakables = [
     { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
