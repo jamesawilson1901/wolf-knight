@@ -5654,3 +5654,49 @@ side of its crossing dressed, which had nothing on it at all. 35 and 48.
 69 unused-variable warnings burned down and `no-unused-vars` flipped to error.
 One thing to remember from it: an automated rewrite turned `const pr = …, dr = …`
 into an assignment to an undeclared `dr`. `no-undef` caught it in the same second.
+
+### The gauntlet's stick was never plugged in (v3.121.0)
+
+`verify-gauntlet` had been red on the nightly for weeks beside
+`verify-nightroad`, and it was never in the known-fail manifest — so it was a
+real gate failing quietly, which is the exact thing the manifest exists to stop.
+
+Its second promise is that a child who holds the stick straight through a fight
+room is made to pay for it. It has been measuring nothing at all. The section
+sets `window.__stick`, and **nothing in `js/` has ever read that global**: the
+field the joystick writes is `input.move`, and the two suites that drive
+movement this way — `verify-storm` and `verify-l1-doors` — install a `getMove`
+override to give the global meaning. This one never did.
+
+So for as long as the section has existed, the "blind sprint" was Kael standing
+perfectly still at a doorway for fourteen seconds, and what it measured was
+whether an enemy happened to wander over and hit a statue. Rooms passed because
+something walked to the door; rooms failed because nothing did. Both answers
+were about the same non-event.
+
+With the override installed, the real measurement is **36 crossings, two of
+them free** — and both rooms chased earlier in the day off the broken reading
+turn out to have been genuinely wrong as well. At their old positions, with the
+stick working: `q2` is crossed in 6.3s untouched, and `va1` wedges on its own
+rock wall having met nothing.
+
+| room | what was wrong | after |
+| --- | --- | --- |
+| `q2` | spawn-clear nudged all three foes off the door-to-door line; the warden is the only body that can catch a runner, so it is posted **on** the road | 0 → 0.5 |
+| `va1` | the L of rock stands across the through-line; the runner wedged on it six metres from the nearer slime | 0 → 5.5 |
+| `xa1` | the hound stood **behind** the barred door, and the archer was shooting into the wing wall it stood beside — five shots, none surviving three frames | 0 → 5.5 |
+| `lk2` | the Span's road bends north; every body lined the bend, seven metres clear of the straight line | 0 → 0.5 |
+| `xm2` | the mirror maze had nothing harrying a child while they worked it | 0 → 4.5 |
+
+The pattern in four of the five is the same and worth naming: **a room's
+dressing follows its road, and its road bends.** The straight line between two
+doors cuts every corner the road makes, so a body placed "on the path" by eye
+is off the line a runner actually takes. The other one, `q2`, is a fix causing a
+bug — `verify-spawn-clear` moved three bodies onto clear floor in September and
+moved them off the lane doing it. Both suites were right; the room came out
+wrong.
+
+One thing recorded for the next person: **a rime minion cannot cost a crossing
+at any distance.** `SkeletonMinion` has `senseRange 3.4` and `awakenTime 1.9`,
+and a runner covers 4.3u/s — it is six metres past before the thing has finished
+standing up. Shuffling one two metres sideways looks like a fix and is not.
