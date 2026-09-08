@@ -838,7 +838,14 @@ export async function buildXm2(scene) {
       mat.emissiveIntensity = through ? 0.12 : 0.5 + Math.sin(t * 2 + mx) * 0.12;
     });
   }
-  world.markers.houndSpots = [{ x: -9, z: 7, variant: 'shadewalker' }];
+  // THE HOUND WALKS THE FIRST MIRROR, which is where the maze actually costs.
+  //
+  // It stood at (-9, 7), around the north end of the first pane and seven
+  // metres off the only line through the room, so a child working the mirrors
+  // was never harried while they did it: verify-gauntlet wedged on that first
+  // pane and stood there fourteen seconds untouched. The maze is the puzzle;
+  // the hound is what stops it being a quiet one.
+  world.markers.houndSpots = [{ x: -8, z: -2, variant: 'shadewalker' }];
   world.markers.maskboneSpots = [{ x: 5, z: -5 }];
   scatter(world, halfW, halfD, D, 742, 5, { spin: 1, kinds: ['column2', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7421, { homes: 2, loose: 14 });
