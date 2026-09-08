@@ -33,10 +33,19 @@ await page.evaluate(() => {
   // LATE=1 shoots the world as it looks once regions have been freed: the Den's
   // spirit shrines, its third tent and the Stoneroot mushrooms only exist then,
   // and a contact sheet of the early-game Den never shows half of what is in it.
+  //
+  // SINCE 2026-09-08 IT IS THE WHOLE SECOND HALF OF THE GAME. Every region now
+  // transforms when its guardian is freed (js/restoration.js) — the ground
+  // heals, the lava cools, the gales drop, flowers come up and wolves graze
+  // where the shadows stood — so LATE is the only way to LOOK at half of what
+  // the game contains, and CLAUDE.md's rule is that a human looks at the rooms
+  // before a merge. It sets every region, not the two it used to.
   if (window.__LATE) {
-    g.state.flags.wardenDefeated = true;
-    g.state.flags.bossDefeated = true;
-    g.WS.set('ember', 'restored'); g.WS.set('stone', 'restored');
+    for (const f of ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
+      'ariaDefeated', 'meriDefeated', 'grimmFreed']) g.state.flags[f] = true;
+    for (const k of ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']) {
+      g.WS.set(k, 'restored');
+    }
   }
   // hide the HUD: this sheet is about the ROOM
   for (const el of document.querySelectorAll('.ui, #joy-base, #joy-knob, #joy-hint, #hearts, #shards, #level-badge, #xp-bar, #potions, #pause-btn, #inv-btn, #form-badge, #moon-gauge, #btn-attack, #special-btn, #btn-ranged, #btn-defend, #btn-jump, #caption, #toast')) {

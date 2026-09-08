@@ -5428,3 +5428,113 @@ deliberately not enough to guess from.
 The honest framing, which §7b already insisted on and which this session
 proves again: "all green" is a claim about coverage, not about the game, and
 it is worth nothing at all if nobody checks whether the gate ran.
+
+## The flag that was written and never read (2026-09-08, v3.112.0)
+
+Dad, twice in one evening. First: *"have an NPC appear in the room of every
+boss fight after they are defeated. when you talk to him he offers
+teleportation back to the den and all previous levels. when you talk to him in
+the den he offers the same."* Then, while that was being built: *"when the boss
+of each area I want the area to be transformed. grass begins to return,
+flowers. lava cools to rock. water returns, winds calm. animals replace enemies
+harmlessly grazing. a real terranigma moment."*
+
+### Tam
+
+The travel MENU already existed and already had exactly the semantics asked
+for — `menus.showTravel()` lists the Den plus every region whose boss flag is
+set, and main.js opens it whenever the player walks inside 1.5u of
+`markers.travelSpot`. What was missing was a body. The only thing in the game
+offering a ride home was a glowing rock in the Den, so a child who had just
+beaten a boss had to walk the whole way back to find it.
+
+One post per boss arena, gated on that region's own boss flag, plus the Den.
+Every coordinate measured with `tools/probe-freespot.mjs` in **both** states
+each arena has — before the fight and after the healed rebuild. Two of the
+eight moved because of it. He is `rogue_hooded.glb` washed moon-blue, because
+all five KayKit humanoids are already somebody and the hood is the one that
+reads as *walks the roads*; the moonstone shard at his shoulder, at the Den
+orb's own colour and bob, is what tells a non-reader what he is for.
+
+### The measurement that made the second ask urgent
+
+`js/main.js` has set `WS.set(<region>, 'restored')` on every boss defeat since
+the day it was written. Counted, rather than remembered:
+
+```
+grep -c restored js/level1.js … js/level7.js  →  0 0 1 0 0 0 0
+```
+
+The one is a comment. **Not one room in any rebuilt level had ever read the
+flag.** The only readers left were the Den's villager list and a handful of
+rooms in `js/rooms.js` that `RETIRED_ROOMS` redirects away from. So the flag
+had been written and thrown away for months: a child beat Ember and walked back
+through an Ember that had not changed by a pixel. `js/level1.js` even says so
+in a comment beside the lava — *"Nothing ever cools this. `lava_cooled` is a
+narration line and nothing more; no code removes a hazard when the boss
+falls."*
+
+### The healing
+
+`js/restoration.js` is the reader. Five answers, each hooked into the one place
+the game already funnels that thing through, rather than one big cutscene —
+because the transformation has to survive being walked away from and come back
+to. It is what the region IS now, not something that plays.
+
+| what | where it hooks | what changes |
+| --- | --- | --- |
+| the ground | `healPatches` in levelkit's `shell()` | scorch→moss, ash→grass, corruption→grass, rubble→moss, **mud→water** |
+| the wind | `calmedStrength` in `wind.js galeLane()` | every gale falls back to the harmless breeze the Landing teaches with |
+| the lava | `world.addLava()` declines the hazard | level1 paints cooled black crust with the last heat breathing in it |
+| the flowers | `bloom()` from `setupRoomExtras` | instanced, on measured-clear ground; Stoneroot gets glow-moss, not a lawn |
+| the animals | `spawnEnemies()` harvests its own markers | a wolf grazes where each shadow stood |
+
+`mud → water` is where *"water returns"* landed. It is the one item on the list
+with no obvious home otherwise: the Vale is the water region and its problem is
+too MUCH water, which Meri's defeat already drains. A mud flat is the shape of
+a pool with no pool in it, so filling one back up is the true sentence.
+
+Sand, gravel, ice and water are left alone: what a place is MADE of does not
+change, only what was done to it. A healed shore that had stopped being sandy
+would read as a different room rather than a mended one.
+
+The animals are `wolf.gltf` — the game's own animal, the one the pups are made
+of, shipping Eating / Idle / Idle_2_HeadLow / Walk, which is a whole grazing
+life with no new asset and no procedural geometry (CLAUDE.md). They carry **no
+collider**, Biscuit's rule: a safe room must not be one a child can be shoved
+around in, and a wandering body with a collider is a wandering obstacle.
+
+### Two things the suite caught that reading would not have
+
+`bloom()` first ran inside `buildRoom`, which is before the breakables, chests
+and pups lay their colliders — so three of the sample rooms grew a flower out
+of something that did not exist yet. Clear ground means clear of everything the
+child can see, so it is measured after everything the child can see exists.
+
+And the herd did not move. The wander took ONE guess at a nearby spot and, if
+it was blocked, fell back to "walk to where you already are" — which arrives
+instantly, resets the timer, and displaces nobody. Three animals, nine seconds,
+zero movement between them. Six tries, then stay grazing.
+
+### What is deliberately not healed
+
+The Village and the Spire. The Village's wards are *everything in this square
+is dead* gates (`world.enemies.length && every dead`) and an empty room never
+satisfies one; the Spire's is the mirror of it and would satisfy instantly.
+Both already have their own before/after — `villageShadow` and `village` are
+two hues of one ground style. The Den is named out too: it has its own healing
+already, and `regionOf` would otherwise fall it through to Ember.
+
+### The moment itself
+
+Ember and Stoneroot have grown their green around the player's feet since they
+were built. The other five regions changed a background colour on the next
+rebuild and nothing else — five of the seven biggest moments in the game,
+happening off screen. `healLive()` is that beat generalised, growing the
+instance matrices so the whole meadow is one draw call while it comes up.
+
+`tools/verify-healing.mjs`: 33 checks, before-and-after of one room per region,
+including the draw-call budget (the Vale's worst room lands at 122 of 125) and
+a sweep proving nothing blooms inside a rock. `LATE=1 node tools/shot.mjs` now
+sets all seven regions, so the contact sheet can show the healed half of the
+game — which is now half of what the game contains.

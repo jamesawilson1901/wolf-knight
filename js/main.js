@@ -36,6 +36,7 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
+import { bloom, healLive } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -1744,6 +1745,14 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  // GRASS AND FLOWERS COME BACK, once the region's guardian is free
+  // (js/restoration.js). LAST, and that position is the whole of it: the first
+  // cut ran this inside buildRoom, which is before the breakables, the chests
+  // and the pups have laid their colliders — and verify-healing §6 duly found
+  // three blooms growing out of things that were not there yet. Clear ground
+  // means clear of everything the child can see, so it is measured after
+  // everything the child can see exists.
+  await bloom(world);
   // TAM, on every visit after the fight. The Den's copy of him is spawned by
   // spawnDenNpcs alongside the other villagers (js/npcs.js) — spawnWayfarer
   // refuses a second one, so it does not matter which of the two runs first.
@@ -2430,6 +2439,8 @@ async function start() {
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
+      // ...and the pack grazing where the shadows used to stand
+      if (world.updateGrazers) world.updateGrazers(dt, t, player);
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
@@ -2482,6 +2493,13 @@ async function start() {
               narration.say('frost_grant');
               narration.say('frost_howto');
               WS.set('frost', 'restored');
+              // WITNESSED, not found later. Ember and Stoneroot have grown
+              // their green around the player's feet since they were built;
+              // the other five regions changed a background colour on the
+              // next rebuild and nothing else, which put five of the seven
+              // biggest moments in the game off screen. healLive is that same
+              // beat, generalised (js/restoration.js).
+              healLive(world);
               narration.say('frost_restore_1');
               narration.say('grimm_taunt_4');
               setTimeout(() => narration.say('luna_dream_4'), 9000);
@@ -2491,6 +2509,7 @@ async function start() {
               audio.playMusic('victory', { loop: false, then: 'den' });
               narration.say('aria_defeat');
               WS.set('storm', 'restored');
+              healLive(world);
               narration.say('storm_restore_1');
               narration.say('grimm_taunt_5');
               setTimeout(() => narration.say('luna_dream_5'), 9000);
@@ -2500,6 +2519,7 @@ async function start() {
               // thing the game shows is the Den, full.
               audio.playMusic('victory', { loop: false, then: 'den' });
               WS.set('court', 'restored');
+              healLive(world);
               narration.say('end_1');
               setTimeout(() => narration.say('end_2'), 5000);
               setTimeout(() => narration.say('end_3'), 11000);
@@ -2517,6 +2537,7 @@ async function start() {
               audio.playMusic('victory', { loop: false, then: 'den' });
               narration.say('meri_defeat');
               WS.set('vale', 'restored');
+              healLive(world);
               narration.say('vale_restore_1');
               narration.say('grimm_taunt_6');
               setTimeout(() => narration.say('luna_dream_6'), 9000);
@@ -2528,6 +2549,7 @@ async function start() {
               narration.say('verdant_grant');
               narration.say('verdant_howto');
               WS.set('wild', 'restored');
+              healLive(world);
               narration.say('wild_restore_1');
               narration.say('grimm_taunt_3');
               setTimeout(() => narration.say('luna_dream_3'), 9000);

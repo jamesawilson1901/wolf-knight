@@ -217,6 +217,45 @@ shape as openTheWayOn, so a perk card or a story line holds him at the door
 exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
 off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
 
+## The healing (js/restoration.js)
+What a region looks like once its guardian is free. main.js has set
+WS.set(<region>,'restored') on every boss defeat since it was written, and
+until 2026-09-08 no rebuilt level room read it — measured: grep -c restored
+across js/level1-7.js was 0,0,1(comment),0,0,0,0. This module is the reader,
+keyed off healKeyOf(roomId) (regionOf → the worldstate key, with each region's
+ROAD healing with it; the Village, the Spire and the Den are excluded on
+purpose — the Village's wards are "everything here is dead" gates an empty
+room never satisfies).
+Five answers, each hooked into the ONE place the game already funnels that
+thing through:
+ · GROUND — healPatches() in levelkit's shell(): scorch→moss, ash→grass,
+   corruption→grass, rubble→moss, mud→water ("water returns": a mud flat is
+   the shape of a pool with no pool in it). sand/gravel/ice/water untouched —
+   what a place is MADE of does not change.
+ · WIND — calmedStrength() in wind.js galeLane(): every gale falls back to the
+   harmless 'breeze' the Landing teaches with. Calmed, not deleted.
+ · LAVA — world.addLava() declines to register the hazard, and level1's
+   lavaSurface paints cooled black crust with the last heat breathing in it.
+   This is what `lava_cooled` has been promising since it was written.
+ · FLOWERS — bloom(), called from setupRoomExtras AFTER the breakables,
+   chests and pups have laid their colliders (running it earlier put three
+   blooms inside things that did not exist yet). Instanced: a draw call per
+   material, not per flower. Stoneroot blooms glow-moss, not a lawn.
+ · ANIMALS — spawnEnemies() harvests every enemy marker it would have read
+   (takeEnemySpots) and graze() stands a wolf where each shadow stood.
+   wolf.gltf is the game's own animal and ships Eating/Idle_2_HeadLow/Idle/
+   Walk. No colliders, Biscuit's rule: a safe room must not be one a child can
+   be shoved around in. world.updateGrazers(dt,t,player) from main's loop.
+healLive(world) is the WITNESSED version, called from the wild/frost/storm/
+vale/court defeat branches — the five that used to change a background colour
+on the next rebuild and nothing else. It grows the instance matrices, so the
+meadow is one draw call while it comes up. Ember and Stoneroot keep their own
+(rooms.js emberRestorationLive/stoneRestorationLive) and healLive stands down
+for them via markers.restorationPlayed.
+Proven by tools/verify-healing.mjs (before-and-after of one room per region).
+`LATE=1 node tools/shot.mjs` now sets all seven regions, so the contact sheet
+can show the healed half of the game.
+
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;
 one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any

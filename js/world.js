@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { isShared } from './assets.js';
+import { isHealed } from './restoration.js';
 
 const _rollAxis = new THREE.Vector3();
 
@@ -530,6 +531,15 @@ export class World {
   }
 
   addLava(minX, maxX, minZ, maxZ) {
+    // THE LAVA SLEEPS AS BLACK STONE once the Hollow's shadow is gone. Pip has
+    // been promising this since the day `lava_cooled` was written — "with the
+    // shadow gone, the lava sleeps as black stone! New paths, Kael!" — and
+    // js/level1.js says out loud in a comment that nothing had ever made it
+    // true: "no code removes a hazard when the boss falls". This is the code.
+    // Registering the hazard is the ONE thing that makes lava lava, so not
+    // registering it is the whole of "it cooled" as far as a body is
+    // concerned; js/level1.js paints the crust to match.
+    if (isHealed(this.roomId)) return;
     this.lavaZones.push({ minX, maxX, minZ, maxZ });
   }
 

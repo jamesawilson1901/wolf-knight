@@ -35,6 +35,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
+import { isHealed } from './restoration.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -313,6 +314,32 @@ function lavaSurface(world, x, z, w, d) {
   const tex = lavaTexture().clone();         // own repeat/offset per channel
   tex.needsUpdate = true;
   tex.repeat.set(Math.max(1, Math.round(w / 7)), Math.max(1, Math.round(d / 7)));
+  // COOLED. The same crust texture, no longer lit from underneath: a matte
+  // black floor with the last of the heat still breathing somewhere down in
+  // it. world.addLava has already declined to register the hazard (js/world.js)
+  // so this strip is simply walkable now, and a picture that still said MOLTEN
+  // over ground the collision calls floor would be worse than either — a child
+  // believes the picture.
+  if (isHealed(world.roomId)) {
+    const crust = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshStandardMaterial({ color: 0x2a2320,
+        emissive: 0xff6a2a, emissiveMap: tex, emissiveIntensity: 0.16, roughness: 1 })
+    );
+    crust.rotation.x = -Math.PI / 2;
+    crust.position.set(x, world.deckY + 0.02, z);
+    world.add(crust);
+    world.keepLoose(crust);
+    const embers = new THREE.PointLight(0xff8a4a, 1.4, Math.max(w, d) * 1.2, 2.2);
+    embers.position.set(x, 0.8, z);
+    world.add(embers);
+    world.onAnimate((t) => {
+      const b = 0.5 + 0.5 * Math.sin(t * 0.55 + x);
+      crust.material.emissiveIntensity = 0.10 + b * 0.10;   // barely there
+      embers.intensity = 0.9 + b * 0.8;
+    });
+    return crust;
+  }
   const lava = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
     new THREE.MeshStandardMaterial({ color: 0x000000,
