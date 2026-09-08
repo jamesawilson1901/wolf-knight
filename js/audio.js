@@ -75,12 +75,35 @@ const MUSIC_FILES = {
   victory: './assets/audio/music/victory.ogg',
   'region-stone': './assets/audio/music/region-stone.ogg',
   'stone-deep': './assets/audio/music/stone-deep.ogg',
-  // ALIASES (v3.21.2). kiln.mp3 was byte-identical to causeway.mp3, and
-  // ember-calm.ogg to den.ogg — 6.6 MB of the game's download was the same two
-  // tracks shipped twice, which every kid's phone paid for on a slow
-  // connection. Two names, one file each.
-  kiln: './assets/audio/music/causeway.mp3',
-  'ember-calm': './assets/audio/music/den.ogg',
+  // THE ALIASES ARE GONE (2026-09-08). kiln.mp3 had been byte-identical to
+  // causeway.mp3 and ember-calm.ogg to den.ogg; v3.21.2 correctly stopped
+  // shipping 6.6 MB of the same two tracks twice by pointing both names at one
+  // file each. That fixed the download and left the game with three sections
+  // wearing another section's sound, which is what dad heard: "make sure there
+  // is music for every section. make sure there is a variety of it."
+  //
+  // Both names now have a track of their OWN, from the same CC0 well the six
+  // region themes came from — sparklinlabs/superpowers-asset-packs, this time
+  // rpg-battle-system/music (16 themes, same artist, same 16-bit idiom, the
+  // repo's one CC0 LICENSE.txt already on disk as
+  // superpowers-medieval-fantasy.txt and already stated to cover every pack in
+  // it). Cast by the same decoded-audio character the six were cast by —
+  // tools/probe-music-character.mjs is that instrument, extracted so the next
+  // casting call does not start from nothing.
+  kiln: './assets/audio/music/kiln.ogg',                 // theme-16: the longest and most stately in the pack, for the volcano's three-door hall
+  'ember-calm': './assets/audio/music/ember-calm.ogg',   // theme-9:  onsets 0.56, the calmest thing in it — a Hollow with nothing left to fear
+  // ...AND THE FIVE SECTIONS THAT HAD NEVER HAD A SOUND OF THEIR OWN.
+  // The Wild Woods shared the Causeway's loop; all three ROADS shared
+  // stone-deep, which is the one thing a road must not do — a road exists to
+  // make the change of place felt, and three roads that sound alike make it
+  // felt once. The restored Village and the Spire's crown were both playing
+  // the Den's lullaby through the ember-calm alias.
+  wildwoods: './assets/audio/music/wildwoods.ogg',       // theme-2:  zcr 2.24, onsets 2.58 — bright and busy, a wood full of small movements
+  'road-night': './assets/audio/music/road-night.ogg',   // theme-8:  rms 0.095, the quietest — an unlit road
+  'road-green': './assets/audio/music/road-green.ogg',   // theme-1:  the climb up out of the stone, brightest of the three roads
+  'road-market': './assets/audio/music/road-market.ogg', // theme-3:  unhurried and mid — a town on a road, not a road
+  'village-calm': './assets/audio/music/village-calm.ogg', // theme-12: what the Village was being fought for
+  crown: './assets/audio/music/crown.ogg',               // theme-15: the biggest, warmest master in the pack, for the warmest room in the game
   // SIX REGIONS GET THEIR OWN SOUND (2026-08-30). Five loops had been
   // stretched across nine regions since the rebuilds; these six are the
   // Superpowers Medieval Fantasy themes (CC0, licence file on disk — the
@@ -117,6 +140,19 @@ const MUSIC_TRIM = {
   sunkenvale: 3.2,     // very quiet master, high headroom (dyn 0.59)
   'village-dark': 1.15,
   spire: 0.8,          // hottest master of the six, pull it back a touch
+  // THE EIGHT NEW ONES, mastered against the band the game already sits in
+  // (den 0.114, title 0.119, region-stone 0.125, causeway 0.176). Measured
+  // rms in the comment; the trim is what brings each to about 0.13, which is
+  // where a child can walk between two sections without reaching for the
+  // volume. Dad's ear outranks every number here.
+  kiln: 0.75,           // 0.180
+  'ember-calm': 1.1,    // 0.120
+  wildwoods: 1.1,       // 0.119
+  'road-night': 1.35,   // 0.095 — the quietest master in the pack
+  'road-green': 1.1,    // 0.116
+  'road-market': 1.0,   // 0.133
+  'village-calm': 1.05, // 0.122
+  crown: 0.5,           // 0.265 — twice the game's average, pull it well back
 };
 
 class AudioSystem {

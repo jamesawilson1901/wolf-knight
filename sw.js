@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.113.0';
+const CACHE_NAME = 'wolfknight-v3.114.0';
 
 const PRECACHE = [
   './',
@@ -135,6 +135,18 @@ const PRECACHE = [
   './assets/audio/music/shadowcourt.ogg',
   './assets/audio/music/village-dark.ogg',
   './assets/audio/music/spire.ogg',
+  // EIGHT SECTIONS THAT NEVER HAD A SOUND OF THEIR OWN (2026-09-08). Precached
+  // beside the rest: a track that is not in this list is a track a child on a
+  // tablet with no signal never hears. (title.ogg is already here, further
+  // down with the title screen's own assets.)
+  './assets/audio/music/kiln.ogg',
+  './assets/audio/music/ember-calm.ogg',
+  './assets/audio/music/wildwoods.ogg',
+  './assets/audio/music/road-night.ogg',
+  './assets/audio/music/road-green.ogg',
+  './assets/audio/music/road-market.ogg',
+  './assets/audio/music/village-calm.ogg',
+  './assets/audio/music/crown.ogg',
   './assets/audio/sfx/bones.ogg',
   './assets/audio/sfx/stone-drag.ogg',
   './assets/audio/sfx/stone-drag2.ogg',

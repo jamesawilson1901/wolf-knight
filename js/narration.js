@@ -42,7 +42,13 @@ export const LINES = {
   obstacle_first: { voice: 'pip', text: 'Burnt vines block the way. We’ll need fire for these. Let’s remember this spot.' },
   r2_enter: { voice: 'pip', text: 'Watch your step — lava ahead. Stay on the stone.' },
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },
-  geyser_intro: { voice: 'pip', text: 'Fire geysers! Cross when they rest. Watch the timing.' },
+  // geyser_intro is GONE (2026-09-08, dad: "this is irrelevant as there are
+  // none"). The Ember rebuild replaced the old Causeway's geyser crossing with
+  // lb's two-block push puzzle and nothing removed the line, so Pip announced
+  // a hazard at empty floor. Deleting a LINE is safe where deleting a save
+  // field would not be: state.spoken.geyser_intro can stay in an old save
+  // forever and narration.say() simply returns false for an id it has no line
+  // for (saves are additive-forever, CLAUDE.md).
   hound_branch: { voice: 'pip', text: 'A shadow hound guards that way. Beat it for a pup — or skip it if you like.' },
   key_door: { voice: 'pip', text: 'Sealed by shadow! We need a key… I feel it east of here, past the broken bridges.' },
   key_found: { voice: 'pip', text: 'The Ember Key! The sealed door will open for us now!' },

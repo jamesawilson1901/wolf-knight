@@ -96,7 +96,7 @@ export const L1 = {
   lg1: { kind: 'choke',  w: 14, d: 10, district: 'ashfall',  spine: true,
          label: 'THE FALLEN GATE', beat: 'REST · compression' },
   lb:  { kind: 'island', w: 32, d: 26, district: 'causeway', spine: true,
-         label: 'B · EMBER CAUSEWAY', beat: 'moths · geysers' },
+         label: 'B · EMBER CAUSEWAY', beat: 'moths · the two-block push' },
   lb1: { kind: 'pocket', w: 20, d: 16, district: 'causeway', loopsTo: 'lb',
          label: 'Moth Hollow', beat: 'optional · pup #1' },
   lb2: { kind: 'pocket', w: 20, d: 16, district: 'causeway', loopsTo: 'lb',
@@ -873,7 +873,18 @@ export async function buildLb(scene) {
   // marauder) match la's density. It was also ~6 draw calls in the room that
   // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
-  world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
+  // NO GEYSERS. Dad, from play: Pip announces "Fire geysers! Cross when they
+  // rest" at a stretch of empty floor. He is right, and the cause is a
+  // leftover: design/LEVEL-MAP.md gives the old Causeway (r2) a geyser
+  // crossing, the Ember REBUILD replaced that beat with the two-block push
+  // puzzle below, and this marker line came across with the rest of the room.
+  // Nothing in js/level1.js has ever called geyser() — every builder that does
+  // is in js/rooms.js, in rooms RETIRED_ROOMS redirects away from. So the
+  // three markers were pure announcement: a hazard with no hazard in it.
+  //
+  // learn_jump used to hang off this marker too ("jump at the geyser
+  // crossing"). It has a real home now, at lc's lava channel — the one place
+  // in Ember where a child looks at something they should not walk into.
 
   // THE SHO: the same element, twice over — two blocks, two plates, and a
   // room big enough that you have to notice the second one (playbook sho beat;
@@ -1108,6 +1119,12 @@ export async function buildLc(scene) {
   ];
   world.markers.emberfangSpots = [{ x: 8, z: -8 }];
   world.markers.mothSpots = [{ x: -6, z: 5 }];
+  // WHERE THE JUMP IS TAUGHT. On the approach to the lava band (z -3..1),
+  // south of it, where a child walking up from lg2 first sees molten rock and
+  // stops. It moved here from lb's phantom geyser markers: a teach line has to
+  // fire beside the thing it is about, and this is the first hazard in Ember a
+  // child can see and must not walk into.
+  world.markers.jumpTeach = { x: 0, z: 3.4 };
   ruinedHome(world, -12, 7.5, 0.5, D, { w: 6, d: 4.5, keep: 0.45 });
   fallenColumn(world, -13.5, -6.5, 0.3, D, 4.4);
   fallenColumn(world, 12.5, 6.5, -1.4, D, 4.0);

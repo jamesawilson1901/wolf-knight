@@ -34,8 +34,6 @@ replace the robot text-to-speech voice.
   “Watch your step — lava ahead. Stay on the stone.”
 - `moth_intro`
   “Shadow moths! Wait for them to dive, then move.”
-- `geyser_intro`
-  “Fire geysers! Cross when they rest. Watch the timing.”
 - `hound_branch`
   “A shadow hound guards that way. Beat it for a pup — or skip it if you like.”
 - `key_door`

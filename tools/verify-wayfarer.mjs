@@ -45,8 +45,8 @@ const posts = await page.evaluate(async () => {
   const m = await import('/js/npcs.js');
   return m.WAYFARER_POSTS;
 });
-check('a post for every boss arena, and the Den',
-  Object.keys(posts).sort().join(',') === [...ARENAS, 'den'].sort().join(','),
+check('a post for every boss arena, the Den, the Village and the Spire',
+  Object.keys(posts).sort().join(',') === [...ARENAS, 'den', 'ysq', 'm1'].sort().join(','),
   Object.keys(posts));
 check('every arena post is gated on a boss flag',
   ARENAS.every((r) => FLAGS.includes(posts[r].flag)),
@@ -181,6 +181,53 @@ const rows = await page.evaluate(() => [...document.querySelectorAll('#map-menu 
   .map((d) => d.textContent.replace(/\s+/g, ' ').trim()));
 check('...and it offers the Den plus the lands already freed',
   rows.some((r) => /Den/.test(r)) && rows.length >= 3, rows);
+
+// ---------------------------------------------------------------------------
+console.log('\n── 5b · the Village square and the Spire ─────────────');
+// Dad, 2026-09-08: "tam needs to be added to the spire and the village."
+// Neither is a boss arena, so neither has a boss flag — both hang off
+// villageCleared(), the same question the moonstone menu asks before it
+// offers the Spire. A square whose six guardians are still up is a square
+// being fought over, and a ride out of a fight is the one thing he must
+// never be, so the gate has to actually hold.
+await page.evaluate(() => {
+  for (const k of ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']) {
+    window.__game.WS.set('village', 'guardian_' + k, false);
+  }
+});
+for (const room of ['ysq', 'm1']) {
+  await wk.jump(room, ALL_FORMS);
+  const r = await page.evaluate(() => ({ there: !!window.__game.world.wayfarer }));
+  check(`${room}: not while the Village is still overrun`, !r.there, r);
+}
+await page.evaluate(() => {
+  for (const k of ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']) {
+    window.__game.WS.set('village', 'guardian_' + k);
+  }
+});
+for (const room of ['ysq', 'm1']) {
+  await wk.jump(room, ALL_FORMS);
+  const r = await page.evaluate(async ({ R }) => {
+    const w = window.__game.world;
+    if (!w.wayfarer) return { there: false };
+    const post = (await import('/js/npcs.js')).WAYFARER_POSTS[w.roomId];
+    let clear = true;
+    for (const c of w.boxColliders) {
+      const cx = Math.max(c.minX, Math.min(post.x, c.maxX));
+      const cz = Math.max(c.minZ, Math.min(post.z, c.maxZ));
+      if ((post.x - cx) ** 2 + (post.z - cz) ** 2 < R * R) clear = false;
+    }
+    for (const c of w.circleColliders) {
+      if (Math.abs(c.x - post.x) < 1e-6 && Math.abs(c.z - post.z) < 1e-6) continue;
+      if ((post.x - c.x) ** 2 + (post.z - c.z) ** 2 < (c.r + R) ** 2) clear = false;
+    }
+    return { there: true, clear, visible: !!(w.wayfarer.model && w.wayfarer.model.parent),
+      travel: w.markers.travelSpot, x: post.x, z: post.z };
+  }, { R: 0.44 });
+  check(`${room}: once it is free, Tam is there on clear ground with the marker`,
+    r.there && r.clear && r.visible && r.travel
+    && Math.abs(r.travel.x - r.x) < 0.01 && Math.abs(r.travel.z - r.z) < 0.01, r);
+}
 
 // ---------------------------------------------------------------------------
 console.log('\n── 6 · the Den keeps its moonstone ───────────────────');

@@ -1,6 +1,6 @@
 // Wolf Knight — bootstrap + main loop.
 // Phase 2: the three Ember Hollow rooms with door transitions, checkpoints,
-// the dark nook (real-lighting darkness), geysers, and burnable props.
+// the dark nook (real-lighting darkness), lava, and burnable props.
 // Rooms rebuild on every entry (anti-soft-lock reset).
 
 import * as THREE from 'three';
@@ -788,7 +788,7 @@ function narrationTriggers(dt, t) {
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
-  if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 5))) narration.say('learn_jump');
+  if (m.jumpTeach && nearSpot(m.jumpTeach, 5)) narration.say('learn_jump');
   // "no encouragement to get different weapons or armour" — teaches the
   // concept once, the first time a child comes near ANY unopened chest that
   // actually holds gear (never fires for a plain shard chest, so it stays a
@@ -858,7 +858,6 @@ function narrationTriggers(dt, t) {
     const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
     if (moth) narration.say('moth_intro');
     if (!state.flags.keys.ember && m.sealSpot && nearSpot(m.sealSpot, 2.6)) narration.say('key_door');
-    if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 3.2))) narration.say('geyser_intro');
     if (m.branchMouth && nearSpot(m.branchMouth, 2.6)) narration.say('hound_branch');
     if (m.bossDoorSpot && nearSpot(m.bossDoorSpot, 2.4)) narration.say('boss_door');
   }
@@ -1437,23 +1436,35 @@ function updateMusic() {
     && ((world.boss && !world.boss.defeated) || (world.warden && !world.warden.dead))) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
   }
-  // REGIONS 5-7. Five distinct loops exist for seven regions, so reuse is
-  // forced — but it is arranged so no two ADJACENT regions share one, which is
-  // the only part a child can actually notice. Frostpeak has stone-deep, so
-  // Stormreach takes causeway; the Vale takes region-stone; the Court takes
-  // stone-deep again, four regions later. All three are placeholders and want
-  // their own track (polish list, same as the woods and the cold hush).
+  // THE REUSE ERA IS OVER (2026-09-08). This paragraph used to explain how five
+  // loops were stretched across seven regions and arranged so no two ADJACENT
+  // ones clashed — a real constraint honestly handled, and eight new CC0 tracks
+  // later it is simply no longer the situation. Every section named below has
+  // a loop of its own: seven regions, three roads, the Kiln, the Village in
+  // both of its states, the Spire and its crown, the healed Hollow, and
+  // Stoneroot's two halves. verify-music §2 is what stops that quietly
+  // regressing.
   // THE REBUILT LEVELS WERE NEVER ROUTED. This whole chain keyed off the OLD
   // room ids — e for Stoneroot, w for the Wild Woods — and the rebuilt levels
   // use v and t. So the rebuilt Stoneroot and Wild Woods, which are the levels
   // the kids actually play, have been falling through to Ember Hollow's loop
   // since the day they were built. Nothing was ever checking.
-  else if (state.room[0] === 'v') audio.playMusic('region-stone');   // Stoneroot, rebuilt
-  else if (state.room[0] === 't') audio.playMusic('causeway');       // Wild Woods, rebuilt
-  // The reuse era ends here (the polish list's oldest item): Frostpeak,
-  // Stormreach, the Vale and the Court each carry their own theme now. The
-  // Wild Woods keeps causeway — its long-standing sound, and no neighbour
-  // shares it.
+  // STONEROOT IS TWO SOUNDS, NOT ONE. `stone-deep` — the game's darkest loop —
+  // had been left with no room of its own once the three roads got theirs: it
+  // was reachable only as the `then:` after the Warden's victory sting, a 2 MB
+  // file that played for fifty seconds once per save. It belongs to the SUNKEN
+  // district (vgc, vc1, vc2, vcp, vc3) and the crypt beyond it, which is the
+  // half of Stoneroot that goes down — so a child descending out of the
+  // glimmer and the quarry hears the floor drop away, and the Warden's sting
+  // resolves into the loop the room around them is already wearing.
+  else if (state.room[0] === 'v') {
+    const deep = state.room[1] === 'c' || state.room === 'vgc' || state.room === 'vz';
+    audio.playMusic(deep ? 'stone-deep' : 'region-stone');
+  }
+  // THE WILD WOODS HAS ITS OWN SOUND NOW (2026-09-08). It shared causeway with
+  // the Ember Causeway and the Kiln — three places, one loop — and dad asked
+  // for a variety of music, one per section. See js/audio.js for the casting.
+  else if (state.room[0] === 't') audio.playMusic('wildwoods');
   else if (state.room[0] === 's') audio.playMusic('stormreach');
   else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('sunkenvale');
   else if (state.room[0] === 'x') audio.playMusic('shadowcourt');
@@ -1466,15 +1477,21 @@ function updateMusic() {
   // Restored Village: the healed-world calm it was fighting for. The Spire:
   // the cold high hush — a moonlit tower over a sleeping world — until the
   // crown, which is the warmest room in the game and sounds like it.
-  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'village-dark');
-  // THE TWO ROADS BETWEEN REGIONS. Neither was routed either, and both fell
-  // through to the bossDefeated branch below — which is always true by the time
-  // a child can reach them — so the frozen harbour and the night road were both
-  // playing the Den's lullaby. `stone-deep` is the game's darkest loop and
-  // nothing adjacent to either road uses it (Ember has region-ember, Stoneroot
-  // region-stone, Frostpeak and Stormreach their own).
-  else if (state.room[0] === 'n' || state.room[0] === 'g' || state.room[0] === 'q') audio.playMusic('stone-deep');
-  else if (state.room === 'm3') audio.playMusic('ember-calm');
+  // The RESTORED Village has its own calm now rather than the Den's lullaby
+  // through the old ember-calm alias — it is a different place being at peace.
+  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'village-calm' : 'village-dark');
+  // THE THREE ROADS BETWEEN REGIONS, each with its own sound. They were routed
+  // in 2026-09-03 (before that all three fell through to the bossDefeated
+  // branch and played the Den's lullaby) but routed to ONE track, stone-deep —
+  // and one loop across three roads is the one thing a road must not do. A road
+  // exists to make the change of place FELT, and three that sound alike make it
+  // felt once.
+  else if (state.room[0] === 'n') audio.playMusic('road-night');
+  else if (state.room[0] === 'g') audio.playMusic('road-green');
+  else if (state.room[0] === 'q') audio.playMusic('road-market');
+  // The Spire's crown is the warmest room in the game and now sounds like it,
+  // instead of borrowing the Den's.
+  else if (state.room === 'm3') audio.playMusic('crown');
   else if (state.room[0] === 'm') audio.playMusic('spire');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
   // k-rooms are RETIRED — the live Kiln is ld/ld1/lg4 inside the rebuilt Level 1.

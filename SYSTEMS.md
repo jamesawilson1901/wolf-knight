@@ -150,8 +150,10 @@ pulled cold (`emberKitRef()`).
 under ice, `slickFloor` + `iceGate` stalls for the Frost Wolf, deep
 `waterZone` channels (a box collider until region six) with the far
 quay in sight. Wears the Village's props.
-Both are `stone-deep` musically, and both prefixes are named in
-rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
+All three roads have a track of their own now (`road-night`,
+`road-green`, `road-market`) — a road exists to make a change of place
+felt, and three roads on one loop make it felt once. Every prefix is
+named in rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
 
 ## The Moonlit Spire (js/levelSpire.js) — the finale
 Four rooms behind the `m` prefix, opened by restoring the Village and
@@ -211,6 +213,11 @@ humanoid is already somebody), a bobbing moonstone shard at his shoulder in
 the Den orb's own colour — and sets world.markers.travelSpot, which is what
 main.js already watches at 1.5u to open menus.showTravel(). In the Den he
 leaves the marker to the moonstone and stands 1.2u off it instead.
+The Village square and the Spire were added 2026-09-08 and are gated on
+`villageCleared()` rather than a boss flag — `when` takes a predicate
+where the arenas take a flag name — because a square whose six guardians
+are still standing is a square being fought over, and a ride out of a
+fight is the one thing he must never be.
 He appears two ways: on BUILD (setupRoomExtras, via wayfarerPost(roomId))
 and LIVE, 2.6s of game time after a boss falls (summonWayfarer, the same
 shape as openTheWayOn, so a perk card or a story line holds him at the door
@@ -285,6 +292,20 @@ WebAudio SFX + crossfading looped music (intro→loop, one-shot→then),
 generated brown-noise lava ambient, narration ducking, per-profile
 volume settings. SFX buffers preload on first user gesture (`_preloadSfx()`
 in `_init()`) — no first-play decode stutter mid-combat.
+ONE LOOP PER SECTION (2026-09-08, dad: "make sure there is music for every
+section. make sure there is a variety of it."). Nineteen sections, nineteen
+loops, plus boss/victory/title: the seven regions, the three roads, the
+Kiln, both states of the Village, both halves of Stoneroot (the glimmer
+above and the sunken deep below), the Spire and its crown, the Den, and
+the healed Hollow. The `kiln`/`ember-calm` ALIASES are gone — both now
+have a track instead of pointing at causeway.mp3 and den.ogg. The eight
+new ones are CC0 from sparklinlabs/superpowers-asset-packs
+`rpg-battle-system/music`, the same repo and licence file as the six
+region themes, cast by `tools/probe-music-character.mjs` (rms / zcr /
+onsets-per-sec / dyn, decoded in a browser because that is the only ogg
+decoder in this toolchain) and mastered to the game's own loudness band
+via `MUSIC_TRIM`. Cost: +8.2 MB of a 112 MB asset tree. verify-music §6
+is what stops two sections quietly sharing a file again.
 
 ## Save (js/save.js)
 localStorage per-kid profiles, schema v2 (HUD-MENU-SAVE.md). Law:

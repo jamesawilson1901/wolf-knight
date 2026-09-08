@@ -21,6 +21,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { WS } from './worldstate.js';
 import { state } from './state.js';
+import { villageCleared } from './levelVillage.js';
 
 // BLIND-STRIP LAW (v3.20): the camera looks north over the den's south wall,
 // which hides a ~2u band of floor in front of it. Wren (z 3.2) and Bram
@@ -263,6 +264,24 @@ export const WAYFARER_POSTS = {
   // been taught to walk to, so he stands a pace off it — inside its own 1.5u
   // reach, so walking up to HIM opens the menu too — and leaves it alone.
   den: { x: -4.2, z: -6.8, ry: 0.5, flag: null, keepMarker: true },
+
+  // THE LAST TWO PLACES, added 2026-09-08 on dad's word: "tam needs to be
+  // added to the spire and the village."
+  //
+  // Neither is a boss arena, so neither has a boss flag to hang off — and the
+  // moonstone menu already knows the right question for both. It offers the
+  // Village the moment `grimmFreed` opens its road, and the Spire the moment
+  // `villageCleared()` is true. So `when` takes a predicate where the arenas
+  // take a flag name, and the Village square uses the SAME predicate as the
+  // Spire stair standing in it: a square whose six guardians are still up is a
+  // square being fought over, and a wayfarer offering a ride out of a fight is
+  // the one thing this NPC must never be (see the arenas above).
+  // He keeps the SPIRE STAIR in the square — the way onward, which is what a
+  // wayfarer stands beside — and the near shore in the Spire itself, this side
+  // of the void. Measured like the rest, with WK_LATE=1 so the probe answered
+  // for the square at peace rather than the square being fought over.
+  ysq: { x: 7, z: 8.5, ry: -2.4, flag: null, when: villageCleared },
+  m1: { x: 5, z: 8, ry: -2.2, flag: null, when: villageCleared },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks
@@ -271,6 +290,7 @@ export function wayfarerPost(roomId) {
   const post = WAYFARER_POSTS[roomId];
   if (!post) return null;
   if (post.flag && !state.flags[post.flag]) return null;
+  if (post.when && !post.when()) return null;
   return post;
 }
 

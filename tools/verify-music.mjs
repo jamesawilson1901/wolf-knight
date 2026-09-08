@@ -144,6 +144,78 @@ for (const id of ['ld', 'ld1', 'lg4']) {
 console.log('\n── 5. the Den is the Den, wherever you came from ─────');
 check('the Den plays its own theme', (await trackIn('den')) === 'den');
 
+console.log('\n── 6. EVERY SECTION HAS A SOUND OF ITS OWN ──────────');
+// Dad, 2026-09-08: "make sure there is music for every section. make sure
+// there is a variety of it."
+//
+// Section 2 above only asks about NEIGHBOURS, which is the weaker question and
+// was the right one while five loops were being stretched across seven
+// regions. Eight CC0 tracks later the strong question is answerable, so it is
+// asked: no two sections in this list may play the same loop. The list is the
+// game's own section inventory — if a new place ships without a sound, or two
+// places are quietly pointed at one file to save a download, this is what says
+// so.
+//
+// A SECTION IS A PLACE A CHILD WOULD NAME, not a room: the Kiln is one, the
+// Village is TWO (overrun and restored are different places to be), Stoneroot
+// is two (the glimmer above, the sunken below), and the Spire's crown is not
+// the Spire.
+const SECTIONS = [
+  { id: 'den', name: 'the Den' },
+  { id: 'la', name: 'Ember Hollow' },
+  { id: 'lb', name: 'the Ember Causeway' },
+  { id: 'ld', name: 'the Kiln' },
+  { id: 'n1', name: 'the Night Road' },
+  { id: 'va1', name: 'Stoneroot — the glimmer' },
+  { id: 'vc1', name: 'Stoneroot — the sunken deep' },
+  { id: 'g1', name: 'the Greenway' },
+  { id: 't1b', name: 'the Wild Woods' },
+  { id: 'f1', name: 'Frostpeak' },
+  { id: 'q1', name: 'the Drowned Market' },
+  { id: 's1b', name: 'Stormreach' },
+  { id: 'd1b', name: 'the Sunken Vale' },
+  { id: 'x1', name: 'the Shadow Court' },
+  { id: 'ysq', name: 'the Village, overrun' },
+  { id: 'm1', name: 'the Moonlit Spire' },
+  { id: 'm3', name: 'the Spire crown' },
+];
+// the arenas are still beaten in section 3's pass; clear the flags again so
+// these ordinary rooms are ordinary
+await page.evaluate(() => {
+  const g = window.__game, f = g.state.flags;
+  f.borealDefeated = true; f.ariaDefeated = true; f.meriDefeated = true;
+  f.grimmFreed = true; f.sylvaDefeated = true; f.bossDefeated = false;
+  f.wardenDefeated = true;
+});
+const heard = new Map();
+for (const sec of SECTIONS) {
+  const track = await trackIn(sec.id);
+  check(`${sec.name} has music`, !!track, { room: sec.id, track });
+  if (!track) continue;
+  if (heard.has(track)) errors.push(`${sec.name} and ${heard.get(track)} both play ${track}`);
+  else heard.set(track, sec.name);
+}
+check('no two sections play the same loop', heard.size === SECTIONS.length,
+  Object.fromEntries([...heard].map(([t, n]) => [n, t])));
+
+// The two states of the Village are two places, and the two Hollows are too.
+// Both pairs used to be one track: village-restored and the healed Hollow both
+// reached den.ogg through the `ember-calm` alias.
+await page.evaluate(() => {
+  const g = window.__game;
+  for (const k of ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']) g.WS.set('village', 'guardian_' + k);
+  g.state.flags.bossDefeated = true;
+});
+const villageCalm = await trackIn('ysq');
+const hollowCalm = await trackIn('la');
+check('the RESTORED Village sounds different from the overrun one',
+  villageCalm && villageCalm !== 'village-dark', { restored: villageCalm });
+check('the HEALED Hollow sounds different from the burning one',
+  hollowCalm && hollowCalm !== 'region-ember', { healed: hollowCalm });
+check('...and those two are not the same track as each other, or as the Den',
+  villageCalm !== hollowCalm && villageCalm !== 'den' && hollowCalm !== 'den',
+  { village: villageCalm, hollow: hollowCalm });
+
 console.log('\n' + (errors.length
   ? `✗ ${errors.length} FAILED\n` + errors.join('\n')
   : 'ALL CLEAN.'));
