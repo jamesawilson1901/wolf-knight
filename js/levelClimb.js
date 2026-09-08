@@ -271,7 +271,11 @@ export async function buildC2(scene) {
   const gaps = [gap('s'), gap('n')];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 7.0, kind: 'ice' }, { x: -10, z: 8, r: 3.6, kind: 'gravel' },
-      { x: 10, z: -8, r: 3.4, kind: 'gravel' }, { x: 9, z: 9, r: 3.0, kind: 'moss' }],
+      { x: 10, z: -8, r: 3.4, kind: 'gravel' }, { x: 9, z: 9, r: 3.0, kind: 'rubble' }],
+    // moss, until the contact sheet: a 3u disc of bright green on a snowfield,
+    // with a barrel standing in the middle of it. The template each of these
+    // six road rooms was cut from carries one moss patch, and it is right on
+    // the green and the wet ends and wrong on the cold and the dead ones.
     pathWidth: 2.8,
     paths: [[[0, 12], [2, 4], [1, -4], [0, -12]]],
   });

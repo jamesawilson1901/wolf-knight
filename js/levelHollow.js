@@ -231,7 +231,10 @@ export async function buildH2(scene) {
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: -2, r: 7.5, kind: 'corruption', alpha: 0.45 },
       { x: -10, z: 9, r: 3.4, kind: 'rubble' }, { x: 10, z: 9, r: 3.4, kind: 'gravel' },
-      { x: 0, z: 11, r: 3.2, kind: 'moss' }],
+      // ash, not moss: this patch sits where the child arrives, and the same
+      // template green that works on the Plunge read as a lawn growing on the
+      // Court's doorstep (contact sheet, 2026-09-08).
+      { x: 0, z: 11, r: 3.2, kind: 'ash' }],
     pathWidth: 2.8,
     paths: [[[0, 12], [-2, 4], [2, -4], [0, -12]]],
   });
