@@ -9,6 +9,13 @@
 // The assertion that matters is not "the string is right" but ROUTE
 // INDEPENDENCE: the same arena must behave identically whichever door you walk
 // through. So this reaches `tgl` both ways and compares.
+//
+// 2026-09-08: f1's south door is no longer one of those two ways. The Cold
+// Climb went in between the Wild Woods and Frostpeak, so f1 south now lands on
+// c2 and it is C1's south door that reaches the glade. The retired-id case the
+// queue named is checked where it still lives — f1 south, which must store the
+// id of the room it actually built — and the route-independence pair becomes
+// c1 and tc4, which are the two doors into the glade there now are.
 import { launchBrowser } from './launch.mjs';
 import { readFileSync } from 'fs';
 
@@ -120,7 +127,7 @@ const walkThrough = async (x, z, from) => {
   });
 };
 
-console.log('\n── the case the queue named: f1 south, which targets `w5` ─────');
+console.log('\n── the case the queue named: f1 south stores the room it built ─────');
 if (!await park('f1')) { check('f1 builds', false); await b.close(); process.exit(1); }
 check('f1 builds', true);
 // f1's south door (level4.js): a 32x26 island, the door zone at z 12.85+
@@ -128,9 +135,21 @@ const viaF1 = await walkThrough(0, 12.9, 'f1');
 check('walking f1 south lands somewhere', !!viaF1, viaF1);
 if (viaF1) {
   check('...and the id stored is the room built', viaF1.room === viaF1.resolved, viaF1.room);
-  check('...which is Sylva\'s Glade, tgl', viaF1.room === 'tgl', viaF1.room);
-  check('...with the Wild Woods region', viaF1.region === 'wildwoods', viaF1.region);
-  check('...and the boss track playing', viaF1.hasBoss && /boss/.test(viaF1.music || ''), viaF1.music);
+  check('...which is the Cold Climb\'s snowline, c2', viaF1.room === 'c2', viaF1.room);
+  check('...with the Cold Climb region', viaF1.region === 'coldclimb', viaF1.region);
+  check('...and the road track playing, not Frostpeak\'s', /road-climb/.test(viaF1.music || ''), viaF1.music);
+}
+
+console.log('\n── the glade by the road: c1 south ───────────────────────────');
+if (!await park('c1')) { check('c1 builds', false); }
+// c1's south door (levelClimb.js): the same 32x26 island shape
+const viaC1 = await walkThrough(0, 12.9, 'c1');
+check('walking c1 south lands somewhere', !!viaC1, viaC1);
+if (viaC1) {
+  check('...and the id stored is the room built', viaC1.room === viaC1.resolved, viaC1.room);
+  check('...which is Sylva\'s Glade, tgl', viaC1.room === 'tgl', viaC1.room);
+  check('...with the Wild Woods region', viaC1.region === 'wildwoods', viaC1.region);
+  check('...and the boss track playing', viaC1.hasBoss && /boss/.test(viaC1.music || ''), viaC1.music);
 }
 
 console.log('\n── the same arena by its own door: tc4 → tgl ─────────────────');
@@ -151,10 +170,10 @@ if (doorTo) {
 }
 
 console.log('\n── route independence ────────────────────────────────────────');
-if (viaF1 && viaT4a) {
-  check('the room reads the same by either door', viaF1.room === viaT4a.room, [viaF1.room, viaT4a.room]);
-  check('the region reads the same', viaF1.region === viaT4a.region, [viaF1.region, viaT4a.region]);
-  check('the music is the same', viaF1.music === viaT4a.music, [viaF1.music, viaT4a.music]);
+if (viaC1 && viaT4a) {
+  check('the room reads the same by either door', viaC1.room === viaT4a.room, [viaC1.room, viaT4a.room]);
+  check('the region reads the same', viaC1.region === viaT4a.region, [viaC1.region, viaT4a.region]);
+  check('the music is the same', viaC1.music === viaT4a.music, [viaC1.music, viaT4a.music]);
 } else {
   check('route independence could be compared', false);
 }
