@@ -54,7 +54,7 @@ const go = async (room) => {
 };
 
 const FAR = { aria: 1.7 };   // she rears; everything else stands
-for (const [room, id, name] of BOSSES) {
+for (const [room, id] of BOSSES) {
   const DIST = FAR[id] || 3.0;
   if (!await go(room)) { console.log(`${id}: FAILED TO BUILD ${room}`); continue; }
   // The game owns the camera every frame, so a hand-parked camera is gone by

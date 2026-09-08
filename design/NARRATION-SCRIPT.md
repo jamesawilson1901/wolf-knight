@@ -33,7 +33,10 @@ and so later regions reuse the structure. Captions show each line on screen (def
 - **obstacle_first** *(first burnable obstacle seen)* [Pip]: "Burnt vines block the way. We'll need fire for these. Let's remember this spot."
 - **r2_enter** *(entering R2)* [Pip]: "Watch your step — lava ahead. Stay on the stone."
 - **moth_intro** *(first Ember Moth)* [Pip]: "Shadow moths! Wait for them to dive, then move."
-- **geyser_intro** *(at the geyser crossing)* [Pip]: "Fire geysers! Cross when they rest. Watch the timing."
+- ~~**geyser_intro**~~ **CUT 2026-09-08.** The Ember rebuild replaced the old
+  Causeway's geyser crossing with `lb`'s two-block push puzzle; nothing in
+  js/level1.js has ever called `geyser()`, so the line announced a hazard at
+  empty floor. `learn_jump` moved to `lc`'s lava channel with it.
 - **hound_branch** *(near the Shadow Hound branch — optional)* [Pip]: "A shadow hound guards that way. Beat it for a pup — or skip it if you like."
 - **boss_door** *(approaching the boss room)* [Pip]: "The spirit is near… but something's wrong. Be ready, Kael."
 - **boss_intro** *(boss reveal)* [Pip]: "There! The fire spirit — a shadow has it in its grip! Free it!"
@@ -58,7 +61,7 @@ and so later regions reuse the structure. Captions show each line on screen (def
 - **low_hearts** *(hearts ≤ 2)* [Pip]: "Careful, Kael… let's find somewhere safe."
 - **respawn** *(after losing all hearts — gentle, no "Game Over")* [Pip]: "It's okay. Let's try again — together."
 - **form_locked** *(player opens the locked Fire Wolf slot pre-boss)* [Pip]: "We can't be the Fire Wolf yet. First we free the fire spirit."
-- **stuck_hint** *(idle near a gate ~20s — re-hint)* [Pip]: replay the matching teach line (dark_nook / geyser_intro / burn_prompt).
+- **stuck_hint** *(idle near a gate ~20s — re-hint)* [Pip]: replay the matching teach line (dark_nook / learn_jump / burn_prompt).
 
 ## Part C — Bridge to the next region (the slice's outro; template for every region)
 

@@ -1,6 +1,6 @@
 // Wolf Knight — bootstrap + main loop.
 // Phase 2: the three Ember Hollow rooms with door transitions, checkpoints,
-// the dark nook (real-lighting darkness), geysers, and burnable props.
+// the dark nook (real-lighting darkness), lava, and burnable props.
 // Rooms rebuild on every entry (anti-soft-lock reset).
 
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ import { villageCleared } from './levelVillage.js';
 import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
-import { FETCH } from './mg-fetch.js';
+import {  } from './mg-fetch.js';
 import { Player } from './player.js';
 import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
 import { Effects } from './effects.js';
@@ -29,12 +29,14 @@ import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUP
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
-import { TREASURES, addTreasure, treasureCount } from './treasures.js';
+import { TREASURES, addTreasure } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
+import { wayfarerPost, spawnWayfarer } from './npcs.js';
+import { bloom, healLive, moodLift } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -786,7 +788,7 @@ function narrationTriggers(dt, t) {
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
-  if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 5))) narration.say('learn_jump');
+  if (m.jumpTeach && nearSpot(m.jumpTeach, 5)) narration.say('learn_jump');
   // "no encouragement to get different weapons or armour" — teaches the
   // concept once, the first time a child comes near ANY unopened chest that
   // actually holds gear (never fires for a plain shard chest, so it stays a
@@ -795,6 +797,12 @@ function narrationTriggers(dt, t) {
     && nearXZ(c.x, c.z, 3.2))) narration.say('gear_hint');
   // an easter egg, found by nobody's system but curiosity
   if (m.dodoSpot && nearSpot(m.dodoSpot, 3)) narration.say('dodo_secret');
+  // TAM, in whichever of the eight rooms he is standing in — the Den or any
+  // arena whose boss is down. Room-agnostic on purpose: the whole point of him
+  // is that he is the same offer wherever you find him.
+  if (m.wayfarerSpot && nearSpot(m.wayfarerSpot, 2.6)) {
+    if (!narration.say('tam_intro')) sayThrottled('tam_offer', t, 40);
+  }
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
@@ -833,8 +841,14 @@ function narrationTriggers(dt, t) {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
     if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
-    if (m.cinderHome && nearSpot(m.cinderHome, 2.6)) narration.say('cinder_den');
-    if (m.petraHome && nearSpot(m.petraHome, 2.6)) narration.say('petra_den');
+    // THE SPIRITS THAT CAME HOME. One line each, said once, when a child walks
+    // up to the light — the same shape the two hand-written ones had, over the
+    // table js/rooms.js builds them from now.
+    for (const [marker, line] of [['cinderHome', 'cinder_den'], ['petraHome', 'petra_den'],
+      ['sylvaHome', 'sylva_den'], ['borealHome', 'boreal_den'],
+      ['ariaHome', 'aria_den'], ['meriHome', 'meri_den']]) {
+      if (m[marker] && nearSpot(m[marker], 2.6)) narration.say(line);
+    }
     // villagers: intro once, then gentle repeatable chat (throttled)
     if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
       if (!narration.say('wren_intro')) sayThrottled('wren_rumour', t, 45);
@@ -850,7 +864,6 @@ function narrationTriggers(dt, t) {
     const moth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && e.state === 'telegraph');
     if (moth) narration.say('moth_intro');
     if (!state.flags.keys.ember && m.sealSpot && nearSpot(m.sealSpot, 2.6)) narration.say('key_door');
-    if (m.geyserSpots && m.geyserSpots.some((g) => nearSpot(g, 3.2))) narration.say('geyser_intro');
     if (m.branchMouth && nearSpot(m.branchMouth, 2.6)) narration.say('hound_branch');
     if (m.bossDoorSpot && nearSpot(m.bossDoorSpot, 2.4)) narration.say('boss_door');
   }
@@ -1382,6 +1395,36 @@ function openTheWayOn(arena) {
   });
 }
 
+// TAM ARRIVES WHERE THE SHADOW BROKE (dad's request, 2026-09-07).
+//
+// Same shape as openTheWayOn above, and for the same reason: a wayfarer who
+// only turns up on a REBUILD is a wayfarer the child who just won never meets.
+// He walks in a beat after the door does — the shard shower, then the way on,
+// then him — so the three things do not land on top of each other.
+//
+// The flag is already set by the time any defeat path calls this (boss.js sets
+// it before it fires onDefeated; onWardenDefeated sets it before it calls
+// here), so wayfarerPost answers the same question it will answer on the next
+// visit, and he cannot appear one boss early.
+function summonWayfarer(arena) {
+  const post = arena && wayfarerPost(arena.roomId);
+  if (!post || arena.wayfarer) return;
+  let comeIn = 2.6;
+  arena.onAnimate((tNow, dt) => {
+    if (comeIn <= 0) return;
+    comeIn -= dt || 0.016;
+    if (comeIn > 0) return;
+    if (arena !== world) return;      // they walked out; he'll be there next time
+    spawnWayfarer(arena, post).then(() => {
+      for (let i = 0; i < 10; i++) {
+        juice.burst(post.x + (Math.random() * 2 - 1) * 0.7, 0.3 + Math.random() * 1.5,
+          post.z + (Math.random() * 2 - 1) * 0.7, i % 2 ? 0xa8bcff : 0xdfe6ff, 6);
+      }
+      audio.play('form-switch', { volume: 0.6, rate: 0.9 });   // the moonstone chime
+    }).catch((e) => console.warn('[wayfarer] could not arrive', e));
+  });
+}
+
 function updateMusic() {
   // BOSS MUSIC, FROM THE ONE LIST THAT KNOWS WHICH ROOMS ARE BOSS ROOMS.
   //
@@ -1399,23 +1442,35 @@ function updateMusic() {
     && ((world.boss && !world.boss.defeated) || (world.warden && !world.warden.dead))) {
     audio.playMusic('boss-loop', { intro: 'boss-intro' });
   }
-  // REGIONS 5-7. Five distinct loops exist for seven regions, so reuse is
-  // forced — but it is arranged so no two ADJACENT regions share one, which is
-  // the only part a child can actually notice. Frostpeak has stone-deep, so
-  // Stormreach takes causeway; the Vale takes region-stone; the Court takes
-  // stone-deep again, four regions later. All three are placeholders and want
-  // their own track (polish list, same as the woods and the cold hush).
+  // THE REUSE ERA IS OVER (2026-09-08). This paragraph used to explain how five
+  // loops were stretched across seven regions and arranged so no two ADJACENT
+  // ones clashed — a real constraint honestly handled, and eight new CC0 tracks
+  // later it is simply no longer the situation. Every section named below has
+  // a loop of its own: seven regions, three roads, the Kiln, the Village in
+  // both of its states, the Spire and its crown, the healed Hollow, and
+  // Stoneroot's two halves. verify-music §2 is what stops that quietly
+  // regressing.
   // THE REBUILT LEVELS WERE NEVER ROUTED. This whole chain keyed off the OLD
   // room ids — e for Stoneroot, w for the Wild Woods — and the rebuilt levels
   // use v and t. So the rebuilt Stoneroot and Wild Woods, which are the levels
   // the kids actually play, have been falling through to Ember Hollow's loop
   // since the day they were built. Nothing was ever checking.
-  else if (state.room[0] === 'v') audio.playMusic('region-stone');   // Stoneroot, rebuilt
-  else if (state.room[0] === 't') audio.playMusic('causeway');       // Wild Woods, rebuilt
-  // The reuse era ends here (the polish list's oldest item): Frostpeak,
-  // Stormreach, the Vale and the Court each carry their own theme now. The
-  // Wild Woods keeps causeway — its long-standing sound, and no neighbour
-  // shares it.
+  // STONEROOT IS TWO SOUNDS, NOT ONE. `stone-deep` — the game's darkest loop —
+  // had been left with no room of its own once the three roads got theirs: it
+  // was reachable only as the `then:` after the Warden's victory sting, a 2 MB
+  // file that played for fifty seconds once per save. It belongs to the SUNKEN
+  // district (vgc, vc1, vc2, vcp, vc3) and the crypt beyond it, which is the
+  // half of Stoneroot that goes down — so a child descending out of the
+  // glimmer and the quarry hears the floor drop away, and the Warden's sting
+  // resolves into the loop the room around them is already wearing.
+  else if (state.room[0] === 'v') {
+    const deep = state.room[1] === 'c' || state.room === 'vgc' || state.room === 'vz';
+    audio.playMusic(deep ? 'stone-deep' : 'region-stone');
+  }
+  // THE WILD WOODS HAS ITS OWN SOUND NOW (2026-09-08). It shared causeway with
+  // the Ember Causeway and the Kiln — three places, one loop — and dad asked
+  // for a variety of music, one per section. See js/audio.js for the casting.
+  else if (state.room[0] === 't') audio.playMusic('wildwoods');
   else if (state.room[0] === 's') audio.playMusic('stormreach');
   else if (state.room[0] === 'd' && state.room !== 'den') audio.playMusic('sunkenvale');
   else if (state.room[0] === 'x') audio.playMusic('shadowcourt');
@@ -1428,15 +1483,25 @@ function updateMusic() {
   // Restored Village: the healed-world calm it was fighting for. The Spire:
   // the cold high hush — a moonlit tower over a sleeping world — until the
   // crown, which is the warmest room in the game and sounds like it.
-  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'ember-calm' : 'village-dark');
-  // THE TWO ROADS BETWEEN REGIONS. Neither was routed either, and both fell
-  // through to the bossDefeated branch below — which is always true by the time
-  // a child can reach them — so the frozen harbour and the night road were both
-  // playing the Den's lullaby. `stone-deep` is the game's darkest loop and
-  // nothing adjacent to either road uses it (Ember has region-ember, Stoneroot
-  // region-stone, Frostpeak and Stormreach their own).
-  else if (state.room[0] === 'n' || state.room[0] === 'g' || state.room[0] === 'q') audio.playMusic('stone-deep');
-  else if (state.room === 'm3') audio.playMusic('ember-calm');
+  // The RESTORED Village has its own calm now rather than the Den's lullaby
+  // through the old ember-calm alias — it is a different place being at peace.
+  else if (state.room[0] === 'y') audio.playMusic(villageCleared() ? 'village-calm' : 'village-dark');
+  // THE THREE ROADS BETWEEN REGIONS, each with its own sound. They were routed
+  // in 2026-09-03 (before that all three fell through to the bossDefeated
+  // branch and played the Den's lullaby) but routed to ONE track, stone-deep —
+  // and one loop across three roads is the one thing a road must not do. A road
+  // exists to make the change of place FELT, and three that sound alike make it
+  // felt once.
+  else if (state.room[0] === 'n') audio.playMusic('road-night');
+  else if (state.room[0] === 'g') audio.playMusic('road-green');
+  else if (state.room[0] === 'q') audio.playMusic('road-market');
+  // ...and the last three roads, built the same day the sixth loop arrived.
+  else if (state.room[0] === 'c') audio.playMusic('road-climb');
+  else if (state.room[0] === 'p') audio.playMusic('road-plunge');
+  else if (state.room[0] === 'h') audio.playMusic('road-hollow');
+  // The Spire's crown is the warmest room in the game and now sounds like it,
+  // instead of borrowing the Den's.
+  else if (state.room === 'm3') audio.playMusic('crown');
   else if (state.room[0] === 'm') audio.playMusic('spire');
   // THE KILN HAD NO BRANCH AT ALL. This read `state.room[0] === 'k'`, and the
   // k-rooms are RETIRED — the live Kiln is ld/ld1/lg4 inside the rebuilt Level 1.
@@ -1689,6 +1754,7 @@ async function setupRoomExtras() {
     spawnShards(world, w.x, w.z + 1.5, 18);
     spawnPowerup(world, w.x, w.z + 2, 'star');
     openTheWayOn(world);   // the crypt's north road, opened where the child stands
+    summonWayfarer(world); // ...and Tam, a beat later, with the ride home
     if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
     ui.refreshBadge();
     narration.say('warden_defeat');
@@ -1706,6 +1772,18 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  // GRASS AND FLOWERS COME BACK, once the region's guardian is free
+  // (js/restoration.js). LAST, and that position is the whole of it: the first
+  // cut ran this inside buildRoom, which is before the breakables, the chests
+  // and the pups have laid their colliders — and verify-healing §6 duly found
+  // three blooms growing out of things that were not there yet. Clear ground
+  // means clear of everything the child can see, so it is measured after
+  // everything the child can see exists.
+  await bloom(world);
+  // TAM, on every visit after the fight. The Den's copy of him is spawned by
+  // spawnDenNpcs alongside the other villagers (js/npcs.js) — spawnWayfarer
+  // refuses a second one, so it does not matter which of the two runs first.
+  await spawnWayfarer(world, wayfarerPost(world.roomId));
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   // every so often a smashed pot hides a power-up
@@ -1952,9 +2030,19 @@ function initDevHarness() {
 // regionOf() lives in state.js now — the map screen needs it too.
 
 function applyRoomMood() {
+  // THE SHADOW LIFTS OFF THE LIGHT ITSELF once the region's guardian is free
+  // (js/restoration.js). Everything else the healing does is a thing IN the
+  // room; without this the room goes on being LIT as if the shadow were still
+  // sitting on it, and the first healed contact sheet showed a Wild Woods with
+  // flowers in it and wolves grazing through it that a child still could not
+  // see. Same hues, so wayfinding by colour temperature survives intact —
+  // half a stop brighter, and no more.
+  const heal = moodLift(world.roomId);
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
-  scene.background.setHex(bg);
-  scene.fog.color.setHex(bg);
+  tmpCol.setHex(bg).getHSL(tmpHSL);
+  if (heal) tmpCol.setHSL(tmpHSL.h, tmpHSL.s, Math.min(0.5, tmpHSL.l + heal * 0.6));
+  scene.background.copy(tmpCol);
+  scene.fog.color.copy(tmpCol);
   // a room may recolour the light itself (Frostpeak runs cold; everywhere
   // else keeps the warm ember rig the earlier regions were tuned against)
   const lt = world.lightTint;
@@ -1977,9 +2065,9 @@ function applyRoomMood() {
     tmpCol.setHex(hex).getHSL(tmpHSL);
     return tmpCol.setHSL(tmpHSL.h, Math.max(tmpHSL.s, sat), want);
   };
-  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62, 0.18));
-  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30, 0.22));
-  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74, 0.22));
+  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62 + heal, 0.18));
+  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30 + heal, 0.22));
+  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74 + heal, 0.22));
 }
 
 function snapCamera() {
@@ -2388,6 +2476,8 @@ async function start() {
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
+      // ...and the pack grazing where the shadows used to stand
+      if (world.updateGrazers) world.updateGrazers(dt, t, player);
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
@@ -2431,6 +2521,7 @@ async function start() {
             // child is still standing in the arena, and if they have already
             // run out, the rebuild-time path shows the open door anyway.
             openTheWayOn(world);
+            summonWayfarer(world);
             if (state.room === 'f5') {
               // BOREAL FALLS — the storm lifts off Frostpeak and the Frost
               // Wolf is earned (boss.js set the flags; here is the party)
@@ -2439,6 +2530,13 @@ async function start() {
               narration.say('frost_grant');
               narration.say('frost_howto');
               WS.set('frost', 'restored');
+              // WITNESSED, not found later. Ember and Stoneroot have grown
+              // their green around the player's feet since they were built;
+              // the other five regions changed a background colour on the
+              // next rebuild and nothing else, which put five of the seven
+              // biggest moments in the game off screen. healLive is that same
+              // beat, generalised (js/restoration.js).
+              healLive(world);
               narration.say('frost_restore_1');
               narration.say('grimm_taunt_4');
               setTimeout(() => narration.say('luna_dream_4'), 9000);
@@ -2448,6 +2546,7 @@ async function start() {
               audio.playMusic('victory', { loop: false, then: 'den' });
               narration.say('aria_defeat');
               WS.set('storm', 'restored');
+              healLive(world);
               narration.say('storm_restore_1');
               narration.say('grimm_taunt_5');
               setTimeout(() => narration.say('luna_dream_5'), 9000);
@@ -2457,6 +2556,7 @@ async function start() {
               // thing the game shows is the Den, full.
               audio.playMusic('victory', { loop: false, then: 'den' });
               WS.set('court', 'restored');
+              healLive(world);
               narration.say('end_1');
               setTimeout(() => narration.say('end_2'), 5000);
               setTimeout(() => narration.say('end_3'), 11000);
@@ -2474,6 +2574,7 @@ async function start() {
               audio.playMusic('victory', { loop: false, then: 'den' });
               narration.say('meri_defeat');
               WS.set('vale', 'restored');
+              healLive(world);
               narration.say('vale_restore_1');
               narration.say('grimm_taunt_6');
               setTimeout(() => narration.say('luna_dream_6'), 9000);
@@ -2485,6 +2586,7 @@ async function start() {
               narration.say('verdant_grant');
               narration.say('verdant_howto');
               WS.set('wild', 'restored');
+              healLive(world);
               narration.say('wild_restore_1');
               narration.say('grimm_taunt_3');
               setTimeout(() => narration.say('luna_dream_3'), 9000);

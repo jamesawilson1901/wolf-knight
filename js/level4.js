@@ -157,7 +157,7 @@ export async function loadFrostKit() {
   return frostKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, visibleReward } =
+const { shell, sideDoor, scatter } =
   makeBuilders({ kit: () => frostKit, isGrey: () => GREY() });
 
 const { fallenColumn, rubbleField, wayshrine, lowWall } =
@@ -481,9 +481,18 @@ export async function buildF1(scene) {
     paths: [[[0, 12], [0, 4], [-3, -3], [0, -12]], [[1, 2], [8, 1], [15, 0]]],
   });
   world.spawn = { x: 0, z: 11, angle: Math.PI };
-  // BACK DOWN TO SYLVA'S GLADE. The v3.21 door said 'w5', a retired id that
-  // resolveRoom redirects to tgl; it names the live room now.
-  sideDoor(world, 's', halfW, halfD, 'tgl', { x: 0, z: -10.5, angle: 0 });
+  // BACK DOWN THE COLD CLIMB, not straight to Sylva's glade.
+  //
+  // A road is not a road if it is only walked one way. THE COLD CLIMB went in on
+  // 2026-09-08 between Sylva's glade and here, and this door was left pointing at
+  // the arena — so a child walked OUT through the road and, coming back,
+  // teleported over the whole of it. Every road that already existed does it
+  // the other way: t1a's south door names g2, the Greenway's last room, not
+  // the Great Vault. Found by verify-level4 and verify-progression both
+  // reporting that the glade no longer opens onto Frostpeak, which is true and
+  // was the half of the change that had been done.
+  // (The v3.21 door here said 'w5', a retired id resolveRoom redirects to tgl.)
+  sideDoor(world, 's', halfW, halfD, 'c2', { x: 0, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'f2', { x: 0, z: 11, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'f1b', { x: -7, z: 0, angle: Math.PI / 2 });
 

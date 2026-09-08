@@ -154,10 +154,50 @@ const GATED = {
   // bar pockets are shallow — floor beside the bars still counts as "near the
   // door". Depth of pocket is a look choice, not a rule; both are correct.
   'm2→m3': 'the way to the crown — barred until the stone AND flame sigils burn',
+  // THE TWO ROADS WHOSE ROAD *IS* THE GATE, and the distinction that makes
+  // them right where c2/p2/h2 were wrong.
+  //
+  // A road between regions exists to GRADUATE THE VERB BEHIND: the Greenway's
+  // rockfall is stomped with the Earth Wolf the Bone Warden just handed over,
+  // and the Cold Climb's thorn is cut with the Verdant Wolf Sylva just handed
+  // over. The child always has the tool — it is one room old — so neither is
+  // ever a wall in play, and walling the road is the whole design.
+  //
+  // A gate for the region AHEAD is the opposite and must never sit on the way
+  // on. All three of the 2026-09-08 roads did exactly that on their first cut
+  // and this suite caught all three; they guard side nooks now.
+  'g1→g2': 'the rockfall — stomped with the Earth Wolf the child arrives holding',
+  'c1→c2': 'the thorn road — cut with the Verdant Wolf the child arrives holding',
+};
+
+// DOORS A GATE'S OWN GEOMETRY STANDS IN.
+//
+// GATED above excuses a doorway whose FLOOR is clear but which nothing can
+// walk to yet. It deliberately refuses to excuse `open === 0` — a solid
+// doorway usually means a prop is sitting on a door and no flag will move it,
+// which is a real bug and one this suite has caught before.
+//
+// But the Wild Woods' ROOTBAR is a gate whose whole point is that it fills the
+// arch: five blighted roots heaved across it, with a box collider to match, so
+// the way is PHYSICALLY shut rather than merely `when`-gated (js/level3.js says
+// why in full — a child once walked up to an open arch and nothing happened).
+// Under the old rule those two doors could only ever be a red line in
+// tools/known-fail.txt, which is where they have sat.
+//
+// So they are not asserted away — they are PROVED. Open the gate the way the
+// game opens it, rebuild the room, and demand the doorway becomes reachable.
+// A barrier that lifts is a gate; one that does not is the bug the strict rule
+// was protecting.
+const BARRED = {
+  'tkn→tc3': { why: 'the Knot\'s rootbar — lifts when its own plate is pressed',
+    open: () => { window.__game.state.flags.plates.l3_knot_p1 = true; } },
+  'tc4→tgl': { why: 'the great thorn-knot across the glade door — cut in t3b',
+    open: () => { window.__game.WS.set('wild3', 'knotCut', true); } },
 };
 
 console.log('\n── every door has floor in front of it that the player can reach ──');
 let checked = 0;
+const barredToProve = [];
 for (const room of ROOMS) {
   if (!(await go(room))) { check(`${room} builds`, false, { why: 'would not build' }); continue; }
   const r = await reachReport();
@@ -168,11 +208,23 @@ for (const room of ROOMS) {
     // A gate can only excuse a doorway that is physically OPEN. If the floor
     // itself is solid, something is sitting on the door and no flag will help.
     if (gated && d.open > 0) { console.log(`· ${room} → ${d.to} — shut by design: ${gated}`); continue; }
+    const barred = BARRED[`${room}→${d.to}`];
+    if (barred) { barredToProve.push({ room, to: d.to, ...barred }); continue; }
     check(`${room}: the way to ${d.to} is reachable`, false,
       { door: { x: d.x, z: d.z }, openCells: d.open, reachableCells: d.reachable,
         why: d.open === 0 ? 'the doorway is SOLID — something is sitting on it'
           : 'the doorway is open but walled off from where the player arrives' });
   }
+}
+
+// ...and now open each barred gate for real and insist the door appears.
+for (const b of barredToProve) {
+  await page.evaluate(b.open);
+  if (!(await go(b.room))) { check(`${b.room} rebuilds with its gate open`, false); continue; }
+  const r = await reachReport();
+  const d = r.doors.find((x) => x.to === b.to);
+  check(`${b.room}: ${b.why} — and the way to ${b.to} opens when it lifts`,
+    !!d && d.reachable > 0, d ? { openCells: d.open, reachableCells: d.reachable } : 'door gone');
 }
 check(`all ${checked} doors across ${ROOMS.length} rooms are walkable-to`, errors.length === 0);
 

@@ -1,3 +1,12 @@
+> **SUPERSEDED 2026-09-08 — nobody has to read these out.** Dad: "I won't be
+> recording a voice for pip so look into other options available to you." Every
+> line below is now rendered offline by a local neural TTS and shipped as an ogg
+> (`tools/tts-narration.py`, `assets/audio/vo`, and SYSTEMS.md's note). This
+> file stays as the SCRIPT — the words, grouped by character, with the
+> direction — because that is what a real recording session would still need if
+> anyone ever wants one, and because the renderer's casting table was written
+> against these groupings.
+
 # Wolf Knight — Voice Recording Script (v3.21)
 
 Every spoken line in the game, grouped by character. Recorded lines will
@@ -34,8 +43,6 @@ replace the robot text-to-speech voice.
   “Watch your step — lava ahead. Stay on the stone.”
 - `moth_intro`
   “Shadow moths! Wait for them to dive, then move.”
-- `geyser_intro`
-  “Fire geysers! Cross when they rest. Watch the timing.”
 - `hound_branch`
   “A shadow hound guards that way. Beat it for a pup — or skip it if you like.”
 - `key_door`

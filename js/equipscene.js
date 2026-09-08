@@ -32,7 +32,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
-import { WEAPONS, SHIELDS, ARMOURS, weaponDef, shieldDef, armourDef } from './items.js';
+import { WEAPONS, SHIELDS, weaponDef, shieldDef, armourDef } from './items.js';
 
 // ---------------------------------------------------------------------------
 // Item art: one still render per (file, tint), cached by that pair.

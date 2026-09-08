@@ -24,6 +24,7 @@
 // pushes north, and a gale visibly streams faster than a breeze.
 
 import * as THREE from 'three';
+import { calmedStrength } from './restoration.js';
 
 export const WIND = { breeze: 1.6, gust: 4.2, gale: 7.2 };
 
@@ -89,6 +90,12 @@ function streaks() {
 // through — they are turned aside — so they are exempt from the crossing rule
 // that every other gale obeys (tools/verify-storm.mjs).
 export function galeLane(world, { x, z, w, d, dir = 'n', strength = 'gale', id = null, vaned = false }) {
+  // THE WIND DROPS when the region's guardian is free (js/restoration.js).
+  // Every gale in the game is built here, so this is the whole of "winds
+  // calm" — and it falls back to 'breeze' rather than deleting the lane,
+  // because a calmed cliff should still look like weather: the banners lean,
+  // the motes drift, and nothing pushes a child anywhere.
+  strength = calmedStrength(strength, world.roomId);
   const p = PUSH[dir] || PUSH.n;
   const v = WIND[strength] || WIND.gale;
   const lane = {

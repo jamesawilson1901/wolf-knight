@@ -44,6 +44,23 @@ await page.evaluate(() => {
   g.player.iframes = 99999;
   g.WS.set('wild3', 'rootCut', true); g.WS.set('wild3', 'logDown', true);
 });
+// WK_LATE=1 measures the SECOND HALF OF THE GAME. Half the rooms in this game
+// are two rooms — a boss arena with a boss in it and the same arena healed, a
+// Village square being fought over and a Village square at peace — and a
+// placement has to be clear in BOTH. Without this the probe could only ever
+// answer for the first of each pair, which is how two of Tam's eight posts
+// were placed wrong on the first pass and caught on the second.
+if (process.env.WK_LATE) {
+  await page.evaluate(() => {
+    const g = window.__game;
+    for (const f of ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
+      'ariaDefeated', 'meriDefeated', 'grimmFreed']) g.state.flags[f] = true;
+    for (const k of ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']) {
+      g.WS.set(k, 'restored');
+    }
+    for (const k of ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']) g.WS.set('village', 'guardian_' + k);
+  });
+}
 const go = async (room) => {
   for (let a = 0; a < 6; a++) {
     await page.evaluate((r) => { const g = window.__game;

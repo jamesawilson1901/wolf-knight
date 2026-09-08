@@ -277,9 +277,30 @@
     "assets/audio/music/sunkenvale.ogg",
     "assets/audio/music/shadowcourt.ogg",
     "assets/audio/music/village-dark.ogg",
-    "assets/audio/music/spire.ogg"
+    "assets/audio/music/spire.ogg",
+    "assets/audio/music/kiln.ogg",
+    "assets/audio/music/ember-calm.ogg",
+    "assets/audio/music/wildwoods.ogg",
+    "assets/audio/music/road-night.ogg",
+    "assets/audio/music/road-green.ogg",
+    "assets/audio/music/road-market.ogg",
+    "assets/audio/music/village-calm.ogg",
+    "assets/audio/music/crown.ogg",
+    "assets/audio/music/road-climb.ogg",
+    "assets/audio/music/road-plunge.ogg",
+    "assets/audio/music/road-hollow.ogg"
    ],
-   "note": "The first music in the game with a formal licence file on disk. Six themes from medieval-fantasy/music/theme-{1..6}.ogg, renamed to the region each serves; the theme→region mapping was chosen by decoded-audio character (duration, energy, onset density, brightness) and needs a HUMAN EAR's veto — dad has final cut on all six."
+   "note": "The first music in the game with a formal licence file on disk. Six themes from medieval-fantasy/music/theme-{1..6}.ogg, renamed to the region each serves; the theme→region mapping was chosen by decoded-audio character (duration, energy, onset density, brightness) and needs a HUMAN EAR's veto — dad has final cut on all six. EIGHT MORE 2026-09-08, from rpg-battle-system/music in the same repository (theme-16, 9, 2, 8, 1, 3, 12, 15 in that order) — the LICENSE.txt copied here is the repository's own and covers every pack in it, which is why no second licence file was added. Cast the same way, by tools/probe-music-character.mjs; same veto. THREE MORE the same day (theme-6, 7, 11) for the three roads built in v3.116.0 — eleven of the pack's sixteen themes are now in the game."
+  },
+  {
+   "pack": "Piper neural voices — the pre-rendered narration (jenny_dioco / alba / northern_english_male)",
+   "licence": "piper-voices.txt",
+   "states": "Three separate dataset licences, quoted in full in the licence file: jenny_dioco (commercial permitted; attribution explicitly NOT required when distributing generated clips, given anyway), alba (CC BY 4.0, University of Edinburgh CSTR), northern_english_male (CC BY-SA 4.0, Open SLR 83 — the clips rendered from it are offered under CC BY-SA on that account).",
+   "source": "https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models (republishing rhasspy/piper voices unchanged)",
+   "covers": [
+    "assets/audio/vo"
+   ],
+   "note": "NO MODEL AND NO DATASET SHIPS. 202 clips, one per narration line, rendered once offline by tools/tts-narration.py so that what a child hears does not depend on whichever speech engine their tablet happens to have. en_US-ryan-high was downloaded and dropped (CC BY-NC-SA); en_GB-alan-medium was dropped because its dataset licence is stated only as \"See URL\" and that URL was unreachable — an unread licence is not a cleared one."
   },
   {
    "pack": "Wolf Knight — generated enemy bodies (first-party)",

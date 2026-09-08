@@ -37,7 +37,7 @@
 // critical-path puzzles in 3 regions at once — out of scope for a static-
 // analysis cleanup pass. Documented, not silently accepted: this is the
 // SAME kind of structural constant as L2's own W5(a) exemption below.
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync } from 'fs';
 
 const problems = [];
 const ok = (m) => console.log(`✓ ${m}`);

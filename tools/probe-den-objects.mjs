@@ -17,7 +17,7 @@ const r = await page.evaluate(() => {
   window.__game.world.root.traverse((n) => {
     if (!n.isMesh && !n.isInstancedMesh) return;
     n.updateWorldMatrix(true, false);
-    const p = new (n.matrixWorld.constructor === Object ? Object : window.__game.world.root.position.constructor)();
+    new (n.matrixWorld.constructor === Object ? Object : window.__game.world.root.position.constructor)();
     const px = n.matrixWorld.elements[12], pz = n.matrixWorld.elements[14];
     const c = n.material && n.material.color ? n.material.color.getHexString() : '?';
     out.push(`${n.isInstancedMesh ? 'INST' : 'mesh'} ${(n.material&&n.material.name)||'-'} #${c} at (${px.toFixed(1)}, ${pz.toFixed(1)})`);

@@ -5428,3 +5428,275 @@ deliberately not enough to guess from.
 The honest framing, which §7b already insisted on and which this session
 proves again: "all green" is a claim about coverage, not about the game, and
 it is worth nothing at all if nobody checks whether the gate ran.
+
+## The flag that was written and never read (2026-09-08, v3.112.0)
+
+Dad, twice in one evening. First: *"have an NPC appear in the room of every
+boss fight after they are defeated. when you talk to him he offers
+teleportation back to the den and all previous levels. when you talk to him in
+the den he offers the same."* Then, while that was being built: *"when the boss
+of each area I want the area to be transformed. grass begins to return,
+flowers. lava cools to rock. water returns, winds calm. animals replace enemies
+harmlessly grazing. a real terranigma moment."*
+
+### Tam
+
+The travel MENU already existed and already had exactly the semantics asked
+for — `menus.showTravel()` lists the Den plus every region whose boss flag is
+set, and main.js opens it whenever the player walks inside 1.5u of
+`markers.travelSpot`. What was missing was a body. The only thing in the game
+offering a ride home was a glowing rock in the Den, so a child who had just
+beaten a boss had to walk the whole way back to find it.
+
+One post per boss arena, gated on that region's own boss flag, plus the Den.
+Every coordinate measured with `tools/probe-freespot.mjs` in **both** states
+each arena has — before the fight and after the healed rebuild. Two of the
+eight moved because of it. He is `rogue_hooded.glb` washed moon-blue, because
+all five KayKit humanoids are already somebody and the hood is the one that
+reads as *walks the roads*; the moonstone shard at his shoulder, at the Den
+orb's own colour and bob, is what tells a non-reader what he is for.
+
+### The measurement that made the second ask urgent
+
+`js/main.js` has set `WS.set(<region>, 'restored')` on every boss defeat since
+the day it was written. Counted, rather than remembered:
+
+```
+grep -c restored js/level1.js … js/level7.js  →  0 0 1 0 0 0 0
+```
+
+The one is a comment. **Not one room in any rebuilt level had ever read the
+flag.** The only readers left were the Den's villager list and a handful of
+rooms in `js/rooms.js` that `RETIRED_ROOMS` redirects away from. So the flag
+had been written and thrown away for months: a child beat Ember and walked back
+through an Ember that had not changed by a pixel. `js/level1.js` even says so
+in a comment beside the lava — *"Nothing ever cools this. `lava_cooled` is a
+narration line and nothing more; no code removes a hazard when the boss
+falls."*
+
+### The healing
+
+`js/restoration.js` is the reader. Five answers, each hooked into the one place
+the game already funnels that thing through, rather than one big cutscene —
+because the transformation has to survive being walked away from and come back
+to. It is what the region IS now, not something that plays.
+
+| what | where it hooks | what changes |
+| --- | --- | --- |
+| the ground | `healPatches` in levelkit's `shell()` | scorch→moss, ash→grass, corruption→grass, rubble→moss, **mud→water** |
+| the wind | `calmedStrength` in `wind.js galeLane()` | every gale falls back to the harmless breeze the Landing teaches with |
+| the lava | `world.addLava()` declines the hazard | level1 paints cooled black crust with the last heat breathing in it |
+| the flowers | `bloom()` from `setupRoomExtras` | instanced, on measured-clear ground; Stoneroot gets glow-moss, not a lawn |
+| the animals | `spawnEnemies()` harvests its own markers | a wolf grazes where each shadow stood |
+
+`mud → water` is where *"water returns"* landed. It is the one item on the list
+with no obvious home otherwise: the Vale is the water region and its problem is
+too MUCH water, which Meri's defeat already drains. A mud flat is the shape of
+a pool with no pool in it, so filling one back up is the true sentence.
+
+Sand, gravel, ice and water are left alone: what a place is MADE of does not
+change, only what was done to it. A healed shore that had stopped being sandy
+would read as a different room rather than a mended one.
+
+The animals are `wolf.gltf` — the game's own animal, the one the pups are made
+of, shipping Eating / Idle / Idle_2_HeadLow / Walk, which is a whole grazing
+life with no new asset and no procedural geometry (CLAUDE.md). They carry **no
+collider**, Biscuit's rule: a safe room must not be one a child can be shoved
+around in, and a wandering body with a collider is a wandering obstacle.
+
+### Two things the suite caught that reading would not have
+
+`bloom()` first ran inside `buildRoom`, which is before the breakables, chests
+and pups lay their colliders — so three of the sample rooms grew a flower out
+of something that did not exist yet. Clear ground means clear of everything the
+child can see, so it is measured after everything the child can see exists.
+
+And the herd did not move. The wander took ONE guess at a nearby spot and, if
+it was blocked, fell back to "walk to where you already are" — which arrives
+instantly, resets the timer, and displaces nobody. Three animals, nine seconds,
+zero movement between them. Six tries, then stay grazing.
+
+### What is deliberately not healed
+
+The Village and the Spire. The Village's wards are *everything in this square
+is dead* gates (`world.enemies.length && every dead`) and an empty room never
+satisfies one; the Spire's is the mirror of it and would satisfy instantly.
+Both already have their own before/after — `villageShadow` and `village` are
+two hues of one ground style. The Den is named out too: it has its own healing
+already, and `regionOf` would otherwise fall it through to Ember.
+
+### The moment itself
+
+Ember and Stoneroot have grown their green around the player's feet since they
+were built. The other five regions changed a background colour on the next
+rebuild and nothing else — five of the seven biggest moments in the game,
+happening off screen. `healLive()` is that beat generalised, growing the
+instance matrices so the whole meadow is one draw call while it comes up.
+
+`tools/verify-healing.mjs`: 33 checks, before-and-after of one room per region,
+including the draw-call budget (the Vale's worst room lands at 122 of 125) and
+a sweep proving nothing blooms inside a rock. `LATE=1 node tools/shot.mjs` now
+sets all seven regions, so the contact sheet can show the healed half of the
+game — which is now half of what the game contains.
+
+---
+
+## The manifest halves, and four doors stop being called walls (2026-09-08, v3.114.0 → v3.120.0)
+
+Dad, all in one go: *"tam needs to be added to the spire and the village. pip
+says something about 'fire geysers' this is irrelevant as there are none. get
+rid of it. make sure there is music for every section. make sure there is a
+variety of it. build the content that is missing. I won't be recording a voice
+for pip so look into other options. keep economy and xp balance how it is for
+now. then proceed to whatever is left on the list."*
+
+### Tam, the geyser, the music, the voice
+
+Tam's post list is ten entries now: seven boss arenas keyed on the boss's own
+flag, the Den on a marker, and the Spire and the Village on a `when` predicate,
+because neither of those has a boss flag to hang off — the Village opens when
+its six guardians are down, and the Spire is what that opens.
+
+`geyser_intro` is deleted. The Ember rebuild dropped the beat and kept the
+line, so Pip had been naming a hazard that has not existed in the game for
+weeks — and `learn_jump` was hanging off the same phantom marker. Deleting a
+narration LINE is safe under additive-forever, which is a rule about SAVE
+fields: nothing a save holds points at a line id.
+
+Eleven new music files, and the two aliases (`kiln`, `ember-calm`) that were
+pointing two sections at one track are real files now.
+
+Pip's voice is 202 clips, 6.34 MB, 14.2 minutes, cut with Piper from three
+voices through a `CAST` table of (model, length_scale, pitch) — fourteen
+characters, speed pre-compensated for the resample. `audio.speakLine()` plays
+the clip if there is one and `narration._speakDevice` still does the browser
+voice when there is not, so a missing clip is a fallback, not a silence.
+huggingface.co is blocked by policy from this environment; the voices came off
+the `k2-fsa/sherpa-onnx` GitHub release assets instead.
+
+### The content that was missing
+
+Three roads (the Cold Climb c1/c2, the Plunge p1/p2, the Hollow Road h1/h2) and
+four spirit homes in the Den. Each road carries its **own** kit list rather than
+borrowing its region's: `grove`/`thicket` pick props by KEY NAME (`treeQ*`,
+`bushQ*`, `grassQ*`), and frostKit has none of those names, so the Cold Climb's
+first cut came out with no trees at all and nothing said so. The districts are
+read off the rooms at either end, which is what stops three new roads reading as
+one flat wash between six dressed regions.
+
+The four new spirit homes went in through a `SPIRIT_HOMES` table that replaced
+two hand-copied blocks — the copies were how there came to be two and not six.
+
+### One draw call per character
+
+`prepareCharacter()` merges skinned primitives per material now. The Den was 152
+draw calls against a 135 ceiling, and the A/B said it was over even with only
+the two old spirits in it: Tam had gone in the day before without being measured
+against that room's budget. The merge took it to 111.
+
+The bug worth writing down: the first cut did nothing at all. `SkeletonUtils.clone()`
+builds a **separate `Skeleton` instance per SkinnedMesh over the same bones**, so
+an identity check on `skeleton` rejects every cloned character in the game and
+fails silently. Compare `skeleton.bones` element-wise.
+
+### The save bug nobody had looked for
+
+`verify-profiles` is new (two children, one tablet) and the first thing it found
+was that `persist()` and `applySave()` carried neither `ariaDefeated`,
+`meriDefeated`, `grimmFreed`, `gameComplete`, `ariaHp`, `meriHp`, `grimmHp` nor
+`state.formLock`. The last three regions of the game were not in the save file.
+Proven by stashing the fix and watching §3 fail with exactly those names.
+
+### The manifest
+
+Six known-fail lines on 2026-09-05, two now.
+
+**verify-chests** and **verify-nightroad** were one bug: `walkTo` drove real keys
+straight at a target with no routing, so a prop in between wedged it. `wk-drive`
+has `pathTo` (a 0.4u grid BFS in-page, corner-keeping simplification) and
+`routeTo`, which walks each leg with the same real-key `walkTo` and re-fills a
+wedged leg. 78 standing chests and 32 breakables, all reachable.
+
+**verify-storm** was the suite, not the boss: a test loop of `takeDamage(1)`
+never reduces HP because a boss is immune outside its window. `b.openT = 1;
+b.action = 'prowl'` first, and it is ALL CLEAN plus a new half-HP assertion.
+
+**verify-promises** drove seven of twenty gates and printed a roll call of the
+thirteen. The roll call is a second pass now: everything `promiseGate()` writes
+into `world.promiseGates` is enough to stand off a gate's short axis, face it and
+swing the form its system advertises. Weaker than the seven above it — no chest,
+no before/after reachability, because neither the chest id nor the spot a child
+stands is anywhere in the game data — and the file says so rather than pretending.
+
+**verify-reachable** called five working doors sealed. Two join `GATED` (g1→g2
+and c1→c2 open to the form the child arrives holding). The other two got a new
+mechanism: `BARRED` NAMES what holds a door — the Knot's rootbar, the great
+thorn-knot across the glade door — and then PROVES it, pressing the plate or
+cutting the knot and re-running the flood fill. Naming a door "gated" is an
+assertion; opening it is a measurement.
+
+And it caught a real bug while it was at it: all three new roads ran their
+promise gate wall-to-wall across the way on, two regions before a child has the
+verb. The gates guard side nooks now.
+
+**verify-density**: ysq 25 things on arrival against a floor of 32, lk2 31.
+Neither room is short of props — the square owns 159 distinct models, the most
+in the game — they are short of things the arrival frame reads as SEPARATE,
+because everything the square owns is one atlas and `flattenStatic` folds a
+whole spatial cell of it into one draw. So the square got content the frame has
+none of: gate planters carrying the same six-guardian readout the rest of the
+square does, and four market crates, because the hub of the endgame had four
+pots in it and every one placed by the automatic scatter. The Span got the south
+side of its crossing dressed, which had nothing on it at all. 35 and 48.
+
+### The lint gate blocks now
+
+69 unused-variable warnings burned down and `no-unused-vars` flipped to error.
+One thing to remember from it: an automated rewrite turned `const pr = …, dr = …`
+into an assignment to an undeclared `dr`. `no-undef` caught it in the same second.
+
+### The gauntlet's stick was never plugged in (v3.121.0)
+
+`verify-gauntlet` had been red on the nightly for weeks beside
+`verify-nightroad`, and it was never in the known-fail manifest — so it was a
+real gate failing quietly, which is the exact thing the manifest exists to stop.
+
+Its second promise is that a child who holds the stick straight through a fight
+room is made to pay for it. It has been measuring nothing at all. The section
+sets `window.__stick`, and **nothing in `js/` has ever read that global**: the
+field the joystick writes is `input.move`, and the two suites that drive
+movement this way — `verify-storm` and `verify-l1-doors` — install a `getMove`
+override to give the global meaning. This one never did.
+
+So for as long as the section has existed, the "blind sprint" was Kael standing
+perfectly still at a doorway for fourteen seconds, and what it measured was
+whether an enemy happened to wander over and hit a statue. Rooms passed because
+something walked to the door; rooms failed because nothing did. Both answers
+were about the same non-event.
+
+With the override installed, the real measurement is **36 crossings, two of
+them free** — and both rooms chased earlier in the day off the broken reading
+turn out to have been genuinely wrong as well. At their old positions, with the
+stick working: `q2` is crossed in 6.3s untouched, and `va1` wedges on its own
+rock wall having met nothing.
+
+| room | what was wrong | after |
+| --- | --- | --- |
+| `q2` | spawn-clear nudged all three foes off the door-to-door line; the warden is the only body that can catch a runner, so it is posted **on** the road | 0 → 0.5 |
+| `va1` | the L of rock stands across the through-line; the runner wedged on it six metres from the nearer slime | 0 → 5.5 |
+| `xa1` | the hound stood **behind** the barred door, and the archer was shooting into the wing wall it stood beside — five shots, none surviving three frames | 0 → 5.5 |
+| `lk2` | the Span's road bends north; every body lined the bend, seven metres clear of the straight line | 0 → 0.5 |
+| `xm2` | the mirror maze had nothing harrying a child while they worked it | 0 → 4.5 |
+
+The pattern in four of the five is the same and worth naming: **a room's
+dressing follows its road, and its road bends.** The straight line between two
+doors cuts every corner the road makes, so a body placed "on the path" by eye
+is off the line a runner actually takes. The other one, `q2`, is a fix causing a
+bug — `verify-spawn-clear` moved three bodies onto clear floor in September and
+moved them off the lane doing it. Both suites were right; the room came out
+wrong.
+
+One thing recorded for the next person: **a rime minion cannot cost a crossing
+at any distance.** `SkeletonMinion` has `senseRange 3.4` and `awakenTime 1.9`,
+and a runner covers 4.3u/s — it is six metres past before the thing has finished
+standing up. Shuffling one two metres sideways looks like a fix and is not.

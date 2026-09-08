@@ -32,7 +32,7 @@ await toDdp();
 
 console.log('\n── 1. the special is hers, and only hers ───────────────');
 console.log(JSON.stringify(await page.evaluate(async () => {
-  const boss = await import('/js/boss.js');
+  await import('/js/boss.js');
   return { note: 'skill lives in the skin table, not the class' };
 })));
 const draw = await page.evaluate(() => {

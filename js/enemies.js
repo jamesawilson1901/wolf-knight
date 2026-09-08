@@ -20,6 +20,7 @@ import { state } from './state.js';
 import { juice } from './juice.js';
 import { spawnGearDrop } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
+import { isHealed, graze } from './restoration.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -3732,8 +3733,43 @@ function makeMonsterTint(map) {
   };
 }
 
+// task #31 marker key for a roster id: 'ember-wretch' -> 'emberWretchSpots'
+const rosterKey = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + 'Spots';
+
+// EVERY MARKER THIS FUNCTION SPAWNS A FOE FROM, taken rather than ignored.
+//
+// A healed region has nothing left to fight (js/restoration.js), and the
+// difference between clearing the markers and skipping the reads matters: the
+// markers are read by other systems too — the density suite counts them, the
+// encounter probe walks them — and a room that still ADVERTISES eight shadows
+// while spawning none is a room that lies to every one of them. `wardenSpot`
+// is deliberately not in here: that is a boss, not a patrol.
+function takeEnemySpots(mk) {
+  const out = [];
+  const take = (key) => {
+    const v = mk[key];
+    if (!v) return;
+    if (Array.isArray(v)) {
+      for (const s of v) if (s && typeof s.x === 'number') out.push({ x: s.x, z: s.z });
+    } else if (typeof v.x === 'number') out.push({ x: v.x, z: v.z });
+    delete mk[key];
+  };
+  for (const k of ['shadeSpots', 'mothSpots', 'houndSpot', 'houndSpots', 'slimeSpots',
+    'spitterSpots', 'batSpots', 'minionSpots', 'rogueSpots', 'shieldSpots']) take(k);
+  for (const id of Object.keys(KAYKIT_ROSTER)) take(rosterKey(id));
+  for (const id of Object.keys(MONSTER_ROSTER)) take(rosterKey(id));
+  return out;
+}
+
 export async function spawnEnemies(world) {
   world.enemies = [];
+  // THE SHADOW IS GONE FROM THIS PLACE. Once a region's guardian is free,
+  // every room in it grazes instead of fighting (dad, 2026-09-08). Harvested
+  // up here, before a single read below, so there is no path that can spawn
+  // from a list this function has decided is over. A boss arena is exempt
+  // while its boss is still placed — nothing else in the game removes one.
+  const grazing = (isHealed(world.roomId) && !world.markers.bossSpot)
+    ? takeEnemySpots(world.markers) : null;
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
 
   if ((world.markers.shadeSpots || []).length) {
@@ -3781,8 +3817,6 @@ export async function spawnEnemies(world) {
       world.enemies.push(applyVariant(new Bat(world, s.x, s.z, batGltf), s.variant));
     }
   }
-  // task #31 marker key for a roster id: 'ember-wretch' -> 'emberWretchSpots'
-  const rosterKey = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + 'Spots';
   const rosterIds = Object.keys(KAYKIT_ROSTER).filter((id) => (mk[rosterKey(id)] || []).length);
 
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
@@ -3899,6 +3933,9 @@ export async function spawnEnemies(world) {
       }
     }
   }
+
+  // ...and the pack that lives here now, standing where the shadows stood.
+  if (grazing && grazing.length) await graze(world, grazing);
 
   world.damageEnemiesAt = (x, z, r, dmg, element = 'steel') => {
     let hits = 0;

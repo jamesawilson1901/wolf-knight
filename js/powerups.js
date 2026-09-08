@@ -13,7 +13,7 @@
 // Sources: golden chests, rare pot drops, boss rewards.
 
 import * as THREE from 'three';
-import { state } from './state.js';
+import {  } from './state.js';
 import { audio } from './audio.js';
 
 export const POWERUPS = {

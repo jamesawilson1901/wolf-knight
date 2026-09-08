@@ -572,7 +572,17 @@ export async function buildD1a(scene) {
               { x: -11, z: -9, r: 3.6, kind: 'moss' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'scr', { x: 0, z: 8, angle: Math.PI });
+  // BACK DOWN THE PLUNGE, not straight to the Stormreach shrine.
+  //
+  // A road is not a road if it is only walked one way. THE PLUNGE went in on
+  // 2026-09-08 between the Stormreach shrine and here, and this door was left pointing at
+  // the arena — so a child walked OUT through the road and, coming back,
+  // teleported over the whole of it. Every road that already existed does it
+  // the other way: t1a's south door names g2, the Greenway's last room, not
+  // the Great Vault. Found by verify-level4 and verify-progression both
+  // reporting that the glade no longer opens onto Frostpeak, which is true and
+  // was the half of the change that had been done.
+  sideDoor(world, 's', halfW, halfD, 'p2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'd1b', { x: 0, z: 10, angle: Math.PI });
   if (wade) sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 0, angle: Math.PI / 2 });
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'drownedgate', D);
@@ -1195,9 +1205,14 @@ export async function buildDdp(scene) {
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
-  if (onward) sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI });
+  // THE ROAD, NOT THE REGION (2026-09-08). Meri's hall used to open straight
+  // onto the Court's threshold: the last spirit freed, then the shadow's own
+  // door, with nothing between them. The Hollow Road is what goes there now
+  // (js/levelHollow.js, two rooms), and it is the only stretch of the game
+  // whose whole job is dread. h1's own spawn is (0, 11).
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI });
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSA', D.propTint,
-    () => sideDoor(world, 'n', halfW, halfD, 'x1', { x: 0, z: 10, angle: Math.PI }));
+    () => sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI }));
   heroProp(world, 0, 0, 'throne', D);
   // the arena floor is shallow — the fight is fought ankle-deep, and Meri's
   // slams are what make it deeper

@@ -17,8 +17,6 @@ await d.jump('vc3', ['knight', 'dark_wolf', 'fire_wolf']);
 await d.page.waitForFunction(() => !window.__game.narration.speaking, null, { timeout: 20000 }).catch(() => {});
 const before = await d.page.evaluate(() => {
   const w = window.__game.world;
-  const hand = w.root.children.filter((c) => c.children && c.children.some &&
-    c.children.some((k) => k.userData && false)); // hand is a Group; find via loose set
   return {
     burnables: (w.burnables || []).map((b) => ({ id: b.id, x: b.x, z: b.z })),
     burned: !!window.__game.state.flags.burned.l2_vc3_pin,
@@ -92,7 +90,7 @@ await d.shot('entered-crypt');
 
 // --- and back: the return landing must be on open floor ---
 if ((await d.wk('room')) === 'vz') {
-  const back = await d.walkTo(9, -13.0, { timeout: 40, arrive: 0.6 }).catch(() => ({}));
+  await d.walkTo(9, -13.0, { timeout: 40, arrive: 0.6 }).catch(() => ({}));
   // vz south door leads home; walk toward it
   const doors = await d.wk('doors');
   const home = doors.find((x) => x.to === 'vh');

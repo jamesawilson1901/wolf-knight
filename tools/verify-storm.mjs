@@ -234,20 +234,30 @@ const aria = await page.evaluate(async () => {
   const b = g.world.boss;
   if (!b) return { spawned: false };
   const lanesBefore = g.world.galeLanes.length;
-  // hit her the way the game hits her: through the Hittable the sword arcs and
-  // bolts actually find, not by reaching into her internals
-  const hit = (n) => b.coreHittable.takeDamage(n);
+  // HIT HER THE WAY THE GAME HITS HER — through the Hittable the sword arcs
+  // and bolts actually find — AND WITH HER WINDOW OPEN.
+  //
+  // This is what the known-fail line was really about. Since bosses became
+  // IMMUNE outside their own window (js/boss.js: "a blow rings off it and does
+  // nothing at all", dad's "I can attack spam this boss"), a bare loop of
+  // takeDamage(1) takes her HP nowhere: every hit CLANGs off. So she never
+  // reached half health, the gales never rose, and two assertions below
+  // reported a law the fight no longer had — a suite failing on its own
+  // premise, not on the game. verify-bossopen already knew the trick: hold the
+  // window open and the damage lands.
+  const hit = (n) => { b.openT = 1; b.action = 'prowl'; b.coreHittable.takeDamage(n); };
   // beat her to half health, which is the moment the weather arrives
   let guard = 0;
   while (b.coreHp > b.maxHp / 2 + 0.01 && guard++ < 200) hit(1);
   for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
   const lanesAfter = g.world.galeLanes.length;
+  const halfHp = b.coreHp;
   // ...and then all the way down
   guard = 0;
   while (!b.defeated && b.coreHp > 0 && guard++ < 200) hit(1);
   for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r));
   return {
-    spawned: true, name: b.name, maxHp: b.maxHp,
+    spawned: true, name: b.name, maxHp: b.maxHp, halfHp,
     lanesBefore, lanesAfter,
     defeated: b.defeated, flag: !!g.state.flags.ariaDefeated,
     lanesEnd: g.world.galeLanes.length,
@@ -256,6 +266,8 @@ const aria = await page.evaluate(async () => {
 check('Aria stands at the crown', aria.spawned === true, { name: aria.name, hp: aria.maxHp });
 check('she is a Gale Hound, not a new machine — same class as the Shadowgrip',
   aria.name === 'Aria, the Galebound');
+check('she can actually be hurt inside her window',
+  aria.halfHp !== undefined && aria.halfHp <= aria.maxHp / 2 + 0.01, aria);
 check('at half health the arena narrows with two gales',
   aria.lanesAfter === aria.lanesBefore + 2, aria);
 check('beating her sets the region flag', aria.defeated === true && aria.flag === true, aria);

@@ -123,11 +123,11 @@ if (flags.aria && (await d.wk('room')) === 'scr') {
     if (!inPlace) await d.page.waitForTimeout(500);
   }
   say('the way on opened IN PLACE:', inPlace, 'after', ((Date.now() - it0) / 1000).toFixed(1) + 's');
-  await d.shot('scr-onward-in-place');
+  await d.shot('scr-_onward-in-place');
 }
 
-// the way onward on the rebuild — leave and re-enter
-let onward = false, bossGone = false;
+// the way _onward on the rebuild — leave and re-enter
+let _onward = false, bossGone = false;
 if (flags.aria) {
   // task #32's lesson, applied here too (it only ever landed in
   // fight-boreal): the victory narration holds gates.blocking for tens of
@@ -159,7 +159,7 @@ if (flags.aria) {
   if ((await d.wk('room')) === 'scr') {
     const doors = await d.wk('doors');
     bossGone = !(await d.wk('boss'));
-    onward = doors.length > 1;               // whatever the freed crown grows
+    _onward = doors.length > 1;               // whatever the freed crown grows
     say('freed crown doors:', doors.map((x) => x.to).join(','), '· boss gone:', bossGone);
     await d.shot('scr-freed');
   }

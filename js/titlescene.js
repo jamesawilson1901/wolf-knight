@@ -225,7 +225,14 @@ export async function buildPortraits(renderer) {
   const knight = prepareCharacter(SkeletonUtils.clone(cast.knight.scene));
   knight.visible = true; // the cache may be hidden by the player's form machine
   PORTRAITS.knight = shoot(knight, cast.general.animations, 'Idle_A');
-  for (const form of ['dark_wolf', 'fire_wolf', 'earth_wolf']) {
+  // EVERY WOLF, NOT THE FIRST THREE (2026-09-08). This list used to be
+  // hand-written as dark/fire/earth — the three forms that existed when the
+  // profile picker was built — and the other six shipped without a portrait.
+  // Reading WOLF_TINTS instead means a tenth wolf gets one the day it gets a
+  // colour, and it is what lets the FORM BADGE and the radial picker show the
+  // real animal instead of an emoji: the badge is the control a child touches
+  // most, and 🌩️ next to this game's own art was the worst emoji in it.
+  for (const form of Object.keys(WOLF_TINTS)) {
     const w = prepareCharacter(tintWolf(SkeletonUtils.clone(cast.wolf.scene), WOLF_TINTS[form]));
     PORTRAITS[form] = shoot(w, cast.wolf.animations, 'Idle');
   }

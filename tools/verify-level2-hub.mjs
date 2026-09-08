@@ -82,7 +82,6 @@ const snap = () => page.evaluate(() => {
   };
 });
 
-const SPACES = ['vh', 'vga'];
 console.log('\n── 6. THE HUB VISIBLY CHANGES, driven by state ─────────');
 const hubAt = async (n) => { await setStage(n); await go('vh'); return snap(); };
 const H = [await hubAt(0), await hubAt(1), await hubAt(2), await hubAt(3)];

@@ -1,0 +1,48 @@
+PRE-RENDERED SPOKEN LINES — the three voice datasets behind them
+================================================================
+
+assets/audio/vo/*.ogg are 202 clips, one per narration line, rendered ONCE
+offline by Piper (a local neural TTS) and shipped as audio. No model, no
+inference and no dataset is distributed with the game — only the generated
+clips. tools/tts-narration.py is the renderer and names the casting.
+
+Piper itself: MIT (https://github.com/OHF-Voice/piper1-gpl, formerly
+rhasspy/piper). The ONNX voices were taken from the k2-fsa/sherpa-onnx
+"tts-models" release, which republishes rhasspy's piper voices unchanged.
+
+The three voices used, and what each one's dataset says:
+
+1. en_GB-jenny_dioco-medium  →  Pip, Wren, Aria
+   Dataset: https://github.com/dioco-group/jenny-tts-dataset
+   Stated licence, verbatim from that repository's README:
+     "Attribution is required in software/websites/projects/interfaces
+      (including voice interfaces) that generate audio in response to user
+      action using this dataset. Atribution means: the voice must be referred
+      to as "Jenny", and where at all practical, "Jenny (Dioco)". Attribution
+      is not required when distributing the generated clips (although
+      welcome). Commercial use is permitted. Don't do unfair things like claim
+      the dataset is your own. No further restrictions apply."
+   Wolf Knight distributes GENERATED CLIPS ONLY and does not generate audio at
+   runtime, so attribution is not required — it is given here anyway, because
+   that is welcome and because this project writes down where things came from.
+
+2. en_GB-alba-medium  →  Luna, Petra, Sylva, Boreal, Meri
+   Dataset: https://datashare.ed.ac.uk/handle/10283/3270
+   Licence: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+   Attribution: the Centre for Speech Technology Research, University of
+   Edinburgh.
+
+3. en_GB-northern_english_male-medium  →  Cinder, Grimm, Bram, Rook, Kael, Tam
+   Dataset: http://www.openslr.org/83/  (Open SLR 83, "Crowdsourced
+   high-quality UK and Ireland English Dialect speech data set")
+   Licence: CC BY-SA 4.0 —
+   https://creativecommons.org/licenses/by-sa/4.0/
+   ShareAlike: the clips in assets/audio/vo rendered from this voice are
+   offered under CC BY-SA 4.0 on that account. They are the only assets in
+   this repository carrying a ShareAlike term, and they are audio of a
+   synthetic voice, not game code or art.
+
+CONSIDERED AND REJECTED: en_US-ryan-high (CC BY-NC-SA — this game should not
+carry a NonCommercial term for one voice) and en_GB-alan-medium (dataset
+licence stated only as "See URL", and the URL's LICENSE file was not
+reachable to read; an unread licence is not a cleared one).

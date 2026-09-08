@@ -25,6 +25,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { registerCuttable, alreadyCut } from './gates.js';
+import { healPatches } from './restoration.js';
 
 // METRICS.md — locked, inherited unchanged by every level built on this kit.
 export const DOOR_HALF = 1.2;      // 2.4 u standard door
@@ -393,6 +394,12 @@ export function makeBuilders({ kit, isGrey }) {
   // pathWidth, hub }. A room that passes nothing still gets a textured,
   // patterned floor with a worn route between its doors.
   function shell(world, spec, gaps, D, opts = {}) {
+    // THE GROUND HEALS FIRST, because everything below reads these patches:
+    // the painter draws them and `world.waterPatches` is derived from them. A
+    // scorch becomes moss and an ash-fall becomes grass once the region's
+    // guardian is free (js/restoration.js) — one substitution, in the one
+    // place every room in the game hands its ground over.
+    if (opts.patches) opts = { ...opts, patches: healPatches(opts.patches, world.roomId) };
     // The room's own extent, recorded rather than computed-and-discarded.
     // Anything asking "is this point inside the room" — the reachability
     // verifier especially — had no way to know, and guessing it from door

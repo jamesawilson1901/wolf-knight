@@ -263,8 +263,7 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // and Stoneroot are built things that fell down while the Wild Woods is a GROWN
 // thing being eaten, and the clusters come in matched pairs so a room can say
 // how far the rot has reached by which of the pair dresses it.
-const { grove, thicket, blight, mossyRuin, ruinedHome, coldHearth, fallenColumn,
-  rubbleField, wayshrine, aftermath, cartWreck, lowWall } =
+const { grove, thicket, blight, mossyRuin, aftermath, lowWall } =
   makeDressers({ kit: () => woodKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 // ---------------------------------------------------------------------------
@@ -1239,7 +1238,6 @@ export async function buildT3p(scene) {
 // twist teaches three quarters of an ability.
 export async function buildTkn(scene) {
   const { world, spec, D } = base(scene, 'tkn');
-  const solved = () => !!state.flags.plates.l3_knot_p1;
   // the way onward opens when the plate is held down — the puzzle IS the door
   const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
@@ -1599,8 +1597,12 @@ export async function buildTgl(scene) {
   // LANDS ON FLOOR. Checked by verify-reachable's landing sweep — see there for
   // why nothing had ever measured these.
   sideDoor(world, 'w', halfW, halfD, 't1a', { x: 10.9, z: 9.4, angle: -Math.PI / 2 });
-  // f1 is a 32x26 island since the Frostpeak rebuild (level4.js): land inside its south door
-  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'f1', { x: 0, z: 11, angle: Math.PI });
+  // THE ROAD, NOT THE REGION (2026-09-08). This used to open straight onto
+  // Frostpeak's f1: you freed a forest and arrived on a mountain with nothing
+  // in between to say the world had got colder. It opens onto the Cold Climb
+  // now (js/levelClimb.js, two rooms), and c1's own spawn is (0, 11), which is
+  // where this lands.
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'c1', { x: 0, z: 11, angle: Math.PI });
   if (beaten) roadOn();
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 

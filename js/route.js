@@ -42,6 +42,12 @@ const ONWARD = {
   n1: 'n2', n2: 'vh',
   g1: 'g2', g2: 't1a',
   q1: 'q2', q2: 's1a',
+  // ...and the last three, 2026-09-08. Each hangs off the arena it leaves, so
+  // the guide arrow leads out of a won boss room onto the road rather than
+  // stopping dead there — the arenas had no NEXT entry at all before this.
+  tgl: 'c1', c1: 'c2', c2: 'f1',
+  scr: 'p1', p1: 'p2', p2: 'd1a',
+  ddp: 'h1', h1: 'h2', h2: 'x1',
 
   // --- Stormreach: a switchback -------------------------------------------
   s1a: 's1b', s1b: 'sc1', sc1: 's2a', s2a: 's2b', s2b: 'ssh', ssh: 'sc2',

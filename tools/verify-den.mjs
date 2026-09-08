@@ -12,6 +12,7 @@ const check = (n, ok, d) => { console.log((ok ? '✓ ' : '✗ ') + n, d !== unde
 const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 } })).newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
+await page.addInitScript((v) => { window.__WK_ONLY_TWO_SPIRITS = v; }, !!process.env.WK_ONLY_TWO);
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });
 await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
@@ -22,8 +23,16 @@ await page.evaluate(() => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false; g.state.settings.sfxVol = 0;
   g.state.settings.greybox = false; g.player.iframes = 99999;
-  // every spirit home visible at once — the most the Den ever holds
-  g.WS.set('ember', 'restored', true); g.WS.set('stone', 'restored', true);
+  // EVERY spirit home visible at once — the most the Den ever holds, and since
+  // 2026-09-08 that is six lights rather than two. The draw-call check below is
+  // the whole reason this line sets them all: the Den has no combat, so what it
+  // measures standing still IS its worst frame.
+  const only2 = !!window.__WK_ONLY_TWO_SPIRITS;
+  for (const k of only2 ? ['ember', 'stone']
+    : ['ember', 'stone', 'wild', 'frost', 'storm', 'vale']) {
+    g.WS.set(k, 'restored', true);
+  }
+  for (const gk of ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']) g.WS.set('village', 'guardian_' + gk);
 });
 const go = async (room) => {
   for (let a = 0; a < 8; a++) {
@@ -107,6 +116,50 @@ const calls = await page.evaluate(async () => {
 // down if the kids report the hub feeling heavy.
 check(`worst-case draw calls under 135 (14x10 room was 113; this one is 24x18)`,
   calls.worst < 135, calls);
+
+// ---------------------------------------------------------------------------
+// THE SIX SPIRITS, HOME
+//
+// Four of these were a string in js/regions.js — "polish list: Sylva's
+// leaf-light joining the den fire" and three more like it — for as long as
+// those regions have existed. They are the payoff for the whole game, in the
+// room a child returns to most, and nothing had ever checked that any of them
+// arrive; the two that DID exist were two hand-copied blocks.
+console.log('\n── the spirits come home ─────────────────────────────');
+const spirits = await page.evaluate(({ R }) => {
+  const w = window.__game.world, m = w.markers;
+  const want = ['cinderHome', 'petraHome', 'sylvaHome', 'borealHome', 'ariaHome', 'meriHome'];
+  const missing = want.filter((k) => !m[k]);
+  // each light on ground clear at the roster's own body radius, ignoring its
+  // OWN base stone — a light growing out of a tent is the same class of bug as
+  // a flower growing out of a chest, and just as measurable
+  const bad = [];
+  for (const k of want) {
+    const p = m[k];
+    if (!p) continue;
+    for (const c of w.boxColliders) {
+      const cx = Math.max(c.minX, Math.min(p.x, c.maxX));
+      const cz = Math.max(c.minZ, Math.min(p.z, c.maxZ));
+      if ((p.x - cx) ** 2 + (p.z - cz) ** 2 < R * R) bad.push(k + ' box');
+    }
+    for (const c of w.circleColliders) {
+      if (Math.hypot(c.x - p.x, c.z - p.z) < 1e-6) continue;   // its own base
+      if ((p.x - c.x) ** 2 + (p.z - c.z) ** 2 < (c.r + R) ** 2) bad.push(k + ' circ');
+    }
+  }
+  // ...and no two of them share a spot, which a copied table row would do
+  const pts = want.filter((k) => m[k]).map((k) => m[k]);
+  let tooClose = 0;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      if (Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z) < 1.6) tooClose++;
+    }
+  }
+  return { missing, bad, tooClose, n: pts.length };
+}, { R: 0.44 });
+check('all six spirits have a home by the fire', spirits.missing.length === 0, spirits.missing);
+check('...none of them is standing in the scenery', spirits.bad.length === 0, spirits.bad);
+check('...and none of them shares a spot with another', spirits.tooClose === 0, spirits);
 
 console.log('\n' + (errors.length ? '✗ ' + errors.length + ' FAILED\n' + errors.join('\n')
   : '✓ the Den is batched, under budget, and still alive'));

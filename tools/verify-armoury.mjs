@@ -127,7 +127,7 @@ console.log('\n── 4. it fits on a phone ────────────
 const fits = await page.evaluate(() => {
   const panel = document.getElementById('inv-menu');
   const done = panel.querySelector('.menu-btn');
-  const pr = panel.getBoundingClientRect(), dr = done.getBoundingClientRect();
+  const dr = done.getBoundingClientRect();
   return {
     viewport: [innerWidth, innerHeight],
     doneBottom: Math.round(dr.bottom),

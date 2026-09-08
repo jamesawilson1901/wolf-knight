@@ -24,7 +24,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate,
+import { makeBuilders, tintedModel, gap, spiritShrine, bossGate,
   reserveLandings } from './levelkit.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
@@ -35,6 +35,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
+import { isHealed } from './restoration.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -95,7 +96,7 @@ export const L1 = {
   lg1: { kind: 'choke',  w: 14, d: 10, district: 'ashfall',  spine: true,
          label: 'THE FALLEN GATE', beat: 'REST · compression' },
   lb:  { kind: 'island', w: 32, d: 26, district: 'causeway', spine: true,
-         label: 'B · EMBER CAUSEWAY', beat: 'moths · geysers' },
+         label: 'B · EMBER CAUSEWAY', beat: 'moths · the two-block push' },
   lb1: { kind: 'pocket', w: 20, d: 16, district: 'causeway', loopsTo: 'lb',
          label: 'Moth Hollow', beat: 'optional · pup #1' },
   lb2: { kind: 'pocket', w: 20, d: 16, district: 'causeway', loopsTo: 'lb',
@@ -313,6 +314,32 @@ function lavaSurface(world, x, z, w, d) {
   const tex = lavaTexture().clone();         // own repeat/offset per channel
   tex.needsUpdate = true;
   tex.repeat.set(Math.max(1, Math.round(w / 7)), Math.max(1, Math.round(d / 7)));
+  // COOLED. The same crust texture, no longer lit from underneath: a matte
+  // black floor with the last of the heat still breathing somewhere down in
+  // it. world.addLava has already declined to register the hazard (js/world.js)
+  // so this strip is simply walkable now, and a picture that still said MOLTEN
+  // over ground the collision calls floor would be worse than either — a child
+  // believes the picture.
+  if (isHealed(world.roomId)) {
+    const crust = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshStandardMaterial({ color: 0x2a2320,
+        emissive: 0xff6a2a, emissiveMap: tex, emissiveIntensity: 0.16, roughness: 1 })
+    );
+    crust.rotation.x = -Math.PI / 2;
+    crust.position.set(x, world.deckY + 0.02, z);
+    world.add(crust);
+    world.keepLoose(crust);
+    const embers = new THREE.PointLight(0xff8a4a, 1.4, Math.max(w, d) * 1.2, 2.2);
+    embers.position.set(x, 0.8, z);
+    world.add(embers);
+    world.onAnimate((t) => {
+      const b = 0.5 + 0.5 * Math.sin(t * 0.55 + x);
+      crust.material.emissiveIntensity = 0.10 + b * 0.10;   // barely there
+      embers.intensity = 0.9 + b * 0.8;
+    });
+    return crust;
+  }
   const lava = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
     new THREE.MeshStandardMaterial({ color: 0x000000,
@@ -846,7 +873,18 @@ export async function buildLb(scene) {
   // marauder) match la's density. It was also ~6 draw calls in the room that
   // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
-  world.markers.geyserSpots = [{ x: 2, z: -5 }, { x: 6, z: -5 }, { x: 10, z: -5 }];
+  // NO GEYSERS. Dad, from play: Pip announces "Fire geysers! Cross when they
+  // rest" at a stretch of empty floor. He is right, and the cause is a
+  // leftover: design/LEVEL-MAP.md gives the old Causeway (r2) a geyser
+  // crossing, the Ember REBUILD replaced that beat with the two-block push
+  // puzzle below, and this marker line came across with the rest of the room.
+  // Nothing in js/level1.js has ever called geyser() — every builder that does
+  // is in js/rooms.js, in rooms RETIRED_ROOMS redirects away from. So the
+  // three markers were pure announcement: a hazard with no hazard in it.
+  //
+  // learn_jump used to hang off this marker too ("jump at the geyser
+  // crossing"). It has a real home now, at lc's lava channel — the one place
+  // in Ember where a child looks at something they should not walk into.
 
   // THE SHO: the same element, twice over — two blocks, two plates, and a
   // room big enough that you have to notice the second one (playbook sho beat;
@@ -1081,6 +1119,12 @@ export async function buildLc(scene) {
   ];
   world.markers.emberfangSpots = [{ x: 8, z: -8 }];
   world.markers.mothSpots = [{ x: -6, z: 5 }];
+  // WHERE THE JUMP IS TAUGHT. On the approach to the lava band (z -3..1),
+  // south of it, where a child walking up from lg2 first sees molten rock and
+  // stops. It moved here from lb's phantom geyser markers: a teach line has to
+  // fire beside the thing it is about, and this is the first hazard in Ember a
+  // child can see and must not walk into.
+  world.markers.jumpTeach = { x: 0, z: 3.4 };
   ruinedHome(world, -12, 7.5, 0.5, D, { w: 6, d: 4.5, keep: 0.45 });
   fallenColumn(world, -13.5, -6.5, 0.3, D, 4.4);
   fallenColumn(world, 12.5, 6.5, -1.4, D, 4.0);
@@ -1653,7 +1697,15 @@ export async function buildLk2(scene) {
               { system: 'burn', id: 'lk2_eastnook' });
   visibleReward(world, 13, -8.5, 'lk2_eastnook_prize', { shards: 20, heartPiece: 1 }, 'silver');
 
-  world.markers.cinderImpSpots = [{ x: 6, z: 7 }, { x: -6, z: 7.5 }];
+  // ONE IMP ON EACH SIDE OF THE CROSSING, not both up on the bend.
+  //
+  // The Span's road bends north around the pit, and everything that lived here
+  // lined the bend — so the straight line between the two doors, which is the
+  // fastest way through and the one a child holding the stick takes, was seven
+  // metres clear of every body in the room. verify-gauntlet crossed it in 7
+  // seconds untouched. The imps drop onto the crossing itself; the wretch stays
+  // up on the bend, which is where you meet it if you walk the road.
+  world.markers.cinderImpSpots = [{ x: 6, z: 1 }, { x: -6, z: 1 }];
   world.markers.emberWretchSpots = [{ x: 0, z: 8.5 }];
   world.markers.breakables = [
     { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
@@ -1664,6 +1716,17 @@ export async function buildLk2(scene) {
   lowWall(world, -9, 2.5, 0.2, D, 3.2);
   rubbleField(world, 11, 1, 2.6, D, 11);
   aftermath(world, -10, 8, 2.2, D, 13);
+  // THE SOUTH SIDE OF THE CROSSING, which had nothing on it. The Span measured
+  // 31 things in its arrival frame against a floor of 32 (verify-density, board
+  // #124) and had been a red line in the known-fail manifest since 2026-09-05.
+  // Everything that dresses this room stands north of the road: the wreck, the
+  // low wall and the aftermath are all on the far side, so a child walking in
+  // from lk1 sees a busy left hand and a bare right one. A second cart that did
+  // not make the crossing, the column that came down beside it and the burnt
+  // scatter around both put the same weight on the side the camera opens on.
+  cartWreck(world, 5, -6.5, -0.5, D);
+  fallenColumn(world, 3.5, -3.2, 1.1, D, 3.0);
+  aftermath(world, 8.5, -8.5, 2.0, D, 9);
   scatter(world, halfW, halfD, D, 72, 6);
   return finish(world, spec, D);
 }

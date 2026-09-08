@@ -19,14 +19,13 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
-import { loadGLB, prepareModel, instancePlacements } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
-  wallTintMap, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
+import { loadGLB, prepareModel } from './assets.js';
+import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
-import { WS, restorationOf } from './worldstate.js';
+import { WS } from './worldstate.js';
 import { brazier, stompSigil } from './gates.js';
 
 let forceGrey = false;
@@ -259,24 +258,6 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
 const CAVE_ROCK = 0x8a8375;   // dry cut rock, a shade warmer than the masonry
 const CAVE_SHADES = [1, 1.09, 1.18];   // see caveWorkings: three materials, not N
 
-// A rock arch, for a doorway or a passage mouth. `ry` faces it; the lintel
-// rides just above the opening so the two read as one cut.
-function caveMouth(world, x, z, ry, D, s = 1.5) {
-  if (GREY() || !caveKit || !caveKit.caveArch) return;
-  const g = new THREE.Group();
-  g.userData.cave = 'mouth';   // findable by a probe or a future bounds suite
-  g.position.set(x, 0, z);
-  g.rotation.y = ry;
-  const arch = tinted(caveKit.caveArch, 'caveMouth', CAVE_ROCK);
-  arch.scale.setScalar(s);
-  g.add(arch);
-  const lintel = tinted(caveKit.caveLintel, 'caveMouth', CAVE_ROCK);   // same shade = same material
-  lintel.scale.setScalar(s * 0.95);
-  lintel.position.y = 2.55 * s;      // measured off the arch: sits on its crown
-  g.add(lintel);
-  world.add(g);
-  return g;
-}
 
 // A patch of worked rock: a spur or two standing out of the floor, a bulge in
 // the wall face, and flat scree that costs nothing to stand on because it is
@@ -896,7 +877,19 @@ export async function buildVa1(scene) {
   // the crystal narrows: an L of rock splitting the island into two reads
   wallRun(world, 4, -3, 4, 7, D);
   wallRun(world, -6, -3, 4, -3, D);
-  world.markers.slimeSpots = [{ x: -3, z: 4 }, { x: 8, z: -6 }];
+  // ONE OF THEM GUARDS THE NARROWS, on the line between the two doors.
+  //
+  // verify-gauntlet walks the longest through-line in a room and asks whether a
+  // child who holds the stick straight is made to pay for it. In va1 that line
+  // is z = 0, and the L of rock above stands across it at x = 4 — so a straight
+  // runner wedges on the wall having met nothing at all, six metres from the
+  // nearer slime. Not free, but not a fight either: the room was stopping the
+  // run with geometry and calling it an encounter.
+  //
+  // The east slime moves onto the mouth of the narrows, which is where a thing
+  // guarding a gap belongs anyway. The west one stays where it is: it is the
+  // one you meet AFTER the turn, and moving both would empty the far half.
+  world.markers.slimeSpots = [{ x: -3, z: 4 }, { x: 7.5, z: -1.2 }];
   // a cracked pile you meet BEFORE you have the tool — the promise, in situ
   crackedPile(world, 'l2_va1_a', -11, -7);
   visibleReward(world, -13.5, -7, 'l2_va1_crack', { shards: 16, gear: 'staff_bone' }, 'silver');

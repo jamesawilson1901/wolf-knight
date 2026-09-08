@@ -63,9 +63,13 @@ const shape = () => wk.page.evaluate(() => {
 console.log('\n── 1. the chain ────────────────────────────────────────');
 await go('tgl');
 const glade = await wk.wk('doors');
-check('Sylva freed: the glade opens onto the Rime Gate', glade.some((d) => d.to === 'f1'), glade.map((d) => d.to));
+// ...BY WAY OF THE COLD CLIMB (js/levelClimb.js, 2026-09-08). Frostpeak is not
+// next door to the glade any more; c1 and c2 are between them, the way the
+// Night Road and the Greenway sit between every other pair of regions. So the
+// glade opens onto c1, and f1's way back names c2 rather than the arena.
+check('Sylva freed: the glade opens onto the Cold Climb', glade.some((d) => d.to === 'c1'), glade.map((d) => d.to));
 const rooms = {};
-for (const [room, want] of [['f1', ['tgl', 'f2', 'f1b']], ['f1b', ['f1']], ['f2', ['f1', 'f3', 'f2b']],
+for (const [room, want] of [['f1', ['c2', 'f2', 'f1b']], ['f1b', ['f1']], ['f2', ['f1', 'f3', 'f2b']],
   ['f2b', ['f2']], ['f3', ['f2', 'f4']], ['f4', ['f3', 'f5']], ['f5', ['f4']]]) {
   await go(room);
   rooms[room] = await shape();

@@ -139,7 +139,6 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall, place } =
   makeDressers({ kit: () => courtKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const has = (form) => state.formsUnlocked.includes(form);
 
 function base(scene, id) {
   const spec = L7[id];
@@ -346,7 +345,17 @@ export async function buildX1(scene) {
               { x: 12, z: -8, r: 4.2, kind: 'rubble' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ddp', { x: 0, z: 8, angle: Math.PI });
+  // BACK DOWN THE HOLLOW ROAD, not straight to the drowned deep.
+  //
+  // A road is not a road if it is only walked one way. THE HOLLOW ROAD went in on
+  // 2026-09-08 between the drowned deep and here, and this door was left pointing at
+  // the arena — so a child walked OUT through the road and, coming back,
+  // teleported over the whole of it. Every road that already existed does it
+  // the other way: t1a's south door names g2, the Greenway's last room, not
+  // the Great Vault. Found by verify-level4 and verify-progression both
+  // reporting that the glade no longer opens onto Frostpeak, which is true and
+  // was the half of the change that had been done.
+  sideDoor(world, 's', halfW, halfD, 'h2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'xsh', { x: 0, z: 6, angle: Math.PI });
   world.markers.restSpot = { x: 8, z: 6 };
   world.markers.travelSpot = { x: -8, z: 6 };
@@ -537,7 +546,15 @@ export async function buildXa1(scene) {
     colour: 0xff8a3a, label: 'BARRED', prop: 'brick', system: 'burn',
     id: 'x_ash_bar', needs: 'fire_wolf',
   });
-  world.markers.houndSpots = [{ x: -8, z: -5, variant: 'shadewalker' }];
+  // THE HOUND PROWLS THE BARRED DOOR, on the side a child arrives from.
+  //
+  // It stood at (-8, -5), which is BEHIND the bar — past a door that does not
+  // open until the child has fire — so the one body a child meets on the way in
+  // was on the wrong side of the thing keeping them out. Nothing guarded the
+  // approach at all. Measured, not read: verify-gauntlet walks the through-line
+  // and a runner wedges on the wing wall at x = 6.8 having met nothing, and
+  // stood there for fourteen seconds untouched.
+  world.markers.houndSpots = [{ x: 8.5, z: -2, variant: 'shadewalker' }];
   // THE COURT WAS THE EMPTIEST ROOM IN THE HOUSE (2026-09-05).
   //
   // A census of all 146 rooms: the Shadow Court, the region the whole story
@@ -586,7 +603,16 @@ export async function buildXa1(scene) {
   // have shipped for months. blocked() reads the keep-clear RESERVES, and a
   // reserve means "no props on this ground", not "no creatures": half the
   // Court stands on one by design. Two rulers, two questions (world.js).
-  world.markers.wraithArcherSpots = [{ x: 7, z: 4 }];
+  // THE ARCHER WAS SHOOTING INTO THE WALL IT STOOD BESIDE.
+  //
+  // wingEntry() runs a wall up x = 6 from z = -4 to z = 4, and this spot was
+  // (7, 4) — hard against its north corner. RangedKiter kills its own bolt on
+  // the first collider it grazes (`_updateBolts`, resolveCircle at r 0.1), so
+  // every shot down the road died in the stonework a metre from the bow. A
+  // child crossing the Ash Wing at a run was never shot at once: verify-gauntlet
+  // measured 0 hits over fourteen seconds with the archer awake and firing the
+  // whole time. Moved two metres clear of the corner, it has the approach.
+  world.markers.wraithArcherSpots = [{ x: 9, z: 2.5 }];
   scatter(world, halfW, halfD, D, 711, 5, { spin: 1, kinds: ['brick', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7111, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -822,7 +848,14 @@ export async function buildXm2(scene) {
       mat.emissiveIntensity = through ? 0.12 : 0.5 + Math.sin(t * 2 + mx) * 0.12;
     });
   }
-  world.markers.houndSpots = [{ x: -9, z: 7, variant: 'shadewalker' }];
+  // THE HOUND WALKS THE FIRST MIRROR, which is where the maze actually costs.
+  //
+  // It stood at (-9, 7), around the north end of the first pane and seven
+  // metres off the only line through the room, so a child working the mirrors
+  // was never harried while they did it: verify-gauntlet wedged on that first
+  // pane and stood there fourteen seconds untouched. The maze is the puzzle;
+  // the hound is what stops it being a quiet one.
+  world.markers.houndSpots = [{ x: -8, z: -2, variant: 'shadewalker' }];
   world.markers.maskboneSpots = [{ x: 5, z: -5 }];
   scatter(world, halfW, halfD, D, 742, 5, { spin: 1, kinds: ['column2', 'brick'] });
   dressCourt(world, halfW, halfD, D, 7421, { homes: 2, loose: 14 });

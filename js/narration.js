@@ -20,6 +20,7 @@ const VOICES = {
   aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
   meri: { rate: 0.78, pitch: 0.95, label: 'Meri' },     // slow and low, like deep water
   kael: { rate: 0.95, pitch: 1.0, label: 'Kael' },      // he speaks once, at the end
+  tam: { rate: 0.92, pitch: 0.85, label: 'Tam' },       // unhurried; he walks everywhere
 };
 
 export const LINES = {
@@ -41,7 +42,13 @@ export const LINES = {
   obstacle_first: { voice: 'pip', text: 'Burnt vines block the way. We’ll need fire for these. Let’s remember this spot.' },
   r2_enter: { voice: 'pip', text: 'Watch your step — lava ahead. Stay on the stone.' },
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },
-  geyser_intro: { voice: 'pip', text: 'Fire geysers! Cross when they rest. Watch the timing.' },
+  // geyser_intro is GONE (2026-09-08, dad: "this is irrelevant as there are
+  // none"). The Ember rebuild replaced the old Causeway's geyser crossing with
+  // lb's two-block push puzzle and nothing removed the line, so Pip announced
+  // a hazard at empty floor. Deleting a LINE is safe where deleting a save
+  // field would not be: state.spoken.geyser_intro can stay in an old save
+  // forever and narration.say() simply returns false for an id it has no line
+  // for (saves are additive-forever, CLAUDE.md).
   hound_branch: { voice: 'pip', text: 'A shadow hound guards that way. Beat it for a pup — or skip it if you like.' },
   key_door: { voice: 'pip', text: 'Sealed by shadow! We need a key… I feel it east of here, past the broken bridges.' },
   key_found: { voice: 'pip', text: 'The Ember Key! The sealed door will open for us now!' },
@@ -156,6 +163,13 @@ export const LINES = {
   wren_rumour: { voice: 'wren', text: 'A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…', repeat: true },
   rook_intro: { voice: 'rook', text: 'So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.' },
   rook_chat: { voice: 'rook', text: 'The horizon’s quiet today. Quiet is GOOD, little knight.', repeat: true },
+  // TAM THE WAYFARER — he turns up in an arena once its shadow is broken, and
+  // he keeps the Den moonstone company the rest of the time (js/npcs.js). The
+  // intro says the offer out loud ONCE; after that he only ever repeats the
+  // offer itself, because the thing a non-reader needs from him is the same
+  // thing every time and they will meet him seven times.
+  tam_intro: { voice: 'tam', text: 'Tam’s the name — I walk the roads between. The dark held them shut, and you’ve just opened one. Step close and I’ll carry you home, or anywhere else you’ve set free.' },
+  tam_offer: { voice: 'tam', text: 'Anywhere you’ve been, little knight. Just step close.', repeat: true },
   bram_den: { voice: 'bram', text: 'Ha! Thought I’d see this famous fire of yours. The caverns sing so sweet now, my pick near swings itself. You’ve a fine den, knight.' },
   den_dog: { voice: 'pip', text: 'That’s Biscuit! She guards the den. Well… mostly she guards her dinner.' },
   camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },
@@ -164,6 +178,13 @@ export const LINES = {
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },
+  // THE OTHER FOUR (2026-09-08). Each one counts the spirits out loud, because
+  // "how many have I brought home" is the only score in this game a child
+  // actually feels, and it is not on the HUD anywhere.
+  sylva_den: { voice: 'pip', text: 'Sylva’s leaf-light found the stump by our fire! Three spirits home, Kael.' },
+  boreal_den: { voice: 'pip', text: 'Boreal’s rime-light came all the way down the mountain. Four! It doesn’t even melt.' },
+  aria_den: { voice: 'pip', text: 'Aria’s stormlight won’t sit still — it’s been round the fire twice already. That’s five!' },
+  meri_den: { voice: 'pip', text: 'Meri’s tidelight is here, low and slow like deep water. Six spirits home. Only the shadow is left.' },
   darkcave_enter: { voice: 'pip', text: 'The Hidden Hollow… it’s pitch dark in here. Become the Dark Wolf and let your eyes shine!' },
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },
@@ -412,6 +433,7 @@ export class Narration {
   skip() {
     if (!this.speaking) return;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    audio.stopLine();          // ...and the rendered clip, if that is what is playing
     if (this._done) this._done();
   }
 
@@ -443,6 +465,30 @@ export class Narration {
     };
     this._done = done;
 
+    // THE RENDERED CLIP FIRST (js/audio.js speakLine, and the long note there).
+    // Every line in this file has been spoken once, offline, by a real neural
+    // voice and shipped as an ogg — so what a child hears does not depend on
+    // which speech engine their tablet happens to have, which is the whole of
+    // why the narration has sounded like a robot on every playtest.
+    //
+    // It is FIRE AND FALL BACK, not fire and hope: speakLine resolves false for
+    // a line with no clip (one added since the last render), and the device
+    // voice below still speaks it. The `finished` latch makes the race safe —
+    // whichever of the two paths ends first, `done` runs once.
+    if (state.settings.voice) {
+      audio.speakLine(id, done).then((played) => {
+        if (played || finished) return;
+        this._speakDevice(line, meta, done);
+      });
+    } else {
+      this._speakDevice(line, meta, done);
+    }
+  }
+
+  // The old path, unchanged, and still the one that carries a line the
+  // renderer has not seen. `state.settings.voice` off means captions only, and
+  // the caption pacing at the bottom is what times it.
+  _speakDevice(line, meta, done) {
     if (state.settings.voice && 'speechSynthesis' in window) {
       const u = new SpeechSynthesisUtterance(line.text);
       u.rate = meta.rate * (state.settings.voiceRate || 1);

@@ -60,8 +60,19 @@ check('...and the road reaches Level 3 (t1a)', g2.includes('t1a'), { doors: g2 }
 await page.evaluate(() => { window.__game.state.flags.sylvaDefeated = true; });
 await go('tgl');
 const tgl = await doorsOf();
-check('freeing Sylva opens the way to Frostpeak (f1)', tgl.includes('f1'), { doors: tgl });
-check('the ring still closes back to Thornedge', tgl.includes('t1a'), { doors: tgl });
+// ...BY WAY OF THE COLD CLIMB (js/levelClimb.js, 2026-09-08). Every other
+// region pair in the game is joined by a road — the Night Road, the Greenway,
+// the Drowned Market — and the Wild Woods handed straight onto Frostpeak. It
+// does not any more: tgl opens onto c1, and it is c2's far door that reaches
+// f1. Same shape as the Night Road leg fifteen lines up, and checked the same
+// way: the first road room from the boss room, and the region from the second.
+check('freeing Sylva opens the way onto the Cold Climb (c1)', tgl.includes('c1'), { doors: tgl });
+await go('c2');
+const c2 = await doorsOf();
+check('...and the climb reaches Frostpeak (f1)', c2.includes('f1'), { doors: c2 });
+await go('tgl');
+const tgl2 = await doorsOf();
+check('the ring still closes back to Thornedge', tgl2.includes('t1a'), { doors: tgl2 });
 
 // and the boss rooms are dead ends BEFORE the boss is beaten
 await page.evaluate(() => { const g=window.__game;

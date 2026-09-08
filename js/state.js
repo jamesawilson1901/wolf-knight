@@ -126,6 +126,9 @@ export function regionOf(id) {
   if (r[0] === 'n') return 'night_road';   // the road out of Ember (levelNight.js)
   if (r[0] === 'q') return 'market';       // the road into Stormreach (levelMarket.js)
   if (r[0] === 'g') return 'greenway';     // the road into the Wild Woods (levelGreen.js)
+  if (r[0] === 'c') return 'coldclimb';    // the road up to Frostpeak (levelClimb.js)
+  if (r[0] === 'p') return 'plunge';       // the road down to the Vale (levelPlunge.js)
+  if (r[0] === 'h') return 'hollowroad';   // the last road, into the Court (levelHollow.js)
   // retired ids that somehow reach here keep their original mapping
   if (r[0] === 'e') return 'stoneroot';
   if (r[0] === 'w') return 'wildwoods';

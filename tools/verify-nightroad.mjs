@@ -161,9 +161,9 @@ console.log('\n── 4. ...but the dark is not a wall ────────�
 // straight line from the camp goes through the washout, and this is asking
 // whether the road works, not whether a bot can fall in a hole.
 await wk.page.evaluate(() => window.__game.player.setForm('knight'));
-await wk.walkTo(-10, -1, { timeout: 40, arrive: 1.4 });
-await wk.walkTo(-10, -9, { timeout: 40, arrive: 1.4 });
-await wk.walkTo(-4, -11.5, { timeout: 40, arrive: 1.4 });
+await wk.routeTo(-10, -1, { timeout: 40, arrive: 1.4 });
+await wk.routeTo(-10, -9, { timeout: 40, arrive: 1.4 });
+await wk.routeTo(-4, -11.5, { timeout: 40, arrive: 1.4 });
 const gotThere = await wk.wk('pos');
 check('the Knight can walk the road in the dark',
   gotThere.z < -7, { endedAt: { x: +gotThere.x.toFixed(1), z: +gotThere.z.toFixed(1) } });
@@ -174,7 +174,7 @@ console.log('\n── 5. the washout costs the walk, never a heart ────�
 // in the dark kill the bot and stall the run in the respawn path. Invulnerable
 // isolates the hole from everything else in the room.
 const hpBefore = await wk.page.evaluate(() => window.__game.player.hearts);
-await wk.walkTo(0, -5, { timeout: 30, arrive: 1.2 });   // straight INTO the hole
+await wk.routeTo(0, -5, { timeout: 30, arrive: 1.2 });   // straight INTO the hole
 await wk.page.waitForTimeout(1500);
 const fell = await wk.page.evaluate(() => ({
   hearts: window.__game.player.hearts,
@@ -192,9 +192,9 @@ const burnBefore = await wk.page.evaluate(() =>
 await wk.page.evaluate(() => window.__game.player.setForm('fire_wolf'));
 // round the washout the EAST way — the road forks either side of the hole and
 // the nook is off the east lane.
-await wk.walkTo(12, 4, { timeout: 40, arrive: 1.6 });
-await wk.walkTo(13, -2, { timeout: 40, arrive: 1.6 });
-await wk.walkTo(13.5, -5.4, { timeout: 40, arrive: 1.6 });
+await wk.routeTo(12, 4, { timeout: 40, arrive: 1.6 });
+await wk.routeTo(13, -2, { timeout: 40, arrive: 1.6 });
+await wk.routeTo(13.5, -5.4, { timeout: 40, arrive: 1.6 });
 for (let i = 0; i < 6; i++) {
   await wk.page.keyboard.press('k');            // the special: ground slam
   await wk.page.waitForTimeout(700);
@@ -212,14 +212,14 @@ const crack = await wk.page.evaluate(() => ({
   hasEarth: window.__game.state.formsUnlocked.includes('earth_wolf'),
 }));
 // walk AT it: a promise gate a child can walk around is decoration
-await wk.walkTo(-14, -1, { timeout: 40, arrive: 0.9 });
+await wk.routeTo(-14, -1, { timeout: 40, arrive: 0.9 });
 const stopped = await wk.wk('pos');
 check('a child without the Earth Wolf cannot get behind the cracked rock',
   crack.crackables >= 1 && !crack.hasEarth && stopped.x > -12.0,
   { ...crack, stoppedAt: +stopped.x.toFixed(2) });
 
 const before = await wk.page.evaluate(() => [...window.__game.state.inventory.treasures]);
-await wk.walkTo(12.5, -9.0, { timeout: 50, arrive: 0.8 });
+await wk.routeTo(12.5, -9.0, { timeout: 50, arrive: 0.8 });
 await wk.page.waitForTimeout(2500);
 await wk.page.evaluate(() => { window.__game.narration.blocking = false; });
 const after = await wk.page.evaluate(() => [...window.__game.state.inventory.treasures]);

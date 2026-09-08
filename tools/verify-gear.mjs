@@ -79,7 +79,6 @@ check('each recoloured item wears its tint',
   tinted.map((r) => ({ id: r.id, want: r.tint, got: r.colour })));
 
 const untouched = await page.evaluate(async () => {
-  const g = window.__game;
   const { loadGLB } = await import('/js/assets.js');
   // re-read the cached source of a model that HAS a tinted variant
   const src = await loadGLB('./assets/gear/axe_B.gltf');

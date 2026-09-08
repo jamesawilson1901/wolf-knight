@@ -126,7 +126,31 @@ export function persist() {
       borealHp: state.flags.borealHp || 0,    // v3.21: Boreal's duel remembers too
       borealDefeated: !!state.flags.borealDefeated,
       wardenHp: state.flags.wardenHp || 0,    // v3.49: the Warden's duel remembers across app-close, like every boss since v3.18
+      // THE LAST THREE BOSSES WERE NOT IN THE SAVE AT ALL (found 2026-09-08
+      // while writing the profile-isolation suite, which is what that suite
+      // was for). Ember, Stoneroot, the Wild Woods and Frostpeak each got
+      // their flag added the day their region shipped; Stormreach, the Sunken
+      // Vale and the Shadow Court never did. So a child could beat Aria, close
+      // the app, and come back to a locked Vale, a moonstone that had never
+      // heard of it, a crown whose onward door was shut again, and a map that
+      // had forgotten. The forms survived — formsUnlocked is saved — which is
+      // exactly why nobody noticed: you kept the Storm Wolf and lost the world.
+      // Same for Meri, and same for Grimm, which took the ENDING with it.
+      ariaDefeated: !!state.flags.ariaDefeated,
+      meriDefeated: !!state.flags.meriDefeated,
+      grimmFreed: !!state.flags.grimmFreed,
+      gameComplete: !!state.flags.gameComplete,
+      // ...and their remembered wounds, on the same law as bossHp/sylvaHp/
+      // borealHp/wardenHp: a duel a child left half-won stays half-won.
+      ariaHp: state.flags.ariaHp || 0,
+      meriHp: state.flags.meriHp || 0,
+      grimmHp: state.flags.grimmHp || 0,
     },
+    // THE TRIAL LOCK. js/state.js says out loud that it is "persisted rather
+    // than transient because a child who quits mid-fight must come back still
+    // locked — the wolf they spent at that arch has been spent." It was not
+    // persisted. Now it is.
+    formLock: state.formLock || null,
     spoken: { ...state.spoken },
     form: state.form,
     updatedAt: Date.now(),
@@ -229,16 +253,36 @@ export function applySave(profileId, profileName, data) {
     // v3.49 — additive, same law: a pre-Stoneroot-fix profile has no wardenHp
     // key, `|| 0` gives the untouched-crypt state, and old builds ignore it
     state.flags.wardenHp = data.flags.wardenHp || 0;
+    // The last three regions, restored on the same additive law as the four
+    // above: a profile written before this shipped has none of these keys and
+    // `!!undefined` / `|| 0` give exactly the untouched state.
+    state.flags.ariaDefeated = !!data.flags.ariaDefeated;
+    state.flags.meriDefeated = !!data.flags.meriDefeated;
+    state.flags.grimmFreed = !!data.flags.grimmFreed;
+    state.flags.gameComplete = !!data.flags.gameComplete;
+    state.flags.ariaHp = data.flags.ariaHp || 0;
+    state.flags.meriHp = data.flags.meriHp || 0;
+    state.flags.grimmHp = data.flags.grimmHp || 0;
     // v3.18: the "dead machinery" mystery was retired with the mill fiction —
     // old saves that logged it get it quietly marked found (additive law:
     // old profiles must always load clean)
     if (state.flags.mysteries.stone_mill) state.flags.mysteries.stone_mill.found = true;
   }
+  state.formLock = data.formLock || null;
   state.spoken = data.spoken || {};
   if (data.settings) {
     // `greybox` is a build-order tool, not a child's preference. An old
     // profile saved while the rebuilt levels were still dev-only carries
-    // greybox:true, and restoring it would hand a child a checkerboard.
+    // greybox:true, and restoring it would hand a child a checkerboard. So it
+    // is pulled OUT of the spread and thrown away, and the rest is applied.
+    //
+    // AND THE LINT ATE IT ONCE (v3.117.0 → put back 2026-09-08). The burn-down
+    // that made no-unused-vars blocking saw `greybox` here as an unused
+    // binding — eslint's `ignoreRestSiblings` defaults to FALSE — and deleted
+    // the name, leaving `const { ...prefs }`, which spreads greybox back in.
+    // It is the whole point of the line and it read as dead code. Nothing
+    // caught it for a day: verify-progression's A7 did, on the push gate. The
+    // rule now sets ignoreRestSiblings and tools/eslint.config.mjs says why.
     const { greybox, ...prefs } = data.settings;
     Object.assign(state.settings, prefs);
   }

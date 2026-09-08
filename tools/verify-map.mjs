@@ -79,12 +79,15 @@ check('every room on the map exists in the live registry', ghosts.length === 0, 
 // still hidden — and its rooms are the one legitimate absence here.
 const missing = live.spine.filter((id) => !m.rooms.includes(id) && id[0] !== 'm');
 check('every spine room the levels declare is on the map', missing.length === 0, { missing, drawn: m.rooms.length });
-check('all twelve places show once every boss is beaten (the Spire waits for the Village)',
-  m.regions.length === 12, m.regions);
+// Fifteen since 2026-09-08: the Cold Climb, the Plunge and the Hollow Road are
+// regions of their own, the way the Night Road, the Greenway and the Drowned
+// Market are, and each shows on the boss whose arena hands onto it.
+check('all fifteen places show once every boss is beaten (the Spire waits for the Village)',
+  m.regions.length === 15, m.regions);
 check('no emoji with every row showing', !EMOJI.test(m.text));
 
 console.log('\n── 3. "you are here" works in every region ─────────────');
-for (const room of ['n1', 'vh', 'g1', 't1a', 'f3', 'q2', 's1a', 'd1a', 'x1', 'ysq', 'lk1', 'm1']) {
+for (const room of ['n1', 'vh', 'g1', 't1a', 'c1', 'f3', 'q2', 's1a', 'p1', 'd1a', 'h1', 'x1', 'ysq', 'lk1', 'm1']) {
   await go(room);
   const r = await readMap();
   // lk1 is a POCKET off Ember's spine: it is drawn only because the child is in it;

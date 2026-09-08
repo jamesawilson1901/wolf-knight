@@ -10,7 +10,7 @@ if (s0.room !== 'la') { console.log('CANARY FAIL: wrong start room'); process.ex
 await d.shot('canary-start');
 const t0 = Date.now();
 while (Date.now() - t0 < 60000) {
-  const s = await d.wk();
+  await d.wk();
   const foes = await d.wk('foes');
   if (foes.length) {
     const f = foes[0];

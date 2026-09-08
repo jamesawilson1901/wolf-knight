@@ -150,8 +150,31 @@ pulled cold (`emberKitRef()`).
 under ice, `slickFloor` + `iceGate` stalls for the Frost Wolf, deep
 `waterZone` channels (a box collider until region six) with the far
 quay in sight. Wears the Village's props.
-Both are `stone-deep` musically, and both prefixes are named in
-rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
+All three roads have a track of their own now (`road-night`,
+`road-green`, `road-market`) — a road exists to make a change of place
+felt, and three roads on one loop make it felt once. Every prefix is
+named in rooms.js's kit dispatcher and main.js's `regionOf`/`updateMusic`.
+
+## The last three roads (js/levelClimb.js, levelPlunge.js, levelHollow.js)
+The six interstitials are all built now. `c1`/`c2` THE COLD CLIMB (Wild Woods →
+Frostpeak): the last green, then the snowline; graduates the Verdant Wolf's cut
+(a thorn wall across the road IS the way through, twice rewarded) and shows the
+Frost Wolf's ice one room early. `p1`/`p2` THE PLUNGE (Stormreach → the Vale):
+three crosswise gusts on the cliff stair — never a gale, so a child who has not
+worked out the dash still gets down — then the tide pools and the Tide Wolf's
+flooded gate. `h1`/`h2` THE HOLLOW ROAD (the Vale → the Court): a shallow
+causeway you simply wade, then the light going out, and the Moonlight's own
+wall of dark. Each pays in a keepsake (js/treasures.js rule 3 — the Sealed Map,
+the Harbour Key, the Moon-Coin), none pays in a wolf or a pup.
+Each has its OWN kit list even though every URL in it is already vendored and
+cached: the dressers pick props by key NAME (js/dressing.js `TREES`/`BUSHES`/
+`GRASS`), so pointing a road at a region's kit silently drops every prop that
+region happens not to carry — the first cut of the Cold Climb came out as a
+room with no trees in it and said nothing. Districts are read off the rooms at
+either END of each road rather than invented, so a road is two regions meeting.
+Prefixes `c`, `p`, `h` are named in rooms.js's dispatcher, state.js's
+`regionOf`, route.js's NEXT (which also gains `tgl`/`scr`/`ddp`, the three
+arenas that had no way-on entry at all) and main.js's `updateMusic`.
 
 ## The Moonlit Spire (js/levelSpire.js) — the finale
 Four rooms behind the `m` prefix, opened by restoring the Village and
@@ -202,6 +225,99 @@ Biscuit the Husky (world.dog) wanders DOG_STOPS with Idle/Walk/Eating.
 main calls world.updateNpcs(dt, t, player); markers (<id>Spot, dogSpot)
 drive the narration greetings in main's den trigger block.
 
+## Tam the Wayfarer (js/npcs.js WAYFARER_POSTS)
+The fast-travel point with a face on it. One post per boss arena (le, vz,
+tgl, f5, scr, ddp, xth), each gated on that region's boss flag, plus the
+Den beside Luna's moonstone. spawnWayfarer() builds him out of the same
+villager machinery — rogue_hooded.glb washed moon-blue (every other KayKit
+humanoid is already somebody), a bobbing moonstone shard at his shoulder in
+the Den orb's own colour — and sets world.markers.travelSpot, which is what
+main.js already watches at 1.5u to open menus.showTravel(). In the Den he
+leaves the marker to the moonstone and stands 1.2u off it instead.
+The Village square and the Spire were added 2026-09-08 and are gated on
+`villageCleared()` rather than a boss flag — `when` takes a predicate
+where the arenas take a flag name — because a square whose six guardians
+are still standing is a square being fought over, and a ride out of a
+fight is the one thing he must never be.
+He appears two ways: on BUILD (setupRoomExtras, via wayfarerPost(roomId))
+and LIVE, 2.6s of game time after a boss falls (summonWayfarer, the same
+shape as openTheWayOn, so a perk card or a story line holds him at the door
+exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
+off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
+
+## The healing (js/restoration.js)
+What a region looks like once its guardian is free. main.js has set
+WS.set(<region>,'restored') on every boss defeat since it was written, and
+until 2026-09-08 no rebuilt level room read it — measured: grep -c restored
+across js/level1-7.js was 0,0,1(comment),0,0,0,0. This module is the reader,
+keyed off healKeyOf(roomId) (regionOf → the worldstate key, with each region's
+ROAD healing with it; the Village, the Spire and the Den are excluded on
+purpose — the Village's wards are "everything here is dead" gates an empty
+room never satisfies).
+Five answers, each hooked into the ONE place the game already funnels that
+thing through:
+ · GROUND — healPatches() in levelkit's shell(): scorch→moss, ash→grass,
+   corruption→grass, rubble→moss, mud→water ("water returns": a mud flat is
+   the shape of a pool with no pool in it). sand/gravel/ice/water untouched —
+   what a place is MADE of does not change.
+ · WIND — calmedStrength() in wind.js galeLane(): every gale falls back to the
+   harmless 'breeze' the Landing teaches with. Calmed, not deleted.
+ · LAVA — world.addLava() declines to register the hazard, and level1's
+   lavaSurface paints cooled black crust with the last heat breathing in it.
+   This is what `lava_cooled` has been promising since it was written.
+ · FLOWERS — bloom(), called from setupRoomExtras AFTER the breakables,
+   chests and pups have laid their colliders (running it earlier put three
+   blooms inside things that did not exist yet). Instanced: a draw call per
+   material, not per flower. Stoneroot blooms glow-moss, not a lawn.
+ · LIGHT — moodLift() in main's applyRoomMood(): all three lights and the
+   background go half a stop brighter, same hues, so wayfinding by colour
+   temperature survives. Added after the first healed contact sheet showed a
+   Wild Woods full of flowers and grazing wolves that a child still could not
+   see: everything else the healing does is a thing IN the room.
+ · ANIMALS — spawnEnemies() harvests every enemy marker it would have read
+   (takeEnemySpots) and graze() stands a wolf where each shadow stood.
+   wolf.gltf is the game's own animal and ships Eating/Idle_2_HeadLow/Idle/
+   Walk. No colliders, Biscuit's rule: a safe room must not be one a child can
+   be shoved around in. world.updateGrazers(dt,t,player) from main's loop.
+healLive(world) is the WITNESSED version, called from the wild/frost/storm/
+vale/court defeat branches — the five that used to change a background colour
+on the next rebuild and nothing else. It grows the instance matrices, so the
+meadow is one draw call while it comes up. Ember and Stoneroot keep their own
+(rooms.js emberRestorationLive/stoneRestorationLive) and healLive stands down
+for them via markers.restorationPlayed.
+Proven by tools/verify-healing.mjs (before-and-after of one room per region).
+`LATE=1 node tools/shot.mjs` now sets all seven regions, so the contact sheet
+can show the healed half of the game.
+
+## The spirits come home (js/rooms.js SPIRIT_HOMES)
+Six lights round the Den fire, one per region freed, each wearing the colour
+its own shrine wears in its arena so a child recognises who arrived. Cinder's
+ember and Petra's stone-heart were two hand-copied blocks; the other four were
+a `polish list:` string in js/regions.js for as long as those regions existed.
+One table now: `{key, marker, x, z, light, y, bob, phase, base}` — Sylva's
+leaf-light on a stump, Boreal's rime-light on a stone that never melts, Aria's
+stormlight that wanders because she never settled, Meri's tidelight low and
+slow over a wet stone. Every coordinate measured with
+`WK_LATE=1 node tools/probe-freespot.mjs`. Narration `<spirit>_den` counts
+them out loud — "how many have I brought home" is the only score in this game
+a child actually feels, and it is on no HUD. verify-den checks all six exist,
+stand on clear ground and do not share a spot.
+
+## One draw call per character (js/assets.js prepareCharacter)
+A KayKit humanoid is EIGHT mesh primitives sharing ONE material — arms, legs,
+body, cape, head, mask, all from one atlas, split only because that is how the
+model was authored. Every one was its own draw call: flattenStatic cannot
+touch a SkinnedMesh (a merged static batch cannot be posed). Measured in the
+Den, 39 of 113 meshes were the five people standing in it.
+`mergeSkinnedParts()` merges PER MATERIAL at spawn — which is what keeps it
+safe for the animals, since wolf.gltf has four materials and code around the
+game tints by material NAME (the grazing pack's coats, the wolf-form tint).
+Four groups in, four meshes out, every name still findable. It compares BONES
+rather than skeleton objects: SkeletonUtils.clone() builds a separate Skeleton
+instance per SkinnedMesh over the same bones, and an identity check silently
+does nothing (it did, on the first run). Den: 137 → 102 draw calls, and every
+room with characters in it gains.
+
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;
 one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any
@@ -226,15 +342,79 @@ WebAudio SFX + crossfading looped music (intro→loop, one-shot→then),
 generated brown-noise lava ambient, narration ducking, per-profile
 volume settings. SFX buffers preload on first user gesture (`_preloadSfx()`
 in `_init()`) — no first-play decode stutter mid-combat.
+ONE LOOP PER SECTION (2026-09-08, dad: "make sure there is music for every
+section. make sure there is a variety of it."). Nineteen sections, nineteen
+loops, plus boss/victory/title: the seven regions, the three roads, the
+Kiln, both states of the Village, both halves of Stoneroot (the glimmer
+above and the sunken deep below), the Spire and its crown, the Den, and
+the healed Hollow. The `kiln`/`ember-calm` ALIASES are gone — both now
+have a track instead of pointing at causeway.mp3 and den.ogg. The eight
+new ones are CC0 from sparklinlabs/superpowers-asset-packs
+`rpg-battle-system/music`, the same repo and licence file as the six
+region themes, cast by `tools/probe-music-character.mjs` (rms / zcr /
+onsets-per-sec / dyn, decoded in a browser because that is the only ogg
+decoder in this toolchain) and mastered to the game's own loudness band
+via `MUSIC_TRIM`. Cost: +8.2 MB of a 112 MB asset tree. verify-music §6
+is what stops two sections quietly sharing a file again.
+
+## The spoken lines (assets/audio/vo, tools/tts-narration.py)
+Every one of the 202 narration lines is rendered ONCE, offline, by Piper (a
+local neural TTS) and shipped as a 31 kB ogg — 6.3 MB and 14 minutes of speech
+for the whole game. There is no model, no WASM and no inference on the child's
+tablet: playing a file is the cheapest thing a browser can do, and it sounds
+the same on every device instead of depending on whichever engine a phone
+happens to ship. That dependency is why the narration sounded like a robot on
+every playtest, and narration.js's voice PICK was already as careful as
+choosing a device voice can get.
+Fourteen characters out of THREE models: each game voice is a
+(model, speed, pitch) row in tools/tts-narration.py's CAST, and the pitch is a
+resample — the same trick narration.js's VOICES table plays with Web Speech's
+`pitch`, done once and properly, with the speed pre-compensated so the
+resample lands on the intended pace. Licences (three separate ones, quoted in
+full in assets/LICENSES/piper-voices.txt): jenny_dioco for Pip/Wren/Aria, alba
+for the spirits, northern_english_male for the men. No model and no dataset
+ships — only the clips.
+FIRE AND FALL BACK: `audio.speakLine(id, onEnd)` resolves false for a line
+with no clip and narration.js speaks it with the old device voice, so a line
+added tomorrow still talks. `tools/sync-cache.mjs` generates the precache list
+from what is on disk; `tools/verify-narration.mjs` is what notices a line
+without a clip, a clip without a line, a clip that decodes to silence, or a
+clip path that has quietly stopped playing (the fallback would hide it).
+Re-render after adding lines: `node tools/dump-lines.mjs > /tmp/lines.json &&
+python3 tools/tts-narration.py /tmp/lines.json assets/audio/vo`.
 
 ## Save (js/save.js)
 localStorage per-kid profiles, schema v2 (HUD-MENU-SAVE.md). Law:
 additive-forever — old saves always load; new fields get safe defaults.
+A FLAG A REGION HANGS OFF MUST BE IN persist() AND applySave(). Four were
+not, for as long as those regions have existed: ariaDefeated, meriDefeated,
+grimmFreed and gameComplete, plus three bosses' remembered wounds and the
+Trial's form lock. Beat Aria, close the app, and the Sunken Vale was locked
+again — while the Storm Wolf stayed in your paw, because formsUnlocked IS
+saved, which is exactly why it was never noticed. tools/verify-profiles.mjs
+round-trips the whole set now, so region eight cannot repeat it.
 
 ## Progression & menus (js/progress.js, js/menus.js, js/loot.js)
 XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
 shop, stickers, map screen (regions + mysteries), fast travel via Luna's
 moonstone, pause/settings.
+
+## The form badge shows the animal (js/ui.js formIcon, js/titlescene.js)
+The badge and the radial picker are the controls a child touches most, and
+they were the last place in the game showing 🌩️ and 🪨 next to its own
+low-poly art. titlescene.js's `buildPortraits` already renders a 3/4 still of
+every wolf for the profile picker — one frame per form, cached forever, no
+download — and it now reads `WOLF_TINTS` instead of a hand-written list of the
+first three forms, so all ten have one and a future wolf gets a portrait the
+day it gets a colour. The emoji stays as the FALLBACK: portraits render in the
+background after boot, and `portraits-ready` refreshes the badge the moment
+there is something better to show.
+NOT converted, and the board item asking for it was working from a wrong
+premise — it said the Kenney Game Icons were "already vendored and cleared"
+and only their LICENCE FILES are on disk; the pack is not in the repo and
+kenney.nl is unreachable from the build environment. Perk cards, the sticker
+book, mystery cards and map rows keep their emoji, and they are the surfaces
+where an emoji does least harm: lists a child reads, not controls they aim at.
 
 ## The Armoury & item art (js/equipscene.js)
 The equipment screen and every place gear is *shown*. Two renderers, split

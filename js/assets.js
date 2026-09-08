@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const manager = new THREE.LoadingManager();
 const gltfLoader = new GLTFLoader(manager);
@@ -217,6 +218,7 @@ export function prepareModel(root, { castShadow = true, receiveShadow = true } =
 // skinned mesh in it, so they stop casting too — which is what the fix plan
 // suggested as a partial, and is worth 4 calls of the 29 on its own.
 export function prepareCharacter(root) {
+  mergeSkinnedParts(root);
   let biggest = null, biggestVerts = -1;
   root.traverse((node) => {
     if (!node.isMesh) return;
@@ -230,6 +232,77 @@ export function prepareCharacter(root) {
     if (verts > biggestVerts) { biggestVerts = verts; biggest = node; }
   });
   if (biggest) biggest.castShadow = true;
+  return root;
+}
+
+// ONE DRAW CALL PER CHARACTER, NOT EIGHT.
+//
+// Measured in the Den, 2026-09-08: 39 of its 113 meshes were the five people
+// standing in it. `rogue` alone was SIXTEEN — Wren and Tam, eight mesh
+// primitives each — with mage at 8, ranger at 8 and barbarian at 7. Every one
+// of those primitives is its own draw call, because js/batch.js's flattenStatic
+// correctly refuses to touch a SkinnedMesh (a merged static batch cannot be
+// posed by a skeleton).
+//
+// But a KayKit humanoid is EIGHT PRIMITIVES SHARING ONE MATERIAL — arms, legs,
+// body, cape, head, mask, all painted from one texture atlas. Split like that
+// in the GLB purely because that is how the model was authored, and there is
+// nothing a renderer can do with the split except pay for it. Merged per
+// material they are one mesh, one draw, posed by the same skeleton, pixel for
+// pixel identical.
+//
+// PER MATERIAL, not "all of them", which is what makes this safe for the
+// animals too: wolf.gltf has four materials (Main, Nose, Main_Light,
+// Eyes_Black) and code around the game tints by material NAME — the grazing
+// pack's coats, the wolf-form tint. Four groups in, four meshes out, every
+// name still there to be found.
+//
+// Cost is one merge per spawned character (~8 small geometries), which is
+// sub-millisecond; the alternative — merging the cached source before
+// SkeletonUtils.clone — would mutate an asset other callers share.
+function mergeSkinnedParts(root) {
+  const groups = new Map();     // material -> SkinnedMesh[]
+  root.traverse((n) => {
+    if (!n.isSkinnedMesh || Array.isArray(n.material) || !n.geometry) return;
+    // morph targets survive a merge only by luck; nothing in this game's
+    // characters uses them, and a model that does should keep its parts.
+    if (n.geometry.morphAttributes && Object.keys(n.geometry.morphAttributes).length) return;
+    const list = groups.get(n.material) || [];
+    list.push(n);
+    groups.set(n.material, list);
+  });
+  for (const [material, parts] of groups) {
+    if (parts.length < 2) continue;
+    // SAME BONES, NOT SAME SKELETON OBJECT. Every part of one glTF skin is
+    // posed by the same bone list, so skinIndex values are already in the same
+    // space and the merge needs no remapping — but SkeletonUtils.clone() builds
+    // a SEPARATE Skeleton instance per SkinnedMesh over those same bones, so an
+    // identity check on the skeleton rejects every cloned character in the game
+    // and silently does nothing. (It did exactly that on the first run: the Den
+    // still measured `rogue` at 16.) The bones themselves are what has to
+    // match, so that is what is compared.
+    const skeleton = parts[0].skeleton;
+    const bones = skeleton && skeleton.bones;
+    if (!bones || parts.some((p) => !p.skeleton || p.skeleton.bones.length !== bones.length
+      || p.skeleton.bones.some((b, i) => b !== bones[i]))) continue;
+    // mergeGeometries needs the same attribute set on every input; a mixed set
+    // returns null rather than throwing, which is the case this guards.
+    let merged = null;
+    try {
+      merged = mergeGeometries(parts.map((p) => p.geometry), false);
+    } catch { merged = null; }
+    if (!merged) continue;
+    const one = new THREE.SkinnedMesh(merged, material);
+    one.name = parts[0].name + '_merged';
+    one.bindMode = parts[0].bindMode;
+    one.frustumCulled = parts.some((p) => p.frustumCulled);
+    parts[0].parent.add(one);
+    one.bind(skeleton, parts[0].bindMatrix);
+    for (const p of parts) {
+      p.parent.remove(p);
+      p.geometry.dispose();     // the merged copy owns the vertices now
+    }
+  }
   return root;
 }
 

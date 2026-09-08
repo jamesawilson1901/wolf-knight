@@ -1227,9 +1227,13 @@ export async function buildScr(scene) {
   const onward = !!state.flags.ariaDefeated;
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'sc4', { x: 0, z: -5, angle: 0 });
-  if (onward) sideDoor(world, 'n', halfW, halfD, 'd1a', { x: 0, z: 10, angle: Math.PI });
+  // THE ROAD, NOT THE REGION (2026-09-08). The crown used to open straight onto
+  // the Vale's first shore — a gale calmed on a cliff top, then sea level, with
+  // nothing in between to say you had come DOWN. The Plunge is that drop
+  // (js/levelPlunge.js, two rooms); p1's own spawn is (0, 11).
+  if (onward) sideDoor(world, 'n', halfW, halfD, 'p1', { x: 0, z: 11, angle: Math.PI });
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSB', D.propTint,
-    () => sideDoor(world, 'n', halfW, halfD, 'd1a', { x: 0, z: 10, angle: Math.PI }));
+    () => sideDoor(world, 'n', halfW, halfD, 'p1', { x: 0, z: 11, angle: Math.PI }));
 
   heroProp(world, 0, 0, 'crownstones', D);
   if (!state.flags.ariaDefeated) {

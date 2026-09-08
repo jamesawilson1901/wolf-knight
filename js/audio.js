@@ -75,12 +75,41 @@ const MUSIC_FILES = {
   victory: './assets/audio/music/victory.ogg',
   'region-stone': './assets/audio/music/region-stone.ogg',
   'stone-deep': './assets/audio/music/stone-deep.ogg',
-  // ALIASES (v3.21.2). kiln.mp3 was byte-identical to causeway.mp3, and
-  // ember-calm.ogg to den.ogg — 6.6 MB of the game's download was the same two
-  // tracks shipped twice, which every kid's phone paid for on a slow
-  // connection. Two names, one file each.
-  kiln: './assets/audio/music/causeway.mp3',
-  'ember-calm': './assets/audio/music/den.ogg',
+  // THE ALIASES ARE GONE (2026-09-08). kiln.mp3 had been byte-identical to
+  // causeway.mp3 and ember-calm.ogg to den.ogg; v3.21.2 correctly stopped
+  // shipping 6.6 MB of the same two tracks twice by pointing both names at one
+  // file each. That fixed the download and left the game with three sections
+  // wearing another section's sound, which is what dad heard: "make sure there
+  // is music for every section. make sure there is a variety of it."
+  //
+  // Both names now have a track of their OWN, from the same CC0 well the six
+  // region themes came from — sparklinlabs/superpowers-asset-packs, this time
+  // rpg-battle-system/music (16 themes, same artist, same 16-bit idiom, the
+  // repo's one CC0 LICENSE.txt already on disk as
+  // superpowers-medieval-fantasy.txt and already stated to cover every pack in
+  // it). Cast by the same decoded-audio character the six were cast by —
+  // tools/probe-music-character.mjs is that instrument, extracted so the next
+  // casting call does not start from nothing.
+  kiln: './assets/audio/music/kiln.ogg',                 // theme-16: the longest and most stately in the pack, for the volcano's three-door hall
+  'ember-calm': './assets/audio/music/ember-calm.ogg',   // theme-9:  onsets 0.56, the calmest thing in it — a Hollow with nothing left to fear
+  // ...AND THE FIVE SECTIONS THAT HAD NEVER HAD A SOUND OF THEIR OWN.
+  // The Wild Woods shared the Causeway's loop; all three ROADS shared
+  // stone-deep, which is the one thing a road must not do — a road exists to
+  // make the change of place felt, and three roads that sound alike make it
+  // felt once. The restored Village and the Spire's crown were both playing
+  // the Den's lullaby through the ember-calm alias.
+  wildwoods: './assets/audio/music/wildwoods.ogg',       // theme-2:  zcr 2.24, onsets 2.58 — bright and busy, a wood full of small movements
+  'road-night': './assets/audio/music/road-night.ogg',   // theme-8:  rms 0.095, the quietest — an unlit road
+  'road-green': './assets/audio/music/road-green.ogg',   // theme-1:  the climb up out of the stone, brightest of the three roads
+  'road-market': './assets/audio/music/road-market.ogg', // theme-3:  unhurried and mid — a town on a road, not a road
+  'village-calm': './assets/audio/music/village-calm.ogg', // theme-12: what the Village was being fought for
+  crown: './assets/audio/music/crown.ogg',               // theme-15: the biggest, warmest master in the pack, for the warmest room in the game
+  // ...AND THE THREE ROADS BUILT THE SAME DAY (levelClimb / levelPlunge /
+  // levelHollow). Same well, same casting method, and cast against the road
+  // either side of them so no two neighbours share a character either:
+  'road-climb': './assets/audio/music/road-climb.ogg',   // theme-6:  rms 0.076, thin and high — air getting colder
+  'road-plunge': './assets/audio/music/road-plunge.ogg', // theme-7:  zcr 2.80, the brightest in the pack — open sky and sea
+  'road-hollow': './assets/audio/music/road-hollow.ogg', // theme-11: zcr 0.52, the darkest — the light going out of the world
   // SIX REGIONS GET THEIR OWN SOUND (2026-08-30). Five loops had been
   // stretched across nine regions since the rebuilds; these six are the
   // Superpowers Medieval Fantasy themes (CC0, licence file on disk — the
@@ -117,6 +146,22 @@ const MUSIC_TRIM = {
   sunkenvale: 3.2,     // very quiet master, high headroom (dyn 0.59)
   'village-dark': 1.15,
   spire: 0.8,          // hottest master of the six, pull it back a touch
+  // THE EIGHT NEW ONES, mastered against the band the game already sits in
+  // (den 0.114, title 0.119, region-stone 0.125, causeway 0.176). Measured
+  // rms in the comment; the trim is what brings each to about 0.13, which is
+  // where a child can walk between two sections without reaching for the
+  // volume. Dad's ear outranks every number here.
+  kiln: 0.75,           // 0.180
+  'ember-calm': 1.1,    // 0.120
+  wildwoods: 1.1,       // 0.119
+  'road-night': 1.35,   // 0.095 — the quietest master in the pack
+  'road-green': 1.1,    // 0.116
+  'road-market': 1.0,   // 0.133
+  'village-calm': 1.05, // 0.122
+  crown: 0.5,           // 0.265 — twice the game's average, pull it well back
+  'road-climb': 1.7,    // 0.076 — the quietest thing in either pack
+  'road-plunge': 0.75,  // 0.173
+  'road-hollow': 0.77,  // 0.169
 };
 
 class AudioSystem {
@@ -247,6 +292,63 @@ class AudioSystem {
       g.connect(this.sfxGain);
       src.start();
     } catch (e) { /* decode/fetch failure is non-fatal */ }
+  }
+
+  // ---- THE SPOKEN LINES ---------------------------------------------------
+  //
+  // PIP STOPS SOUNDING LIKE A ROBOT (dad, 2026-09-08: "I won't be recording a
+  // voice for pip so look into other options"). Every line in js/narration.js
+  // is rendered ONCE, offline, by a small local neural TTS and shipped as an
+  // ogg beside the music (tools/tts-narration.py). There is no model, no WASM
+  // and no inference on the child's tablet: playing a file is the cheapest
+  // thing a browser can do, and it sounds the same on every device instead of
+  // depending on whichever engine a phone happens to ship.
+  //
+  // Returns true if a clip started. FALSE IS NOT A FAILURE — it is how a line
+  // added after the last render still speaks: narration.js falls back to the
+  // Web Speech voice it has always used. tools/verify-narration.mjs is what
+  // notices that a line is missing its clip, rather than a child noticing.
+  //
+  // It plays through `sfxGain`, not `musicGain`: a voice is not music, and the
+  // duck that quiets the music while Pip talks must not quiet Pip.
+  async speakLine(id, onEnd) {
+    if (!this.ctx || !id) return false;
+    const url = `./assets/audio/vo/${id}.ogg`;
+    if (this._voMissing && this._voMissing.has(url)) return false;
+    let buf;
+    try {
+      buf = await this._buffer(url);
+    } catch (e) {
+      // Remember the miss so a repeatable line does not re-request it every
+      // time it fires. The buffers map caches the REJECTED promise otherwise,
+      // which would be fine, but this keeps the log to one line per id.
+      (this._voMissing || (this._voMissing = new Set())).add(url);
+      this.buffers.delete(url);
+      return false;
+    }
+    this.stopLine();
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.value = 1;
+    src.connect(g);
+    g.connect(this.sfxGain);
+    src.onended = () => {
+      if (this._voSource !== src) return;    // superseded by the next line
+      this._voSource = null;
+      if (onEnd) onEnd();
+    };
+    src.start();
+    this._voSource = src;
+    return true;
+  }
+
+  // Cut the current line off mid-word — what tapping the caption does.
+  stopLine() {
+    if (!this._voSource) return;
+    const src = this._voSource;
+    this._voSource = null;                   // so onended does not call back
+    try { src.stop(); } catch (e) { /* already ended */ }
   }
 
   // Loops `name`; pass {loop:false, then:'other'} for a one-shot sting, or
