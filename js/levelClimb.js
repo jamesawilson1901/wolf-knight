@@ -285,21 +285,23 @@ export async function buildC2(scene) {
   // same 'shatter' system Frostpeak's t1b spring uses, so a child meets the
   // idea twice before they are handed the tool for it. There is a chest behind
   // it, in sight, which is what turns a wall into a promise.
-  wallRun(world, -16, -6.0, -1.9, -6.0, D);
-  wallRun(world, 1.9, -6.0, 16, -6.0, D);
-  promiseGate(world, 0, -6.0, 3.4, 2.4, 0x9be3ff, 'FROZEN — later', 'rockSB',
+  //
+  // ACROSS A NOOK, NOT ACROSS THE ROAD. The first cut walled this wall-to-wall
+  // with the gate in the middle and a comment claiming a pass ran round the
+  // east spur; the wall runs went 1.9→16, so there was no pass and the only
+  // way north was through a gate the child cannot open for another whole
+  // region. verify-reachable said so in one line — "the doorway is open but
+  // walled off from where the player arrives" — which is exactly the job that
+  // suite exists to do. A ROAD'S PROMISE GATE GUARDS A REWARD, NEVER THE WAY ON.
+  wallRun(world, 9.4, -4.0, 9.4, -12.5, D);
+  wallRun(world, 9.4, -4.0, 12.2, -4.0, D);
+  wallRun(world, 15.4, -4.0, 16, -4.0, D);
+  promiseGate(world, 13.8, -4.0, 3.0, 2.2, 0x9be3ff, 'FROZEN — later', 'rockSB',
     { system: 'shatter', id: 'c2_pass', region: REGION });
-  world.markers.icePromise = { x: 0, z: -6.0 };
-  world.markers.heroSpot = { x: 0, z: -6.0 };
-  world.reserve(0, -6.0, 3.2, 'the ice wall');
-  visibleReward(world, 0, -9.5, 'c2_ice_prize', { shards: 26, gear: 'shield_iron' }, 'silver');
-
-  // THE WAY OVER. The gate seals the road, so the door north cannot be behind
-  // it: the pass runs round the east spur, open from the day a child arrives.
-  // A road whose only exit is behind its own promise gate is a dead end, which
-  // is the mistake verify-reachable exists to catch.
-  wallRun(world, 12.5, -6.0, 12.5, -2.0, D);
-  world.reserve(14.2, -6.0, 2.2, 'the pass round');
+  world.markers.icePromise = { x: 13.8, z: -4.0 };
+  world.markers.heroSpot = { x: 13.8, z: -4.0 };
+  world.reserve(13.8, -4.0, 3.0, 'the ice wall');
+  visibleReward(world, 13.0, -8.5, 'c2_ice_prize', { shards: 26, gear: 'shield_iron' }, 'silver');
 
   world.markers.batSpots = [{ x: -6, z: 5 }, { x: 6, z: 7 }];
   world.markers.slimeSpots = [{ x: -4, z: -1, variant: 'frost' }];

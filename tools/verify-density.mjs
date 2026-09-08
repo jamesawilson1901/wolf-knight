@@ -108,6 +108,12 @@ const ROOMS = [
   { id: 'g1',  kind: 'island' }, { id: 'g2',  kind: 'island' },
   // The Drowned Market — the road between Frostpeak and Stormreach
   { id: 'q1',  kind: 'island' }, { id: 'q2',  kind: 'island' },
+  // The last three roads (2026-09-08). Measured as islands like every other
+  // road: they are walked at the same pace, in the same frame, and a road the
+  // child crosses between two dressed regions cannot be the bare bit.
+  { id: 'c1',  kind: 'island' }, { id: 'c2',  kind: 'island' },   // the Cold Climb
+  { id: 'p1',  kind: 'island' }, { id: 'p2',  kind: 'island' },   // the Plunge
+  { id: 'h1',  kind: 'island' }, { id: 'h2',  kind: 'island' },   // the Hollow Road
   // ── AUDITED IN 2026-09-03 ────────────────────────────────────────────────
   // Twenty-six live rooms had never been looked at by this suite: the whole
   // Moonlit Spire, the whole Village, the Den, and all of Frostpeak. Not

@@ -585,7 +585,38 @@ export async function buildYsq(scene) {
       ['stool', -9.5, 12.5, 1.0, 1.0], ['basin', 9.5, 12.0, 1.0, 0.2],
       ['coil', -6.5, 8.5, 1.0, 0.4], ['broom', 6.0, 8.0, 1.0, -0.9],
       ['cartwheel', -1.5, 11.5, 1.0, 0.6], ['sack', 1.5, 12.0, 1.0, -0.2]]);
-  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  // THE GATE PLANTERS, and the market crates between them.
+  //
+  // The square measured 25 things in its arrival frame against a floor of 32
+  // (verify-density, board #124) and had been a red line in the known-fail
+  // manifest since 2026-09-05. It is not short of PROPS — 159 distinct models,
+  // the richest room in the game — it is short of things the arrival frame can
+  // see as separate: everything the square owns is one atlas, and flattenStatic
+  // folds a whole spatial cell of it into one draw. Piling on more of the same
+  // pack never moved the number and the note above the felled logs says so.
+  //
+  // So the fix is content the frame has none of. Two planters flank the Den
+  // arch — the first thing a child walks past coming into town — and they carry
+  // the same continuous readout the rest of the square does: dead grey at six
+  // guardians standing, green at none. And four market crates stand between
+  // them, because the hub of the endgame had four pots in it, all placed by the
+  // automatic scatter, and none of them where a child arrives.
+  if (!GREY()) {
+    const bedTint = mixHex(0x6b6353, 0x5f8f3c, blend);
+    for (const [key, gltf, bx, bz, bs] of [
+      ['bush', villageKit.bush, -7.4, 12.2, 0.85], ['flowerA', villageKit.flowerA, -6.4, 11.5, 1.25],
+      ['flowerB', villageKit.flowerB, -7.0, 11.0, 1.25],
+      ['bush', villageKit.bush, 6.4, 11.9, 0.85], ['flowerA', villageKit.flowerA, 5.4, 11.2, 1.25],
+      ['flowerB', villageKit.flowerB, 6.0, 10.7, 1.25]]) {
+      if (world.blocked(bx, bz, 0.7)) continue;
+      placeOne(world, gltf, key, bx, bz, bs, bx * 0.3 + bz, bedTint);
+    }
+  }
+  world.markers.breakables = [
+    { x: -3.2, z: 10.4, kind: 'crate' }, { x: -2.0, z: 9.0, kind: 'cask' },
+    { x: 3.0, z: 10.6, kind: 'crate' }, { x: 2.2, z: 9.2, kind: 'vase' },
+    ...potSpotsOrFewer(world, halfW, halfD, spec),
+  ];
   return finish(world, spec, D);
 }
 

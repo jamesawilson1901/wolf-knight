@@ -1708,6 +1708,17 @@ export async function buildLk2(scene) {
   lowWall(world, -9, 2.5, 0.2, D, 3.2);
   rubbleField(world, 11, 1, 2.6, D, 11);
   aftermath(world, -10, 8, 2.2, D, 13);
+  // THE SOUTH SIDE OF THE CROSSING, which had nothing on it. The Span measured
+  // 31 things in its arrival frame against a floor of 32 (verify-density, board
+  // #124) and had been a red line in the known-fail manifest since 2026-09-05.
+  // Everything that dresses this room stands north of the road: the wreck, the
+  // low wall and the aftermath are all on the far side, so a child walking in
+  // from lk1 sees a busy left hand and a bare right one. A second cart that did
+  // not make the crossing, the column that came down beside it and the burnt
+  // scatter around both put the same weight on the side the camera opens on.
+  cartWreck(world, 5, -6.5, -0.5, D);
+  fallenColumn(world, 3.5, -3.2, 1.1, D, 3.0);
+  aftermath(world, 8.5, -8.5, 2.0, D, 9);
   scatter(world, halfW, halfD, D, 72, 6);
   return finish(world, spec, D);
 }

@@ -248,20 +248,17 @@ export async function buildH2(scene) {
 
   // THE WALL OF DARK — the last locked thing before the last region, in the
   // Moonlight's own violet and on the same 'shatter' promise the Court's gates
-  // use. Chest behind it, in sight.
-  wallRun(world, -16, -6.0, -1.9, -6.0, D);
-  wallRun(world, 1.9, -6.0, 16, -6.0, D);
-  promiseGate(world, 0, -6.0, 3.4, 2.4, 0x9f7fd0, 'DARK — later', 'rockSB',
+  // use. Chest behind it, in sight. Across a NOOK, never across the road: see
+  // the long note in js/levelClimb.js.
+  wallRun(world, 9.4, -4.0, 9.4, -12.5, D);
+  wallRun(world, 9.4, -4.0, 12.2, -4.0, D);
+  wallRun(world, 15.4, -4.0, 16, -4.0, D);
+  promiseGate(world, 13.8, -4.0, 3.0, 2.2, 0x9f7fd0, 'DARK — later', 'rockSB',
     { system: 'shatter', id: 'h2_veil', region: REGION });
-  world.markers.moonPromise = { x: 0, z: -6.0 };
-  world.markers.heroSpot = { x: 0, z: -6.0 };
-  world.reserve(0, -6.0, 3.2, 'the wall of dark');
-  visibleReward(world, 0, -9.5, 'h2_veil_prize', { shards: 30, gear: 'shield_moon' }, 'silver');
-
-  // THE WAY ON round the east spur, open from the day a child arrives — a road
-  // whose only exit is behind its own promise gate is a dead end.
-  wallRun(world, 12.5, -6.0, 12.5, -2.0, D);
-  world.reserve(14.2, -6.0, 2.2, 'the way round');
+  world.markers.moonPromise = { x: 13.8, z: -4.0 };
+  world.markers.heroSpot = { x: 13.8, z: -4.0 };
+  world.reserve(13.8, -4.0, 3.0, 'the wall of dark');
+  visibleReward(world, 13.0, -8.5, 'h2_veil_prize', { shards: 30, gear: 'shield_moon' }, 'silver');
 
   world.markers.houndSpots = [{ x: -5, z: 6, variant: 'shadewalker' }, { x: 6, z: 2 }];
   world.markers.batSpots = [{ x: -8, z: -2 }];

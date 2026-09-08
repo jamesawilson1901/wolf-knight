@@ -232,10 +232,87 @@ const everyGate = await page.evaluate(async (ids) => {
 const named = new Set(GATES.map((g) => g.gate));
 // 'none' gates open by being walked (Stormreach's sea cave is water, not a
 // verb) — there is no tool to drive, so they are outside this suite's remit.
-const untested = everyGate.filter((g) => g.system !== 'none' && !named.has(g.id));
-for (const g of everyGate) console.log(`   ${g.room.padEnd(5)} ${g.system.padEnd(8)} ${g.id}${named.has(g.id) ? '' : g.system === 'none' ? '   (opens by walking — not a verb)' : '   ← NOT DRIVEN BY THIS SUITE'}`);
-check(`every promise gate in the game is driven here (${everyGate.length} found)`,
-  untested.length === 0, untested);
+const undriven = everyGate.filter((g) => g.system !== 'none' && !named.has(g.id));
+for (const g of everyGate) console.log(`   ${g.room.padEnd(5)} ${g.system.padEnd(8)} ${g.id}${named.has(g.id) ? '   (driven in full above)' : g.system === 'none' ? '   (opens by walking — not a verb)' : ''}`);
+
+// ---------------------------------------------------------------------------
+console.log('\n── ...and the other ' + undriven.length + ', driven automatically ──');
+//
+// THE HAND-KEPT TABLE STOPPED BEING THE ONLY WAY IN (2026-09-08).
+//
+// GATES above drives seven gates in FULL — the reward behind each one is
+// unreachable, the verb makes it reachable, the geometry leaves the room, it
+// stays open after a rebuild. That needs the chest id and the exact spot a
+// child stands, neither of which is anywhere in the game data, so it is
+// hand-kept and it has rotted once already. There were twenty gates and seven
+// entries, and this suite has been a red line in tools/known-fail.txt on
+// account of the thirteen.
+//
+// The thirteen do not need the hand data for the part that matters. Everything
+// promiseGate() itself knows — where the gate is, how big it is, which system
+// it belongs to — it writes into `world.promiseGates`, and the verb follows
+// from the system. So the approach is COMPUTED: stand off the gate's short
+// axis on whichever side the room has floor, face it, swing. If the geometry
+// goes, the gate is wired to the tool it advertises, which is this file's
+// entire claim.
+//
+// It is a weaker check than the seven above and it is deliberately not
+// pretending otherwise — no chest, no before/after reachability. It is the
+// difference between thirteen gates checked shallowly and thirteen gates not
+// checked at all.
+const VERB = { crack: 'earth_wolf', burn: 'fire_wolf', cut: 'verdant_wolf', shatter: 'frost_wolf' };
+const ALL_FORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf',
+  'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
+for (const g of undriven) {
+  const form = VERB[g.system];
+  if (!form) { check(`${g.id}: has a verb this suite can drive`, false, g); continue; }
+  await page.evaluate((f) => { const gg = window.__game;
+    gg.state.formsUnlocked = f;
+    gg.state.flags.cracked = {}; gg.state.flags.burned = {}; gg.state.flags.world = {};
+  }, ALL_FORMS);
+  if (!(await go(g.room))) { check(`enter ${g.room} for ${g.id}`, false); continue; }
+  const out = await page.evaluate(async (a) => {
+    const gg = window.__game, w = gg.world;
+    const s = () => new Promise((r) => requestAnimationFrame(r));
+    const gate = (w.promiseGates || []).find((x) => x.id === a.id);
+    if (!gate) return { missing: 'gate' };
+    let entry = null;
+    for (const key of ['crackables', 'burnables', 'cuttables', 'shatterables']) {
+      const e = (w[key] || []).find((c) => c.id === a.id);
+      if (e) { entry = e; break; }
+    }
+    if (!entry) return { missing: 'register' };
+    // stand off the SHORT axis — the way through a gate is across its thin
+    // dimension — and try both sides, because which one the room has floor on
+    // is a per-room fact and nothing records it.
+    const thinX = gate.w <= gate.d;
+    const off = (thinX ? gate.w : gate.d) / 2 + 1.9;
+    const sides = thinX
+      ? [[off, 0, -Math.PI / 2], [-off, 0, Math.PI / 2]]
+      : [[0, off, Math.PI], [0, -off, 0]];
+    let fired = false;
+    for (const [ox, oz, ry] of sides) {
+      gg.state.form = a.form;
+      gg.player.root.position.set(gate.x + ox, gg.player.root.position.y, gate.z + oz);
+      gg.player.root.rotation.y = ry;
+      gg.player.specialCooldown = 0; gg.player.lockTime = 0;
+      for (let i = 0; i < 3; i++) { w.animate(i * 0.05, 0.05); await s(); }
+      if (gg.player.trySpecial(gg.effects, w)) fired = true;
+      for (let i = 0; i < 4; i++) await s();
+      // a crack or a burn scatters its chunks over 0.8s before the group drops
+      for (let i = 0; i < 40 && entry.group && entry.group.parent; i++) {
+        w.animate(i * 0.05, 0.05);
+        if (i % 4 === 3) await s();
+      }
+      if (!(entry.group && entry.group.parent)) break;
+    }
+    return { fired, stillDrawn: !!(entry.group && entry.group.parent) };
+  }, { id: g.id, form });
+  check(`${g.room} · ${g.id} (${g.system}) opens to the ${form.replace('_', ' ')}`,
+    !out.missing && out.stillDrawn === false, out);
+}
+check(`every promise gate in the game is driven (${everyGate.length} found, `
+  + `${GATES.length} in full, ${undriven.length} automatically)`, true);
 
 console.log('\n' + (errors.length ? '✗ ' + errors.length + ' FAILED\n' + errors.join('\n') : '✓ all promise gates open to the tool they advertise'));
 await b.close();

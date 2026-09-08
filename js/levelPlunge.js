@@ -262,20 +262,18 @@ export async function buildP2(scene) {
 
   // THE FLOODED GATE — the lock ahead, in the Tide Wolf's teal. A chest stands
   // in the water beyond it, in sight from the road, which is what makes a wall
-  // a promise instead of a dead end.
-  wallRun(world, -16, -6.0, -1.9, -6.0, D);
-  wallRun(world, 1.9, -6.0, 16, -6.0, D);
-  promiseGate(world, 0, -6.0, 3.4, 2.4, 0x4fd0e0, 'FLOODED — later', 'rockSB',
+  // a promise instead of a dead end. Across a NOOK, never across the road: see
+  // the long note in js/levelClimb.js, where the first cut of all three of
+  // these roads walled the way on behind a gate two regions early.
+  wallRun(world, -9.4, -4.0, -9.4, -12.5, D);
+  wallRun(world, -9.4, -4.0, -12.2, -4.0, D);
+  wallRun(world, -15.4, -4.0, -16, -4.0, D);
+  promiseGate(world, -13.8, -4.0, 3.0, 2.2, 0x4fd0e0, 'FLOODED — later', 'rockSB',
     { system: 'shatter', id: 'p2_ford', region: REGION });
-  world.markers.waterPromise = { x: 0, z: -6.0 };
-  world.markers.heroSpot = { x: 0, z: -6.0 };
-  world.reserve(0, -6.0, 3.2, 'the flooded gate');
-  visibleReward(world, 0, -9.5, 'p2_ford_prize', { shards: 26, gear: 'spear_a' }, 'silver');
-
-  // THE WAY ON runs round the west spur, open from the day a child arrives: a
-  // road whose only exit is behind its own promise gate is a dead end.
-  wallRun(world, -12.5, -6.0, -12.5, -2.0, D);
-  world.reserve(-14.2, -6.0, 2.2, 'the way round');
+  world.markers.waterPromise = { x: -13.8, z: -4.0 };
+  world.markers.heroSpot = { x: -13.8, z: -4.0 };
+  world.reserve(-13.8, -4.0, 3.0, 'the flooded gate');
+  visibleReward(world, -13.0, -8.5, 'p2_ford_prize', { shards: 26, gear: 'spear_a' }, 'silver');
 
   world.markers.slimeSpots = [{ x: -5, z: 4 }, { x: 5, z: 8 }];
   world.markers.batSpots = [{ x: 8, z: 1 }];

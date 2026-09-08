@@ -154,6 +154,147 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
         for (const k of held) await page.keyboard.up(k);
       }
     },
+    // THE DRIVER CAN GET ROUND THINGS NOW.
+    //
+    // walkTo above drives real keys STRAIGHT at a target and has no routing at
+    // all, which is board item #1 and the single root cause of two suites'
+    // failures: verify-nightroad and verify-chests/t3b both report a room a
+    // child walks through fine, because a prop between the bot and the target
+    // stops it dead. Flood fills proved both — the goal cells are reachable,
+    // 0.11u and 0.09u from walkable ground, and the bot wedges on a point that
+    // is itself inside geometry.
+    //
+    // So the driver gets the same flood fill, once, in the page: a 0.4u grid
+    // over the room, BFS from where the player is standing to the goal, then
+    // the corners kept and the straight runs thrown away. Each leg is the
+    // existing walkTo, so every step is still a real key press through the
+    // real input pipeline — this adds WAYPOINTS, not a teleport.
+    //
+    // If the fill cannot reach the goal it returns null and this falls back to
+    // one straight walk, which is exactly the old behaviour: a routing bot that
+    // silently refuses to try is worse than a dumb one.
+    async pathTo(tx, tz, r = 0.34) {
+      return page.evaluate(({ tx, tz, r }) => {
+        const w = window.__game.world, p = window.__game.player.root.position;
+        if (!w.halfW) return null;
+        const STEP = 0.4;
+        const nx = Math.floor((w.halfW * 2) / STEP), nz = Math.floor((w.halfD * 2) / STEP);
+        const at = (i, j) => [-w.halfW + i * STEP + STEP / 2, -w.halfD + j * STEP + STEP / 2];
+        // the same overlap test verify-spawn-clear and probe-freespot use —
+        // NOT resolveCircle, which answers the weaker "would a body be pushed
+        // off here" and calls a prop's own centre clear
+        const free = new Uint8Array(nx * nz);
+        for (let i = 0; i < nx; i++) {
+          for (let j = 0; j < nz; j++) {
+            const [x, z] = at(i, j);
+            let ok = true;
+            for (const c of w.boxColliders) {
+              const cx = Math.max(c.minX, Math.min(x, c.maxX));
+              const cz = Math.max(c.minZ, Math.min(z, c.maxZ));
+              if ((x - cx) ** 2 + (z - cz) ** 2 < r * r) { ok = false; break; }
+            }
+            if (ok) {
+              for (const c of w.circleColliders) {
+                if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + r) ** 2) { ok = false; break; }
+              }
+            }
+            free[i * nz + j] = ok ? 1 : 0;
+          }
+        }
+        const cell = (x, z) => [
+          Math.max(0, Math.min(nx - 1, Math.round((x + w.halfW - STEP / 2) / STEP))),
+          Math.max(0, Math.min(nz - 1, Math.round((z + w.halfD - STEP / 2) / STEP)))];
+        // NEAREST FREE CELL, both ends. The goal is often a chest or a door
+        // mouth whose own collider fills its cell; a fill that insists on
+        // standing IN the target never starts.
+        const nearestFree = ([ci, cj]) => {
+          if (free[ci * nz + cj]) return [ci, cj];
+          for (let rad = 1; rad < 12; rad++) {
+            for (let di = -rad; di <= rad; di++) {
+              for (let dj = -rad; dj <= rad; dj++) {
+                if (Math.max(Math.abs(di), Math.abs(dj)) !== rad) continue;
+                const i = ci + di, j = cj + dj;
+                if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
+                if (free[i * nz + j]) return [i, j];
+              }
+            }
+          }
+          return null;
+        };
+        const start = nearestFree(cell(p.x, p.z));
+        const goal = nearestFree(cell(tx, tz));
+        if (!start || !goal) return null;
+        const prev = new Int32Array(nx * nz).fill(-1);
+        const seen = new Uint8Array(nx * nz);
+        let q = [start[0] * nz + start[1]];
+        seen[q[0]] = 1;
+        const goalIdx = goal[0] * nz + goal[1];
+        while (q.length) {
+          const next = [];
+          for (const cur of q) {
+            if (cur === goalIdx) { q = []; break; }
+            const ci = Math.floor(cur / nz), cj = cur % nz;
+            for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+              const i = ci + di, j = cj + dj;
+              if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
+              const k = i * nz + j;
+              if (seen[k] || !free[k]) continue;
+              seen[k] = 1; prev[k] = cur; next.push(k);
+            }
+          }
+          if (!q.length) break;
+          q = next;
+        }
+        if (!seen[goalIdx]) return null;
+        const back = [];
+        for (let k = goalIdx; k !== -1; k = prev[k]) back.push(k);
+        back.reverse();
+        // KEEP THE CORNERS, THROW AWAY THE STRAIGHT RUNS. A waypoint every
+        // 0.4u would have the bot stopping and restarting forty times across a
+        // room; what walkTo needs is the handful of places the line bends.
+        const pts = back.map((k) => at(Math.floor(k / nz), k % nz));
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length - 1; i++) {
+          const a = out[out.length - 1], b = pts[i], c = pts[i + 1];
+          const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+          if (Math.abs(cross) > 1e-6) out.push(b);
+        }
+        out.push([tx, tz]);
+        return out;
+      }, { tx, tz, r });
+    },
+
+    // Walk to (x, z) the long way round if the short way is blocked. Same
+    // return shape as walkTo, so a caller can swap one for the other.
+    async routeTo(tx, tz, opts = {}) {
+      const legs = await api.pathTo(tx, tz).catch(() => null);
+      if (!legs || legs.length < 2) return api.walkTo(tx, tz, opts);
+      const budget = opts.timeout || 30;
+      const t0 = Date.now();
+      let last = null;
+      for (let i = 0; i < legs.length; i++) {
+        const isLast = i === legs.length - 1;
+        const left = budget - (Date.now() - t0) / 1000;
+        if (left <= 1) return { ok: false, why: 'timeout', at: (await api.wk()).pos, legs: legs.length };
+        last = await api.walkTo(legs[i][0], legs[i][1], {
+          ...opts,
+          timeout: Math.min(left, isLast ? left : 8),
+          arrive: isLast ? (opts.arrive || 0.9) : 0.55,
+        });
+        if (last.roomChanged) return last;
+        // A LEG THAT WEDGES IS NOT THE WALK FAILING. The fill is a snapshot and
+        // the world moves — an enemy stands in a corridor, a boulder rolls.
+        // Re-fill from wherever the bot actually is and carry on rather than
+        // giving up on a route that was right when it was computed.
+        if (!last.ok && !isLast) {
+          const again = await api.pathTo(tx, tz).catch(() => null);
+          if (again && again.length > 1) { legs.splice(0, legs.length, ...again); i = -1; continue; }
+          return api.walkTo(tx, tz, { ...opts, timeout: Math.max(2, budget - (Date.now() - t0) / 1000) });
+        }
+      }
+      return last;
+    },
+
     async tap(key) { await page.keyboard.press(key); },      // j/k/l/Tab/Space/h
     // THE PERK CHOOSER BLOCKS UNTIL CHOSEN — that is its design, and it was
     // the whole overnight wedge: level up mid-fight, the world pauses for a
