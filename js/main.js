@@ -35,6 +35,7 @@ import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
+import { wayfarerPost, spawnWayfarer } from './npcs.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -795,6 +796,12 @@ function narrationTriggers(dt, t) {
     && nearXZ(c.x, c.z, 3.2))) narration.say('gear_hint');
   // an easter egg, found by nobody's system but curiosity
   if (m.dodoSpot && nearSpot(m.dodoSpot, 3)) narration.say('dodo_secret');
+  // TAM, in whichever of the eight rooms he is standing in — the Den or any
+  // arena whose boss is down. Room-agnostic on purpose: the whole point of him
+  // is that he is the same offer wherever you find him.
+  if (m.wayfarerSpot && nearSpot(m.wayfarerSpot, 2.6)) {
+    if (!narration.say('tam_intro')) sayThrottled('tam_offer', t, 40);
+  }
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
@@ -1382,6 +1389,36 @@ function openTheWayOn(arena) {
   });
 }
 
+// TAM ARRIVES WHERE THE SHADOW BROKE (dad's request, 2026-09-07).
+//
+// Same shape as openTheWayOn above, and for the same reason: a wayfarer who
+// only turns up on a REBUILD is a wayfarer the child who just won never meets.
+// He walks in a beat after the door does — the shard shower, then the way on,
+// then him — so the three things do not land on top of each other.
+//
+// The flag is already set by the time any defeat path calls this (boss.js sets
+// it before it fires onDefeated; onWardenDefeated sets it before it calls
+// here), so wayfarerPost answers the same question it will answer on the next
+// visit, and he cannot appear one boss early.
+function summonWayfarer(arena) {
+  const post = arena && wayfarerPost(arena.roomId);
+  if (!post || arena.wayfarer) return;
+  let comeIn = 2.6;
+  arena.onAnimate((tNow, dt) => {
+    if (comeIn <= 0) return;
+    comeIn -= dt || 0.016;
+    if (comeIn > 0) return;
+    if (arena !== world) return;      // they walked out; he'll be there next time
+    spawnWayfarer(arena, post).then(() => {
+      for (let i = 0; i < 10; i++) {
+        juice.burst(post.x + (Math.random() * 2 - 1) * 0.7, 0.3 + Math.random() * 1.5,
+          post.z + (Math.random() * 2 - 1) * 0.7, i % 2 ? 0xa8bcff : 0xdfe6ff, 6);
+      }
+      audio.play('form-switch', { volume: 0.6, rate: 0.9 });   // the moonstone chime
+    }).catch((e) => console.warn('[wayfarer] could not arrive', e));
+  });
+}
+
 function updateMusic() {
   // BOSS MUSIC, FROM THE ONE LIST THAT KNOWS WHICH ROOMS ARE BOSS ROOMS.
   //
@@ -1689,6 +1726,7 @@ async function setupRoomExtras() {
     spawnShards(world, w.x, w.z + 1.5, 18);
     spawnPowerup(world, w.x, w.z + 2, 'star');
     openTheWayOn(world);   // the crypt's north road, opened where the child stands
+    summonWayfarer(world); // ...and Tam, a beat later, with the ride home
     if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
     ui.refreshBadge();
     narration.say('warden_defeat');
@@ -1706,6 +1744,10 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  // TAM, on every visit after the fight. The Den's copy of him is spawned by
+  // spawnDenNpcs alongside the other villagers (js/npcs.js) — spawnWayfarer
+  // refuses a second one, so it does not matter which of the two runs first.
+  await spawnWayfarer(world, wayfarerPost(world.roomId));
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   // every so often a smashed pot hides a power-up
@@ -2431,6 +2473,7 @@ async function start() {
             // child is still standing in the arena, and if they have already
             // run out, the rebuild-time path shows the open door anyway.
             openTheWayOn(world);
+            summonWayfarer(world);
             if (state.room === 'f5') {
               // BOREAL FALLS — the storm lifts off Frostpeak and the Frost
               // Wolf is earned (boss.js set the flags; here is the party)

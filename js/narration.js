@@ -20,6 +20,7 @@ const VOICES = {
   aria: { rate: 1.08, pitch: 1.3, label: 'Aria' },      // quick, high, never still
   meri: { rate: 0.78, pitch: 0.95, label: 'Meri' },     // slow and low, like deep water
   kael: { rate: 0.95, pitch: 1.0, label: 'Kael' },      // he speaks once, at the end
+  tam: { rate: 0.92, pitch: 0.85, label: 'Tam' },       // unhurried; he walks everywhere
 };
 
 export const LINES = {
@@ -156,6 +157,13 @@ export const LINES = {
   wren_rumour: { voice: 'wren', text: 'A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…', repeat: true },
   rook_intro: { voice: 'rook', text: 'So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.' },
   rook_chat: { voice: 'rook', text: 'The horizon’s quiet today. Quiet is GOOD, little knight.', repeat: true },
+  // TAM THE WAYFARER — he turns up in an arena once its shadow is broken, and
+  // he keeps the Den moonstone company the rest of the time (js/npcs.js). The
+  // intro says the offer out loud ONCE; after that he only ever repeats the
+  // offer itself, because the thing a non-reader needs from him is the same
+  // thing every time and they will meet him seven times.
+  tam_intro: { voice: 'tam', text: 'Tam’s the name — I walk the roads between. The dark held them shut, and you’ve just opened one. Step close and I’ll carry you home, or anywhere else you’ve set free.' },
+  tam_offer: { voice: 'tam', text: 'Anywhere you’ve been, little knight. Just step close.', repeat: true },
   bram_den: { voice: 'bram', text: 'Ha! Thought I’d see this famous fire of yours. The caverns sing so sweet now, my pick near swings itself. You’ve a fine den, knight.' },
   den_dog: { voice: 'pip', text: 'That’s Biscuit! She guards the den. Well… mostly she guards her dinner.' },
   camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },

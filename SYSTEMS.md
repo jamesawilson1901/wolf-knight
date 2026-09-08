@@ -202,6 +202,21 @@ Biscuit the Husky (world.dog) wanders DOG_STOPS with Idle/Walk/Eating.
 main calls world.updateNpcs(dt, t, player); markers (<id>Spot, dogSpot)
 drive the narration greetings in main's den trigger block.
 
+## Tam the Wayfarer (js/npcs.js WAYFARER_POSTS)
+The fast-travel point with a face on it. One post per boss arena (le, vz,
+tgl, f5, scr, ddp, xth), each gated on that region's boss flag, plus the
+Den beside Luna's moonstone. spawnWayfarer() builds him out of the same
+villager machinery — rogue_hooded.glb washed moon-blue (every other KayKit
+humanoid is already somebody), a bobbing moonstone shard at his shoulder in
+the Den orb's own colour — and sets world.markers.travelSpot, which is what
+main.js already watches at 1.5u to open menus.showTravel(). In the Den he
+leaves the marker to the moonstone and stands 1.2u off it instead.
+He appears two ways: on BUILD (setupRoomExtras, via wayfarerPost(roomId))
+and LIVE, 2.6s of game time after a boss falls (summonWayfarer, the same
+shape as openTheWayOn, so a perk card or a story line holds him at the door
+exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
+off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
+
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;
 one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any
