@@ -536,7 +536,15 @@ export async function buildXa1(scene) {
     colour: 0xff8a3a, label: 'BARRED', prop: 'brick', system: 'burn',
     id: 'x_ash_bar', needs: 'fire_wolf',
   });
-  world.markers.houndSpots = [{ x: -8, z: -5, variant: 'shadewalker' }];
+  // THE HOUND PROWLS THE BARRED DOOR, on the side a child arrives from.
+  //
+  // It stood at (-8, -5), which is BEHIND the bar — past a door that does not
+  // open until the child has fire — so the one body a child meets on the way in
+  // was on the wrong side of the thing keeping them out. Nothing guarded the
+  // approach at all. Measured, not read: verify-gauntlet walks the through-line
+  // and a runner wedges on the wing wall at x = 6.8 having met nothing, and
+  // stood there for fourteen seconds untouched.
+  world.markers.houndSpots = [{ x: 8.5, z: -2, variant: 'shadewalker' }];
   // THE COURT WAS THE EMPTIEST ROOM IN THE HOUSE (2026-09-05).
   //
   // A census of all 146 rooms: the Shadow Court, the region the whole story
@@ -585,7 +593,16 @@ export async function buildXa1(scene) {
   // have shipped for months. blocked() reads the keep-clear RESERVES, and a
   // reserve means "no props on this ground", not "no creatures": half the
   // Court stands on one by design. Two rulers, two questions (world.js).
-  world.markers.wraithArcherSpots = [{ x: 7, z: 4 }];
+  // THE ARCHER WAS SHOOTING INTO THE WALL IT STOOD BESIDE.
+  //
+  // wingEntry() runs a wall up x = 6 from z = -4 to z = 4, and this spot was
+  // (7, 4) — hard against its north corner. RangedKiter kills its own bolt on
+  // the first collider it grazes (`_updateBolts`, resolveCircle at r 0.1), so
+  // every shot down the road died in the stonework a metre from the bow. A
+  // child crossing the Ash Wing at a run was never shot at once: verify-gauntlet
+  // measured 0 hits over fourteen seconds with the archer awake and firing the
+  // whole time. Moved two metres clear of the corner, it has the approach.
+  world.markers.wraithArcherSpots = [{ x: 9, z: 2.5 }];
   scatter(world, halfW, halfD, D, 711, 5, { spin: 1, kinds: ['brick', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7111, { homes: 2, loose: 14 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

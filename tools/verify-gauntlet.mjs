@@ -101,6 +101,26 @@ check(`all ungated doors fire with enemies alive (${doorsChecked} doors)`,
 console.log(`\n── 2. the crossing costs (${fights.length} fight rooms) ──`);
 // Hold the stick from just inside the entry door straight at the farthest
 // door. Knight form, default difficulty, shield down, no attacks.
+//
+// AND THE STICK HAS TO BE PLUGGED IN (2026-09-08). This section set
+// `window.__stick` and nothing in js/ has ever read it: the field the joystick
+// writes is `input.move`, and the two suites that drive movement this way
+// (verify-storm, verify-l1-doors) install a `getMove` override to make the
+// global mean something. This one never did. So for as long as it has existed
+// the "sprint" has been a player standing perfectly still at the doorway for
+// fourteen seconds, and what it measured was whether an enemy happened to
+// wander over and hit a statue. Rooms passed because something walked to the
+// door; rooms failed because nothing did. Both answers were about the same
+// non-event.
+//
+// Everything downstream of this line was therefore untrustworthy, including
+// three "findings" chased earlier today, and the honest thing to do with a
+// measurement that was never taken is to take it.
+await page.evaluate(() => {
+  const g = window.__game;
+  const real = g.input.getMove.bind(g.input);
+  g.input.getMove = () => (window.__stick ? { x: window.__stick.x, z: window.__stick.z } : real());
+});
 for (const f of fights) {
   if (!(await go(f.room))) continue;
   const r = await page.evaluate(async () => {
