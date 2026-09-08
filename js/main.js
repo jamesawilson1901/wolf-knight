@@ -841,8 +841,14 @@ function narrationTriggers(dt, t) {
     narration.say('den_intro');
     if (m.shopSpot && nearSpot(m.shopSpot, 3)) narration.say('shop_intro');
     if (m.travelSpot && nearSpot(m.travelSpot, 3)) narration.say('moonstone_intro');
-    if (m.cinderHome && nearSpot(m.cinderHome, 2.6)) narration.say('cinder_den');
-    if (m.petraHome && nearSpot(m.petraHome, 2.6)) narration.say('petra_den');
+    // THE SPIRITS THAT CAME HOME. One line each, said once, when a child walks
+    // up to the light — the same shape the two hand-written ones had, over the
+    // table js/rooms.js builds them from now.
+    for (const [marker, line] of [['cinderHome', 'cinder_den'], ['petraHome', 'petra_den'],
+      ['sylvaHome', 'sylva_den'], ['borealHome', 'boreal_den'],
+      ['ariaHome', 'aria_den'], ['meriHome', 'meri_den']]) {
+      if (m[marker] && nearSpot(m[marker], 2.6)) narration.say(line);
+    }
     // villagers: intro once, then gentle repeatable chat (throttled)
     if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
       if (!narration.say('wren_intro')) sayThrottled('wren_rumour', t, 45);

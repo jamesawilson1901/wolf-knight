@@ -899,50 +899,75 @@ async function buildDen(scene) {
   world.onAnimate((t, dt) => mixer.update(dt));
   world.markers.shopSpot = { x: 5.9, z: -3.7 };
 
-  // DEN ARRIVAL: Petra's stone-heart hums beside the moonstone once
-  // Stoneroot is healed — the second spirit home.
-  if (WS.get('stone', 'restored')) {
-    const base = prepareModel(kit.rockSB.scene.clone());
-    base.position.set(-3.4, 0, -4.8);
-    base.scale.setScalar(1.2);
-    world.add(base);
-    world.addCircle(-3.4, -4.8, 0.4);
-    const heart = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.18, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd8b06a, emissiveIntensity: 2.8, roughness: 1 })
+  // THE SPIRITS COME HOME (WORLD-DESIGN §3, finished 2026-09-08).
+  //
+  // Cinder's ember and Petra's stone-heart were built, by hand, as two
+  // twenty-five-line blocks that did the same thing with different numbers.
+  // The other four were a string in js/regions.js — "polish list: Sylva's
+  // leaf-light joining the den fire", and three more like it — for as long as
+  // those regions have existed. Four small warm set pieces missing from the
+  // room a child returns to most, and the two that DID exist could not be
+  // added to without copying the block a third time.
+  //
+  // One table now. `light` is the colour that spirit's own shrine wears in its
+  // arena (js/level{4,5,6}.js spiritShrine calls), so a child who freed Boreal
+  // on the summit meets the same rime-blue by the fire — the light is how they
+  // recognise who came home, and it must not be re-picked here.
+  //
+  // Every coordinate measured clear with tools/probe-freespot.mjs WK_LATE=1
+  // (the Den as it is once everything is freed: Tam standing by the moonstone,
+  // the third tent up, Petra on her stone).
+  const SPIRIT_HOMES = [
+    { key: 'ember', marker: 'cinderHome', x: 2.2, z: -2.4, light: 0xffb25a,
+      y: 0.9, glow: 5, bob: 1.6, phase: 0.8, base: null },
+    { key: 'stone', marker: 'petraHome', x: -3.4, z: -4.8, light: 0xd8b06a,
+      y: 0.85, glow: 4, bob: 1.4, phase: 2.1, base: 'rockSB', baseScale: 1.2, spin: 0.6 },
+    // Sylva's leaf-light rests on a cut stump, the way a wood remembers itself
+    { key: 'wild', marker: 'sylvaHome', x: -2.4, z: -2.6, light: 0x7ee787,
+      y: 0.8, glow: 4, bob: 1.1, phase: 3.4, base: 'stump', baseScale: 0.9, spin: 0.4 },
+    // Boreal's rime-light on a stone, and it barely moves: she is the slow one
+    { key: 'frost', marker: 'borealHome', x: 3.0, z: 0.6, light: 0x9be3ff,
+      y: 0.9, glow: 4.5, bob: 0.7, phase: 1.3, base: 'rockSA', baseScale: 1.0 },
+    // Aria's stormlight never settles on anything — quick, high, never still
+    { key: 'storm', marker: 'ariaHome', x: -2.6, z: 1.0, light: 0xfff4b0,
+      y: 1.15, glow: 4.5, bob: 3.1, phase: 0.2, base: null, wander: 0.13 },
+    // Meri's tidelight sits low over a wet stone and swells like deep water
+    { key: 'vale', marker: 'meriHome', x: 1.0, z: -4.0, light: 0x8fe4ff,
+      y: 0.62, glow: 4, bob: 0.9, phase: 4.2, base: 'rockSB', baseScale: 0.85 },
+  ];
+  for (const h of SPIRIT_HOMES) {
+    if (!WS.get(h.key, 'restored')) continue;
+    if (h.base) {
+      const base = prepareModel(kit[h.base].scene.clone());
+      base.position.set(h.x, 0, h.z);
+      base.scale.setScalar(h.baseScale || 1);
+      world.add(base);
+      world.addCircle(h.x, h.z, 0.4);
+    }
+    const orb = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(h.base ? 0.18 : 0.2, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, emissive: h.light, emissiveIntensity: h.base ? 2.8 : 3.0, roughness: 1,
+      })
     );
-    heart.position.set(-3.4, 0.85, -4.8);
-    world.add(heart);
-    world.keepLoose(heart);     // it bobs and turns (onAnimate below)
-    const hGlow = new THREE.PointLight(0xd8b06a, 4, 7, 1.9);
-    hGlow.position.set(-3.4, 1.0, -4.8);
-    world.add(hGlow);
+    orb.position.set(h.x, h.y, h.z);
+    world.add(orb);
+    world.keepLoose(orb);       // it bobs and turns; flattenStatic must leave it
+    const glow = new THREE.PointLight(h.light, h.glow, h.base ? 7 : 8, 1.9);
+    glow.position.set(h.x, h.y + 0.15, h.z);
+    world.add(glow);
     world.onAnimate((t) => {
-      heart.position.y = 0.85 + Math.sin(t * 1.4 + 2.1) * 0.06;
-      heart.rotation.y = t * 0.6;
-      hGlow.intensity = 3.6 + Math.sin(t * 2.0 + 1.0) * 0.5;
+      orb.position.y = h.y + Math.sin(t * h.bob + h.phase) * 0.07;
+      // only the stormlight drifts off its own spot, because she never stopped
+      if (h.wander) {
+        orb.position.x = h.x + Math.sin(t * 0.9 + h.phase) * h.wander;
+        orb.position.z = h.z + Math.cos(t * 1.3 + h.phase) * h.wander;
+        glow.position.set(orb.position.x, h.y + 0.15, orb.position.z);
+      }
+      if (h.spin) orb.rotation.y = t * h.spin;
+      glow.intensity = h.glow * 0.88 + Math.sin(t * (h.bob + 0.6) + h.phase) * 0.6;
     });
-    world.markers.petraHome = { x: -3.4, z: -4.8 };
-  }
-
-  // DEN ARRIVAL (WORLD-DESIGN §3): Cinder's ember settles by the campfire
-  // once Ember Hollow is healed — the first of seven spirits to come home.
-  if (WS.get('ember', 'restored')) {
-    const homeEmber = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.2, 1),
-      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb25a, emissiveIntensity: 3.0, roughness: 1 })
-    );
-    homeEmber.position.set(2.2, 0.9, -2.4);
-    world.add(homeEmber);
-    world.keepLoose(homeEmber); // it floats (onAnimate below)
-    const homeGlow = new THREE.PointLight(0xffc27a, 5, 8, 1.9);
-    homeGlow.position.set(2.2, 1.1, -2.4);
-    world.add(homeGlow);
-    world.onAnimate((t) => {
-      homeEmber.position.y = 0.9 + Math.sin(t * 1.6 + 0.8) * 0.07;
-      homeGlow.intensity = 4.4 + Math.sin(t * 2.3) * 0.7;
-    });
-    world.markers.cinderHome = { x: 2.2, z: -2.4 };
+    world.markers[h.marker] = { x: h.x, z: h.z };
   }
 
   // Luna's moonstone — the fast-travel waystone. Glows once there is

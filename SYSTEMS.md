@@ -268,6 +268,35 @@ Proven by tools/verify-healing.mjs (before-and-after of one room per region).
 `LATE=1 node tools/shot.mjs` now sets all seven regions, so the contact sheet
 can show the healed half of the game.
 
+## The spirits come home (js/rooms.js SPIRIT_HOMES)
+Six lights round the Den fire, one per region freed, each wearing the colour
+its own shrine wears in its arena so a child recognises who arrived. Cinder's
+ember and Petra's stone-heart were two hand-copied blocks; the other four were
+a `polish list:` string in js/regions.js for as long as those regions existed.
+One table now: `{key, marker, x, z, light, y, bob, phase, base}` — Sylva's
+leaf-light on a stump, Boreal's rime-light on a stone that never melts, Aria's
+stormlight that wanders because she never settled, Meri's tidelight low and
+slow over a wet stone. Every coordinate measured with
+`WK_LATE=1 node tools/probe-freespot.mjs`. Narration `<spirit>_den` counts
+them out loud — "how many have I brought home" is the only score in this game
+a child actually feels, and it is on no HUD. verify-den checks all six exist,
+stand on clear ground and do not share a spot.
+
+## One draw call per character (js/assets.js prepareCharacter)
+A KayKit humanoid is EIGHT mesh primitives sharing ONE material — arms, legs,
+body, cape, head, mask, all from one atlas, split only because that is how the
+model was authored. Every one was its own draw call: flattenStatic cannot
+touch a SkinnedMesh (a merged static batch cannot be posed). Measured in the
+Den, 39 of 113 meshes were the five people standing in it.
+`mergeSkinnedParts()` merges PER MATERIAL at spawn — which is what keeps it
+safe for the animals, since wolf.gltf has four materials and code around the
+game tints by material NAME (the grazing pack's coats, the wolf-form tint).
+Four groups in, four meshes out, every name still findable. It compares BONES
+rather than skeleton objects: SkeletonUtils.clone() builds a separate Skeleton
+instance per SkinnedMesh over the same bones, and an identity check silently
+does nothing (it did, on the first run). Den: 137 → 102 draw calls, and every
+room with characters in it gains.
+
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;
 one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any

@@ -116,7 +116,7 @@ export const REGIONS = {
     },
     ripple: { room: 'w5', what: 'Luna speaks of the glittering frost peaks (luna_dream_3)' },
     scar: { room: 'w4', what: 'the bare thorn-trees of the Bramble Heart never regrow leaves' },
-    denArrival: 'polish list: Sylva\'s leaf-light joining the den fire',
+    denArrival: 'Sylva\'s leaf-light rests on the stump by the Den fire',
   },
   frostpeak: {
     name: 'Frostpeak', built: true, spirit: 'Boreal',
@@ -147,7 +147,7 @@ export const REGIONS = {
     },
     ripple: { room: 'f5', what: 'Luna hears the wind crying on the cliffs (luna_dream_4)' },
     scar: { room: 'f3', what: 'the frozen lake never thaws — it only ever goes quiet' },
-    denArrival: 'polish list: Boreal\'s rime-light joining the den fire',
+    denArrival: 'Boreal\'s rime-light settles on a stone by the Den fire, and never melts',
   },
   stormreach: {
     name: 'Stormreach Cliffs', built: true, spirit: 'Aria',
@@ -181,7 +181,7 @@ export const REGIONS = {
     },
     ripple: { room: 'scr', what: 'Luna hears the sea under the cliffs (luna_dream_5)' },
     scar: { room: 's3b', what: 'the lightning-struck mast on the Thunderhead is never re-raised' },
-    denArrival: 'polish list: Aria\'s stormlight joining the den fire',
+    denArrival: 'Aria\'s stormlight circles the Den fire and never settles',
   },
   // THE VALE WAS A ONE-LINE STUB while the region itself was finished.
   //
@@ -224,7 +224,7 @@ export const REGIONS = {
     },
     ripple: { room: 'ddp', what: 'Luna hears the shadow above the water (luna_dream_6)' },
     scar: { room: 'd3b', what: 'the sunken house on the deep shelf is never raised' },
-    denArrival: "polish list: Meri's tidelight joining the den fire",
+    denArrival: "Meri's tidelight sits low over a wet stone by the Den fire",
   },
   shadowcourt: {
     name: 'The Shadow Court', built: true, spirit: 'Luna (and Grimm)', grants: 'moonlight',

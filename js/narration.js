@@ -178,6 +178,13 @@ export const LINES = {
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },
+  // THE OTHER FOUR (2026-09-08). Each one counts the spirits out loud, because
+  // "how many have I brought home" is the only score in this game a child
+  // actually feels, and it is not on the HUD anywhere.
+  sylva_den: { voice: 'pip', text: 'Sylva’s leaf-light found the stump by our fire! Three spirits home, Kael.' },
+  boreal_den: { voice: 'pip', text: 'Boreal’s rime-light came all the way down the mountain. Four! It doesn’t even melt.' },
+  aria_den: { voice: 'pip', text: 'Aria’s stormlight won’t sit still — it’s been round the fire twice already. That’s five!' },
+  meri_den: { voice: 'pip', text: 'Meri’s tidelight is here, low and slow like deep water. Six spirits home. Only the shadow is left.' },
   darkcave_enter: { voice: 'pip', text: 'The Hidden Hollow… it’s pitch dark in here. Become the Dark Wolf and let your eyes shine!' },
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },
