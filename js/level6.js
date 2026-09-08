@@ -572,7 +572,17 @@ export async function buildD1a(scene) {
               { x: -11, z: -9, r: 3.6, kind: 'moss' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'scr', { x: 0, z: 8, angle: Math.PI });
+  // BACK DOWN THE PLUNGE, not straight to the Stormreach shrine.
+  //
+  // A road is not a road if it is only walked one way. THE PLUNGE went in on
+  // 2026-09-08 between the Stormreach shrine and here, and this door was left pointing at
+  // the arena — so a child walked OUT through the road and, coming back,
+  // teleported over the whole of it. Every road that already existed does it
+  // the other way: t1a's south door names g2, the Greenway's last room, not
+  // the Great Vault. Found by verify-level4 and verify-progression both
+  // reporting that the glade no longer opens onto Frostpeak, which is true and
+  // was the half of the change that had been done.
+  sideDoor(world, 's', halfW, halfD, 'p2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'd1b', { x: 0, z: 10, angle: Math.PI });
   if (wade) sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 0, angle: Math.PI / 2 });
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'drownedgate', D);

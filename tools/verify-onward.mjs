@@ -27,10 +27,14 @@ import { launch } from './wk-drive.mjs';
 const ARENAS = [
   { room: 'le',  onward: 'n1', flag: 'bossDefeated' },
   { room: 'vz',  onward: 'g1', flag: 'wardenDefeated' },
-  { room: 'tgl', onward: 'f1', flag: 'sylvaDefeated' },
+  // The last three arenas hand onto a ROAD now, not straight at the next
+  // region (js/route.js NEXT, 2026-09-08): the Cold Climb, the Plunge and the
+  // Hollow Road. Same shape le and vz have had since the Night Road and the
+  // Greenway went in, two entries up.
+  { room: 'tgl', onward: 'c1', flag: 'sylvaDefeated' },
   { room: 'f5',  onward: 'q1', flag: 'borealDefeated' },
-  { room: 'scr', onward: 'd1a', flag: 'ariaDefeated' },
-  { room: 'ddp', onward: 'x1', flag: 'meriDefeated' },
+  { room: 'scr', onward: 'p1', flag: 'ariaDefeated' },
+  { room: 'ddp', onward: 'h1', flag: 'meriDefeated' },
 ];
 const NO_DOOR_ON_PURPOSE = ['xth'];   // the ending is the way on
 
@@ -122,7 +126,7 @@ console.log('\n── 5. beaten, and the door is simply there ──────
 for (const [room, forms, onward] of [
   ['le', ['knight', 'dark_wolf', 'fire_wolf'], 'n1'],
   ['vz', ['knight', 'dark_wolf', 'fire_wolf'], 'g1'],
-  ['tgl', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'], 'f1'],
+  ['tgl', ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf'], 'c1'],
 ]) {
   await wk.page.evaluate(({ r, f }) => window.__wkJump(r, f), { r: room, f: forms });
   await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1

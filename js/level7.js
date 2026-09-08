@@ -345,7 +345,17 @@ export async function buildX1(scene) {
               { x: 12, z: -8, r: 4.2, kind: 'rubble' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
-  sideDoor(world, 's', halfW, halfD, 'ddp', { x: 0, z: 8, angle: Math.PI });
+  // BACK DOWN THE HOLLOW ROAD, not straight to the drowned deep.
+  //
+  // A road is not a road if it is only walked one way. THE HOLLOW ROAD went in on
+  // 2026-09-08 between the drowned deep and here, and this door was left pointing at
+  // the arena — so a child walked OUT through the road and, coming back,
+  // teleported over the whole of it. Every road that already existed does it
+  // the other way: t1a's south door names g2, the Greenway's last room, not
+  // the Great Vault. Found by verify-level4 and verify-progression both
+  // reporting that the glade no longer opens onto Frostpeak, which is true and
+  // was the half of the change that had been done.
+  sideDoor(world, 's', halfW, halfD, 'h2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'xsh', { x: 0, z: 6, angle: Math.PI });
   world.markers.restSpot = { x: 8, z: 6 };
   world.markers.travelSpot = { x: -8, z: 6 };
