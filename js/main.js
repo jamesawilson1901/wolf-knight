@@ -36,7 +36,7 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
-import { bloom, healLive } from './restoration.js';
+import { bloom, healLive, moodLift } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -2003,9 +2003,19 @@ function initDevHarness() {
 // regionOf() lives in state.js now — the map screen needs it too.
 
 function applyRoomMood() {
+  // THE SHADOW LIFTS OFF THE LIGHT ITSELF once the region's guardian is free
+  // (js/restoration.js). Everything else the healing does is a thing IN the
+  // room; without this the room goes on being LIT as if the shadow were still
+  // sitting on it, and the first healed contact sheet showed a Wild Woods with
+  // flowers in it and wolves grazing through it that a child still could not
+  // see. Same hues, so wayfinding by colour temperature survives intact —
+  // half a stop brighter, and no more.
+  const heal = moodLift(world.roomId);
   const bg = world.bgColor !== undefined ? world.bgColor : 0x17101f;
-  scene.background.setHex(bg);
-  scene.fog.color.setHex(bg);
+  tmpCol.setHex(bg).getHSL(tmpHSL);
+  if (heal) tmpCol.setHSL(tmpHSL.h, tmpHSL.s, Math.min(0.5, tmpHSL.l + heal * 0.6));
+  scene.background.copy(tmpCol);
+  scene.fog.color.copy(tmpCol);
   // a room may recolour the light itself (Frostpeak runs cold; everywhere
   // else keeps the warm ember rig the earlier regions were tuned against)
   const lt = world.lightTint;
@@ -2028,9 +2038,9 @@ function applyRoomMood() {
     tmpCol.setHex(hex).getHSL(tmpHSL);
     return tmpCol.setHSL(tmpHSL.h, Math.max(tmpHSL.s, sat), want);
   };
-  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62, 0.18));
-  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30, 0.22));
-  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74, 0.22));
+  hemi.color.copy(lit(lt ? lt.sky : 0xa393b8, 0.62 + heal, 0.18));
+  hemi.groundColor.copy(lit(lt ? lt.ground : 0x5c4030, 0.30 + heal, 0.22));
+  key.color.copy(lit(lt ? lt.key : 0xffd2a0, 0.74 + heal, 0.22));
 }
 
 function snapCamera() {

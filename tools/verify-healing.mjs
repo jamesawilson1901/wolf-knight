@@ -59,6 +59,11 @@ const snap = () => page.evaluate(() => {
     push: (w.galeLanes || []).reduce((m, g) => Math.max(m, Math.abs(g.px) + Math.abs(g.pz)), 0),
     blooms: (w.markers.bloomSpots || []).length,
     calls: window.__game.renderer.info.render.calls,
+    light: (() => {
+      const L = window.__game.lights, h = {};
+      const l = (c) => { c.getHSL(h); return +h.l.toFixed(3); };
+      return { sky: l(L.hemi.color), ground: l(L.hemi.groundColor), key: l(L.key.color) };
+    })(),
   };
 });
 
@@ -129,6 +134,19 @@ for (const s of SAMPLE) {
   check(`${s.room}: flowers and grass come up`, a.blooms > 0, { blooms: a.blooms });
   check(`${s.room}: it still fits in the draw-call budget`, a.calls <= 125,
     { before: b.calls, after: a.calls });
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n── 3b · the light comes back too ─────────────────────');
+// The first healed contact sheet showed a Wild Woods with flowers in it and
+// wolves grazing through it that a child still could not see: everything else
+// the healing does is a thing IN the room, and the room went on being LIT as
+// if the shadow were still sitting on it. Same hues — wayfinding by colour
+// temperature has to survive — half a stop brighter.
+for (const s of SAMPLE) {
+  const b = before[s.room].light, a = after[s.room].light;
+  check(`${s.room}: the shadow lifts off the light itself`,
+    a.sky > b.sky && a.ground > b.ground && a.key > b.key, { before: b, after: a });
 }
 
 // ---------------------------------------------------------------------------

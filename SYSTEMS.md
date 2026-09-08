@@ -241,6 +241,11 @@ thing through:
    chests and pups have laid their colliders (running it earlier put three
    blooms inside things that did not exist yet). Instanced: a draw call per
    material, not per flower. Stoneroot blooms glow-moss, not a lawn.
+ · LIGHT — moodLift() in main's applyRoomMood(): all three lights and the
+   background go half a stop brighter, same hues, so wayfinding by colour
+   temperature survives. Added after the first healed contact sheet showed a
+   Wild Woods full of flowers and grazing wolves that a child still could not
+   see: everything else the healing does is a thing IN the room.
  · ANIMALS — spawnEnemies() harvests every enemy marker it would have read
    (takeEnemySpots) and graze() stands a wolf where each shadow stood.
    wolf.gltf is the game's own animal and ships Eating/Idle_2_HeadLow/Idle/

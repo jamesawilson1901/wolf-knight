@@ -117,6 +117,26 @@ export function calmedStrength(strength, roomId) {
 }
 
 // ---------------------------------------------------------------------------
+// 3b · THE LIGHT
+// ---------------------------------------------------------------------------
+// The first healed contact sheet said this out loud: a Wild Woods with flowers
+// in it and wolves grazing through it was still a Wild Woods you could barely
+// see. Every other part of the healing is a thing IN the room, and the room's
+// own mood — the value main.js normalises each district's tint to in
+// applyRoomMood — went on saying what it said while the shadow was there.
+//
+// One number, applied to all three lights and to the background, because that
+// is what "the shadow lifted" means in a renderer: the same hues, the same
+// wayfinding, half a stop brighter. It stays SMALL on purpose. Frostpeak is
+// still a cold mountain and the Court is still the darkest place in the game;
+// they are simply no longer being lit as if something were sitting on them.
+export const MOOD_LIFT = 0.10;
+
+export function moodLift(roomId) {
+  return isHealed(roomId) ? MOOD_LIFT : 0;
+}
+
+// ---------------------------------------------------------------------------
 // 4 · THE FLOWERS
 // ---------------------------------------------------------------------------
 // A cave heals into luminescence, not into a lawn — the same distinction
