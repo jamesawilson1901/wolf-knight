@@ -11,13 +11,13 @@ import { World } from './world.js';
 import { flattenStatic } from './batch.js';
 import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
-import { setRoomSeed, pathsThroughDoors } from './ground.js';
+import { setRoomSeed } from './ground.js';
 import { spawnEnemies } from './enemies.js';
 import { Shadowgrip, Boreal, SKINS as BOSS_SKINS } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
-import { boulderGate, waterGate, brazier, brambleGate, iceGate, freezeBrazier,
-  pushableBoulder, plateSwitch, registerCuttable } from './gates.js';
+import { boulderGate, waterGate, brazier, brambleGate, iceGate,
+  pushableBoulder, plateSwitch } from './gates.js';
 import { spawnDenNpcs } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';

@@ -36,7 +36,6 @@ const FLOOR_PX = 44;             // the hard floor: below this a thumb misses
 const MAX_HUD_FRACTION = 0.22;   // the controls may cover this much of the screen
 
 const errors = [];
-const warn = [];
 const check = (n, ok, d) => {
   console.log((ok ? '✓ ' : '✗ ') + n, d !== undefined ? JSON.stringify(d) : '');
   if (!ok) errors.push(n);

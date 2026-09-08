@@ -24,7 +24,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, DOOR_HALF, spiritShrine, bossGate,
+import { makeBuilders, tintedModel, gap, spiritShrine, bossGate,
   reserveLandings } from './levelkit.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';

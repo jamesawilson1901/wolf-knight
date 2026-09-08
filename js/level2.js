@@ -19,14 +19,13 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
-import { loadGLB, prepareModel, instancePlacements } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF,
-  wallTintMap, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
+import { loadGLB, prepareModel } from './assets.js';
+import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
-import { WS, restorationOf } from './worldstate.js';
+import { WS } from './worldstate.js';
 import { brazier, stompSigil } from './gates.js';
 
 let forceGrey = false;
@@ -259,24 +258,6 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
 const CAVE_ROCK = 0x8a8375;   // dry cut rock, a shade warmer than the masonry
 const CAVE_SHADES = [1, 1.09, 1.18];   // see caveWorkings: three materials, not N
 
-// A rock arch, for a doorway or a passage mouth. `ry` faces it; the lintel
-// rides just above the opening so the two read as one cut.
-function caveMouth(world, x, z, ry, D, s = 1.5) {
-  if (GREY() || !caveKit || !caveKit.caveArch) return;
-  const g = new THREE.Group();
-  g.userData.cave = 'mouth';   // findable by a probe or a future bounds suite
-  g.position.set(x, 0, z);
-  g.rotation.y = ry;
-  const arch = tinted(caveKit.caveArch, 'caveMouth', CAVE_ROCK);
-  arch.scale.setScalar(s);
-  g.add(arch);
-  const lintel = tinted(caveKit.caveLintel, 'caveMouth', CAVE_ROCK);   // same shade = same material
-  lintel.scale.setScalar(s * 0.95);
-  lintel.position.y = 2.55 * s;      // measured off the arch: sits on its crown
-  g.add(lintel);
-  world.add(g);
-  return g;
-}
 
 // A patch of worked rock: a spur or two standing out of the floor, a bulge in
 // the wall face, and flat scree that costs nothing to stand on because it is

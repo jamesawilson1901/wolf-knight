@@ -36,12 +36,6 @@ const seen = { actions: new Set(), deaths: 0, respawns: [], dashes: 0 };
 const t0 = Date.now();
 let lastHp = null, lastHearts = (await d.wk()).hearts;
 
-const aim = async (x, z) => {
-  const s = await d.wk();
-  const dx = x - s.pos.x, dz = z - s.pos.z;
-  const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
-  await d.page.keyboard.down(key); await d.page.waitForTimeout(150); await d.page.keyboard.up(key);
-};
 
 while ((Date.now() - t0) / 1000 < 45 * 60) {
   await d.pickPerkIfOffered();
@@ -131,11 +125,11 @@ if (flags.meri && (await d.wk('room')) === 'ddp') {
     if (!inPlace) await d.page.waitForTimeout(500);
   }
   say('the way on opened IN PLACE:', inPlace, 'after', ((Date.now() - it0) / 1000).toFixed(1) + 's');
-  await d.shot('ddp-onward-in-place');
+  await d.shot('ddp-_onward-in-place');
 }
 
-// the way onward on the rebuild — leave and re-enter
-let onward = false, bossGone = false;
+// the way _onward on the rebuild — leave and re-enter
+let _onward = false, bossGone = false;
 if (flags.meri) {
   // task #32's lesson, applied here too (it only ever landed in
   // fight-boreal): the victory narration holds gates.blocking for tens of
@@ -178,7 +172,7 @@ if (flags.meri) {
   if ((await d.wk('room')) === 'ddp') {
     const doors = await d.wk('doors');
     bossGone = !(await d.wk('boss'));
-    onward = !!doors.find((x) => x.to === 'x1' && x.open !== false);   // the way to the Shadow Court
+    _onward = !!doors.find((x) => x.to === 'x1' && x.open !== false);   // the way to the Shadow Court
     say('drained deep doors:', doors.map((x) => x.to).join(','), '· boss gone:', bossGone);
     await d.shot('scr-freed');
   }

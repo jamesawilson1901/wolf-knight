@@ -106,7 +106,6 @@ for (const [key, d] of Object.entries(dungeons)) {
   check('every dead end carries a reward', bareDeadEnds.length === 0, { bareDeadEnds });
 
   // ---- beat coverage: ki first, per element -------------------------------
-  const ORDER = { ki: 0, sho: 1, ten: 2, ketsu: 3 };
   const byElement = {};
   for (const n of d.nodes) if (n.beat && n.teaches) {
     (byElement[n.teaches] = byElement[n.teaches] || []).push(n.beat);

@@ -147,7 +147,6 @@ console.log('\n── 3. SHORTCUTS ARE GENUINELY SHORTER ───────�
 const spanOf = (id) => { const [w, d] = SIZE[KIND[id]]; return (w + d) / 2; };
 const lengthOf = (path) => path.reduce((a, id) => a + spanOf(id), 0);
 const idx = (id) => RING_PATH.indexOf(id);
-const longWay = (from, to) => RING_PATH.slice(idx(from), idx(to) + 1);
 
 for (const [leg, from, to] of [['tsA', 't4a', 't1a'], ['tsB', 't3a', 't2a']]) {
   check(`${leg} connects ${from} and ${to} in both directions`,

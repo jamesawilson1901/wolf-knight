@@ -43,7 +43,7 @@ async function leg(to, via = []) {
   const doors = await d.wk('doors');
   const door = doors.find((x) => x.to === to);
   if (!door) { say(`!! no door to ${to} from ${(await d.wk()).room}`, JSON.stringify(doors)); return false; }
-  const me0 = (await d.wk()).pos;
+  (await d.wk()).pos;
   const dTo = (p) => Math.hypot(door.x - p.x, door.z - p.z);
   for (const [wx, wz] of via) {
     // a waypoint that takes us FURTHER from the door than we already are is

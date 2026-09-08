@@ -14,7 +14,6 @@ const fails = [];
 const bad = (m) => { fails.push(m); say('  ** FAIL:', m); };
 
 const ws = (region, k) => d.page.evaluate(({ r, k2 }) => window.__game.WS.get(r, k2), { r: region, k2: k });
-const plate = (k) => d.page.evaluate((k2) => !!window.__game.state.flags.plates[k2], k);
 const gameWait = (gs) => d.page.evaluate(async (g) => {
   const t0 = window.__game.player._time;
   while (window.__game.player._time < t0 + g) await new Promise((r) => setTimeout(r, 120));
@@ -34,20 +33,6 @@ async function form(want) {
     await d.page.waitForFunction((c) => window.__wk.form !== c, cur, { timeout: 2000 }).catch(() => {});
   }
   bad(`could not cycle to ${want}`);
-  return false;
-}
-async function aimAt(x, z) {
-  for (let i = 0; i < 5; i++) {
-    const p = await d.wk('pos');
-    const ry = await d.page.evaluate(() => window.__game.player.root.rotation.y);
-    let diff = Math.atan2(x - p.x, z - p.z) - ry;
-    while (diff > Math.PI) diff -= 2 * Math.PI;
-    while (diff < -Math.PI) diff += 2 * Math.PI;
-    if (Math.abs(diff) < 0.55) return true;
-    const dx = x - p.x, dz = z - p.z;
-    const key = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w');
-    await d.page.keyboard.down(key); await d.page.waitForTimeout(270); await d.page.keyboard.up(key);
-  }
   return false;
 }
 async function clearFoes(radius = 6, capS = 90) {
@@ -134,16 +119,6 @@ async function shatterGate(x, z, id) {           // frost BREATH (L) — 3.6u co
     await d.tap('l'); await gameWait(1.2);
     if (await wsCourt('ice_' + id) || await d.page.evaluate((i) => !!window.__game.state.flags.cracked[i], id)) return true;
     await gameWait(1.5);
-  }
-  return false;
-}
-async function quenchPool(x, z, id) {            // tide SPLASH (K) — 3.4u
-  for (let a = 0; a < 4; a++) {
-    if (!(await form('tide_wolf'))) return false;
-    await d.walkTo(x, z + 1.2, { timeout: 16, arrive: 1.0 });
-    await d.tap('k'); await gameWait(1.0);
-    if (await wsCourt('quench_' + id)) return true;
-    await gameWait(6.2);
   }
   return false;
 }

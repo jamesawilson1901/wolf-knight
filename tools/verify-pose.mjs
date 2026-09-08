@@ -71,7 +71,7 @@ for (const a of ABILITIES) {
     const fired = g.player.trySpecial(g.effects, g.world);   // the real input path
 
     // follow the new ring and record its widest world-space extent
-    let ring = null, maxR = 0, maxAtOpacity = 0;
+    let ring = null, maxR = 0;
     for (let i = 0; i < 40; i++) {
       await s();
       if (!ring) {
@@ -81,7 +81,7 @@ for (const a of ABILITIES) {
       }
       if (ring && ring.parent) {
         const outer = ring.geometry.parameters.outerRadius * ring.scale.x;
-        if (outer > maxR) { maxR = outer; maxAtOpacity = ring.material.opacity; }
+        if (outer > maxR) maxR = outer;
       }
     }
     // the wedge abilities draw from Kael's feet, so the ring radius IS the reach
@@ -108,10 +108,6 @@ for (const a of ABILITIES) {
 }
 
 console.log('\n── one ability, one number ────────────────────────────────────');
-const oneNumber = await page.evaluate(() => {
-  const src = { };
-  return src;
-});
 // read the constants straight out of the running player, via what it does
 const reaches = await page.evaluate(async () => {
   const g = window.__game;

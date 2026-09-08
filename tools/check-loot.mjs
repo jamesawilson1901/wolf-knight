@@ -19,7 +19,7 @@
 // occurring known-bad left to fail-first against (LAW 10's other honest
 // outcome: the law already holds, so the ruler proves itself on synthetic
 // cases instead of hunting for a bug that isn't there).
-import { readdirSync, readFileSync } from 'fs';
+import { readFileSync } from 'fs';
 
 const problems = [];
 const ok = (m) => console.log(`✓ ${m}`);

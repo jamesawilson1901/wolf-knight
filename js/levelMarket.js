@@ -35,7 +35,7 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow,
+import { makeBuilders, tintedModel, gap, thresholdGlow,
   reserveLandings, shareTexture } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { flattenStatic } from './batch.js';
@@ -100,7 +100,6 @@ export const DISTRICTS = {
           ground: 'snowfield', name: 'THE DROWNED MARKET', hero: 'THE FROZEN QUAY' },
 };
 
-const M = MODULES;
 
 // Two rooms, and deliberately two. A road between regions must not out-scale
 // the regions — Frostpeak is five rooms and Stormreach nineteen.
@@ -120,7 +119,7 @@ registerDistrictTints(LQ, DISTRICTS);
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 
-const { shell, sideDoor, wallRun, scatter, visibleReward, pit } = makeBuilders({
+const { shell, sideDoor, scatter, visibleReward } = makeBuilders({
   kit: () => marketKit,
   isGrey: () => GREY(),
 });

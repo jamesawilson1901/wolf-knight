@@ -28,7 +28,6 @@ const fails = [];
 const bad = (m) => { fails.push(m); say('  ** FAIL:', m); };
 
 const ws = (k) => d.page.evaluate((k2) => window.__game.WS.get('wild3', k2), k);
-const flag = (k) => d.page.evaluate((k2) => window.__game.state.flags[k2], k);
 const plate = (k) => d.page.evaluate((k2) => !!window.__game.state.flags.plates[k2], k);
 
 // Tab-cycle to a form, WAITING for each cycle to land: a read raced one frame

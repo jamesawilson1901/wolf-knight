@@ -239,7 +239,7 @@ export function applySave(profileId, profileName, data) {
     // `greybox` is a build-order tool, not a child's preference. An old
     // profile saved while the rebuilt levels were still dev-only carries
     // greybox:true, and restoring it would hand a child a checkerboard.
-    const { greybox, ...prefs } = data.settings;
+    const { ...prefs } = data.settings;
     Object.assign(state.settings, prefs);
   }
 }

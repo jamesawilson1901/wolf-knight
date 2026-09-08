@@ -11,7 +11,7 @@ import { villageCleared } from './levelVillage.js';
 import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
-import { FETCH } from './mg-fetch.js';
+import {  } from './mg-fetch.js';
 import { Player } from './player.js';
 import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
 import { Effects } from './effects.js';
@@ -29,7 +29,7 @@ import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUP
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
-import { TREASURES, addTreasure, treasureCount } from './treasures.js';
+import { TREASURES, addTreasure } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';

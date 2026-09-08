@@ -26,14 +26,6 @@ async function form(want) {
   return false;
 }
 const pos = () => d.wk('pos');
-async function dash(x, z, sx, sz) {
-  await form('storm_wolf');
-  const dx = x - sx, dz = z - sz, m = Math.hypot(dx, dz) || 1;
-  await d.walkTo(sx - (dx / m) * 2.4, sz - (dz / m) * 2.4, { timeout: 16, arrive: 0.7 });
-  await d.walkTo(sx, sz, { timeout: 8, arrive: 0.45 });
-  await d.tap('k'); await gameWait(1.0);
-  say('  dash ->', JSON.stringify(await pos()));
-}
 async function step(x, z, label) {
   const r = await d.walkTo(x, z, { timeout: 16, arrive: 0.7 });
   say(`  ${label} -> ${JSON.stringify(await pos())} (${r.ok ? 'ok' : r.why}${r.roomChanged ? ' room:' + r.roomChanged : ''})`);

@@ -157,7 +157,7 @@ export async function loadFrostKit() {
   return frostKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, visibleReward } =
+const { shell, sideDoor, scatter } =
   makeBuilders({ kit: () => frostKit, isGrey: () => GREY() });
 
 const { fallenColumn, rubbleField, wayshrine, lowWall } =

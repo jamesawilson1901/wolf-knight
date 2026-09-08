@@ -81,7 +81,6 @@ const lunge = await page.evaluate(() => {
 check('LUNGE_IFRAMES no longer exists as a separate number', lunge.lungeIframesConstantGone, lunge);
 const lungeLive = await page.evaluate(async () => {
   const g = window.__game, p = g.player;
-  const s = () => new Promise((r) => requestAnimationFrame(r));
   g.state.form = 'dark_wolf';
   p.lungeCooldown = 0; p.lockTime = 0; p.iframes = 0; p.airY = 0;
   p._dash = null;
@@ -98,7 +97,6 @@ check('...and its i-frames cover the whole dash',
 console.log('\n── the parry window can be SEEN ────────────────────────────────');
 const parry = await page.evaluate(async () => {
   const g = window.__game, p = g.player;
-  const s = () => new Promise((r) => requestAnimationFrame(r));
   g.state.form = 'knight';
   p.lockTime = 0; p.airY = 0; p.jumpsUsed = 0;
   if (!p._parryMats || !p._parryMats.length) return { noMats: true };

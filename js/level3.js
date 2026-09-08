@@ -263,8 +263,7 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 // and Stoneroot are built things that fell down while the Wild Woods is a GROWN
 // thing being eaten, and the clusters come in matched pairs so a room can say
 // how far the rot has reached by which of the pair dresses it.
-const { grove, thicket, blight, mossyRuin, ruinedHome, coldHearth, fallenColumn,
-  rubbleField, wayshrine, aftermath, cartWreck, lowWall } =
+const { grove, thicket, blight, mossyRuin, aftermath, lowWall } =
   makeDressers({ kit: () => woodKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
 // ---------------------------------------------------------------------------
@@ -1239,7 +1238,6 @@ export async function buildT3p(scene) {
 // twist teaches three quarters of an ability.
 export async function buildTkn(scene) {
   const { world, spec, D } = base(scene, 'tkn');
-  const solved = () => !!state.flags.plates.l3_knot_p1;
   // the way onward opens when the plate is held down — the puzzle IS the door
   const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },

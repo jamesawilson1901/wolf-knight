@@ -139,7 +139,6 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall, place } =
   makeDressers({ kit: () => courtKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const has = (form) => state.formsUnlocked.includes(form);
 
 function base(scene, id) {
   const spec = L7[id];

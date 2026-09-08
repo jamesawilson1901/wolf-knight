@@ -14,7 +14,6 @@ const fails = [];
 const bad = (m) => { fails.push(m); say('  ** FAIL:', m); };
 
 const ws = (region, k) => d.page.evaluate(({ r, k2 }) => window.__game.WS.get(r, k2), { r: region, k2: k });
-const plate = (k) => d.page.evaluate((k2) => !!window.__game.state.flags.plates[k2], k);
 const gameWait = (gs) => d.page.evaluate(async (g) => {
   const t0 = window.__game.player._time;
   while (window.__game.player._time < t0 + g) await new Promise((r) => setTimeout(r, 120));

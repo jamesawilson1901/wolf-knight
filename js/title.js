@@ -4,10 +4,9 @@
 
 import { loadProfiles, createProfile, loadSave, clearSave } from './save.js';
 import { audio } from './audio.js';
-import { state } from './state.js';
+import {  } from './state.js';
 import { PORTRAITS, AVATARS } from './titlescene.js';
 
-const ICONS = ['🐺', '🦊', '🌙', '🔥', '⚔️', '💜']; // legacy profiles only
 
 // Avatar: new profiles store a character id ('knight','dark_wolf', …) and
 // show the real 3D portrait once it's rendered; legacy emoji still work.

@@ -29,7 +29,7 @@
 // Usage:  node tools/check-licences.mjs [--strict]
 //   --strict fails on unproven packs whether or not they are accepted — it is
 //   the gate to run before this build ever goes anywhere but the family.
-import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, relative, sep } from 'path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');

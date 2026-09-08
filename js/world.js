@@ -961,7 +961,7 @@ export class World {
   // campfire, a brazier, a lava pool — which is what a dark room ought to look
   // like anyway. The rect is still recorded on the zone because tools measure
   // it, but nothing reads it to decide whether a square of floor is in shadow.
-  darknessAt(x, z) {          // eslint-disable-line no-unused-vars
+  darknessAt(x, z) {
     return this.roomDark ? 1 : 0;
   }
 

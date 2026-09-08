@@ -56,7 +56,7 @@ const out = await page.evaluate(async () => {
     // and what is actually MODELLED near the centre, so the collider can be
     // traced back to the thing a child would see
     const nearby = []; const parentNames = [];
-    const p = new THREE.Vector3(); const bb = new THREE.Box3();
+    new THREE.Vector3(); const bb = new THREE.Box3();
     for (const child of w.root.children) {
       const kids = (child.isMesh || !(child.children || []).length) ? [child] : child.children;
       for (const m of kids) {

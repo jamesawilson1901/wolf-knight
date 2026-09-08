@@ -39,20 +39,26 @@ import globals from 'globals';
 // shipped game is clean of it today (measured 2026-09-05, 0 findings across
 // js/ and sw.js), so making it blocking costs nothing and catches the next one.
 //
-// no-unused-vars is a WARNING, and that is a deliberate, temporary compromise.
-// It reports 68 real findings on the day it was switched on — dead imports and
-// bindings left behind by refactors, none of them behavioural. Landing a gate
-// that is RED on arrival is precisely how the nightly sweep became something
-// everyone ignored (docs/TESTING.md §7b, and the 38 consecutive cancelled runs
-// this file was written to end). So it prints, loudly, on every run, and it
-// does not block. Board item: burn the 68 down in one mechanical commit, then
-// change this line to 'error'. Do not let it sit here as scenery.
+// no-unused-vars WAS a warning, and the comment here said why: it reported 68
+// real findings the day it was switched on, and landing a gate that is RED on
+// arrival is precisely how the nightly sweep became something everyone ignored
+// (docs/TESTING.md §7b, and the 38 consecutive cancelled runs this file was
+// written to end). It said, in as many words, "burn the 68 down in one
+// mechanical commit, then change this line to 'error'. Do not let it sit here
+// as scenery."
+//
+// 2026-09-08: burned down, and blocking. All 69 (one more had arrived) are
+// gone — dead imports, dead destructured builders, five whole dead functions,
+// and a handful of bindings whose right-hand side had to STAY because it did
+// the work: `const back = await d.walkTo(...)` is a walk, not a read, so those
+// became bare expression statements rather than deletions. What is left is
+// nothing, and 'error' is what keeps it there.
 const TWO_RULES = {
   'no-undef': 'error',
   // Unused args are how a changed signature announces itself, and unused
   // caught errors are deliberate in a dozen places here
   // (`catch { /* reported below */ }`), so neither is reported.
-  'no-unused-vars': ['warn', {
+  'no-unused-vars': ['error', {
     args: 'none',
     caughtErrors: 'none',
     varsIgnorePattern: '^_',

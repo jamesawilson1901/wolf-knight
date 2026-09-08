@@ -45,43 +45,7 @@ async function toForm(want) {
 // only way forward tonight is a fresh page — reload, re-enter the room with
 // the same forms, and carry on. Each occurrence is logged; the loud catches
 // in main.js should now name the cause in the console log.
-let frozenRecoveries = 0;
-async function recoverIfFrozen() {
-  const probe = await d.page.evaluate(async () => {
-    const g = window.__game;
-    if (!g || !g.state) return { frozen: false };
-    // A STORY LINE FREEZES THE CLOCK ON PURPOSE. Runs 8-9 "wedged" right where
-    // Petra talks — the probe was reloading the game mid-sentence. Speaking
-    // narration is never a wedge: wait it out (they cap at ~7s each).
-    for (let i = 0; i < 40 && g.narration.speaking; i++) await new Promise((r) => setTimeout(r, 500));
-    if (g.narration.speaking) return { frozen: false, talking: true };
-    // player._time increments ONLY inside player.update — the exact thing a
-    // wedge stops. state.clock, which this probe read before, DOES NOT EXIST:
-    // undefined === undefined called every healthy world frozen, and runs 7-10
-    // reloaded a working game on every single probe.
-    const c1 = g.player._time, f1 = g.renderer.info.render.frame;
-    await new Promise((r) => setTimeout(r, 700));
-    return { frozen: g.player._time === c1 && !g.narration.speaking,
-      // frames advancing while the clock stands still = the loop is ALIVE and
-      // bailing early (a wedged flag). Frames static too = rAF itself is dead
-      // — the environment, not the game.
-      framesAdvanced: g.renderer.info.render.frame !== f1 };
-  }).catch(() => ({ frozen: true, framesAdvanced: null }));
-  if (!probe.frozen) return false;
-  say(`  !! wedge signature: framesAdvanced=${probe.framesAdvanced}`);
-  frozenRecoveries++;
-  const wk = await d.wk().catch(() => null);
-  say(`  !! WORLD WEDGED (recovery #${frozenRecoveries}) in ${wk && wk.room} — reloading`);
-  d.saveLog(`pre-recovery-${frozenRecoveries}`);
-  const room = (wk && wk.room) || 'vh';
-  const forms = (wk && (await d.wk('forms').catch(() => null))) || ['knight', 'dark_wolf', 'fire_wolf'];
-  await d.page.goto('http://localhost:8901/index.html?dev=1', { waitUntil: 'load' });
-  await d.page.waitForSelector('#title', { state: 'visible', timeout: 30000 });
-  await d.newGame('L2BOT' + frozenRecoveries);
-  await d.jump(room, forms);
-  say('  recovered into', JSON.stringify(await d.wk()));
-  return true;
-}
+let _frozenRecoveries = 0;
 
 async function goRoom(to, via = []) {
   if ((await d.wk('room')) === to) return true;   // recovery can land us inside
@@ -142,8 +106,8 @@ async function slamAt(x, z, label, wsCheck) {
   for (let i = 0; i < 6; i++) {
     await d.tap('k');
     await d.page.waitForTimeout(1400);
-    const ws = await d.wk('ws');
-    const flags = await d.page.evaluate(() => window.__wk.flags.burned);
+    await d.wk('ws');
+    await d.page.evaluate(() => window.__wk.flags.burned);
     if (await wsCheck()) { say(`  ${label} DONE`); return true; }
   }
   return wsCheck();

@@ -46,7 +46,7 @@ const rooms = only.length ? only : await allRooms(wk.page);
 const audit = await wk.page.evaluate(async ({ ids, OPEN_R, SMASH_R }) => {
   const rooms = await import('/js/rooms.js');
   const st = await import('/js/state.js');
-  const { World } = await import('/js/world.js');
+  const {  } = await import('/js/world.js');
   const THREE = await import('three');
   const out = [];
   for (const id of ids) {

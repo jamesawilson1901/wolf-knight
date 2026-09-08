@@ -6,7 +6,7 @@ import { state, regionCleared, regionOf } from './state.js';
 import { registeredRooms } from './districts.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
-import { PERKS, perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
+import { perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { TREASURES, ownsTreasure, treasureCount } from './treasures.js';
 import { persist } from './save.js';
 import { villageCleared } from './levelVillage.js';
