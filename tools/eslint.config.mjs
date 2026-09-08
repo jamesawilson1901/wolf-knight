@@ -62,6 +62,15 @@ const TWO_RULES = {
     args: 'none',
     caughtErrors: 'none',
     varsIgnorePattern: '^_',
+    // A NAMED SIBLING OF A REST SPREAD IS NOT DEAD CODE — it is the only way
+    // to say "everything except this". eslint defaults this to false, and on
+    // 2026-09-08 that cost a real bug: js/save.js drops `greybox` from a
+    // restored profile with `const { greybox, ...prefs } = data.settings`, the
+    // burn-down that made this rule blocking saw an unused `greybox` and
+    // deleted the name, and old profiles started loading children into a
+    // checkerboard again. The config above says a rule change should name the
+    // bug it would have caught. That is this one.
+    ignoreRestSiblings: true,
   }],
 };
 

@@ -273,8 +273,17 @@ export function applySave(profileId, profileName, data) {
   if (data.settings) {
     // `greybox` is a build-order tool, not a child's preference. An old
     // profile saved while the rebuilt levels were still dev-only carries
-    // greybox:true, and restoring it would hand a child a checkerboard.
-    const { ...prefs } = data.settings;
+    // greybox:true, and restoring it would hand a child a checkerboard. So it
+    // is pulled OUT of the spread and thrown away, and the rest is applied.
+    //
+    // AND THE LINT ATE IT ONCE (v3.117.0 → put back 2026-09-08). The burn-down
+    // that made no-unused-vars blocking saw `greybox` here as an unused
+    // binding — eslint's `ignoreRestSiblings` defaults to FALSE — and deleted
+    // the name, leaving `const { ...prefs }`, which spreads greybox back in.
+    // It is the whole point of the line and it read as dead code. Nothing
+    // caught it for a day: verify-progression's A7 did, on the push gate. The
+    // rule now sets ignoreRestSiblings and tools/eslint.config.mjs says why.
+    const { greybox, ...prefs } = data.settings;
     Object.assign(state.settings, prefs);
   }
 }
