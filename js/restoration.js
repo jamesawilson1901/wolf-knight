@@ -55,12 +55,21 @@ import { regionOf } from './state.js';
 const WS_KEY = {
   ember_hollow: 'ember', night_road: 'ember',
   stoneroot: 'stone', greenway: 'stone',
-  wildwoods: 'wild',
+  wildwoods: 'wild', coldclimb: 'wild',
   frostpeak: 'frost', market: 'frost',
-  stormreach: 'storm',
-  sunkenvale: 'vale',
+  stormreach: 'storm', plunge: 'storm',
+  sunkenvale: 'vale', hollowroad: 'vale',
   shadowcourt: 'court',
   // village / spire: see the note at the top. Absent on purpose.
+  //
+  // THE LAST THREE ROADS WERE LEFT OUT (2026-09-08 → fixed 2026-09-09). The
+  // Cold Climb, the Plunge and the Hollow Road shipped a day after this table
+  // did, and none of the three was ever added to it — so a child who freed
+  // Frostpeak walked back through six rooms of untouched shadow between two
+  // healed places, exactly the strip this table's own comment above says a
+  // road must not be. design/WIDER-WORLD.md §1.8 names it slice one because
+  // it is a bug, it is visible, and it is the first thing a returning child
+  // crosses.
 };
 
 export function healKeyOf(roomId) {
