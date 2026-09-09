@@ -686,6 +686,26 @@ export const STAGE_CLUTTER = {
       ['sack', -8.0, 6.8, 1.0, 0.6],
     ],
   },
+  // v3.139: Frostpeak's own hearth, at f1 — a clear pocket east of the gate
+  // lane, clear of the gateposts, the hound pack, the drift/firs clusters
+  // and the spur path to f1b, measured the same live-grid way.
+  f1: {
+    2: [
+      ['hearth', 9.5, 5.0, 1.0, 0.4],
+      ['stool', 10.5, 5.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 11.0, 7.0, 0.95, 2.3],
+      ['laundry', 9.0, 7.5, 1.0, -0.5],
+      ['firewood', 10.0, 4.0, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 11.0, 5.0, 1.0, 0.5],
+      ['manikin', 9.0, 8.5, 1.0, -0.4],
+      ['cart', 10.5, 8.0, 1.0, -0.3],
+      ['sack', 9.5, 9.0, 1.0, 0.6],
+    ],
+  },
 };
 
 // Place one stage's worth of furniture (already-loaded kit, one call per

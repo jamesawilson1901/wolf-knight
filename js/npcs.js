@@ -273,6 +273,9 @@ export const SETTLER_POSTS = {
     tint: 0x8f8b80, key: 'stone', minStage: 2, shop: { x: 11.0, z: -1.0 } },
   t1a: { id: 'wild_settler', file: './assets/chars/mage.glb', x: -6.3, z: 4.7, ry: 1.0,
     tint: 0x7d8f5c, key: 'wild', minStage: 2, shop: { x: -6.8, z: 6.3 } },
+  // v3.139: Frostpeak's own hearth, the fourth.
+  f1: { id: 'frost_settler', file: './assets/chars/mage.glb', x: 10, z: 6, ry: -2.4,
+    tint: 0xdfe8f2, key: 'frost', minStage: 2, shop: { x: 10.5, z: 8.0 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -333,6 +336,7 @@ export const WAYFARER_POSTS = {
   // (SETTLER_POSTS.vh/.t1a's `shop`, above) — the same la-post lesson.
   vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },
   t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
+  f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks
