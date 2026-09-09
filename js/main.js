@@ -36,7 +36,7 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
-import { bloom, healLive, moodLift } from './restoration.js';
+import { bloom, healLive, moodLift, growthStage, spawnSettlers } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -1772,6 +1772,12 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  // THE HEARTH, if this room is one and its region has grown enough to have
+  // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
+  // spots has to see the hearth's collider or it can land one in the fire,
+  // the exact lesson verify-healing §6 already taught about breakables and
+  // chests below.
+  await spawnSettlers(world, (key, stage) => narration.say(`${key}_grow_${stage}`));
   // GRASS AND FLOWERS COME BACK, once the region's guardian is free
   // (js/restoration.js). LAST, and that position is the whole of it: the first
   // cut ran this inside buildRoom, which is before the breakables, the chests
@@ -2008,7 +2014,17 @@ function initDevHarness() {
           windup: e._windup !== undefined ? +e._windup.toFixed(2) : null }));
     },
     get flags() { return JSON.parse(JSON.stringify(state.flags)); },
-    get ws() { return { vault: WS.stage('vault'), wild3: WS.stage('wild3') }; },
+    get ws() {
+      return {
+        vault: WS.stage('vault'), wild3: WS.stage('wild3'),
+        // The seven healing regions' growth (design/WIDER-WORLD.md §1.2) —
+        // growthStage(), not WS.stage(): the two count differently on
+        // purpose, see restoration.js.
+        growth: Object.fromEntries(
+          ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']
+            .map((k) => [k, growthStage(k)])),
+      };
+    },
     // THE GATES OF THE FROZEN WORLD. Every flag that can make the main loop
     // skip updates, read from inside the module where they are closured —
     // findable in one read instead of a night of inference.

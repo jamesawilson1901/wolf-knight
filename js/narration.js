@@ -175,6 +175,14 @@ export const LINES = {
   camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },
   stone_restore_1: { voice: 'pip', text: 'Kael, look! The caverns are lighting up — the stone remembers how to sing!' },
   stone_restore_2: { voice: 'pip', text: 'Glow-moss everywhere! You woke the mountain up.' },
+  // THE HEARTH (design/WIDER-WORLD.md §1.5). One line per growth stage, per
+  // region — the settler's own arrival plays a chime and a burst in their
+  // tint, so Pip's line is short: it names what changed, not what to do.
+  // `_grow_2` fires with the fire and the settler; `_grow_3` with the hut and
+  // the washing line. Ember only, for now — the other six join their own
+  // slices, and this file's shape is what theirs will copy.
+  ember_grow_2: { voice: 'pip', text: 'Kael — someone’s come back! A fire, in Ember Hollow!' },
+  ember_grow_3: { voice: 'pip', text: 'A hut, already! It’s not a ruin any more, Kael. It’s a home.' },
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },

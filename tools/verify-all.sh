@@ -190,6 +190,14 @@ case "$1" in
     # belongs. If a suite is ever added here, add its measured time above.
     run verify-callable.mjs
     run verify-prefixes.mjs
+    # verify-growth §1-2 joined 2026-09-09 (design/WIDER-WORLD.md §6 v3.127) —
+    # also static text-only, also sub-second. WK_QUICK makes it skip §3-4 (a
+    # live room, a browser, tens of seconds) unconditionally, whether or not a
+    # server happens to be up, so this stays a "does the game boot" gate, not
+    # a slow one.
+    export WK_QUICK=1
+    run verify-growth.mjs
+    unset WK_QUICK
     run verify-graphs.mjs
     run verify-story-beats.mjs
     run verify-variant-names.mjs

@@ -53,7 +53,7 @@ const DOG_STOPS = [
 // and a spawner in any OTHER room would have had nobody ticking it at all.
 // Both callers go through here instead, so the order they run in cannot
 // matter.
-function npcList(world) {
+export function npcList(world) {
   if (!world.npcs) {
     world.npcs = [];
     world.updateNpcs = (dt, t, player) => updateNpcs(world, dt, t, player);
@@ -64,7 +64,7 @@ function npcList(world) {
 // The body every person in this file is made of: a pack model on the shared
 // Rig_Medium skeleton, idling, with an optional gesture on a timer. Callers
 // add the collider, the marker and whatever the character carries.
-function characterNpc(world, { model, id, x, z, ry, rigAnims, gestureName }) {
+export function characterNpc(world, { model, id, x, z, ry, rigAnims, gestureName }) {
   model.position.set(x, 0, z);
   model.rotation.y = ry;
   world.add(model);
@@ -237,6 +237,24 @@ function updateNpcs(world, dt, t, player) {
 // read as different people at a glance, which is the whole test.
 const WAYFARER_TINT = 0x9db2e8;   // moonlight on a grey cloak
 const WAYFARER_SHARD = 0xa8bcff;  // the Den moonstone's own colour (rooms.js)
+
+// THE SETTLERS — one per healed region's hearth (design/WIDER-WORLD.md §1.5).
+//
+// Pure data, no closures: `key` names the region's growth key (the same one
+// `js/restoration.js`'s `growthStage()` counts) and `minStage` is the number
+// that has to be reached, so restoration.js can decide who to spawn without
+// this file importing growthStage back — the two files would otherwise import
+// each other. Body, tint and job follow the settler table exactly: four
+// KayKit humanoids already voiced as somebody in the Den (Wren, Rook, Bram,
+// Tam), so each settler is that same idiom — clone the one shared material
+// and colour-wash it — rather than a fifth face.
+//
+// Coordinates are measured the same way WAYFARER_POSTS's are, below: against
+// the live built room at body radius 0.44, with `tools/probe-freespot.mjs`.
+export const SETTLER_POSTS = {
+  la: { id: 'ember_settler', file: './assets/chars/mage.glb', x: -3, z: 7.6, ry: 2.5,
+    tint: 0xd97a3a, key: 'ember', minStage: 2 },
+};
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
 //

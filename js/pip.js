@@ -255,6 +255,32 @@ class Pup {
   }
 }
 
+// WHICH REGION IS EACH PUP FROM? design/WIDER-WORLD.md §1.2: a healed
+// region's growth stage counts "the region's three pups are home" as one of
+// five facts, and the count needs to know which three. The ids are mixed on
+// purpose — three numbering schemes met here as the game grew (see the note
+// on `pupSpotsOf` below) — so this is the one place that says which pup
+// belongs to which key, read off where each spot is actually placed
+// (js/level1.js:964,995,1218; level2.js:987,1190,1441; level3.js:902,1026,
+// 1221; level4.js:585,711,854; level5.js:628,769,961; level6.js:673,765,958;
+// level7.js:386,889,907; levelVillage.js:821,955,1032). `tools/verify-growth`
+// checks every id `pupSpotsOf` can find anywhere in the game is a key here —
+// a pup with nowhere to come home to would silently never count.
+export const PUP_HOME = {
+  pup1: 'ember', pup3: 'ember', pup_l3: 'ember',
+  pup4: 'stone', pup_v2: 'stone', pup_v3: 'stone',
+  pup7: 'wild', pup_t3: 'wild', pup8: 'wild',
+  pup10: 'frost', pup11: 'frost', pup12: 'frost',
+  pup_s1: 'storm', pup_s2: 'storm', pup_s3: 'storm',
+  pup_d1: 'vale', pup_d2: 'vale', pup_d3: 'vale',
+  pup_x1: 'court', pup_x2: 'court', pup_x3: 'court',
+  // The Village's three are not one of the seven growth keys (it has its own
+  // guardiansDown() readout, js/levelVillage.js) — listed here anyway so the
+  // completeness check above has somewhere to send them, not because
+  // anything reads growthStage('village').
+  pup_y2: 'village', pup_y3: 'village', pup_village: 'village',
+};
+
 // THREE WAYS TO SAY "A PUP STANDS HERE", because the game grew three of them.
 // The numbered `pupNSpot` markers are the original Level 1-4 contract; the
 // rebuilt regions 5-7 and the Village write a single `pupSpot` carrying its own

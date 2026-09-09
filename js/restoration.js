@@ -45,7 +45,14 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter, instancePlacements } from './assets.js';
 import { WS } from './worldstate.js';
-import { regionOf } from './state.js';
+import { regionOf, state } from './state.js';
+import { PUP_HOME } from './pip.js';
+import { ownsTreasure } from './treasures.js';
+import { loadVillageKit, placeOne } from './levelVillage.js';
+import { characterNpc, SETTLER_POSTS } from './npcs.js';
+import { juice } from './juice.js';
+import { audio } from './audio.js';
+import { flattenStatic } from './batch.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
 // always been spelled differently ('ember_hollow' vs 'ember'). One table, so
@@ -88,6 +95,62 @@ export function isHealed(roomId) {
 }
 
 // ---------------------------------------------------------------------------
+// THE GROWTH STAGE — design/WIDER-WORLD.md §1.2.
+// ---------------------------------------------------------------------------
+// The Great Vault is already a function of `WS.stage('vault')` and the
+// Village square already reads `guardiansDown()` 0-6 into a continuous look —
+// so the machinery for "a room that rebuilds differently on every return" is
+// proven twice. What was missing was a stage number for the seven healing
+// regions and a room in each that reads it.
+
+// The keepsake found on the road OUT of a region — the deed a child does
+// AFTER healing it, which is why it is the third fact rather than the first.
+// The Court has no road out (`xth` is the ending, not a door), so its third
+// fact is its own: all four relics found, the same test that already opens
+// its throne stair (js/main.js, `WS.get('court','relic_'+name)`).
+export const KEEPSAKE = {
+  ember: 'wayfarers_key', stone: 'rootstone', wild: 'sealed_map',
+  frost: 'frozen_tear', storm: 'harbour_key', vale: 'moon_coin',
+};
+export const COURT_RELICS = ['ember', 'thorn', 'tide', 'moon'];
+
+function pupsHomeFor(key) {
+  const ids = Object.keys(PUP_HOME).filter((id) => PUP_HOME[id] === key);
+  return ids.length > 0 && ids.every((id) => state.flags.pups[id]);
+}
+
+function keepsakeFoundFor(key) {
+  if (key === 'court') return COURT_RELICS.every((n) => WS.get('court', 'relic_' + n));
+  return !!KEEPSAKE[key] && ownsTreasure(KEEPSAKE[key]);
+}
+
+// FIVE FACTS, COUNTED INDIVIDUALLY — NOT front-to-back the way `WS.stage()`
+// counts everything else. Two of the four early drafts of this plan tried
+// `WS.stage()`'s strict count, which stops dead at the first gap in the
+// list — and both drafts had to admit the consequence out loud: a child who
+// clears the region's dungeon (§2) before finding its road keepsake would
+// sit at a LOWER stage than what they have actually done, with the dungeon's
+// own payoff invisible. That is an ordering rule nobody can see, in a game
+// built for someone who cannot read one if it were written down.
+//
+// So every fact is a separate `if`, and the count is a plain sum. Every fact
+// is already written by a system that existed before this file did (the boss
+// branches, `spawnPups`'s collection, `treasures.js`'s `addTreasure`, and —
+// once §2 ships — the dungeon's own `WS.complete`), so an OLD SAVE reads the
+// right stage on its very first entry: nothing in js/save.js changes for
+// this, and nothing here can regress a stage a save has already earned.
+export function growthStage(key) {
+  if (!key) return 0;
+  let n = 0;
+  if (WS.get(key, 'restored')) n++;
+  if (pupsHomeFor(key)) n++;
+  if (keepsakeFoundFor(key)) n++;
+  if (WS.get(key, 'dungeon')) n++;
+  if (state.flags.grimmFreed) n++;
+  return n;
+}
+
+// ---------------------------------------------------------------------------
 // 1 · THE GROUND
 // ---------------------------------------------------------------------------
 // Only the kinds that MEAN damage move. Gravel, sand, water and ice are what
@@ -107,11 +170,24 @@ const HEALED_PATCH = {
   mud: 'water',
 };
 
+// AT STAGE 4, THE GREEN GOES FURTHER. `js/ground.js` has carried a `blossom`
+// patch kind — pink, fallen petals, the Bloomfall's own colour — since it was
+// written, with nothing in the game ever asking for it. It is where 'grass'
+// and 'moss' go once a region has done more than just heal: the region's
+// dungeon cleared on top of the pups home and the keepsake found. Water is
+// left alone; a healed pool does not become a flower bed.
+const DEEP_BLOOM = new Set(['grass', 'moss']);
+
 export function healPatches(patches, roomId) {
-  if (!patches || !patches.length || !isHealed(roomId)) return patches;
-  return patches.map((p) => (HEALED_PATCH[p.kind]
-    ? { ...p, kind: HEALED_PATCH[p.kind] }
-    : p));
+  if (!patches || !patches.length) return patches;
+  const stage = growthStage(healKeyOf(roomId));
+  if (!stage) return patches;
+  return patches.map((p) => {
+    if (!HEALED_PATCH[p.kind]) return p;
+    let kind = HEALED_PATCH[p.kind];
+    if (stage >= 4 && DEEP_BLOOM.has(kind)) kind = 'blossom';
+    return { ...p, kind };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -140,9 +216,18 @@ export function calmedStrength(strength, roomId) {
 // still a cold mountain and the Court is still the darkest place in the game;
 // they are simply no longer being lit as if something were sitting on them.
 export const MOOD_LIFT = 0.10;
+const MOOD_LIFT_STEP = 0.02;   // per stage past the first
+const MOOD_LIFT_CAP = 0.16;    // Frostpeak stays a cold mountain; the Court stays dark
 
+// SCALES WITH STAGE — a region that has done more than just heal is lit a
+// little more than one that only just did. Capped well short of "bright":
+// Frostpeak is still a cold mountain and the Shadow Court is still the
+// darkest place in the game at every stage; they are simply, gradually, less
+// lit as if something were sitting on them.
 export function moodLift(roomId) {
-  return isHealed(roomId) ? MOOD_LIFT : 0;
+  const stage = growthStage(healKeyOf(roomId));
+  if (!stage) return 0;
+  return Math.min(MOOD_LIFT_CAP, MOOD_LIFT + MOOD_LIFT_STEP * (stage - 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -189,8 +274,20 @@ function freeAt(world, x, z, r) {
   return true;
 }
 
-const BLOOM_MAX = 14;     // per room
 const BLOOM_CLEAR = 0.8;  // u of clear ground a bloom wants around it
+
+// THICKENS WITH STAGE (design/WIDER-WORLD.md §1.4), before a single settler
+// exists: a freshly-healed region — restored, nothing else done yet — is a
+// sparser meadow than one where the child has also brought its pups home,
+// found its keepsake, cleared its dungeon and freed Grimm. Recovery deepens
+// with what has actually been done, the same law the settler and the hearth
+// furniture follow later in this file.
+function bloomMaxFor(stage) {
+  if (stage <= 1) return 8;
+  if (stage === 2) return 12;
+  if (stage === 3) return 16;
+  return 18; // stage 4 and 5
+}
 
 // Somewhere clear, spread out, and away from the walls. `salt` keeps the live
 // moment's spots from landing on the static bloom's, so a room that plays its
@@ -242,10 +339,11 @@ async function plant(world, kinds, spots, scaleOf) {
 
 export async function bloom(world) {
   const key = healKeyOf(world.roomId);
-  if (!key || !isHealed(world.roomId) || !world.halfW) return 0;
+  const stage = growthStage(key);
+  if (!key || !stage || !world.halfW) return 0;
   const kinds = FLORA[key];
   if (!kinds) return 0;
-  const spots = pickSpots(world, BLOOM_MAX, kinds, 'bloom');
+  const spots = pickSpots(world, bloomMaxFor(stage), kinds, 'bloom');
   if (!spots.length) return 0;
   await plant(world, kinds, spots, (s) => 1.1 + (s.ry % 0.4));
   world.markers.bloomSpots = spots.map((s) => ({ x: s.x, z: s.z }));
@@ -319,7 +417,12 @@ export async function healLive(world) {
 // not be a room a child can be shoved around in, and a wandering body with a
 // collider is a wandering obstacle: the one thing worse than an enemy in a
 // place that is supposed to be safe.
-const HERD_MAX = 4;
+// THICKENS WITH STAGE, same law as `bloomMaxFor` above.
+function herdMaxFor(stage) {
+  if (stage <= 1) return 2;
+  if (stage === 2) return 3;
+  return 4; // stage 3 and beyond
+}
 
 // A pack takes its coat from the country it lives in — the same tint-delta
 // idiom VARIANTS uses for enemies, applied to the one Main material.
@@ -334,7 +437,7 @@ export async function graze(world, spots) {
   const gltf = await loadGLB('./assets/chars/wolf.gltf');
   const herd = [];
   const rnd = seeded(world.roomId + ':graze');
-  for (const s of spots.slice(0, HERD_MAX)) {
+  for (const s of spots.slice(0, herdMaxFor(growthStage(key)))) {
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
     // Pups are wolves at 0.42; these are the grown pack, a little bigger, and
     // a little different from each other so a herd does not read as a stamp.
@@ -428,4 +531,140 @@ function turn(model, want, rate, dt) {
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   model.rotation.y += THREE.MathUtils.clamp(d, -rate * dt, rate * dt);
+}
+
+// ---------------------------------------------------------------------------
+// THE SETTLERS — design/WIDER-WORLD.md §1.5.
+// ---------------------------------------------------------------------------
+// Four KayKit humanoids are already somebody in the Den (Wren, Rook, Bram,
+// Tam) on the same Rig_Medium skeleton, so a settler is that same idiom
+// applied to a hearth: clone the one shared material and colour-wash it,
+// rather than a new face for every region. `SETTLER_POSTS` (js/npcs.js)
+// carries the body, the tint and the growth key per hearth room; this file
+// owns WHEN one appears, because that is a question about a stage number,
+// which is a question about the save — not about who stands where.
+//
+// STAGE_CLUTTER carries the FURNITURE, additive per stage: everything up to
+// and including the reached stage is placed, so a room dressed at stage 3
+// is a strict superset of the same room at stage 2. Rows are
+// `[key, x, z, scale, ry]` in the village pack's own vocabulary
+// (`js/levelVillage.js` `loadVillageKit`'s key names) — the same pack every
+// hearth in the game will draw its fire, stool and hut from, which is why
+// `loadVillageKit()` runs from a non-Village room without apology: those 21
+// GLBs have been in the precache since v3.126 for exactly this.
+//
+// Only the hearth and the hut get a collider — a stool and a stack of
+// firewood are ankle height, and a child should be able to walk straight
+// through a fireside without the game stopping them.
+const HEARTH_SOLID = new Set(['hearth', 'hut']);
+
+export const STAGE_CLUTTER = {
+  la: {
+    2: [
+      ['hearth', -2.3, 7.6, 1.0, 0.4],
+      ['stool', -3.5, 8.1, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', -7.0, 8.6, 0.95, 2.3],
+      ['laundry', -1.3, 8.7, 1.0, -0.5],
+      ['firewood', -4.2, 8.6, 1.0, 0.3],
+    ],
+  },
+};
+
+// Place one stage's worth of furniture (already-loaded kit, one call per
+// prop). Returns the placed groups so a first-time grow-in can tween them.
+function placeStageClutter(world, kit, key, x, z, s, ry, tint) {
+  const gltf = kit[key];
+  if (!gltf) return null;
+  const g = placeOne(world, gltf, key, x, z, s, ry, tint);
+  if (g && HEARTH_SOLID.has(key)) world.addCircle(x, z, 0.7 * s);
+  return g;
+}
+
+// THE SETTLER ARRIVES A BEAT AFTER THE FURNITURE, the same shape
+// `summonWayfarer` (js/main.js) uses for Tam: a short delay so a doorway, a
+// shard shower and a person do not all land in the same frame, then a burst
+// in their own tint and the moonstone's chime.
+function summonSettler(world, post) {
+  let comeIn = 2.6;
+  world.onAnimate((tNow, dt) => {
+    if (comeIn <= 0) return;
+    comeIn -= dt || 0.016;
+    if (comeIn > 0) return;
+    for (let i = 0; i < 8; i++) {
+      juice.burst(post.x + (Math.random() * 2 - 1) * 0.6, 0.3 + Math.random() * 1.2,
+        post.z + (Math.random() * 2 - 1) * 0.6, post.tint, 6);
+    }
+    audio.play('form-switch', { volume: 0.55, rate: 1.05 });
+  });
+}
+
+// Called from `setupRoomExtras` (js/main.js) BEFORE `bloom()`, so a bloom
+// picking spots for itself sees the hearth's collider and never lands one in
+// the fire. Growth is read at build: every fact that raises a stage is set
+// somewhere OTHER than the hearth (pups in their own rooms, the keepsake on
+// the road out, the dungeon under its own gate, Grimm at the Spire), so by
+// construction the child is elsewhere when the world changes and sees it on
+// the next visit — the Terranigma law, made mechanical rather than promised.
+//
+// `onGrowIn(key, stage)` is provided by the caller because narration's
+// singleton instance lives in js/main.js, not here — the same reason
+// `spawnPups` takes an `onCollected` callback instead of importing narration
+// itself.
+export async function spawnSettlers(world, onGrowIn) {
+  const post = SETTLER_POSTS[world.roomId];
+  if (!post || world.settler) return;
+  const stage = growthStage(post.key);
+  if (stage < post.minStage) return;
+
+  const kit = await loadVillageKit();
+  const rigAnims = (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
+  const gltf = await loadGLB(post.file);
+  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+  model.scale.setScalar(0.5);
+  // ONE material wash, the Tam idiom: whichever KayKit body this is, its
+  // whole figure sits on one shared atlas, so one clone-and-multiply colours
+  // all of it and nothing else in the room.
+  model.traverse((n) => {
+    if (!n.isMesh) return;
+    n.material = n.material.clone();
+    n.material.color.setHex(post.tint);
+  });
+  world.addCircle(post.x, post.z, 0.35); // solid, like every other friend
+  world.settler = characterNpc(world, {
+    model, id: post.id, x: post.x, z: post.z, ry: post.ry,
+    rigAnims, gestureName: 'Idle_B',
+  });
+  world.markers.settlerSpot = { x: post.x, z: post.z };
+
+  // THE FURNITURE, additive up to the reached stage. `firstTime` groups are
+  // only the ones this exact visit is placing for the first time this stage
+  // reveal (i.e. every stage's rows, since a fresh build always starts from
+  // nothing) — the `seen_N` gate below decides whether that counts as NEW to
+  // the SAVE, which is the only thing that should ever play a fanfare twice.
+  const rows = STAGE_CLUTTER[world.roomId] || {};
+  const placed = [];
+  for (let s = 2; s <= stage; s++) {
+    for (const [key, x, z, sc, ry] of (rows[s] || [])) {
+      const g = placeStageClutter(world, kit, key, x, z, sc, ry,
+        key === 'hut' ? post.tint : 0xffffff);
+      if (g) placed.push(g);
+    }
+  }
+  // This furniture lands after the room's own build-time `flattenStatic()`
+  // pass, so none of it was folded into that batch — each small GLB's own
+  // materials would otherwise stay separate draw calls forever. A second
+  // `flattenStatic()` here is safe: it skips content already flagged
+  // `isBatchedMesh` (the room's existing merge), so it only ever touches
+  // this new clutter, and its `contactShadows()` sub-step's own size filter
+  // means these small props pick up a shadow instead of the whole room
+  // being reprocessed.
+  if (placed.length) flattenStatic(world);
+
+  if (!WS.get(post.key, 'seen_' + stage)) {
+    WS.set(post.key, 'seen_' + stage, true);
+    summonSettler(world, post);
+    if (onGrowIn) onGrowIn(post.key, stage);
+  }
 }
