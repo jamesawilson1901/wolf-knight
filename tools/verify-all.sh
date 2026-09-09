@@ -170,19 +170,26 @@ case "$1" in
     #   boot 5s, callable 0s, graphs 0s, story-beats 0s, variant-names 0s,
     #   formlock 14s, hud 14s, completion 23s, progression 49s, roomid 71s
     # — about three minutes total, which leaves room for a re-run and still
-    # finishes four times inside the limit.
+    # finishes four times inside the limit. verify-prefixes joined 2026-09-09
+    # at 0.04s (design/WIDER-WORLD.md §6 v3.126) — static text-only, no
+    # browser, so it costs nothing to run on every push and catches the
+    # Drowned Market / rebuilt-Stoneroot-music class of bug before a room
+    # ever loads.
     #
     # What it buys: does the game boot with no page error, does every method
     # a room calls exist, does every room id resolve, is every enemy variant
     # name real, do the mission graphs hold, does a form lock behave, does the
-    # HUD lay out at phone size, can the game be progressed and completed.
-    # That is the "is it a game" question, in three minutes.
+    # HUD lay out at phone size, can the game be progressed and completed, and
+    # does every room-id prefix agree with itself across the four places that
+    # have to name it or a room builds in greybox forever. That is the "is it
+    # a game" question, in three minutes.
     #
     # NOT here, on purpose: verify-density (slow, known-fail) and
     # verify-music (2.5 min, and the nightly shards run it). The nightly is
     # where slow and known-red suites belong; the push gate is where speed
     # belongs. If a suite is ever added here, add its measured time above.
     run verify-callable.mjs
+    run verify-prefixes.mjs
     run verify-graphs.mjs
     run verify-story-beats.mjs
     run verify-variant-names.mjs
