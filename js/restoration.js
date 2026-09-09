@@ -53,6 +53,7 @@ import { characterNpc, SETTLER_POSTS } from './npcs.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
 import { flattenStatic } from './batch.js';
+import { bumpCounter } from './progress.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
 // always been spelled differently ('ember_hollow' vs 'ember'). One table, so
@@ -511,6 +512,12 @@ export function updateHerd(world, dt, player) {
       a.state = 'pet'; a.petT = 1.1; a.petPhase = 0;
       playOnce(a, 'Gallop_Jump', 0.1);
       audio.play('pup-chime', { volume: 0.6, rate: 1.1 });
+      // v3.132: the pet verb still keeps no state of its own past the
+      // animation (§3.1's "a toy, not a system" — a pup can be petted the
+      // same way forever); the STICKER BOOK is the one thing allowed to
+      // count it, the same way it counts kills without the fight itself
+      // remembering how many there have been.
+      bumpCounter('pupsPetted');
     }
     if (a.state === 'pet') {
       a.petT -= dt;

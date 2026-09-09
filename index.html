@@ -794,6 +794,14 @@
       width: 44px; height: 44px; margin: 0 auto 2px;
       background-size: contain; background-repeat: no-repeat; background-position: center;
     }
+    /* The heart-piece readout (v3.132) — a picture and four pips, no text,
+       so it sits as its own wide row rather than a grid tile. */
+    .heartpiece-row {
+      width: auto; display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin: 8px 0; border-style: solid; border-color: rgba(255,120,140,.4);
+    }
+    .heartpiece-row .ic.tre-art { margin: 0; filter: none; }
+    .hp-pips { font-size: 22px; letter-spacing: 2px; }
     /* A handful of keepsakes needs no scroll box of its own — the 55vh cap on
        .grid is there for the map's long list, and applied here it clipped the
        one tile's NAME off the bottom. The panel itself still scrolls, so Done
@@ -1216,7 +1224,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.131.0</div>
+  <div id="badge">Wolf Knight &middot; v3.132.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

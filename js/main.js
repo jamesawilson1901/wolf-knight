@@ -1781,7 +1781,14 @@ async function setupRoomExtras() {
   // spots has to see the hearth's collider or it can land one in the fire,
   // the exact lesson verify-healing §6 already taught about breakables and
   // chests below.
-  await spawnSettlers(world, (key, stage) => narration.say(`${key}_grow_${stage}`));
+  await spawnSettlers(world, (key, stage) => {
+    // "hearths grown" (v3.132) counts the region, not the visit: onGrowIn
+    // only ever fires once per stage per region (spawnSettlers' own seen_N
+    // gate), and stage 2 is the settler's own first arrival — the moment a
+    // hearth becomes one at all.
+    if (stage === 2) bumpCounter('hearthsGrown');
+    narration.say(`${key}_grow_${stage}`);
+  });
   // THE PUP PEN (design/WIDER-WORLD.md §3.1) — Den only, self-guarded the
   // same way `spawnSettlers` is. `onRowFilled` fires once per region the
   // FIRST time the child comes home with that row already complete, the

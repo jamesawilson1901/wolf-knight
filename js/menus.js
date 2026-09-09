@@ -589,14 +589,51 @@ export class Menus {
     const h = document.createElement('h2');
     h.textContent = `📒 Sticker Book (${owned}/${STICKERS.length})`;
     el.appendChild(h);
+
+    // HEART PIECES — the exact ask (design/WIDER-WORLD.md §3.3): the picture
+    // beside a 0-4 filled readout, no text. This is CURRENT STATE (how many
+    // quarters of the next heart Kael is carrying), not a one-time
+    // achievement, so it sits above the grid rather than as a tile in it —
+    // the four hearts below already speak for themselves without a label.
+    const hpRow = document.createElement('div');
+    hpRow.className = 'sticker heartpiece-row';
+    const hpIc = document.createElement('div');
+    hpIc.className = 'ic tre-art';
+    hpRow.appendChild(hpIc);
+    const pips = document.createElement('div');
+    pips.className = 'hp-pips';
+    const held = state.inventory.heartPieces || 0;
+    for (let i = 0; i < 4; i++) {
+      const pip = document.createElement('span');
+      pip.textContent = i < held ? '❤️' : '🤍';
+      pips.appendChild(pip);
+    }
+    hpRow.appendChild(pips);
+    el.appendChild(hpRow);
+    if (this.renderer) {
+      itemThumb(this.renderer, { file: './assets/loot/platformer/heart-piece.glb' })
+        .then((url) => { if (url) hpIc.style.backgroundImage = `url(${url})`; })
+        .catch(() => { /* keep the empty frame rather than break the screen */ });
+    }
+
     const grid = document.createElement('div');
     grid.className = 'grid';
     for (const s of STICKERS) {
       const has = !!state.stickers[s.id];
       const d = document.createElement('div');
       d.className = 'sticker' + (has ? ' owned' : '');
-      d.innerHTML = `<div class="ic">${s.icon}</div><div>${has ? s.name : '???'}</div>`;
+      // PICTURES, NOT LETTERS (v3.132): a row with a `model` always shows its
+      // thumbnail — earned or not — and the SAME CSS that already greys an
+      // unearned emoji (`.sticker .ic { filter: grayscale... }`, index.html)
+      // greys the picture too; only the NAME still waits for `has`.
+      const icHtml = s.model ? '<div class="ic tre-art"></div>' : `<div class="ic">${s.icon}</div>`;
+      d.innerHTML = `${icHtml}<div>${has ? s.name : '???'}</div>`;
       grid.appendChild(d);
+      if (s.model && this.renderer) {
+        itemThumb(this.renderer, { file: s.model.file, tint: s.model.tint }, s.model.pose || null)
+          .then((url) => { if (url) d.querySelector('.ic').style.backgroundImage = `url(${url})`; })
+          .catch(() => { /* keep the empty frame rather than break the screen */ });
+      }
     }
     el.appendChild(grid);
 

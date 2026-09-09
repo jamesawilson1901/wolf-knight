@@ -96,6 +96,28 @@ check('the coin hopped and settled', !!landed && landed.hops >= 2 && landed.sett
 check('the coin is spinning', !!landed && Math.abs(landed.spin - coin.spin0) > 0.5,
   { from: coin.spin0, to: landed && landed.spin });
 
+console.log('\n── 5. Pip’s sparkle widened (v3.132) ──────────────────');
+// design/WIDER-WORLD.md §3.5: a keepsake or a heart-piece chest is exactly as
+// much "worth a detour" as gear or armour already was — synthetic chest
+// entries are enough here, since pip.js's own check reads only x/z/opened/
+// loot and never touches the mesh a real chest would carry.
+const sparkleNear = (loot) => wk.page.evaluate((loot) => {
+  const g = window.__game;
+  g.world.chests = [{ x: g.player.root.position.x + 1, z: g.player.root.position.z, opened: false, loot }];
+  g.pip.update(0.1, performance.now() / 1000, g.player, g.world);
+  return g.pip.sparkling;
+}, loot);
+check('a plain shard chest does not sparkle (unchanged)', (await sparkleNear({ shards: 10 })) === false);
+check('a keepsake chest sparkles', (await sparkleNear({ shards: 10, treasure: 'banked_ember' })) === true);
+check('a heart-piece chest sparkles', (await sparkleNear({ shards: 10, heartPiece: 1 })) === true);
+check('an already-opened chest of either kind does not sparkle', await wk.page.evaluate(() => {
+  const g = window.__game;
+  g.world.chests = [{ x: g.player.root.position.x + 1, z: g.player.root.position.z, opened: true,
+    loot: { treasure: 'banked_ember' } }];
+  g.pip.update(0.1, performance.now() / 1000, g.player, g.world);
+  return g.pip.sparkling === false;
+}));
+
 check('nothing threw during the run', wk.errors.length === 0, wk.errors.slice(0, 3));
 await wk.b.close();
 console.log(errors.length ? `\n✗ FAIL — ${errors.length} problem(s)` : '\n✓ PASS — the strip reads, and a coin is a coin');

@@ -66,18 +66,41 @@ export function applyPerk(id) {
 // ---------------------------------------------------------------------------
 // Sticker book — kid achievements. Counters bump, stickers pop.
 // ---------------------------------------------------------------------------
-
+// PICTURES, NOT LETTERS (v3.132, design/WIDER-WORLD.md §3.3). `icon` was the
+// only art a tile ever had — an emoji a non-reader cannot decode — for
+// seventeen rows that mostly stand for a thing the game already models. A row
+// with a `model` renders that model's own thumbnail instead (js/menus.js,
+// the same itemThumb() path the Armoury and treasure shelf already use);
+// `icon` stays as the fallback for the handful left that name an ABSTRACT
+// idea (a level, a double jump, a minigame win) rather than an object — the
+// exact line BUILDLOG.md:3949-3958 already drew for the rest of the game's
+// emoji, extended here rather than redrawn.
 export const STICKERS = [
-  { id: 'first_blood', icon: '⚔️', name: 'Shadow Basher', counter: 'kills', at: 1 },
-  { id: 'slayer10', icon: '🗡️', name: 'Ten Shadows Down', counter: 'kills', at: 10 },
-  { id: 'slayer50', icon: '🏆', name: 'Shadow Champion', counter: 'kills', at: 50 },
-  { id: 'parry1', icon: '🛡️', name: 'Perfect Block!', counter: 'parries', at: 1 },
-  { id: 'parry10', icon: '✨', name: 'Parry Master', counter: 'parries', at: 10 },
-  { id: 'smasher', icon: '📦', name: 'Pot Smasher', counter: 'pots', at: 5 },
-  { id: 'rich', icon: '🪙', name: 'Coin Collector', counter: 'shardsEarned', at: 100 },
-  { id: 'chest1', icon: '🎁', name: 'Treasure Finder', counter: 'chests', at: 1 },
-  { id: 'shopper', icon: '🛒', name: 'First Purchase', counter: 'purchases', at: 1 },
-  { id: 'pups', icon: '🐺', name: 'Pup Rescuer', counter: 'pupsFound', at: 3 },
+  { id: 'first_blood', icon: '⚔️', name: 'Shadow Basher', counter: 'kills', at: 1,
+    model: { file: './assets/chars/sword_1handed.gltf' } },
+  { id: 'slayer10', icon: '🗡️', name: 'Ten Shadows Down', counter: 'kills', at: 10,
+    model: { file: './assets/chars/sword_1handed.gltf' } },
+  { id: 'slayer50', icon: '🏆', name: 'Shadow Champion', counter: 'kills', at: 50,
+    model: { file: './assets/chars/sword_1handed.gltf' } },
+  { id: 'parry1', icon: '🛡️', name: 'Perfect Block!', counter: 'parries', at: 1,
+    model: { file: './assets/chars/shield_badge.gltf' } },
+  { id: 'parry10', icon: '✨', name: 'Parry Master', counter: 'parries', at: 10,
+    model: { file: './assets/chars/shield_badge.gltf' } },
+  { id: 'smasher', icon: '📦', name: 'Pot Smasher', counter: 'pots', at: 5,
+    model: { file: './assets/env/dungeon/Crate.glb' } },
+  // the SAME coin the shard counter itself renders (js/main.js hudArt.shard)
+  // — the tally on the sticker and the thing it is a tally OF stay one object.
+  { id: 'rich', icon: '🪙', name: 'Coin Collector', counter: 'shardsEarned', at: 100,
+    model: { file: './assets/loot/treasure/coin-gold-a.glb', tint: 0xffc843 } },
+  { id: 'chest1', icon: '🎁', name: 'Treasure Finder', counter: 'chests', at: 1,
+    model: { file: './assets/loot/survival/chest-wood.glb' } },
+  { id: 'shopper', icon: '🛒', name: 'First Purchase', counter: 'purchases', at: 1,
+    model: { file: './assets/env/village/Cart_1_A.glb' } },
+  // the SAME pose main.js's own pup-rescue HUD counter renders at (hudArt.pup)
+  // — a wolf shrinks to a smudge end-on, so both places share the one angle
+  // that was actually measured (js/main.js:230-238).
+  { id: 'pups', icon: '🐺', name: 'Pup Rescuer', counter: 'pupsFound', at: 3,
+    model: { file: './assets/chars/wolf.gltf', pose: { yaw: Math.PI * 0.75, tiltZ: 0, zoom: 1.2 } } },
   { id: 'boss1', icon: '🔥', name: 'Hollow Hero', counter: 'bosses', at: 1 },
   { id: 'jumper', icon: '🦘', name: 'Sky Dancer', counter: 'doubleJumps', at: 20 },
   { id: 'game_rook', icon: '🎯', name: 'Sharp Eye', counter: 'gameRook', at: 1 },
@@ -85,6 +108,23 @@ export const STICKERS = [
   { id: 'game_pip', icon: '🐾', name: 'Paw Path Pro', counter: 'gamePip', at: 1 },
   { id: 'level5', icon: '⭐', name: 'Level 5!', counter: 'level', at: 5 },
   { id: 'level10', icon: '🌟', name: 'Level 10!', counter: 'level', at: 10 },
+
+  // NON-COMBAT ROWS (v3.132) — each names a deed the wider-world slices
+  // already record somewhere; `bumpCounter` was simply never called at that
+  // site. Two of §3.3's suggested rows (feeds, harvests) wait on the garden
+  // bed (§3.2, unbuilt — a counter for a mechanic that does not exist yet is
+  // the kind of thing the additive-forever law exists to prevent); "roads
+  // walked back" waits on a per-road once-only flag this slice does not
+  // build. The four below need nothing new.
+  { id: 'petter', icon: '🐾', name: 'Gentle Hands', counter: 'pupsPetted', at: 5,
+    model: { file: './assets/chars/wolf.gltf', pose: { yaw: Math.PI * 0.75, tiltZ: 0, zoom: 1.2 } } },
+  { id: 'settler1', icon: '🔥', name: 'A Fire Returns', counter: 'hearthsGrown', at: 1,
+    model: { file: './assets/env/village/FirePlace_1_1_A.glb' } },
+  { id: 'dungeon1', icon: '🗝️', name: 'Vault Breaker', counter: 'dungeonsCleared', at: 1,
+    model: { file: './assets/loot/pirate/chest-gold.glb' } },
+  { id: 'rescuer1', icon: '🐺', name: 'A Friend Found', counter: 'wolvesRescued', at: 1,
+    model: { file: './assets/chars/wolf.gltf', tint: 0x9c948a,
+      pose: { yaw: Math.PI * 0.75, tiltZ: 0, zoom: 1.2 } } },
 ];
 
 export function bumpCounter(name, n = 1) {

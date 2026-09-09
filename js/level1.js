@@ -38,6 +38,7 @@ import { thresholdGlow } from './levelkit.js';
 import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
 import { isHealed, COAT } from './restoration.js';
+import { bumpCounter } from './progress.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -1964,6 +1965,7 @@ export async function buildLv2(scene) {
     if (WS.get('ember', 'dungeon') || !world.enemies) return;
     if (world.enemies.length && world.enemies.every((e) => e.dead)) {
       WS.complete('ember', 'dungeon');
+      bumpCounter('dungeonsCleared');
       bigToastSafe('🔥 The Gallery falls quiet — a way opens west.');
       if (world.openOnward) world.openOnward();
     }

@@ -8,6 +8,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { bumpCounter } from './progress.js';
 
 const PIP_SCALE = 0.22;
 const PUP_SCALE = 0.16;      // "wolf scaled to ~45%" of Kael's wolf (0.35)
@@ -166,10 +167,15 @@ export class Pip {
         if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
       }
     }
+    // v3.132 (design/WIDER-WORLD.md §3.5, the keepsake/heart-piece half —
+    // fishing rings and the promiseGates predicate wait on later slices): a
+    // keepsake or a heart piece is exactly as much "worth a detour" as gear
+    // or armour, and looked identical to a plain shard chest from a distance
+    // for the same reason those did.
     if (!this.sparkling && world.chests) {
       for (const c of world.chests) {
         if (c.opened) continue;
-        if (!c.loot || (!c.loot.gear && !c.loot.armour)) continue;
+        if (!c.loot || (!c.loot.gear && !c.loot.armour && !c.loot.treasure && !c.loot.heartPiece)) continue;
         const sd = Math.hypot(c.x - this.root.position.x, c.z - this.root.position.z);
         if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
       }
@@ -360,6 +366,7 @@ export async function spawnLostWolf(world, { id, x, z, coat, onRescued }) {
     if (dx * dx + dz * dz > 0.9 * 0.9) return;
     rescued = true;
     state.flags.rescued[id] = true;
+    bumpCounter('wolvesRescued');
     audio.play('pup-chime');
     const stand = mixer.clipAction(idle);
     stand.reset().play();
