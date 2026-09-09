@@ -727,6 +727,26 @@ export const STAGE_CLUTTER = {
       ['sack', 11.0, 10.5, 1.0, 0.6],
     ],
   },
+  // v3.141: the Vale's own hearth, at d1a — the Shallows' dry NE corner
+  // (the region's west half is lagoon), clear of the gatehouse, the
+  // rest/travel spots and the shore dressing, same pocket shape as s1a's.
+  d1a: {
+    2: [
+      ['hearth', 11.0, 7.0, 1.0, 0.4],
+      ['stool', 12.0, 7.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 12.5, 9.0, 0.95, 2.3],
+      ['laundry', 10.5, 9.5, 1.0, -0.5],
+      ['firewood', 12.0, 6.5, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 12.5, 7.0, 1.0, 0.5],
+      ['manikin', 10.5, 10.0, 1.0, -0.4],
+      ['cart', 12.0, 9.5, 1.0, -0.3],
+      ['sack', 11.0, 10.5, 1.0, 0.6],
+    ],
+  },
 };
 
 // Place one stage's worth of furniture (already-loaded kit, one call per

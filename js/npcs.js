@@ -281,6 +281,12 @@ export const SETTLER_POSTS = {
   // and the cartwreck, measured the same live-grid way.
   s1a: { id: 'storm_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
     tint: 0x9aa6b4, key: 'storm', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.141: the Sunken Vale's own hearth, the sixth — the Shallows' own dry
+  // NE corner (the region's west half is lagoon), clear of the gatehouse,
+  // the rest/travel spots and the shore dressing, same live-grid pocket
+  // shape as Storm's own (both 32x26 islands).
+  d1a: { id: 'vale_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0x8fb0ac, key: 'vale', minStage: 2, shop: { x: 12.0, z: 9.5 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -343,6 +349,7 @@ export const WAYFARER_POSTS = {
   t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
   f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
   s1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('storm', 'seen_4') },
+  d1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('vale', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks
