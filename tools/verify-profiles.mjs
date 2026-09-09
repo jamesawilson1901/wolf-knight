@@ -104,6 +104,10 @@ const trip = await page.evaluate(() => {
   g.WS.set('vale', 'restored');
   g.state.flags.cracked.some_crack = true;
   g.state.flags.chests.some_chest = true;
+  // v3.130 (§2.5): the lost wolf's flag is the newest field in this shape,
+  // and this suite is exactly what would have caught it missing from
+  // persist()/applySave() the way four boss flags went missing before.
+  g.state.flags.rescued.some_wolf = true;
   g.persist();
   // wipe the live state the way a fresh load does, then read the file back
   for (const k of Object.keys(want)) delete g.state.flags[k];
@@ -111,19 +115,22 @@ const trip = await page.evaluate(() => {
   g.state.flags.world = {};
   g.state.flags.cracked = {};
   g.state.flags.chests = {};
+  g.state.flags.rescued = {};
   const raw = JSON.parse(localStorage.getItem('wolfknight:save:' + g.state.profileId));
   g.applySave(g.state.profileId, g.state.profileName, raw);
   const missing = Object.entries(want).filter(([k, v]) => g.state.flags[k] !== v).map(([k]) => k);
   return { missing, formLock: g.state.formLock,
     vale: !!g.WS.get('vale', 'restored'),
     crack: !!g.state.flags.cracked.some_crack,
-    chest: !!g.state.flags.chests.some_chest };
+    chest: !!g.state.flags.chests.some_chest,
+    rescued: !!g.state.flags.rescued.some_wolf };
 });
 check('every boss flag and every remembered wound survives', trip.missing.length === 0, trip.missing);
 check('...the Trial’s form lock survives (state.js says it must)',
   trip.formLock === 'frost_wolf', trip);
 check('...and so do the world state, the cracks and the chests',
   trip.vale && trip.crack && trip.chest, trip);
+check('...and a rescued wolf (§2.5) round-trips too', trip.rescued, trip);
 
 // ---------------------------------------------------------------------------
 console.log('\n── 4 · an old save still loads ───────────────────────');
