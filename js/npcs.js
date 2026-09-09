@@ -265,6 +265,14 @@ export const SETTLER_POSTS = {
   // Den's own cart does, at whichever rung is already unlocked.
   la: { id: 'ember_settler', file: './assets/chars/mage.glb', x: -3, z: 7.6, ry: 2.5,
     tint: 0xd97a3a, key: 'ember', minStage: 2, shop: { x: 3.0, z: 8.0 } },
+  // v3.135: Stoneroot and the Wild Woods, the second and third hearths.
+  // Same body (mage.glb) as Ember's — a second face is design/WIDER-WORLD.md
+  // §8 Q6, unanswered — colour-washed to each region's own COAT tone
+  // (js/restoration.js) instead, the same trick every hut tint already runs.
+  vh: { id: 'stone_settler', file: './assets/chars/mage.glb', x: 12.5, z: 1.5, ry: 2.0,
+    tint: 0x8f8b80, key: 'stone', minStage: 2, shop: { x: 11.0, z: -1.0 } },
+  t1a: { id: 'wild_settler', file: './assets/chars/mage.glb', x: -6.3, z: 4.7, ry: 1.0,
+    tint: 0x7d8f5c, key: 'wild', minStage: 2, shop: { x: -6.8, z: 6.3 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -321,6 +329,10 @@ export const WAYFARER_POSTS = {
   // never regresses (design/WIDER-WORLD.md §1.7's additive law), so it is the
   // same question asked through a fact both files already know: `WS`.
   la: { x: -9.3, z: 7.6, ry: -1.2, flag: null, when: () => WS.get('ember', 'seen_4') },
+  // v3.135: measured clear of both new shop carts' own 1.7u proximity ring
+  // (SETTLER_POSTS.vh/.t1a's `shop`, above) — the same la-post lesson.
+  vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },
+  t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks

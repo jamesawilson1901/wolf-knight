@@ -63,6 +63,8 @@ await page.evaluate(async () => {
     // without its door having opened first, so LATE=4 shows `la` with the
     // crack already broken, not just the milestone flag on its own.
     g.state.flags.cracked.l1_crack_gate = true;
+    // The Frozen Spring's own gate (v3.134, same reasoning): `t1b`'s ice.
+    g.WS.set('wild3', 'ice_l3_spring_ice', true);
   }
   // GRIMM FREED IS GLOBAL, NOT PER-REGION (js/restoration.js growthStage's
   // fifth fact) — so stage 5 is the one stage no single hearth can reach on

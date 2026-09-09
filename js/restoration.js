@@ -642,6 +642,50 @@ export const STAGE_CLUTTER = {
       ['sack', 3.9, 7.4, 1.0, 0.6],
     ],
   },
+  // v3.135: Stoneroot's own hearth, in the Great Vault (`vh`). Old Bram's
+  // camp (`coldHearth`, js/level2.js) is "the only warm thing in the room"
+  // while Stone is unhealed — this is the region growing a second one, not a
+  // contradiction of that line. Measured clear via tools/probe-freespot.mjs's
+  // own live-grid method against the room at its own fullest build (WS.stage
+  // 'vault' 3) in the open pocket east of the sunken ring, well clear of
+  // Bram's camp (-8, 6.6), the beacon, the crypt ramp and ring props.
+  vh: {
+    2: [
+      ['hearth', 11.5, 0.8, 1.0, 0.4],
+      ['stool', 13.2, 1.3, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 15.5, 2.0, 0.95, 2.3],
+      ['laundry', 12.0, 3.3, 1.0, -0.5],
+      ['firewood', 14.0, -0.5, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 16.5, 0.5, 1.0, 0.5],
+      ['manikin', 15.0, 4.0, 1.0, -0.4],
+      ['cart', 11.0, -1.0, 1.0, -0.3],
+      ['sack', 10.3, -1.6, 1.0, 0.6],
+    ],
+  },
+  // v3.135: the Wild Woods' own hearth, at `t1a`'s existing `restSpot`
+  // (-7, 4) — measured clear of the mossy ruin, the thicket and the log-down
+  // chord's own 'w' door the same live-grid way.
+  t1a: {
+    2: [
+      ['hearth', -7.0, 4.5, 1.0, 0.4],
+      ['stool', -8.3, 3.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', -9.3, 5.5, 0.95, 2.3],
+      ['laundry', -6.3, 5.8, 1.0, -0.5],
+      ['firewood', -8.8, 2.8, 1.0, 0.3],
+    ],
+    4: [
+      ['target', -6.5, 3.0, 1.0, 0.5],
+      ['manikin', -9.5, 3.5, 1.0, -0.4],
+      ['cart', -6.8, 6.3, 1.0, -0.3],
+      ['sack', -8.0, 6.8, 1.0, 0.6],
+    ],
+  },
 };
 
 // Place one stage's worth of furniture (already-loaded kit, one call per

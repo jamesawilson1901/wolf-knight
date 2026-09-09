@@ -60,6 +60,21 @@ const setStage = (n) => page.evaluate((k) => {
   for (const key of keys) g.WS.set('vault', key, true);
 }, n);
 
+// v3.135: `vh`'s own settler/hearth is a SEPARATE growth axis (`growthStage
+// 'stone'`, js/restoration.js) from the vault's own `WS.stage`, above — the
+// two coexist in the same room. `setStage()` wipes `state.flags.world`
+// entirely, so this has to be called AFTER it to land in the same state,
+// pushed to stage 4 (its ceiling) so §8's budget check below actually
+// measures the room with every stage's furniture present, not a subset.
+const setStoneGrowthMax = () => page.evaluate(async () => {
+  const g = window.__game;
+  g.WS.set('stone', 'restored', true);
+  g.WS.set('stone', 'dungeon', true);
+  g.state.flags.grimmFreed = true;
+  const { PUP_HOME } = await import('/js/pip.js');
+  for (const id of Object.keys(PUP_HOME)) if (PUP_HOME[id] === 'stone') g.state.flags.pups[id] = true;
+});
+
 const snap = () => page.evaluate(() => {
   const g = window.__game, w = g.world, i = g.renderer.info;
   let southEdge = -Infinity;
@@ -202,6 +217,21 @@ for (const id of SPACES) {
   }
 }
 check('no interactive marker sits in the 2.5u blind strip', blind.length === 0, { blind });
+
+// ---------------------------------------------------------------------------
+console.log('\n── 10. the hearth (v3.135): calls at its own ceiling ────');
+// Scoped to `vh` alone, AFTER every other section's own snapshot — turning
+// on `growthStage('stone')` (a separate axis from `WS.stage('vault')`,
+// js/restoration.js) here rather than in §1's shared `S` would also light up
+// bloom() across every OTHER Stoneroot room this suite visits, which is a
+// real but unrelated pre-existing question (do their bloom spots clear the
+// blind strip once Stone is healed?) that this slice did not create and
+// verify-growth.mjs's own §3 already answers for `vh` itself directly.
+await setStage(3);
+await setStoneGrowthMax();
+await go('vh');
+const vhGrown = await snap();
+check('vh draw calls under 100 with the hearth at stage 4', vhGrown.calls < 100, vhGrown.calls);
 
 console.log(errors.length ? `\n${errors.length} PROBLEM(S):\n` + errors.join('\n') : '\nALL CLEAN.');
 await b.close();
