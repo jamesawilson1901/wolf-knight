@@ -291,6 +291,20 @@ export const SETTLER_POSTS = {
   // first room past the entrance (§1.3: the Court's landing is x1, not xh).
   x1: { id: 'court_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
     tint: 0xa79ec2, key: 'court', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.143: the Village gets its people. `growthStage('village')` can only
+  // ever reach 1 (WS.set('village','restored'), main.js:991) or 2 (once
+  // grimmFreed too — pupsHomeFor/keepsakeFoundFor/the dungeon fact are all
+  // false for 'village', nothing region-specific to earn), so `minStage: 1`
+  // is the right gate — no `shop`, no stage-scaled STAGE_CLUTTER row: the
+  // town is already built, it only needed someone standing in it. Plain
+  // villager tones, not a region COAT, since these three answer to no
+  // region.
+  ysq: { id: 'square_settler', file: './assets/chars/mage.glb', x: 9, z: -4, ry: 2.6,
+    tint: 0xb08968, key: 'village', minStage: 1 },
+  yhs: { id: 'highstreet_settler', file: './assets/chars/mage.glb', x: 5, z: 3, ry: -0.8,
+    tint: 0x6b7f99, key: 'village', minStage: 1 },
+  ylw: { id: 'lowlanes_settler', file: './assets/chars/mage.glb', x: 9, z: 3, ry: 1.9,
+    tint: 0x7a9469, key: 'village', minStage: 1 },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.

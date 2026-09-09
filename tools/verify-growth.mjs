@@ -254,8 +254,14 @@ for (const post of posts) {
     // Only hearths with a WAYFARER_POSTS row have shipped Tam's post so far
     // (`la`, v3.131) — the other six roll out per design/WIDER-WORLD.md §5.4,
     // and a hearth without one yet should not fail for lacking a feature it
-    // never claimed.
-    if (post.hasWayfarerPost) {
+    // never claimed. `minStage >= 2` is what distinguishes an actual hearth
+    // from the Village's own three posts (v3.143, `minStage: 1`): `ysq`
+    // already carries a WAYFARER_POSTS row from long before this slice,
+    // gated on `villageCleared` rather than `growthStage('village')>=4` (a
+    // stage the Village can never even reach — nothing region-specific to
+    // earn), so asserting the hearth-only "Tam at stage 4" relationship
+    // there checks a claim `ysq` never made.
+    if (post.hasWayfarerPost && post.minStage >= 2) {
       check(`${post.key} LATE=${n}: Tam takes a post at the hearth iff stage>=4 (never earlier)`,
         snap.hasWayfarer === (n >= 4), snap);
     }
