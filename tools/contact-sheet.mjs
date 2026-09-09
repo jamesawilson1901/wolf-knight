@@ -37,6 +37,9 @@ const SECTIONS = [
     ['ld1', 'THE ORDER HALL — puzzle room, dressed at the perimeter only'],
     ['lg4', 'THE BOSS DOOR — the quietest room in Ember'],
     ['le', 'E · HEART OF THE HOLLOW — the Shadowgrip. Arena: edges only'],
+    ['lv1', 'THE UNDERSTAIR CELLAR — the Ash Vault, room 1: no fight, the moved chest, a lost wolf'],
+    ['lv2', 'THE CHARRED GALLERY — the Ash Vault fight: 2 wretch + 1 marauder'],
+    ['lv3', 'THE BANKED VAULT — the Ash Vault, gold: heart piece + shards + halberd'],
   ], 'ember'],
   ['Stoneroot Caverns — buried and waiting',
    'Level 2 · something enormous was carved here, and the dark has been sitting on it since.', [

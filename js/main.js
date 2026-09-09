@@ -49,9 +49,13 @@ const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_w
 // condition that closes it. `done` reads the same flag the gate is built from,
 // so the map can never claim a wall is open while the wall is still standing.
 const PROMISES = [
+  // v3.130: the crack now opens onto the Ash Vault (§2.4), so the ??? card
+  // resolves when the dungeon behind it is actually cleared, not when the
+  // gate merely breaks — the marker and id are unchanged, so a save that
+  // already logged this promise keeps reading the same row.
   { marker: 'crackPromise', id: 'l1_crack', icon: '🪨', r: 4,
     label: 'A cracked wall — the Ashfall',
-    done: () => !!state.flags.cracked.l1_crack_gate },
+    done: () => WS.get('ember', 'dungeon') },
   { marker: 'firePromise', id: 'l1_scorched', icon: '🔥', r: 4.5,
     label: 'A scorched barricade — the Scorched Cubby',
     done: () => !!state.flags.burned.l1_scorched_gate },
@@ -2496,6 +2500,7 @@ async function start() {
       const edt = (state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale;
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
+      if (world.updateLostWolf) world.updateLostWolf(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       // ...and the pack grazing where the shadows used to stand
       if (world.updateGrazers) world.updateGrazers(dt, t, player);

@@ -59,6 +59,10 @@ await page.evaluate(async () => {
   }
   if (LATE >= 4) {
     for (const k of KEYS) g.WS.set(k, 'dungeon', true);
+    // The Ash Vault's own gate (§2.4) — a region's dungeon cannot be CLEARED
+    // without its door having opened first, so LATE=4 shows `la` with the
+    // crack already broken, not just the milestone flag on its own.
+    g.state.flags.cracked.l1_crack_gate = true;
   }
   // GRIMM FREED IS GLOBAL, NOT PER-REGION (js/restoration.js growthStage's
   // fifth fact) — so stage 5 is the one stage no single hearth can reach on

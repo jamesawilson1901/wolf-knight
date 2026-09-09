@@ -22,6 +22,8 @@ const ONWARD = {
   la: 'lg1', lg1: 'lb', lb: 'lg2', lg2: 'lc', lc: 'lg3', lg3: 'ld',
   ld: 'lg4', lg4: 'le',
   la1: 'la', lb1: 'lb', lb2: 'lb', lc1: 'lc', ld1: 'ld',
+  // The Ash Vault (§2.4): Ember's first dungeon, off `la`'s own cracked wall.
+  lv1: 'la', lv2: 'lv3', lv3: 'lv2',
 
   // --- Stoneroot: a hub and three spokes. `vh` is a function, below -------
   vga: 'va1', va1: 'va2', va2: 'va3', va3: 'vh',

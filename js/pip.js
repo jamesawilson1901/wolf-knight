@@ -317,3 +317,53 @@ export async function spawnPups(world, onCollected) {
     for (const p of world.pups) p.update(dt, t, player, onCollected);
   };
 }
+
+// ---------------------------------------------------------------------------
+// THE LOST WOLF — design/WIDER-WORLD.md §2.5. Room one of every pocket
+// dungeon, no fight: a GROWN wolf curled against the wall (not a pup — the
+// pup ladder is untouched by this) that stands the moment a child walks up,
+// the same pup-chime, one Pip line, and `state.flags.rescued[id] = true` —
+// the map's own rescueCount() (worldstate.js) has read that field since
+// DEN-MINIGAMES §5.1 and nothing had ever written it.
+//
+// A near-copy of `Pup.update` above rather than a parameterised version of
+// it: the two only really share the chime and the walk-up radius, and a
+// grown wolf is full scale, tinted its region's own coat, and writes a
+// DIFFERENT save field the map already reads a different way. Forcing one
+// class to cover both risks the pup ladder for a feature that ships once
+// per dungeon.
+export async function spawnLostWolf(world, { id, x, z, coat, onRescued }) {
+  if (state.flags.rescued[id]) return;   // already home — nothing to spawn
+  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+  const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+  model.scale.setScalar(0.5);
+  model.position.set(x, 0, z);
+  model.rotation.y = (x + z) * 0.7;
+  if (coat) {
+    model.traverse((n) => {
+      if (!n.isMesh || n.material.name !== 'Main') return;
+      n.material = n.material.clone();
+      n.material.color.setHex(coat);
+    });
+  }
+  world.add(model);
+  world.keepLoose(model);          // it stands up on rescue; never batch it
+  const mixer = new THREE.AnimationMixer(model);
+  const curled = wolfGltf.animations.find((c) => c.name === 'Idle_2_HeadLow');
+  const idle = wolfGltf.animations.find((c) => c.name === 'Idle');
+  mixer.clipAction(curled).play();
+  let rescued = false;
+  world.updateLostWolf = (dt, t, player) => {
+    mixer.update(dt);
+    if (rescued) return;
+    const dx = player.root.position.x - x, dz = player.root.position.z - z;
+    if (dx * dx + dz * dz > 0.9 * 0.9) return;
+    rescued = true;
+    state.flags.rescued[id] = true;
+    audio.play('pup-chime');
+    const stand = mixer.clipAction(idle);
+    stand.reset().play();
+    curled && mixer.clipAction(curled).crossFadeTo(stand, 0.4, false);
+    if (onRescued) onRescued(id);
+  };
+}

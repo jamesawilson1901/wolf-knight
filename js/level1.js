@@ -25,7 +25,9 @@ import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, spiritShrine, bossGate,
-  reserveLandings } from './levelkit.js';
+  reserveLandings, potSpotsOrFewer } from './levelkit.js';
+import { spawnLostWolf } from './pip.js';
+import { WS } from './worldstate.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
@@ -35,7 +37,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
-import { isHealed } from './restoration.js';
+import { isHealed, COAT } from './restoration.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
 // not a preference: the metrics zoo exists to measure, never to look nice, and
@@ -81,6 +83,22 @@ export const DISTRICTS = {
               name: 'THE KILN',            hero: 'THE FORGE HEART' },
   heart:    { tint: 0x6a5a8a, floorTint: 0x5d5078, wallTint: 0x241d33, propTint: 0x5f5470, ground: 'heart',
               name: 'HEART OF THE HOLLOW', hero: "CINDER'S CAGE" },
+  // THE ASH VAULT (v3.130) — the dungeon behind la's own cracked wall.
+  // Ashfall's own ground texture (it is the same hollow, one floor down) at
+  // roughly half the luminance: a cellar reads as underground by being
+  // DARKER than the yard above it, the same rule the Kiln's wallTint half-
+  // step already keeps for a cliff against its own ground.
+  //
+  // wallTint was 0x1c1a17 — near-neutral black — and lv1's own arrival frame
+  // (spawn sits 1.5u off the east wall, the same distance every Ember Deep
+  // pocket uses) puts that wall across half the screen. A tint with almost no
+  // hue of its own has nothing to resist the game's hemisphere sky light
+  // (main.js, 0xa393b8 — lavender), so the whole wall read as flat purple
+  // rather than dark stone. Warmed a step, same darkness: still half the
+  // floor's luminance, but with enough of its own brown left to hold that
+  // colour under the same light every other room sits under.
+  ashvault: { tint: 0x504c46, floorTint: 0x433f3a, wallTint: 0x2b241a, propTint: 0x5c4e3e, ground: 'ashfall',
+              name: 'THE ASH VAULT', hero: 'THE UNDERSTAIR CELLAR' },
 };
 
 // ---------------------------------------------------------------------------
@@ -127,6 +145,18 @@ export const L1 = {
          label: 'THE CHARRED SPAN', beat: 'optional · burn + the crossing' },
   lk3: { kind: 'pocket', w: 20, d: 16, district: 'kiln',     loopsTo: 'lk2',
          label: 'THE BANKED FIRE', beat: 'optional · light the ring · gold' },
+  // THE ASH VAULT (v3.130, design/WIDER-WORLD.md §2.4) — the first dungeon,
+  // and the template every later one copies. Behind la's own cracked wall,
+  // Earth Wolf only. spine: false throughout: optional, same rule as
+  // Ember Deep above.
+  // `dungeon: true` on the entrance only — one offshoot card represents the
+  // whole branch on the map (§5.3, later), not one per room inside it.
+  lv1: { kind: 'pocket', w: 20, d: 16, district: 'ashvault', loopsTo: 'la',
+         label: 'THE UNDERSTAIR CELLAR', beat: 'optional · the lost wolf · gold', dungeon: true },
+  lv2: { kind: 'island', w: 32, d: 26, district: 'ashvault',
+         label: 'THE CHARRED GALLERY', beat: 'optional · 2 wretch + 1 marauder' },
+  lv3: { kind: 'pocket', w: 20, d: 16, district: 'ashvault', loopsTo: 'lv2',
+         label: 'THE BANKED VAULT', beat: 'optional · gold + heart piece' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -237,6 +267,13 @@ const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, dar
 function bigToastSafe(msg) {
   const t = typeof window !== 'undefined' && window.__game && window.__game.bigToast;
   if (t) t(msg);
+}
+
+// Same reasoning, for a Pip line rather than a toast (the lost-wolf rescue,
+// design/WIDER-WORLD.md §2.5).
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 // A DODO. Just a dodo. No mechanic, no reward, nothing required — a secret
@@ -557,11 +594,23 @@ function finish(world, spec, D) {
 // --- ISLAND A — THE ASHFALL (arrival) ---------------------------------------
 export async function buildLa(scene) {
   const { world, spec, D } = base(scene, 'la');
+  // THE ASH VAULT (v3.130, design/WIDER-WORLD.md §2.4) — the first dungeon
+  // door in the game, and the template every later one copies. The crack
+  // gate a few lines down still vanishes the instant it is cracked (same as
+  // always); this is the SEPARATE, structural piece — a gap in the room's
+  // own shell wall — and shells are built once, at build time, the same as
+  // every wall in this game, so a child who cracks it mid-visit sees the
+  // doorway on their NEXT entry, not this one. That is the existing rule
+  // for every gate that changes a room's own geometry (`den`'s own east
+  // gap, v3.129, works the same way), not a new exception.
+  const vaultOpen = !!state.flags.cracked.l1_crack_gate;
   // THE FLOOR TELLS THE STORY FIRST. Scorch where each house burned, ash
   // drifted against the west wall, rubble under the fallen gate — and a worn
   // route from the Den door, past the gate, to the way onward. The path is the
   // honest replacement for the guide-orbs: a track people made with their feet.
-  const { halfW, halfD } = shell(world, spec, [gap('n'), gap('s'), gap('e')], D, {
+  const gaps = [gap('n'), gap('s'), gap('e')];
+  if (vaultOpen) gaps.push(gap('w', 1.8, -4));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [
       { x: -11, z: 7, r: 4.5, kind: 'scorch' },
       { x: -9, z: -10, r: 4.2, kind: 'scorch' },
@@ -580,6 +629,12 @@ export async function buildLa(scene) {
   sideDoor(world, 's', halfW, halfD, 'den', { x: 0, z: 7.4, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'lg1', { x: 0, z: 3.2, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'la1', { x: -7, z: 0, angle: Math.PI / 2 });
+  // Landing is lv1's OWN frame (a 20x16 pocket, halfW 10), not la's — the
+  // same ±8.5 correction buildLk1/buildLd already use for a pocket landing.
+  // `centre: -4, half: 1.8` must match the gap pushed above or the visual
+  // opening and the walkable door zone disagree (js/levelkit.js sideDoor).
+  if (vaultOpen) sideDoor(world, 'w', halfW, halfD, 'lv1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    { centre: -4, half: 1.8 });
 
   heroProp(world, 0, -6, 'gate', D.tint, D);               // ▲ THE FALLEN GATE
   world.markers.heroSpot = { x: 0, z: -6 };
@@ -666,14 +721,11 @@ export async function buildLa(scene) {
   wallRun(world, -16, -2, -11, -2, D);
   promiseGate(world, -11, -4, 3, 4, 0x9a8c6a, 'CRACKED — later', 'crack',
               { system: 'crack', id: 'l1_crack_gate' });
-  // A PROMISE GATE HAS TO PAY. The five looted weapons off the Army/Orc/Skeleton
-  // packs are spoil, not shop stock, so they went behind the five foreshadowed
-  // gates — the places a child already walked past once and remembered. Chest
-  // tier tracks the prize's worth (wood <220, silver <300, gold above), which is
-  // the only way a non-reader can tell the Legion Blade from the Iron Cleaver
-  // before opening it. verify-gear caught all five as unobtainable: they were in
-  // the tables, mounted in hand, and in no chest and no shop in the whole game.
-  visibleReward(world, -13.5, -4, 'l1_crack_promise', { shards: 18, gear: 'sword_legion' });
+  // THE CHEST MOVED (v3.130): `l1_crack_promise` used to sit right behind
+  // this gate, at (-13.5, -4). It lives in `lv1` now — the dungeon's own
+  // first room, reached through the wall this alcove backs onto — keeping
+  // its id and tier so a save that already opened it stays valid
+  // (WORLD-DESIGN.md §4 "nothing missable"; see buildLv1 below).
   return finish(world, spec, D);
 }
 export async function buildLa1(scene) {
@@ -1790,12 +1842,176 @@ export async function buildLk3(scene) {
   return finish(world, spec, D);
 }
 
+// ===========================================================================
+// THE ASH VAULT — the game's FIRST dungeon, and the template every later one
+// copies (design/WIDER-WORLD.md §2.4). Behind `la`'s own cracked wall, Earth
+// Wolf only: the crack is the game's first promise, and this is it kept, on
+// a return trip, the same promise-gate-on-a-whole-branch pattern Ember Deep
+// already runs above — not a second mechanic, the same one applied once more.
+// ===========================================================================
+
+// --- lv1 — THE UNDERSTAIR CELLAR (no fight: the moved chest, the lost wolf) -
+export async function buildLv1(scene) {
+  const { world, spec, D } = base(scene, 'lv1');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -3, z: 2, r: 3.2, kind: 'rubble' }, { x: 4, z: -3, r: 2.8, kind: 'ash' }],
+    pathWidth: 2.4,
+    paths: [[[9, 0], [0, 0], [-9, 0]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  // Landing is INSIDE la, near the west-wall gap buildLa cracks open there
+  // (centre -4) — not lv1's own frame, which the door built in buildLa uses.
+  sideDoor(world, 'e', halfW, halfD, 'la', { x: -14.5, z: -4, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'lv2', { x: 9.5, z: 0, angle: -Math.PI / 2 });
+
+  // THE CHEST THAT MOVED (buildLa's own note, above) — same id, same loot,
+  // one flight of stairs down from where a child left it. Never a raw
+  // chestDefs write: visibleReward is the one path a promise chest is built
+  // on (the vc2 bug class).
+  visibleReward(world, -6, -5, 'l1_crack_promise', { shards: 18, gear: 'sword_legion' });
+
+  // THE LOST WOLF (§2.5) — no fight, no gate: walk up and it stands. The
+  // region's own coat (js/restoration.js COAT), same as a grazing pup.
+  await spawnLostWolf(world, {
+    id: 'lv1_wolf', x: -6.5, z: 5, coat: COAT.ember,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  // pots for the refill a returning child expects
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+
+  // THE CRYPT PIECES the regions barely use — precached, placed nowhere until
+  // now (Cobweb, Skull, Coin_Pile, Pedestal, Arch_bars): a cellar under a
+  // burned village has always had these lying in it, just never anywhere to
+  // put them. `Trap_spikes.glb` is left out — flavour only, and one prop kit
+  // is enough backstory for one small room.
+  if (!GREY()) {
+    const ped = tinted(emberKit.pedestal, 'lv1Pedestal', D.propTint);
+    ped.position.set(6, 0, 5.2); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(6, 5.2, 0.85);
+    const skull = tinted(emberKit.skull, 'lv1Skull', 0xcfc3ab);
+    skull.position.set(6, 1.86, 5.2); skull.scale.setScalar(1.4); skull.rotation.y = 0.6;
+    world.add(skull);
+    for (const [cx, cz] of [[5.3, 4.6], [6.7, 4.7], [6.1, 6.0]]) {
+      const coin = tinted(emberKit.coins, 'lv1Coins', 0xd8b84a);
+      coin.position.set(cx, 0, cz); coin.scale.setScalar(3.6);
+      world.add(coin);
+    }
+    const web = tinted(emberKit.cobweb, 'lv1Cobweb', 0x8a8478);
+    web.position.set(-9, 1.4, -6); web.scale.setScalar(1.1); web.rotation.y = Math.PI * 0.75;
+    world.add(web);
+    const bars = tinted(emberKit.bars, 'lv1Bars', D.wallTint);
+    bars.position.set(9.4, 0, -3); bars.rotation.y = -Math.PI / 2;
+    world.add(bars);
+  }
+
+  rubbleField(world, 2, 6, 2.0, D, 9);
+  aftermath(world, -3, -6, 2.0, D, 10);
+  scatter(world, halfW, halfD, D, 74, 5);
+  return finish(world, spec, D);
+}
+
+// --- lv2 — THE CHARRED GALLERY (the fight; clears the region's dungeon) ----
+export async function buildLv2(scene) {
+  const { world, spec, D } = base(scene, 'lv2');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 5.0, kind: 'scorch' }, { x: -10, z: -5, r: 3.4, kind: 'rubble' },
+              { x: 10, z: 5, r: 3.2, kind: 'ash' }],
+    pathWidth: 2.6,
+    paths: [[[13, 0], [-13, 0]]],
+  });
+  world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'lv1', { x: -8.5, z: 0, angle: Math.PI / 2 });
+
+  // A PIECE OF THE SHADOW THAT DID NOT COME HOME — the strip still spawns
+  // here even once Ember itself is healed (js/enemies.js:3771).
+  world.markers.shadowed = true;
+  world.markers.emberWretchSpots = [{ x: -6, z: 4 }, { x: 6, z: -4 }];
+  world.markers.moltenMarauderSpots = [{ x: 0, z: 6 }];
+
+  // THE ONWARD DOOR IS ALWAYS CUT, plugged with rubble until the fight is
+  // won — the same rule buildLe's own loop-back door follows (rule 4): a
+  // door that only arrives on a rebuild leaves the child who just won
+  // standing in a room with no way out.
+  const openLv3 = () => sideDoor(world, 'w', halfW, halfD, 'lv3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
+  if (WS.get('ember', 'dungeon')) openLv3();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openLv3);
+
+  world.markers.breakables = [
+    { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
+    { x: 4, z: -9, kind: 'barrel' },
+  ];
+  cartWreck(world, -4, -8.5, 0.4, D);
+  fallenColumn(world, 8, 2, -0.6, D, 3.6);
+  lowWall(world, -9, 2.5, 0.2, D, 3.2);
+  rubbleField(world, 11, 1, 2.6, D, 11);
+  aftermath(world, -10, 8, 2.2, D, 13);
+  // THE SOUTH SIDE OF THE CROSSING, the same correction lk2's own Span made
+  // for the identical reason: everything above put its weight on one side of
+  // the straight road between the two doors, so a child walking it in from
+  // lv1 saw a busy left hand and a bare right one.
+  cartWreck(world, 5, -6.5, -0.5, D);
+  fallenColumn(world, 3.5, -3.2, 1.1, D, 3.0);
+  aftermath(world, 8.5, -8.5, 2.0, D, 9);
+  scatter(world, halfW, halfD, D, 75, 6);
+
+  // THE MOMENT THE ROOM CLEARS — the villageUnshadowLive poll pattern
+  // (js/levelVillage.js:797-804), applied to a fight instead of a ward: once
+  // every enemy is down, the dungeon's own milestone completes (true only
+  // the first time, so the fanfare is free) and the plug pops where the
+  // child is already standing, not on a rebuild they might never trigger.
+  world.onAnimate(() => {
+    if (WS.get('ember', 'dungeon') || !world.enemies) return;
+    if (world.enemies.length && world.enemies.every((e) => e.dead)) {
+      WS.complete('ember', 'dungeon');
+      bigToastSafe('🔥 The Gallery falls quiet — a way opens west.');
+      if (world.openOnward) world.openOnward();
+    }
+  });
+  return finish(world, spec, D);
+}
+
+// --- lv3 — THE BANKED VAULT (pocket, loopsTo lv2: the gold chest) ----------
+export async function buildLv3(scene) {
+  const { world, spec, D } = base(scene, 'lv3');
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    patches: [{ x: 0, z: -1, r: 4.2, kind: 'scorch' }, { x: -7, z: 4, r: 2.6, kind: 'gravel' },
+              { x: 7, z: 4, r: 2.6, kind: 'gravel' }],
+    pathWidth: 2.6,
+    paths: [[[9, 0], [0, -1]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'lv2', { x: -9.5, z: 0, angle: Math.PI / 2 });
+
+  heroProp(world, 0, -1, 'bowl', D.tint, D);
+  world.markers.heroSpot = { x: 0, z: -1 };
+
+  // THE GOLD CHEST — never a raw chestDefs write (the vc2 bug class): a
+  // heart piece, shards, and one of the nine unused KayKit weapon bits
+  // (items.js:171-175, `halberd` — the sanctioned trick, ungranted until now)
+  // tinted as a dungeon-only find.
+  visibleReward(world, 0, -6.2, 'lv3_banked', { shards: 30, heartPiece: 1, gear: 'halberd' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
+  ];
+  wayshrine(world, -6.5, -5.5, 0.4, D);
+  fallenColumn(world, -5, 6.5, 0.7, D, 3.0);
+  fallenColumn(world, 5, 6.5, -0.7, D, 3.0);
+  rubbleField(world, -8, -4.5, 2.0, D, 9);
+  rubbleField(world, 8, -4.5, 2.0, D, 9);
+  aftermath(world, 0, 6.8, 2.0, D, 14);
+  scatter(world, halfW, halfD, D, 76, 5);
+  return finish(world, spec, D);
+}
+
 export const LEVEL1_ROOMS = {
   la: buildLa, la1: buildLa1, lg1: buildLg1,
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
   lc: buildLc, lc1: buildLc1, lg3: buildLg3,
   ld: buildLd, ld1: buildLd1, lg4: buildLg4,
   lk1: buildLk1, lk2: buildLk2, lk3: buildLk3,   // EMBER DEEP
+  lv1: buildLv1, lv2: buildLv2, lv3: buildLv3,   // THE ASH VAULT
   le: buildLe,
   zoo: buildZoo,
 };

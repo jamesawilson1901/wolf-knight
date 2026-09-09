@@ -95,6 +95,11 @@ export const LINES = {
   // Part B — contextual (repeatable)
   checkpoint: { voice: 'pip', text: 'We can rest here. You’re safe.', repeat: true },
   pup_found: { voice: 'pip', text: 'A lost wolf pup! You found one. Good eyes, Kael.', repeat: true },
+  // THE LOST WOLF (design/WIDER-WORLD.md §2.5) — one line, shared by every
+  // dungeon's room-one rescue (js/pip.js spawnLostWolf). `repeat: true`
+  // because it is a per-dungeon event, the same as pup_found above, and a
+  // second dungeon's wolf must not find the line already spent.
+  lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe under the ash. Welcome home, friend.', repeat: true },
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
   moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon and Luna herself will crash down on your enemies!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },
