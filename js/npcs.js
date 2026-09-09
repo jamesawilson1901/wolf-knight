@@ -276,6 +276,11 @@ export const SETTLER_POSTS = {
   // v3.139: Frostpeak's own hearth, the fourth.
   f1: { id: 'frost_settler', file: './assets/chars/mage.glb', x: 10, z: 6, ry: -2.4,
     tint: 0xdfe8f2, key: 'frost', minStage: 2, shop: { x: 10.5, z: 8.0 } },
+  // v3.140: the Cloudreach Spire's own hearth, the fifth — the Landing's
+  // quiet NE corner, clear of the gatehouse, the sea-cave gate, the wayshrine
+  // and the cartwreck, measured the same live-grid way.
+  s1a: { id: 'storm_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0x9aa6b4, key: 'storm', minStage: 2, shop: { x: 12.0, z: 9.5 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -337,6 +342,7 @@ export const WAYFARER_POSTS = {
   vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },
   t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
   f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
+  s1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('storm', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks
