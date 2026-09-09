@@ -36,7 +36,7 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
-import { bloom, healLive, moodLift, growthStage, spawnSettlers } from './restoration.js';
+import { bloom, healLive, moodLift, growthStage, spawnSettlers, spawnPupPen } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -1778,6 +1778,11 @@ async function setupRoomExtras() {
   // the exact lesson verify-healing §6 already taught about breakables and
   // chests below.
   await spawnSettlers(world, (key, stage) => narration.say(`${key}_grow_${stage}`));
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1) — Den only, self-guarded the
+  // same way `spawnSettlers` is. `onRowFilled` fires once per region the
+  // FIRST time the child comes home with that row already complete, the
+  // same "witnessed at the hearth, not out in the field" law.
+  await spawnPupPen(world, (key) => narration.say(`pups_home_${key}`));
   // GRASS AND FLOWERS COME BACK, once the region's guardian is free
   // (js/restoration.js). LAST, and that position is the whole of it: the first
   // cut ran this inside buildRoom, which is before the breakables, the chests

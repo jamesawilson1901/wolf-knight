@@ -183,6 +183,18 @@ export const LINES = {
   // slices, and this file's shape is what theirs will copy.
   ember_grow_2: { voice: 'pip', text: 'Kael — someone’s come back! A fire, in Ember Hollow!' },
   ember_grow_3: { voice: 'pip', text: 'A hut, already! It’s not a ruin any more, Kael. It’s a home.' },
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1, v3.128). Fires once per region,
+  // the FIRST time the child comes HOME to a row already complete — witnessed
+  // at the Den, never out in the field where the last pup was actually found,
+  // the same law `ember_grow_2/3` above already keeps.
+  pups_home_ember: { voice: 'pip', text: 'Look, Kael — every Ember Hollow pup has a bed here now!' },
+  pups_home_stone: { voice: 'pip', text: 'The Stoneroot pups are all curled up safe in their row!' },
+  pups_home_wild: { voice: 'pip', text: 'Every Wild Woods pup found its spot in the pen!' },
+  pups_home_frost: { voice: 'pip', text: 'Frostpeak’s pups are warm and home at last!' },
+  pups_home_storm: { voice: 'pip', text: 'The Stormreach pups all made it back to the pen!' },
+  pups_home_vale: { voice: 'pip', text: 'Every pup from the Sunken Vale is safe here now!' },
+  pups_home_court: { voice: 'pip', text: 'The Shadow Court’s pups have a home at last!' },
+  pups_home_village: { voice: 'pip', text: 'Even the Village pups found their way to the pen!' },
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },

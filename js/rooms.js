@@ -1098,24 +1098,15 @@ async function buildDen(scene) {
   // torches already flanking the gate say "this is the way home" perfectly well,
   // and a prop that reads as a mistake is worse than no prop.
 
-  // rescued pups live here, playing in the grass
-  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-  const rescued = Object.keys(state.flags.pups);
-  rescued.forEach((id, i) => {
-    const pup = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
-    pup.scale.setScalar(0.16);
-    world.add(pup);
-    const pupMixer = new THREE.AnimationMixer(pup);
-    const clip = wolfGltf.animations.find((c) => c.name === (i % 2 ? 'Gallop' : 'Idle'));
-    if (clip) pupMixer.clipAction(clip).play();
-    const cx = -3.4 + (i % 3) * 3.0, cz = 3.0 + Math.floor(i / 3) * 2.2, r = 1.1 + (i % 3) * 0.3;
-    world.onAnimate((t, dt) => {
-      pupMixer.update(dt);
-      const a = t * (0.5 + i * 0.2) + i * 2;
-      pup.position.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r);
-      pup.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI / 2;
-    });
-  });
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1, v3.128) replaces the old
+  // "every rescued pup orbits a fixed grid" loop, which cost ~2 draw calls
+  // per pup with nothing merging them (a 24-pup save would have added ~120
+  // to a 135-ceiling room) and put pups past pup 8 outside the room
+  // entirely (its own orbit centres reached z=18.4 against halfD=9). It is
+  // built from `setupRoomExtras` (js/main.js), Den only, the same layer
+  // `spawnSettlers` already builds its hearths from — this builder has no
+  // narration handle to fire `onRowFilled` from, and `spawnSettlers` solved
+  // that the same way.
 
   // DEN LIFE: villagers + the den dog (real faces — js/npcs.js). The
   // roster grows with the healed regions.

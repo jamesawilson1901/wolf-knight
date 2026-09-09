@@ -43,8 +43,15 @@ const FACE_TURN = 5;      // rad/s of the greeting turn
 // Biscuit's rounds. Spread across the rebuilt Den (24 x 18) rather than the
 // five units of it that used to exist — a dog that patrols a two-metre square
 // is not patrolling, it is pacing.
+//
+// TWO STOPS MOVED (v3.128, design/WIDER-WORLD.md §3.1): the pup pen's fenced
+// rectangle sits at x -4.4..4.4, z 1.2..6.4 (js/restoration.js PEN_FENCE),
+// and (2.6, 2.8) and (-1.0, 4.2) both landed inside it — Biscuit's own rule
+// is that her rounds must not cross the fence. Moved to open ground just
+// outside it on either side, clear of the training patch and the west
+// garden, and reverified with tools/probe-freespot.mjs.
 const DOG_STOPS = [
-  [2.6, 2.8], [-2.4, 0.2], [1.2, -3.4], [-5.2, -1.6], [4.4, 0.4], [-1.0, 4.2],
+  [6.5, 2.5], [-2.4, 0.2], [1.2, -3.4], [-5.2, -1.6], [4.4, 0.4], [-6.5, 5.5],
 ];
 
 // ONE LIST, ONE TICK, WHOEVER FILLS IT. The Den used to own `world.npcs` and
