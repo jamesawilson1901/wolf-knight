@@ -879,6 +879,15 @@ function narrationTriggers(dt, t) {
       ['ariaHome', 'aria_den'], ['meriHome', 'meri_den']]) {
       if (m[marker] && nearSpot(m[marker], 2.6)) narration.say(line);
     }
+    // GRIMM AND LUNA (v3.144): the one homecoming pair that repeats,
+    // throttled, the same shape Wren's and Rook's own chat already uses —
+    // a child comes back to look at Grimm more than once.
+    if (m.grimmSpot && nearSpot(m.grimmSpot, 2.8)) {
+      if (!narration.say('grimm_den')) sayThrottled('grimm_den_chat', t, 45);
+    }
+    if (m.lunaHome && nearSpot(m.lunaHome, 2.6)) {
+      if (!narration.say('luna_den')) sayThrottled('luna_den_chat', t, 45);
+    }
     // villagers: intro once, then gentle repeatable chat (throttled)
     if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
       if (!narration.say('wren_intro')) sayThrottled(wrenRumourLine(), t, 45);

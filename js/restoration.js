@@ -432,6 +432,16 @@ export const COAT = {
   storm: 0x9aa6b4, vale: 0x8fb0ac, court: 0xa79ec2,
 };
 
+// v3.144 — stage 5 ('home', design/WIDER-WORLD.md §1.4): the same hue each
+// region's own spirit already wears everywhere else it appears — the Den's
+// own SPIRIT_HOMES row (js/rooms.js) for the first six, Luna's memorial
+// (js/level7.js, `spiritShrine(...,0xd8cfff,...)`) for the Court — so the
+// light at the hearth is recognisably the SAME spirit, not a new one.
+const HEARTH_LIGHT = {
+  ember: 0xffb25a, stone: 0xd8b06a, wild: 0x7ee787, frost: 0x9be3ff,
+  storm: 0xfff4b0, vale: 0x8fe4ff, court: 0xd8cfff,
+};
+
 export async function graze(world, spots) {
   if (!spots || !spots.length) return 0;
   const key = healKeyOf(world.roomId);
@@ -831,9 +841,12 @@ export async function spawnSettlers(world, onGrowIn) {
     n.material.color.setHex(post.tint);
   });
   world.addCircle(post.x, post.z, 0.35); // solid, like every other friend
+  // STAGE 5 ('home'): the settler's gesture turns toward the light that just
+  // caught, the same `Interact` clip Bram already wears for the same reason
+  // (js/npcs.js:111) — no new animation needed, the rig already carries it.
   world.settler = characterNpc(world, {
     model, id: post.id, x: post.x, z: post.z, ry: post.ry,
-    rigAnims, gestureName: 'Idle_B',
+    rigAnims, gestureName: stage >= 5 ? 'Interact' : 'Idle_B',
   });
   world.markers.settlerSpot = { x: post.x, z: post.z };
   // THE YARD OPENS FOR TRADE (v3.131): the same generic shopSpot check
@@ -866,6 +879,34 @@ export async function spawnSettlers(world, onGrowIn) {
   // means these small props pick up a shadow instead of the whole room
   // being reprocessed.
   if (placed.length) flattenStatic(world);
+
+  // STAGE 5 ('home', §1.4): the hearth-fire itself catches for real, on the
+  // same spot the stage-2 campfire has stood since — no new footprint, no
+  // fresh probe needed, since that spot has been proven clear since stage 2.
+  // The SPIRIT_HOMES orb shape exactly (js/rooms.js), so a child who has
+  // seen Cinder's or Petra's light at the Den recognises this as the same
+  // kind of thing happening here instead.
+  const hearthRow = (rows[2] || []).find(([key]) => key === 'hearth');
+  if (stage >= 5 && hearthRow && HEARTH_LIGHT[post.key]) {
+    const [, hx, hz] = hearthRow;
+    const light = HEARTH_LIGHT[post.key];
+    const orb = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.2, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: light, emissiveIntensity: 3.0, roughness: 1 })
+    );
+    orb.position.set(hx, 0.9, hz);
+    world.add(orb);
+    world.keepLoose(orb);
+    const glow = new THREE.PointLight(light, 4.5, 8, 1.9);
+    glow.position.set(hx, 1.05, hz);
+    world.add(glow);
+    world.onAnimate((t) => {
+      orb.position.y = 0.9 + Math.sin(t * 1.6) * 0.07;
+      orb.rotation.y = t * 0.6;
+      glow.intensity = 4.5 * 0.88 + Math.sin(t * 2.2) * 0.6;
+    });
+    world.markers.homeOrbSpot = { x: hx, z: hz };
+  }
 
   if (!WS.get(post.key, 'seen_' + stage)) {
     WS.set(post.key, 'seen_' + stage, true);

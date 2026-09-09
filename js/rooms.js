@@ -960,9 +960,19 @@ async function buildDen(scene) {
     // Meri's tidelight sits low over a wet stone and swells like deep water
     { key: 'vale', marker: 'meriHome', x: 1.0, z: -4.0, light: 0x8fe4ff,
       y: 0.62, glow: 4, bob: 0.9, phase: 4.2, base: 'rockSB', baseScale: 0.85 },
+    // LUNA — the seventh row, design/WIDER-WORLD.md §4.2 point 1. Not
+    // "restored": she was the hopeful voice through every one of Grimm's own
+    // taunts (`luna_dream_1..5`, js/narration.js), so she has nowhere to come
+    // home FROM until he is free — gated on `grimmFreed` itself, same as him,
+    // and the only row here that is. Colour 0xd8cfff matches her own memorial
+    // in his throne room exactly (js/level7.js's `spiritShrine` call once he
+    // falls) — the same spirit, seen twice.
+    { key: 'court', marker: 'lunaHome', x: 0, z: -5.5, light: 0xd8cfff,
+      y: 0.95, glow: 4.5, bob: 1.0, phase: 1.7, base: null,
+      when: () => state.flags.grimmFreed },
   ];
   for (const h of SPIRIT_HOMES) {
-    if (!WS.get(h.key, 'restored')) continue;
+    if (h.when ? !h.when() : !WS.get(h.key, 'restored')) continue;
     if (h.base) {
       const base = prepareModel(kit[h.base].scene.clone());
       base.position.set(h.x, 0, h.z);
@@ -1023,6 +1033,64 @@ async function buildDen(scene) {
       moonGlow.intensity = 3.4 + Math.sin(t * 2.7) * 0.9;
     });
     world.markers.travelSpot = { x: -5.4, z: -7.0 };
+  }
+
+  // GRIMM COMES HOME (design/WIDER-WORLD.md §4.2 point 1). He is freed, not
+  // destroyed — the shadow goes and Grimm is left, old and tired and
+  // himself (main.js's own comment on the ending). wolf.gltf like every one
+  // of his kind, boss scale (1.3, boss.js's own fallback), no collider — a
+  // child cannot bump the ending, and he is never in anyone's way home.
+  // Idle_2_HeadLow only: he is resting, not grazing or wandering. Two pups
+  // drift near him at pup scale (0.42, the pen's own scale, js/restoration.js)
+  // — decorative, not tied to the rescue count, since the real 24 already
+  // live at their own pen south of the fire; this is one more "somewhere
+  // safe" beat, not a second roster. ~5 draws total, which is what the pen's
+  // own budget work (v3.128) bought back.
+  //
+  // BY THE NORTH GATE, clear of the woodpile/torch cluster at x 0.6-4.1
+  // (measured live, tools/probe-freespot.mjs WK_LATE=1) — the gate itself is
+  // the whole point: the road that was shut is open, and he is the reason.
+  if (state.flags.grimmFreed) {
+    const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+    const grimm = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+    grimm.scale.setScalar(1.3);
+    grimm.position.set(-1.3, 0, -7.2);
+    grimm.rotation.y = 2.0;
+    grimm.traverse((n) => {
+      if (!n.isMesh || n.material.name !== 'Main') return;
+      n.material = n.material.clone();
+      n.material.color.setHex(0x8a8d92);
+    });
+    world.add(grimm);
+    world.keepLoose(grimm);
+    const grimmMixer = new THREE.AnimationMixer(grimm);
+    const restClip = wolfGltf.animations.find((c) => c.name === 'Idle_2_HeadLow');
+    if (restClip) grimmMixer.clipAction(restClip).play();
+    world.onAnimate((t, dt) => grimmMixer.update(dt || 0.016));
+    world.markers.grimmSpot = { x: -1.3, z: -7.2 };
+
+    // js/restoration.js's own pen-pup trick (spawnPupPen): wolf.gltf is four
+    // skinned parts that never merge, so hiding all but `Main` and dropping
+    // the shadow brings a decorative pup to its cheapest possible cost, one
+    // draw — which is what closed the last unit of this room's 135-call
+    // budget (verify-homecoming.mjs measured 136 without this).
+    for (const [px, pz, ry] of [[-2.1, -6.6, 1.1], [-0.6, -6.7, -0.8]]) {
+      const pup = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+      pup.scale.setScalar(0.42);
+      pup.position.set(px, 0, pz);
+      pup.rotation.y = ry;
+      pup.traverse((n) => {
+        if (!n.isMesh) return;
+        n.castShadow = false;
+        if (n.material.name !== 'Main') n.visible = false;
+      });
+      world.add(pup);
+      world.keepLoose(pup);
+      const pupMixer = new THREE.AnimationMixer(pup);
+      const idle = wolfGltf.animations.find((c) => c.name === 'Idle');
+      if (idle) pupMixer.clipAction(idle).play();
+      world.onAnimate((t, dt) => pupMixer.update(dt || 0.016));
+    }
   }
 
   // training barrels (no loot — just for practicing swings)
@@ -1098,9 +1166,12 @@ async function buildDen(scene) {
   // they share. Two spare in a room that measured 170 the day it was rebuilt.
   // If anything else has to go in here, the practice target is the one to
   // drop: the armour stand is the stronger signal, standing next to a shop
-  // that sells armour.
+  // that sells armour. v3.144 (Grimm home, ~5 draws) is that anything else —
+  // verify-homecoming.mjs measured 137 of 135 with both the target and
+  // Grimm's scene present, so this is the design doc's own Q8 answer, not a
+  // guess: the target goes, the stand stays.
   instAt(manikinGltf, [[7.4, -4.6, 1.0, -0.5]], null, true);
-  instAt(targetGltf, [[4.2, -5.4, 1.0, 0.4]], null, true);
+  if (!state.flags.grimmFreed) instAt(targetGltf, [[4.2, -5.4, 1.0, 0.4]], null, true);
 
   // light somebody hung up, along the way people actually walk after dark
   instAt(torchGltf, [[-1.9, 6.6, 1.15, 0], [1.9, 6.6, 1.15, 0], [-4.6, -1.2, 1.15, 0],

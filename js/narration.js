@@ -226,6 +226,15 @@ export const LINES = {
   boreal_den: { voice: 'pip', text: 'Boreal’s rime-light came all the way down the mountain. Four! It doesn’t even melt.' },
   aria_den: { voice: 'pip', text: 'Aria’s stormlight won’t sit still — it’s been round the fire twice already. That’s five!' },
   meri_den: { voice: 'pip', text: 'Meri’s tidelight is here, low and slow like deep water. Six spirits home. Only the shadow is left.' },
+  // GRIMM AND LUNA (v3.144, design/WIDER-WORLD.md §4.2 point 1). The one
+  // homecoming that is not a light: Grimm walks home himself, so Pip's line
+  // says so rather than counting a seventh spirit. Both repeat, throttled,
+  // unlike the six above — a child comes back to look at Grimm more than
+  // once, the same reason Wren and Rook get a `_chat` line of their own.
+  grimm_den: { voice: 'pip', text: 'Grimm... he came all the way home. Just an old wolf now, resting by the gate. We did it, Kael.' },
+  grimm_den_chat: { voice: 'pip', text: 'He still keeps one eye on the gate. I think he likes knowing it’s open now.', repeat: true },
+  luna_den: { voice: 'pip', text: 'That light by the fire — that’s Luna. She never stopped hoping, even when Grimm couldn’t hear her. She’s home too.' },
+  luna_den_chat: { voice: 'pip', text: 'Luna’s light never quite settles. I think she’s still watching over him.', repeat: true },
   darkcave_enter: { voice: 'pip', text: 'The Hidden Hollow… it’s pitch dark in here. Become the Dark Wolf and let your eyes shine!' },
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },
