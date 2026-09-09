@@ -99,7 +99,10 @@ export const LINES = {
   // dungeon's room-one rescue (js/pip.js spawnLostWolf). `repeat: true`
   // because it is a per-dungeon event, the same as pup_found above, and a
   // second dungeon's wolf must not find the line already spent.
-  lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe under the ash. Welcome home, friend.', repeat: true },
+  // Shared across every dungeon's own lost wolf (Ash Vault's lv1, the
+  // Frozen Spring's tf1, and any later one) — kept region-neutral on
+  // purpose, the same one line design/WIDER-WORLD.md §2.5 asks for.
+  lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe at last. Welcome home, friend.', repeat: true },
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
   moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon and Luna herself will crash down on your enemies!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },

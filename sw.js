@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.135.0';
+const CACHE_NAME = 'wolfknight-v3.137.0';
 
 const PRECACHE = [
   './',
@@ -217,6 +217,7 @@ const PRECACHE = [
   './assets/audio/vo/learn_shield.ogg',
   './assets/audio/vo/learn_thrust.ogg',
   './assets/audio/vo/log_rope.ogg',
+  './assets/audio/vo/lost_wolf_found.ogg',
   './assets/audio/vo/low_hearts.ogg',
   './assets/audio/vo/luna_dream_1.ogg',
   './assets/audio/vo/luna_dream_2.ogg',

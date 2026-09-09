@@ -3,7 +3,8 @@
 // action gives audio + visual feedback.
 
 import { state, regionCleared, regionOf } from './state.js';
-import { registeredRooms } from './districts.js';
+import { registeredRooms, roomMeta, districtTint } from './districts.js';
+import { WS } from './worldstate.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
@@ -14,6 +15,18 @@ import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
 
 const $ = (id) => document.getElementById(id);
+
+// DUNGEON MOUTHS the map can offer as a small offshoot card (design/
+// WIDER-WORLD.md §5.3), keyed by the entrance room a branch hangs off —
+// one entry per shipped dungeon, added as each one ships. `open()` is the
+// SAME flag the branch's own structural gap in the entrance room's shell
+// reads (js/level1.js buildLa's `vaultOpen`, js/level3.js buildT1b's
+// `springOpen`) — a card can never promise a door that is not actually
+// there yet.
+const DUNGEON_MOUTHS = {
+  la: { first: 'lv1', open: () => !!state.flags.cracked.l1_crack_gate },
+  t1b: { first: 'tf1', open: () => !!WS.get('wild3', 'ice_l3_spring_ice') },
+};
 
 export class Menus {
   constructor({ player, onPauseGame, onResumeGame, onTravel, renderer }) {
@@ -379,60 +392,10 @@ export class Menus {
     this.onPauseGame();
   }
 
-  // ---- Fast travel (Luna's moonstone in the Den) -------------------------
-  showTravel() {
-    const el = $('map-menu');
-    el.innerHTML = '';
-    const h = document.createElement('h2');
-    h.textContent = 'Luna’s Moonstone';
-    el.appendChild(h);
-    const blurb = document.createElement('div');
-    blurb.style.cssText = 'font-size:15px;opacity:.85';
-    blurb.textContent = 'Where shall we go, Kael?';
-    el.appendChild(blurb);
-    const row = document.createElement('div');
-    row.className = 'map-rooms';
-    const spots = [
-      // ALWAYS AVAILABLE — the moonstone is what a child taps to get home
-      // and spend shards without walking the whole way back. It was missing
-      // entirely: every region the moonstone could reach OUT to, none of
-      // them could reach back to the Den.
-      { room: 'den', name: 'The Den', icon: '🏡' },
-      { room: 'r1', name: 'Ember Hollow', icon: '🔥' },
-      ...(regionCleared('ember') ? [{ room: 'e1', name: 'Stoneroot Caverns', icon: '⛰️' }] : []),
-      ...(regionCleared('stoneroot') ? [{ room: 'w1', name: 'Wild Woods', icon: '🌲' }] : []),
-      ...(regionCleared('wildwoods') ? [{ room: 'f1', name: 'Frostpeak', icon: '🏔️' }] : []),
-      // The cliffs open on the same rule as every region before them: the
-      // moonstone can carry you back to a place you have already reached.
-      ...(state.flags.borealDefeated ? [{ room: 's1a', name: 'Stormreach Cliffs', icon: '🌩️' }] : []),
-      ...(state.flags.ariaDefeated ? [{ room: 'd1a', name: 'The Sunken Vale', icon: '🌊' }] : []),
-      ...(state.flags.meriDefeated ? [{ room: 'x1', name: 'The Shadow Court', icon: '🌑' }] : []),
-      // The Village opens the same moment its Den door does — no separate
-      // "cleared" gate, since nothing about reaching it is sequential.
-      ...(state.flags.grimmFreed ? [{ room: 'ysq', name: 'The Village', icon: '🏘️' }] : []),
-      // The Spire appears on the moonstone the moment the Village is restored
-      // — the same rule as every other region: you can be carried back to a
-      // place you have already been able to reach.
-      ...(villageCleared() ? [{ room: 'm1', name: 'The Moonlit Spire', icon: '🌙' }] : []),
-    ];
-    for (const s of spots) {
-      const d = document.createElement('div');
-      d.className = 'map-room';
-      d.style.cursor = 'pointer';
-      d.innerHTML = `<div style="font-size:26px">${s.icon}</div><div>${s.name}</div>`;
-      d.addEventListener('pointerdown', () => {
-        audio.play('ui-click', { volume: 0.8 });
-        this._close('map-menu');
-        if (this.onTravel) this.onTravel(s.room);
-      });
-      row.appendChild(d);
-    }
-    el.appendChild(row);
-    el.appendChild(this._closeBtn('map-menu'));
-    this._open('map-menu');
-  }
-
-  // ---- Map ---------------------------------------------------------------
+  // ---- Map (also the moonstone's fast travel, v3.137 — the tappable ------
+  // cards below ARE the destination picker, so the moonstone opens this
+  // same screen rather than a second emoji list of its own: design/
+  // WIDER-WORLD.md §5.3.) ---------------------------------------------------
   // THE MAP READS THE GAME, NOT A LIST. Every room comes from its level's own
   // spec table via districts.js (`registeredRooms()`), grouped by the same
   // `regionOf` the music and the doors use, in the order a child walks the
@@ -533,8 +496,9 @@ export class Menus {
         }
         const d = document.createElement('div');
         const isHere = r.ids.includes(here);
+        const dest = isHere ? here : r.ids[0];
         d.className = 'map-room' + (r.spine ? '' : ' pocket') + (isHere ? ' here' : '');
-        d.dataset.room = isHere ? here : r.ids[0];
+        d.dataset.room = dest;
         d.dataset.rooms = r.ids.join(' ');
         const sw = document.createElement('div');
         sw.className = 'swatch';
@@ -549,7 +513,50 @@ export class Menus {
           you.textContent = 'YOU ARE HERE';
           d.appendChild(you);
         }
+        // TAPPABLE (§5.3): every card on this screen is already somewhere
+        // she can currently walk to on foot — that is what drew the row at
+        // all, `A.open()` above or the `hereRegion` exception — so a tap is
+        // never a new power, only the trip she could already make. A card
+        // for where she is already standing does nothing new, so it stays
+        // inert rather than replaying a load.
+        if (!isHere) {
+          d.style.cursor = 'pointer';
+          d.addEventListener('pointerdown', () => {
+            audio.play('ui-click', { volume: 0.8 });
+            this._close('map-menu');
+            if (this.onTravel) this.onTravel(dest);
+          });
+        }
         row.appendChild(d);
+        // THE DUNGEON MOUTH, ONCE IT HAS ONE (§5.3): a small offshoot card,
+        // never shown before the branch's own gate is actually open — she
+        // must not see a row she cannot go to.
+        for (const id of r.ids) {
+          const mouth = DUNGEON_MOUTHS[id];
+          if (!mouth || !mouth.open()) continue;
+          const link = document.createElement('div');
+          link.className = 'map-link';
+          row.appendChild(link);
+          const dd = document.createElement('div');
+          dd.className = 'map-room dungeon';
+          dd.style.cursor = 'pointer';
+          dd.dataset.room = mouth.first;
+          dd.dataset.rooms = mouth.first;
+          const meta = roomMeta(mouth.first);
+          const sw2 = document.createElement('div');
+          sw2.className = 'swatch';
+          sw2.style.background = hex(districtTint(mouth.first));
+          dd.appendChild(sw2);
+          const nm2 = document.createElement('div');
+          nm2.textContent = meta ? title(meta.district) : mouth.first;
+          dd.appendChild(nm2);
+          dd.addEventListener('pointerdown', () => {
+            audio.play('ui-click', { volume: 0.8 });
+            this._close('map-menu');
+            if (this.onTravel) this.onTravel(mouth.first);
+          });
+          row.appendChild(dd);
+        }
       });
       wrap.appendChild(row);
       el.appendChild(wrap);

@@ -48,7 +48,11 @@ await page.evaluate(() => {
 //
 // Luna's moonstone is rendered, not re-implemented: a second Menus renders into
 // the real #map-menu, so this counts the destinations a child would actually
-// see rather than a copy of the predicate.
+// see rather than a copy of the predicate. v3.137: the moonstone opens the
+// same tappable map showMap() draws (design/WIDER-WORLD.md §5.3) rather than
+// its own emoji list, so "destinations" is now every tappable card — every
+// spine room in every visible area, not one row per region — excluding
+// "here" (a card for where she is already standing offers nothing new).
 const ladder = await page.evaluate(async () => {
   const g = window.__game;
   const { Menus } = await import('./js/menus.js');
@@ -64,8 +68,8 @@ const ladder = await page.evaluate(async () => {
     g.state.spoken.region_complete = false;
     g.state.spoken.stone_complete = false;
     g.state.spoken.wild_complete = false;
-    menus.showTravel();
-    const dest = [...document.querySelectorAll('#map-menu .map-rooms > *')].length;
+    menus.showMap();
+    const dest = [...document.querySelectorAll('#map-menu .map-room:not(.here)')].length;
     menus.renderInventory();
     // Read the published number, not the sentence around it: the Armoury
     // reworded this footer from "pups 0/3" to "0/3 pups" and the old regex
@@ -93,12 +97,15 @@ for (const r of ladder) {
 }
 console.log('');
 
-// baseline is 2, not 1: the Den is now ALWAYS the first destination (a child
-// must be able to travel home to spend coin regardless of progress), so every
-// stage carries one more entry than it used to — the +1-per-region growth is
-// unchanged, only the floor moved.
-check('the moonstone grows one destination per region beaten',
-  ladder.map((r) => r.dest).join(',') === '2,3,4,5', { got: ladder.map((r) => r.dest) });
+// v3.137: this used to be "2,3,4,5" — one row per REGION, the old emoji
+// list's own granularity. showMap() counts every SPINE ROOM in every open
+// area instead (roads included, since a road is a real place to tap back
+// to now, not a corridor with nothing to click), so the floor is far higher
+// and each stage's jump is however many rooms that region's own level table
+// and its road actually hold — still strictly growing, never flat or
+// shrinking, which is the one thing this check can still promise.
+check('the moonstone strictly grows as each region opens (never flat, never shrinks)',
+  ladder.every((r, i) => i === 0 || r.dest > ladder[i - 1].dest), { got: ladder.map((r) => r.dest) });
 check('the pup total grows 3 → 6 → 9 → 12',
   ladder.map((r) => r.pupTotal).join(',') === '3,6,9,12', { got: ladder.map((r) => r.pupTotal) });
 

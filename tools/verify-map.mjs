@@ -95,6 +95,51 @@ for (const room of ['n1', 'vh', 'g1', 't1a', 'c1', 'f3', 'q2', 's1a', 'p1', 'd1a
   check(`${room} lights up`, r.here.length === 1 && r.here[0] === room, r.here);
 }
 
+// ---------------------------------------------------------------------------
+console.log('\n── 4. the cards are the moonstone now: tappable, real travel ──');
+// v3.137, design/WIDER-WORLD.md §5.3 — the old emoji travel view (Luna's
+// Moonstone) is gone; the moonstone opens this same screen (js/main.js), and
+// every card that renders at all is a place already reachable on foot, so
+// every one of them (bar "you are here") is a real tap.
+const tapRoom = (id) => wk.page.evaluate(async (id) => {
+  document.getElementById('map-btn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await new Promise((r) => requestAnimationFrame(r));
+  const el = document.querySelector(`.map-room[data-room="${id}"]`);
+  if (!el) return false;
+  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  return true;
+}, id);
+await go('la');   // fresh save, standing in Ember Hollow — §1's own state
+const dispatchedDen = await tapRoom('den');
+check('the Den card is tappable from a fresh save', dispatchedDen);
+await wk.page.waitForFunction(() => window.__game.world && window.__game.world.roomId === window.__game.resolveRoom('den')
+  && window.__game.player.hearts > 1, null, { timeout: 40000 });
+check('tapping it actually travels there',
+  await wk.page.evaluate(() => window.__game.world.roomId === window.__game.resolveRoom('den')));
+
+console.log('\n── 5. after the boss falls, tapping Ember still lands at la ──');
+await wk.page.evaluate(() => { window.__game.state.flags.bossDefeated = true; });
+const dispatchedLa = await tapRoom('la');
+check('the Ember Hollow card is tappable', dispatchedLa);
+await wk.page.waitForFunction(() => window.__game.world && window.__game.world.roomId === 'la'
+  && window.__game.player.hearts > 1, null, { timeout: 40000 });
+check('tapping Ember Hollow lands at la (world.roomId)',
+  await wk.page.evaluate(() => window.__game.world.roomId === 'la'));
+
+// ---------------------------------------------------------------------------
+console.log('\n── 6. a dungeon mouth: no card before the gate, a real one after ──');
+await go('la');
+await wk.page.evaluate(() => { window.__game.state.flags.cracked.l1_crack_gate = false; });
+let mBefore = await readMap();
+check('no Ash Vault offshoot card before the crack breaks', !mBefore.rooms.includes('lv1'), mBefore.rooms);
+await wk.page.evaluate(() => { window.__game.state.flags.cracked.l1_crack_gate = true; });
+const dispatchedLv1 = await tapRoom('lv1');
+check('the Ash Vault offshoot card exists and is tappable once the crack breaks', dispatchedLv1);
+await wk.page.waitForFunction(() => window.__game.world && window.__game.world.roomId === 'lv1'
+  && window.__game.player.hearts > 1, null, { timeout: 40000 });
+check('tapping it lands inside the vault (world.roomId lv1)',
+  await wk.page.evaluate(() => window.__game.world.roomId === 'lv1'));
+
 check('nothing threw during the run', wk.errors.length === 0, wk.errors.slice(0, 3));
 await wk.b.close();
 console.log(errors.length ? `\n✗ FAIL — ${errors.length} problem(s)` : '\n✓ PASS — the map reads the game');

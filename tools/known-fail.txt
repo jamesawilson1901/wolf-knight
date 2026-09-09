@@ -61,3 +61,14 @@
 # the note above about the week in September when this file sat empty through
 # seven red nightlies. An empty manifest beside a green one is the point.
 # Nothing goes back in here without the §6 worktree proof and a date.
+# ---------------------------------------------------------------------------
+# 2026-09-09: verify-onward.mjs §4's "ddp opens to the same doors live as on a
+# rebuild" fails identically on a git worktree detached at v3.132 (e6785e0,
+# the commit immediately before this session's own changes began) — live
+# world.doors after setting meriDefeated in-session is missing the ddp↔dlg
+# door (v3.129) that a rebuild correctly carries; §5 then times out entirely
+# on the next arena (same 60s timeout, same line). Neither is new: this
+# session touched no file the ddp/dlg/meriDefeated path runs through. Board
+# item: find why ddp's own live door-add for dlg (js/level6.js, the v3.129
+# loop-closer) doesn't fire the same way le/vz/tgl/f5/scr's onward openers do.
+verify-onward.mjs | ddp's live doors miss the v3.129 dlg loop-closer after meriDefeated (rebuild has it); §5 then times out on the next arena — proven pre-existing on v3.132 (e6785e0) via a detached worktree | 2026-09-09

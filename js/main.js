@@ -2529,10 +2529,12 @@ async function start() {
         if (near && !shopWasNear) menus.showShop();
         shopWasNear = near;
       }
-      // ...and the moonstone opens fast travel
+      // ...and the moonstone opens the map (v3.137: the same tappable
+      // screen the map button shows, not a second emoji list of its own —
+      // design/WIDER-WORLD.md §5.3).
       if (world.markers.travelSpot) {
         const near = nearSpot(world.markers.travelSpot, 1.5);
-        if (near && !travelWasNear) menus.showTravel();
+        if (near && !travelWasNear) menus.showMap();
         travelWasNear = near;
       }
       if (world.boss) {
