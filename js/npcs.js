@@ -259,8 +259,12 @@ const WAYFARER_SHARD = 0xa8bcff;  // the Den moonstone's own colour (rooms.js)
 // Coordinates are measured the same way WAYFARER_POSTS's are, below: against
 // the live built room at body radius 0.44, with `tools/probe-freespot.mjs`.
 export const SETTLER_POSTS = {
+  // `shop` is where stage 4's cart lands (js/restoration.js STAGE_CLUTTER —
+  // the two are kept in step by hand, the same way a promise gate's chest
+  // keeps step with its marker): walking up to it opens the same shop the
+  // Den's own cart does, at whichever rung is already unlocked.
   la: { id: 'ember_settler', file: './assets/chars/mage.glb', x: -3, z: 7.6, ry: 2.5,
-    tint: 0xd97a3a, key: 'ember', minStage: 2 },
+    tint: 0xd97a3a, key: 'ember', minStage: 2, shop: { x: 3.0, z: 8.0 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -307,6 +311,16 @@ export const WAYFARER_POSTS = {
   // for the square at peace rather than the square being fought over.
   ysq: { x: 7, z: 8.5, ry: -2.4, flag: null, when: villageCleared },
   m1: { x: 5, z: 8, ry: -2.2, flag: null, when: villageCleared },
+
+  // THE HEARTHS, ONE AT A TIME (v3.131 begins the rollout; the other six
+  // follow as each region's own hearth reaches stage 4 — design/WIDER-WORLD.md
+  // §5.4). `growthStage('ember') >= 4` is the literal rule, but importing it
+  // here would import js/restoration.js, which already imports THIS file for
+  // `characterNpc`/`SETTLER_POSTS` — a cycle. `seen_4` is the flag
+  // `spawnSettlers` sets, once, the first time stage 4 is reached, and growth
+  // never regresses (design/WIDER-WORLD.md §1.7's additive law), so it is the
+  // same question asked through a fact both files already know: `WS`.
+  la: { x: -9.3, z: 7.6, ry: -1.2, flag: null, when: () => WS.get('ember', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks

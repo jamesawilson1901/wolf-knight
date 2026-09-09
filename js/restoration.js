@@ -603,7 +603,12 @@ function turn(model, want, rate, dt) {
 // Only the hearth and the hut get a collider — a stool and a stack of
 // firewood are ankle height, and a child should be able to walk straight
 // through a fireside without the game stopping them.
-const HEARTH_SOLID = new Set(['hearth', 'hut']);
+// v3.131: 'cart' joins the solid set for the same reason `levelVillage.js`'s
+// own SOLID_PROPS treats it as one — a loaded cart is not a thing a body
+// walks through. 'target' and 'manikin' match the Den's own precedent
+// (js/rooms.js: an armour stand and a straw target both got colliders there,
+// "budget, written down because it is tight" — same shapes, same call here).
+const HEARTH_SOLID = new Set(['hearth', 'hut', 'cart', 'target', 'manikin']);
 
 export const STAGE_CLUTTER = {
   la: {
@@ -615,6 +620,19 @@ export const STAGE_CLUTTER = {
       ['hut', -7.0, 8.6, 0.95, 2.3],
       ['laundry', -1.3, 8.7, 1.0, -0.5],
       ['firewood', -4.2, 8.6, 1.0, 0.3],
+    ],
+    // THE YARD (v3.131, design/WIDER-WORLD.md §1.4 stage 4): the cart Maren
+    // sent ahead, and the target + manikin that make the settler's new trade
+    // legible without a word — the same two props and the same reasoning the
+    // Den's own Armoury pitch already uses (js/rooms.js). The cart's own spot
+    // is `SETTLER_POSTS.la.shop` below; walking up to it opens the same
+    // Moonlit Trading Post the Den's cart does, at the rung already unlocked
+    // — there is no second shop to stock.
+    4: [
+      ['target', 0.3, 8.0, 1.0, 0.5],
+      ['manikin', 1.6, 7.0, 1.0, -0.4],
+      ['cart', 3.0, 8.0, 1.0, -0.3],
+      ['sack', 3.9, 7.4, 1.0, 0.6],
     ],
   },
 };
@@ -684,6 +702,12 @@ export async function spawnSettlers(world, onGrowIn) {
     rigAnims, gestureName: 'Idle_B',
   });
   world.markers.settlerSpot = { x: post.x, z: post.z };
+  // THE YARD OPENS FOR TRADE (v3.131): the same generic shopSpot check
+  // main.js already runs for the Den's own cart (`nearSpot` + `menus.showShop()`)
+  // — no room check in that path, so handing it a marker here is the whole
+  // feature. `shopWasNear` is reset to true right after this by
+  // `setupRoomExtras`, so walking in does not pop the shelf on arrival.
+  if (stage >= 4 && post.shop) world.markers.shopSpot = { x: post.shop.x, z: post.shop.z };
 
   // THE FURNITURE, additive up to the reached stage. `firstTime` groups are
   // only the ones this exact visit is placing for the first time this stage

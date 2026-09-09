@@ -177,14 +177,15 @@ const setStage = (key, n) => page.evaluate(async ({ key, n }) => {
 }, { key, n });
 
 const posts = await page.evaluate(async () => {
-  const { SETTLER_POSTS } = await import('/js/npcs.js');
-  return Object.entries(SETTLER_POSTS).map(([room, p]) => ({ room, ...p }));
+  const { SETTLER_POSTS, WAYFARER_POSTS } = await import('/js/npcs.js');
+  return Object.entries(SETTLER_POSTS).map(([room, p]) =>
+    ({ room, ...p, hasWayfarerPost: !!WAYFARER_POSTS[room] }));
 });
 check('at least one settler post exists (Ember’s `la`, this slice)', posts.length > 0, posts);
 
 for (const post of posts) {
-  console.log(`\n── 3 · ${post.key} @ ${post.room}, LATE=0..3 ───────────────`);
-  for (let n = 0; n <= 3; n++) {
+  console.log(`\n── 3 · ${post.key} @ ${post.room}, LATE=0..4 ───────────────`);
+  for (let n = 0; n <= 4; n++) {
     await setStage(post.key, n);
     await wk.jump(post.room, ALL);
     await page.evaluate(async () => { for (let i = 0; i < 15; i++) await new Promise((r) => requestAnimationFrame(r)); });
@@ -225,6 +226,8 @@ for (const post of posts) {
         calls: g.renderer.info.render.calls,
         clutterBad, bloomBad,
         want: n >= minStage,
+        hasShop: !!w.markers.shopSpot,
+        hasWayfarer: !!w.wayfarer,
       };
     }, { n, minStage: post.minStage });
 
@@ -239,6 +242,23 @@ for (const post of posts) {
       snap.clutterBad.length === 0, snap.clutterBad);
     check(`${post.key} LATE=${n}: blooms avoid the hut (and every other settler collider)`,
       snap.bloomBad.length === 0, snap.bloomBad);
+    // v3.131 — the yard (stage 4): Maren's cart opens the shop, and Tam takes
+    // his post, exactly at the stage that unlocks them and not one visit
+    // earlier. `post.shop` only exists for hearths that have shipped this far
+    // (`la`, for now) — a hearth without one is silently skipped rather than
+    // asserting a feature this slice never gave it.
+    if (post.shop) {
+      check(`${post.key} LATE=${n}: the yard's shop cart opens Maren's shop iff stage>=4`,
+        snap.hasShop === (n >= 4), snap);
+    }
+    // Only hearths with a WAYFARER_POSTS row have shipped Tam's post so far
+    // (`la`, v3.131) — the other six roll out per design/WIDER-WORLD.md §5.4,
+    // and a hearth without one yet should not fail for lacking a feature it
+    // never claimed.
+    if (post.hasWayfarerPost) {
+      check(`${post.key} LATE=${n}: Tam takes a post at the hearth iff stage>=4 (never earlier)`,
+        snap.hasWayfarer === (n >= 4), snap);
+    }
   }
 }
 
