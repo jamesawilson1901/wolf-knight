@@ -554,12 +554,19 @@ export async function buildF1(scene) {
 export async function buildF1b(scene) {
   const { world, spec, D } = base(scene, 'f1b');
   const gaps = [gap('w')];
+  // THE LOOP CLOSES (v3.134, design/WIDER-WORLD.md §2.3) — the Woods–Climb–
+  // Frostpeak shortcut, `tf3`'s own north door mirrored here on `f1b`'s
+  // south wall. Built once, always open: a child only ever arrives here
+  // having already cleared the Frozen Spring to reach `tf3` at all, so
+  // (unlike `la`'s crack) there is no separate flag to gate it on.
+  gaps.push(gap('s'));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 2, z: 0, r: 4.5, kind: 'ice' }, { x: -5, z: 5, r: 2.6, kind: 'gravel' }],
     paths: [[[-9, 0], [-3, 0], [3, -1], [7, -3]]],
   });
   world.spawn = { x: -7, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'f1', { x: 13.5, z: 0, angle: -Math.PI / 2 });   // LOOPS BACK
+  sideDoor(world, 's', halfW, halfD, 'tf3', { x: 0, z: 6.3, angle: Math.PI });
 
   // THE CAIRN NOOK: a rock spur walls it, the ice seals the only way in. The
   // Frost Wolf is still up the mountain, so this is a PROMISE — come back.

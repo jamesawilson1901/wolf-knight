@@ -117,6 +117,14 @@ export const WEAPONS = {
     dmg: 3.4, lock: 0.85, range: 1.9, price: 420, arc: 82, stun: 0.9, element: 'earth',
     blurb: 'The ground itself complains.',
   },
+  // THE FROZEN SPRING'S OWN FIND (v3.134) — not sold, only found (spear_a's
+  // recipe, one more time): tf3's gold chest, the ice-sealed spring a whole
+  // level early.
+  spear_frost: {
+    name: 'Rime Lance', icon: '❄️', file: './assets/gear/spear_A.gltf', tint: 0x8fd8ff,
+    dmg: 1.6, lock: 0.6, range: 3.0, price: 310, arc: 36, element: 'frost',
+    blurb: 'Frost clings to every thrust.',
+  },
   // ---- TAKEN OFF WHAT YOU BEAT (2026-09-01) --------------------------------
   //
   // Four weapons out of the packs James sent, from the same downloads whose

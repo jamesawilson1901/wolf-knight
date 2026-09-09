@@ -32,6 +32,9 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { audio } from './audio.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
+import { COAT } from './restoration.js';
+import { spawnLostWolf } from './pip.js';
+import { bumpCounter } from './progress.js';
 
 let forceGrey = false;
 let woodKit = null;
@@ -43,6 +46,13 @@ const GREY = () => forceGrey || !woodKit || state.settings.greybox !== false;
 function bigToastSafe(msg) {
   const t = typeof window !== 'undefined' && window.__game && window.__game.bigToast;
   if (t) t(msg);
+}
+
+// Same reasoning, for a Pip line rather than a toast (the lost-wolf rescue,
+// design/WIDER-WORLD.md §2.5).
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 export const REGION = 'wild3';
@@ -76,6 +86,12 @@ export const DISTRICTS = {
             name: 'THE BLOOMFALL',       hero: 'THE BLOSSOM FALL' },
   glade:  { tint: 0x8fdc6a, floorTint: 0x6f9e55, wallTint: 0x2a3a22, propTint: 0x6fae4a, ground: 'glade',
             name: "SYLVA'S GLADE",       hero: 'SYLVA, THORNBOUND' },
+  // THE FROZEN SPRING (v3.134, design/WIDER-WORLD.md §2.3) — the first
+  // dungeon's own district, same reasoning as the Ash Vault's: a branch
+  // reads as somewhere DIFFERENT, not more of Thornedge with a wall added.
+  frozenspring: { tint: 0x6fa8c9, floorTint: 0x4a7a94, wallTint: 0x1c2e38, propTint: 0x5a92ae,
+                  ground: 'frozenspring',
+                  name: 'THE FROZEN SPRING', hero: 'THE ICE-SEALED SPRING' },
 };
 
 // The one new module. A ring leg is deliberately NOT a Level 1 chokepoint:
@@ -144,6 +160,19 @@ export const L3 = {
   tsB: { ...RING, kind: 'ring', district: 'root', shortcut: true,
          from: 't3a', to: 't2a', opensWith: 'rootCut',
          label: 'THE CUT ROOT-WALL', beat: 'SHORTCUT · Rootbound → Gloomwood' },
+
+  // ---- THE FROZEN SPRING (v3.134) — behind t1b's own ice-sealed spring ----
+  // Frost Wolf only (granted a whole level later, at Frostpeak — the same
+  // "level 4's tool, a whole level early" the gate itself was built to
+  // advertise). `spine: false` throughout: optional, same rule as the Ash
+  // Vault. `dungeon: true` on the entrance only, so the map draws the whole
+  // branch as one offshoot card (§5.3, later).
+  tf1: { ...M.pocket, kind: 'pocket', district: 'frozenspring', loopsTo: 't1b',
+         label: 'THE SPRING MOUTH', beat: 'optional · the lost wolf · the moved chest', dungeon: true },
+  tf2: { ...M.island, kind: 'island', district: 'frozenspring',
+         label: 'THE RIMEBOUND HOLLOW', beat: 'optional · rime-minion x2 + frost-dragonling' },
+  tf3: { ...M.pocket, kind: 'pocket', district: 'frozenspring', loopsTo: 'tf2',
+         label: 'THE SPRING HEART', beat: 'optional · gold · closes the Woods–Climb–Frostpeak loop' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -841,7 +870,14 @@ export async function buildT1a(scene) {
 
 export async function buildT1b(scene) {
   const { world, spec, D } = base(scene, 't1b');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e')], D, {
+  // THE FROZEN SPRING (v3.134, design/WIDER-WORLD.md §2.4-style template):
+  // the same structural gap-in-the-shell trick `la`'s own crack uses — built
+  // once, at build time, so a child who shatters it mid-visit sees the
+  // doorway on their NEXT entry, not this one.
+  const springOpen = !!WS.get(REGION, 'ice_l3_spring_ice');
+  const gaps = [gap('s'), gap('n'), gap('e')];
+  if (springOpen) gaps.push(gap('e', 2.0, 4));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
               { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.32 },
               { x: -11, z: -9, r: 3.8, kind: 'mud' },
@@ -851,6 +887,10 @@ export async function buildT1b(scene) {
   sideDoor(world, 's', halfW, halfD, 't1a', { x: 0, z: -10, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'tc1', { x: 0, z: 7, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 't1p', { x: -7.5, z: 0, angle: Math.PI / 2 });
+  // Landing is tf1's OWN frame (a 20x16 pocket, halfW 10) — the same ±8.5
+  // correction buildLv1's own landing (off `la`) uses.
+  if (springOpen) sideDoor(world, 'e', halfW, halfD, 'tf1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    { centre: 4, half: 2.0 });
 
   world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' },
     { x: 5, z: 6, variant: 'thorn' }];
@@ -1675,6 +1715,131 @@ export async function buildTsB(scene) {
   return finish(world, spec, D);
 }
 
+// ===========================================================================
+// THE FROZEN SPRING (v3.134, design/WIDER-WORLD.md §2.3) — behind t1b's own
+// ice-sealed spring, the second dungeon door in the game. Frost Wolf only,
+// granted a whole level later at Frostpeak — the same promise-gate-on-a-
+// whole-branch pattern the Ash Vault already runs (§2.4), applied once more.
+// ===========================================================================
+
+// --- tf1 — THE SPRING MOUTH (no fight: the moved chest, the lost wolf) -----
+export async function buildTf1(scene) {
+  const { world, spec, D } = base(scene, 'tf1');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -3, z: 2, r: 3.2, kind: 'ice' }, { x: 4, z: -3, r: 2.6, kind: 'ice' }],
+    pathWidth: 2.4,
+    paths: [[[9, 0], [0, 0], [-9, 0]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  // Landing is INSIDE t1b, at the east-wall gap buildT1b cracks open there
+  // (centre 4) — not tf1's own frame, the same ±8.5 correction buildLv1's
+  // own landing (off `la`) uses.
+  sideDoor(world, 'e', halfW, halfD, 't1b', { x: 14.5, z: 4, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'tf2', { x: 9.5, z: 0, angle: -Math.PI / 2 });
+
+  // THE CHEST THAT MOVED (buildT1b's own note, above) — same id, same loot,
+  // one step in from where a child left it. Never a raw chestDefs write.
+  visibleReward(world, -6, -5, 'l3_t1b_ice', { shards: 22 });
+
+  // THE LOST WOLF (§2.5) — no fight, no gate: walk up and it stands. The
+  // region's own coat (js/restoration.js COAT), same as a grazing pup.
+  await spawnLostWolf(world, {
+    id: 'tf1_wolf', x: -6.5, z: 5, coat: COAT.wild,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  thicket(world, 4, 5, 2.6, D);
+  aftermath(world, -3, -6, 2.0, D, 15);
+  scatter(world, halfW, halfD, D, 174, 5);
+  return finish(world, spec, D);
+}
+
+// --- tf2 — THE RIMEBOUND HOLLOW (the fight; clears the region's dungeon) ---
+export async function buildTf2(scene) {
+  const { world, spec, D } = base(scene, 'tf2');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: 0, z: 0, r: 5.0, kind: 'ice' }, { x: -10, z: -5, r: 3.4, kind: 'ice' },
+              { x: 10, z: 5, r: 3.2, kind: 'ice' }],
+    pathWidth: 2.6,
+    paths: [[[13, 0], [-13, 0]]],
+  });
+  world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'tf1', { x: -8.5, z: 0, angle: Math.PI / 2 });
+
+  // A PIECE OF THE SHADOW THAT DID NOT COME HOME — the strip still spawns
+  // here even once the Wild Woods is healed (js/enemies.js:3771).
+  world.markers.shadowed = true;
+  world.markers.rimeMinionSpots = [{ x: -6, z: 4 }, { x: 6, z: -4 }];
+  world.markers.frostDragonlingSpots = [{ x: 0, z: 6 }];
+
+  // THE ONWARD DOOR IS ALWAYS CUT, plugged with rubble until the fight is
+  // won — the same rule buildLv2's own onward door follows (rule 4): a door
+  // that only arrives on a rebuild leaves the child who just won standing in
+  // a room with no way out.
+  const openTf3 = () => sideDoor(world, 'w', halfW, halfD, 'tf3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
+  if (WS.get('wild', 'dungeon')) openTf3();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openTf3);
+
+  world.markers.breakables = [
+    { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
+    { x: 4, z: -9, kind: 'barrel' },
+  ];
+  aftermath(world, -10, 8, 2.2, D, 13);
+  aftermath(world, 8.5, -8.5, 2.0, D, 9);
+  lowWall(world, -9, 2.5, 0.2, D, 3.2);
+  scatter(world, halfW, halfD, D, 175, 6);
+
+  // THE MOMENT THE ROOM CLEARS — the villageUnshadowLive poll pattern
+  // (js/levelVillage.js:797-804), applied to a fight instead of a ward: once
+  // every enemy is down, the dungeon's own milestone completes (true only
+  // the first time, so the fanfare is free) and the plug pops where the
+  // child is already standing. `'wild'` is restoration.js's own healing key
+  // for this region (WS_KEY wildwoods/coldclimb → 'wild') — NOT this file's
+  // own `REGION` ('wild3'), which is a separate namespace for the shatter/
+  // cut/log flags above.
+  world.onAnimate(() => {
+    if (WS.get('wild', 'dungeon') || !world.enemies) return;
+    if (world.enemies.length && world.enemies.every((e) => e.dead)) {
+      WS.complete('wild', 'dungeon');
+      bumpCounter('dungeonsCleared');
+      bigToastSafe('❄️ The Hollow falls quiet — a way opens west.');
+      if (world.openOnward) world.openOnward();
+    }
+  });
+  return finish(world, spec, D);
+}
+
+// --- tf3 — THE SPRING HEART (pocket, loopsTo tf2: the gold chest) ----------
+export async function buildTf3(scene) {
+  const { world, spec, D } = base(scene, 'tf3');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
+    patches: [{ x: 0, z: -1, r: 4.2, kind: 'ice' }, { x: -7, z: 4, r: 2.6, kind: 'ice' },
+              { x: 7, z: 4, r: 2.6, kind: 'ice' }],
+    pathWidth: 2.6,
+    paths: [[[9, 0], [0, -1]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'tf2', { x: -9.5, z: 0, angle: Math.PI / 2 });
+  // THE LOOP CLOSES (v3.134) — the Woods–Climb–Frostpeak shortcut, the same
+  // structural cross-link v3.129's own loop-closers are (den↔vh, ddp↔dlg):
+  // built once, always open, reached only by a child who has already
+  // cleared this dungeon to stand here at all.
+  sideDoor(world, 'n', halfW, halfD, 'f1b', { x: 0, z: -6.3, angle: 0 });
+
+  // THE GOLD CHEST — never a raw chestDefs write (the vc2 bug class): a
+  // heart piece, shards, and the Frozen Spring's own tinted find
+  // (items.js's sanctioned trick, `spear_frost`).
+  visibleReward(world, 0, -6.2, 'tf3_banked', { shards: 30, heartPiece: 1, gear: 'spear_frost' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
+  ];
+  aftermath(world, 0, 6.8, 2.0, D, 14);
+  scatter(world, halfW, halfD, D, 176, 5);
+  return finish(world, spec, D);
+}
+
 // ---------------------------------------------------------------------------
 // THE METRICS ZOO ADDITION — Level 3's one new module, at true scale, drawn
 // against the island it has to be told apart from.
@@ -1691,4 +1856,5 @@ export const LEVEL3_ROOMS = {
   t4a: buildT4a, t4b: buildT4b, t4p: buildT4p, tc4: buildTc4,
   tgl: buildTgl,
   tsA: buildTsA, tsB: buildTsB,
+  tf1: buildTf1, tf2: buildTf2, tf3: buildTf3,   // THE FROZEN SPRING
 };

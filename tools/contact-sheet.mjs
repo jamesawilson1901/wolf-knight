@@ -73,6 +73,9 @@ const SECTIONS = [
     ['t4b', 'rot 85%'], ['t4p', 'optional'], ['tc4', 'rest'],
     ['tgl', 'SYLVA’S GLADE. Arena: edges only'],
     ['tsA', 'secret shortcut'], ['tsB', 'secret shortcut'],
+    ['tf1', 'THE SPRING MOUTH — the Frozen Spring, room 1: no fight, the moved chest, a lost wolf'],
+    ['tf2', 'THE RIMEBOUND HOLLOW — the Frozen Spring fight: 2 rime-minion + 1 frost-dragonling'],
+    ['tf3', 'THE SPRING HEART — the Frozen Spring, gold: heart piece + shards + Rime Lance; the door to f1b'],
   ], 'woods'],
   // THE BACK HALF OF THE GAME was never on this sheet — the same hand-kept
   // rot every room list in tools/ carried (2026-08-30). A review page that

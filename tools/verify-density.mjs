@@ -157,6 +157,7 @@ const ROOMS = [
   { id: 'tkn', kind: 'puzzle' }, { id: 'tc3', kind: 'choke' },  { id: 't4a', kind: 'island' },
   { id: 't4b', kind: 'island' }, { id: 't4p', kind: 'pocket' }, { id: 'tc4', kind: 'choke' },
   { id: 'tgl', kind: 'arena' },  { id: 'tsA', kind: 'pocket' }, { id: 'tsB', kind: 'pocket' },
+  { id: 'tf1', kind: 'pocket' }, { id: 'tf2', kind: 'island' }, { id: 'tf3', kind: 'pocket' },
   // Stormreach Cliffs. The STAIR is a new module and gets measured as a choke:
   // it is the same job — compression and rest between islands — in a longer,
   // narrower box, and holding it to the island bar would only push clutter into

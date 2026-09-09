@@ -11,9 +11,9 @@
 //
 // SHIPS WITH THE FIRST DOOR (v3.129: `den↔vh`, `ddp↔dlg`), and grows as each
 // later slice's own loop lands — the LINKS table below is the whole surface
-// a new entry needs. `tf3↔f1b` and `lb2→q2` (§5.1's other two rows) are not
-// in it: neither room exists yet (v3.134 and later), and a link cannot be
-// tested before it ships.
+// a new entry needs. `tf3↔f1b` joined in v3.134. `lb2→q2` (§5.1's other row)
+// is not in it: that room does not exist yet, and a link cannot be tested
+// before it ships.
 import { launch } from './wk-drive.mjs';
 import { allRooms, LEGACY } from './all-rooms.mjs';
 
@@ -64,6 +64,8 @@ const LINKS = [
   { name: 's1a ↔ ssA (storm windBridge)', a: 's1a', b: 'ssA',
     set: (v) => { window.__game.WS.set('storm', 'windBridge', v); } },
   { name: 's4a ↔ ssA (always open)', a: 's4a', b: 'ssA', alwaysOn: true,
+    set: () => {} },
+  { name: 'tf3 ↔ f1b (v3.134, always open)', a: 'tf3', b: 'f1b', alwaysOn: true,
     set: () => {} },
   // The gate lives on d1a's SIDE, not dlg's: dlg's own four doors to
   // d1a-d4a are unconditional (a child already standing in dlg — which

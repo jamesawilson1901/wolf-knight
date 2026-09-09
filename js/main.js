@@ -68,9 +68,14 @@ const PROMISES = [
   { marker: 'thornPromise', id: 'l3_thorn', icon: '🌿', r: 4,
     label: 'A thorn wall — Thornedge',
     done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+  // v3.134: the spring now opens onto the Frozen Spring (§2.3), so the ???
+  // card resolves when the dungeon behind it is actually cleared, not when
+  // the ice merely shatters — same rule v3.130 set for the crack, marker and
+  // id unchanged so a save that already logged this promise keeps reading
+  // the same row.
   { marker: 'icePromise', id: 'l3_spring', icon: '❄️', r: 4,
     label: 'A spring sealed in ice — Thornedge',
-    done: () => WS.get('wild3', 'ice_l3_spring_ice') },
+    done: () => WS.get('wild', 'dungeon') },
   { marker: 'rootWallPromise', id: 'l3_rootwall', icon: '🌿', r: 4,
     label: 'A wall of roots — the Rootbound Deep', say: 'rootwall_hint',
     done: () => WS.get('wild3', 'rootCut') },

@@ -314,6 +314,20 @@ for (const id of SPACES) {
 }
 check('no interactive marker sits in the 2.5u blind strip', blind.length === 0, { blind });
 
+// ---------------------------------------------------------------------------
+console.log('\n── 9. The Frozen Spring (v3.134): calls held to the same bar ──');
+// Not part of SPACES/RING_PATH above — an optional branch off t1b, the same
+// relationship t1p/t2p/etc already have to their own hosts, not a ring room —
+// so it is measured here rather than folded into the ring's own closed graph
+// (that reachability/dead-end machinery assumes every edge among SPACES is
+// unconditional, and t1b's own door to tf1 is not).
+for (const id of ['tf1', 'tf2', 'tf3']) {
+  if (!await go(id)) { check(`${id} builds`, false); continue; }
+  const s = await snap();
+  console.log(`  ${id.padEnd(4)} doors→[${s.doors.map((d) => d.to).join(',')}]  calls ${s.calls}`);
+  check(`${id} draw calls under 100, same bar as the rest of Level 3`, s.calls < 100, s.calls);
+}
+
 console.log(errors.length ? `\n${errors.length} PROBLEM(S):\n` + errors.join('\n') : '\nALL CLEAN.');
 await b.close();
 process.exit(errors.length ? 1 : 0);

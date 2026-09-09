@@ -36,6 +36,8 @@ const ONWARD = {
   tc2: 't3a', t3a: 't3b', t3b: 'tkn', tkn: 'tc3', tc3: 't4a', t4a: 't4b',
   t4b: 'tc4', tc4: 'tgl',
   t1p: 't1b', t2p: 't2b', t3p: 't3b', t4p: 't4b',
+  // The Frozen Spring (§2.3): Wild Woods' own dungeon, off t1b's ice spring.
+  tf1: 't1b', tf2: 'tf3', tf3: 'tf2',
 
   // --- Frostpeak: still the old build, and still played --------------------
   f1: 'f2', f2: 'f3', f3: 'f4', f4: 'f5',
