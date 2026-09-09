@@ -84,6 +84,97 @@ console.log('\n── 1. every arena builds ────────────
 const broke = probe.filter((r) => r.error);
 check('no boss arena threw while building', broke.length === 0, broke);
 
+console.log('\n── 1.5 the arena hub: the nearest unfinished thing (§5.2) ──');
+// js/route.js's HUBS, for the six arenas — a function answer now, not a
+// fixed string, so this drives it through real state rather than reading
+// the table. Ember/Stone/Wild have real promise gates and a real hearth to
+// point at; Frost/Storm/Vale carry neither yet (design/WIDER-WORLD.md
+// §2.3's "later" queue), so their own hub must fall straight through to the
+// same road every already-shipped test above expects.
+const hubProbe = await wk.page.evaluate(async () => {
+  const { nextRoom } = await import('/js/route.js');
+  const st = await import('/js/state.js');
+  const ws = await import('/js/worldstate.js');
+  const g = st.state;
+  const reset = () => {
+    for (const k of Object.keys(g.flags)) if (typeof g.flags[k] === 'boolean') g.flags[k] = false;
+    g.flags.world = {};
+    g.flags.pups = {}; g.flags.burned = {};
+    g.formsUnlocked = ['knight'];
+  };
+  const out = {};
+
+  reset(); g.flags.bossDefeated = true;
+  out.le_noForm = nextRoom('le');                                    // no earth_wolf yet
+  g.formsUnlocked = ['knight', 'earth_wolf'];
+  out.le_crackOpen = nextRoom('le');                                 // earth_wolf, dungeon not cleared
+  ws.WS.set('ember', 'dungeon', true);
+  out.le_dungeonDone = nextRoom('le');                                // that promise resolved; scorched still isn't
+  g.formsUnlocked.push('fire_wolf');
+  out.le_bothPromisesOpen = nextRoom('le');                           // both promises now open, neither answered
+  g.flags.burned.l1_scorched_gate = true;
+  out.le_allPromisesDone = nextRoom('le');                            // both answered — falls to hearth/road
+
+  // ...and the hearth itself, once growth has actually reached it and the
+  // child has not yet walked in to see it (js/restoration.js's own `seen_N`).
+  reset(); g.flags.bossDefeated = true;
+  ws.WS.set('ember', 'restored', true); ws.WS.set('ember', 'dungeon', true);
+  g.formsUnlocked = ['knight', 'earth_wolf', 'fire_wolf'];
+  g.flags.burned.l1_scorched_gate = true;   // both promises pre-answered
+  out.le_pendingHearth = nextRoom('le');
+  ws.WS.set('ember', 'seen_2', true);       // she has now seen it
+  out.le_hearthSeen = nextRoom('le');
+
+  reset(); g.flags.wardenDefeated = true;
+  out.vz_noForm = nextRoom('vz');
+  g.formsUnlocked = ['knight', 'verdant_wolf'];
+  out.vz_brambleOpen = nextRoom('vz');
+  ws.WS.set('vault', 'cut_l2_bramble_gate', true);
+  out.vz_allPromisesDone = nextRoom('vz');
+
+  reset(); g.flags.sylvaDefeated = true;
+  out.tgl_noForm = nextRoom('tgl');
+  g.formsUnlocked = ['knight', 'verdant_wolf'];
+  out.tgl_thornOpen = nextRoom('tgl');
+
+  // Frost/Storm/Vale: no promises, no hearth — always the road, regardless
+  // of which forms she already carries.
+  reset(); g.flags.borealDefeated = true; g.formsUnlocked = ['knight', 'fire_wolf', 'frost_wolf'];
+  out.f5_alwaysRoad = nextRoom('f5');
+  reset(); g.flags.ariaDefeated = true; g.formsUnlocked = ['knight', 'storm_wolf'];
+  out.scr_alwaysRoad = nextRoom('scr');
+  reset(); g.flags.meriDefeated = true; g.formsUnlocked = ['knight', 'tide_wolf'];
+  out.ddp_alwaysRoad = nextRoom('ddp');
+
+  return out;
+});
+check('le, boss down, no earth_wolf yet: points at the live door, not a promise she cannot open',
+  hubProbe.le_noForm === 'n1', hubProbe.le_noForm);
+check('le, earth_wolf in hand, the crack unbroken: points at la',
+  hubProbe.le_crackOpen === 'la', hubProbe.le_crackOpen);
+check('le, the vault cleared, the scorched barricade still fire_wolf-only and unopened: points at lb2 once fire_wolf is hers',
+  hubProbe.le_dungeonDone === 'n1' && hubProbe.le_bothPromisesOpen === 'lb2',
+  { dungeonDone: hubProbe.le_dungeonDone, bothOpen: hubProbe.le_bothPromisesOpen });
+check('le, every promise answered: falls through (hearth or the road), never a closed gate',
+  hubProbe.le_allPromisesDone !== 'la' && hubProbe.le_allPromisesDone !== 'lb2', hubProbe.le_allPromisesDone);
+check('le, growth reached the hearth and she has not seen it yet: points at la',
+  hubProbe.le_pendingHearth === 'la', hubProbe.le_pendingHearth);
+check('le, the same grow-in already seen: falls through to the road, not a repeat',
+  hubProbe.le_hearthSeen === 'n1', hubProbe.le_hearthSeen);
+check('vz, no verdant_wolf yet: the road, not a promise she cannot open',
+  hubProbe.vz_noForm === 'g1', hubProbe.vz_noForm);
+check('vz, verdant_wolf in hand, the bramble uncut: points at vc2',
+  hubProbe.vz_brambleOpen === 'vc2', hubProbe.vz_brambleOpen);
+check('vz, the bramble answered: falls through, never vc2 again',
+  hubProbe.vz_allPromisesDone !== 'vc2', hubProbe.vz_allPromisesDone);
+check('tgl, no verdant_wolf yet: the Cold Climb, not a promise she cannot open',
+  hubProbe.tgl_noForm === 'c1', hubProbe.tgl_noForm);
+check('tgl, verdant_wolf in hand, the thorn wall uncut: points at t1b',
+  hubProbe.tgl_thornOpen === 't1b', hubProbe.tgl_thornOpen);
+check('f5 always answers the road (no promise/hearth content yet)', hubProbe.f5_alwaysRoad === 'q1', hubProbe.f5_alwaysRoad);
+check('scr always answers the road (no promise/hearth content yet)', hubProbe.scr_alwaysRoad === 'p1', hubProbe.scr_alwaysRoad);
+check('ddp always answers the road (no promise/hearth content yet)', hubProbe.ddp_alwaysRoad === 'h1', hubProbe.ddp_alwaysRoad);
+
 console.log('\n── 2. the way on is shut while the boss lives ──────────');
 for (const r of probe) {
   if (!r.onward) continue;

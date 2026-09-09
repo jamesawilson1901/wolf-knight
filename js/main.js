@@ -83,6 +83,27 @@ const PROMISES = [
     label: 'A great log, tangled — the Bloomfall', say: 'greatlog_hint',
     done: () => WS.get('wild3', 'logDown') },
 ];
+// WREN'S RUMOUR TABLE (v3.137, design/WIDER-WORLD.md §5.2) — "a small table
+// chosen at say-time by the nearest unfinished thing": the first region
+// still unhealed, in walk order, so what she says always points at wherever
+// the game actually wants a lost child to go next — the non-reader's quest
+// log, with no UI. `wren_rumour` keeps its own id for the Wild Woods (it
+// already named that region before this table existed).
+const WREN_RUMOUR = {
+  ember: 'wren_rumour_ember', stone: 'wren_rumour_stone', wild: 'wren_rumour',
+  frost: 'wren_rumour_frost', storm: 'wren_rumour_storm', vale: 'wren_rumour_vale',
+  court: 'wren_rumour_court',
+};
+const REGION_ORDER = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court'];
+// Exported for the one thing a bootstrap file with no other export normally
+// has no reason to offer: a suite driving it through real WS state rather
+// than re-deriving the same decision a second time (js/route.js's own
+// nextRoom/onwardSpot are exported for the identical reason).
+export function wrenRumourLine() {
+  const next = REGION_ORDER.find((k) => !WS.get(k, 'restored'));
+  return next ? WREN_RUMOUR[next] : 'wren_rumour_done';
+}
+
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -860,7 +881,7 @@ function narrationTriggers(dt, t) {
     }
     // villagers: intro once, then gentle repeatable chat (throttled)
     if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
-      if (!narration.say('wren_intro')) sayThrottled('wren_rumour', t, 45);
+      if (!narration.say('wren_intro')) sayThrottled(wrenRumourLine(), t, 45);
     }
     if (m.rookSpot && nearSpot(m.rookSpot, 2.6)) {
       if (!narration.say('rook_intro')) sayThrottled('rook_chat', t, 45);

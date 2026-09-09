@@ -96,7 +96,72 @@ const ONWARD = {
 const HEARTH_ROOM = { ember: 'la', stone: 'vh', wild: 't1a', frost: 'f1',
   storm: 's1a', vale: 'd1a', court: 'x1' };
 
+// EVERY ARENA'S OWN NEAREST UNFINISHED THING (§5.2), once its boss falls:
+// the room holding a promise gate whose form she now owns and whose OWN
+// `done()` is still false — the same rooms and flags js/main.js's own
+// PROMISES table reads (51-79) — duplicated here in miniature rather than
+// imported, since main.js already imports this file (nextRoom/onwardSpot)
+// and importing PROMISES back would cycle. `underwaterPromise` (l2_sunken)
+// is left out on purpose: nothing opens it but the ring draining on its
+// own, so there is no verb for Pip to ever point a child at.
+const REGION_PROMISES = {
+  ember: [
+    { room: 'la', form: 'earth_wolf', done: () => WS.get('ember', 'dungeon') },
+    { room: 'lb2', form: 'fire_wolf', done: () => !!state.flags.burned.l1_scorched_gate },
+  ],
+  stone: [
+    { room: 'vc2', form: 'verdant_wolf', done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+  ],
+  wild: [
+    { room: 't1b', form: 'verdant_wolf', done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+    { room: 't1b', form: 'frost_wolf', done: () => WS.get('wild', 'dungeon') },
+    { room: 't3a', form: 'verdant_wolf', done: () => WS.get('wild3', 'rootCut') },
+    { room: 't4a', form: 'verdant_wolf', done: () => WS.get('wild3', 'logDown') },
+  ],
+  // frost/storm/vale carry no promise gates yet (design/WIDER-WORLD.md §2.3's
+  // "later" queue) — an empty list here is silence, not a wrong answer, and
+  // this table needs no edit the day one ships.
+};
+
+// A region's own hearth, but only while it still has something new to show:
+// `spawnSettlers` marks `seen_N` the first time a child actually WALKS INTO
+// the stage-N reveal, so "pending grow-in" is stage >= 2 (a settler exists
+// at all) and that exact stage not yet seen — once seen, the hearth is just
+// scenery again until growth advances further.
+function pendingHearth(key) {
+  const room = HEARTH_ROOM[key];
+  const stage = growthStage(key);
+  return room && stage >= 2 && !WS.get(key, 'seen_' + stage) ? room : null;
+}
+
+// One arena's own hub: the boss's own defeat flag gates it (never answered
+// mid-fight — Tam's own law, §5), then the region's nearest unfinished
+// promise, then a pending hearth reveal, then the road onward — the `xh`
+// relic-scan shape, generalised.
+function arenaHub(key, flag, fallback) {
+  return () => {
+    if (!state.flags[flag]) return null;
+    for (const p of (REGION_PROMISES[key] || [])) {
+      if (state.formsUnlocked.includes(p.form) && !p.done()) return p.room;
+    }
+    return pendingHearth(key) || fallback;
+  };
+}
+
 const HUBS = {
+  // le/vz/f5 carry no ONWARD row of their own — their own arena hands the
+  // next room over LIVE, as a door in the room itself (verify-onward.mjs),
+  // not a table entry — so the fallback here is that same room, named once
+  // rather than left for a child standing there to get no answer at all.
+  le: arenaHub('ember', 'bossDefeated', 'n1'),
+  vz: arenaHub('stone', 'wardenDefeated', 'g1'),
+  // tgl/scr/ddp already have their own ONWARD row (the last-three-roads
+  // rollout, below) — read it rather than repeat it, so the two tables
+  // cannot quietly disagree about where the road actually goes.
+  tgl: arenaHub('wild', 'sylvaDefeated', ONWARD.tgl),
+  f5: arenaHub('frost', 'borealDefeated', 'q1'),
+  scr: arenaHub('storm', 'ariaDefeated', ONWARD.scr),
+  ddp: arenaHub('vale', 'meriDefeated', ONWARD.ddp),
   vh: () => ['vga', 'vgb', 'vgc', 'vz'][Math.min(3, WS.stage('vault'))],
   // THE DEN, given a real place in the guide (design/WIDER-WORLD.md §5.1):
   // "go back and look" at whichever region has done the least, or — before

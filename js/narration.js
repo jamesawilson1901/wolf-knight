@@ -168,7 +168,20 @@ export const LINES = {
   camp_rumour: { voice: 'bram', text: 'Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.' },
   // Den villagers (v3.12: the den grows faces as regions heal)
   wren_intro: { voice: 'wren', text: 'A knight who turns into wolves… I walk every road, and I’ve never seen THAT. Call me Wren. I hear things — come find me when you want a rumour.' },
+  // WREN’S RUMOUR TABLE (v3.137, design/WIDER-WORLD.md §5.2) — "the non-
+  // reader’s quest log, with no UI": one line per region, picked at say-time
+  // by the first one still unhealed (js/main.js), so what Wren says always
+  // points at wherever the game actually wants a lost child to go next.
+  // `wren_rumour` keeps its own id and text for the Wild Woods — it already
+  // named that region, almost word for word, since before this table existed.
+  wren_rumour_ember: { voice: 'wren', text: 'A rumour, then: south past the gate, Ember Hollow’s still burning. That’s the start of everything, that is.', repeat: true },
+  wren_rumour_stone: { voice: 'wren', text: 'A rumour, then: north of Ember there’s a cavern that used to shine. Stoneroot, they call it — dark as a boot now.', repeat: true },
   wren_rumour: { voice: 'wren', text: 'A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…', repeat: true },
+  wren_rumour_frost: { voice: 'wren', text: 'A rumour, then: there’s a mountain past the woods, capped in ice that never melts. Cold as anything, so they say.', repeat: true },
+  wren_rumour_storm: { voice: 'wren', text: 'A rumour, then: cliffs out past the frost, where the wind never stops complaining. Sailors won’t go near them.', repeat: true },
+  wren_rumour_vale: { voice: 'wren', text: 'A rumour, then: past the storm cliffs, the water’s swallowed half a valley. Folk call it the Sunken Vale, when they call it anything.', repeat: true },
+  wren_rumour_court: { voice: 'wren', text: 'A rumour, then: deep past the vale, there’s a court gone to shadow. Best not to go alone, if you ask me.', repeat: true },
+  wren_rumour_done: { voice: 'wren', text: 'Nothing left to whisper about round here — you’ve walked every road I know of. Good going, knight.', repeat: true },
   rook_intro: { voice: 'rook', text: 'So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.' },
   rook_chat: { voice: 'rook', text: 'The horizon’s quiet today. Quiet is GOOD, little knight.', repeat: true },
   // TAM THE WAYFARER — he turns up in an arena once its shadow is broken, and
