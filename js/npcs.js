@@ -287,6 +287,10 @@ export const SETTLER_POSTS = {
   // shape as Storm's own (both 32x26 islands).
   d1a: { id: 'vale_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
     tint: 0x8fb0ac, key: 'vale', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.142: the Court's own hearth, the seventh and last — x1, the spine's
+  // first room past the entrance (§1.3: the Court's landing is x1, not xh).
+  x1: { id: 'court_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0xa79ec2, key: 'court', minStage: 2, shop: { x: 12.0, z: 9.5 } },
 };
 
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
@@ -350,6 +354,7 @@ export const WAYFARER_POSTS = {
   f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
   s1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('storm', 'seen_4') },
   d1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('vale', 'seen_4') },
+  x1: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('court', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks

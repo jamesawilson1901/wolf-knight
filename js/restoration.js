@@ -747,6 +747,28 @@ export const STAGE_CLUTTER = {
       ['sack', 11.0, 10.5, 1.0, 0.6],
     ],
   },
+  // v3.142: the Court's own hearth, at x1 — the same NE pocket as the last
+  // three, clear of the watcher/gold-chest lock (west wall), the rest/travel
+  // spots and the corruption/rubble patches. `firewood` moved half a unit
+  // (6.5→7.0) from the other five hearths' shared offset: this room's own
+  // scatter/breakables land one cell differently at that exact spot.
+  x1: {
+    2: [
+      ['hearth', 11.0, 7.0, 1.0, 0.4],
+      ['stool', 12.0, 7.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 12.5, 9.0, 0.95, 2.3],
+      ['laundry', 10.5, 9.5, 1.0, -0.5],
+      ['firewood', 12.0, 7.0, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 12.5, 7.0, 1.0, 0.5],
+      ['manikin', 10.5, 10.0, 1.0, -0.4],
+      ['cart', 12.0, 9.5, 1.0, -0.3],
+      ['sack', 11.0, 10.5, 1.0, 0.6],
+    ],
+  },
 };
 
 // Place one stage's worth of furniture (already-loaded kit, one call per
