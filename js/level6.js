@@ -1137,7 +1137,16 @@ export async function buildDg4(scene) {
 // ---------------------------------------------------------------------------
 export async function buildDlg(scene) {
   const { world, spec, D } = base(scene, 'dlg');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w'), gap('n'), gap('s')], D, {
+  // A SECOND EAST DOOR, once Meri falls (v3.129, design/WIDER-WORLD.md §5.1):
+  // every cardinal wall already carries one of the four district hubs
+  // (d1a/d2a/d3a/d4a), so the loop back from her own hall (`ddp`) shares the
+  // east wall with d1a's door at a different centre (`gap`'s own mechanism
+  // for this, first used by the Vault hub's five doorways) rather than
+  // displacing any of the four.
+  const meriLoop = !!state.flags.meriDefeated;
+  const gaps = [gap('e'), gap('w'), gap('n'), gap('s')];
+  if (meriLoop) gaps.push(gap('e', DOOR_HALF, 8));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 9.0, kind: 'water' }],
   });
   // FACING IN. This was angle +PI/2 — pointing at the east wall two units away,
@@ -1155,6 +1164,10 @@ export async function buildDlg(scene) {
   // Only the east exit was ever right, and it is the one that shows the shape:
   // land beside the door you came through, facing in.
   sideDoor(world, 'e', halfW, halfD, 'd1a', { x: -14, z: 0, angle: -Math.PI / 2 });
+  if (meriLoop) {
+    sideDoor(world, 'e', halfW, halfD, 'ddp', { x: -10, z: 0, angle: -Math.PI / 2 },
+      { centre: 8 });
+  }
   sideDoor(world, 'n', halfW, halfD, 'd2a', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'd3a', { x: 0, z: 10, angle: Math.PI });
   sideDoor(world, 's', halfW, halfD, 'd4a', { x: 0, z: -10, angle: 0 });
@@ -1200,11 +1213,25 @@ export async function buildDdp(scene) {
   // The north gap is ALWAYS cut now — plugged with drowned stone while Meri
   // fights, opened live (smoke poof, main.js) the moment the vale drains, so
   // the way on appears where the child is standing instead of on re-entry.
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  //
+  // THE WEST GAP, beside the south door (v3.129, design/WIDER-WORLD.md
+  // §5.1): her hall is one room from the Lagoon hub every other district
+  // already opens onto, and gating the loop on her own defeat keeps the
+  // rule every promise gate in this game already follows — no door offers
+  // a way out of a fight still in progress.
+  const gaps = [gap('s'), gap('n')];
+  if (onward) gaps.push(gap('w'));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
+  if (onward) {
+    // lands beside dlg's own new east door (centre 8, above), facing in —
+    // the same "land beside the door you came through" law dlg's own
+    // comment already keeps for its other three.
+    sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 8, angle: -Math.PI / 2 });
+  }
   // THE ROAD, NOT THE REGION (2026-09-08). Meri's hall used to open straight
   // onto the Court's threshold: the last spirit freed, then the shadow's own
   // door, with nothing between them. The Hollow Road is what goes there now

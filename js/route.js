@@ -15,6 +15,7 @@
 // a side room and got stuck should be shown the way OUT of it, not deeper.
 import { state } from './state.js';
 import { WS } from './worldstate.js';
+import { growthStage } from './restoration.js';
 
 const ONWARD = {
   // --- Ember Hollow: a string of pearls, always north ---------------------
@@ -85,8 +86,26 @@ const ONWARD = {
 // The two hubs answer differently depending on what the child has already done.
 // Both mirror what the room itself does: the Stoneroot hub only HAS the doorway
 // its stage has opened, and the Court's throne stair only opens on four relics.
+// The room a child re-enters each region through — its own hearth (§1.5's
+// settler table) once one is built there, the region's own known entrance
+// either way; a hearth existing is a dressing detail, not a routing one.
+const HEARTH_ROOM = { ember: 'la', stone: 'vh', wild: 't1a', frost: 'f1',
+  storm: 's1a', vale: 'd1a', court: 'x1' };
+
 const HUBS = {
   vh: () => ['vga', 'vgb', 'vgc', 'vz'][Math.min(3, WS.stage('vault'))],
+  // THE DEN, given a real place in the guide (design/WIDER-WORLD.md §5.1):
+  // "go back and look" at whichever region has done the least, or — before
+  // any region is even freed — the only way out that exists yet. Growth is
+  // read at 5 (§1.2's five facts); a region already there has nothing left
+  // to point at, so the next-lowest takes its place.
+  den: () => {
+    const KEYS = Object.keys(HEARTH_ROOM);
+    const started = KEYS.filter((k) => WS.get(k, 'restored') && growthStage(k) < 5);
+    if (!started.length) return WS.get('ember', 'restored') ? null : 'la';
+    started.sort((a, b) => growthStage(a) - growthStage(b));
+    return HEARTH_ROOM[started[0]];
+  },
   // The Village: point at whichever street still has a standing guardian
   // behind it; inside a street, at that street's first unbeaten district.
   ysq: () => {

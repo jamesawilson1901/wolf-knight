@@ -813,8 +813,17 @@ async function buildDen(scene) {
     if (!(state.flags.grimmFreed && x > -1.8 && x < 1.8)) addWall(x, -halfD - 0.5);
     if (!(x > -1.8 && x < 1.8)) addWall(x, halfD + 0.5);   // the gap is the stair to la
   }
+  // THE EAST GAP — Den -> vh, once the lantern is relit (v3.129,
+  // design/WIDER-WORLD.md §5.1). `vh`'s own south door has walked into the
+  // Den one-way since the Vault existed (js/level2.js:567, landing at the
+  // Den's own default spawn) with no way back; `WS.stage('vault') >= 1`
+  // means the child has stood in the Vault and relit it, so this is a
+  // return loop, never a skip of the Night Road that earns the flag. No new
+  // save flag: the vault's own stage already IS the gate.
+  const vaultLoop = WS.stage('vault') >= 1;
   for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
-    addWall(-halfW - 0.5, z); addWall(halfW + 0.5, z);
+    addWall(-halfW - 0.5, z);
+    if (!(vaultLoop && z > -1.4 && z < 1.4)) addWall(halfW + 0.5, z);
   }
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
     materialTints: { grass: 0x4d6a3c, dirt: 0x5a4a34 },
@@ -828,10 +837,22 @@ async function buildDen(scene) {
   world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
   world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
   world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
-  world.addBox(halfW, halfW + 1, -halfD - 1, halfD + 1);
+  if (vaultLoop) {
+    world.addBox(halfW, halfW + 1, -halfD - 1, -1.4);
+    world.addBox(halfW, halfW + 1, 1.4, halfD + 1);
+  } else {
+    world.addBox(halfW, halfW + 1, -halfD - 1, halfD + 1);
+  }
   world.spawn = { x: 0, z: 7.4, angle: Math.PI };
   world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, halfD - 0.6, 'x');
+  if (vaultLoop) {
+    // lands at vh's own spawn (js/level2.js:565) — the same arrival point
+    // its south door already uses, so this is a loop back to one place, not
+    // a second geography to learn.
+    world.addDoor(halfW - 0.15, halfW + 0.9, -1.4, 1.4, 'vh', { x: 0, z: 10, angle: Math.PI });
+    doorway(world, halfW - 0.6, 0, 'z');
+  }
   if (state.flags.grimmFreed) {
     // THE VILLAGE. The road that was always shadowed, now that Grimm is gone.
     world.addDoor(-1.4, 1.4, -halfD - 0.9, -halfD + 0.15, 'ysq', { x: 0, z: 12, angle: Math.PI });

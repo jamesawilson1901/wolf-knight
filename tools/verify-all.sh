@@ -130,7 +130,7 @@ sorted_suite_files() {
 # The suites measured to take the longest. Named once, used twice: --par starts
 # them first so a seventeen-minute giant never begins last, and --shard deals
 # them out first so they land on DIFFERENT machines.
-HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs verify-sequence.mjs"
+HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs verify-sequence.mjs verify-loops.mjs"
 # Frame-timing measurements flake under CPU contention — --par runs these
 # serial, last. (--shard is already one suite at a time on its own machine.)
 TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
