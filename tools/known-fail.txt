@@ -62,13 +62,23 @@
 # seven red nightlies. An empty manifest beside a green one is the point.
 # Nothing goes back in here without the §6 worktree proof and a date.
 # ---------------------------------------------------------------------------
-# 2026-09-09: verify-onward.mjs §4's "ddp opens to the same doors live as on a
-# rebuild" fails identically on a git worktree detached at v3.132 (e6785e0,
-# the commit immediately before this session's own changes began) — live
-# world.doors after setting meriDefeated in-session is missing the ddp↔dlg
-# door (v3.129) that a rebuild correctly carries; §5 then times out entirely
-# on the next arena (same 60s timeout, same line). Neither is new: this
-# session touched no file the ddp/dlg/meriDefeated path runs through. Board
-# item: find why ddp's own live door-add for dlg (js/level6.js, the v3.129
-# loop-closer) doesn't fire the same way le/vz/tgl/f5/scr's onward openers do.
-verify-onward.mjs | ddp's live doors miss the v3.129 dlg loop-closer after meriDefeated (rebuild has it); §5 then times out on the next arena — proven pre-existing on v3.132 (e6785e0) via a detached worktree | 2026-09-09
+# 2026-09-09, FIXED THE SAME NIGHT: the §4 half of the entry below (ddp's
+# live doors missing the v3.129 dlg loop-closer) was root-caused and closed —
+# js/level6.js's `w` gap was cut only at build time when `meriDefeated` was
+# already true, so there was nothing for a live `openOnward()` to open into;
+# the `n` gap's own always-cut, plug-then-open shape (levelkit.js's
+# `onwardPlug`, chained — "two plugs, one opening") is what the `w` gap now
+# uses too. verify-onward.mjs §4 passes for ddp; verify-level6.mjs and
+# verify-openholes.mjs (158 rooms) both stayed clean.
+#
+# The §5 half is a DIFFERENT, still-open bug: with §4 fixed, the suite gets
+# further (le's own walk-through-the-door check now passes in full) and then
+# hard-crashes — an uncaught `page.waitForFunction` timeout jumping into `vz`
+# — the exact same crash, same line, the original 2026-09-09 note proved
+# pre-existing on a v3.132 worktree. ddp is not in §5's own room list
+# (`le`,`vz`,`tgl` only) and this session touched no file `vz`'s own build or
+# `__wkJump` path runs through, so the ddp fix cannot be its cause. Board
+# item: find why jumping into `vz` (Stoneroot's crypt, the Bone Warden) after
+# `le` never resolves `window.__wk.room === 'vz'` within verify-onward.mjs
+# §5's 60s window.
+verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09

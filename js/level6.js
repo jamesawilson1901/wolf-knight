@@ -1219,24 +1219,39 @@ export async function buildDdp(scene) {
   // already opens onto, and gating the loop on her own defeat keeps the
   // rule every promise gate in this game already follows — no door offers
   // a way out of a fight still in progress.
-  const gaps = [gap('s'), gap('n')];
-  if (onward) gaps.push(gap('w'));
+  //
+  // ALWAYS CUT NOW, plugged rather than absent (fixed 2026-09-09,
+  // tools/known-fail.txt): this gap used to be build-time-only — no gap cut
+  // in the wall at all while `onward` was false, so there was nothing for a
+  // live `openOnward()` to open into. A child who beat Meri without leaving
+  // the room got the `h1` door (the north plug already worked) but not this
+  // one; only a rebuild ever carried both. The north gap's own plug-then-
+  // open shape is what fixes it: cut always, blocked by drowned stone while
+  // she fights, opened live the instant `onwardPlug`'s chained callback
+  // fires — verify-onward.mjs §4's "opens to the same doors live as on a
+  // rebuild" is what this answers.
+  const gaps = [gap('s'), gap('n'), gap('w')];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
-  if (onward) {
-    // lands beside dlg's own new east door (centre 8, above), facing in —
-    // the same "land beside the door you came through" law dlg's own
-    // comment already keeps for its other three.
-    sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 8, angle: -Math.PI / 2 });
-  }
+  // lands beside dlg's own new east door (centre 8, above), facing in — the
+  // same "land beside the door you came through" law dlg's own comment
+  // already keeps for its other three.
+  const openDlg = () => sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 8, angle: -Math.PI / 2 });
+  if (onward) openDlg();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockSA', D.propTint, openDlg);
   // THE ROAD, NOT THE REGION (2026-09-08). Meri's hall used to open straight
   // onto the Court's threshold: the last spirit freed, then the shadow's own
   // door, with nothing between them. The Hollow Road is what goes there now
   // (js/levelHollow.js, two rooms), and it is the only stretch of the game
   // whose whole job is dread. h1's own spawn is (0, 11).
+  //
+  // Registered AFTER the west plug (levelkit.js's onwardPlug chains rather
+  // than overwrites, "two plugs, one opening"), so `world.onwardSpot` ends
+  // on this one and the smoke lands on the door that matters — the way on,
+  // not the way back.
   if (onward) sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI });
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSA', D.propTint,
     () => sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI }));
