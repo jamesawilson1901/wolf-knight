@@ -125,6 +125,12 @@ export const STICKERS = [
   { id: 'rescuer1', icon: '🐺', name: 'A Friend Found', counter: 'wolvesRescued', at: 1,
     model: { file: './assets/chars/wolf.gltf', tint: 0x9c948a,
       pose: { yaw: Math.PI * 0.75, tiltZ: 0, zoom: 1.2 } } },
+  // THE GARDEN BED (§3.2, v3.148) — the two rows §3.3 left as a named stub
+  // ("wait on the garden bed... unbuilt"), now that it exists.
+  { id: 'garden1', icon: '🌱', name: 'First Bloom', counter: 'harvests', at: 1,
+    model: { file: './assets/env/flower-a.glb' } },
+  { id: 'garden5', icon: '🌸', name: 'Green Thumb', counter: 'harvests', at: 5,
+    model: { file: './assets/env/flower-b.glb' } },
 ];
 
 export function bumpCounter(name, n = 1) {

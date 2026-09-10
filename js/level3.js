@@ -1830,7 +1830,7 @@ export async function buildTf3(scene) {
   // THE GOLD CHEST — never a raw chestDefs write (the vc2 bug class): a
   // heart piece, shards, and the Frozen Spring's own tinted find
   // (items.js's sanctioned trick, `spear_frost`).
-  visibleReward(world, 0, -6.2, 'tf3_banked', { shards: 30, heartPiece: 1, gear: 'spear_frost' }, 'gold');
+  visibleReward(world, 0, -6.2, 'tf3_banked', { shards: 30, heartPiece: 1, gear: 'spear_frost', seed: 'wild' }, 'gold');
 
   world.markers.breakables = [
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },

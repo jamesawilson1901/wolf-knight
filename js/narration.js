@@ -216,6 +216,9 @@ export const LINES = {
   pups_home_vale: { voice: 'pip', text: 'Every pup from the Sunken Vale is safe here now!' },
   pups_home_court: { voice: 'pip', text: 'The Shadow Court’s pups have a home at last!' },
   pups_home_village: { voice: 'pip', text: 'Even the Village pups found their way to the pen!' },
+  // THE GARDEN BED (design/WIDER-WORLD.md §3.2, v3.148).
+  garden_planted: { voice: 'pip', text: 'A seed, in the ground! Come back tomorrow, Kael.' },
+  garden_harvest: { voice: 'pip', text: 'Look what grew while we were away!' },
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },

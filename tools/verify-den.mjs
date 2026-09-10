@@ -268,6 +268,89 @@ if (await go('den')) {
   check('pen: the Den rebuilds at full pup count', false);
 }
 
+// --- §garden — THE GARDEN BED (design/WIDER-WORLD.md §3.2, v3.148) --------
+console.log('\n── the garden bed ──────────────────────────────');
+await page.evaluate(() => {
+  const g = window.__game;
+  g.state.flags.world.den = {};   // a clean slate — no seed, nothing planted
+});
+if (await go('den')) {
+  const hasSpot = await page.evaluate(() => !!window.__game.world.markers.gardenSpot);
+  check('garden: the ring exists in the Den', hasSpot);
+  // no seed owned yet: standing in the ring does nothing
+  const noSeedResult = await page.evaluate(async () => window.__game.world.gardenInteract
+    ? window.__game.world.gardenInteract() : null);
+  check('garden: with no seed owned, the ring does nothing', noSeedResult && noSeedResult.action === 'none', noSeedResult);
+
+  // clearing the Root Cellar backfills its seed (nothing missable)
+  await page.evaluate(() => { window.__game.WS.set('vault', 'dungeon', true); });
+  await go('den');
+  const backfilled = await page.evaluate(() => window.__game.state.flags.world.den);
+  check('garden: an already-cleared dungeon backfills its seed on the next Den visit',
+    backfilled.seed_stone === true && backfilled.lastSeed === 'stone', backfilled);
+
+  // plant, via the real interaction function (not a raw WS write) — proves
+  // the ring's own decision logic, not just the state shape
+  const planted = await page.evaluate(() => window.__game.world.gardenInteract());
+  const plantedFlags = await page.evaluate(() => window.__game.state.flags.world.den);
+  check('garden: gardenInteract() plants the most recently found seed',
+    planted.action === 'plant' && planted.seed === 'stone'
+      && typeof plantedFlags.gardenPlanted === 'number' && plantedFlags.gardenMaxStage === 0,
+    { planted, plantedFlags });
+
+  // fresh-planted: standing in the ring again does nothing ("come back tomorrow")
+  const stillGrowing = await page.evaluate(() => window.__game.world.gardenInteract());
+  check('garden: a freshly planted bed answers "none" — no menu, no re-plant',
+    stillGrowing.action === 'none', stillGrowing);
+
+  // fast-forward 3+ real days, rebuild, confirm full bloom is read at build
+  await page.evaluate(() => { window.__game.WS.set('den', 'gardenPlanted', Date.now() - 4 * 86400000); });
+  await go('den');
+  const bloomed = await page.evaluate(() => window.__game.state.flags.world.den);
+  check('garden: 4 real days later, gardenMaxStage reads 3 (capped) at build',
+    bloomed.gardenMaxStage === 3, bloomed);
+
+  // a wrong clock can never walk the bed backwards — only the MAX is stored
+  await page.evaluate(() => { window.__game.WS.set('den', 'gardenPlanted', Date.now()); });
+  await go('den');
+  const clockSkew = await page.evaluate(() => window.__game.state.flags.world.den);
+  check('garden: a device clock jumping back does not lower gardenMaxStage',
+    clockSkew.gardenMaxStage === 3, clockSkew);
+
+  // harvest: shards, a sticker bump, and the bed goes empty — not an instant re-plant
+  const before = await page.evaluate(() => window.__game.state.counters.harvests || 0);
+  const harvested = await page.evaluate(() => window.__game.world.gardenInteract());
+  const afterFlags = await page.evaluate(() => window.__game.state.flags.world.den);
+  const afterCounter = await page.evaluate(() => window.__game.state.counters.harvests || 0);
+  check('garden: harvesting pays 12 shards and empties the bed',
+    harvested.action === 'harvest' && harvested.shards === 12
+      && !afterFlags.gardenPlanted && !afterFlags.gardenSeed, { harvested, afterFlags });
+  check('garden: harvesting bumps the harvests counter (the sticker rows)', afterCounter === before + 1);
+
+  // flora clear of colliders at r 0.44 — the same clearance check the spirit
+  // homes already run above, applied to the garden's own instanced flora
+  const clearance = await page.evaluate(() => {
+    const g = window.__game;
+    const w = g.world;
+    const spot = w.markers.gardenSpot;
+    const r = 0.44;
+    const hitsCircle = (w.circleColliders || []).some((c) => {
+      const dx = c.x - spot.x, dz = c.z - spot.z;
+      return Math.hypot(dx, dz) < (c.r || 0) + r;
+    });
+    const hitsBox = (w.boxColliders || []).some((c) => {
+      const cx = Math.max(c.minX, Math.min(spot.x, c.maxX));
+      const cz = Math.max(c.minZ, Math.min(spot.z, c.maxZ));
+      return Math.hypot(spot.x - cx, spot.z - cz) < r;
+    });
+    return { hitsCircle, hitsBox };
+  });
+  check('garden: the ring itself is clear of every collider at r 0.44',
+    !clearance.hitsCircle && !clearance.hitsBox, clearance);
+} else {
+  check('garden: the Den rebuilds for the garden suite', false);
+}
+
 console.log('\n' + (errors.length ? '✗ ' + errors.length + ' FAILED\n' + errors.join('\n')
   : '✓ the Den is batched, under budget, and still alive'));
 await b.close();

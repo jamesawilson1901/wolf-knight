@@ -1567,7 +1567,7 @@ export async function buildVr3(scene) {
   world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'vr2', { x: -9.5, z: 0, angle: Math.PI / 2 });
 
-  visibleReward(world, 0, -6.2, 'vr3_rootbound', { shards: 30, heartPiece: 1, gear: 'hammer_c' }, 'gold');
+  visibleReward(world, 0, -6.2, 'vr3_rootbound', { shards: 30, heartPiece: 1, gear: 'hammer_c', seed: 'stone' }, 'gold');
 
   world.markers.breakables = [
     { x: -6.5, z: -5.5, kind: 'jar' }, { x: 6.5, z: -5.5, kind: 'vase' },

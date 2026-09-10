@@ -1992,7 +1992,7 @@ export async function buildLv3(scene) {
   // heart piece, shards, and one of the nine unused KayKit weapon bits
   // (items.js:171-175, `halberd` — the sanctioned trick, ungranted until now)
   // tinted as a dungeon-only find.
-  visibleReward(world, 0, -6.2, 'lv3_banked', { shards: 30, heartPiece: 1, gear: 'halberd' }, 'gold');
+  visibleReward(world, 0, -6.2, 'lv3_banked', { shards: 30, heartPiece: 1, gear: 'halberd', seed: 'ember' }, 'gold');
 
   world.markers.breakables = [
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },

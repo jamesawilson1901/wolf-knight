@@ -236,7 +236,11 @@ export function moodLift(roomId) {
 // A cave heals into luminescence, not into a lawn — the same distinction
 // js/rooms.js already draws between healedSprouts and healedGlowmoss, kept
 // here rather than re-decided per region.
-const FLORA = {
+// Exported (v3.148, design/WIDER-WORLD.md §3.2): the Den's garden bed grows
+// the exact same per-region flora as that region's own healed meadow — a
+// child who has seen Ember's flower or Stoneroot's mushroom already knows
+// what a Root Cellar seed becomes before it blooms.
+export const FLORA = {
   ember: ['./assets/env/flower-a.glb', './assets/env/flower-b.glb', './assets/env/bush-large.glb'],
   stone: ['./assets/env/mushroom-group.glb', './assets/env/mushroom-tall.glb'],
   wild: ['./assets/env/flower-a.glb', './assets/env/flower-b.glb', './assets/env/bush-large.glb'],
@@ -1011,4 +1015,153 @@ export async function spawnPupPen(world, onRowFilled) {
   }
   world.grazers = herd;
   world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
+}
+
+// ---------------------------------------------------------------------------
+// THE GARDEN BED — design/WIDER-WORLD.md §3.2.
+//
+// Two planters by the Den's third tent (`js/rooms.js`, (-6.8, 4.4), gated on
+// `wardenDefeated`). Stand in the ring and Kael plants whichever seed is
+// owned; it grows over three real days, read at BUILD time exactly like
+// `growthStage` — no live clock, no timer UI, "come back tomorrow" made
+// mechanical. Full bloom turns the ring into a harvest.
+//
+// ONE BED, MULTIPLE POSSIBLE SEEDS — the ambiguity design/WIDER-WORLD.md left
+// open, resolved here (dad, 2026-09-10: "solve the garden bed issue
+// yourself. you have permission to do it autonomously"): no menu, no choice
+// for a non-reader — the bed always plants whichever seed was MOST RECENTLY
+// found (`WS.get('den','lastSeed')`), the same "the thing that just happened
+// is the thing that matters" law every other one-shot trigger in this game
+// already keeps. A child who clears two dungeons before ever standing in the
+// ring plants the second one; the first is not lost, only planted later once
+// this one is harvested.
+const GARDEN_SPOT = { x: -4.0, z: 5.6 };
+const GARDEN_MAX_STAGE = 3;
+const GARDEN_DAY_MS = 86400000;
+const GARDEN_HARVEST_SHARDS = 12; // "a pot's worth", the same cap dad's own
+                                   // economy-freeze rule holds every pot to
+const GARDEN_COUNT_FOR = [0, 1, 3, 6]; // flora instances at stage 0..3
+const GARDEN_OFFSETS = [
+  { x: 0.05, z: -0.05 }, { x: -0.35, z: 0.25 }, { x: 0.32, z: 0.28 },
+  { x: -0.15, z: -0.32 }, { x: 0.35, z: -0.15 }, { x: -0.4, z: -0.05 },
+];
+
+// Which dungeon's own WS milestone backs each seed. Grows as later dungeons
+// ship (design/WIDER-WORLD.md §2.3); a seed key with no entry here simply
+// never gets the "already cleared, backfill it" sweep below, same as an
+// unbuilt dungeon has nothing to backfill from.
+const SEED_DUNGEONS = { ember: 'ember', wild: 'wild', stone: 'vault' };
+
+function gardenDenFlags() {
+  return (state.flags.world && state.flags.world.den) || {};
+}
+
+// "Nothing missable" (design/WIDER-WORLD.md §2.2): a save that cleared a
+// dungeon before this feature existed — or simply never walked back through
+// giveLoot's own toast — still owns that region's seed. Runs once per Den
+// build; each grant is WS.complete, so it costs nothing on a save that
+// already has it.
+function syncGardenSeeds() {
+  for (const [seedKey, region] of Object.entries(SEED_DUNGEONS)) {
+    if (!WS.get(region, 'dungeon')) continue;
+    if (WS.complete('den', 'seed_' + seedKey)) WS.set('den', 'lastSeed', seedKey);
+  }
+}
+
+function gardenElapsedStage(planted) {
+  if (!planted) return 0;
+  return Math.min(GARDEN_MAX_STAGE, Math.floor((Date.now() - planted) / GARDEN_DAY_MS));
+}
+
+// Read the bed's stage the same way `growthStage` is read: derived from the
+// save, never stored as the truth itself. `gardenMaxStage` only ever holds
+// the HIGHEST stage this planting has reached, so a tablet with a wrong
+// clock can never walk the bed backwards — only forward, or not at all.
+function gardenReadStage() {
+  const d = gardenDenFlags();
+  const planted = d.gardenPlanted || null;
+  const stored = d.gardenMaxStage || 0;
+  const stage = Math.max(stored, gardenElapsedStage(planted));
+  if (planted && stage > stored) WS.set('den', 'gardenMaxStage', stage);
+  return { planted, seed: d.gardenSeed || null, stage };
+}
+
+export async function spawnGardenBed(world) {
+  if (world.roomId !== 'den') return;
+  syncGardenSeeds();
+
+  const kit = await loadVillageKit();
+  // Both planters flank the ring at a real remove — verify-den's own §garden
+  // clearance check (r 0.44, the same ruler every other Den spot is held to)
+  // caught the first pass sitting too close: trough at -0.6/-0.3 put its own
+  // 0.5-radius collider edge within 0.27u of ring centre, well inside a
+  // child's own stand-here circle. 1.0-1.2u out clears it with room spare.
+  const troughSpot = { x: GARDEN_SPOT.x - 1.0, z: GARDEN_SPOT.z - 0.5 };
+  const basinSpot = { x: GARDEN_SPOT.x + 1.05, z: GARDEN_SPOT.z + 0.55 };
+  const trough = placeOne(world, kit.trough2, 'trough2', troughSpot.x, troughSpot.z, 1.0, 0.5, 0xffffff);
+  if (trough) world.addCircle(troughSpot.x, troughSpot.z, 0.5);
+  const basin = placeOne(world, kit.basin, 'basin', basinSpot.x, basinSpot.z, 1.0, -0.7, 0xffffff);
+  if (basin) world.addCircle(basinSpot.x, basinSpot.z, 0.45);
+  world.markers.gardenSpot = { x: GARDEN_SPOT.x, z: GARDEN_SPOT.z };
+
+  let floraGroup = null;
+  const renderFlora = async (seed, stage) => {
+    if (floraGroup) { world.root.remove(floraGroup); floraGroup = null; }
+    if (!seed || stage <= 0) return;
+    const kinds = FLORA[seed];
+    if (!kinds) return;
+    const n = GARDEN_COUNT_FOR[stage];
+    const spots = GARDEN_OFFSETS.slice(0, n).map((o, i) => ({
+      x: GARDEN_SPOT.x + o.x, z: GARDEN_SPOT.z + o.z, ry: i * 1.3, k: i % kinds.length,
+    }));
+    const gltfs = await Promise.all(kinds.map((u) => loadGLB(u)));
+    const g = new THREE.Group();
+    // Bigger with every stage — and bigger than a single ambient-meadow
+    // flower (bloom()'s own ~1.1-1.5, scattered across a whole room):
+    // this is a tight six-piece cluster a child walks up to on purpose, not
+    // background texture, so full bloom has to actually read as a harvest
+    // from a normal standing distance. Caught live: the first pass reused
+    // bloom()'s own scale and the result was barely visible pink flecks.
+    const sc = 1.1 + 0.5 * stage;
+    for (let k = 0; k < kinds.length; k++) {
+      const mine = spots.filter((s) => s.k === k);
+      if (!mine.length) continue;
+      g.add(instancePlacements(gltfs[k].scene, mine.map((s) => ({
+        x: s.x, z: s.z, ry: s.ry, sx: sc, sy: sc, sz: sc,
+      })), { castShadow: false }));
+    }
+    world.add(g);
+    world.keepLoose(g); // flattenStatic would fold it into the static batch,
+                         // and the harvest burst removes this exact group
+    floraGroup = g;
+  };
+
+  const initial = gardenReadStage();
+  await renderFlora(initial.seed, initial.stage);
+
+  // Called from main.js's per-frame ring poll — the same `nearSpot` +
+  // edge-flag idiom the Den's own shop/travel spots already use. One clean
+  // action per entry, never a menu.
+  world.gardenInteract = async () => {
+    const { planted, seed, stage } = gardenReadStage();
+    if (planted && stage >= GARDEN_MAX_STAGE) {
+      WS.set('den', 'gardenPlanted', null);
+      WS.set('den', 'gardenSeed', null);
+      WS.set('den', 'gardenMaxStage', 0);
+      await renderFlora(null, 0);
+      bumpCounter('harvests');
+      return { action: 'harvest', shards: GARDEN_HARVEST_SHARDS, seed };
+    }
+    if (!planted) {
+      const d = gardenDenFlags();
+      const lastSeed = d.lastSeed;
+      if (!lastSeed || !d['seed_' + lastSeed]) return { action: 'none' };
+      WS.set('den', 'gardenSeed', lastSeed);
+      WS.set('den', 'gardenPlanted', Date.now());
+      WS.set('den', 'gardenMaxStage', 0);
+      await renderFlora(lastSeed, 0);
+      return { action: 'plant', seed: lastSeed };
+    }
+    return { action: 'none' }; // still growing — "come back tomorrow"
+  };
 }

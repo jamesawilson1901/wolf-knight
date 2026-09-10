@@ -36,13 +36,21 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
-import { bloom, healLive, moodLift, growthStage, spawnSettlers, spawnPupPen } from './restoration.js';
+import { bloom, healLive, moodLift, growthStage, spawnSettlers, spawnPupPen, spawnGardenBed, FLORA } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
 import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf', 'elemental_wolf'];
+
+// The garden bed's seed toast names (design/WIDER-WORLD.md §3.2) — every
+// dungeon gold chest that carries `L.seed` names its region this way.
+const SEED_NAMES = {
+  ember: 'an ember seed', stone: 'a stone-mushroom spore', wild: 'a wild woods seed',
+  frost: 'a frostbloom seed', storm: 'a stormreach seed', vale: 'a sunken vale seed',
+  court: 'a shadow court seed',
+};
 
 // A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
 // rebuilt levels: the marker the room drops, the map entry it earns, and the
@@ -1670,6 +1678,22 @@ function giveLoot(chest) {
         { file: td.file, tint: td.tint, size: 1.0 }, seat++);
     }
   }
+  // A SEED FOR THE GARDEN BED (design/WIDER-WORLD.md §3.2/§2.3) — one per
+  // dungeon gold chest, the region's own flora. `WS.complete` makes this
+  // idempotent like L.treasure above: a chest opened twice (or a save that
+  // cleared the dungeon before this feature shipped, backfilled by
+  // spawnGardenBed's own sync sweep) never re-announces a seed it already
+  // has. `lastSeed` always moves to the newest, even on a repeat open — the
+  // "no menu, most recent seed" rule (js/restoration.js spawnGardenBed).
+  if (L.seed) {
+    const isNew = WS.complete('den', 'seed_' + L.seed);
+    WS.set('den', 'lastSeed', L.seed);
+    if (isNew) {
+      lines.push(SEED_NAMES[L.seed] || `a ${L.seed} seed`);
+      const flora = FLORA[L.seed];
+      if (flora && flora[0]) spawnGearDrop(world, chest.x, chest.z, { file: flora[0], size: 0.8 }, seat++);
+    }
+  }
   if (L.key) {
     state.flags.keys[L.key] = true;
     lines.push(L.keyName || 'a key');
@@ -1833,6 +1857,9 @@ async function setupRoomExtras() {
   // FIRST time the child comes home with that row already complete, the
   // same "witnessed at the hearth, not out in the field" law.
   await spawnPupPen(world, (key) => narration.say(`pups_home_${key}`));
+  // THE GARDEN BED (design/WIDER-WORLD.md §3.2) — Den only, self-guarded the
+  // same way spawnPupPen is.
+  await spawnGardenBed(world);
   // GRASS AND FLOWERS COME BACK, once the region's guardian is free
   // (js/restoration.js). LAST, and that position is the whole of it: the first
   // cut ran this inside buildRoom, which is before the breakables, the chests
@@ -1847,6 +1874,7 @@ async function setupRoomExtras() {
   await spawnWayfarer(world, wayfarerPost(world.roomId));
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
+  gardenWasNear = true;
   // every so often a smashed pot hides a power-up
   const potDrops = ['fury', 'feather', 'star'];
   world.onBreakableSmashed = (x, z) => {
@@ -2261,6 +2289,8 @@ function wireHarness() {
 }
 let shopWasNear = false;
 let travelWasNear = false;
+let gardenWasNear = false;
+let gardenCooldown = 0;
 
 async function start() {
   // Assets stream in while the title screen is up.
@@ -2570,6 +2600,42 @@ async function start() {
         const near = nearSpot(world.markers.travelSpot, 1.5);
         if (near && !travelWasNear) menus.showMap();
         travelWasNear = near;
+      }
+      // THE GARDEN BED (design/WIDER-WORLD.md §3.2) — the shop/map spots'
+      // own nearSpot+edge-flag idiom, plus hysteresis (trigger inside 1.6u,
+      // only re-arm past 2.6u) AND a real cooldown. Proven live with
+      // tools/wk-drive.mjs: a harvest empties the bed while a seed is still
+      // owned, and the two planters flanking the ring leave little room to
+      // stand — real pathing right up to the ring's centre can wobble across
+      // even a wide hysteresis band, and hysteresis alone still silently
+      // re-planted the seed it had just harvested in the same visit. The
+      // cooldown is the actual fix; hysteresis just makes it rare to need.
+      if (gardenCooldown > 0) gardenCooldown -= dt;
+      if (world.markers.gardenSpot) {
+        const dx = player.root.position.x - world.markers.gardenSpot.x;
+        const dz = player.root.position.z - world.markers.gardenSpot.z;
+        const dist = Math.hypot(dx, dz);
+        const near = dist < (gardenWasNear ? 2.6 : 1.6);
+        if (near && !gardenWasNear && gardenCooldown <= 0 && world.gardenInteract) {
+          gardenCooldown = 3.0;
+          world.gardenInteract().then((r) => {
+            if (r.action === 'plant') {
+              audio.play('form-switch', { volume: 0.5, rate: 1.1 });
+              narration.say('garden_planted');
+              persist();
+            } else if (r.action === 'harvest') {
+              effects.warmFlood();
+              // a pot's worth (design/WIDER-WORLD.md §3.2), collected like
+              // any other burst of coins — never an instant grant, so the
+              // shard count in giveLoot/updateShards stays the one place
+              // shards are actually paid.
+              spawnShards(world, world.markers.gardenSpot.x, world.markers.gardenSpot.z + 0.8, r.shards);
+              narration.say('garden_harvest');
+              persist();
+            }
+          });
+        }
+        gardenWasNear = near;
       }
       if (world.boss) {
         if (!world.boss.onDefeated) {

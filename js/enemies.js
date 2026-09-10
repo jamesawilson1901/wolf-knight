@@ -3929,7 +3929,12 @@ export async function spawnEnemies(world) {
         hpSet: (n) => WS.set(region, hpKey, n),
         onDefeated: () => {
           WS.complete(region, 'mini_' + key);
-          WS.complete(region, 'dungeon');
+          // "dungeonsCleared" (js/progress.js sticker row) — the same bump
+          // every other dungeon's own completion site already makes
+          // (js/level1.js buildLv2, js/level3.js buildTf2); a MINI_ROSTER
+          // guardian's death IS this dungeon's completion, so it belongs here
+          // rather than a separate "all enemies dead" poll.
+          if (WS.complete(region, 'dungeon')) bumpCounter('dungeonsCleared');
           if (world.openOnward) world.openOnward();
         },
       });
