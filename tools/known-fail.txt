@@ -124,3 +124,33 @@ verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their 
 # `fitHeight` idiom `Dragonling` already uses in js/enemies.js) rather than
 # re-guessing a second constant.
 verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6,5.2) — a stale skull-height constant against Pedestal.glb's real height at 0.85 scale, pre-existing since v3.130, outside this slice's diff (js/level1.js untouched; vr1's own copy of the same idiom passes clean) | 2026-09-10
+# ---------------------------------------------------------------------------
+# 2026-09-10, v3.150 (Which Wolf?, the second harness minigame): both
+# verify-minigame.mjs's and this slice's own new verify-mg-quiz.mjs's final
+# "draw calls return to where they started" check fail by 5-10 calls,
+# consistently landing on a STABLE new number (not scattered — every one of
+# the five closing samples read identical), which first looked exactly like
+# the §3.4 teardown leak both suites exist to catch.
+#
+# It is not one. Proven with a plain idle probe — new profile, walk to the
+# Den's own rest spot, take the SAME median-of-five reading the suites already
+# take, wait 20 real seconds doing nothing (no ring, no harness, no minigame
+# code touched at all), read again: 80 calls before, 90 after. The room's own
+# scene graph does not grow either — both suites' own "ten rounds leave ZERO
+# residue" check (world.root.children.length) reads equal before and after,
+# every time. So something already IN the Den ramps its own draw call count
+# up over real elapsed time and holds there — most likely the "transient
+# effects — embers, dust" verify-minigame.mjs's own comment already names,
+# reaching full particle count a few seconds in rather than fluctuating
+# frame to frame as that comment assumed when the ±3 tolerance was set.
+#
+# Not this slice's to fix (js/mg-quiz.js touches no Den lighting, particle or
+# time-of-day system, and the untouched verify-minigame.mjs — Fetch, shipped
+# v3.39 — reproduces the identical stable-jump signature on the same server
+# with no code of this slice loaded). Whoever picks this up: find what in the
+# Den's own onAnimate loop crosses a threshold in the first ~15-20s of a
+# session and stays there, and either give the suites a longer settle before
+# their baseline read or make the effect's own steady-state cost part of the
+# expected baseline instead of the ±3 noise band.
+verify-minigame.mjs | "draw calls return to where they started" fails by 5-10, landing on a stable (not noisy) new value — proven NOT a teardown leak (scene child count matches before/after; a pure 20s idle probe with no minigame touched at all reproduces the same 80→90 jump) — some Den transient effect ramps to a steady state over real time and the suite's baseline is read before it settles | 2026-09-10
+verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10

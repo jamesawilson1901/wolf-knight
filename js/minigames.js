@@ -25,6 +25,7 @@ import { bumpCounter } from './progress.js';
 import { bigToast } from './menus.js';
 import { WS, unlockTier } from './worldstate.js';
 import { FETCH } from './mg-fetch.js';
+import { QUIZ } from './mg-quiz.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -555,6 +556,41 @@ function makeFetchHost(world) {
   return g;
 }
 
+// ---------------------------------------------------------------------------
+// 🧠 WHICH WOLF? — the second game on the shared harness (js/minigame.js,
+// js/mg-quiz.js). Same doorway-only host shape as Fetch above: this owns a
+// ring and nothing else.
+//
+// Spot probed clear with tools/probe-freespot.mjs WK_LATE=1 (the Den as it
+// is once everything is freed) — south of the fire, off the gate-to-fire
+// path's own 2.6u width, clear of the tents, market and spirit lights.
+function makeQuizHost(world) {
+  const ring = actRing(world, -2, -7);
+  const g = { id: 'quiz', chip: '' };
+  // see makeFetchHost's own long comment: the latch drops AT THE MOMENT OF
+  // OPENING, not during the round, because the world freeze means bookkeeping
+  // written for "during a round" never runs.
+  let armed = true;
+  g.update = (dt, t, player, busy) => {
+    const h = world.harness;
+    const on = nearRing(player, ring);
+    if (h && h.active) { g.chip = ''; return; }
+    if (!on) armed = true;
+    ring.material.opacity = armed
+      ? 0.55 + Math.sin(t * 3) * 0.2
+      : 0.16;
+    if (busy || !armed) { g.chip = ''; return; }
+    if (on) {
+      g.chip = '🧠 which wolf?';
+      if (h && h.open(QUIZ, world, player)) { armed = false; ring.material.opacity = 0.12; }
+    } else {
+      g.chip = '';
+    }
+  };
+  g.busy = () => !!(world.harness && world.harness.active);
+  return g;
+}
+
 export async function setupDenGames(world) {
   const games = [];
   if (WS.get('ember', 'restored')) games.push(makeTargetGame(world)); // Rook must be home
@@ -563,6 +599,10 @@ export async function setupDenGames(world) {
   // §4 Tier 1 opens at the first rescue. Unlocks read the COUNT, never which
   // characters were found, so no game is orphaned by a missed rescue.
   if (unlockTier(state) >= 1) games.push(makeFetchHost(world));
+  // Which Wolf? needs at least two forms to tell apart — true from the very
+  // start of a save (state.formsUnlocked defaults to knight + dark_wolf), so
+  // this is really an always-on guard, not a gate a child waits behind.
+  if (state.formsUnlocked.length >= 2) games.push(makeQuizHost(world));
   world.denGames = games;
   const chipEl = document.getElementById('mg-chip');
   world.updateMinigames = (dt, t, player) => {

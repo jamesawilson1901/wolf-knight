@@ -106,6 +106,7 @@ export const STICKERS = [
   { id: 'game_rook', icon: '🎯', name: 'Sharp Eye', counter: 'gameRook', at: 1 },
   { id: 'game_wren', icon: '📦', name: 'Never Fooled', counter: 'gameWren', at: 1 },
   { id: 'game_pip', icon: '🐾', name: 'Paw Path Pro', counter: 'gamePip', at: 1 },
+  { id: 'game_quiz', icon: '🧠', name: 'Which Wolf?', counter: 'gameQuiz', at: 1 },
   { id: 'level5', icon: '⭐', name: 'Level 5!', counter: 'level', at: 5 },
   { id: 'level10', icon: '🌟', name: 'Level 10!', counter: 'level', at: 10 },
 

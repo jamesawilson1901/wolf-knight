@@ -5,7 +5,7 @@
 import { state, formsAvailable } from './state.js';
 import { PORTRAITS } from './titlescene.js';
 
-const FORM_META = {
+export const FORM_META = {
   knight: { icon: '⚔️', label: 'Knight', color: '#8f9bb0' },
   dark_wolf: { icon: '🌙', label: 'Dark Wolf', color: '#6b56a8' },
   fire_wolf: { icon: '🔥', label: 'Fire Wolf', color: '#ff5a2b' },
