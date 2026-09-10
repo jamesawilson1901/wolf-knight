@@ -45,6 +45,9 @@ const ONWARD = {
   // --- Frostpeak: still the old build, and still played --------------------
   f1: 'f2', f2: 'f3', f3: 'f4', f4: 'f5',
   f1b: 'f1', f2b: 'f2',
+  // The Sunken Hearth (v3.148, §2.3): Frostpeak's own dungeon, off f1b's
+  // melt gate.
+  f1c: 'f1b', f1d: 'f1e', f1e: 'f1d',
   // --- The roads between regions (levelNight, levelGreen, levelMarket): two
   // rooms each, one way on.
   n1: 'n2', n2: 'vh',

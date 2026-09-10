@@ -84,10 +84,13 @@ const SECTIONS = [
   // rot every room list in tools/ carried (2026-08-30). A review page that
   // shows regions 1-3 of a nine-region game reviews a third of the game.
   ['Frostpeak — the cold, high hush', 'Level 4 · the old build, still played: braziers, the frozen lake, Boreal.', [
-    ['f1', 'THE RIME GATE — arrival'], ['f1b', 'the ice pocket — Rime Plate chest'],
+    ['f1', 'THE RIME GATE — arrival'], ['f1b', 'the ice pocket — Rime Plate chest; once melted, a door east'],
     ['f2', 'THE ICEBOUND HALL — braziers melt the way'], ['f2b', 'the Glacier Nook'],
     ['f3', 'THE FROZEN LAKE — skidding boulders, two plates'],
     ['f4', 'THE WINDSCOUR'], ['f5', 'BOREAL'],
+    ['f1c', "THE HEARTH'S MOUTH — the Sunken Hearth, room 1: no fight, a lost wolf"],
+    ['f1d', 'THE COLD HEARTH — the fight: rime-minion x2 + glacier-warden, and the Rime Warden'],
+    ['f1e', 'THE WARM POOL — gold: heart piece + shards + Frost Axe'],
   ], 'frost'],
   ['Stormreach Cliffs — a climb into weather', 'Level 5 · a switchback up the sea-cliffs; the wind is the wall.', [
     ['s1a', 'THE LANDING'], ['s1b', 'up from the shore'], ['s1p', 'optional'],

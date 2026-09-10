@@ -88,6 +88,12 @@ const PROMISES = [
   { marker: 'icePromise', id: 'l3_spring', icon: '❄️', r: 4,
     label: 'A spring sealed in ice — Thornedge',
     done: () => WS.get('wild', 'dungeon') },
+  // v3.148: the Sunken Hearth (§2.3/§2.6) — this one is melted, not shattered
+  // (the Fire Wolf's own verb), and the ??? card resolves on the dungeon
+  // behind it same as every other dungeon door, not on the melt alone.
+  { marker: 'meltPromise', id: 'f1c_hearth', icon: '🔥', r: 4,
+    label: 'An old arch, sealed in ice — the Sunken Hearth',
+    done: () => WS.get('frost', 'dungeon') },
   { marker: 'rootWallPromise', id: 'l3_rootwall', icon: '🌿', r: 4,
     label: 'A wall of roots — the Rootbound Deep', say: 'rootwall_hint',
     done: () => WS.get('wild3', 'rootCut') },
@@ -2079,7 +2085,17 @@ function initDevHarness() {
         open: !d.when || !!d.when() }));
     },
     get boss() {
-      const b = world.boss || world.warden || world.miniBoss;
+      // v3.149 fix: `world.warden`/`world.miniBoss` are never nulled on
+      // death (die() only sets `.dead`), so this getter kept reporting a
+      // defeated guardian as alive forever — a dev-harness bot polling
+      // window.__wk.boss to decide when a fight ends would loop on a ghost
+      // that had already stopped updating (js/enemies.js's own per-frame
+      // loop skips `.dead` enemies), state and hp frozen at the instant of
+      // death. Caught live: tools/fight-mini.mjs hung indefinitely against
+      // the Rime Warden once it died, chasing a "boss" that could never
+      // die again. `world.boss` (the SKINS-family bosses) already manages
+      // its own lifecycle separately and is unaffected.
+      const b = world.boss || [world.warden, world.miniBoss].find((c) => c && !c.dead);
       if (!b) return null;
       return { name: b.name || b.skin || 'boss',
         hp: b.hp !== undefined ? b.hp : (b.coreHp !== undefined ? b.coreHp : null),

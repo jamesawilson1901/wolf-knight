@@ -142,6 +142,8 @@ const ROOMS = [
   { id: 'f2',  kind: 'island' }, { id: 'f2b', kind: 'pocket' },
   { id: 'f3',  kind: 'island' }, { id: 'f4',  kind: 'island' },
   { id: 'f5',  kind: 'arena' },
+  // The Sunken Hearth (v3.148) — Frostpeak's own pocket dungeon, off f1b.
+  { id: 'f1c', kind: 'pocket' }, { id: 'f1d', kind: 'island' }, { id: 'f1e', kind: 'pocket' },
   // Stoneroot Caverns
   { id: 'vh',  kind: 'island' }, { id: 'vga', kind: 'choke' },  { id: 'va1', kind: 'island' },
   { id: 'va2', kind: 'island' }, { id: 'vap', kind: 'pocket' }, { id: 'va3', kind: 'puzzle' },

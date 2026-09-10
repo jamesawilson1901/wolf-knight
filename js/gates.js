@@ -96,6 +96,9 @@ export function registerCuttable(world, { id, x, z, region, group, collider, onC
 // Has this bramble already been cut, for good, in a previous visit?
 export function alreadyCut(region, id) { return WS.get(region, 'cut_' + id); }
 
+// Has this melt gate already been melted, for good, in a previous visit?
+export function alreadyMelted(region, id) { return WS.get(region, 'melt_' + id); }
+
 // Ice block — a pale crystal mound the Frost Wolf's breath SHATTERS (v3.21).
 // Until that form is earned it is a promise: a cold glow guarding a reward.
 // `region` scopes the cleared flag so each region remembers its own ice.
@@ -142,6 +145,51 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
   return { id, collider };   // world.shatterAt is a World method (js/world.js)
 }
 
+// Ice block — a pale crystal mound the Fire Wolf's slam/breath MELTS,
+// PERMANENTLY (v3.148, design/WIDER-WORLD.md §2.3 Frostpeak dungeon). The
+// sibling to iceGate above: same shape, same look, but broken by the OTHER
+// wolf, and unlike freezeBrazier's puzzle shell this never re-forms once
+// melted — a dungeon door, not a repeatable puzzle step. Colour grammar
+// keeps them tellable apart (design/GAME-CONTRACT.md "must not dress like
+// the promise ice" already governs frostGate/promiseIce for this reason):
+// a warmer, ember-tinted glow instead of iceGate's cold blue-white.
+export function meltGate(world, x, z, id = 'f_melt', region = 'frost') {
+  if (WS.get(region, 'melt_' + id)) return null;
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xdfe8f2, emissive: 0xff9c5a, emissiveIntensity: 0.3,
+    transparent: true, opacity: 0.85, roughness: 0.3,
+  });
+  const ice = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), mat);
+  ice.position.set(x, 0.5, z);
+  ice.scale.y = 0.75;
+  group.add(ice);
+  const shard = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 5), mat);
+  shard.position.set(x - 0.5, 0.4, z + 0.4);
+  shard.rotation.z = 0.4;
+  group.add(shard);
+  world.add(group);
+  world.onAnimate((t) => {
+    mat.emissiveIntensity = 0.2 + 0.15 * Math.sin(t * 1.4 + x);
+  });
+  const collider = { x, z, r: 1.0 };
+  world.circleColliders.push(collider);
+  world.markers.meltSpot = { x, z, id };
+
+  world.meltables.push({
+    id, x, z, melted: false, group,
+    clear: () => {
+      world.root.remove(group);
+      const i = world.circleColliders.indexOf(collider);
+      if (i >= 0) world.circleColliders.splice(i, 1);
+      WS.set(region, 'melt_' + id);
+      audio.play('burn', { volume: 0.7, rate: 1.1 });
+      audio.play('puff', { volume: 0.8, rate: 1.2 });
+    },
+  });
+  return { id, collider };   // world.meltAt is a World method (js/world.js)
+}
+
 // FROZEN BRAZIER (v3.21, Frostpeak's puzzle verb): a brazier sealed under a
 // shell of ice. The Fire Wolf's slam MELTS the shell, and only then can the
 // brazier be lit — two learned verbs chained. The cold re-forms the shell on
@@ -179,10 +227,15 @@ export function freezeBrazier(world, br, refreeze = 22) {
       br._thawT = 0;
     }
   });
-  // melting rides the existing burn system (Fire Wolf slam → world.burnAt)
-  if (!world.meltAt) {
+  // world.meltAt is now a real World method (js/world.js), fixed rather than
+  // lazy — see world.meltables' own comment. Chained here ONCE per room
+  // (never re-wrapped per brazier) so a puzzle brazier's re-freezing melt
+  // keeps working alongside a permanent meltGate() in the same room.
+  if (!world._meltChained) {
+    world._meltChained = true;
+    const baseMelt = world.meltAt.bind(world);
     world.meltAt = (mx, mz, r) => {
-      let n = 0;
+      let n = baseMelt(mx, mz, r);
       for (const b of (world.braziers || [])) {
         if (!b.iced) continue;
         const dx = b.x - mx, dz = b.z - mz;

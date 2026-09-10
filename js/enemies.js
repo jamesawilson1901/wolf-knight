@@ -3735,6 +3735,15 @@ const MINI_ROSTER = {
     mounts: { r: 'axe', l: 'shield' }, weakness: 'verdant', region: 'vault', key: 'rootbound_wight',
     tint: (m) => { if (m.color) m.color.setHex(0x5a6b3f); }, // moss over old bone
   },
+  // v3.148, design/WIDER-WORLD.md §2.3: Frostpeak's own guardian, holding the
+  // Sunken Hearth's last fight room. `glacier-warden.glb` already lives in
+  // this region as a regular mook (js/level4.js buildF3), so the body/rig
+  // pairing is proven in the exact region it now also carries a boss in.
+  rime_warden: {
+    cls: BoneWarden, body: 'glacier-warden.glb', scale: 1.3, hp: 14,
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'fire', region: 'frost', key: 'rime_warden',
+    tint: (m) => { if (m.color) m.color.setHex(0xbcd8ea); }, // rime over old bone
+  },
 };
 
 const MONSTER_ROSTER = {
