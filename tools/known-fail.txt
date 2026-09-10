@@ -109,3 +109,18 @@ verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz
 # Neither is this slice's to fix; both get their own board item.
 verify-promises.mjs | "l1_crack resolves on the dungeon, not the gate" (v3.130 Ash Vault check) fails on the clean v3.133 commit with no v3.136 changes applied — a pre-existing narrationTriggers() timing flake, not a regression | 2026-09-10
 verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their arrival-frame item-count floor — zero overlap with any file v3.136 touches (js/level3.js, the Spring's only builder, is untouched) | 2026-09-10
+# ---------------------------------------------------------------------------
+# 2026-09-10, also found while verifying v3.147/v3.136: verify-grounded's
+# `lv1` floats a prop — `Skull_Cylinder000` at (6, 5.2), gap 1.82u above the
+# floor. `js/level1.js` (lv1's only builder, shipped v3.130) is untouched by
+# this slice, and vr1's own copy of the exact same pedestal+skull idiom
+# (js/level2.js, this slice's own new code) passes verify-grounded clean —
+# so the bug is specific to lv1's own numbers, not the pattern itself.
+# Likely cause, for whoever picks this up: `buildLv1` sets
+# `ped.scale.setScalar(0.85)` then stacks the skull at a fixed
+# `skull.position.set(6, 1.86, 5.2)` — 1.86 was sized for SOME pedestal
+# height and no longer matches Quaternius's `Pedestal.glb` at 0.85 scale.
+# Measure the pedestal's real top (a `Box3` from its geometry, the
+# `fitHeight` idiom `Dragonling` already uses in js/enemies.js) rather than
+# re-guessing a second constant.
+verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6,5.2) — a stale skull-height constant against Pedestal.glb's real height at 0.85 scale, pre-existing since v3.130, outside this slice's diff (js/level1.js untouched; vr1's own copy of the same idiom passes clean) | 2026-09-10
