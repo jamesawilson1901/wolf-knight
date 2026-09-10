@@ -359,7 +359,13 @@ export async function buildG2(scene) {
   wallRun(world, 10.5, -12.5, 10.5, -7.0, D);
   wallRun(world, 10.5, -7.0, 12.2, -7.0, D);
   wallRun(world, 14.6, -7.0, 16, -7.0, D);
-  crackedPile(world, 'g2_crack', 13.4, -7.0);
+  // BIG, not the default: the wall gap it seals is 2.4u across (12.2 to 14.6)
+  // and the small pile's own r=0.8 collider (diameter 1.6) left 0.4u clear on
+  // each side — walkable at Kael's own 0.32u body radius, so the chest was
+  // reachable without ever cracking it (dev-export #33: "no asset is actually
+  // blocking the chest"). `big` scales the collider to r=1.2 (diameter 2.4),
+  // which spans the gap it was built to seal.
+  crackedPile(world, 'g2_crack', 13.4, -7.0, true);
   visibleReward(world, 13.5, -10.0, 'g2_crack_prize', { shards: 20, heartPiece: 1 }, 'silver');
 
   // THE VINE climbs the last of the stone and goes into the trees
