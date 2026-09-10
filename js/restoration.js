@@ -50,7 +50,6 @@ import { PUP_HOME } from './pip.js';
 import { ownsTreasure } from './treasures.js';
 import { loadVillageKit, placeOne } from './levelVillage.js';
 import { characterNpc, SETTLER_POSTS } from './npcs.js';
-import { juice } from './juice.js';
 import { audio } from './audio.js';
 import { flattenStatic } from './batch.js';
 import { bumpCounter } from './progress.js';
@@ -791,24 +790,6 @@ function placeStageClutter(world, kit, key, x, z, s, ry, tint) {
   return g;
 }
 
-// THE SETTLER ARRIVES A BEAT AFTER THE FURNITURE, the same shape
-// `summonWayfarer` (js/main.js) uses for Tam: a short delay so a doorway, a
-// shard shower and a person do not all land in the same frame, then a burst
-// in their own tint and the moonstone's chime.
-function summonSettler(world, post) {
-  let comeIn = 2.6;
-  world.onAnimate((tNow, dt) => {
-    if (comeIn <= 0) return;
-    comeIn -= dt || 0.016;
-    if (comeIn > 0) return;
-    for (let i = 0; i < 8; i++) {
-      juice.burst(post.x + (Math.random() * 2 - 1) * 0.6, 0.3 + Math.random() * 1.2,
-        post.z + (Math.random() * 2 - 1) * 0.6, post.tint, 6);
-    }
-    audio.play('form-switch', { volume: 0.55, rate: 1.05 });
-  });
-}
-
 // Called from `setupRoomExtras` (js/main.js) BEFORE `bloom()`, so a bloom
 // picking spots for itself sees the hearth's collider and never lands one in
 // the fire. Growth is read at build: every fact that raises a stage is set
@@ -908,74 +889,49 @@ export async function spawnSettlers(world, onGrowIn) {
     world.markers.homeOrbSpot = { x: hx, z: hz };
   }
 
+  // v3.146 (dad, 2026-09-10, §8 Q9): "find it already done" — no grow-in
+  // ceremony (the delayed sparkle burst + chime this used to fire once per
+  // stage, `summonSettler`, removed). The settler and its furniture are
+  // simply there, pure Terranigma; Pip's own `${key}_grow_${stage}` line
+  // (js/main.js) still fires once per stage, the same "witnessed at the
+  // hearth" beat every SPIRIT_HOMES arrival already uses with no animation
+  // of its own either.
   if (!WS.get(post.key, 'seen_' + stage)) {
     WS.set(post.key, 'seen_' + stage, true);
-    summonSettler(world, post);
     if (onGrowIn) onGrowIn(post.key, stage);
   }
 }
 
 // ---------------------------------------------------------------------------
-// THE PUP PEN — design/WIDER-WORLD.md §3.1, slice v3.128.
-// ---------------------------------------------------------------------------
-// REPLACES js/rooms.js's old "every rescued pup orbits a fixed grid" loop.
-// Measured, the old loop had two faults, not one: a save with 24 pups cost
-// ~120 extra draw calls in a room whose ceiling is 135 (each pup its own
-// unbatched skinned mesh plus its own shadow), and its own orbit centres
-// (`cz = 3.0 + floor(i/3)*2.2`) put pup 24 at z=18.4 — nine and a half units
-// past the north wall at halfD=9, standing in the void. Nobody saw either
-// fault because no playtest has had more than a handful of pups home at
-// once.
+// THE DEN'S PUPS — design/WIDER-WORLD.md §3.1, slice v3.128; the fence, beds
+// and trough removed 2026-09-10 on dad's word ("remove it completely...
+// have a few pups turn up in the den"). What is left is the part that
+// actually mattered: up to six rescued pups, loose and happy near the fire,
+// no cage and no furniture keeping score.
 //
-// The pen nets the Den down before anything else is added there: AT MOST
+// REPLACES js/rooms.js's old "every rescued pup orbits a fixed grid" loop,
+// which cost ~2 draw calls per rescued pup with nothing merging them (a
+// 24-pup save would have added ~120 to this room's own ceiling) and put
+// pups past #8 outside the room entirely (its own orbit centres reached
+// z=18.4, nine and a half units past the north wall at halfD=9). AT MOST
 // SIX pups are ever a live skinned body, reusing the exact wander/graze
-// state machine the healed regions' herds already use (`updateHerd` above,
-// extended with two more states rather than forked). Every OTHER rescued
-// pup is a difference in which BED PROPS exist — an instanced, unbatched
-// static mesh, no mixer, no extra draw call once merged — which is also how
-// a non-reader reads the count: an empty spot in a row says a pup is still
-// lost there, with no number anywhere. "The field is the counter."
+// state machine the healed regions' herds already use (`updateHerd` above).
 const PEN_KEYS = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court', 'village'];
 // COAT (above) has no 'village' entry — the Village is not a healKeyOf
 // region and grows no grazing herd of its own — so the pen adds the one
 // tint it is missing, in the same warm-neutral family as the rest.
 const PEN_COAT = { ...COAT, village: 0xc9a06a };
 
-// Two columns of four rows, each row three bed slots — 24 in total, one per
-// PUP_HOME id. Kept well clear of PEN_FENCE (below) on every side: the
-// closest slot (x ±2.5) is 1.7u inside the nearest fence line (x ±4.2).
-const PEN_ROW_POS = {
-  ember: { x: -3.2, z: 2.4 }, stone: { x: -3.2, z: 3.5 },
-  wild: { x: -3.2, z: 4.6 }, frost: { x: -3.2, z: 5.6 },
-  storm: { x: 3.2, z: 2.4 }, vale: { x: 3.2, z: 3.5 },
-  court: { x: 3.2, z: 4.6 }, village: { x: 3.2, z: 5.6 },
-};
-
-// The six wander/graze spots and the trough, in the open lane between the
-// two bed columns — clear of both (|x| < 1.5) and of the fence.
-// Kept clear of js/minigames.js's own fetch-quest ring at (1.6, 4.6) — "the
-// ring goes by the meadow where the pups actually play" (its own comment),
-// which was true of the old orbit loop's zone and is now true of this one; a
-// first pass put two spots and the trough itself close enough to visibly
-// overlap it in a contact sheet.
+// The six wander/graze spots, in the open meadow the ground painter's own
+// "fire to the meadow" path already leads to (js/rooms.js buildDen,
+// `[[0,-1],[1,3],[1,6]]`). Kept clear of js/minigames.js's own fetch-quest
+// ring at (1.6, 4.6) — "the ring goes by the meadow where the pups actually
+// play" (its own comment) — and of the room's own ariaHome (-2.6, 1.0) and
+// borealHome (3.0, 0.6) spirit-lights.
 const PEN_SPOTS = [
   { x: -1.2, z: 2.6 }, { x: 1.0, z: 2.4 }, { x: -1.0, z: 3.8 },
   { x: 1.3, z: 3.2 }, { x: -0.8, z: 5.0 }, { x: 0.6, z: 5.4 },
 ];
-const TROUGH = { x: 0, z: 3.0 };
-
-// The fenced rectangle itself (js/npcs.js's DOG_STOPS was moved clear of
-// this, 2026-09-09). A gate gap on the south edge, facing the spawn point
-// (0, 7.4) so a child walks straight up to it on arrival — matching the
-// ground painter's own "fire to the meadow" path (js/rooms.js buildDen,
-// `[[0,-1],[1,3],[1,6]]`), which already ends one unit short of here.
-//
-// minZ moved from 1.2 to 2.0 (2026-09-09): the room's own ariaHome (-2.6,
-// 1.0) and borealHome (3.0, 0.6) spirit-lights sit right where the fence's
-// first draft put its north wall — verify-den's "none of them is standing
-// in the scenery" check caught both. Those two lights are load-bearing
-// content from an earlier slice; the pen moved, not them.
-export const PEN_FENCE = { minX: -4.4, maxX: 4.4, minZ: 2.0, maxZ: 6.4, gateMinX: 0.1, gateMaxX: 1.9 };
 
 // Which up to six rescued ids are the live, wandering ones THIS visit —
 // "chosen by rotating ids per entry so every pup takes turns" (§3.1).
@@ -988,128 +944,27 @@ function penTurn(ids) {
   return ids.slice(start).concat(ids.slice(0, start)).slice(0, 6);
 }
 
-// Growth tiers, additive: at 3/6/12/24 pups home the pen itself grows a
-// little more furniture, on top of the beds the pups' own presence already
-// places. `Banner_wall` (used elsewhere for dungeon flags) hangs from a
-// mount point at its TOP with the cloth extending 2.84u below it — exactly
-// what turned it into "a pale slab on the ground" the one other place this
-// codebase tried it flat (js/rooms.js's own comment, the Den's main gate).
-// A cartwheel trellis reads the same "someone tends this place" note
-// without that risk: it is a real prop, grounded, no hanging orientation to
-// get wrong.
-async function penGrowth(world, kit, n) {
-  if (n >= 3) {
-    placeOne(world, kit.sack, 'sack', 0.4, 5.9, 0.85, 1.0, 0xffffff);
-  }
-  if (n >= 6) {
-    placeOne(world, kit.laundry, 'laundry', -2.1, 5.9, 0.95, -0.6, 0xffffff);
-  }
-  if (n >= 12) {
-    placeOne(world, kit.cartwheel, 'cartwheel', -3.6, 6.1, 0.7, 0.3, 0xffffff);
-    placeOne(world, kit.cartwheel, 'cartwheel', 3.6, 6.1, 0.7, -0.3, 0xffffff);
-  }
-  if (n >= 24) {
-    const torchGltf = await loadGLB('./assets/env/dungeon/Torch.glb');
-    world.add(instancePlacements(torchGltf.scene, [
-      { x: PEN_FENCE.gateMinX - 0.3, z: PEN_FENCE.maxZ - 0.1, ry: 0.4 },
-      { x: PEN_FENCE.gateMaxX + 0.3, z: PEN_FENCE.maxZ - 0.1, ry: -0.4 },
-    ], { castShadow: false }));
-  }
-}
-
-// Called from `setupRoomExtras` (js/main.js) in place of the old orbit loop,
-// Den only. `onRowFilled(key)` mirrors `spawnSettlers`'s `onGrowIn` — the
-// narration singleton lives in js/main.js, not here.
+// Called from `setupRoomExtras` (js/main.js), Den only. `onRowFilled(key)`
+// mirrors `spawnSettlers`'s `onGrowIn` — the narration singleton lives in
+// js/main.js, not here. "A whole region's pups are home" is a plain fact
+// now, not a completed row of beds, but it is still witnessed only once.
 export async function spawnPupPen(world, onRowFilled) {
   if (world.roomId !== 'den') return;
   // truthy filter, not a bare `Object.keys`: a harness (or a future reset)
   // that ever writes `state.flags.pups[id] = false` must not be counted as
   // rescued — the old orbit loop's `Object.keys` alone would have been.
   const rescued = Object.keys(state.flags.pups).filter((id) => state.flags.pups[id]);
-  const n = rescued.length;
   const awake = penTurn(rescued);
 
-  // --- THE FENCE: people blocked, pups not (pups carry no collider at all,
-  // the same rule Biscuit and every grazing herd already follow) ----------
-  const F = PEN_FENCE;
-  world.addBox(F.minX - 0.3, F.minX, F.minZ, F.maxZ);
-  world.addBox(F.maxX, F.maxX + 0.3, F.minZ, F.maxZ);
-  world.addBox(F.minX, F.maxX, F.minZ - 0.3, F.minZ);
-  world.addBox(F.minX, F.gateMinX, F.maxZ, F.maxZ + 0.3);
-  world.addBox(F.gateMaxX, F.maxX, F.maxZ, F.maxZ + 0.3);
-
-  // stump.glb measures 0.357 x 0.266 x 0.371 at scale 1 (probed 2026-09-09,
-  // same probe-modelsize.mjs check that caught v3.127's oversized hut, this
-  // time the opposite mistake) — the campfire seats elsewhere in this room
-  // use it near that native size because a seat is SUPPOSED to be small.
-  // A fence marker needs to actually be seen: 2.2x brings a post to roughly
-  // 0.6-0.8u, a small round waymarker rather than a picket, which is what
-  // the collider boxes below are for anyway — these only have to be visible
-  // enough that a child reads "something marks this edge."
-  const stumpGltf = await loadGLB('./assets/env/stump.glb');
-  const posts = [];
-  for (let x = F.minX + 0.2; x <= F.maxX - 0.2; x += 1.6) posts.push([x, F.minZ + 0.15]);
-  for (let x = F.minX + 0.2; x <= F.maxX - 0.2; x += 1.6) {
-    if (x > F.gateMinX - 0.5 && x < F.gateMaxX + 0.5) continue;
-    posts.push([x, F.maxZ - 0.15]);
-  }
-  for (let z = F.minZ + 1.0; z < F.maxZ - 0.3; z += 1.3) {
-    posts.push([F.minX + 0.15, z]); posts.push([F.maxX - 0.15, z]);
-  }
-  world.add(instancePlacements(stumpGltf.scene, posts.map(([x, z]) => ({
-    x, z, ry: (x + z) * 0.6, sx: 1.8, sy: 2.2, sz: 1.8,
-  })), { castShadow: false, materialTints: {
-    grass: 0x7a5c3a, dirt: 0x7a5c3a, colormap: 0x7a5c3a,
-    // stump.glb's own name for its trunk material (js/rooms.js's tree tint
-    // uses the same key) — missing here left the posts' main surface
-    // un-tinted and hard to pick out from the grass in a contact sheet.
-    woodBark: 0x6a4c30,
-  } }));
-
-  const kit = await loadVillageKit();
-
-  // --- THE TROUGH, and the group "come eat" call --------------------------
-  // Trough_1_A measures 3.25u long at scale 1 (tools/probe-modelsize.mjs-style
-  // check, 2026-09-09) — sized for the Village's 20+u-wide districts, not an
-  // 8.8-wide pen. 0.5 brings it to 1.6u, rotated across the lane rather than
-  // along its depth.
-  placeOne(world, kit.trough, 'trough', TROUGH.x, TROUGH.z, 0.5, Math.PI / 2, 0xffffff);
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.7, 0.92, 28),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.55,
-      side: THREE.DoubleSide, depthWrite: false }));
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(TROUGH.x, 0.05, TROUGH.z);
-  world.add(ring);
-  world.markers.troughRing = { x: TROUGH.x, z: TROUGH.z, r: 0.85 };
-
-  // --- THE BEDS: one only for a pup that is actually home. An empty gap in
-  // the row is the whole indicator (§3.1's "the field is the counter"),
-  // never a number. ---------------------------------------------------
   for (const key of PEN_KEYS) {
-    const anchor = PEN_ROW_POS[key];
     const ids = Object.keys(PUP_HOME).filter((id) => PUP_HOME[id] === key);
-    const home = ids.every((id) => state.flags.pups[id]);
-    ids.forEach((id, i) => {
-      if (!state.flags.pups[id]) return;
-      placeOne(world, kit.sack, 'sack', anchor.x + (i - 1) * 0.8, anchor.z, 0.6, i * 0.9,
-        PEN_COAT[key]);
-    });
-    if (home && ids.length && !WS.get('pen', 'row_' + key)) {
+    const home = ids.length > 0 && ids.every((id) => state.flags.pups[id]);
+    if (home && !WS.get('pen', 'row_' + key)) {
       WS.set('pen', 'row_' + key, true);
       if (onRowFilled) onRowFilled(key);
     }
   }
 
-  await penGrowth(world, kit, n);
-
-  // Beds and posts land after the room's own build-time `flattenStatic()`
-  // pass (js/restoration.js's own settler furniture hit this first, v3.127)
-  // — a second call merges same-tint beds and the whole post ring into a
-  // handful of draws instead of one each.
-  flattenStatic(world);
-
-  // --- THE SIX AWAKE PUPS ---------------------------------------------
   if (!awake.length) return;
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
   const herd = [];
@@ -1129,12 +984,10 @@ export async function spawnPupPen(world, onRowFilled) {
       // wolf.gltf is FOUR skinned parts (Main, Main_Light, Nose, Eyes_Black)
       // and skinned meshes never merge (js/batch.js) — six of them at full
       // detail measured 10 draw calls over the Den's own ceiling with every
-      // spirit-light and villager also present, the true worst case
-      // verify-den's own scan had never actually exercised before this
-      // slice (nothing ever set a pup count there). Hiding all three
-      // detail parts and keeping only Main brings a pup to its cheapest
-      // possible cost, one draw — a handful of polygons at 0.16 scale from
-      // the game's fixed camera is not where this room's budget belongs.
+      // spirit-light and villager also present. Hiding all three detail
+      // parts and keeping only Main brings a pup to its cheapest possible
+      // cost, one draw — a handful of polygons at 0.16 scale from the
+      // game's fixed camera is not where this room's budget belongs.
       // Hidden HERE ONLY: the field's own uncaught pups and a healed
       // region's herd (never more than four, `herdMaxFor`) render at full
       // detail, where the cost was already priced in.
@@ -1157,22 +1010,5 @@ export async function spawnPupPen(world, onRowFilled) {
     });
   }
   world.grazers = herd;
-  world.updateGrazers = (dt, t, player) => {
-    if (world.markers.troughRing) {
-      const ringM = world.markers.troughRing;
-      const inRing = (player.root.position.x - ringM.x) ** 2
-        + (player.root.position.z - ringM.z) ** 2 < ringM.r * ringM.r;
-      if (inRing && !world._penFedNow) {
-        world._penFedNow = true;
-        audio.play('pup-chime', { volume: 0.6, rate: 0.9 });
-        world.grazers.forEach((a, i) => {
-          if (a.state === 'pet') return;
-          a.state = 'eat'; a.eatT = 2.4;
-          const ang = (i / world.grazers.length) * Math.PI * 2;
-          a.eatSpot = { x: TROUGH.x + Math.cos(ang) * 0.5, z: TROUGH.z + Math.sin(ang) * 0.5 };
-        });
-      } else if (!inRing) world._penFedNow = false;
-    }
-    updateHerd(world, dt, player);
-  };
+  world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
 }

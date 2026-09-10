@@ -187,13 +187,14 @@ check('...none of them is standing in the scenery', spirits.bad.length === 0, sp
 check('...and none of them shares a spot with another', spirits.tooClose === 0, spirits);
 
 // ---------------------------------------------------------------------------
-// THE PUP PEN (design/WIDER-WORLD.md §3.1, v3.128) — replaces the old orbit
-// loop, which cost ~2 draw calls per rescued pup with nothing merging them
-// (a 24-pup save would have added ~120 to this room's own ceiling) and
-// put pups past #8 outside the room entirely. At most six pups are ever a
-// live body; every other rescued pup is only a difference in which bed
-// props exist.
-console.log('\n── the pup pen (0/3/12/24 pups) ──────────────────────');
+// THE DEN'S PUPS (design/WIDER-WORLD.md §3.1, v3.128; fence/beds/trough
+// removed 2026-09-10, dad's word — "remove it completely... have a few pups
+// turn up in the den") — replaces the old orbit loop, which cost ~2 draw
+// calls per rescued pup with nothing merging them (a 24-pup save would have
+// added ~120 to this room's own ceiling) and put pups past #8 outside the
+// room entirely. At most six pups are ever a live body, loose in the
+// meadow, no cage and no per-pup furniture.
+console.log('\n── the Den’s pups (0/3/12/24 rescued) ──────────────');
 
 for (const n of [0, 3, 12, 24]) {
   await setPups(n === 24 ? 21 : n);  // 21 non-village ids exist (§1.9 completeness)
@@ -201,15 +202,12 @@ for (const n of [0, 3, 12, 24]) {
   await page.waitForTimeout(600);
   const snap = await page.evaluate(() => {
     const w = window.__game.world;
-    const F = { minX: -4.4, maxX: 4.4, minZ: 1.2, maxZ: 6.4 };
     const grazers = (w.grazers || []).map((a) => ({
       x: a.model.position.x, z: a.model.position.z,
     }));
-    const inFence = grazers.filter((p) => p.x > F.minX && p.x < F.maxX && p.z > F.minZ && p.z < F.maxZ);
     return {
       calls: window.__game.renderer.info.render.calls,
       grazerCount: grazers.length,
-      insideFence: inFence.length,   // wandering INSIDE is fine; the fence is for people
       grazers,
     };
   });
@@ -251,37 +249,21 @@ for (const n of [0, 3, 12, 24]) {
   }
 }
 
-// bed count == pups found, and tints match PEN_COAT — checked once, at full
-// (24 non-village) since that is the only count that exercises every row.
+// "a whole region's pups are home" (onRowFilled → pups_home_<key>) is a
+// plain state fact now, not a completed row of beds — checked once, at
+// full (21 non-village pups) since that is the only count that completes
+// every region.
 await setPups(21);
 if (await go('den')) {
   await page.waitForTimeout(600);
-  const beds = await page.evaluate(async () => {
-    const w = window.__game.world;
-    const { COAT } = await import('/js/restoration.js');
-    // `flattenStatic`'s merged mesh bakes every source vertex into WORLD
-    // space (js/batch.js `bakeGeometry`) and leaves the wrapping Mesh
-    // object at an identity transform — so a merged bucket's OWN position
-    // (matrixWorld) is always (0,0,0), regardless of where its geometry
-    // actually sits. Position cannot tell one bucket from another; colour
-    // is the only thing that legitimately distinguishes them, which is
-    // exactly what is under test here.
-    const found = new Set();
-    w.root.traverse((o) => {
-      if (!o.isMesh || o.name !== 'batched') return;
-      found.add(o.material.color.getHex());
-    });
-    // every non-village region's own tint has to appear as SOME merged
-    // bucket's colour (0xffffff, the growth-tier furniture's untinted
-    // colour, is expected to be one of the OTHER buckets and is not itself
-    // checked here)
-    const missing = Object.entries(COAT).filter(([, hex]) => !found.has(hex)).map(([k]) => k);
-    return { missing, foundCount: found.size };
+  const rows = await page.evaluate(() => {
+    const g = window.__game;
+    const KEYS = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court'];
+    const missing = KEYS.filter((k) => !g.WS.get('pen', 'row_' + k));
+    return { missing };
   });
-  // 24 non-village pups (0..20 of the 21 ids) means every one of the 7
-  // regions' 3 ids is home — 21 beds, each row's tint its own merged bucket.
-  check('pen: every region’s PEN_COAT tint appears as a merged bed bucket',
-    beds.missing.length === 0, beds);
+  check('pen: every region’s pups-home fact is set once all three are rescued',
+    rows.missing.length === 0, rows);
 } else {
   check('pen: the Den rebuilds at full pup count', false);
 }
