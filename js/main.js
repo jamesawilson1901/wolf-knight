@@ -62,9 +62,13 @@ const PROMISES = [
   { marker: 'underwaterPromise', id: 'l2_sunken', icon: '💧', r: 4,
     label: 'A chest under the water — the Great Vault',
     done: () => WS.get('vault', 'drained') },
+  // v3.136: the bramble now opens onto the Root Cellar (§2.3/§2.6), so the ???
+  // card resolves when the dungeon behind it — the Rootbound Wight included —
+  // is actually cleared, not when the bramble merely cuts. Same rule v3.130
+  // set for the crack and v3.134 for the spring; marker and id unchanged.
   { marker: 'bramblePromise', id: 'l2_bramble', icon: '🌿', r: 4,
     label: 'A thorny tangle — the Drowned Door',
-    done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+    done: () => WS.get('vault', 'dungeon') },
   { marker: 'thornPromise', id: 'l3_thorn', icon: '🌿', r: 4,
     label: 'A thorn wall — Thornedge',
     done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
@@ -2047,7 +2051,7 @@ function initDevHarness() {
         open: !d.when || !!d.when() }));
     },
     get boss() {
-      const b = world.boss || world.warden;
+      const b = world.boss || world.warden || world.miniBoss;
       if (!b) return null;
       return { name: b.name || b.skin || 'boss',
         hp: b.hp !== undefined ? b.hp : (b.coreHp !== undefined ? b.coreHp : null),

@@ -82,3 +82,30 @@
 # `le` never resolves `window.__wk.room === 'vz'` within verify-onward.mjs
 # §5's 60s window.
 verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09
+# ---------------------------------------------------------------------------
+# 2026-09-10, v3.136 (MINI_ROSTER + the Root Cellar, design/WIDER-WORLD.md
+# §2.6): two more found while verifying that slice, neither touched by it.
+#
+# verify-promises's "l1_crack resolves on the dungeon, not the gate" block
+# (the v3.130 Ash Vault check) fails on THIS session's own v3.133 commit
+# (1ae4b14) with no Root Cellar changes applied at all — proven by `git
+# stash` (all tracked edits stashed, the two new tool files moved out of the
+# repo) rather than a separate worktree, but against the identical committed
+# tree a worktree would have checked out: same commit, same static server,
+# same suite. On that clean tree it fails WORSE — two sub-checks red ("the
+# ??? card is logged once the gate breaks" as well as "...and IS resolved
+# once the dungeon is cleared") — where this session's own v3.136 tree only
+# fails the second. Reads as a pre-existing timing flake in the ??? card's
+# narrationTriggers() poll, not a regression either commit introduced;
+# js/main.js's PROMISES table and js/level1.js's Ash Vault are both outside
+# this slice's diff.
+#
+# verify-density's tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail its
+# "shows at least N things on arrival" floor. Zero file overlap makes this
+# pre-existing by construction: v3.136 touches js/enemies.js, js/level2.js,
+# js/main.js, js/route.js, js/ground.js, js/levelClimb.js and four tools/
+# files — never js/level3.js, which is the Frozen Spring's only builder.
+#
+# Neither is this slice's to fix; both get their own board item.
+verify-promises.mjs | "l1_crack resolves on the dungeon, not the gate" (v3.130 Ash Vault check) fails on the clean v3.133 commit with no v3.136 changes applied — a pre-existing narrationTriggers() timing flake, not a regression | 2026-09-10
+verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their arrival-frame item-count floor — zero overlap with any file v3.136 touches (js/level3.js, the Spring's only builder, is untouched) | 2026-09-10

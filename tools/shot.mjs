@@ -65,6 +65,8 @@ await page.evaluate(async () => {
     g.state.flags.cracked.l1_crack_gate = true;
     // The Frozen Spring's own gate (v3.134, same reasoning): `t1b`'s ice.
     g.WS.set('wild3', 'ice_l3_spring_ice', true);
+    // The Root Cellar's own gate (v3.136, same reasoning): `vc2`'s bramble.
+    g.WS.set('vault', 'cut_l2_bramble_gate', true);
   }
   // GRIMM FREED IS GLOBAL, NOT PER-REGION (js/restoration.js growthStage's
   // fifth fact) — so stage 5 is the one stage no single hearth can reach on

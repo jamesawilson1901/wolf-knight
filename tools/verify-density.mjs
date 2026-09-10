@@ -149,6 +149,8 @@ const ROOMS = [
   { id: 'vbp', kind: 'pocket' }, { id: 'vb3', kind: 'puzzle' }, { id: 'vgc', kind: 'choke' },
   { id: 'vc1', kind: 'island' }, { id: 'vc2', kind: 'island' }, { id: 'vcp', kind: 'pocket' },
   { id: 'vc3', kind: 'pocket' }, { id: 'vz',  kind: 'arena' },
+  // The Root Cellar (v3.136) — Stoneroot's own pocket dungeon, off vc2.
+  { id: 'vr1', kind: 'pocket' }, { id: 'vr2', kind: 'island' }, { id: 'vr3', kind: 'pocket' },
   // The Wild Woods
   { id: 't1a', kind: 'island' }, { id: 't1b', kind: 'island' }, { id: 't1p', kind: 'pocket' },
   { id: 'tc1', kind: 'choke' },  { id: 't2a', kind: 'island' }, { id: 't2b', kind: 'island' },

@@ -30,6 +30,9 @@ const ONWARD = {
   vgb: 'vb1', vb1: 'vb2', vb2: 'vb3', vb3: 'vh',
   vgc: 'vc1', vc1: 'vc2', vc2: 'vc3', vc3: 'vh',
   vap: 'va2', vbp: 'vb2', vcp: 'vc2',
+  // The Root Cellar (v3.136, §2.3): Stoneroot's own dungeon, off vc2's own
+  // bramble gate.
+  vr1: 'vc2', vr2: 'vr3', vr3: 'vr2',
 
   // --- The Wild Woods: a ring ---------------------------------------------
   t1a: 't1b', t1b: 'tc1', tc1: 't2a', t2a: 't2b', t2b: 'tsh', tsh: 'tc2',

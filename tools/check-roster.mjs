@@ -17,7 +17,7 @@
 // precise, and directly matches how this codebase already signals a
 // boss's special mechanic (a dedicated field the fight code reads), not a
 // guess at animation names.
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
 const problems = [];
 const ok = (m) => console.log(`✓ ${m}`);
@@ -76,6 +76,61 @@ for (const [region, file] of Object.entries(REGION_FILES)) {
 }
 console.log('  (eight monster models sit unused on disk per §1.8 — werewolf/rat-pack/owl/dodo/kregger/');
 console.log('   oceanic-juggernaut/robot-a8lot/a second dragon — candidates for a genuinely new region-5+ body)');
+
+// MINI_ROSTER (v3.136, design/WIDER-WORLD.md §2.6) — every entry's body must
+// actually exist on disk and bind the shared Rig_Medium clip library, the
+// same guarantee KAYKIT_ROSTER already has by construction (spawnEnemies
+// loads it from assets/generated/enemies/<body> and passes the shared
+// rig-medium anims array — see js/enemies.js). Checked here as "the file
+// exists" rather than parsed for a skin/skeleton, matching how this file
+// already checks P7 by regexing the source rather than loading three.js.
+console.log('\n── MINI_ROSTER bodies ──');
+const enemiesSrc = readFileSync('js/enemies.js', 'utf8');
+const miniBlock = (enemiesSrc.match(/const MINI_ROSTER = \{[\s\S]*?\n\};/) || [''])[0];
+if (!miniBlock) {
+  bad('could not find MINI_ROSTER in js/enemies.js');
+} else {
+  const bodies = [...miniBlock.matchAll(/body:\s*'([^']+)'/g)].map((m) => m[1]);
+  if (!bodies.length) {
+    bad('MINI_ROSTER has no entries with a body: — ruler is broken');
+  } else {
+    for (const body of bodies) {
+      const path = `assets/generated/enemies/${body}`;
+      if (existsSync(path)) ok(`MINI_ROSTER body exists: ${path}`);
+      else bad(`MINI_ROSTER names a body that does not exist on disk: ${path}`);
+    }
+  }
+}
+
+// Every `variant:` string found anywhere in js/level*.js must be a real key
+// in VARIANTS (js/enemies.js) — the P6 census above already extracts these
+// strings per region file but only PRINTS them; this is that same regex,
+// now asserted. Catches the exact class of silent no-op the design doc
+// names: levelClimb.js's `variant: 'frost'`, which is not a VARIANTS key and
+// therefore has applied nothing, in any region, since the day it was typed.
+console.log('\n── variant: strings vs VARIANTS ──');
+const variantsBlock = (enemiesSrc.match(/export const VARIANTS = \{[\s\S]*?\n\};/) || [''])[0];
+if (!variantsBlock) {
+  bad('could not find VARIANTS in js/enemies.js — ruler is broken');
+} else {
+  const variantKeys = new Set(
+    [...variantsBlock.matchAll(/^ {2}(\w+):\s*\{/gm)].map((m) => m[1])
+  );
+  console.log(`VARIANTS keys found: [${[...variantKeys].join(', ')}]`);
+  const { readdirSync } = await import('fs');
+  const levelFiles = readdirSync('js').filter((f) => /^level.*\.js$/.test(f));
+  const n1 = problems.length;
+  for (const file of levelFiles) {
+    // strip //-comments first — a comment MENTIONING a variant string (e.g.
+    // explaining a fix) is not a live marker and must not be scanned as one.
+    const s = readFileSync(`js/${file}`, 'utf8').replace(/\/\/.*$/gm, '');
+    for (const m of s.matchAll(/variant:\s*'([a-zA-Z0-9_]+)'/g)) {
+      const v = m[1];
+      if (!variantKeys.has(v)) bad(`js/${file} sets variant: '${v}', which is not a key in VARIANTS — silent no-op`);
+    }
+  }
+  if (problems.length === n1) ok('every variant: string in js/level*.js is a real VARIANTS key');
+}
 
 console.log(problems.length ? `\n${problems.length} PROBLEM(S)` : '\nALL CLEAN.');
 process.exit(problems.length ? 1 : 0);

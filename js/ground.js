@@ -127,6 +127,9 @@ export const GROUND_STYLES = {
   // The Frozen Spring (v3.134) — a cave floor, same family as Stoneroot's
   // vaultDark, with a cold blue base rather than warm stone.
   frozenspring: { pattern: 'cavefloor', wear: 0.45, joint: 0.55, path: 1.10, grain: 0.85, base: 0x5a7a8c },
+  // The Root Cellar (v3.136) — Stoneroot's own cave floor, same family, with
+  // a mossy green base: roots, not stone or ice, have taken this one over.
+  rootcellar: { pattern: 'cavefloor', wear: 0.50, joint: 0.55, path: 1.14, grain: 0.90, base: 0x445a34 },
   // --- elsewhere ----------------------------------------------------------
   // The Den is a GLADE, not a yard: grass, with the worn earth painted in as
   // patches where a camp actually wears it — round the fire, at the tent

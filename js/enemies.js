@@ -21,6 +21,7 @@ import { juice } from './juice.js';
 import { spawnGearDrop } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { isHealed, graze } from './restoration.js';
+import { WS } from './worldstate.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -2029,7 +2030,13 @@ export class SkeletonShield extends SkeletonBase {
 }
 
 export class BoneWarden extends SkeletonBase {
-  constructor(world, x, z, gltf, anims, axeGltf, shieldGltf) {
+  // `opts` (v3.136, design/WIDER-WORLD.md §2.6): the crypt's warden and a
+  // MINI_ROSTER guardian are the SAME class and machine — only a body, a
+  // tint and where the wound/defeat is stored differ. Every opts field is
+  // optional and defaults to the original singleton crypt-warden behavior,
+  // so `new BoneWarden(world, x, z, gltf, anims, axeGltf, shieldGltf)` with
+  // no opts is unchanged byte-for-byte in outcome.
+  constructor(world, x, z, gltf, anims, axeGltf, shieldGltf, opts = {}) {
     super(world, x, z, {
       // Dad, twice now: "bigger, like the wolf boss" (v3.18.2) and again from
       // play "bone warden needs to be bigger". Scale 1.1 CLAIMED the Shadowgrip
@@ -2039,8 +2046,9 @@ export class BoneWarden extends SkeletonBase {
       // a true 2.3x over Kael's measured 1.27u — the Shadowgrip ratio, for
       // real this time. Reach, damage and the danger rings are UNCHANGED:
       // the rings are drawn at true reach, so a bigger body over the same
-      // hitboxes is strictly fairer.
-      hp: 14, radius: 0.9, scale: 1.35, gltf, anims,
+      // hitboxes is strictly fairer. A MINI_ROSTER body keeps this same
+      // scale unless its own entry says otherwise.
+      hp: opts.hp ?? 14, radius: 0.9, scale: opts.scale ?? 1.35, gltf, anims,
       clips: {
         inactive: 'Skeletons_Inactive_Standing_Pose', awaken: 'Skeletons_Awaken_Standing',
         walk: 'Skeletons_Walking', idle: 'Skeletons_Idle',
@@ -2061,9 +2069,31 @@ export class BoneWarden extends SkeletonBase {
     // is the across-deaths persistence the spec names, and it touches no save
     // format. (Cross-session parity — adding wardenHp to save.js — is logged in
     // MORNING-REVIEW as an additive follow-up.)
-    if (state.flags.wardenHp > 0) this.hp = Math.min(state.flags.wardenHp, this.maxHp);
+    //
+    // A MINI_ROSTER guardian passes its own hpGet/hpSet so a second Warden's
+    // wound lives in `WS.set(region, 'mini_'+id+'_hp', n)` instead of the
+    // crypt's singleton `state.flags.wardenHp` — the two can never collide.
+    this._hpGet = opts.hpGet || (() => state.flags.wardenHp);
+    this._hpSet = opts.hpSet || ((n) => { state.flags.wardenHp = n; });
+    this._onDefeated = opts.onDefeated || ((w) => {
+      if (w.world.onWardenDefeated) w.world.onWardenDefeated(w);
+    });
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
     if (axeGltf) this.mount('r', axeGltf);
     if (shieldGltf) this.mount('l', shieldGltf);
+    if (opts.weakness !== undefined) this.weakness = opts.weakness;
+    if (opts.resist !== undefined) this.resist = opts.resist;
+    // A reskin, the same law as every VARIANTS entry: recolor the shipped
+    // body, never build a new one (CLAUDE.md "no code-built creatures").
+    if (opts.tint) {
+      this.model.traverse((n) => {
+        if (!n.isMesh) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        const tinted = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
+        n.material = tinted.length === 1 ? tinted[0] : tinted;
+      });
+    }
     this.swings = 0;
     this.attackTimer = 1.4;
     // v3.19.1: the Warden had NO guard pose at all — he front-blocked
@@ -2094,8 +2124,8 @@ export class BoneWarden extends SkeletonBase {
   die() {
     this.world.root.remove(this.dangerRing);
     this.world.root.remove(this.spinRing);
-    state.flags.wardenHp = 0;   // the duel is over — no stale wound to restore
-    if (this.world.onWardenDefeated) this.world.onWardenDefeated(this);
+    this._hpSet(0);   // the duel is over — no stale wound to restore
+    this._onDefeated(this);
     super.die();
   }
 
@@ -2122,7 +2152,7 @@ export class BoneWarden extends SkeletonBase {
     super.takeDamage(n, element, kind);
     // ...and the wound is remembered (see constructor). Written after super so
     // it reflects the blow that actually landed, exactly as boss.js does.
-    if (!this.dead) state.flags.wardenHp = Math.max(0, this.hp);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
   // his front-block law (takeDamage) in one place — the pose reads from the
@@ -3691,6 +3721,22 @@ const KAYKIT_ROSTER = {
   'twinblade-husk': { cls: Flurry, hp: 5, weakness: 'moon', mount: 'blade' },
 };
 
+// MINI_ROSTER (v3.136, design/WIDER-WORLD.md §2.6) — "the Bone Warden with a
+// body parameter". A named, roster-built ELITE for a pocket dungeon's last
+// room (design/LEVEL-DESIGN-BRANCHES.md's 2026-09-10 amendment: not a region
+// boss, so it never grants a wolf form and never touches `state.flags.boss*`
+// or `wardenDefeated` — see the crypt-singleton note on BoneWarden above).
+// Each entry's `mounts` names which BoneWarden hand-slots to fill exactly as
+// the crypt warden's own `axeGltf`/`shieldGltf` args do; `tint` is the same
+// per-material function VARIANTS entries use, applied to the shared body.
+const MINI_ROSTER = {
+  rootbound_wight: {
+    cls: BoneWarden, body: 'tower-wight.glb', scale: 1.3, hp: 14,
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'verdant', region: 'vault', key: 'rootbound_wight',
+    tint: (m) => { if (m.color) m.color.setHex(0x5a6b3f); }, // moss over old bone
+  },
+};
+
 const MONSTER_ROSTER = {
   // THE EMBER WASP replaces the Ember Dragonling (dad, 2026-09-03: "id like to
   // get rid of the flying dragonling in the first level and replace it").
@@ -3857,6 +3903,38 @@ export async function spawnEnemies(world) {
       ]);
       world.warden = new BoneWarden(world, mk.wardenSpot.x, mk.wardenSpot.z, warriorGltf, anims, axeGltf, shieldGltf);
       world.enemies.push(world.warden);
+    }
+
+    // MINI_ROSTER (v3.136, §2.6): one named guardian at a pocket dungeon's
+    // last door. `world.markers.miniSpot = {id, x, z}` beside `wardenSpot`,
+    // the same idiom — but keyed to any MINI_ROSTER id, not a singleton.
+    if (mk.miniSpot) {
+      const cfg = MINI_ROSTER[mk.miniSpot.id];
+      const [miniBodyGltf, miniAxeGltf, miniShieldGltf] = await Promise.all([
+        loadGLB(`./assets/generated/enemies/${cfg.body}`),
+        cfg.mounts && cfg.mounts.r === 'axe' ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
+        cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
+      ]);
+      const { region, key } = cfg;
+      // `WS.get` answers only true/false (its job is milestone checks); a
+      // wound is a number, so read the raw stored value straight off
+      // state.flags.world the way WS.get itself does internally, bypassing
+      // its boolean coercion. `WS.set` is still the writer — it stores
+      // whatever it is given (design/WIDER-WORLD.md §2.6: "WS.set takes
+      // any value").
+      const hpKey = 'mini_' + key + '_hp';
+      const mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
+        hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint,
+        hpGet: () => (state.flags.world && state.flags.world[region] && state.flags.world[region][hpKey]) || 0,
+        hpSet: (n) => WS.set(region, hpKey, n),
+        onDefeated: () => {
+          WS.complete(region, 'mini_' + key);
+          WS.complete(region, 'dungeon');
+          if (world.openOnward) world.openOnward();
+        },
+      });
+      world.miniBoss = mini;
+      world.enemies.push(mini);
     }
 
     // task #31 — the 23 KayKit-family roster ids, each its own generated
