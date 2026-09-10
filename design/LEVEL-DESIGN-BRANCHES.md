@@ -85,6 +85,17 @@ Wolf is for. One key/lock, a gold chest at the end, and NO PUPS (see below).
 **No boss.** A branch is not a region; it ends in a reward, not a duel. That
 keeps the Vale's own boss the Vale's climax.
 
+> **AMENDED 2026-09-10 (dad).** "No boss" still means no REGION boss — a
+> branch or a pocket dungeon never hands out a wolf form or takes a region's
+> own climax from it. It does not forbid a guardian: **a MINI_ROSTER
+> guardian may hold an optional dungeon's last room.** This is what
+> unblocks the Root Cellar's Rootbound Wight (design/WIDER-WORLD.md §6
+> v3.136) — a named, roster-built elite at a pocket dungeon's final door,
+> not a second Vale boss. The Drowned Market and Ember Deep above still
+> ship exactly as specced (no boss, no guardian, a reward and nothing
+> more) — this amendment only widens what a FUTURE optional dungeon is
+> allowed to end in.
+
 ---
 
 ## 2. EMBER DEEP — a branch off Ember Hollow, prefix `l`
