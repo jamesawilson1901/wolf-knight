@@ -1288,7 +1288,7 @@ export async function buildDdp(scene) {
     world.markers.meriShrine = { x: 0, z: -3.0 };
     world.markers.healed = true;
     world.markers.chestDefs = [
-      { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42, powerup: 'star' } },
+      { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
   }

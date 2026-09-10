@@ -1172,7 +1172,7 @@ export async function buildF5(scene) {
   promiseIce(world, 10.0, -9.5, 'f_eyrie');
   world.markers.chestDefs = [
     ...(onward
-      ? [{ id: 'c_f5_summit', tier: 'gold', x: -4.0, z: -5.0, ry: 0.7, loot: { shards: 32, powerup: 'star' } }]
+      ? [{ id: 'c_f5_summit', tier: 'gold', x: -4.0, z: -5.0, ry: 0.7, loot: { shards: 32 } }]
       : []),
     { id: 'c_f5_ice', tier: 'gold', x: 10.5, z: -11.5, ry: -2.2, loot: { shards: 26, heartPiece: 1 } },
   ];

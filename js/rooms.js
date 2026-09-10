@@ -1845,7 +1845,7 @@ async function buildR3(scene) {
     { x: 5.8, z: 5.9, kind: 'crate', shards: 2 },
   ];
   world.markers.chestDefs = state.flags.bossDefeated
-    ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20, powerup: 'fury' } }]
+    ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20 } }]
     : [];
 
   // The live restoration's regrowth persists on every rebuild after healing
@@ -2686,7 +2686,7 @@ async function buildE2(scene) {
   world.markers.chestDefs = [
     { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
     // visible through the brambles — region 3's promise reward
-    { id: 'c_e2_bramble', tier: 'gold', x: 9.3, z: 3.1, ry: -2.4, loot: { shards: 18, powerup: 'feather' } },
+    { id: 'c_e2_bramble', tier: 'gold', x: 9.3, z: 3.1, ry: -2.4, loot: { shards: 18 } },
   ];
   world.markers.breakables = [
     { x: -8.6, z: 1.8, kind: 'barrel', shards: 2 },
@@ -2814,7 +2814,7 @@ async function buildE3(scene) {
       ? [{ id: 'c_e3_crack', tier: 'gold', x: -6.2, z: 1.4, ry: 1.4, loot: { shards: 16, gear: 'spear_a' } }]
       : []),
     ...(state.flags.wardenDefeated
-      ? [{ id: 'c_e3_gold', tier: 'gold', x: 3.4, z: -2.6, ry: -0.8, loot: { shards: 25, powerup: 'star' } }]
+      ? [{ id: 'c_e3_gold', tier: 'gold', x: 3.4, z: -2.6, ry: -0.8, loot: { shards: 25 } }]
       : []),
   ];
   world.markers.breakables = [
@@ -3465,7 +3465,7 @@ async function buildW5(scene) {
   brambleGate(world, prepareModel, kit.bush, 'w5_reward', 5.6, -5.2, 'wild');
   world.markers.chestDefs = [
     ...(state.flags.sylvaDefeated
-      ? [{ id: 'c_w5_glade', tier: 'gold', x: -2.8, z: -3.4, ry: 0.7, loot: { shards: 30, powerup: 'star' } }]
+      ? [{ id: 'c_w5_glade', tier: 'gold', x: -2.8, z: -3.4, ry: 0.7, loot: { shards: 30 } }]
       : []),
     { id: 'c_w5_bramble', tier: 'gold', x: 6.6, z: -5.8, ry: -2.2, loot: { shards: 22, heartPiece: 1 } },
   ];

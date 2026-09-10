@@ -368,8 +368,6 @@ export async function buildG2(scene) {
   crackedPile(world, 'g2_crack', 13.4, -7.0, true);
   visibleReward(world, 13.5, -10.0, 'g2_crack_prize', { shards: 20, heartPiece: 1 }, 'silver');
 
-  // THE VINE climbs the last of the stone and goes into the trees
-  vine(world, [[1.6, 13], [2.4, 6], [1.8, -1], [0.8, -7], [0.4, -13]]);
   world.markers.heroSpot = { x: 0, z: -7 };
 
   world.markers.houndSpots = [{ x: -5, z: -5, variant: 'thorn' }, { x: 6, z: 2, variant: 'thorn' }];

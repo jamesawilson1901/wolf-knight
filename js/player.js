@@ -375,7 +375,6 @@ export class Player {
     this.carrying = null;        // id of a carried puzzle item (js/carry.js), or null
     this._carryModel = null;     // the held mesh itself, parented to player.root
     this.onHitConnected = null;  // melee landed → main triggers hit-stop
-    this.buffs = { star: 0, fury: 0, feather: 0 }; // timed power-ups
     this._vel = { x: 0, z: 0 };     // ramped velocity (CONFIG accel/decel)
     this._softLock = false;         // attack locks allow slow drift; specials don't
     this._queuedAttack = false;     // buffered tap from the tail of a swing
@@ -994,7 +993,6 @@ export class Player {
       cfg = { ...base };
     }
     cfg.dmg += (state.perks.sword || 0) * 0.25;
-    if (this.buffs.fury > 0) cfg.dmg *= 3;
     if (this._surge) cfg.dmg *= CONFIG.MOON.SURGE_DMG; // blood-moon bites
     return cfg;
   }
@@ -1346,7 +1344,6 @@ export class Player {
   boltDamage(target) {
     const perk = (state.perks.bolt || 0) * 0.25;
     let dmg = (target && target.flying ? 1 : 0.5) + perk;
-    if (this.buffs.fury > 0) dmg *= 3;
     return dmg;
   }
 
@@ -1636,7 +1633,7 @@ export class Player {
   // higher double jump. While airborne, ground attacks miss.
   tryJump() {
     if (this.lockTime > 0 || this.defending) return false;
-    const maxJumps = this.buffs.feather > 0 ? 3 : 2; // feather = triple jump
+    const maxJumps = 2;
     if (this.airY <= 0 && this.jumpsUsed === 0) {
       this.airV = JUMP_V;
       this.jumpsUsed = 1;
@@ -1701,7 +1698,6 @@ export class Player {
   hurt(n, source = {}) {
     if (this.iframes > 0) return;
     if (source.groundAttack && this.airborne) return; // jumped clean over it
-    if (this.buffs.star > 0) return; // starlight makes Kael untouchable
     // Form fragility (FORM_DEFS.hurtMult): the Dark Wolf pays +30% for its
     // speed. Applied BEFORE the kid-difficulty softening so Gentle still
     // protects exactly as much.
@@ -2280,16 +2276,11 @@ export class Player {
     this._updateProjectiles(dt, world);
     this._updateAura(dt); // before the lock-time early return — auras never freeze
 
-    // timed power-up buffs tick down
-    for (const k of Object.keys(this.buffs)) {
-      if (this.buffs[k] > 0) this.buffs[k] -= dt;
-    }
-
     if (this._airGrace > 0) this._airGrace -= dt;
     // jump physics (Y is visual-only; collisions stay on the XZ plane)
     if (this.airY > 0 || this.airV > 0) {
       this.airY += this.airV * dt;
-      this.airV -= GRAVITY * (this.buffs.feather > 0 ? 0.7 : 1) * dt;
+      this.airV -= GRAVITY * dt;
       if (this.airY <= 0) {
         this.airY = 0;
         this.airV = 0;
@@ -2460,7 +2451,6 @@ export class Player {
     // — and Greenweave's negative weight makes it genuinely quicker. Knight
     // only: a wolf is not wearing it.
     if (state.form === 'knight') speedMult *= 1 - (armourDef().weight || 0);
-    if (this.buffs.star > 0) speedMult *= 1.4;
     const top = f.def.speed * speedMult * lockMove;
 
     // accelerate ~CONFIG.ACCEL_TIME to full, brake ~CONFIG.DECEL_TIME to stop

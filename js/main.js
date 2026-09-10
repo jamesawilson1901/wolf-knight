@@ -25,7 +25,6 @@ import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
-import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -1575,7 +1574,7 @@ function updateMusic() {
 }
 
 // ---------------------------------------------------------------------------
-// HUD: shards, level + XP bar, active buffs
+// HUD: shards, level + XP bar
 // ---------------------------------------------------------------------------
 
 function renderShards() {
@@ -1590,21 +1589,6 @@ function renderLevel() {
   document.getElementById('xp-fill').style.width =
     Math.round((state.xp / xpForLevel(state.level)) * 100) + '%';
   ctxShow(el);
-}
-
-function renderBuffs() {
-  const el = document.getElementById('buffs');
-  el.innerHTML = '';
-  if (!player) return;
-  for (const [k, def] of Object.entries(POWERUPS)) {
-    if (player.buffs[k] > 0) {
-      const chip = document.createElement('div');
-      chip.className = 'buff-chip';
-      chip.textContent = def.icon;
-      chip.style.opacity = Math.min(1, 0.35 + player.buffs[k] / def.time);
-      el.appendChild(chip);
-    }
-  }
 }
 
 // Chest contents flow through here (shards are scattered by the chest itself).
@@ -1708,7 +1692,6 @@ function giveLoot(chest) {
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
-  if (L.powerup) spawnPowerup(world, chest.x, chest.z + 0.8, L.powerup);
   if (lines.length) bigToast(lines.join(' · '));
   persist();
 }
@@ -1825,7 +1808,6 @@ async function setupRoomExtras() {
     bumpCounter('bosses');
     grantXp(80);
     spawnShards(world, w.x, w.z + 1.5, 18);
-    spawnPowerup(world, w.x, w.z + 2, 'star');
     openTheWayOn(world);   // the crypt's north road, opened where the child stands
     summonWayfarer(world); // ...and Tam, a beat later, with the ride home
     if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
@@ -1881,12 +1863,6 @@ async function setupRoomExtras() {
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   gardenWasNear = true;
-  // every so often a smashed pot hides a power-up
-  const potDrops = ['fury', 'feather', 'star'];
-  world.onBreakableSmashed = (x, z) => {
-    const n = state.counters.pots || 0;
-    if (n % 9 === 4) spawnPowerup(world, x, z, potDrops[n % potDrops.length]);
-  };
   if (pip) {
     pip.place(player.root.position.x - 0.9, player.root.position.z + 0.9, player.root.rotation.y);
   }
@@ -2485,10 +2461,6 @@ async function start() {
   progressEvents.onSticker = (sticker) => {
     bigToast(`📒 New sticker: ${sticker.icon} ${sticker.name}`);
   };
-  powerupEvents.onGained = (kind, def) => {
-    bigToast(`${def.icon} ${def.name}!`);
-    renderBuffs();
-  };
   renderShards();
   renderLevel();
   checkStickers();
@@ -2599,9 +2571,6 @@ async function start() {
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
-      updatePowerups(world, dt, t, player);
-      updateBuffVisuals(world, dt, t, player);
-      renderBuffs();
 
       // the Den shop opens when Kael walks up to the mage
       if (world.markers.shopSpot) {
@@ -2662,7 +2631,6 @@ async function start() {
             bumpCounter('bosses');
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
-            spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
             // THE WAY ON OPENS WHERE YOU STAND (dad's request, 2026-08-30).
             // Arenas whose onward door used to arrive only on a rebuild
             // (f5, scr, ddp) now carry a rock plug + world.openOnward. A
