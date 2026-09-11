@@ -1701,7 +1701,18 @@ export async function buildVz(scene) {
   // Warden holds it. openTheWayOn() in main.js pulls the plug where the child
   // is standing — the Warden is not stored as world.boss, so his own death
   // hook calls it (js/main.js onWardenDefeated).
-  const gaps = [gap('s', BOSS_DOOR_HALF), gap('n')];
+  //
+  // NORTH_GAP_X: off dead centre on purpose. The throne (below, heroProp
+  // 'throne') plants a column 1.6u behind its pedestal — world (0, -10.6),
+  // exactly on the centre line between the throne and a door at (0, -13.6).
+  // From the spawn/approach angle that column sat directly in front of the
+  // doorway, full height, and read as a wall with no way through it (dad,
+  // from play: the door is invisible behind the pillar). Shifting the gap
+  // (and everything that has to move WITH it — the plug that seals it and
+  // the door itself) 3u west clears the column's footprint without touching
+  // the throne's dressing.
+  const NORTH_GAP_X = -3;
+  const gaps = [gap('s', BOSS_DOOR_HALF), gap('n', DOOR_HALF, NORTH_GAP_X)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: -2, r: 7, kind: 'gravel' }, { x: -10, z: 8, r: 3.4, kind: 'rubble' },
               { x: 10, z: 8, r: 3.4, kind: 'rubble' }, { x: 0, z: 10, r: 3.0, kind: 'water' }],
@@ -1713,10 +1724,12 @@ export async function buildVz(scene) {
   // the child inside the geometry.
   sideDoor(world, 's', halfW, halfD, 'vh', { x: 9, z: -10.2, angle: 0 }, { half: BOSS_DOOR_HALF });
   // ...ONTO THE GREENWAY (js/levelGreen.js), the road up out of the stone;
-  // g2's north door is the one that reaches Thornedge.
-  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'g1', { x: 0, z: 11, angle: Math.PI });
+  // g2's north door is the one that reaches Thornedge. `centre` has to match
+  // NORTH_GAP_X — this is the same opening the shell() gap above cut.
+  const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'g1', { x: 0, z: 11, angle: Math.PI },
+    { centre: NORTH_GAP_X });
   if (beaten) roadOn();
-  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
+  else onwardPlug(world, NORTH_GAP_X, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 
   heroProp(world, 0, -9, 'throne', D);           // ▲ THE WARDEN'S THRONE
   world.markers.heroSpot = { x: 0, z: -9 };
