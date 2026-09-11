@@ -817,7 +817,8 @@
       100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
     }
     /* MOON GAUGE — the crescent that fills toward the Blood Moon Surge.
-       Sits above the right-hand button column; tap while FULL = surge. */
+       Sits above the right-hand button column. Display-only: #special-btn
+       is the one control that fires the surge (see js/ui.js). */
     #moon-gauge {
       position: fixed; right: calc(30px + env(safe-area-inset-right)); bottom: calc(180px + env(safe-area-inset-bottom));
       z-index: 7; width: 52px; height: 52px; border-radius: 50%;
@@ -1256,7 +1257,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.157.0</div>
+  <div id="badge">Wolf Knight &middot; v3.158.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

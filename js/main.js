@@ -2218,9 +2218,10 @@ let ui = null;
 let menus = null;
 const surgeVignetteEl = document.getElementById('surge-vignette');
 
-// THE BLOOD MOON SURGE trigger — tap the full moon gauge (or the special
-// button/K in a form with no cooldown special). Guarded so the ceremony can
-// never collide with scripted beats, room transitions or menus.
+// THE BLOOD MOON SURGE trigger — Dark Wolf's special button (K, or
+// #special-btn; onSpecial falls through to this since trySpecial has no
+// dark_wolf branch). Guarded so the ceremony can never collide with
+// scripted beats, room transitions or menus.
 function triggerSurge() {
   if (!player || !world || !effects) return false;
   if (transitioning || paused || menuPaused || narration.blocking) return false;
@@ -2371,7 +2372,6 @@ async function start() {
     },
     // knight/dark have no cooldown special — a full moon gauge answers instead
     onSpecial: () => { if (!player.trySpecial(effects, world)) triggerSurge(); },
-    onSurge: () => triggerSurge(),
   });
 
   // ORDINARY-SWITCH SPECTACLE: every transformation is a tiny event — a
