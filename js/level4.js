@@ -1047,7 +1047,7 @@ export async function buildF4(scene) {
   campfire(world, 'cp_f4', -2.4, -7.0);
   potion(world, 2.4, -7.0);
   world.markers.breakables = [
-    { x: -11.0, z: 10.0, kind: 'crate', shards: 3 }, { x: 11.5, z: 9.5, kind: 'barrel', shards: 3 },
+    { x: -10.58, z: 9.58, kind: 'crate', shards: 3 }, { x: 10.85, z: 9.03, kind: 'barrel', shards: 3 },
     { x: 7.0, z: -9.5, kind: 'crate', shards: 2 },
   ];
 

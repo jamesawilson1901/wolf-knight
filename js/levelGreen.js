@@ -298,7 +298,7 @@ export async function buildG1(scene) {
   world.markers.batSpots = [{ x: -8, z: -9 }, { x: 7, z: -8 }];
   world.markers.spitterSpots = [{ x: 6, z: 7 }];
   world.markers.breakables = [
-    { x: -8.0, z: 10.5, kind: 'vase' }, { x: 7.5, z: 10.0, kind: 'crate' },
+    { x: -8.0, z: 10.5, kind: 'vase' }, { x: 8.0, z: 10.87, kind: 'crate' },
     { x: -7.0, z: -9.5, kind: 'barrel' }, { x: 12.5, z: 3.5, kind: 'jar' },
   ];
   world.markers.restSpot = { x: -6, z: 9 };
@@ -374,7 +374,7 @@ export async function buildG2(scene) {
   world.markers.mothSpots = [{ x: 8, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: -6, z: 7, variant: 'bramble' }];
   world.markers.breakables = [
-    { x: -7.5, z: 10.5, kind: 'crate' }, { x: 8.0, z: 10.0, kind: 'barrel' },
+    { x: -6.5, z: 10.5, kind: 'crate' }, { x: 8.0, z: 10.0, kind: 'barrel' },
     { x: -8.5, z: -8.5, kind: 'jar' }, { x: 5.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.restSpot = { x: 7, z: 10 };

@@ -651,10 +651,10 @@ export async function buildLa(scene) {
   // that open ground is kept where fights happen. Dense at the edges, clear in
   // the middle, which is how a Zelda screen is actually built.
   world.markers.breakables = [
-    { x: -9.5, z: 5.5, kind: 'cask' }, { x: -13, z: 8.5, kind: 'crate' },
+    { x: -8.63, z: 5, kind: 'cask' }, { x: -13, z: 8.5, kind: 'crate' },
     { x: -12.5, z: 4.5, kind: 'jar' },
     { x: -7.5, z: -8.5, kind: 'barrel' }, { x: -11, z: -12, kind: 'jar' },
-    { x: 10, z: -5.5, kind: 'crate' },  { x: 13.5, z: -9.5, kind: 'cask' },
+    { x: 10, z: -5.5, kind: 'crate' },  { x: 12.75, z: -10.44, kind: 'cask' },
     { x: 9.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.shadeSpots = [{ x: -6, z: 2 }];
@@ -1029,7 +1029,7 @@ export async function buildLb1(scene) {
   // Moth Hollow: a house whose roof went but whose hearth the moths still
   // gather at. The pup is behind the wall run, which is the whole point of it.
   world.markers.breakables = [
-    { x: -3.5, z: -5.5, kind: 'cask' }, { x: 3, z: -5.5, kind: 'vase' },
+    { x: -4.3, z: -5.5, kind: 'cask' }, { x: 3, z: -5.5, kind: 'vase' },
     { x: -8, z: 4.5, kind: 'box' },
   ];
   world.markers.pup1Spot = { x: 6, z: -4 };
@@ -1184,7 +1184,7 @@ export async function buildLc(scene) {
   // carried the span, the stacks that fed it, and what the heat left. Nothing
   // is placed in the lava band z -3..1 or on the two safe slabs.
   world.markers.breakables = [
-    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'box' },
+    { x: -10, z: 6.1, kind: 'barrel' }, { x: -14, z: 9.5, kind: 'box' },
     { x: 8.5, z: 9, kind: 'crate' }, { x: 13.5, z: 2, kind: 'cask' },
     { x: -4, z: -9.5, kind: 'vase' }, { x: 4.5, z: 8.5, kind: 'jar' },
   ];
@@ -1328,7 +1328,7 @@ export async function buildLg3(scene) {
   sideDoor(world, 'n', halfW, halfD, 'ld', { x: 0, z: 10, angle: Math.PI });
   // THE EMBER SEAL: the last gate before the Kiln, and someone kept a watch
   // here. The shrine is the tell — this door mattered to whoever held it.
-  world.markers.breakables = [{ x: 2.6, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'box' }];
+  world.markers.breakables = [{ x: 2.0, z: -1.2, kind: 'vase' }, { x: -2.6, z: 2.6, kind: 'box' }];
   world.markers.restSpot = { x: 0, z: 0 };
   world.markers.sealSpot = { x: 0, z: -2 };
   // THE SEAL ITSELF: the Ember Key (lc1) seats here. Resolves the key_door
@@ -1433,9 +1433,9 @@ export async function buildLd(scene) {
   // toward. Nothing sits in the gutter channel (x 6..13, z 2..10) or within
   // four units of the Forge Heart, which needs its approach clear.
   world.markers.breakables = [
-    { x: -10, z: 4.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'box' },
-    { x: -10.5, z: -5, kind: 'vase' }, { x: 2, z: 11, kind: 'box' },
-    { x: 14, z: 4, kind: 'barrel' }, { x: -3.5, z: -10, kind: 'jar' },
+    { x: -10, z: 5.5, kind: 'barrel' }, { x: -14, z: 8.5, kind: 'box' },
+    { x: -9.75, z: -4.06, kind: 'vase' }, { x: 2, z: 11, kind: 'box' },
+    { x: 14, z: 4, kind: 'barrel' }, { x: -5.77, z: -8.74, kind: 'jar' },
   ];
   wayshrine(world, -5, -4, 0.3, D);
   ruinedHome(world, -12, 6.5, -0.4, D, { w: 6, d: 5, keep: 0.66 });

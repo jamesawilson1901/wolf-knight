@@ -872,7 +872,7 @@ export async function buildVga(scene) {
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE CRYSTAL MOUTH. The chokes shipped as bare 14x10 boxes with two doors
   // and nothing else. Down here they are where the diggers stopped for breath.
-  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'box' }, { x: -2.4, z: 2.2, kind: 'vase' }];
+  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'box' }, { x: -1.32, z: 2.72, kind: 'vase' }];
   // AND SOMETHING LIVING IN IT. Dad, from play: "rocks everywhere nothing to do
   // throught the level." He was not exaggerating — the vault and all three of
   // its mouths held no creature at all, so the spine of the region, the rooms a
@@ -1151,7 +1151,7 @@ export async function buildVb1(scene) {
   // the room's shape and the dressing sits off them, so the two levels stay
   // legible from the fixed camera.
   world.markers.breakables = [
-    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'cask' },
+    { x: -11, z: -7, kind: 'crate' }, { x: 9.58, z: 10.58, kind: 'cask' },
     { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'box' },
   ];
   fallenColumn(world, -13, 8, 0.7, D, 4.2);
@@ -1188,7 +1188,7 @@ export async function buildVb2(scene) {
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
   world.markers.breakables = [
-    { x: -10, z: 6, kind: 'cask' }, { x: 13, z: 11, kind: 'crate' },
+    { x: -9.75, z: 6.76, kind: 'cask' }, { x: 13, z: 11, kind: 'crate' },
     { x: -14, z: 5, kind: 'jar' }, { x: 6, z: 11, kind: 'barrel' },
   ];
   ruinedHome(world, -12, 8, 0.4, D, { w: 6, d: 4.5, keep: 0.35, door: false });

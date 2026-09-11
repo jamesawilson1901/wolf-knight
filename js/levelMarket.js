@@ -342,7 +342,7 @@ export async function buildQ2(scene) {
   world.markers.rimeMinionSpots = [{ x: -1.5, z: 6.5 }, { x: 2.2, z: -4.5 }];
   world.markers.glacierWardenSpots = [{ x: -0.6, z: 3 }];
   world.markers.breakables = [
-    { x: -8, z: 2, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },
+    { x: -8, z: 2, kind: 'crate' }, { x: 3.58, z: 6.58, kind: 'barrel' },
     { x: -6, z: -8, kind: 'vase' }, { x: 2, z: -7.5, kind: 'box' },
   ];
   goods(world, D, [

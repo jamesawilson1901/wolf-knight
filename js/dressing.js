@@ -219,7 +219,26 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     coldHearth(world, (r() - 0.5) * 1.5, -hd + 1.2, D, g);   // LOCAL offsets — g is already at (x, z)
     const spill = 3 + Math.round(r() * 3);
     for (let i = 0; i < spill; i++) {
-      const px = (r() - 0.5) * (W - 1.2), pz = (r() - 0.5) * (Dp - 1.6);
+      // A SPOT THAT IS ALREADY SOMETHING ELSE. Every other placement in this
+      // function checks `world.blocked()` before it commits — the wall runs,
+      // the doorway — but this loop never checked anything at all, so a jar
+      // could roll wherever the dice said, including inside the doorway's own
+      // solid sides or another spill item just placed (dev-export #5: "Jar is
+      // inside door. It shouldn't be" — the doorway's world.addBox colliders
+      // are exactly what a candidate here needs to clear). `resolveCircle` is
+      // the right check, not `blocked()`: this is prop-vs-prop, not
+      // prop-vs-gameplay-reservation, and resolveCircle is what actually
+      // knows where every wall, box and rock the room has placed so far sits.
+      // A few tries at a fresh roll, then give up and skip the piece — a
+      // ruin with one fewer jar reads fine; a jar wedged in a doorway does not.
+      let px, pz, tries = 0, clear = false;
+      do {
+        px = (r() - 0.5) * (W - 1.2); pz = (r() - 0.5) * (Dp - 1.6);
+        const s = world.resolveCircle(x + px, z + pz, 0.5);
+        clear = Math.abs(s.x - (x + px)) < 1e-6 && Math.abs(s.z - (z + pz)) < 1e-6;
+        tries++;
+      } while (!clear && tries < 6);
+      if (!clear) continue;
       const pick = r();
       const gltf = pick < 0.4 ? K().barrel : pick < 0.75 ? K().crate : K().vase;
       const sc = gltf === K().vase ? 1.6 : 1.0;
