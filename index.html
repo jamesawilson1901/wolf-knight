@@ -588,12 +588,6 @@
     }
     #xp-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.18); margin-top: 3px; overflow: hidden; }
     #xp-fill { height: 100%; width: 0%; background: #b48aff; border-radius: 3px; transition: width .3s ease; }
-    #buffs { display: flex; gap: 6px; pointer-events: none; }
-    .buff-chip {
-      width: 34px; height: 34px; border-radius: 10px; font-size: 19px;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(40,28,60,.8); border: 2px solid rgba(255,255,255,.5);
-    }
     #inv-btn {
       position: fixed; right: calc(78px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); z-index: 7;
       width: 60px; height: 60px; border-radius: 16px;
@@ -776,6 +770,9 @@
     }
     .map-room .swatch { width: 34px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
     .map-room.pocket { opacity: .8; border-style: dashed; }
+    /* A dungeon's own offshoot card (v3.137, §5.3) — smaller and dashed, so
+       a branch reads as a detour off the road rather than another stop on it. */
+    .map-room.dungeon { width: 76px; min-height: 50px; opacity: .85; border-style: dashed; font-size: 10px; }
     .map-room.here { border-color: #8aff9a; box-shadow: 0 0 14px rgba(120,255,150,.45); background: rgba(120,255,150,.10); }
     .map-room .you { font-size: 10px; color: #8aff9a; letter-spacing: .04em; }
     .map-link { flex: 0 0 auto; width: 18px; height: 4px; background: rgba(255,255,255,.28); border-radius: 2px; }
@@ -794,6 +791,14 @@
       width: 44px; height: 44px; margin: 0 auto 2px;
       background-size: contain; background-repeat: no-repeat; background-position: center;
     }
+    /* The heart-piece readout (v3.132) — a picture and four pips, no text,
+       so it sits as its own wide row rather than a grid tile. */
+    .heartpiece-row {
+      width: auto; display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin: 8px 0; border-style: solid; border-color: rgba(255,120,140,.4);
+    }
+    .heartpiece-row .ic.tre-art { margin: 0; filter: none; }
+    .hp-pips { font-size: 22px; letter-spacing: 2px; }
     /* A handful of keepsakes needs no scroll box of its own — the 55vh cap on
        .grid is there for the map's long list, and applied here it clipped the
        one tile's NAME off the bottom. The panel itself still scrolls, so Done
@@ -938,6 +943,42 @@
     #mg-replay:active, #mg-leave:active, .mg-band:active { filter: brightness(1.4); }
     body.titling #mg-hud, body.titling #mg-results, body.titling #mg-demo,
     body.titling #mg-tap { display: none !important; }
+
+    /* WHICH WOLF? (js/mg-quiz.js) — the one game on the harness that needs
+       several distinct, positioned targets rather than one tap anywhere, so
+       it builds this small overlay itself (created in init(), removed in
+       teardown()) instead of going through #mg-tap. z-index 43 sits above
+       the tap layer (40) so its own cards get first claim on a pointerdown,
+       and clear of the demo card (44) and results screen (46). */
+    #mgq-cue {
+      position: fixed; left: 50%; top: 66px; transform: translateX(-50%);
+      z-index: 43; width: 78px; height: 78px; border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; pointer-events: none;
+      background: rgba(20, 16, 28, .72); border: 5px solid #fff;
+      box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    }
+    #mgq-row {
+      position: fixed; left: 0; right: 0; bottom: 104px; z-index: 43;
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; padding: 0 12px; pointer-events: none;
+    }
+    .mgq-card {
+      pointer-events: auto; width: 92px; height: 92px; border-radius: 18px;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      background: rgba(20, 16, 28, .78); border: 4px solid rgba(255,255,255,.3);
+      touch-action: none;
+    }
+    .mgq-card img { width: 100%; height: 100%; object-fit: cover; }
+    .mgq-fallback { font-size: 40px; }
+    .mgq-card.right { border-color: #ffd76a; background: rgba(255,200,90,.22); }
+    .mgq-card.wrong { border-color: #ff6a5a; animation: mgq-shake .3s ease; }
+    @keyframes mgq-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-7px); }
+      75% { transform: translateX(7px); }
+    }
+    body.titling #mgq-cue, body.titling #mgq-row { display: none !important; }
 
     #mg-chip {
       position: fixed; left: 50%; top: 10px; transform: translateX(-50%);
@@ -1204,7 +1245,6 @@
   <div id="hud-top">
     <div id="shards">0</div>
     <div id="level-badge">Lv 1<div id="xp-bar"><div id="xp-fill"></div></div></div>
-    <div id="buffs"></div>
   </div>
   <div id="inv-btn" class="ui"><svg class="ico"><use href="#ico-pack"/></svg></div>
   <div id="inv-menu" class="panel"></div>
@@ -1216,7 +1256,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.124.0</div>
+  <div id="badge">Wolf Knight &middot; v3.154.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

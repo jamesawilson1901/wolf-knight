@@ -43,8 +43,15 @@ const FACE_TURN = 5;      // rad/s of the greeting turn
 // Biscuit's rounds. Spread across the rebuilt Den (24 x 18) rather than the
 // five units of it that used to exist — a dog that patrols a two-metre square
 // is not patrolling, it is pacing.
+//
+// TWO STOPS MOVED (v3.128, design/WIDER-WORLD.md §3.1): (2.6, 2.8) and
+// (-1.0, 4.2) both landed inside the pup pen's fenced rectangle (removed
+// 2026-09-10 — the pups wander loose now, no fence) — Biscuit's own rule
+// was that her rounds must not cross it. Left at the moved spots rather
+// than reverted, clear of the training patch and the west garden, and
+// reverified with tools/probe-freespot.mjs.
 const DOG_STOPS = [
-  [2.6, 2.8], [-2.4, 0.2], [1.2, -3.4], [-5.2, -1.6], [4.4, 0.4], [-1.0, 4.2],
+  [6.5, 2.5], [-2.4, 0.2], [1.2, -3.4], [-5.2, -1.6], [4.4, 0.4], [-6.5, 5.5],
 ];
 
 // ONE LIST, ONE TICK, WHOEVER FILLS IT. The Den used to own `world.npcs` and
@@ -53,7 +60,7 @@ const DOG_STOPS = [
 // and a spawner in any OTHER room would have had nobody ticking it at all.
 // Both callers go through here instead, so the order they run in cannot
 // matter.
-function npcList(world) {
+export function npcList(world) {
   if (!world.npcs) {
     world.npcs = [];
     world.updateNpcs = (dt, t, player) => updateNpcs(world, dt, t, player);
@@ -64,7 +71,7 @@ function npcList(world) {
 // The body every person in this file is made of: a pack model on the shared
 // Rig_Medium skeleton, idling, with an optional gesture on a timer. Callers
 // add the collider, the marker and whatever the character carries.
-function characterNpc(world, { model, id, x, z, ry, rigAnims, gestureName }) {
+export function characterNpc(world, { model, id, x, z, ry, rigAnims, gestureName }) {
   model.position.set(x, 0, z);
   model.rotation.y = ry;
   world.add(model);
@@ -238,6 +245,68 @@ function updateNpcs(world, dt, t, player) {
 const WAYFARER_TINT = 0x9db2e8;   // moonlight on a grey cloak
 const WAYFARER_SHARD = 0xa8bcff;  // the Den moonstone's own colour (rooms.js)
 
+// THE SETTLERS — one per healed region's hearth (design/WIDER-WORLD.md §1.5).
+//
+// Pure data, no closures: `key` names the region's growth key (the same one
+// `js/restoration.js`'s `growthStage()` counts) and `minStage` is the number
+// that has to be reached, so restoration.js can decide who to spawn without
+// this file importing growthStage back — the two files would otherwise import
+// each other. Body, tint and job follow the settler table exactly: four
+// KayKit humanoids already voiced as somebody in the Den (Wren, Rook, Bram,
+// Tam), so each settler is that same idiom — clone the one shared material
+// and colour-wash it — rather than a fifth face.
+//
+// Coordinates are measured the same way WAYFARER_POSTS's are, below: against
+// the live built room at body radius 0.44, with `tools/probe-freespot.mjs`.
+export const SETTLER_POSTS = {
+  // `shop` is where stage 4's cart lands (js/restoration.js STAGE_CLUTTER —
+  // the two are kept in step by hand, the same way a promise gate's chest
+  // keeps step with its marker): walking up to it opens the same shop the
+  // Den's own cart does, at whichever rung is already unlocked.
+  la: { id: 'ember_settler', file: './assets/chars/mage.glb', x: -3, z: 7.6, ry: 2.5,
+    tint: 0xd97a3a, key: 'ember', minStage: 2, shop: { x: 3.0, z: 8.0 } },
+  // v3.135: Stoneroot and the Wild Woods, the second and third hearths.
+  // Same body (mage.glb) as Ember's — a second face is design/WIDER-WORLD.md
+  // §8 Q6, unanswered — colour-washed to each region's own COAT tone
+  // (js/restoration.js) instead, the same trick every hut tint already runs.
+  vh: { id: 'stone_settler', file: './assets/chars/mage.glb', x: 12.5, z: 1.5, ry: 2.0,
+    tint: 0x8f8b80, key: 'stone', minStage: 2, shop: { x: 11.0, z: -1.0 } },
+  t1a: { id: 'wild_settler', file: './assets/chars/mage.glb', x: -6.3, z: 4.7, ry: 1.0,
+    tint: 0x7d8f5c, key: 'wild', minStage: 2, shop: { x: -6.8, z: 6.3 } },
+  // v3.139: Frostpeak's own hearth, the fourth.
+  f1: { id: 'frost_settler', file: './assets/chars/mage.glb', x: 10, z: 6, ry: -2.4,
+    tint: 0xdfe8f2, key: 'frost', minStage: 2, shop: { x: 10.5, z: 8.0 } },
+  // v3.140: the Cloudreach Spire's own hearth, the fifth — the Landing's
+  // quiet NE corner, clear of the gatehouse, the sea-cave gate, the wayshrine
+  // and the cartwreck, measured the same live-grid way.
+  s1a: { id: 'storm_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0x9aa6b4, key: 'storm', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.141: the Sunken Vale's own hearth, the sixth — the Shallows' own dry
+  // NE corner (the region's west half is lagoon), clear of the gatehouse,
+  // the rest/travel spots and the shore dressing, same live-grid pocket
+  // shape as Storm's own (both 32x26 islands).
+  d1a: { id: 'vale_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0x8fb0ac, key: 'vale', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.142: the Court's own hearth, the seventh and last — x1, the spine's
+  // first room past the entrance (§1.3: the Court's landing is x1, not xh).
+  x1: { id: 'court_settler', file: './assets/chars/mage.glb', x: 11.5, z: 7.5, ry: -1.3,
+    tint: 0xa79ec2, key: 'court', minStage: 2, shop: { x: 12.0, z: 9.5 } },
+  // v3.143: the Village gets its people. `growthStage('village')` can only
+  // ever reach 1 (WS.set('village','restored'), main.js:991) or 2 (once
+  // grimmFreed too — pupsHomeFor/keepsakeFoundFor/the dungeon fact are all
+  // false for 'village', nothing region-specific to earn), so `minStage: 1`
+  // is the right gate — no `shop`, no stage-scaled STAGE_CLUTTER row: the
+  // town is already built, it only needed someone standing in it. Plain
+  // villager tones, not a region COAT, since these three answer to no
+  // region.
+  ysq: { id: 'square_settler', file: './assets/chars/mage.glb', x: 9, z: -4, ry: 2.6,
+    tint: 0xb08968, key: 'village', minStage: 1 },
+  yhs: { id: 'highstreet_settler', file: './assets/chars/mage.glb', x: 5, z: 3, ry: -0.8,
+    tint: 0x6b7f99, key: 'village', minStage: 1 },
+  ylw: { id: 'lowlanes_settler', file: './assets/chars/mage.glb', x: 9, z: 3, ry: 1.9,
+    tint: 0x7a9469, key: 'village', minStage: 1 },
+};
+
 // WHERE HE STANDS, AND WHAT HAS TO HAVE HAPPENED FIRST.
 //
 // One post per boss arena — the seven rooms in main.js's BOSS_ROOMS — plus the
@@ -282,6 +351,24 @@ export const WAYFARER_POSTS = {
   // for the square at peace rather than the square being fought over.
   ysq: { x: 7, z: 8.5, ry: -2.4, flag: null, when: villageCleared },
   m1: { x: 5, z: 8, ry: -2.2, flag: null, when: villageCleared },
+
+  // THE HEARTHS, ONE AT A TIME (v3.131 begins the rollout; the other six
+  // follow as each region's own hearth reaches stage 4 — design/WIDER-WORLD.md
+  // §5.4). `growthStage('ember') >= 4` is the literal rule, but importing it
+  // here would import js/restoration.js, which already imports THIS file for
+  // `characterNpc`/`SETTLER_POSTS` — a cycle. `seen_4` is the flag
+  // `spawnSettlers` sets, once, the first time stage 4 is reached, and growth
+  // never regresses (design/WIDER-WORLD.md §1.7's additive law), so it is the
+  // same question asked through a fact both files already know: `WS`.
+  la: { x: -9.3, z: 7.6, ry: -1.2, flag: null, when: () => WS.get('ember', 'seen_4') },
+  // v3.135: measured clear of both new shop carts' own 1.7u proximity ring
+  // (SETTLER_POSTS.vh/.t1a's `shop`, above) — the same la-post lesson.
+  vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },
+  t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
+  f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
+  s1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('storm', 'seen_4') },
+  d1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('vale', 'seen_4') },
+  x1: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('court', 'seen_4') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks

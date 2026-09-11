@@ -41,8 +41,10 @@ import { WS } from './worldstate.js';
 import { audio } from './audio.js';
 import { registerDistrictTints } from './districts.js';
 import { iceGate, freezeBrazier, brazier, pushableBoulder, plateSwitch,
-  registerCuttable } from './gates.js';
+  registerCuttable, meltGate, alreadyMelted } from './gates.js';
 import { buildPotionMesh } from './loot.js';
+import { spawnLostWolf } from './pip.js';
+import { COAT } from './restoration.js';
 
 export const REGION = 'frost';   // the WS namespace the v3.21 rooms wrote
 
@@ -66,6 +68,11 @@ export const DISTRICTS = {
               ground: 'snowfield', name: 'THE WINDSCOUR',     hero: 'THE SUMMIT DOOR' },
   eyrie:    { tint: 0xc4dbe8, floorTint: 0xf0f6fb, wallTint: 0x66788c, propTint: 0xa9bfd0,
               ground: 'snowfield', name: "BOREAL'S EYRIE",    hero: 'THE STANDING STONES' },
+  // THE SUNKEN HEARTH (v3.148, §2.3) — Frostpeak's own pocket dungeon. A
+  // warmer bias than the rest of the mountain: somewhere that used to be
+  // heated, colder than any hearth but not the mountain's own cold blue.
+  hearth:   { tint: 0xb0a8c4, floorTint: 0xe8dfe6, wallTint: 0x584e60, propTint: 0x998ea6,
+              ground: 'snowfield', name: 'THE SUNKEN HEARTH', hero: 'THE OLD ARCH' },
 };
 
 const M = MODULES;
@@ -86,6 +93,17 @@ export const L4 = {
          label: 'THE WINDSCOUR', beat: 'the gauntlet · rest before the summit' },
   f5:  { ...M.arena,  kind: 'arena',  district: 'eyrie', spine: true,
          label: "BOREAL'S EYRIE", beat: 'BOREAL, THE RIMEBOUND · the first boss that flies' },
+
+  // THE SUNKEN HEARTH (v3.148, §2.3) — Frostpeak's own pocket dungeon, off
+  // f1b's melt gate. spine: false throughout, the Ash Vault's own rule:
+  // optional, never on the critical path. `dungeon: true` on the entrance
+  // only — one offshoot card for the whole branch on the map (§5.3).
+  f1c: { ...M.pocket, kind: 'pocket', district: 'hearth', loopsTo: 'f1b',
+         label: "THE HEARTH'S MOUTH", beat: 'optional · the lost wolf · gold', dungeon: true },
+  f1d: { ...M.island, kind: 'island', district: 'hearth',
+         label: 'THE COLD HEARTH', beat: 'optional · rime-minion x2 + glacier-warden · the Rime Warden' },
+  f1e: { ...M.pocket, kind: 'pocket', district: 'hearth', loopsTo: 'f1d',
+         label: 'THE WARM POOL', beat: 'optional · gold + heart piece' },
 };
 
 registerDistrictTints(L4, DISTRICTS);
@@ -157,7 +175,7 @@ export async function loadFrostKit() {
   return frostKit;
 }
 
-const { shell, sideDoor, scatter } =
+const { shell, sideDoor, scatter, visibleReward, onwardPlug } =
   makeBuilders({ kit: () => frostKit, isGrey: () => GREY() });
 
 const { fallenColumn, rubbleField, wayshrine, lowWall } =
@@ -190,6 +208,14 @@ function finish(world, spec, D) {
   thresholdGlow(world);
   flattenStatic(world);
   return world;
+}
+
+// Same reasoning as level1.js/level2.js's own copy (the lost-wolf rescue,
+// design/WIDER-WORLD.md §2.5): a Pip line, skipped harmlessly if narration
+// isn't wired up yet (e.g. a headless suite jumping straight to the room).
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -554,12 +580,32 @@ export async function buildF1(scene) {
 export async function buildF1b(scene) {
   const { world, spec, D } = base(scene, 'f1b');
   const gaps = [gap('w')];
+  // THE LOOP CLOSES (v3.134, design/WIDER-WORLD.md §2.3) — the Woods–Climb–
+  // Frostpeak shortcut, `tf3`'s own north door mirrored here on `f1b`'s
+  // south wall. Built once, always open: a child only ever arrives here
+  // having already cleared the Frozen Spring to reach `tf3` at all, so
+  // (unlike `la`'s crack) there is no separate flag to gate it on.
+  gaps.push(gap('s'));
+  // THE SUNKEN HEARTH (v3.148, §2.3): Frostpeak's own dungeon, off the east
+  // wall — clear of the cairn nook's ridge (z ≤ -3.6) and the firs at
+  // (8.0, 5.5) r1.6. Melted PERMANENTLY by the Fire Wolf, the one wolf a
+  // child already owns on arrival (region 1) — unlike the other three
+  // dungeons (each locked behind the NEXT region's form), this one asks for
+  // nothing new: the door is open the day Frostpeak begins.
+  const hearthOpen = alreadyMelted(REGION, 'f1c_hearth');
+  if (hearthOpen) gaps.push(gap('e', 1.6, 1.0));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 2, z: 0, r: 4.5, kind: 'ice' }, { x: -5, z: 5, r: 2.6, kind: 'gravel' }],
     paths: [[[-9, 0], [-3, 0], [3, -1], [7, -3]]],
   });
   world.spawn = { x: -7, z: 0, angle: Math.PI / 2 };
   sideDoor(world, 'w', halfW, halfD, 'f1', { x: 13.5, z: 0, angle: -Math.PI / 2 });   // LOOPS BACK
+  sideDoor(world, 's', halfW, halfD, 'tf3', { x: 0, z: 6.3, angle: Math.PI });
+  meltGate(world, 8.5, 1.0, 'f1c_hearth', REGION);
+  world.markers.meltPromise = { x: 8.5, z: 1.0 };
+  if (hearthOpen) {
+    sideDoor(world, 'e', halfW, halfD, 'f1c', { x: -8.5, z: 0, angle: Math.PI / 2 }, { centre: 1.0, half: 1.6 });
+  }
 
   // THE CAIRN NOOK: a rock spur walls it, the ice seals the only way in. The
   // Frost Wolf is still up the mountain, so this is a PROMISE — come back.
@@ -597,6 +643,139 @@ export async function buildF1b(scene) {
   firs(world, -7.5, -3.0, 1.4, 3, 22);
   rubbleField(world, 4.0, 3.0, 1.6, D, 7);
   mountain(world, halfW, halfD, gaps, 42, [{ minX: -9, maxX: 3, minZ: -2, maxZ: 2 }]);
+  return finish(world, spec, D);
+}
+
+// ===========================================================================
+// THE SUNKEN HEARTH (v3.148, design/WIDER-WORLD.md §2.3/§2.6) — Frostpeak's
+// own pocket dungeon, off f1b's melt gate. Built to the Ash Vault template
+// (js/level1.js buildLv1/2/3) rung for rung — a no-fight pocket with the lost
+// wolf, an island with the fight AND this dungeon's own guardian (the Rime
+// Warden), a gold pocket behind the plug the guardian's own death opens —
+// but framed as a buried hot-spring bathhouse rather than a reskinned cairn:
+// somewhere that used to be warm, and only the Fire Wolf can bring the warmth
+// back. Unlike the other three dungeons (each behind the NEXT region's wolf),
+// this one needs nothing new — Fire is the FIRST wolf, so it opens the day
+// Frostpeak begins.
+// ===========================================================================
+
+export async function buildF1c(scene) {
+  const { world, spec, D } = base(scene, 'f1c');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -3, z: 2, r: 3.0, kind: 'ice' }, { x: 4, z: -3, r: 2.6, kind: 'gravel' }],
+    pathWidth: 2.4,
+    paths: [[[9, 0], [0, 0], [-9, 0]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'f1b', { x: 6.5, z: 1.0, angle: -Math.PI / 2 }, { centre: 1.0, half: 1.6 });
+  sideDoor(world, 'w', halfW, halfD, 'f1d', { x: 14.5, z: 0, angle: -Math.PI / 2 });
+
+  await spawnLostWolf(world, {
+    id: 'f1c_wolf', x: -6.5, z: 5, coat: COAT.frost,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  // the bathhouse's own cold mouth — old stonework someone built round a
+  // spring, the arch still standing over water that stopped being warm
+  if (!GREY()) {
+    const arch = tinted(frostKit.archDoor, 'f1cArch', D.propTint);
+    arch.position.set(6, 0, 5.2); arch.scale.setScalar(0.9);
+    world.add(arch); world.addCircle(6, 5.2, 1.0);
+    const ped = tinted(frostKit.pedestal, 'f1cPedestal', D.propTint);
+    ped.position.set(-6, 0, -5.2); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(-6, -5.2, 0.85);
+    const col = tinted(frostKit.column, 'f1cColumn', D.wallTint);
+    col.position.set(9.4, 0, -4); col.rotation.y = Math.PI / 2;
+    world.add(col);
+  }
+
+  world.markers.breakables = [{ x: -7.5, z: 4.5, kind: 'crate' }];
+  drift(world, [
+    ['rockS', 5.0, 4.6, 1.1, 0.4, 0.4], ['rockM', -8.5, -3.0, 1.2, 1.7, 0.6],
+    ['pile', 1.5, 6.0, 1.5, 1.2, 0],
+  ]);
+  wayshrine(world, -3.5, -2.5, 0.6, D);
+  firs(world, 8.0, 5.5, 1.4, 3, 51);
+  firs(world, -8.0, -5.5, 1.3, 3, 52);
+  rubbleField(world, 2, 6, 1.8, D, 8);
+  scatter(world, halfW, halfD, D, 96, 5);
+  return finish(world, spec, D);
+}
+
+export async function buildF1d(scene) {
+  const { world, spec, D } = base(scene, 'f1d');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -8, z: 6, r: 4.2, kind: 'ice' }, { x: 8, z: -6, r: 3.8, kind: 'gravel' },
+              { x: 0, z: 8, r: 3.4, kind: 'ice' }],
+    pathWidth: 2.6,
+    paths: [[[13, 0], [-13, 0]]],
+  });
+  world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'f1c', { x: -8.5, z: 0, angle: Math.PI / 2 });
+
+  world.markers.shadowed = true;
+  world.markers.rimeMinionSpots = [{ x: -6, z: -3 }, { x: 6, z: -3 }];
+  world.markers.glacierWardenSpots = [{ x: 0, z: 5 }];
+  // THE RIME WARDEN — MINI_ROSTER (js/enemies.js), a named guardian on
+  // glacier-warden.glb, rime over old bone, weak to fire. Gone for good once
+  // the wound is banked, exactly the Root Cellar's own pattern.
+  const wardenDown = !!(state.flags.world && state.flags.world.frost && state.flags.world.frost.mini_rime_warden);
+  if (!wardenDown) world.markers.miniSpot = { id: 'rime_warden', x: 0, z: -3 };
+
+  const openF1e = () => sideDoor(world, 'w', halfW, halfD, 'f1e', { x: 8.5, z: 0, angle: -Math.PI / 2 });
+  if (WS.get(REGION, 'dungeon')) openF1e();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockL', D.propTint, openF1e);
+
+  world.markers.breakables = [
+    { x: -4, z: 8.5, kind: 'crate' }, { x: 4, z: -8.5, kind: 'barrel' },
+  ];
+  drift(world, [
+    ['rockL', 8, 2, 1.4, -0.6, 0.9], ['rockM', -9, 2.5, 1.2, 0.2, 0.7],
+    // arrival-frame floor — verify-density's own ruler measures what the
+    // camera actually sees from spawn (12.5, 0), not the room's total
+    // content, and the first pass left that frame nearly bare (21 of 32
+    // needed) while the far corners carried all the dressing.
+    ['rockS', 9.5, 3.0, 1.1, 0.5, 0.4], ['rockS', 9.0, -2.5, 1.1, -0.4, 0.4],
+    ['pile', 6.5, 1.5, 1.4, 0.2, 0], ['rockM', 5.0, -1.5, 1.2, 1.0, 0.6],
+  ]);
+  firs(world, -10, 8, 1.6, 3, 53);
+  firs(world, 10, -8, 1.6, 3, 54);
+  firs(world, 9, 4.5, 1.3, 3, 55);
+  rubbleField(world, 11, 1, 2.0, D, 9);
+  rubbleField(world, -11, -1, 1.8, D, 8);
+  rubbleField(world, 6, 0, 1.6, D, 8);
+  scatter(world, halfW, halfD, D, 97, 6);
+  return finish(world, spec, D);
+}
+
+export async function buildF1e(scene) {
+  const { world, spec, D } = base(scene, 'f1e');
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    patches: [{ x: 0, z: -2, r: 3.0, kind: 'ice' }],
+    pathWidth: 2.6,
+    paths: [[[9, 0], [0, -1]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'f1d', { x: -9.5, z: 0, angle: Math.PI / 2 });
+
+  // THE WARM POOL — the one room the hearth used to heat. Water that stopped
+  // freezing the moment the Wight fell.
+  visibleReward(world, 0, -6.2, 'f1e_hearth', { shards: 30, heartPiece: 1, gear: 'axe_frost', seed: 'frost' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -6.5, z: -5.5, kind: 'crate' }, { x: 6.5, z: -5.5, kind: 'barrel' },
+  ];
+  drift(world, [
+    ['rockM', -5, 6.5, 1.2, 0.7, 0.6], ['rockM', 5, 6.5, 1.2, -0.7, 0.6],
+    // arrival-frame floor (same fix as f1d above): spawn is (8.5, 0) and the
+    // first pass put every rock at z 6.5, well outside the frame from there.
+    ['rockS', 7.0, 2.0, 1.1, 0.3, 0.4], ['rockS', 7.5, -2.0, 1.1, -0.3, 0.4],
+    ['pile', 4.5, 0.5, 1.4, 0.6, 0], ['rockS', 3.5, -2.0, 1.1, 1.1, 0.4],
+  ]);
+  rubbleField(world, -8, -4.5, 1.8, D, 8);
+  rubbleField(world, 8, -4.5, 1.8, D, 8);
+  rubbleField(world, 5, 1.5, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 98, 5);
   return finish(world, spec, D);
 }
 
@@ -868,7 +1047,7 @@ export async function buildF4(scene) {
   campfire(world, 'cp_f4', -2.4, -7.0);
   potion(world, 2.4, -7.0);
   world.markers.breakables = [
-    { x: -11.0, z: 10.0, kind: 'crate', shards: 3 }, { x: 11.5, z: 9.5, kind: 'barrel', shards: 3 },
+    { x: -10.58, z: 9.58, kind: 'crate', shards: 3 }, { x: 10.85, z: 9.03, kind: 'barrel', shards: 3 },
     { x: 7.0, z: -9.5, kind: 'crate', shards: 2 },
   ];
 
@@ -993,7 +1172,7 @@ export async function buildF5(scene) {
   promiseIce(world, 10.0, -9.5, 'f_eyrie');
   world.markers.chestDefs = [
     ...(onward
-      ? [{ id: 'c_f5_summit', tier: 'gold', x: -4.0, z: -5.0, ry: 0.7, loot: { shards: 32, powerup: 'star' } }]
+      ? [{ id: 'c_f5_summit', tier: 'gold', x: -4.0, z: -5.0, ry: 0.7, loot: { shards: 32 } }]
       : []),
     { id: 'c_f5_ice', tier: 'gold', x: 10.5, z: -11.5, ry: -2.2, loot: { shards: 26, heartPiece: 1 } },
   ];
@@ -1009,4 +1188,6 @@ export async function buildF5(scene) {
 
 export const LEVEL4_ROOMS = {
   f1: buildF1, f1b: buildF1b, f2: buildF2, f2b: buildF2b, f3: buildF3, f4: buildF4, f5: buildF5,
+  // THE SUNKEN HEARTH (v3.148, §2.3)
+  f1c: buildF1c, f1d: buildF1d, f1e: buildF1e,
 };

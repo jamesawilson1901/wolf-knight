@@ -37,6 +37,9 @@ const SECTIONS = [
     ['ld1', 'THE ORDER HALL — puzzle room, dressed at the perimeter only'],
     ['lg4', 'THE BOSS DOOR — the quietest room in Ember'],
     ['le', 'E · HEART OF THE HOLLOW — the Shadowgrip. Arena: edges only'],
+    ['lv1', 'THE UNDERSTAIR CELLAR — the Ash Vault, room 1: no fight, the moved chest, a lost wolf'],
+    ['lv2', 'THE CHARRED GALLERY — the Ash Vault fight: 2 wretch + 1 marauder'],
+    ['lv3', 'THE BANKED VAULT — the Ash Vault, gold: heart piece + shards + halberd'],
   ], 'ember'],
   ['Stoneroot Caverns — buried and waiting',
    'Level 2 · something enormous was carved here, and the dark has been sitting on it since.', [
@@ -53,10 +56,13 @@ const SECTIONS = [
     ['vb3', 'THE RATTLE — puzzle room, dressed at the perimeter only'],
     ['vgc', 'THE WET MOUTH — rest. Past here the workings flooded'],
     ['vc1', 'C1 · THE SUNKEN STAIR — shieldlings'],
-    ['vc2', 'C2 — the THORN promise gate'],
+    ['vc2', 'C2 — the THORN promise gate; once cut, a west door to the Root Cellar'],
     ['vcp', 'the last dry pocket — gold chest'],
     ['vc3', 'the pin'],
     ['vz', 'THE WARDEN. Arena: edges only'],
+    ['vr1', 'THE ROOT CELLAR — the dungeon, room 1: no fight, a lost wolf'],
+    ['vr2', 'THE TANGLED HOLLOW — the fight: stone-colossus + 2 cinder-imp, and the Rootbound Wight'],
+    ['vr3', 'THE DEEP ROOTS — gold: heart piece + shards + Bell Maul'],
   ], 'stone'],
   ['The Wild Woods — beautiful and sick',
    'Level 3 · the loveliest place in the world, rotting from the inside. The rot rises room by room as you walk in — 10% at the edge, 90% at the heart.', [
@@ -70,15 +76,21 @@ const SECTIONS = [
     ['t4b', 'rot 85%'], ['t4p', 'optional'], ['tc4', 'rest'],
     ['tgl', 'SYLVA’S GLADE. Arena: edges only'],
     ['tsA', 'secret shortcut'], ['tsB', 'secret shortcut'],
+    ['tf1', 'THE SPRING MOUTH — the Frozen Spring, room 1: no fight, the moved chest, a lost wolf'],
+    ['tf2', 'THE RIMEBOUND HOLLOW — the Frozen Spring fight: 2 rime-minion + 1 frost-dragonling'],
+    ['tf3', 'THE SPRING HEART — the Frozen Spring, gold: heart piece + shards + Rime Lance; the door to f1b'],
   ], 'woods'],
   // THE BACK HALF OF THE GAME was never on this sheet — the same hand-kept
   // rot every room list in tools/ carried (2026-08-30). A review page that
   // shows regions 1-3 of a nine-region game reviews a third of the game.
   ['Frostpeak — the cold, high hush', 'Level 4 · the old build, still played: braziers, the frozen lake, Boreal.', [
-    ['f1', 'THE RIME GATE — arrival'], ['f1b', 'the ice pocket — Rime Plate chest'],
+    ['f1', 'THE RIME GATE — arrival'], ['f1b', 'the ice pocket — Rime Plate chest; once melted, a door east'],
     ['f2', 'THE ICEBOUND HALL — braziers melt the way'], ['f2b', 'the Glacier Nook'],
     ['f3', 'THE FROZEN LAKE — skidding boulders, two plates'],
     ['f4', 'THE WINDSCOUR'], ['f5', 'BOREAL'],
+    ['f1c', "THE HEARTH'S MOUTH — the Sunken Hearth, room 1: no fight, a lost wolf"],
+    ['f1d', 'THE COLD HEARTH — the fight: rime-minion x2 + glacier-warden, and the Rime Warden'],
+    ['f1e', 'THE WARM POOL — gold: heart piece + shards + Frost Axe'],
   ], 'frost'],
   ['Stormreach Cliffs — a climb into weather', 'Level 5 · a switchback up the sea-cliffs; the wind is the wall.', [
     ['s1a', 'THE LANDING'], ['s1b', 'up from the shore'], ['s1p', 'optional'],

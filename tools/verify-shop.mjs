@@ -219,6 +219,54 @@ check('a tier-4 weapon owned on an old save survives a reload at tier 1',
 const t6 = await readShop();
 check('...and Maren does not offer it back', !t6.names.includes('Boulder Hammer'), t6.names);
 
+// ---- v3.131: the SAME shop opens from Ember's own yard, at `la` -----------
+// "opens Maren's shop at the region's already-unlocked rung" — no second
+// shelf, no region-scoped stock: the cart at la's stage-4 yard sets the exact
+// same `world.markers.shopSpot` the Den's cart does, and main.js's proximity
+// check does not know or care which room it is standing in.
+await page.evaluate(async () => {
+  const g = window.__game;
+  g.WS.set('ember', 'restored');
+  const { PUP_HOME } = await import('/js/pip.js');
+  for (const id of Object.keys(PUP_HOME)) if (PUP_HOME[id] === 'ember') g.state.flags.pups[id] = true;
+  const { KEEPSAKE } = await import('/js/restoration.js');
+  if (!g.state.inventory.treasures) g.state.inventory.treasures = [];
+  if (KEEPSAKE.ember && !g.state.inventory.treasures.includes(KEEPSAKE.ember)) {
+    g.state.inventory.treasures.push(KEEPSAKE.ember);
+  }
+  g.WS.set('ember', 'dungeon', true);
+});
+check('la builds at Ember stage 4', await go('la'));
+const laShop = await page.evaluate(() => !!window.__game.world.markers.shopSpot);
+check('la’s yard sets shopSpot once the region reaches stage 4', laShop);
+await page.evaluate(() => {
+  const p = window.__game.player.root.position;
+  p.x = -14; p.z = 10;
+});
+await frames(4);
+await page.evaluate(() => {
+  const g = window.__game;
+  const s = g.world.markers.shopSpot;
+  g.player.root.position.x = s.x;
+  g.player.root.position.z = s.z;
+});
+await frames(6);
+const laRead = await page.evaluate(() => {
+  const el = document.getElementById('shop-menu');
+  const open = el && getComputedStyle(el).display !== 'none';
+  const names = [...el.querySelectorAll('.item-card .nm')].map((n) => n.textContent.trim());
+  return { open, names };
+});
+check('walking up to la’s cart opens the shop', laRead.open);
+// The "old-save" step just above reset every region to unhealed (tier 1) to
+// prove a kept weapon survives it — so the rung both carts show right now IS
+// tier 1, and the actual claim is that la's cart shows the SAME rows the
+// Den's own cart just did (`t6`, read a moment ago in that same state), not
+// a hand-picked later tier that this point in the run is no longer at.
+check('...at the SAME rung the Den’s own cart already unlocked (no second shelf)',
+  laRead.names.length === t6.names.length && laRead.names.every((n) => t6.names.includes(n)),
+  { la: laRead.names, den: t6.names });
+
 console.log('\n' + (errors.length ? `✗ ${errors.length} FAILED: ${errors.join(', ')}` : 'ALL CLEAN'));
 await b.close();
 process.exit(errors.length ? 1 : 0);

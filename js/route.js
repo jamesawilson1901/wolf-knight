@@ -15,28 +15,39 @@
 // a side room and got stuck should be shown the way OUT of it, not deeper.
 import { state } from './state.js';
 import { WS } from './worldstate.js';
+import { growthStage } from './restoration.js';
 
 const ONWARD = {
   // --- Ember Hollow: a string of pearls, always north ---------------------
   la: 'lg1', lg1: 'lb', lb: 'lg2', lg2: 'lc', lc: 'lg3', lg3: 'ld',
   ld: 'lg4', lg4: 'le',
   la1: 'la', lb1: 'lb', lb2: 'lb', lc1: 'lc', ld1: 'ld',
+  // The Ash Vault (§2.4): Ember's first dungeon, off `la`'s own cracked wall.
+  lv1: 'la', lv2: 'lv3', lv3: 'lv2',
 
   // --- Stoneroot: a hub and three spokes. `vh` is a function, below -------
   vga: 'va1', va1: 'va2', va2: 'va3', va3: 'vh',
   vgb: 'vb1', vb1: 'vb2', vb2: 'vb3', vb3: 'vh',
   vgc: 'vc1', vc1: 'vc2', vc2: 'vc3', vc3: 'vh',
   vap: 'va2', vbp: 'vb2', vcp: 'vc2',
+  // The Root Cellar (v3.136, §2.3): Stoneroot's own dungeon, off vc2's own
+  // bramble gate.
+  vr1: 'vc2', vr2: 'vr3', vr3: 'vr2',
 
   // --- The Wild Woods: a ring ---------------------------------------------
   t1a: 't1b', t1b: 'tc1', tc1: 't2a', t2a: 't2b', t2b: 'tsh', tsh: 'tc2',
   tc2: 't3a', t3a: 't3b', t3b: 'tkn', tkn: 'tc3', tc3: 't4a', t4a: 't4b',
   t4b: 'tc4', tc4: 'tgl',
   t1p: 't1b', t2p: 't2b', t3p: 't3b', t4p: 't4b',
+  // The Frozen Spring (§2.3): Wild Woods' own dungeon, off t1b's ice spring.
+  tf1: 't1b', tf2: 'tf3', tf3: 'tf2',
 
   // --- Frostpeak: still the old build, and still played --------------------
   f1: 'f2', f2: 'f3', f3: 'f4', f4: 'f5',
   f1b: 'f1', f2b: 'f2',
+  // The Sunken Hearth (v3.148, §2.3): Frostpeak's own dungeon, off f1b's
+  // melt gate.
+  f1c: 'f1b', f1d: 'f1e', f1e: 'f1d',
   // --- The roads between regions (levelNight, levelGreen, levelMarket): two
   // rooms each, one way on.
   n1: 'n2', n2: 'vh',
@@ -85,8 +96,91 @@ const ONWARD = {
 // The two hubs answer differently depending on what the child has already done.
 // Both mirror what the room itself does: the Stoneroot hub only HAS the doorway
 // its stage has opened, and the Court's throne stair only opens on four relics.
+// The room a child re-enters each region through — its own hearth (§1.5's
+// settler table) once one is built there, the region's own known entrance
+// either way; a hearth existing is a dressing detail, not a routing one.
+const HEARTH_ROOM = { ember: 'la', stone: 'vh', wild: 't1a', frost: 'f1',
+  storm: 's1a', vale: 'd1a', court: 'x1' };
+
+// EVERY ARENA'S OWN NEAREST UNFINISHED THING (§5.2), once its boss falls:
+// the room holding a promise gate whose form she now owns and whose OWN
+// `done()` is still false — the same rooms and flags js/main.js's own
+// PROMISES table reads (51-79) — duplicated here in miniature rather than
+// imported, since main.js already imports this file (nextRoom/onwardSpot)
+// and importing PROMISES back would cycle. `underwaterPromise` (l2_sunken)
+// is left out on purpose: nothing opens it but the ring draining on its
+// own, so there is no verb for Pip to ever point a child at.
+const REGION_PROMISES = {
+  ember: [
+    { room: 'la', form: 'earth_wolf', done: () => WS.get('ember', 'dungeon') },
+    { room: 'lb2', form: 'fire_wolf', done: () => !!state.flags.burned.l1_scorched_gate },
+  ],
+  stone: [
+    { room: 'vc2', form: 'verdant_wolf', done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+  ],
+  wild: [
+    { room: 't1b', form: 'verdant_wolf', done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+    { room: 't1b', form: 'frost_wolf', done: () => WS.get('wild', 'dungeon') },
+    { room: 't3a', form: 'verdant_wolf', done: () => WS.get('wild3', 'rootCut') },
+    { room: 't4a', form: 'verdant_wolf', done: () => WS.get('wild3', 'logDown') },
+  ],
+  // frost/storm/vale carry no promise gates yet (design/WIDER-WORLD.md §2.3's
+  // "later" queue) — an empty list here is silence, not a wrong answer, and
+  // this table needs no edit the day one ships.
+};
+
+// A region's own hearth, but only while it still has something new to show:
+// `spawnSettlers` marks `seen_N` the first time a child actually WALKS INTO
+// the stage-N reveal, so "pending grow-in" is stage >= 2 (a settler exists
+// at all) and that exact stage not yet seen — once seen, the hearth is just
+// scenery again until growth advances further.
+function pendingHearth(key) {
+  const room = HEARTH_ROOM[key];
+  const stage = growthStage(key);
+  return room && stage >= 2 && !WS.get(key, 'seen_' + stage) ? room : null;
+}
+
+// One arena's own hub: the boss's own defeat flag gates it (never answered
+// mid-fight — Tam's own law, §5), then the region's nearest unfinished
+// promise, then a pending hearth reveal, then the road onward — the `xh`
+// relic-scan shape, generalised.
+function arenaHub(key, flag, fallback) {
+  return () => {
+    if (!state.flags[flag]) return null;
+    for (const p of (REGION_PROMISES[key] || [])) {
+      if (state.formsUnlocked.includes(p.form) && !p.done()) return p.room;
+    }
+    return pendingHearth(key) || fallback;
+  };
+}
+
 const HUBS = {
+  // le/vz/f5 carry no ONWARD row of their own — their own arena hands the
+  // next room over LIVE, as a door in the room itself (verify-onward.mjs),
+  // not a table entry — so the fallback here is that same room, named once
+  // rather than left for a child standing there to get no answer at all.
+  le: arenaHub('ember', 'bossDefeated', 'n1'),
+  vz: arenaHub('stone', 'wardenDefeated', 'g1'),
+  // tgl/scr/ddp already have their own ONWARD row (the last-three-roads
+  // rollout, below) — read it rather than repeat it, so the two tables
+  // cannot quietly disagree about where the road actually goes.
+  tgl: arenaHub('wild', 'sylvaDefeated', ONWARD.tgl),
+  f5: arenaHub('frost', 'borealDefeated', 'q1'),
+  scr: arenaHub('storm', 'ariaDefeated', ONWARD.scr),
+  ddp: arenaHub('vale', 'meriDefeated', ONWARD.ddp),
   vh: () => ['vga', 'vgb', 'vgc', 'vz'][Math.min(3, WS.stage('vault'))],
+  // THE DEN, given a real place in the guide (design/WIDER-WORLD.md §5.1):
+  // "go back and look" at whichever region has done the least, or — before
+  // any region is even freed — the only way out that exists yet. Growth is
+  // read at 5 (§1.2's five facts); a region already there has nothing left
+  // to point at, so the next-lowest takes its place.
+  den: () => {
+    const KEYS = Object.keys(HEARTH_ROOM);
+    const started = KEYS.filter((k) => WS.get(k, 'restored') && growthStage(k) < 5);
+    if (!started.length) return WS.get('ember', 'restored') ? null : 'la';
+    started.sort((a, b) => growthStage(a) - growthStage(b));
+    return HEARTH_ROOM[started[0]];
+  },
   // The Village: point at whichever street still has a standing guardian
   // behind it; inside a street, at that street's first unbeaten district.
   ysq: () => {

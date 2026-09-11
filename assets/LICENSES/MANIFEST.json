@@ -190,6 +190,18 @@
    "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
   },
   {
+   "pack": "Quaternius — Fish Pack (Animated)",
+   "licence": null,
+   "states": "UNVERIFIED — dad supplied the pack directly as Fish_Pack_Animated_by_Quaternius.zip (Blends/, FBX/, OBJ/, Preview.jpg only; no licence file inside the download itself). Same publisher, same distribution shape, as the two Quaternius packs above.",
+   "source": "https://quaternius.com",
+   "covers": [
+    "assets/chars/fish"
+   ],
+   "note": "design/WIDER-WORLD.md §3.4 — the fishing minigame's one blocking asset. Seven species converted from the pack's plain OBJ+MTL (no textures; flat per-part colour materials, already this project's house style) to .glb via obj2gltf, geometry and materials unaltered, no rig (a catch, not a creature, per §3.4's own note that no rig is needed). This build environment's network policy also refuses quaternius.com, so the pack's own licence page could not be fetched here either. FIX: download the pack and drop its License.txt in as quaternius-fish-pack.txt.",
+   "accepted": "private-family-use 2026-09-10",
+   "acceptedNote": "Shipping under the private-family-use decision recorded in .distribution. Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
+  },
+  {
    "pack": "Kenney — Holiday Kit",
    "licence": "kenney-holiday-kit.txt",
    "states": "License: (Creative Commons Zero, CC0) — \"You can use this content for personal, educational, and commercial purposes.\"",

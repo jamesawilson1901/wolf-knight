@@ -148,6 +148,25 @@ defineRestoration('wild3', [
     opens: "Sylva's Glade" },
 ]);
 
+// THE SEVEN HEALING REGIONS (design/WIDER-WORLD.md §1.2, 2026-09-09).
+//
+// `growthStage()` in js/restoration.js is what a hearth room actually reads —
+// it counts five facts INDIVIDUALLY (restored, pups home, keepsake found,
+// dungeon cleared, Grimm freed), not front-to-back the way `WS.stage()`
+// counts everything else, because a child who does them out of order must
+// not sit at a lower number than what they have actually done. `WS.stage()`
+// itself is never called for these seven keys; the declarations below exist
+// so `WS.describe()` and the `ws` debug getter (main.js) can print the truth
+// about `restored` and `dungeon` for all seven the same way they already do
+// for `vault`. `restored` is listed first only so a debug read shows it
+// first — order carries no meaning here the way it does for `vault`/`wild3`.
+for (const key of ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']) {
+  defineRestoration(key, [
+    { key: 'restored', title: 'the guardian is free and the land begins to heal' },
+    { key: 'dungeon', title: "the region's optional dungeon is cleared" },
+  ]);
+}
+
 // Mystery log — "come back later" promises shown as ??? on the map screen.
 // Registered the first time the player SEES the obstacle.
 export function logMystery(id, icon, label) {

@@ -41,6 +41,12 @@ const SAMPLE = [
   { room: 'sc2', key: 'storm' },
   { room: 'd1b', key: 'vale' },
   { room: 'xa2', key: 'court' },
+  // THE LAST THREE ROADS (WIDER-WORLD.md §1.8): each has its own enemy
+  // markers and its own dressed ground, so the same before/after the seven
+  // regions get above proves the fix reaches a room, not just a table.
+  { room: 'c1', key: 'wild' },
+  { room: 'p1', key: 'storm' },
+  { room: 'h1', key: 'vale' },
 ];
 
 const wk = await launch({ dev: true });
@@ -77,6 +83,12 @@ const keys = await page.evaluate(async () => {
     wild: of('t2a'), frost: of('f3'), market: of('q1'), storm: of('sc2'),
     vale: of('d1b'), court: of('xsh'), village: of('ysq'), spire: of('m1'),
     den: of('den'),
+    // THE LAST THREE ROADS (2026-09-08 → fixed 2026-09-09, WIDER-WORLD.md
+    // §1.8). Each joins the region on either side of it, the same as every
+    // other road above: the Cold Climb is Frostpeak's approach from the
+    // Woods, so it heals with 'wild', not 'frost' — a child crosses it
+    // BEFORE reaching Frostpeak, walking away from the Woods they just healed.
+    climb: of('c1'), plungeRoad: of('p1'), hollow: of('h1'),
   };
 });
 check('every region heals, and its road heals with it',
@@ -84,6 +96,8 @@ check('every region heals, and its road heals with it',
   && keys.green === 'stone' && keys.wild === 'wild' && keys.frost === 'frost'
   && keys.market === 'frost' && keys.storm === 'storm' && keys.vale === 'vale'
   && keys.court === 'court', keys);
+check('the last three roads heal with the region they leave, not the one they reach',
+  keys.climb === 'wild' && keys.plungeRoad === 'storm' && keys.hollow === 'vale', keys);
 check('the Village, the Spire and the Den are left alone on purpose',
   keys.village === null && keys.spire === null && keys.den === null, keys);
 // The Village's wards are "everything in this square is dead" gates and an

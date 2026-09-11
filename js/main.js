@@ -25,7 +25,6 @@ import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
-import { spawnPowerup, updatePowerups, updateBuffVisuals, powerupEvents, POWERUPS } from './powerups.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -36,7 +35,7 @@ import { WS, logMystery, resolveMystery } from './worldstate.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
-import { bloom, healLive, moodLift } from './restoration.js';
+import { bloom, healLive, moodLift, growthStage, spawnSettlers, spawnPupPen, spawnGardenBed, FLORA } from './restoration.js';
 import { validateRegions } from './regions.js';
 import { createTitleScene, buildPortraits } from './titlescene.js';
 import { itemThumb, meshThumb } from './equipscene.js';
@@ -44,29 +43,56 @@ import { emberRestorationLive, stoneRestorationLive } from './rooms.js';
 
 const FORM_CYCLE = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf', 'elemental_wolf'];
 
+// The garden bed's seed toast names (design/WIDER-WORLD.md §3.2) — every
+// dungeon gold chest that carries `L.seed` names its region this way.
+const SEED_NAMES = {
+  ember: 'an ember seed', stone: 'a stone-mushroom spore', wild: 'a wild woods seed',
+  frost: 'a frostbloom seed', storm: 'a stormreach seed', vale: 'a sunken vale seed',
+  court: 'a shadow court seed',
+};
+
 // A8 — THE PROMISE REGISTER. One row per "come back later" gate in the three
 // rebuilt levels: the marker the room drops, the map entry it earns, and the
 // condition that closes it. `done` reads the same flag the gate is built from,
 // so the map can never claim a wall is open while the wall is still standing.
 const PROMISES = [
+  // v3.130: the crack now opens onto the Ash Vault (§2.4), so the ??? card
+  // resolves when the dungeon behind it is actually cleared, not when the
+  // gate merely breaks — the marker and id are unchanged, so a save that
+  // already logged this promise keeps reading the same row.
   { marker: 'crackPromise', id: 'l1_crack', icon: '🪨', r: 4,
     label: 'A cracked wall — the Ashfall',
-    done: () => !!state.flags.cracked.l1_crack_gate },
+    done: () => WS.get('ember', 'dungeon') },
   { marker: 'firePromise', id: 'l1_scorched', icon: '🔥', r: 4.5,
     label: 'A scorched barricade — the Scorched Cubby',
     done: () => !!state.flags.burned.l1_scorched_gate },
   { marker: 'underwaterPromise', id: 'l2_sunken', icon: '💧', r: 4,
     label: 'A chest under the water — the Great Vault',
     done: () => WS.get('vault', 'drained') },
+  // v3.136: the bramble now opens onto the Root Cellar (§2.3/§2.6), so the ???
+  // card resolves when the dungeon behind it — the Rootbound Wight included —
+  // is actually cleared, not when the bramble merely cuts. Same rule v3.130
+  // set for the crack and v3.134 for the spring; marker and id unchanged.
   { marker: 'bramblePromise', id: 'l2_bramble', icon: '🌿', r: 4,
     label: 'A thorny tangle — the Drowned Door',
-    done: () => WS.get('vault', 'cut_l2_bramble_gate') },
+    done: () => WS.get('vault', 'dungeon') },
   { marker: 'thornPromise', id: 'l3_thorn', icon: '🌿', r: 4,
     label: 'A thorn wall — Thornedge',
     done: () => WS.get('wild3', 'cut_w3_thorn_wall') },
+  // v3.134: the spring now opens onto the Frozen Spring (§2.3), so the ???
+  // card resolves when the dungeon behind it is actually cleared, not when
+  // the ice merely shatters — same rule v3.130 set for the crack, marker and
+  // id unchanged so a save that already logged this promise keeps reading
+  // the same row.
   { marker: 'icePromise', id: 'l3_spring', icon: '❄️', r: 4,
     label: 'A spring sealed in ice — Thornedge',
-    done: () => WS.get('wild3', 'ice_l3_spring_ice') },
+    done: () => WS.get('wild', 'dungeon') },
+  // v3.148: the Sunken Hearth (§2.3/§2.6) — this one is melted, not shattered
+  // (the Fire Wolf's own verb), and the ??? card resolves on the dungeon
+  // behind it same as every other dungeon door, not on the melt alone.
+  { marker: 'meltPromise', id: 'f1c_hearth', icon: '🔥', r: 4,
+    label: 'An old arch, sealed in ice — the Sunken Hearth',
+    done: () => WS.get('frost', 'dungeon') },
   { marker: 'rootWallPromise', id: 'l3_rootwall', icon: '🌿', r: 4,
     label: 'A wall of roots — the Rootbound Deep', say: 'rootwall_hint',
     done: () => WS.get('wild3', 'rootCut') },
@@ -74,6 +100,27 @@ const PROMISES = [
     label: 'A great log, tangled — the Bloomfall', say: 'greatlog_hint',
     done: () => WS.get('wild3', 'logDown') },
 ];
+// WREN'S RUMOUR TABLE (v3.137, design/WIDER-WORLD.md §5.2) — "a small table
+// chosen at say-time by the nearest unfinished thing": the first region
+// still unhealed, in walk order, so what she says always points at wherever
+// the game actually wants a lost child to go next — the non-reader's quest
+// log, with no UI. `wren_rumour` keeps its own id for the Wild Woods (it
+// already named that region before this table existed).
+const WREN_RUMOUR = {
+  ember: 'wren_rumour_ember', stone: 'wren_rumour_stone', wild: 'wren_rumour',
+  frost: 'wren_rumour_frost', storm: 'wren_rumour_storm', vale: 'wren_rumour_vale',
+  court: 'wren_rumour_court',
+};
+const REGION_ORDER = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court'];
+// Exported for the one thing a bootstrap file with no other export normally
+// has no reason to offer: a suite driving it through real WS state rather
+// than re-deriving the same decision a second time (js/route.js's own
+// nextRoom/onwardSpot are exported for the identical reason).
+export function wrenRumourLine() {
+  const next = REGION_ORDER.find((k) => !WS.get(k, 'restored'));
+  return next ? WREN_RUMOUR[next] : 'wren_rumour_done';
+}
+
 // contact-burst colors for the form-switch spectacle
 const FORM_BURST = { knight: 0xbfe3ff, dark_wolf: 0xb08aff, fire_wolf: 0xff8a3a, earth_wolf: 0xd8b06a };
 
@@ -849,9 +896,18 @@ function narrationTriggers(dt, t) {
       ['ariaHome', 'aria_den'], ['meriHome', 'meri_den']]) {
       if (m[marker] && nearSpot(m[marker], 2.6)) narration.say(line);
     }
+    // GRIMM AND LUNA (v3.144): the one homecoming pair that repeats,
+    // throttled, the same shape Wren's and Rook's own chat already uses —
+    // a child comes back to look at Grimm more than once.
+    if (m.grimmSpot && nearSpot(m.grimmSpot, 2.8)) {
+      if (!narration.say('grimm_den')) sayThrottled('grimm_den_chat', t, 45);
+    }
+    if (m.lunaHome && nearSpot(m.lunaHome, 2.6)) {
+      if (!narration.say('luna_den')) sayThrottled('luna_den_chat', t, 45);
+    }
     // villagers: intro once, then gentle repeatable chat (throttled)
     if (m.wrenSpot && nearSpot(m.wrenSpot, 2.6)) {
-      if (!narration.say('wren_intro')) sayThrottled('wren_rumour', t, 45);
+      if (!narration.say('wren_intro')) sayThrottled(wrenRumourLine(), t, 45);
     }
     if (m.rookSpot && nearSpot(m.rookSpot, 2.6)) {
       if (!narration.say('rook_intro')) sayThrottled('rook_chat', t, 45);
@@ -1518,7 +1574,7 @@ function updateMusic() {
 }
 
 // ---------------------------------------------------------------------------
-// HUD: shards, level + XP bar, active buffs
+// HUD: shards, level + XP bar
 // ---------------------------------------------------------------------------
 
 function renderShards() {
@@ -1533,21 +1589,6 @@ function renderLevel() {
   document.getElementById('xp-fill').style.width =
     Math.round((state.xp / xpForLevel(state.level)) * 100) + '%';
   ctxShow(el);
-}
-
-function renderBuffs() {
-  const el = document.getElementById('buffs');
-  el.innerHTML = '';
-  if (!player) return;
-  for (const [k, def] of Object.entries(POWERUPS)) {
-    if (player.buffs[k] > 0) {
-      const chip = document.createElement('div');
-      chip.className = 'buff-chip';
-      chip.textContent = def.icon;
-      chip.style.opacity = Math.min(1, 0.35 + player.buffs[k] / def.time);
-      el.appendChild(chip);
-    }
-  }
 }
 
 // Chest contents flow through here (shards are scattered by the chest itself).
@@ -1627,6 +1668,22 @@ function giveLoot(chest) {
         { file: td.file, tint: td.tint, size: 1.0 }, seat++);
     }
   }
+  // A SEED FOR THE GARDEN BED (design/WIDER-WORLD.md §3.2/§2.3) — one per
+  // dungeon gold chest, the region's own flora. `WS.complete` makes this
+  // idempotent like L.treasure above: a chest opened twice (or a save that
+  // cleared the dungeon before this feature shipped, backfilled by
+  // spawnGardenBed's own sync sweep) never re-announces a seed it already
+  // has. `lastSeed` always moves to the newest, even on a repeat open — the
+  // "no menu, most recent seed" rule (js/restoration.js spawnGardenBed).
+  if (L.seed) {
+    const isNew = WS.complete('den', 'seed_' + L.seed);
+    WS.set('den', 'lastSeed', L.seed);
+    if (isNew) {
+      lines.push(SEED_NAMES[L.seed] || `a ${L.seed} seed`);
+      const flora = FLORA[L.seed];
+      if (flora && flora[0]) spawnGearDrop(world, chest.x, chest.z, { file: flora[0], size: 0.8 }, seat++);
+    }
+  }
   if (L.key) {
     state.flags.keys[L.key] = true;
     lines.push(L.keyName || 'a key');
@@ -1635,7 +1692,6 @@ function giveLoot(chest) {
     narration.say('key_found');
     if (world.openBossDoor) world.openBossDoor(); // unseal in the live room
   }
-  if (L.powerup) spawnPowerup(world, chest.x, chest.z + 0.8, L.powerup);
   if (lines.length) bigToast(lines.join(' · '));
   persist();
 }
@@ -1752,7 +1808,6 @@ async function setupRoomExtras() {
     bumpCounter('bosses');
     grantXp(80);
     spawnShards(world, w.x, w.z + 1.5, 18);
-    spawnPowerup(world, w.x, w.z + 2, 'star');
     openTheWayOn(world);   // the crypt's north road, opened where the child stands
     summonWayfarer(world); // ...and Tam, a beat later, with the ride home
     if (!state.formsUnlocked.includes('earth_wolf')) state.formsUnlocked.push('earth_wolf');
@@ -1772,6 +1827,27 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnPups(world, onPupCollected);
+  // THE HEARTH, if this room is one and its region has grown enough to have
+  // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
+  // spots has to see the hearth's collider or it can land one in the fire,
+  // the exact lesson verify-healing §6 already taught about breakables and
+  // chests below.
+  await spawnSettlers(world, (key, stage) => {
+    // "hearths grown" (v3.132) counts the region, not the visit: onGrowIn
+    // only ever fires once per stage per region (spawnSettlers' own seen_N
+    // gate), and stage 2 is the settler's own first arrival — the moment a
+    // hearth becomes one at all.
+    if (stage === 2) bumpCounter('hearthsGrown');
+    narration.say(`${key}_grow_${stage}`);
+  });
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1) — Den only, self-guarded the
+  // same way `spawnSettlers` is. `onRowFilled` fires once per region the
+  // FIRST time the child comes home with that row already complete, the
+  // same "witnessed at the hearth, not out in the field" law.
+  await spawnPupPen(world, (key) => narration.say(`pups_home_${key}`));
+  // THE GARDEN BED (design/WIDER-WORLD.md §3.2) — Den only, self-guarded the
+  // same way spawnPupPen is.
+  await spawnGardenBed(world);
   // GRASS AND FLOWERS COME BACK, once the region's guardian is free
   // (js/restoration.js). LAST, and that position is the whole of it: the first
   // cut ran this inside buildRoom, which is before the breakables, the chests
@@ -1786,12 +1862,7 @@ async function setupRoomExtras() {
   await spawnWayfarer(world, wayfarerPost(world.roomId));
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
-  // every so often a smashed pot hides a power-up
-  const potDrops = ['fury', 'feather', 'star'];
-  world.onBreakableSmashed = (x, z) => {
-    const n = state.counters.pots || 0;
-    if (n % 9 === 4) spawnPowerup(world, x, z, potDrops[n % potDrops.length]);
-  };
+  gardenWasNear = true;
   if (pip) {
     pip.place(player.root.position.x - 0.9, player.root.position.z + 0.9, player.root.rotation.y);
   }
@@ -1990,7 +2061,17 @@ function initDevHarness() {
         open: !d.when || !!d.when() }));
     },
     get boss() {
-      const b = world.boss || world.warden;
+      // v3.149 fix: `world.warden`/`world.miniBoss` are never nulled on
+      // death (die() only sets `.dead`), so this getter kept reporting a
+      // defeated guardian as alive forever — a dev-harness bot polling
+      // window.__wk.boss to decide when a fight ends would loop on a ghost
+      // that had already stopped updating (js/enemies.js's own per-frame
+      // loop skips `.dead` enemies), state and hp frozen at the instant of
+      // death. Caught live: tools/fight-mini.mjs hung indefinitely against
+      // the Rime Warden once it died, chasing a "boss" that could never
+      // die again. `world.boss` (the SKINS-family bosses) already manages
+      // its own lifecycle separately and is unaffected.
+      const b = world.boss || [world.warden, world.miniBoss].find((c) => c && !c.dead);
       if (!b) return null;
       return { name: b.name || b.skin || 'boss',
         hp: b.hp !== undefined ? b.hp : (b.coreHp !== undefined ? b.coreHp : null),
@@ -2008,7 +2089,17 @@ function initDevHarness() {
           windup: e._windup !== undefined ? +e._windup.toFixed(2) : null }));
     },
     get flags() { return JSON.parse(JSON.stringify(state.flags)); },
-    get ws() { return { vault: WS.stage('vault'), wild3: WS.stage('wild3') }; },
+    get ws() {
+      return {
+        vault: WS.stage('vault'), wild3: WS.stage('wild3'),
+        // The seven healing regions' growth (design/WIDER-WORLD.md §1.2) —
+        // growthStage(), not WS.stage(): the two count differently on
+        // purpose, see restoration.js.
+        growth: Object.fromEntries(
+          ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']
+            .map((k) => [k, growthStage(k)])),
+      };
+    },
     // THE GATES OF THE FROZEN WORLD. Every flag that can make the main loop
     // skip updates, read from inside the module where they are closured —
     // findable in one read instead of a night of inference.
@@ -2190,6 +2281,8 @@ function wireHarness() {
 }
 let shopWasNear = false;
 let travelWasNear = false;
+let gardenWasNear = false;
+let gardenCooldown = 0;
 
 async function start() {
   // Assets stream in while the title screen is up.
@@ -2368,10 +2461,6 @@ async function start() {
   progressEvents.onSticker = (sticker) => {
     bigToast(`📒 New sticker: ${sticker.icon} ${sticker.name}`);
   };
-  powerupEvents.onGained = (kind, def) => {
-    bigToast(`${def.icon} ${def.name}!`);
-    renderBuffs();
-  };
   renderShards();
   renderLevel();
   checkStickers();
@@ -2475,15 +2564,13 @@ async function start() {
       const edt = (state.settings.easy ? dt * CONFIG.DIFFICULTY.GENTLE_ENEMY_TIME : dt) * effects.timeScale;
       if (world.updateEnemies) world.updateEnemies(edt, t, player);
       if (world.updatePups) world.updatePups(dt, t, player);
+      if (world.updateLostWolf) world.updateLostWolf(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       // ...and the pack grazing where the shadows used to stand
       if (world.updateGrazers) world.updateGrazers(dt, t, player);
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);
-      updatePowerups(world, dt, t, player);
-      updateBuffVisuals(world, dt, t, player);
-      renderBuffs();
 
       // the Den shop opens when Kael walks up to the mage
       if (world.markers.shopSpot) {
@@ -2491,11 +2578,49 @@ async function start() {
         if (near && !shopWasNear) menus.showShop();
         shopWasNear = near;
       }
-      // ...and the moonstone opens fast travel
+      // ...and the moonstone opens the map (v3.137: the same tappable
+      // screen the map button shows, not a second emoji list of its own —
+      // design/WIDER-WORLD.md §5.3).
       if (world.markers.travelSpot) {
         const near = nearSpot(world.markers.travelSpot, 1.5);
-        if (near && !travelWasNear) menus.showTravel();
+        if (near && !travelWasNear) menus.showMap();
         travelWasNear = near;
+      }
+      // THE GARDEN BED (design/WIDER-WORLD.md §3.2) — the shop/map spots'
+      // own nearSpot+edge-flag idiom, plus hysteresis (trigger inside 1.6u,
+      // only re-arm past 2.6u) AND a real cooldown. Proven live with
+      // tools/wk-drive.mjs: a harvest empties the bed while a seed is still
+      // owned, and the two planters flanking the ring leave little room to
+      // stand — real pathing right up to the ring's centre can wobble across
+      // even a wide hysteresis band, and hysteresis alone still silently
+      // re-planted the seed it had just harvested in the same visit. The
+      // cooldown is the actual fix; hysteresis just makes it rare to need.
+      if (gardenCooldown > 0) gardenCooldown -= dt;
+      if (world.markers.gardenSpot) {
+        const dx = player.root.position.x - world.markers.gardenSpot.x;
+        const dz = player.root.position.z - world.markers.gardenSpot.z;
+        const dist = Math.hypot(dx, dz);
+        const near = dist < (gardenWasNear ? 2.6 : 1.6);
+        if (near && !gardenWasNear && gardenCooldown <= 0 && world.gardenInteract) {
+          gardenCooldown = 3.0;
+          world.gardenInteract().then((r) => {
+            if (r.action === 'plant') {
+              audio.play('form-switch', { volume: 0.5, rate: 1.1 });
+              narration.say('garden_planted');
+              persist();
+            } else if (r.action === 'harvest') {
+              effects.warmFlood();
+              // a pot's worth (design/WIDER-WORLD.md §3.2), collected like
+              // any other burst of coins — never an instant grant, so the
+              // shard count in giveLoot/updateShards stays the one place
+              // shards are actually paid.
+              spawnShards(world, world.markers.gardenSpot.x, world.markers.gardenSpot.z + 0.8, r.shards);
+              narration.say('garden_harvest');
+              persist();
+            }
+          });
+        }
+        gardenWasNear = near;
       }
       if (world.boss) {
         if (!world.boss.onDefeated) {
@@ -2506,7 +2631,6 @@ async function start() {
             bumpCounter('bosses');
             grantXp(60);
             spawnShards(world, world.boss.x, world.boss.z + 1.5, 15); // shard shower
-            spawnPowerup(world, world.boss.x, world.boss.z + 2, 'star'); // victory gift
             // THE WAY ON OPENS WHERE YOU STAND (dad's request, 2026-08-30).
             // Arenas whose onward door used to arrive only on a rebuild
             // (f5, scr, ddp) now carry a rock plug + world.openOnward. A

@@ -8,6 +8,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { bumpCounter } from './progress.js';
 
 const PIP_SCALE = 0.22;
 const PUP_SCALE = 0.16;      // "wolf scaled to ~45%" of Kael's wolf (0.35)
@@ -166,10 +167,15 @@ export class Pip {
         if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
       }
     }
+    // v3.132 (design/WIDER-WORLD.md §3.5, the keepsake/heart-piece half —
+    // fishing rings and the promiseGates predicate wait on later slices): a
+    // keepsake or a heart piece is exactly as much "worth a detour" as gear
+    // or armour, and looked identical to a plain shard chest from a distance
+    // for the same reason those did.
     if (!this.sparkling && world.chests) {
       for (const c of world.chests) {
         if (c.opened) continue;
-        if (!c.loot || (!c.loot.gear && !c.loot.armour)) continue;
+        if (!c.loot || (!c.loot.gear && !c.loot.armour && !c.loot.treasure && !c.loot.heartPiece)) continue;
         const sd = Math.hypot(c.x - this.root.position.x, c.z - this.root.position.z);
         if (sd < SPARKLE_RANGE) { this.sparkling = true; break; }
       }
@@ -255,6 +261,32 @@ class Pup {
   }
 }
 
+// WHICH REGION IS EACH PUP FROM? design/WIDER-WORLD.md §1.2: a healed
+// region's growth stage counts "the region's three pups are home" as one of
+// five facts, and the count needs to know which three. The ids are mixed on
+// purpose — three numbering schemes met here as the game grew (see the note
+// on `pupSpotsOf` below) — so this is the one place that says which pup
+// belongs to which key, read off where each spot is actually placed
+// (js/level1.js:964,995,1218; level2.js:987,1190,1441; level3.js:902,1026,
+// 1221; level4.js:585,711,854; level5.js:628,769,961; level6.js:673,765,958;
+// level7.js:386,889,907; levelVillage.js:821,955,1032). `tools/verify-growth`
+// checks every id `pupSpotsOf` can find anywhere in the game is a key here —
+// a pup with nowhere to come home to would silently never count.
+export const PUP_HOME = {
+  pup1: 'ember', pup3: 'ember', pup_l3: 'ember',
+  pup4: 'stone', pup_v2: 'stone', pup_v3: 'stone',
+  pup7: 'wild', pup_t3: 'wild', pup8: 'wild',
+  pup10: 'frost', pup11: 'frost', pup12: 'frost',
+  pup_s1: 'storm', pup_s2: 'storm', pup_s3: 'storm',
+  pup_d1: 'vale', pup_d2: 'vale', pup_d3: 'vale',
+  pup_x1: 'court', pup_x2: 'court', pup_x3: 'court',
+  // The Village's three are not one of the seven growth keys (it has its own
+  // guardiansDown() readout, js/levelVillage.js) — listed here anyway so the
+  // completeness check above has somewhere to send them, not because
+  // anything reads growthStage('village').
+  pup_y2: 'village', pup_y3: 'village', pup_village: 'village',
+};
+
 // THREE WAYS TO SAY "A PUP STANDS HERE", because the game grew three of them.
 // The numbered `pupNSpot` markers are the original Level 1-4 contract; the
 // rebuilt regions 5-7 and the Village write a single `pupSpot` carrying its own
@@ -289,5 +321,56 @@ export async function spawnPups(world, onCollected) {
   }
   world.updatePups = (dt, t, player) => {
     for (const p of world.pups) p.update(dt, t, player, onCollected);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// THE LOST WOLF — design/WIDER-WORLD.md §2.5. Room one of every pocket
+// dungeon, no fight: a GROWN wolf curled against the wall (not a pup — the
+// pup ladder is untouched by this) that stands the moment a child walks up,
+// the same pup-chime, one Pip line, and `state.flags.rescued[id] = true` —
+// the map's own rescueCount() (worldstate.js) has read that field since
+// DEN-MINIGAMES §5.1 and nothing had ever written it.
+//
+// A near-copy of `Pup.update` above rather than a parameterised version of
+// it: the two only really share the chime and the walk-up radius, and a
+// grown wolf is full scale, tinted its region's own coat, and writes a
+// DIFFERENT save field the map already reads a different way. Forcing one
+// class to cover both risks the pup ladder for a feature that ships once
+// per dungeon.
+export async function spawnLostWolf(world, { id, x, z, coat, onRescued }) {
+  if (state.flags.rescued[id]) return;   // already home — nothing to spawn
+  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+  const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+  model.scale.setScalar(0.5);
+  model.position.set(x, 0, z);
+  model.rotation.y = (x + z) * 0.7;
+  if (coat) {
+    model.traverse((n) => {
+      if (!n.isMesh || n.material.name !== 'Main') return;
+      n.material = n.material.clone();
+      n.material.color.setHex(coat);
+    });
+  }
+  world.add(model);
+  world.keepLoose(model);          // it stands up on rescue; never batch it
+  const mixer = new THREE.AnimationMixer(model);
+  const curled = wolfGltf.animations.find((c) => c.name === 'Idle_2_HeadLow');
+  const idle = wolfGltf.animations.find((c) => c.name === 'Idle');
+  mixer.clipAction(curled).play();
+  let rescued = false;
+  world.updateLostWolf = (dt, t, player) => {
+    mixer.update(dt);
+    if (rescued) return;
+    const dx = player.root.position.x - x, dz = player.root.position.z - z;
+    if (dx * dx + dz * dz > 0.9 * 0.9) return;
+    rescued = true;
+    state.flags.rescued[id] = true;
+    bumpCounter('wolvesRescued');
+    audio.play('pup-chime');
+    const stand = mixer.clipAction(idle);
+    stand.reset().play();
+    curled && mixer.clipAction(curled).crossFadeTo(stand, 0.4, false);
+    if (onRescued) onRescued(id);
   };
 }

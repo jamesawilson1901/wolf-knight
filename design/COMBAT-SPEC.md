@@ -64,7 +64,7 @@ identity dials in CONFIG.FORMS):
 - A crescent HUD gauge fills from landed hits, hits TAKEN and time spent
   near enemies — pressure feeds the moon (hidden assist; pots don't
   count). No decay; survives switches, rooms and saves (state.moonGauge).
-  'Quicker Moon' perk = +25%/rank fill; Moon Shard powerup fills it whole.
+  'Quicker Moon' perk = +25%/rank fill.
 - **The Blood Moon belongs to the DARK WOLF (v3.18):** the gauge fills in
   every form, but the moon button, the "moon is full" nags and the
   trigger only exist while wearing the Dark Wolf.

@@ -191,5 +191,27 @@ for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
 }
 check('no two controls overlap', overlaps.length === 0, { overlaps });
 
+// ---------------------------------------------------------------------------
+// THE MAP CARDS (v3.137, design/WIDER-WORLD.md §5.3) — the map button itself
+// is measured above; what it opens onto is a screen of its own, including the
+// smaller dungeon offshoot cards, so it needs its own pass.
+console.log('\nMAP CARDS (v3.137):');
+await page.evaluate(() => { window.__game.state.flags.cracked.l1_crack_gate = true; });
+await page.locator('#map-btn').dispatchEvent('pointerdown');
+await page.waitForFunction(() => getComputedStyle(document.getElementById('map-menu')).display !== 'none');
+const mapCards = await page.evaluate(() => [...document.querySelectorAll('.map-room')].map((el) => {
+  const r = el.getBoundingClientRect();
+  return { id: el.dataset.room || el.className, w: r.width, h: r.height };
+}));
+const mapTooSmall = [];
+for (const c of mapCards) {
+  const ok = c.w >= FLOOR_PX && c.h >= FLOOR_PX;
+  console.log(`  ${ok ? '  ' : '!!'} ${String(c.id).padEnd(22)} ${c.w.toFixed(0).padStart(4)}x${c.h.toFixed(0).padStart(4)} px`);
+  if (!ok) mapTooSmall.push({ id: c.id, px: `${c.w.toFixed(0)}x${c.h.toFixed(0)}` });
+}
+check(`every map card (the dungeon offshoot included) clears the ${FLOOR_PX}px thumb floor`,
+  mapCards.length > 0 && mapTooSmall.length === 0, { count: mapCards.length, tooSmall: mapTooSmall });
+await page.locator('#map-menu .menu-btn').last().dispatchEvent('pointerdown');
+
 console.log(errors.length ? `\n${errors.length} PROBLEM(S):\n` + errors.join('\n') : '\nALL CLEAN.');
 await b.close();

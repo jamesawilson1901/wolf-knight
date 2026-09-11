@@ -308,7 +308,11 @@ export async function buildC2(scene) {
   visibleReward(world, 13.0, -8.5, 'c2_ice_prize', { shards: 26, gear: 'shield_iron' }, 'silver');
 
   world.markers.batSpots = [{ x: -6, z: 5 }, { x: 6, z: 7 }];
-  world.markers.slimeSpots = [{ x: -4, z: -1, variant: 'frost' }];
+  // was tagged with a made-up "frost" tint id — not a real VARIANTS key, a
+  // silent no-op since the day it was typed (caught by check-roster.mjs's
+  // new variant-vs-VARIANTS check, v3.136). `rime` is the real Frostpeak-
+  // family key this room, on the road INTO Frostpeak, was reaching for.
+  world.markers.slimeSpots = [{ x: -4, z: -1, variant: 'rime' }];
   world.markers.breakables = [
     { x: -8.0, z: 10.5, kind: 'crate' }, { x: 8.0, z: 10.0, kind: 'barrel' },
     { x: -11.0, z: 2.0, kind: 'vase' },

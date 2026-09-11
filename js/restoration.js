@@ -45,7 +45,14 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter, instancePlacements } from './assets.js';
 import { WS } from './worldstate.js';
-import { regionOf } from './state.js';
+import { regionOf, state } from './state.js';
+import { PUP_HOME } from './pip.js';
+import { ownsTreasure } from './treasures.js';
+import { loadVillageKit, placeOne } from './levelVillage.js';
+import { characterNpc, SETTLER_POSTS } from './npcs.js';
+import { audio } from './audio.js';
+import { flattenStatic } from './batch.js';
+import { bumpCounter } from './progress.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
 // always been spelled differently ('ember_hollow' vs 'ember'). One table, so
@@ -55,12 +62,21 @@ import { regionOf } from './state.js';
 const WS_KEY = {
   ember_hollow: 'ember', night_road: 'ember',
   stoneroot: 'stone', greenway: 'stone',
-  wildwoods: 'wild',
+  wildwoods: 'wild', coldclimb: 'wild',
   frostpeak: 'frost', market: 'frost',
-  stormreach: 'storm',
-  sunkenvale: 'vale',
+  stormreach: 'storm', plunge: 'storm',
+  sunkenvale: 'vale', hollowroad: 'vale',
   shadowcourt: 'court',
   // village / spire: see the note at the top. Absent on purpose.
+  //
+  // THE LAST THREE ROADS WERE LEFT OUT (2026-09-08 → fixed 2026-09-09). The
+  // Cold Climb, the Plunge and the Hollow Road shipped a day after this table
+  // did, and none of the three was ever added to it — so a child who freed
+  // Frostpeak walked back through six rooms of untouched shadow between two
+  // healed places, exactly the strip this table's own comment above says a
+  // road must not be. design/WIDER-WORLD.md §1.8 names it slice one because
+  // it is a bug, it is visible, and it is the first thing a returning child
+  // crosses.
 };
 
 export function healKeyOf(roomId) {
@@ -76,6 +92,62 @@ export function healKeyOf(roomId) {
 export function isHealed(roomId) {
   const k = healKeyOf(roomId);
   return !!(k && WS.get(k, 'restored'));
+}
+
+// ---------------------------------------------------------------------------
+// THE GROWTH STAGE — design/WIDER-WORLD.md §1.2.
+// ---------------------------------------------------------------------------
+// The Great Vault is already a function of `WS.stage('vault')` and the
+// Village square already reads `guardiansDown()` 0-6 into a continuous look —
+// so the machinery for "a room that rebuilds differently on every return" is
+// proven twice. What was missing was a stage number for the seven healing
+// regions and a room in each that reads it.
+
+// The keepsake found on the road OUT of a region — the deed a child does
+// AFTER healing it, which is why it is the third fact rather than the first.
+// The Court has no road out (`xth` is the ending, not a door), so its third
+// fact is its own: all four relics found, the same test that already opens
+// its throne stair (js/main.js, `WS.get('court','relic_'+name)`).
+export const KEEPSAKE = {
+  ember: 'wayfarers_key', stone: 'rootstone', wild: 'sealed_map',
+  frost: 'frozen_tear', storm: 'harbour_key', vale: 'moon_coin',
+};
+export const COURT_RELICS = ['ember', 'thorn', 'tide', 'moon'];
+
+export function pupsHomeFor(key) {
+  const ids = Object.keys(PUP_HOME).filter((id) => PUP_HOME[id] === key);
+  return ids.length > 0 && ids.every((id) => state.flags.pups[id]);
+}
+
+function keepsakeFoundFor(key) {
+  if (key === 'court') return COURT_RELICS.every((n) => WS.get('court', 'relic_' + n));
+  return !!KEEPSAKE[key] && ownsTreasure(KEEPSAKE[key]);
+}
+
+// FIVE FACTS, COUNTED INDIVIDUALLY — NOT front-to-back the way `WS.stage()`
+// counts everything else. Two of the four early drafts of this plan tried
+// `WS.stage()`'s strict count, which stops dead at the first gap in the
+// list — and both drafts had to admit the consequence out loud: a child who
+// clears the region's dungeon (§2) before finding its road keepsake would
+// sit at a LOWER stage than what they have actually done, with the dungeon's
+// own payoff invisible. That is an ordering rule nobody can see, in a game
+// built for someone who cannot read one if it were written down.
+//
+// So every fact is a separate `if`, and the count is a plain sum. Every fact
+// is already written by a system that existed before this file did (the boss
+// branches, `spawnPups`'s collection, `treasures.js`'s `addTreasure`, and —
+// once §2 ships — the dungeon's own `WS.complete`), so an OLD SAVE reads the
+// right stage on its very first entry: nothing in js/save.js changes for
+// this, and nothing here can regress a stage a save has already earned.
+export function growthStage(key) {
+  if (!key) return 0;
+  let n = 0;
+  if (WS.get(key, 'restored')) n++;
+  if (pupsHomeFor(key)) n++;
+  if (keepsakeFoundFor(key)) n++;
+  if (WS.get(key, 'dungeon')) n++;
+  if (state.flags.grimmFreed) n++;
+  return n;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,11 +170,24 @@ const HEALED_PATCH = {
   mud: 'water',
 };
 
+// AT STAGE 4, THE GREEN GOES FURTHER. `js/ground.js` has carried a `blossom`
+// patch kind — pink, fallen petals, the Bloomfall's own colour — since it was
+// written, with nothing in the game ever asking for it. It is where 'grass'
+// and 'moss' go once a region has done more than just heal: the region's
+// dungeon cleared on top of the pups home and the keepsake found. Water is
+// left alone; a healed pool does not become a flower bed.
+const DEEP_BLOOM = new Set(['grass', 'moss']);
+
 export function healPatches(patches, roomId) {
-  if (!patches || !patches.length || !isHealed(roomId)) return patches;
-  return patches.map((p) => (HEALED_PATCH[p.kind]
-    ? { ...p, kind: HEALED_PATCH[p.kind] }
-    : p));
+  if (!patches || !patches.length) return patches;
+  const stage = growthStage(healKeyOf(roomId));
+  if (!stage) return patches;
+  return patches.map((p) => {
+    if (!HEALED_PATCH[p.kind]) return p;
+    let kind = HEALED_PATCH[p.kind];
+    if (stage >= 4 && DEEP_BLOOM.has(kind)) kind = 'blossom';
+    return { ...p, kind };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -131,9 +216,18 @@ export function calmedStrength(strength, roomId) {
 // still a cold mountain and the Court is still the darkest place in the game;
 // they are simply no longer being lit as if something were sitting on them.
 export const MOOD_LIFT = 0.10;
+const MOOD_LIFT_STEP = 0.02;   // per stage past the first
+const MOOD_LIFT_CAP = 0.16;    // Frostpeak stays a cold mountain; the Court stays dark
 
+// SCALES WITH STAGE — a region that has done more than just heal is lit a
+// little more than one that only just did. Capped well short of "bright":
+// Frostpeak is still a cold mountain and the Shadow Court is still the
+// darkest place in the game at every stage; they are simply, gradually, less
+// lit as if something were sitting on them.
 export function moodLift(roomId) {
-  return isHealed(roomId) ? MOOD_LIFT : 0;
+  const stage = growthStage(healKeyOf(roomId));
+  if (!stage) return 0;
+  return Math.min(MOOD_LIFT_CAP, MOOD_LIFT + MOOD_LIFT_STEP * (stage - 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -142,7 +236,11 @@ export function moodLift(roomId) {
 // A cave heals into luminescence, not into a lawn — the same distinction
 // js/rooms.js already draws between healedSprouts and healedGlowmoss, kept
 // here rather than re-decided per region.
-const FLORA = {
+// Exported (v3.148, design/WIDER-WORLD.md §3.2): the Den's garden bed grows
+// the exact same per-region flora as that region's own healed meadow — a
+// child who has seen Ember's flower or Stoneroot's mushroom already knows
+// what a Root Cellar seed becomes before it blooms.
+export const FLORA = {
   ember: ['./assets/env/flower-a.glb', './assets/env/flower-b.glb', './assets/env/bush-large.glb'],
   stone: ['./assets/env/mushroom-group.glb', './assets/env/mushroom-tall.glb'],
   wild: ['./assets/env/flower-a.glb', './assets/env/flower-b.glb', './assets/env/bush-large.glb'],
@@ -180,8 +278,20 @@ function freeAt(world, x, z, r) {
   return true;
 }
 
-const BLOOM_MAX = 14;     // per room
 const BLOOM_CLEAR = 0.8;  // u of clear ground a bloom wants around it
+
+// THICKENS WITH STAGE (design/WIDER-WORLD.md §1.4), before a single settler
+// exists: a freshly-healed region — restored, nothing else done yet — is a
+// sparser meadow than one where the child has also brought its pups home,
+// found its keepsake, cleared its dungeon and freed Grimm. Recovery deepens
+// with what has actually been done, the same law the settler and the hearth
+// furniture follow later in this file.
+function bloomMaxFor(stage) {
+  if (stage <= 1) return 8;
+  if (stage === 2) return 12;
+  if (stage === 3) return 16;
+  return 18; // stage 4 and 5
+}
 
 // Somewhere clear, spread out, and away from the walls. `salt` keeps the live
 // moment's spots from landing on the static bloom's, so a room that plays its
@@ -233,10 +343,11 @@ async function plant(world, kinds, spots, scaleOf) {
 
 export async function bloom(world) {
   const key = healKeyOf(world.roomId);
-  if (!key || !isHealed(world.roomId) || !world.halfW) return 0;
+  const stage = growthStage(key);
+  if (!key || !stage || !world.halfW) return 0;
   const kinds = FLORA[key];
   if (!kinds) return 0;
-  const spots = pickSpots(world, BLOOM_MAX, kinds, 'bloom');
+  const spots = pickSpots(world, bloomMaxFor(stage), kinds, 'bloom');
   if (!spots.length) return 0;
   await plant(world, kinds, spots, (s) => 1.1 + (s.ry % 0.4));
   world.markers.bloomSpots = spots.map((s) => ({ x: s.x, z: s.z }));
@@ -310,13 +421,28 @@ export async function healLive(world) {
 // not be a room a child can be shoved around in, and a wandering body with a
 // collider is a wandering obstacle: the one thing worse than an enemy in a
 // place that is supposed to be safe.
-const HERD_MAX = 4;
+// THICKENS WITH STAGE, same law as `bloomMaxFor` above.
+function herdMaxFor(stage) {
+  if (stage <= 1) return 2;
+  if (stage === 2) return 3;
+  return 4; // stage 3 and beyond
+}
 
 // A pack takes its coat from the country it lives in — the same tint-delta
 // idiom VARIANTS uses for enemies, applied to the one Main material.
-const COAT = {
+export const COAT = {
   ember: 0xb9855c, stone: 0x8f8b80, wild: 0x7d8f5c, frost: 0xdfe8f2,
   storm: 0x9aa6b4, vale: 0x8fb0ac, court: 0xa79ec2,
+};
+
+// v3.144 — stage 5 ('home', design/WIDER-WORLD.md §1.4): the same hue each
+// region's own spirit already wears everywhere else it appears — the Den's
+// own SPIRIT_HOMES row (js/rooms.js) for the first six, Luna's memorial
+// (js/level7.js, `spiritShrine(...,0xd8cfff,...)`) for the Court — so the
+// light at the hearth is recognisably the SAME spirit, not a new one.
+const HEARTH_LIGHT = {
+  ember: 0xffb25a, stone: 0xd8b06a, wild: 0x7ee787, frost: 0x9be3ff,
+  storm: 0xfff4b0, vale: 0x8fe4ff, court: 0xd8cfff,
 };
 
 export async function graze(world, spots) {
@@ -325,7 +451,7 @@ export async function graze(world, spots) {
   const gltf = await loadGLB('./assets/chars/wolf.gltf');
   const herd = [];
   const rnd = seeded(world.roomId + ':graze');
-  for (const s of spots.slice(0, HERD_MAX)) {
+  for (const s of spots.slice(0, herdMaxFor(growthStage(key)))) {
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
     // Pups are wolves at 0.42; these are the grown pack, a little bigger, and
     // a little different from each other so a herd does not read as a stamp.
@@ -366,15 +492,68 @@ function playClip(a, name, fade = 0.3) {
   a.current = next;
 }
 
+// A ONE-SHOT, unlike playClip's continuous locomotion loop — the pen's pet
+// verb plays a jump then a landing, once each, never repeating mid-gesture
+// the way Walk/Eating/Idle are meant to.
+function playOnce(a, name, fade) {
+  const next = a.clips[name];
+  if (!next) return;
+  next.setLoop(THREE.LoopOnce, 1);
+  next.clampWhenFinished = true;
+  next.reset().play();
+  if (a.current) a.current.crossFadeTo(next, fade, false);
+  a.current = next;
+}
+
 // Graze, wander a couple of paces, graze again — and look up when Kael comes
 // near, which is the whole point of them. They never approach and never flee:
 // a child who has spent the region being charged at gets to walk through a
 // field of animals that simply do not mind.
-function updateHerd(world, dt, player) {
+export function updateHerd(world, dt, player) {
   const px = player.root.position.x, pz = player.root.position.z;
   for (const a of world.grazers) {
     a.mixer.update(dt);
     const pos = a.model.position;
+    if (a.petCooldown) a.petCooldown = Math.max(0, a.petCooldown - dt);
+
+    // PET: only pen pups (`canPet`) offer this — a one-shot celebration when
+    // Kael walks up close, no state kept past the animation itself. §3.1's
+    // "the first pet verb, no state": a toy, not a system, repeatable
+    // forever, and it never touches a save.
+    if (a.canPet && a.state !== 'pet' && a.state !== 'eat' && !a.petCooldown
+      && (px - pos.x) ** 2 + (pz - pos.z) ** 2 < 0.6 * 0.6) {
+      a.state = 'pet'; a.petT = 1.1; a.petPhase = 0;
+      playOnce(a, 'Gallop_Jump', 0.1);
+      audio.play('pup-chime', { volume: 0.6, rate: 1.1 });
+      // v3.132: the pet verb still keeps no state of its own past the
+      // animation (§3.1's "a toy, not a system" — a pup can be petted the
+      // same way forever); the STICKER BOOK is the one thing allowed to
+      // count it, the same way it counts kills without the fight itself
+      // remembering how many there have been.
+      bumpCounter('pupsPetted');
+    }
+    if (a.state === 'pet') {
+      a.petT -= dt;
+      if (a.petT <= 0.7 && a.petPhase === 0) { a.petPhase = 1; playOnce(a, 'Jump_ToIdle', 0.15); }
+      if (a.petT <= 0) { a.state = 'graze'; a.waitT = 1 + a.rnd() * 2; a.petCooldown = 2.5; }
+      continue;
+    }
+    // EAT: the trough's group call (js/restoration.js spawnPupPen) — gallop
+    // to a spot round the trough, eat a moment, wander off on its own again.
+    if (a.state === 'eat') {
+      const ex = a.eatSpot.x - pos.x, ez = a.eatSpot.z - pos.z;
+      const dist = Math.hypot(ex, ez);
+      if (dist > 0.15) {
+        playClip(a, 'Gallop');
+        pos.x += (ex / dist) * 1.6 * dt; pos.z += (ez / dist) * 1.6 * dt;
+        turn(a.model, Math.atan2(ex, ez), 5, dt);
+      } else {
+        playClip(a, 'Eating');
+        a.eatT -= dt;
+        if (a.eatT <= 0) { a.state = 'graze'; a.waitT = 1 + a.rnd() * 2; }
+      }
+      continue;
+    }
     const near = (px - pos.x) ** 2 + (pz - pos.z) ** 2 < 3.2 * 3.2;
     if (a.state === 'walk' && a.target) {
       const tx = a.target.x - pos.x, tz = a.target.z - pos.z;
@@ -419,4 +598,570 @@ function turn(model, want, rate, dt) {
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   model.rotation.y += THREE.MathUtils.clamp(d, -rate * dt, rate * dt);
+}
+
+// ---------------------------------------------------------------------------
+// THE SETTLERS — design/WIDER-WORLD.md §1.5.
+// ---------------------------------------------------------------------------
+// Four KayKit humanoids are already somebody in the Den (Wren, Rook, Bram,
+// Tam) on the same Rig_Medium skeleton, so a settler is that same idiom
+// applied to a hearth: clone the one shared material and colour-wash it,
+// rather than a new face for every region. `SETTLER_POSTS` (js/npcs.js)
+// carries the body, the tint and the growth key per hearth room; this file
+// owns WHEN one appears, because that is a question about a stage number,
+// which is a question about the save — not about who stands where.
+//
+// STAGE_CLUTTER carries the FURNITURE, additive per stage: everything up to
+// and including the reached stage is placed, so a room dressed at stage 3
+// is a strict superset of the same room at stage 2. Rows are
+// `[key, x, z, scale, ry]` in the village pack's own vocabulary
+// (`js/levelVillage.js` `loadVillageKit`'s key names) — the same pack every
+// hearth in the game will draw its fire, stool and hut from, which is why
+// `loadVillageKit()` runs from a non-Village room without apology: those 21
+// GLBs have been in the precache since v3.126 for exactly this.
+//
+// Only the hearth and the hut get a collider — a stool and a stack of
+// firewood are ankle height, and a child should be able to walk straight
+// through a fireside without the game stopping them.
+// v3.131: 'cart' joins the solid set for the same reason `levelVillage.js`'s
+// own SOLID_PROPS treats it as one — a loaded cart is not a thing a body
+// walks through. 'target' and 'manikin' match the Den's own precedent
+// (js/rooms.js: an armour stand and a straw target both got colliders there,
+// "budget, written down because it is tight" — same shapes, same call here).
+const HEARTH_SOLID = new Set(['hearth', 'hut', 'cart', 'target', 'manikin']);
+
+export const STAGE_CLUTTER = {
+  la: {
+    2: [
+      ['hearth', -2.3, 7.6, 1.0, 0.4],
+      ['stool', -3.5, 8.1, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', -7.0, 8.6, 0.95, 2.3],
+      ['laundry', -1.3, 8.7, 1.0, -0.5],
+      ['firewood', -4.2, 8.6, 1.0, 0.3],
+    ],
+    // THE YARD (v3.131, design/WIDER-WORLD.md §1.4 stage 4): the cart Maren
+    // sent ahead, and the target + manikin that make the settler's new trade
+    // legible without a word — the same two props and the same reasoning the
+    // Den's own Armoury pitch already uses (js/rooms.js). The cart's own spot
+    // is `SETTLER_POSTS.la.shop` below; walking up to it opens the same
+    // Moonlit Trading Post the Den's cart does, at the rung already unlocked
+    // — there is no second shop to stock.
+    4: [
+      ['target', 0.3, 8.0, 1.0, 0.5],
+      ['manikin', 1.6, 7.0, 1.0, -0.4],
+      ['cart', 3.0, 8.0, 1.0, -0.3],
+      ['sack', 3.9, 7.4, 1.0, 0.6],
+    ],
+  },
+  // v3.135: Stoneroot's own hearth, in the Great Vault (`vh`). Old Bram's
+  // camp (`coldHearth`, js/level2.js) is "the only warm thing in the room"
+  // while Stone is unhealed — this is the region growing a second one, not a
+  // contradiction of that line. Measured clear via tools/probe-freespot.mjs's
+  // own live-grid method against the room at its own fullest build (WS.stage
+  // 'vault' 3) in the open pocket east of the sunken ring, well clear of
+  // Bram's camp (-8, 6.6), the beacon, the crypt ramp and ring props.
+  vh: {
+    2: [
+      ['hearth', 11.5, 0.8, 1.0, 0.4],
+      ['stool', 13.2, 1.3, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 15.5, 2.0, 0.95, 2.3],
+      ['laundry', 12.0, 3.3, 1.0, -0.5],
+      ['firewood', 14.0, -0.5, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 16.5, 0.5, 1.0, 0.5],
+      ['manikin', 15.0, 4.0, 1.0, -0.4],
+      ['cart', 11.0, -1.0, 1.0, -0.3],
+      ['sack', 10.3, -1.6, 1.0, 0.6],
+    ],
+  },
+  // v3.135: the Wild Woods' own hearth, at `t1a`'s existing `restSpot`
+  // (-7, 4) — measured clear of the mossy ruin, the thicket and the log-down
+  // chord's own 'w' door the same live-grid way.
+  t1a: {
+    2: [
+      ['hearth', -7.0, 4.5, 1.0, 0.4],
+      ['stool', -8.3, 3.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', -9.3, 5.5, 0.95, 2.3],
+      ['laundry', -6.3, 5.8, 1.0, -0.5],
+      ['firewood', -8.8, 2.8, 1.0, 0.3],
+    ],
+    4: [
+      ['target', -6.5, 3.0, 1.0, 0.5],
+      ['manikin', -9.5, 3.5, 1.0, -0.4],
+      ['cart', -6.8, 6.3, 1.0, -0.3],
+      ['sack', -8.0, 6.8, 1.0, 0.6],
+    ],
+  },
+  // v3.139: Frostpeak's own hearth, at f1 — a clear pocket east of the gate
+  // lane, clear of the gateposts, the hound pack, the drift/firs clusters
+  // and the spur path to f1b, measured the same live-grid way.
+  f1: {
+    2: [
+      ['hearth', 9.5, 5.0, 1.0, 0.4],
+      ['stool', 10.5, 5.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 11.0, 7.0, 0.95, 2.3],
+      ['laundry', 9.0, 7.5, 1.0, -0.5],
+      ['firewood', 10.0, 4.0, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 11.0, 5.0, 1.0, 0.5],
+      ['manikin', 9.0, 8.5, 1.0, -0.4],
+      ['cart', 10.5, 8.0, 1.0, -0.3],
+      ['sack', 9.5, 9.0, 1.0, 0.6],
+    ],
+  },
+  // v3.140: the Spire's own hearth, at s1a — a clear pocket in the Landing's
+  // NE corner, clear of the gatehouse (0,0), the sea-cave gate/promise (west
+  // wall), the wayshrine (12.5,3.5), the cartwreck (8.5,7) and the moss
+  // patch, measured the same live-grid way.
+  s1a: {
+    2: [
+      ['hearth', 11.0, 7.0, 1.0, 0.4],
+      ['stool', 12.0, 7.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 12.5, 9.0, 0.95, 2.3],
+      ['laundry', 10.5, 9.5, 1.0, -0.5],
+      ['firewood', 12.0, 6.5, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 12.5, 7.0, 1.0, 0.5],
+      ['manikin', 10.5, 10.0, 1.0, -0.4],
+      ['cart', 12.0, 9.5, 1.0, -0.3],
+      ['sack', 11.0, 10.5, 1.0, 0.6],
+    ],
+  },
+  // v3.141: the Vale's own hearth, at d1a — the Shallows' dry NE corner
+  // (the region's west half is lagoon), clear of the gatehouse, the
+  // rest/travel spots and the shore dressing, same pocket shape as s1a's.
+  d1a: {
+    2: [
+      ['hearth', 11.0, 7.0, 1.0, 0.4],
+      ['stool', 12.0, 7.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 12.5, 9.0, 0.95, 2.3],
+      ['laundry', 10.5, 9.5, 1.0, -0.5],
+      ['firewood', 12.0, 6.5, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 12.5, 7.0, 1.0, 0.5],
+      ['manikin', 10.5, 10.0, 1.0, -0.4],
+      ['cart', 12.0, 9.5, 1.0, -0.3],
+      ['sack', 11.0, 10.5, 1.0, 0.6],
+    ],
+  },
+  // v3.142: the Court's own hearth, at x1 — the same NE pocket as the last
+  // three, clear of the watcher/gold-chest lock (west wall), the rest/travel
+  // spots and the corruption/rubble patches. `firewood` moved half a unit
+  // (6.5→7.0) from the other five hearths' shared offset: this room's own
+  // scatter/breakables land one cell differently at that exact spot.
+  x1: {
+    2: [
+      ['hearth', 11.0, 7.0, 1.0, 0.4],
+      ['stool', 12.0, 7.5, 0.8, 1.1],
+    ],
+    3: [
+      ['hut', 12.5, 9.0, 0.95, 2.3],
+      ['laundry', 10.5, 9.5, 1.0, -0.5],
+      ['firewood', 12.0, 7.0, 1.0, 0.3],
+    ],
+    4: [
+      ['target', 12.5, 7.0, 1.0, 0.5],
+      ['manikin', 10.5, 10.0, 1.0, -0.4],
+      ['cart', 12.0, 9.5, 1.0, -0.3],
+      ['sack', 11.0, 10.5, 1.0, 0.6],
+    ],
+  },
+};
+
+// Place one stage's worth of furniture (already-loaded kit, one call per
+// prop). Returns the placed groups so a first-time grow-in can tween them.
+function placeStageClutter(world, kit, key, x, z, s, ry, tint) {
+  const gltf = kit[key];
+  if (!gltf) return null;
+  const g = placeOne(world, gltf, key, x, z, s, ry, tint);
+  if (g && HEARTH_SOLID.has(key)) world.addCircle(x, z, 0.7 * s);
+  return g;
+}
+
+// Called from `setupRoomExtras` (js/main.js) BEFORE `bloom()`, so a bloom
+// picking spots for itself sees the hearth's collider and never lands one in
+// the fire. Growth is read at build: every fact that raises a stage is set
+// somewhere OTHER than the hearth (pups in their own rooms, the keepsake on
+// the road out, the dungeon under its own gate, Grimm at the Spire), so by
+// construction the child is elsewhere when the world changes and sees it on
+// the next visit — the Terranigma law, made mechanical rather than promised.
+//
+// `onGrowIn(key, stage)` is provided by the caller because narration's
+// singleton instance lives in js/main.js, not here — the same reason
+// `spawnPups` takes an `onCollected` callback instead of importing narration
+// itself.
+export async function spawnSettlers(world, onGrowIn) {
+  const post = SETTLER_POSTS[world.roomId];
+  if (!post || world.settler) return;
+  const stage = growthStage(post.key);
+  if (stage < post.minStage) return;
+
+  const kit = await loadVillageKit();
+  const rigAnims = (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
+  const gltf = await loadGLB(post.file);
+  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+  model.scale.setScalar(0.5);
+  // ONE material wash, the Tam idiom: whichever KayKit body this is, its
+  // whole figure sits on one shared atlas, so one clone-and-multiply colours
+  // all of it and nothing else in the room.
+  model.traverse((n) => {
+    if (!n.isMesh) return;
+    n.material = n.material.clone();
+    n.material.color.setHex(post.tint);
+  });
+  world.addCircle(post.x, post.z, 0.35); // solid, like every other friend
+  // STAGE 5 ('home'): the settler's gesture turns toward the light that just
+  // caught, the same `Interact` clip Bram already wears for the same reason
+  // (js/npcs.js:111) — no new animation needed, the rig already carries it.
+  world.settler = characterNpc(world, {
+    model, id: post.id, x: post.x, z: post.z, ry: post.ry,
+    rigAnims, gestureName: stage >= 5 ? 'Interact' : 'Idle_B',
+  });
+  world.markers.settlerSpot = { x: post.x, z: post.z };
+  // THE YARD OPENS FOR TRADE (v3.131): the same generic shopSpot check
+  // main.js already runs for the Den's own cart (`nearSpot` + `menus.showShop()`)
+  // — no room check in that path, so handing it a marker here is the whole
+  // feature. `shopWasNear` is reset to true right after this by
+  // `setupRoomExtras`, so walking in does not pop the shelf on arrival.
+  if (stage >= 4 && post.shop) world.markers.shopSpot = { x: post.shop.x, z: post.shop.z };
+
+  // THE FURNITURE, additive up to the reached stage. `firstTime` groups are
+  // only the ones this exact visit is placing for the first time this stage
+  // reveal (i.e. every stage's rows, since a fresh build always starts from
+  // nothing) — the `seen_N` gate below decides whether that counts as NEW to
+  // the SAVE, which is the only thing that should ever play a fanfare twice.
+  const rows = STAGE_CLUTTER[world.roomId] || {};
+  const placed = [];
+  for (let s = 2; s <= stage; s++) {
+    for (const [key, x, z, sc, ry] of (rows[s] || [])) {
+      const g = placeStageClutter(world, kit, key, x, z, sc, ry,
+        key === 'hut' ? post.tint : 0xffffff);
+      if (g) placed.push(g);
+    }
+  }
+  // This furniture lands after the room's own build-time `flattenStatic()`
+  // pass, so none of it was folded into that batch — each small GLB's own
+  // materials would otherwise stay separate draw calls forever. A second
+  // `flattenStatic()` here is safe: it skips content already flagged
+  // `isBatchedMesh` (the room's existing merge), so it only ever touches
+  // this new clutter, and its `contactShadows()` sub-step's own size filter
+  // means these small props pick up a shadow instead of the whole room
+  // being reprocessed.
+  if (placed.length) flattenStatic(world);
+
+  // STAGE 5 ('home', §1.4): the hearth-fire itself catches for real, on the
+  // same spot the stage-2 campfire has stood since — no new footprint, no
+  // fresh probe needed, since that spot has been proven clear since stage 2.
+  // The SPIRIT_HOMES orb shape exactly (js/rooms.js), so a child who has
+  // seen Cinder's or Petra's light at the Den recognises this as the same
+  // kind of thing happening here instead.
+  const hearthRow = (rows[2] || []).find(([key]) => key === 'hearth');
+  if (stage >= 5 && hearthRow && HEARTH_LIGHT[post.key]) {
+    const [, hx, hz] = hearthRow;
+    const light = HEARTH_LIGHT[post.key];
+    const orb = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.2, 1),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: light, emissiveIntensity: 3.0, roughness: 1 })
+    );
+    orb.position.set(hx, 0.9, hz);
+    world.add(orb);
+    world.keepLoose(orb);
+    const glow = new THREE.PointLight(light, 4.5, 8, 1.9);
+    glow.position.set(hx, 1.05, hz);
+    world.add(glow);
+    world.onAnimate((t) => {
+      orb.position.y = 0.9 + Math.sin(t * 1.6) * 0.07;
+      orb.rotation.y = t * 0.6;
+      glow.intensity = 4.5 * 0.88 + Math.sin(t * 2.2) * 0.6;
+    });
+    world.markers.homeOrbSpot = { x: hx, z: hz };
+  }
+
+  // v3.146 (dad, 2026-09-10, §8 Q9): "find it already done" — no grow-in
+  // ceremony (the delayed sparkle burst + chime this used to fire once per
+  // stage, `summonSettler`, removed). The settler and its furniture are
+  // simply there, pure Terranigma; Pip's own `${key}_grow_${stage}` line
+  // (js/main.js) still fires once per stage, the same "witnessed at the
+  // hearth" beat every SPIRIT_HOMES arrival already uses with no animation
+  // of its own either.
+  if (!WS.get(post.key, 'seen_' + stage)) {
+    WS.set(post.key, 'seen_' + stage, true);
+    if (onGrowIn) onGrowIn(post.key, stage);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// THE DEN'S PUPS — design/WIDER-WORLD.md §3.1, slice v3.128; the fence, beds
+// and trough removed 2026-09-10 on dad's word ("remove it completely...
+// have a few pups turn up in the den"). What is left is the part that
+// actually mattered: up to six rescued pups, loose and happy near the fire,
+// no cage and no furniture keeping score.
+//
+// REPLACES js/rooms.js's old "every rescued pup orbits a fixed grid" loop,
+// which cost ~2 draw calls per rescued pup with nothing merging them (a
+// 24-pup save would have added ~120 to this room's own ceiling) and put
+// pups past #8 outside the room entirely (its own orbit centres reached
+// z=18.4, nine and a half units past the north wall at halfD=9). AT MOST
+// SIX pups are ever a live skinned body, reusing the exact wander/graze
+// state machine the healed regions' herds already use (`updateHerd` above).
+const PEN_KEYS = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court', 'village'];
+// COAT (above) has no 'village' entry — the Village is not a healKeyOf
+// region and grows no grazing herd of its own — so the pen adds the one
+// tint it is missing, in the same warm-neutral family as the rest.
+const PEN_COAT = { ...COAT, village: 0xc9a06a };
+
+// The six wander/graze spots, in the open meadow the ground painter's own
+// "fire to the meadow" path already leads to (js/rooms.js buildDen,
+// `[[0,-1],[1,3],[1,6]]`). Kept clear of js/minigames.js's own fetch-quest
+// ring at (1.6, 4.6) — "the ring goes by the meadow where the pups actually
+// play" (its own comment) — and of the room's own ariaHome (-2.6, 1.0) and
+// borealHome (3.0, 0.6) spirit-lights.
+const PEN_SPOTS = [
+  { x: -1.2, z: 2.6 }, { x: 1.0, z: 2.4 }, { x: -1.0, z: 3.8 },
+  { x: 1.3, z: 3.2 }, { x: -0.8, z: 5.0 }, { x: 0.6, z: 5.4 },
+];
+
+// Which up to six rescued ids are the live, wandering ones THIS visit —
+// "chosen by rotating ids per entry so every pup takes turns" (§3.1).
+// Bumped once per Den build, so a save with more than six pups sees a
+// different six on its next homecoming rather than the same six forever.
+function penTurn(ids) {
+  if (!ids.length) return [];
+  state.counters.penTurn = (state.counters.penTurn || 0) + 1;
+  const start = state.counters.penTurn % ids.length;
+  return ids.slice(start).concat(ids.slice(0, start)).slice(0, 6);
+}
+
+// Called from `setupRoomExtras` (js/main.js), Den only. `onRowFilled(key)`
+// mirrors `spawnSettlers`'s `onGrowIn` — the narration singleton lives in
+// js/main.js, not here. "A whole region's pups are home" is a plain fact
+// now, not a completed row of beds, but it is still witnessed only once.
+export async function spawnPupPen(world, onRowFilled) {
+  if (world.roomId !== 'den') return;
+  // truthy filter, not a bare `Object.keys`: a harness (or a future reset)
+  // that ever writes `state.flags.pups[id] = false` must not be counted as
+  // rescued — the old orbit loop's `Object.keys` alone would have been.
+  const rescued = Object.keys(state.flags.pups).filter((id) => state.flags.pups[id]);
+  const awake = penTurn(rescued);
+
+  for (const key of PEN_KEYS) {
+    const ids = Object.keys(PUP_HOME).filter((id) => PUP_HOME[id] === key);
+    const home = ids.length > 0 && ids.every((id) => state.flags.pups[id]);
+    if (home && !WS.get('pen', 'row_' + key)) {
+      WS.set('pen', 'row_' + key, true);
+      if (onRowFilled) onRowFilled(key);
+    }
+  }
+
+  if (!awake.length) return;
+  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+  const herd = [];
+  for (let i = 0; i < awake.length; i++) {
+    const id = awake[i];
+    const spot = PEN_SPOTS[i];
+    const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+    model.scale.setScalar(0.16);
+    model.position.set(spot.x, 0, spot.z);
+    model.traverse((m) => {
+      if (!m.isMesh) return;
+      // small clutter, no shadow (the same rule flattenStatic's own
+      // shadowCullBelow applies to static props) — `prepareCharacter`
+      // leaves the biggest skinned part casting one, but at scale 0.16 a
+      // shadow this small was never going to read as one anyway.
+      m.castShadow = false;
+      // wolf.gltf is FOUR skinned parts (Main, Main_Light, Nose, Eyes_Black)
+      // and skinned meshes never merge (js/batch.js) — six of them at full
+      // detail measured 10 draw calls over the Den's own ceiling with every
+      // spirit-light and villager also present. Hiding all three detail
+      // parts and keeping only Main brings a pup to its cheapest possible
+      // cost, one draw — a handful of polygons at 0.16 scale from the
+      // game's fixed camera is not where this room's budget belongs.
+      // Hidden HERE ONLY: the field's own uncaught pups and a healed
+      // region's herd (never more than four, `herdMaxFor`) render at full
+      // detail, where the cost was already priced in.
+      if (m.material.name !== 'Main') { m.visible = false; return; }
+      m.material = m.material.clone();
+      m.material.color.setHex(PEN_COAT[PUP_HOME[id]] || 0xb08a5a);
+    });
+    world.add(model);
+    world.keepLoose(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const clips = {};
+    for (const name of ['Idle', 'Idle_2_HeadLow', 'Eating', 'Walk', 'Gallop', 'Gallop_Jump', 'Jump_ToIdle']) {
+      const c = wolfGltf.animations.find((a) => a.name === name);
+      if (c) clips[name] = mixer.clipAction(c);
+    }
+    herd.push({
+      model, mixer, clips, current: null, canPet: true, petCooldown: 0,
+      home: { x: spot.x, z: spot.z }, target: null,
+      state: 'graze', waitT: 0.5 + Math.random() * 3, rnd: Math.random,
+    });
+  }
+  world.grazers = herd;
+  world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
+}
+
+// ---------------------------------------------------------------------------
+// THE GARDEN BED — design/WIDER-WORLD.md §3.2.
+//
+// Two planters by the Den's third tent (`js/rooms.js`, (-6.8, 4.4), gated on
+// `wardenDefeated`). Stand in the ring and Kael plants whichever seed is
+// owned; it grows over three real days, read at BUILD time exactly like
+// `growthStage` — no live clock, no timer UI, "come back tomorrow" made
+// mechanical. Full bloom turns the ring into a harvest.
+//
+// ONE BED, MULTIPLE POSSIBLE SEEDS — the ambiguity design/WIDER-WORLD.md left
+// open, resolved here (dad, 2026-09-10: "solve the garden bed issue
+// yourself. you have permission to do it autonomously"): no menu, no choice
+// for a non-reader — the bed always plants whichever seed was MOST RECENTLY
+// found (`WS.get('den','lastSeed')`), the same "the thing that just happened
+// is the thing that matters" law every other one-shot trigger in this game
+// already keeps. A child who clears two dungeons before ever standing in the
+// ring plants the second one; the first is not lost, only planted later once
+// this one is harvested.
+const GARDEN_SPOT = { x: -4.0, z: 5.6 };
+const GARDEN_MAX_STAGE = 3;
+const GARDEN_DAY_MS = 86400000;
+const GARDEN_HARVEST_SHARDS = 12; // "a pot's worth", the same cap dad's own
+                                   // economy-freeze rule holds every pot to
+const GARDEN_COUNT_FOR = [0, 1, 3, 6]; // flora instances at stage 0..3
+const GARDEN_OFFSETS = [
+  { x: 0.05, z: -0.05 }, { x: -0.35, z: 0.25 }, { x: 0.32, z: 0.28 },
+  { x: -0.15, z: -0.32 }, { x: 0.35, z: -0.15 }, { x: -0.4, z: -0.05 },
+];
+
+// Which dungeon's own WS milestone backs each seed. Grows as later dungeons
+// ship (design/WIDER-WORLD.md §2.3); a seed key with no entry here simply
+// never gets the "already cleared, backfill it" sweep below, same as an
+// unbuilt dungeon has nothing to backfill from.
+const SEED_DUNGEONS = { ember: 'ember', wild: 'wild', stone: 'vault' };
+
+function gardenDenFlags() {
+  return (state.flags.world && state.flags.world.den) || {};
+}
+
+// "Nothing missable" (design/WIDER-WORLD.md §2.2): a save that cleared a
+// dungeon before this feature existed — or simply never walked back through
+// giveLoot's own toast — still owns that region's seed. Runs once per Den
+// build; each grant is WS.complete, so it costs nothing on a save that
+// already has it.
+function syncGardenSeeds() {
+  for (const [seedKey, region] of Object.entries(SEED_DUNGEONS)) {
+    if (!WS.get(region, 'dungeon')) continue;
+    if (WS.complete('den', 'seed_' + seedKey)) WS.set('den', 'lastSeed', seedKey);
+  }
+}
+
+function gardenElapsedStage(planted) {
+  if (!planted) return 0;
+  return Math.min(GARDEN_MAX_STAGE, Math.floor((Date.now() - planted) / GARDEN_DAY_MS));
+}
+
+// Read the bed's stage the same way `growthStage` is read: derived from the
+// save, never stored as the truth itself. `gardenMaxStage` only ever holds
+// the HIGHEST stage this planting has reached, so a tablet with a wrong
+// clock can never walk the bed backwards — only forward, or not at all.
+function gardenReadStage() {
+  const d = gardenDenFlags();
+  const planted = d.gardenPlanted || null;
+  const stored = d.gardenMaxStage || 0;
+  const stage = Math.max(stored, gardenElapsedStage(planted));
+  if (planted && stage > stored) WS.set('den', 'gardenMaxStage', stage);
+  return { planted, seed: d.gardenSeed || null, stage };
+}
+
+export async function spawnGardenBed(world) {
+  if (world.roomId !== 'den') return;
+  syncGardenSeeds();
+
+  const kit = await loadVillageKit();
+  // Both planters flank the ring at a real remove — verify-den's own §garden
+  // clearance check (r 0.44, the same ruler every other Den spot is held to)
+  // caught the first pass sitting too close: trough at -0.6/-0.3 put its own
+  // 0.5-radius collider edge within 0.27u of ring centre, well inside a
+  // child's own stand-here circle. 1.0-1.2u out clears it with room spare.
+  const troughSpot = { x: GARDEN_SPOT.x - 1.0, z: GARDEN_SPOT.z - 0.5 };
+  const basinSpot = { x: GARDEN_SPOT.x + 1.05, z: GARDEN_SPOT.z + 0.55 };
+  const trough = placeOne(world, kit.trough2, 'trough2', troughSpot.x, troughSpot.z, 1.0, 0.5, 0xffffff);
+  if (trough) world.addCircle(troughSpot.x, troughSpot.z, 0.5);
+  const basin = placeOne(world, kit.basin, 'basin', basinSpot.x, basinSpot.z, 1.0, -0.7, 0xffffff);
+  if (basin) world.addCircle(basinSpot.x, basinSpot.z, 0.45);
+  world.markers.gardenSpot = { x: GARDEN_SPOT.x, z: GARDEN_SPOT.z };
+
+  let floraGroup = null;
+  const renderFlora = async (seed, stage) => {
+    if (floraGroup) { world.root.remove(floraGroup); floraGroup = null; }
+    if (!seed || stage <= 0) return;
+    const kinds = FLORA[seed];
+    if (!kinds) return;
+    const n = GARDEN_COUNT_FOR[stage];
+    const spots = GARDEN_OFFSETS.slice(0, n).map((o, i) => ({
+      x: GARDEN_SPOT.x + o.x, z: GARDEN_SPOT.z + o.z, ry: i * 1.3, k: i % kinds.length,
+    }));
+    const gltfs = await Promise.all(kinds.map((u) => loadGLB(u)));
+    const g = new THREE.Group();
+    // Bigger with every stage — and bigger than a single ambient-meadow
+    // flower (bloom()'s own ~1.1-1.5, scattered across a whole room):
+    // this is a tight six-piece cluster a child walks up to on purpose, not
+    // background texture, so full bloom has to actually read as a harvest
+    // from a normal standing distance. Caught live: the first pass reused
+    // bloom()'s own scale and the result was barely visible pink flecks.
+    const sc = 1.1 + 0.5 * stage;
+    for (let k = 0; k < kinds.length; k++) {
+      const mine = spots.filter((s) => s.k === k);
+      if (!mine.length) continue;
+      g.add(instancePlacements(gltfs[k].scene, mine.map((s) => ({
+        x: s.x, z: s.z, ry: s.ry, sx: sc, sy: sc, sz: sc,
+      })), { castShadow: false }));
+    }
+    world.add(g);
+    world.keepLoose(g); // flattenStatic would fold it into the static batch,
+                         // and the harvest burst removes this exact group
+    floraGroup = g;
+  };
+
+  const initial = gardenReadStage();
+  await renderFlora(initial.seed, initial.stage);
+
+  // Called from main.js's per-frame ring poll — the same `nearSpot` +
+  // edge-flag idiom the Den's own shop/travel spots already use. One clean
+  // action per entry, never a menu.
+  world.gardenInteract = async () => {
+    const { planted, seed, stage } = gardenReadStage();
+    if (planted && stage >= GARDEN_MAX_STAGE) {
+      WS.set('den', 'gardenPlanted', null);
+      WS.set('den', 'gardenSeed', null);
+      WS.set('den', 'gardenMaxStage', 0);
+      await renderFlora(null, 0);
+      bumpCounter('harvests');
+      return { action: 'harvest', shards: GARDEN_HARVEST_SHARDS, seed };
+    }
+    if (!planted) {
+      const d = gardenDenFlags();
+      const lastSeed = d.lastSeed;
+      if (!lastSeed || !d['seed_' + lastSeed]) return { action: 'none' };
+      WS.set('den', 'gardenSeed', lastSeed);
+      WS.set('den', 'gardenPlanted', Date.now());
+      WS.set('den', 'gardenMaxStage', 0);
+      await renderFlora(lastSeed, 0);
+      return { action: 'plant', seed: lastSeed };
+    }
+    return { action: 'none' }; // still growing — "come back tomorrow"
+  };
 }

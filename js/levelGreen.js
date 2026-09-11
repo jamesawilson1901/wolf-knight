@@ -298,7 +298,7 @@ export async function buildG1(scene) {
   world.markers.batSpots = [{ x: -8, z: -9 }, { x: 7, z: -8 }];
   world.markers.spitterSpots = [{ x: 6, z: 7 }];
   world.markers.breakables = [
-    { x: -8.0, z: 10.5, kind: 'vase' }, { x: 7.5, z: 10.0, kind: 'crate' },
+    { x: -8.0, z: 10.5, kind: 'vase' }, { x: 8.0, z: 10.87, kind: 'crate' },
     { x: -7.0, z: -9.5, kind: 'barrel' }, { x: 12.5, z: 3.5, kind: 'jar' },
   ];
   world.markers.restSpot = { x: -6, z: 9 };
@@ -359,18 +359,22 @@ export async function buildG2(scene) {
   wallRun(world, 10.5, -12.5, 10.5, -7.0, D);
   wallRun(world, 10.5, -7.0, 12.2, -7.0, D);
   wallRun(world, 14.6, -7.0, 16, -7.0, D);
-  crackedPile(world, 'g2_crack', 13.4, -7.0);
+  // BIG, not the default: the wall gap it seals is 2.4u across (12.2 to 14.6)
+  // and the small pile's own r=0.8 collider (diameter 1.6) left 0.4u clear on
+  // each side — walkable at Kael's own 0.32u body radius, so the chest was
+  // reachable without ever cracking it (dev-export #33: "no asset is actually
+  // blocking the chest"). `big` scales the collider to r=1.2 (diameter 2.4),
+  // which spans the gap it was built to seal.
+  crackedPile(world, 'g2_crack', 13.4, -7.0, true);
   visibleReward(world, 13.5, -10.0, 'g2_crack_prize', { shards: 20, heartPiece: 1 }, 'silver');
 
-  // THE VINE climbs the last of the stone and goes into the trees
-  vine(world, [[1.6, 13], [2.4, 6], [1.8, -1], [0.8, -7], [0.4, -13]]);
   world.markers.heroSpot = { x: 0, z: -7 };
 
   world.markers.houndSpots = [{ x: -5, z: -5, variant: 'thorn' }, { x: 6, z: 2, variant: 'thorn' }];
   world.markers.mothSpots = [{ x: 8, z: -6, variant: 'wisp' }];
   world.markers.slimeSpots = [{ x: -6, z: 7, variant: 'bramble' }];
   world.markers.breakables = [
-    { x: -7.5, z: 10.5, kind: 'crate' }, { x: 8.0, z: 10.0, kind: 'barrel' },
+    { x: -6.5, z: 10.5, kind: 'crate' }, { x: 8.0, z: 10.0, kind: 'barrel' },
     { x: -8.5, z: -8.5, kind: 'jar' }, { x: 5.5, z: 6.5, kind: 'vase' },
   ];
   world.markers.restSpot = { x: 7, z: 10 };

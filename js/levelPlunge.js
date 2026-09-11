@@ -220,7 +220,7 @@ export async function buildP1(scene) {
   world.markers.batSpots = [{ x: -6, z: 9 }, { x: 7, z: -3 }];
   world.markers.houndSpots = [{ x: 5, z: 9 }];
   world.markers.breakables = [
-    { x: -8.0, z: 11.0, kind: 'crate' }, { x: 8.5, z: 11.0, kind: 'barrel' },
+    { x: -8.0, z: 11.0, kind: 'crate' }, { x: 8.5, z: 10.6, kind: 'barrel' },
     { x: -12.0, z: 0.5, kind: 'vase' }, { x: 12.0, z: 4.0, kind: 'jar' },
   ];
   world.markers.restSpot = { x: -6, z: 11 };

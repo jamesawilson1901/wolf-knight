@@ -272,6 +272,16 @@ export function potSpots(world, halfW, halfD, spec, kinds = ['crate', 'barrel', 
     }
     if (penned) { why.penned++; continue; }
     out.push({ x: +x.toFixed(2), z: +z.toFixed(2), kind: kinds[Math.floor(r() * kinds.length)] });
+    // RESERVE IT THE MOMENT IT IS CHOSEN, not after. A pot returned here is
+    // only DATA until main.js's own later pass spawns the real Breakable and
+    // its collider — so any decor this same room builder places AFTERWARDS
+    // (a fallen column, a rock scatter) has nothing to check itself against
+    // and can land right on top (dev-export: "check all jars in the game
+    // aren't partially in something" — six rooms this way, all pots from
+    // this function). `reserve()` exists precisely so ground claimed here is
+    // ground `world.blocked()` already knows about for everything placed
+    // after it, same as every hand-declared lane in the level files.
+    world.reserve(x, z, 1.0, 'breakable');
   }
   // AND ROUGHLY EVERY THIRD ROOM HIDES A CHEST. Not every room — a reward you
   // are certain of is scenery. The seed comes off the room label, so a given

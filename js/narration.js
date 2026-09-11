@@ -95,6 +95,14 @@ export const LINES = {
   // Part B — contextual (repeatable)
   checkpoint: { voice: 'pip', text: 'We can rest here. You’re safe.', repeat: true },
   pup_found: { voice: 'pip', text: 'A lost wolf pup! You found one. Good eyes, Kael.', repeat: true },
+  // THE LOST WOLF (design/WIDER-WORLD.md §2.5) — one line, shared by every
+  // dungeon's room-one rescue (js/pip.js spawnLostWolf). `repeat: true`
+  // because it is a per-dungeon event, the same as pup_found above, and a
+  // second dungeon's wolf must not find the line already spent.
+  // Shared across every dungeon's own lost wolf (Ash Vault's lv1, the
+  // Frozen Spring's tf1, and any later one) — kept region-neutral on
+  // purpose, the same one line design/WIDER-WORLD.md §2.5 asks for.
+  lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe at last. Welcome home, friend.', repeat: true },
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
   moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon and Luna herself will crash down on your enemies!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },
@@ -160,7 +168,20 @@ export const LINES = {
   camp_rumour: { voice: 'bram', text: 'Old Bram, at your service. The stone used to SING, knight… now something rattles down in the Deep Hall. Rest by my fire, then go careful.' },
   // Den villagers (v3.12: the den grows faces as regions heal)
   wren_intro: { voice: 'wren', text: 'A knight who turns into wolves… I walk every road, and I’ve never seen THAT. Call me Wren. I hear things — come find me when you want a rumour.' },
+  // WREN’S RUMOUR TABLE (v3.137, design/WIDER-WORLD.md §5.2) — "the non-
+  // reader’s quest log, with no UI": one line per region, picked at say-time
+  // by the first one still unhealed (js/main.js), so what Wren says always
+  // points at wherever the game actually wants a lost child to go next.
+  // `wren_rumour` keeps its own id and text for the Wild Woods — it already
+  // named that region, almost word for word, since before this table existed.
+  wren_rumour_ember: { voice: 'wren', text: 'A rumour, then: south past the gate, Ember Hollow’s still burning. That’s the start of everything, that is.', repeat: true },
+  wren_rumour_stone: { voice: 'wren', text: 'A rumour, then: north of Ember there’s a cavern that used to shine. Stoneroot, they call it — dark as a boot now.', repeat: true },
   wren_rumour: { voice: 'wren', text: 'A rumour, then: past the caverns the trees grow WRONG — the wild woods have gone thorny and strange. Somebody should look into that…', repeat: true },
+  wren_rumour_frost: { voice: 'wren', text: 'A rumour, then: there’s a mountain past the woods, capped in ice that never melts. Cold as anything, so they say.', repeat: true },
+  wren_rumour_storm: { voice: 'wren', text: 'A rumour, then: cliffs out past the frost, where the wind never stops complaining. Sailors won’t go near them.', repeat: true },
+  wren_rumour_vale: { voice: 'wren', text: 'A rumour, then: past the storm cliffs, the water’s swallowed half a valley. Folk call it the Sunken Vale, when they call it anything.', repeat: true },
+  wren_rumour_court: { voice: 'wren', text: 'A rumour, then: deep past the vale, there’s a court gone to shadow. Best not to go alone, if you ask me.', repeat: true },
+  wren_rumour_done: { voice: 'wren', text: 'Nothing left to whisper about round here — you’ve walked every road I know of. Good going, knight.', repeat: true },
   rook_intro: { voice: 'rook', text: 'So you’re the one who freed the Hollow! Rook, ranger of the old roads. I watched the smoke stop from this very hill. I’ll keep watch while you wander.' },
   rook_chat: { voice: 'rook', text: 'The horizon’s quiet today. Quiet is GOOD, little knight.', repeat: true },
   // TAM THE WAYFARER — he turns up in an arena once its shadow is broken, and
@@ -175,6 +196,29 @@ export const LINES = {
   camp_healed: { voice: 'bram', text: 'You hear it? The singing is BACK. My old pick and I can work again. Bless you, little knight!' },
   stone_restore_1: { voice: 'pip', text: 'Kael, look! The caverns are lighting up — the stone remembers how to sing!' },
   stone_restore_2: { voice: 'pip', text: 'Glow-moss everywhere! You woke the mountain up.' },
+  // THE HEARTH (design/WIDER-WORLD.md §1.5). One line per growth stage, per
+  // region — the settler's own arrival plays a chime and a burst in their
+  // tint, so Pip's line is short: it names what changed, not what to do.
+  // `_grow_2` fires with the fire and the settler; `_grow_3` with the hut and
+  // the washing line. Ember only, for now — the other six join their own
+  // slices, and this file's shape is what theirs will copy.
+  ember_grow_2: { voice: 'pip', text: 'Kael — someone’s come back! A fire, in Ember Hollow!' },
+  ember_grow_3: { voice: 'pip', text: 'A hut, already! It’s not a ruin any more, Kael. It’s a home.' },
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1, v3.128). Fires once per region,
+  // the FIRST time the child comes HOME to a row already complete — witnessed
+  // at the Den, never out in the field where the last pup was actually found,
+  // the same law `ember_grow_2/3` above already keeps.
+  pups_home_ember: { voice: 'pip', text: 'Look, Kael — every Ember Hollow pup has a bed here now!' },
+  pups_home_stone: { voice: 'pip', text: 'The Stoneroot pups are all curled up safe in their row!' },
+  pups_home_wild: { voice: 'pip', text: 'Every Wild Woods pup found its spot in the pen!' },
+  pups_home_frost: { voice: 'pip', text: 'Frostpeak’s pups are warm and home at last!' },
+  pups_home_storm: { voice: 'pip', text: 'The Stormreach pups all made it back to the pen!' },
+  pups_home_vale: { voice: 'pip', text: 'Every pup from the Sunken Vale is safe here now!' },
+  pups_home_court: { voice: 'pip', text: 'The Shadow Court’s pups have a home at last!' },
+  pups_home_village: { voice: 'pip', text: 'Even the Village pups found their way to the pen!' },
+  // THE GARDEN BED (design/WIDER-WORLD.md §3.2, v3.148).
+  garden_planted: { voice: 'pip', text: 'A seed, in the ground! Come back tomorrow, Kael.' },
+  garden_harvest: { voice: 'pip', text: 'Look what grew while we were away!' },
   scar_e2: { voice: 'pip', text: 'This crack won’t close… so the mountain remembers. That’s okay.' },
   ripple_vine: { voice: 'pip', text: 'A green vine — growing through solid stone! The Wild Woods are calling us.' },
   petra_den: { voice: 'pip', text: 'Petra’s stone-heart hums by our fire now. Two spirits home!' },
@@ -185,6 +229,15 @@ export const LINES = {
   boreal_den: { voice: 'pip', text: 'Boreal’s rime-light came all the way down the mountain. Four! It doesn’t even melt.' },
   aria_den: { voice: 'pip', text: 'Aria’s stormlight won’t sit still — it’s been round the fire twice already. That’s five!' },
   meri_den: { voice: 'pip', text: 'Meri’s tidelight is here, low and slow like deep water. Six spirits home. Only the shadow is left.' },
+  // GRIMM AND LUNA (v3.144, design/WIDER-WORLD.md §4.2 point 1). The one
+  // homecoming that is not a light: Grimm walks home himself, so Pip's line
+  // says so rather than counting a seventh spirit. Both repeat, throttled,
+  // unlike the six above — a child comes back to look at Grimm more than
+  // once, the same reason Wren and Rook get a `_chat` line of their own.
+  grimm_den: { voice: 'pip', text: 'Grimm... he came all the way home. Just an old wolf now, resting by the gate. We did it, Kael.' },
+  grimm_den_chat: { voice: 'pip', text: 'He still keeps one eye on the gate. I think he likes knowing it’s open now.', repeat: true },
+  luna_den: { voice: 'pip', text: 'That light by the fire — that’s Luna. She never stopped hoping, even when Grimm couldn’t hear her. She’s home too.' },
+  luna_den_chat: { voice: 'pip', text: 'Luna’s light never quite settles. I think she’s still watching over him.', repeat: true },
   darkcave_enter: { voice: 'pip', text: 'The Hidden Hollow… it’s pitch dark in here. Become the Dark Wolf and let your eyes shine!' },
   quarry_enter: { voice: 'pip', text: 'The Old Quarry! Bones everywhere… they’re waiting for us. Clear them out and the treasure gate will open!' },
   quarry_clear: { voice: 'pip', text: 'You cleared the quarry! Hear that? The treasure gate is open!' },

@@ -27,6 +27,10 @@ const check = (n, ok, d) => {
 };
 
 const ARENAS = ['le', 'vz', 'tgl', 'f5', 'scr', 'ddp', 'xth'];
+// THE HEARTHS, ONE AT A TIME (design/WIDER-WORLD.md §5.4). `la` is the only
+// one that has reached stage 4 so far (v3.131); the other six join this list
+// as each region's own hearth gets there.
+const HEARTHS = ['la'];
 const ALL_FORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf',
   'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 const FLAGS = ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
@@ -45,8 +49,12 @@ const posts = await page.evaluate(async () => {
   const m = await import('/js/npcs.js');
   return m.WAYFARER_POSTS;
 });
-check('a post for every boss arena, the Den, the Village and the Spire',
-  Object.keys(posts).sort().join(',') === [...ARENAS, 'den', 'ysq', 'm1'].sort().join(','),
+const settlerKeyOf = await page.evaluate(async () => {
+  const { SETTLER_POSTS } = await import('/js/npcs.js');
+  return Object.fromEntries(Object.entries(SETTLER_POSTS).map(([room, p]) => [room, p.key]));
+});
+check('a post for every boss arena, the Den, the Village, the Spire, and every grown hearth',
+  Object.keys(posts).sort().join(',') === [...ARENAS, 'den', 'ysq', 'm1', ...HEARTHS].sort().join(','),
   Object.keys(posts));
 check('every arena post is gated on a boss flag',
   ARENAS.every((r) => FLAGS.includes(posts[r].flag)),
@@ -247,6 +255,63 @@ check('...and he stands inside its reach, so walking to HIM opens it',
   den.apart !== null && den.apart < 1.5, { apart: den.apart });
 check('the villagers still spawn and still tick beside him',
   den.villagers.includes('wren') && den.villagers.includes('tam'), den.villagers);
+
+// ---------------------------------------------------------------------------
+console.log('\n── 7 · the hearths (v3.131 begins the rollout) ───────');
+// Tam takes a post at a grown hearth exactly at stage 4, never earlier — the
+// same "not one step before it is earned" law §2 already proves for the
+// arenas, asked here of a stage number instead of a boss flag.
+const setStage = (key, n) => page.evaluate(async ({ key, n }) => {
+  const g = window.__game;
+  const { PUP_HOME } = await import('/js/pip.js');
+  const { KEEPSAKE } = await import('/js/restoration.js');
+  g.WS.set(key, 'restored', n >= 1);
+  for (const id of Object.keys(PUP_HOME)) if (PUP_HOME[id] === key) g.state.flags.pups[id] = n >= 2;
+  if (!g.state.inventory.treasures) g.state.inventory.treasures = [];
+  if (KEEPSAKE[key]) {
+    g.state.inventory.treasures = g.state.inventory.treasures.filter((t) => t !== KEEPSAKE[key]);
+    if (n >= 3) g.state.inventory.treasures.push(KEEPSAKE[key]);
+  }
+  g.WS.set(key, 'dungeon', n >= 4);
+  // §4 above sets grimmFreed globally true for the xth arena's own check, and
+  // growthStage's fifth fact is that SAME global flag — left alone here, ember
+  // would silently sit at stage 4 already, one fact early. Reset it: this
+  // section only means to test stages 0-4, never grimmFreed's own stage 5.
+  g.state.flags.grimmFreed = false;
+}, { key, n });
+
+for (const room of HEARTHS) {
+  const key = settlerKeyOf[room];
+  await setStage(key, 3);
+  await wk.jump(room, ALL_FORMS);
+  const notYet = await page.evaluate(() => !!window.__game.world.wayfarer);
+  check(`${room}: not one step before stage 4 (stage 3 has no wayfarer)`, !notYet);
+
+  await setStage(key, 4);
+  await wk.jump('den', ALL_FORMS);   // leave, so the next jump is a fresh build
+  await wk.jump(room, ALL_FORMS);
+  const r = await page.evaluate(async ({ R }) => {
+    const w = window.__game.world;
+    const n = w.wayfarer;
+    if (!n) return { there: false };
+    const post = (await import('/js/npcs.js')).WAYFARER_POSTS[w.roomId];
+    let clear = true;
+    for (const c of w.boxColliders) {
+      const cx = Math.max(c.minX, Math.min(post.x, c.maxX));
+      const cz = Math.max(c.minZ, Math.min(post.z, c.maxZ));
+      if ((post.x - cx) ** 2 + (post.z - cz) ** 2 < R * R) clear = false;
+    }
+    for (const c of w.circleColliders) {
+      if (Math.abs(c.x - post.x) < 1e-6 && Math.abs(c.z - post.z) < 1e-6) continue; // his own
+      if ((post.x - c.x) ** 2 + (post.z - c.z) ** 2 < (c.r + R) ** 2) clear = false;
+    }
+    return { there: true, clear, visible: !!(n.model && n.model.parent),
+      travel: w.markers.travelSpot, x: post.x, z: post.z, ticked: typeof w.updateNpcs === 'function' };
+  }, { R: 0.44 });
+  check(`${room}: at stage 4, Tam is there, drawn, ticking, on clear ground, holding the marker`,
+    r.there && r.clear && r.visible && r.ticked && r.travel
+    && Math.abs(r.travel.x - r.x) < 0.01 && Math.abs(r.travel.z - r.z) < 0.01, r);
+}
 
 console.log(wk.errors.length ? '\nPAGE ERRORS:\n' + wk.errors.join('\n') : '');
 for (const e of wk.errors) errors.push('PAGEERROR: ' + e);

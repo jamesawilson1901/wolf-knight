@@ -486,8 +486,10 @@ export function updateShards(world, dt, t, player) {
     // 0.55 skid damping) put the far edge of a scatter right on 2.2, and a
     // five-coin chest spreads wider still. 3.2 covers the whole scatter while
     // and it is now the only pull radius there is: the Magnet Charm that used
-    // to widen it to 8 was cut (js/powerups.js). "Flies out, lands, THEN is
-    // yours" reads exactly as before.
+    // to widen it to 8 was cut (and the whole timed power-up system it
+    // belonged to went with it later — dad, from play: the mechanics had no
+    // real use in the game). "Flies out, lands, THEN is yours" reads exactly
+    // as before.
     const pullR = 3.2;
     if (s.arm <= 0 && s.settled && d2 < pullR * pullR && d2 > 0.3 * 0.3) {
       const d = Math.sqrt(d2);
@@ -820,8 +822,6 @@ export class Breakable {
     if (lootEvents.onPotionDrop && Math.random() < this.potionChance) {
       lootEvents.onPotionDrop(this.x, this.z);
     }
-    // rare bonus: a power-up pops out (wired by powerups.js via hook)
-    if (this.world.onBreakableSmashed) this.world.onBreakableSmashed(this.x, this.z);
   }
   // The only breakable that does anything on its own: a chest opens when the
   // child reaches it. 1.15u matches the standing chests' 1.1u opening radius

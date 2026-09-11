@@ -145,6 +145,11 @@ export function persist() {
       ariaHp: state.flags.ariaHp || 0,
       meriHp: state.flags.meriHp || 0,
       grimmHp: state.flags.grimmHp || 0,
+      // THE LOST WOLVES (v3.130, design/WIDER-WORLD.md §2.5) — one per pocket
+      // dungeon's first room, no fight, no heart: the map's own rescueCount()
+      // has read state.flags.rescued since DEN-MINIGAMES §5.1 and nothing had
+      // ever written it. Additive-forever, same as pups.
+      rescued: { ...(state.flags.rescued || {}) },
     },
     // THE TRIAL LOCK. js/state.js says out loud that it is "persisted rather
     // than transient because a child who quits mid-fight must come back still
@@ -263,6 +268,10 @@ export function applySave(profileId, profileName, data) {
     state.flags.ariaHp = data.flags.ariaHp || 0;
     state.flags.meriHp = data.flags.meriHp || 0;
     state.flags.grimmHp = data.flags.grimmHp || 0;
+    // THE LOST WOLVES (v3.130) — additive-forever, same law as pups: an old
+    // save has no `rescued` key at all, and `data.flags.rescued || {}` gives
+    // exactly the untouched state rather than throwing on the missing field.
+    state.flags.rescued = { ...(data.flags.rescued || {}) };
     // v3.18: the "dead machinery" mystery was retired with the mill fiction —
     // old saves that logged it get it quietly marked found (additive law:
     // old profiles must always load clean)

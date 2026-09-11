@@ -266,7 +266,7 @@ export async function buildH2(scene) {
   world.markers.houndSpots = [{ x: -5, z: 6, variant: 'shadewalker' }, { x: 6, z: 2 }];
   world.markers.batSpots = [{ x: -8, z: -2 }];
   world.markers.breakables = [
-    { x: -9.0, z: 11.0, kind: 'crate' }, { x: 9.0, z: 11.0, kind: 'barrel' },
+    { x: -9.0, z: 11.0, kind: 'crate' }, { x: 9.8, z: 11.0, kind: 'barrel' },
     { x: -12.5, z: 5.0, kind: 'vase' },
   ];
   world.markers.restSpot = { x: -6, z: 11 };

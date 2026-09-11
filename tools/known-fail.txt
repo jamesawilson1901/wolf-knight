@@ -61,3 +61,96 @@
 # the note above about the week in September when this file sat empty through
 # seven red nightlies. An empty manifest beside a green one is the point.
 # Nothing goes back in here without the §6 worktree proof and a date.
+# ---------------------------------------------------------------------------
+# 2026-09-09, FIXED THE SAME NIGHT: the §4 half of the entry below (ddp's
+# live doors missing the v3.129 dlg loop-closer) was root-caused and closed —
+# js/level6.js's `w` gap was cut only at build time when `meriDefeated` was
+# already true, so there was nothing for a live `openOnward()` to open into;
+# the `n` gap's own always-cut, plug-then-open shape (levelkit.js's
+# `onwardPlug`, chained — "two plugs, one opening") is what the `w` gap now
+# uses too. verify-onward.mjs §4 passes for ddp; verify-level6.mjs and
+# verify-openholes.mjs (158 rooms) both stayed clean.
+#
+# The §5 half is a DIFFERENT, still-open bug: with §4 fixed, the suite gets
+# further (le's own walk-through-the-door check now passes in full) and then
+# hard-crashes — an uncaught `page.waitForFunction` timeout jumping into `vz`
+# — the exact same crash, same line, the original 2026-09-09 note proved
+# pre-existing on a v3.132 worktree. ddp is not in §5's own room list
+# (`le`,`vz`,`tgl` only) and this session touched no file `vz`'s own build or
+# `__wkJump` path runs through, so the ddp fix cannot be its cause. Board
+# item: find why jumping into `vz` (Stoneroot's crypt, the Bone Warden) after
+# `le` never resolves `window.__wk.room === 'vz'` within verify-onward.mjs
+# §5's 60s window.
+verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09
+# ---------------------------------------------------------------------------
+# 2026-09-10, v3.136 (MINI_ROSTER + the Root Cellar, design/WIDER-WORLD.md
+# §2.6): two more found while verifying that slice, neither touched by it.
+#
+# verify-promises's "l1_crack resolves on the dungeon, not the gate" block
+# (the v3.130 Ash Vault check) fails on THIS session's own v3.133 commit
+# (1ae4b14) with no Root Cellar changes applied at all — proven by `git
+# stash` (all tracked edits stashed, the two new tool files moved out of the
+# repo) rather than a separate worktree, but against the identical committed
+# tree a worktree would have checked out: same commit, same static server,
+# same suite. On that clean tree it fails WORSE — two sub-checks red ("the
+# ??? card is logged once the gate breaks" as well as "...and IS resolved
+# once the dungeon is cleared") — where this session's own v3.136 tree only
+# fails the second. Reads as a pre-existing timing flake in the ??? card's
+# narrationTriggers() poll, not a regression either commit introduced;
+# js/main.js's PROMISES table and js/level1.js's Ash Vault are both outside
+# this slice's diff.
+#
+# verify-density's tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail its
+# "shows at least N things on arrival" floor. Zero file overlap makes this
+# pre-existing by construction: v3.136 touches js/enemies.js, js/level2.js,
+# js/main.js, js/route.js, js/ground.js, js/levelClimb.js and four tools/
+# files — never js/level3.js, which is the Frozen Spring's only builder.
+#
+# Neither is this slice's to fix; both get their own board item.
+verify-promises.mjs | "l1_crack resolves on the dungeon, not the gate" (v3.130 Ash Vault check) fails on the clean v3.133 commit with no v3.136 changes applied — a pre-existing narrationTriggers() timing flake, not a regression | 2026-09-10
+verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their arrival-frame item-count floor — zero overlap with any file v3.136 touches (js/level3.js, the Spring's only builder, is untouched) | 2026-09-10
+# ---------------------------------------------------------------------------
+# 2026-09-10, also found while verifying v3.147/v3.136: verify-grounded's
+# `lv1` floats a prop — `Skull_Cylinder000` at (6, 5.2), gap 1.82u above the
+# floor. `js/level1.js` (lv1's only builder, shipped v3.130) is untouched by
+# this slice, and vr1's own copy of the exact same pedestal+skull idiom
+# (js/level2.js, this slice's own new code) passes verify-grounded clean —
+# so the bug is specific to lv1's own numbers, not the pattern itself.
+# Likely cause, for whoever picks this up: `buildLv1` sets
+# `ped.scale.setScalar(0.85)` then stacks the skull at a fixed
+# `skull.position.set(6, 1.86, 5.2)` — 1.86 was sized for SOME pedestal
+# height and no longer matches Quaternius's `Pedestal.glb` at 0.85 scale.
+# Measure the pedestal's real top (a `Box3` from its geometry, the
+# `fitHeight` idiom `Dragonling` already uses in js/enemies.js) rather than
+# re-guessing a second constant.
+verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6,5.2) — a stale skull-height constant against Pedestal.glb's real height at 0.85 scale, pre-existing since v3.130, outside this slice's diff (js/level1.js untouched; vr1's own copy of the same idiom passes clean) | 2026-09-10
+# ---------------------------------------------------------------------------
+# 2026-09-10, v3.150 (Which Wolf?, the second harness minigame): both
+# verify-minigame.mjs's and this slice's own new verify-mg-quiz.mjs's final
+# "draw calls return to where they started" check fail by 5-10 calls,
+# consistently landing on a STABLE new number (not scattered — every one of
+# the five closing samples read identical), which first looked exactly like
+# the §3.4 teardown leak both suites exist to catch.
+#
+# It is not one. Proven with a plain idle probe — new profile, walk to the
+# Den's own rest spot, take the SAME median-of-five reading the suites already
+# take, wait 20 real seconds doing nothing (no ring, no harness, no minigame
+# code touched at all), read again: 80 calls before, 90 after. The room's own
+# scene graph does not grow either — both suites' own "ten rounds leave ZERO
+# residue" check (world.root.children.length) reads equal before and after,
+# every time. So something already IN the Den ramps its own draw call count
+# up over real elapsed time and holds there — most likely the "transient
+# effects — embers, dust" verify-minigame.mjs's own comment already names,
+# reaching full particle count a few seconds in rather than fluctuating
+# frame to frame as that comment assumed when the ±3 tolerance was set.
+#
+# Not this slice's to fix (js/mg-quiz.js touches no Den lighting, particle or
+# time-of-day system, and the untouched verify-minigame.mjs — Fetch, shipped
+# v3.39 — reproduces the identical stable-jump signature on the same server
+# with no code of this slice loaded). Whoever picks this up: find what in the
+# Den's own onAnimate loop crosses a threshold in the first ~15-20s of a
+# session and stays there, and either give the suites a longer settle before
+# their baseline read or make the effect's own steady-state cost part of the
+# expected baseline instead of the ±3 noise band.
+verify-minigame.mjs | "draw calls return to where they started" fails by 5-10, landing on a stable (not noisy) new value — proven NOT a teardown leak (scene child count matches before/after; a pure 20s idle probe with no minigame touched at all reproduces the same 80→90 jump) — some Den transient effect ramps to a steady state over real time and the suite's baseline is read before it settles | 2026-09-10
+verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10

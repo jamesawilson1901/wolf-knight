@@ -102,6 +102,7 @@ const ROOMS = [
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
   { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
+  { id: 'lv1', kind: 'pocket' }, { id: 'lv2', kind: 'island' }, { id: 'lv3', kind: 'pocket' },
   // The Night Road — the road between Ember Hollow and Stoneroot
   { id: 'n1',  kind: 'island' }, { id: 'n2',  kind: 'island' },
   // The Greenway — the road between Stoneroot and the Wild Woods
@@ -141,6 +142,8 @@ const ROOMS = [
   { id: 'f2',  kind: 'island' }, { id: 'f2b', kind: 'pocket' },
   { id: 'f3',  kind: 'island' }, { id: 'f4',  kind: 'island' },
   { id: 'f5',  kind: 'arena' },
+  // The Sunken Hearth (v3.148) — Frostpeak's own pocket dungeon, off f1b.
+  { id: 'f1c', kind: 'pocket' }, { id: 'f1d', kind: 'island' }, { id: 'f1e', kind: 'pocket' },
   // Stoneroot Caverns
   { id: 'vh',  kind: 'island' }, { id: 'vga', kind: 'choke' },  { id: 'va1', kind: 'island' },
   { id: 'va2', kind: 'island' }, { id: 'vap', kind: 'pocket' }, { id: 'va3', kind: 'puzzle' },
@@ -148,6 +151,8 @@ const ROOMS = [
   { id: 'vbp', kind: 'pocket' }, { id: 'vb3', kind: 'puzzle' }, { id: 'vgc', kind: 'choke' },
   { id: 'vc1', kind: 'island' }, { id: 'vc2', kind: 'island' }, { id: 'vcp', kind: 'pocket' },
   { id: 'vc3', kind: 'pocket' }, { id: 'vz',  kind: 'arena' },
+  // The Root Cellar (v3.136) — Stoneroot's own pocket dungeon, off vc2.
+  { id: 'vr1', kind: 'pocket' }, { id: 'vr2', kind: 'island' }, { id: 'vr3', kind: 'pocket' },
   // The Wild Woods
   { id: 't1a', kind: 'island' }, { id: 't1b', kind: 'island' }, { id: 't1p', kind: 'pocket' },
   { id: 'tc1', kind: 'choke' },  { id: 't2a', kind: 'island' }, { id: 't2b', kind: 'island' },
@@ -156,6 +161,7 @@ const ROOMS = [
   { id: 'tkn', kind: 'puzzle' }, { id: 'tc3', kind: 'choke' },  { id: 't4a', kind: 'island' },
   { id: 't4b', kind: 'island' }, { id: 't4p', kind: 'pocket' }, { id: 'tc4', kind: 'choke' },
   { id: 'tgl', kind: 'arena' },  { id: 'tsA', kind: 'pocket' }, { id: 'tsB', kind: 'pocket' },
+  { id: 'tf1', kind: 'pocket' }, { id: 'tf2', kind: 'island' }, { id: 'tf3', kind: 'pocket' },
   // Stormreach Cliffs. The STAIR is a new module and gets measured as a choke:
   // it is the same job — compression and rest between islands — in a longer,
   // narrower box, and holding it to the island bar would only push clutter into

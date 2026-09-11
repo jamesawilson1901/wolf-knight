@@ -108,6 +108,40 @@ check('a real line plays its rendered clip',
 check('...and a line with no clip falls back instead of throwing',
   played.__absent === false, played);
 
+// ---------------------------------------------------------------------------
+console.log('\n── 5 · Wren’s rumour table (v3.137): always the frontier ──');
+// design/WIDER-WORLD.md §5.2 — "a small table chosen at say-time by the
+// nearest unfinished thing". main.js's own module instance is already
+// loaded by the page (the <script type=module> tag); a second dynamic
+// import resolves to that SAME instance rather than re-running the
+// bootstrap, so this drives the real function through real WS state.
+const rumours = await page.evaluate(async () => {
+  const { wrenRumourLine } = await import('/js/main.js');
+  const g = window.__game;
+  g.WS.set('ember', 'restored', false); g.WS.set('stone', 'restored', false);
+  g.WS.set('wild', 'restored', false); g.WS.set('frost', 'restored', false);
+  g.WS.set('storm', 'restored', false); g.WS.set('vale', 'restored', false);
+  g.WS.set('court', 'restored', false);
+  const out = { fresh: wrenRumourLine() };
+  g.WS.set('ember', 'restored', true);
+  out.emberDone = wrenRumourLine();
+  g.WS.set('stone', 'restored', true);
+  out.stoneDone = wrenRumourLine();
+  g.WS.set('wild', 'restored', true); g.WS.set('frost', 'restored', true);
+  g.WS.set('storm', 'restored', true); g.WS.set('vale', 'restored', true);
+  g.WS.set('court', 'restored', true);
+  out.allDone = wrenRumourLine();
+  return out;
+});
+check('a fresh save: the rumour points at Ember, the first frontier', rumours.fresh === 'wren_rumour_ember', rumours);
+check('Ember healed: the rumour moves on to Stone', rumours.emberDone === 'wren_rumour_stone', rumours);
+check('Stone healed too: the rumour moves on to Wild (its own id, `wren_rumour`)',
+  rumours.stoneDone === 'wren_rumour', rumours);
+check('every region healed: the rumour says so rather than repeating an old frontier',
+  rumours.allDone === 'wren_rumour_done', rumours);
+check('every rumour id this logic can pick is itself a real, rendered, precached line',
+  Object.values(rumours).every((id) => have.has(id) && !notCached.includes(`${id}.ogg`)), rumours);
+
 console.log('\n' + (errors.length ? `✗ ${errors.length} FAILED\n` + errors.join('\n')
   : '✓ every line in the game is spoken by a real voice'));
 await b.close();

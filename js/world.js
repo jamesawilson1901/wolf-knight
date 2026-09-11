@@ -80,6 +80,15 @@ export class World {
     // iceGate(), so a room with ice-sealed geometry built any other way had
     // no shatter verb at all and its ice could never be broken.
     this.shatterables = [];    // {id, x, z, clear, broken} — Frost Wolf breath
+    // v3.148 (design/WIDER-WORLD.md §2.3, Frostpeak's own dungeon): a
+    // PERMANENT melt, the same fixed-not-lazy pattern as shatterables above —
+    // world.meltAt used to exist only as a lazy patch inside freezeBrazier()
+    // (js/gates.js), so it only ever handled RE-FREEZING puzzle braziers and
+    // only existed in a room that happened to build one first. meltGate()
+    // (js/gates.js) is the permanent-gate sibling to iceGate: melted once,
+    // never re-seals. freezeBrazier's own lazy patch now CHAINS onto this
+    // real method instead of guarding its absence.
+    this.meltables = [];       // {id, x, z, clear, melted} — Fire Wolf slam
     // STORMREACH (region 5). A gale lane pushes; it never damages. It is also
     // the region's lock — see js/wind.js for why a wind you can lean into is a
     // better closed door than a wall a child has to be told about.
@@ -693,6 +702,24 @@ export class World {
       if (dx * dx + dz * dz > rr * rr) continue;
       c.broken = true;
       c.clear();
+      n++;
+    }
+    return n;
+  }
+
+  // Fire Wolf slam/breath: melt every unmelted mass in range, PERMANENTLY —
+  // the sibling to shatterAt above, for meltGate() (js/gates.js). Unlike a
+  // puzzle brazier (which re-freezes if left unlit — see freezeBrazier's own
+  // chained wrapper on this method), a melt GATE never re-seals once broken.
+  meltAt(x, z, r) {
+    let n = 0;
+    for (const m of this.meltables) {
+      if (m.melted) continue;
+      const rr = r + (m.hitR || 0);
+      const dx = m.x - x, dz = m.z - z;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      m.melted = true;
+      m.clear();
       n++;
     }
     return n;

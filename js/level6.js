@@ -1137,7 +1137,16 @@ export async function buildDg4(scene) {
 // ---------------------------------------------------------------------------
 export async function buildDlg(scene) {
   const { world, spec, D } = base(scene, 'dlg');
-  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w'), gap('n'), gap('s')], D, {
+  // A SECOND EAST DOOR, once Meri falls (v3.129, design/WIDER-WORLD.md §5.1):
+  // every cardinal wall already carries one of the four district hubs
+  // (d1a/d2a/d3a/d4a), so the loop back from her own hall (`ddp`) shares the
+  // east wall with d1a's door at a different centre (`gap`'s own mechanism
+  // for this, first used by the Vault hub's five doorways) rather than
+  // displacing any of the four.
+  const meriLoop = !!state.flags.meriDefeated;
+  const gaps = [gap('e'), gap('w'), gap('n'), gap('s')];
+  if (meriLoop) gaps.push(gap('e', DOOR_HALF, 8));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 9.0, kind: 'water' }],
   });
   // FACING IN. This was angle +PI/2 — pointing at the east wall two units away,
@@ -1155,6 +1164,10 @@ export async function buildDlg(scene) {
   // Only the east exit was ever right, and it is the one that shows the shape:
   // land beside the door you came through, facing in.
   sideDoor(world, 'e', halfW, halfD, 'd1a', { x: -14, z: 0, angle: -Math.PI / 2 });
+  if (meriLoop) {
+    sideDoor(world, 'e', halfW, halfD, 'ddp', { x: -10, z: 0, angle: -Math.PI / 2 },
+      { centre: 8 });
+  }
   sideDoor(world, 'n', halfW, halfD, 'd2a', { x: 13, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'd3a', { x: 0, z: 10, angle: Math.PI });
   sideDoor(world, 's', halfW, halfD, 'd4a', { x: 0, z: -10, angle: 0 });
@@ -1200,16 +1213,45 @@ export async function buildDdp(scene) {
   // The north gap is ALWAYS cut now — plugged with drowned stone while Meri
   // fights, opened live (smoke poof, main.js) the moment the vale drains, so
   // the way on appears where the child is standing instead of on re-entry.
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  //
+  // THE WEST GAP, beside the south door (v3.129, design/WIDER-WORLD.md
+  // §5.1): her hall is one room from the Lagoon hub every other district
+  // already opens onto, and gating the loop on her own defeat keeps the
+  // rule every promise gate in this game already follows — no door offers
+  // a way out of a fight still in progress.
+  //
+  // ALWAYS CUT NOW, plugged rather than absent (fixed 2026-09-09,
+  // tools/known-fail.txt): this gap used to be build-time-only — no gap cut
+  // in the wall at all while `onward` was false, so there was nothing for a
+  // live `openOnward()` to open into. A child who beat Meri without leaving
+  // the room got the `h1` door (the north plug already worked) but not this
+  // one; only a rebuild ever carried both. The north gap's own plug-then-
+  // open shape is what fixes it: cut always, blocked by drowned stone while
+  // she fights, opened live the instant `onwardPlug`'s chained callback
+  // fires — verify-onward.mjs §4's "opens to the same doors live as on a
+  // rebuild" is what this answers.
+  const gaps = [gap('s'), gap('n'), gap('w')];
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
+  // lands beside dlg's own new east door (centre 8, above), facing in — the
+  // same "land beside the door you came through" law dlg's own comment
+  // already keeps for its other three.
+  const openDlg = () => sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 8, angle: -Math.PI / 2 });
+  if (onward) openDlg();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockSA', D.propTint, openDlg);
   // THE ROAD, NOT THE REGION (2026-09-08). Meri's hall used to open straight
   // onto the Court's threshold: the last spirit freed, then the shadow's own
   // door, with nothing between them. The Hollow Road is what goes there now
   // (js/levelHollow.js, two rooms), and it is the only stretch of the game
   // whose whole job is dread. h1's own spawn is (0, 11).
+  //
+  // Registered AFTER the west plug (levelkit.js's onwardPlug chains rather
+  // than overwrites, "two plugs, one opening"), so `world.onwardSpot` ends
+  // on this one and the smoke lands on the door that matters — the way on,
+  // not the way back.
   if (onward) sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI });
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockSA', D.propTint,
     () => sideDoor(world, 'n', halfW, halfD, 'h1', { x: 0, z: 11, angle: Math.PI }));
@@ -1246,7 +1288,7 @@ export async function buildDdp(scene) {
     world.markers.meriShrine = { x: 0, z: -3.0 };
     world.markers.healed = true;
     world.markers.chestDefs = [
-      { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42, powerup: 'star' } },
+      { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
   }

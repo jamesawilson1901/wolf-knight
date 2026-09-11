@@ -227,8 +227,8 @@ export async function buildN1(scene) {
   world.markers.shadeSpots = [{ x: -5, z: 3 }, { x: 4, z: 3.5 }];
   world.markers.mothSpots = [{ x: 7.5, z: -10 }, { x: -8, z: -11 }];
   world.markers.breakables = [
-    { x: -7.5, z: 6.5, kind: 'crate' }, { x: 6.0, z: 8.0, kind: 'barrel' },
-    { x: -10.5, z: 2.0, kind: 'jar' }, { x: 9.5, z: -2.5, kind: 'box' },
+    { x: -7.5, z: 6.5, kind: 'crate' }, { x: 6.6, z: 8.0, kind: 'barrel' },
+    { x: -11.0, z: 2.87, kind: 'jar' }, { x: 9.5, z: -2.5, kind: 'box' },
   ];
 
   // THE ARRIVAL VIEW IS THE HALF THAT GETS DRESSED FIRST. verify-density

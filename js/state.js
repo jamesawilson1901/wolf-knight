@@ -14,6 +14,7 @@ export const state = {
     plates: {},   // pressure-plate id -> true (boulder puzzles)
     wardenDefeated: false, // Stoneroot mini-boss
     pups: {},     // pup id -> true
+    rescued: {},  // grown-wolf id -> true (dungeon room one, no fight — §2.5)
     chests: {},   // chest id -> opened
     keys: {},     // key id -> owned (dungeon locks)
   },

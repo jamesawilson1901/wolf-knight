@@ -813,8 +813,17 @@ async function buildDen(scene) {
     if (!(state.flags.grimmFreed && x > -1.8 && x < 1.8)) addWall(x, -halfD - 0.5);
     if (!(x > -1.8 && x < 1.8)) addWall(x, halfD + 0.5);   // the gap is the stair to la
   }
+  // THE EAST GAP — Den -> vh, once the lantern is relit (v3.129,
+  // design/WIDER-WORLD.md §5.1). `vh`'s own south door has walked into the
+  // Den one-way since the Vault existed (js/level2.js:567, landing at the
+  // Den's own default spawn) with no way back; `WS.stage('vault') >= 1`
+  // means the child has stood in the Vault and relit it, so this is a
+  // return loop, never a skip of the Night Road that earns the flag. No new
+  // save flag: the vault's own stage already IS the gate.
+  const vaultLoop = WS.stage('vault') >= 1;
   for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
-    addWall(-halfW - 0.5, z); addWall(halfW + 0.5, z);
+    addWall(-halfW - 0.5, z);
+    if (!(vaultLoop && z > -1.4 && z < 1.4)) addWall(halfW + 0.5, z);
   }
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
     materialTints: { grass: 0x4d6a3c, dirt: 0x5a4a34 },
@@ -828,10 +837,22 @@ async function buildDen(scene) {
   world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
   world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
   world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
-  world.addBox(halfW, halfW + 1, -halfD - 1, halfD + 1);
+  if (vaultLoop) {
+    world.addBox(halfW, halfW + 1, -halfD - 1, -1.4);
+    world.addBox(halfW, halfW + 1, 1.4, halfD + 1);
+  } else {
+    world.addBox(halfW, halfW + 1, -halfD - 1, halfD + 1);
+  }
   world.spawn = { x: 0, z: 7.4, angle: Math.PI };
   world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, halfD - 0.6, 'x');
+  if (vaultLoop) {
+    // lands at vh's own spawn (js/level2.js:565) — the same arrival point
+    // its south door already uses, so this is a loop back to one place, not
+    // a second geography to learn.
+    world.addDoor(halfW - 0.15, halfW + 0.9, -1.4, 1.4, 'vh', { x: 0, z: 10, angle: Math.PI });
+    doorway(world, halfW - 0.6, 0, 'z');
+  }
   if (state.flags.grimmFreed) {
     // THE VILLAGE. The road that was always shadowed, now that Grimm is gone.
     world.addDoor(-1.4, 1.4, -halfD - 0.9, -halfD + 0.15, 'ysq', { x: 0, z: 12, angle: Math.PI });
@@ -939,9 +960,19 @@ async function buildDen(scene) {
     // Meri's tidelight sits low over a wet stone and swells like deep water
     { key: 'vale', marker: 'meriHome', x: 1.0, z: -4.0, light: 0x8fe4ff,
       y: 0.62, glow: 4, bob: 0.9, phase: 4.2, base: 'rockSB', baseScale: 0.85 },
+    // LUNA — the seventh row, design/WIDER-WORLD.md §4.2 point 1. Not
+    // "restored": she was the hopeful voice through every one of Grimm's own
+    // taunts (`luna_dream_1..5`, js/narration.js), so she has nowhere to come
+    // home FROM until he is free — gated on `grimmFreed` itself, same as him,
+    // and the only row here that is. Colour 0xd8cfff matches her own memorial
+    // in his throne room exactly (js/level7.js's `spiritShrine` call once he
+    // falls) — the same spirit, seen twice.
+    { key: 'court', marker: 'lunaHome', x: 0, z: -5.5, light: 0xd8cfff,
+      y: 0.95, glow: 4.5, bob: 1.0, phase: 1.7, base: null,
+      when: () => state.flags.grimmFreed },
   ];
   for (const h of SPIRIT_HOMES) {
-    if (!WS.get(h.key, 'restored')) continue;
+    if (h.when ? !h.when() : !WS.get(h.key, 'restored')) continue;
     if (h.base) {
       const base = prepareModel(kit[h.base].scene.clone());
       base.position.set(h.x, 0, h.z);
@@ -1002,6 +1033,64 @@ async function buildDen(scene) {
       moonGlow.intensity = 3.4 + Math.sin(t * 2.7) * 0.9;
     });
     world.markers.travelSpot = { x: -5.4, z: -7.0 };
+  }
+
+  // GRIMM COMES HOME (design/WIDER-WORLD.md §4.2 point 1). He is freed, not
+  // destroyed — the shadow goes and Grimm is left, old and tired and
+  // himself (main.js's own comment on the ending). wolf.gltf like every one
+  // of his kind, boss scale (1.3, boss.js's own fallback), no collider — a
+  // child cannot bump the ending, and he is never in anyone's way home.
+  // Idle_2_HeadLow only: he is resting, not grazing or wandering. Two pups
+  // drift near him at pup scale (0.42, the pen's own scale, js/restoration.js)
+  // — decorative, not tied to the rescue count, since the real 24 already
+  // live at their own pen south of the fire; this is one more "somewhere
+  // safe" beat, not a second roster. ~5 draws total, which is what the pen's
+  // own budget work (v3.128) bought back.
+  //
+  // BY THE NORTH GATE, clear of the woodpile/torch cluster at x 0.6-4.1
+  // (measured live, tools/probe-freespot.mjs WK_LATE=1) — the gate itself is
+  // the whole point: the road that was shut is open, and he is the reason.
+  if (state.flags.grimmFreed) {
+    const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
+    const grimm = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+    grimm.scale.setScalar(1.3);
+    grimm.position.set(-1.3, 0, -7.2);
+    grimm.rotation.y = 2.0;
+    grimm.traverse((n) => {
+      if (!n.isMesh || n.material.name !== 'Main') return;
+      n.material = n.material.clone();
+      n.material.color.setHex(0x8a8d92);
+    });
+    world.add(grimm);
+    world.keepLoose(grimm);
+    const grimmMixer = new THREE.AnimationMixer(grimm);
+    const restClip = wolfGltf.animations.find((c) => c.name === 'Idle_2_HeadLow');
+    if (restClip) grimmMixer.clipAction(restClip).play();
+    world.onAnimate((t, dt) => grimmMixer.update(dt || 0.016));
+    world.markers.grimmSpot = { x: -1.3, z: -7.2 };
+
+    // js/restoration.js's own pen-pup trick (spawnPupPen): wolf.gltf is four
+    // skinned parts that never merge, so hiding all but `Main` and dropping
+    // the shadow brings a decorative pup to its cheapest possible cost, one
+    // draw — which is what closed the last unit of this room's 135-call
+    // budget (verify-homecoming.mjs measured 136 without this).
+    for (const [px, pz, ry] of [[-2.1, -6.6, 1.1], [-0.6, -6.7, -0.8]]) {
+      const pup = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
+      pup.scale.setScalar(0.42);
+      pup.position.set(px, 0, pz);
+      pup.rotation.y = ry;
+      pup.traverse((n) => {
+        if (!n.isMesh) return;
+        n.castShadow = false;
+        if (n.material.name !== 'Main') n.visible = false;
+      });
+      world.add(pup);
+      world.keepLoose(pup);
+      const pupMixer = new THREE.AnimationMixer(pup);
+      const idle = wolfGltf.animations.find((c) => c.name === 'Idle');
+      if (idle) pupMixer.clipAction(idle).play();
+      world.onAnimate((t, dt) => pupMixer.update(dt || 0.016));
+    }
   }
 
   // training barrels (no loot — just for practicing swings)
@@ -1077,9 +1166,12 @@ async function buildDen(scene) {
   // they share. Two spare in a room that measured 170 the day it was rebuilt.
   // If anything else has to go in here, the practice target is the one to
   // drop: the armour stand is the stronger signal, standing next to a shop
-  // that sells armour.
+  // that sells armour. v3.144 (Grimm home, ~5 draws) is that anything else —
+  // verify-homecoming.mjs measured 137 of 135 with both the target and
+  // Grimm's scene present, so this is the design doc's own Q8 answer, not a
+  // guess: the target goes, the stand stays.
   instAt(manikinGltf, [[7.4, -4.6, 1.0, -0.5]], null, true);
-  instAt(targetGltf, [[4.2, -5.4, 1.0, 0.4]], null, true);
+  if (!state.flags.grimmFreed) instAt(targetGltf, [[4.2, -5.4, 1.0, 0.4]], null, true);
 
   // light somebody hung up, along the way people actually walk after dark
   instAt(torchGltf, [[-1.9, 6.6, 1.15, 0], [1.9, 6.6, 1.15, 0], [-4.6, -1.2, 1.15, 0],
@@ -1098,24 +1190,15 @@ async function buildDen(scene) {
   // torches already flanking the gate say "this is the way home" perfectly well,
   // and a prop that reads as a mistake is worse than no prop.
 
-  // rescued pups live here, playing in the grass
-  const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
-  const rescued = Object.keys(state.flags.pups);
-  rescued.forEach((id, i) => {
-    const pup = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
-    pup.scale.setScalar(0.16);
-    world.add(pup);
-    const pupMixer = new THREE.AnimationMixer(pup);
-    const clip = wolfGltf.animations.find((c) => c.name === (i % 2 ? 'Gallop' : 'Idle'));
-    if (clip) pupMixer.clipAction(clip).play();
-    const cx = -3.4 + (i % 3) * 3.0, cz = 3.0 + Math.floor(i / 3) * 2.2, r = 1.1 + (i % 3) * 0.3;
-    world.onAnimate((t, dt) => {
-      pupMixer.update(dt);
-      const a = t * (0.5 + i * 0.2) + i * 2;
-      pup.position.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r);
-      pup.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI / 2;
-    });
-  });
+  // THE PUP PEN (design/WIDER-WORLD.md §3.1, v3.128) replaces the old
+  // "every rescued pup orbits a fixed grid" loop, which cost ~2 draw calls
+  // per pup with nothing merging them (a 24-pup save would have added ~120
+  // to a 135-ceiling room) and put pups past pup 8 outside the room
+  // entirely (its own orbit centres reached z=18.4 against halfD=9). It is
+  // built from `setupRoomExtras` (js/main.js), Den only, the same layer
+  // `spawnSettlers` already builds its hearths from — this builder has no
+  // narration handle to fire `onRowFilled` from, and `spawnSettlers` solved
+  // that the same way.
 
   // DEN LIFE: villagers + the den dog (real faces — js/npcs.js). The
   // roster grows with the healed regions.
@@ -1762,7 +1845,7 @@ async function buildR3(scene) {
     { x: 5.8, z: 5.9, kind: 'crate', shards: 2 },
   ];
   world.markers.chestDefs = state.flags.bossDefeated
-    ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20, powerup: 'fury' } }]
+    ? [{ id: 'c_r3_gold', tier: 'gold', x: 3.2, z: -4.6, ry: 2.2, loot: { shards: 20 } }]
     : [];
 
   // The live restoration's regrowth persists on every rebuild after healing
@@ -2603,7 +2686,7 @@ async function buildE2(scene) {
   world.markers.chestDefs = [
     { id: 'c_e2_spikes', tier: 'wood', x: 6.8, z: -4.9, ry: 2.0, loot: { shards: 14, potion: 1 } },
     // visible through the brambles — region 3's promise reward
-    { id: 'c_e2_bramble', tier: 'gold', x: 9.3, z: 3.1, ry: -2.4, loot: { shards: 18, powerup: 'feather' } },
+    { id: 'c_e2_bramble', tier: 'gold', x: 9.3, z: 3.1, ry: -2.4, loot: { shards: 18 } },
   ];
   world.markers.breakables = [
     { x: -8.6, z: 1.8, kind: 'barrel', shards: 2 },
@@ -2731,7 +2814,7 @@ async function buildE3(scene) {
       ? [{ id: 'c_e3_crack', tier: 'gold', x: -6.2, z: 1.4, ry: 1.4, loot: { shards: 16, gear: 'spear_a' } }]
       : []),
     ...(state.flags.wardenDefeated
-      ? [{ id: 'c_e3_gold', tier: 'gold', x: 3.4, z: -2.6, ry: -0.8, loot: { shards: 25, powerup: 'star' } }]
+      ? [{ id: 'c_e3_gold', tier: 'gold', x: 3.4, z: -2.6, ry: -0.8, loot: { shards: 25 } }]
       : []),
   ];
   world.markers.breakables = [
@@ -3382,7 +3465,7 @@ async function buildW5(scene) {
   brambleGate(world, prepareModel, kit.bush, 'w5_reward', 5.6, -5.2, 'wild');
   world.markers.chestDefs = [
     ...(state.flags.sylvaDefeated
-      ? [{ id: 'c_w5_glade', tier: 'gold', x: -2.8, z: -3.4, ry: 0.7, loot: { shards: 30, powerup: 'star' } }]
+      ? [{ id: 'c_w5_glade', tier: 'gold', x: -2.8, z: -3.4, ry: 0.7, loot: { shards: 30 } }]
       : []),
     { id: 'c_w5_bramble', tier: 'gold', x: 6.6, z: -5.8, ry: -2.2, loot: { shards: 22, heartPiece: 1 } },
   ];

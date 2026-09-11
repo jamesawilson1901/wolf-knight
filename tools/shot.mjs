@@ -16,37 +16,62 @@ const b = await launchBrowser();
 const page = await (await b.newContext({ viewport: { width: 740, height: 360 }, deviceScaleFactor: Number(process.env.DPR || 2) })).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR: ' + e.message));
-await page.addInitScript((v) => { window.__LATE = v; }, !!process.env.LATE);
+await page.addInitScript((v) => { window.__LATE = v; }, Number(process.env.LATE || 0));
 await page.goto('http://localhost:8901/index.html', { waitUntil: 'load' });
 await page.waitForSelector('#title', { state: 'visible', timeout: 20000 });
 await page.locator('.profile-btn.new').dispatchEvent('pointerdown');
 await page.fill('#t-name', 'SHOT');
 await page.locator('#t-start').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__game && window.__game.world, null, { timeout: 90000 });
-await page.evaluate(() => {
+await page.evaluate(async () => {
   const g = window.__game;
   g.state.settings.captions = false; g.state.settings.voice = false; g.state.settings.sfxVol = 0;
   g.state.settings.greybox = false;
   g.state.formsUnlocked = ['knight','dark_wolf','fire_wolf','earth_wolf','verdant_wolf','frost_wolf'];
   g.player.iframes = 999999;
   g.WS.set('wild3','rootCut',true); g.WS.set('wild3','logDown',true);
-  // LATE=1 shoots the world as it looks once regions have been freed: the Den's
-  // spirit shrines, its third tent and the Stoneroot mushrooms only exist then,
-  // and a contact sheet of the early-game Den never shows half of what is in it.
-  //
-  // SINCE 2026-09-08 IT IS THE WHOLE SECOND HALF OF THE GAME. Every region now
-  // transforms when its guardian is freed (js/restoration.js) — the ground
-  // heals, the lava cools, the gales drop, flowers come up and wolves graze
-  // where the shadows stood — so LATE is the only way to LOOK at half of what
-  // the game contains, and CLAUDE.md's rule is that a human looks at the rooms
-  // before a merge. It sets every region, not the two it used to.
-  if (window.__LATE) {
+  // LATE=<n> shoots the world at growth stage n (design/WIDER-WORLD.md §1.2),
+  // n = 0..5. Stage 1 is what LATE used to mean on its own (boolean, since
+  // 2026-09-08): the Den's spirit shrines, its third tent and the Stoneroot
+  // mushrooms only exist once a region is freed, and a contact sheet of the
+  // early-game Den never showed half of what is in it. Stages 2-5 are the new
+  // ground this slice adds — pups home, the road keepsake, the region's
+  // dungeon, Grimm freed — each one strictly additive over the last, so
+  // LATE=3 includes everything LATE=1 and LATE=2 set.
+  const KEYS = ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court'];
+  const LATE = window.__LATE || 0;
+  if (LATE >= 1) {
     for (const f of ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
-      'ariaDefeated', 'meriDefeated', 'grimmFreed']) g.state.flags[f] = true;
-    for (const k of ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court']) {
-      g.WS.set(k, 'restored');
-    }
+      'ariaDefeated', 'meriDefeated']) g.state.flags[f] = true;
+    for (const k of KEYS) g.WS.set(k, 'restored');
   }
+  if (LATE >= 2) {
+    const { PUP_HOME } = await import('/js/pip.js');
+    for (const id of Object.keys(PUP_HOME)) g.state.flags.pups[id] = true;
+  }
+  if (LATE >= 3) {
+    const { KEEPSAKE, COURT_RELICS } = await import('/js/restoration.js');
+    if (!g.state.inventory.treasures) g.state.inventory.treasures = [];
+    for (const id of Object.values(KEEPSAKE)) {
+      if (!g.state.inventory.treasures.includes(id)) g.state.inventory.treasures.push(id);
+    }
+    for (const n of COURT_RELICS) g.WS.set('court', 'relic_' + n, true);
+  }
+  if (LATE >= 4) {
+    for (const k of KEYS) g.WS.set(k, 'dungeon', true);
+    // The Ash Vault's own gate (§2.4) — a region's dungeon cannot be CLEARED
+    // without its door having opened first, so LATE=4 shows `la` with the
+    // crack already broken, not just the milestone flag on its own.
+    g.state.flags.cracked.l1_crack_gate = true;
+    // The Frozen Spring's own gate (v3.134, same reasoning): `t1b`'s ice.
+    g.WS.set('wild3', 'ice_l3_spring_ice', true);
+    // The Root Cellar's own gate (v3.136, same reasoning): `vc2`'s bramble.
+    g.WS.set('vault', 'cut_l2_bramble_gate', true);
+  }
+  // GRIMM FREED IS GLOBAL, NOT PER-REGION (js/restoration.js growthStage's
+  // fifth fact) — so stage 5 is the one stage no single hearth can reach on
+  // its own, and this only ever fires at the top of the range.
+  if (LATE >= 5) g.state.flags.grimmFreed = true;
   // hide the HUD: this sheet is about the ROOM
   for (const el of document.querySelectorAll('.ui, #joy-base, #joy-knob, #joy-hint, #hearts, #shards, #level-badge, #xp-bar, #potions, #pause-btn, #inv-btn, #form-badge, #moon-gauge, #btn-attack, #special-btn, #btn-ranged, #btn-defend, #btn-jump, #caption, #toast')) {
     el.style.display = 'none';

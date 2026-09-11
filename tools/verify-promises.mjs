@@ -105,8 +105,13 @@ const useVerb = (form, gx, gz, ox, oz, ry) => page.evaluate(async (a) => {
 const W = -Math.PI / 2, E = Math.PI / 2, N = Math.PI;
 
 const GATES = [
-  { room: 'la',  name: 'L1 · the cracked wall',   chest: 'l1_crack_promise', gate: 'l1_crack_gate',
-    form: 'earth_wolf',   gx: -11, gz: -4, ox: 2.2, oz: 0, ry: W },
+  // `la`'s own crack ('l1_crack_gate') USED to belong here: stomp it, and the
+  // reward sat immediately behind it in the same room. v3.130
+  // (design/WIDER-WORLD.md §2.4) made it a DOOR to the Ash Vault instead —
+  // `l1_crack_promise` now lives in `lv1`, a different room, so this table's
+  // own claim ("the verb makes THIS ROOM'S reward reachable") no longer
+  // holds. The gate itself still gets driven, generically, by the roll-call
+  // fallback below; the door it opens is `verify-ashvault.mjs`'s claim now.
   { room: 'lb2', name: 'L1 · the scorched barricade', chest: 'l1_scorched', gate: 'l1_scorched_gate',
     form: 'fire_wolf',    gx: 1,  gz: 0,  ox: 2.2, oz: 0, ry: W },
   { room: 'vc2', name: 'L2 · the thorn tangle',   chest: 'l2_vc2_bramble', gate: 'l2_bramble_gate',
@@ -202,6 +207,44 @@ for (const [room, marker, id] of MARKED) {
   }, { marker, id });
   check(room + ' · ' + marker + ' lands on the map as ???', got.logged === true, got);
 }
+
+// ---------------------------------------------------------------------------
+console.log('\n── l1_crack resolves on the dungeon, not the gate (v3.130) ────');
+// design/WIDER-WORLD.md §2.4: cracking la's wall used to BE the promise. It
+// is the door to the Ash Vault now, so the ??? card must stay open until the
+// dungeon behind it is actually cleared — main.js's PROMISES row for
+// `l1_crack` was rewritten from `state.flags.cracked.l1_crack_gate` to
+// `WS.get('ember','dungeon')` for exactly this, and nothing above exercises
+// a `done()` condition on its own — every other check here is about the gate
+// opening, not the mystery card resolving.
+await page.evaluate(() => { const g = window.__game;
+  g.state.flags.cracked = {}; g.state.flags.world = {}; g.state.flags.mysteries = {}; });
+if (await go('la')) {
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.state.flags.cracked.l1_crack_gate = true;   // the gate breaks...
+    const spot = g.world.markers.crackPromise;
+    g.player.root.position.set(spot.x, g.player.root.position.y, spot.z);
+  });
+  await page.waitForTimeout(300);   // narrationTriggers() logs the ??? card
+  const afterGate = await page.evaluate(() => {
+    const g = window.__game;
+    return { logged: !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack),
+      found: !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack
+        && g.state.flags.mysteries.l1_crack.found) };
+  });
+  check('the ??? card is logged once the gate breaks', afterGate.logged, afterGate);
+  check('...but NOT resolved by the gate alone', afterGate.found === false, afterGate);
+
+  await page.evaluate(() => { window.__game.WS.complete('ember', 'dungeon'); });
+  await page.waitForTimeout(300);
+  const afterDungeon = await page.evaluate(() => {
+    const g = window.__game;
+    return !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack
+      && g.state.flags.mysteries.l1_crack.found);
+  });
+  check('...and IS resolved once the dungeon is cleared', afterDungeon === true);
+} else check('enter la', false);
 
 // ---------------------------------------------------------------------------
 console.log('\n── the roll call: is every gate in the game in this file? ──');

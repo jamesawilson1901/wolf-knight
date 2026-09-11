@@ -990,7 +990,7 @@ export async function buildXth(scene) {
     world.markers.grimmSeat = { x: 0, z: -6.5 };
     world.markers.healed = true;
     world.markers.chestDefs = [
-      { id: 'c_xth', tier: 'gold', x: -5, z: -5, ry: 0.6, loot: { shards: 60, powerup: 'star' } },
+      { id: 'c_xth', tier: 'gold', x: -5, z: -5, ry: 0.6, loot: { shards: 60 } },
     ];
     world.reserve(-5, -5, 2.6, 'chest');
   }

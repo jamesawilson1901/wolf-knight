@@ -44,6 +44,10 @@ export function registerDistrictTints(table, districts) {
       loopsTo: spec.loopsTo || null,
       district: d ? (d.name || spec.district) : spec.district,
       tint: d && d.tint !== undefined ? d.tint : null,
+      // ONE dungeon room per branch carries this (v3.130) — its entrance —
+      // so the map can draw the branch as a single offshoot card once the
+      // gate is open (§5.3, not yet built: this is the flag it will read).
+      dungeon: !!spec.dungeon,
     });
   }
 }

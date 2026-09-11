@@ -283,7 +283,7 @@ const { place } = makeDressers({ kit: () => villageKit,
 // (every one of these assetfactory pieces except wall-1/wall-2 sits off its
 // own pivot — probe-modelsize.mjs confirmed it) always has something to
 // centre without every caller repeating the ceremony.
-function placeOne(world, gltf, key, x, z, s, ry, tint) {
+export function placeOne(world, gltf, key, x, z, s, ry, tint) {
   if (GREY() || !gltf) return null;
   const g = new THREE.Group();
   place(world, g, gltf, key, x, 0, z, s, ry, 0, tint, true, true);

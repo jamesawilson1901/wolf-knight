@@ -20,13 +20,15 @@ import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel, protoMaterial } from './proto.js';
 import { loadGLB, prepareModel } from './assets.js';
-import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, spiritShrine, bossGate, reserveLandings } from './levelkit.js';
+import { makeBuilders, tintedModel, gap, MODULES, DOOR_HALF, BOSS_DOOR_HALF, spiritShrine, bossGate, reserveLandings, potSpotsOrFewer } from './levelkit.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
-import { brazier, stompSigil } from './gates.js';
+import { brazier, stompSigil, alreadyCut } from './gates.js';
+import { spawnLostWolf } from './pip.js';
+import { COAT } from './restoration.js';
 
 let forceGrey = false;
 let caveKit = null;
@@ -59,6 +61,11 @@ export const DISTRICTS = {
                 name: 'THE SUNKEN STAIR', hero: 'THE DROWNED DOOR' },
   crypt:      { tint: 0x8a8478, floorTint: 0x6a665e, wallTint: 0x1a1a1c, propTint: 0x6b6760, ground: 'crypt',
                 name: "THE WARDEN'S CRYPT", hero: "THE WARDEN'S THRONE" },
+  // THE ROOT CELLAR (v3.136, design/WIDER-WORLD.md §2.3/§2.6) — Stoneroot's
+  // own pocket dungeon, off vc2's bramble gate. Green over the cave's own
+  // cold slate: something is growing down here that was not planted.
+  rootcellar: { tint: 0x5c6f4a, floorTint: 0x46523a, wallTint: 0x22281c, propTint: 0x4a5a3e, ground: 'rootcellar',
+                name: 'THE ROOT CELLAR', hero: 'THE ROOTBOUND WIGHT' },
 };
 
 // The hub wears whichever palette its state says it wears. This is the
@@ -112,6 +119,19 @@ export const L2 = {
 
   vz:  { ...M.arena,  kind: 'arena',  district: 'crypt',   spine: true,
          label: "E · THE WARDEN'S CRYPT", beat: 'THE BONE WARDEN · CONCLUDE' },
+
+  // THE ROOT CELLAR (v3.136, design/WIDER-WORLD.md §2.3/§2.6) — Stoneroot's
+  // pocket dungeon, off vc2's own bramble gate (cut, unchanged — the gate and
+  // its alcove chest do not move). spine: false throughout, the Ash Vault's
+  // own rule: optional, never on the critical path.
+  // `dungeon: true` on the entrance only — one offshoot card for the whole
+  // branch on the map (§5.3), not one per room inside it.
+  vr1: { kind: 'pocket', w: 20, d: 16, district: 'rootcellar', loopsTo: 'vc2',
+         label: 'THE ROOT CELLAR', beat: 'optional · the lost wolf · gold', dungeon: true },
+  vr2: { kind: 'island', w: 32, d: 26, district: 'rootcellar',
+         label: 'THE TANGLED HOLLOW', beat: 'optional · stone-colossus + 2 cinder-imp · the Rootbound Wight' },
+  vr3: { kind: 'pocket', w: 20, d: 16, district: 'rootcellar', loopsTo: 'vr2',
+         label: 'THE DEEP ROOTS', beat: 'optional · gold + heart piece' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -257,6 +277,14 @@ const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
 //     where the camera actually looks, beats thirty on the perimeter.
 const CAVE_ROCK = 0x8a8375;   // dry cut rock, a shade warmer than the masonry
 const CAVE_SHADES = [1, 1.09, 1.18];   // see caveWorkings: three materials, not N
+
+// Same reasoning as level1.js/level3.js's own copy (the lost-wolf rescue,
+// design/WIDER-WORLD.md §2.5): a Pip line, skipped harmlessly if narration
+// isn't wired up yet (e.g. a headless suite jumping straight to the room).
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
+}
 
 
 // A patch of worked rock: a spur or two standing out of the floor, a bulge in
@@ -844,7 +872,7 @@ export async function buildVga(scene) {
   sideDoor(world, 'w', halfW, halfD, 'va1', { x: 13.5, z: 0, angle: -Math.PI / 2 });
   // THE CRYSTAL MOUTH. The chokes shipped as bare 14x10 boxes with two doors
   // and nothing else. Down here they are where the diggers stopped for breath.
-  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'box' }, { x: -2.4, z: 2.2, kind: 'vase' }];
+  world.markers.breakables = [{ x: 2.6, z: -1.4, kind: 'box' }, { x: -1.32, z: 2.72, kind: 'vase' }];
   // AND SOMETHING LIVING IN IT. Dad, from play: "rocks everywhere nothing to do
   // throught the level." He was not exaggerating — the vault and all three of
   // its mouths held no creature at all, so the spine of the region, the rooms a
@@ -1123,7 +1151,7 @@ export async function buildVb1(scene) {
   // the room's shape and the dressing sits off them, so the two levels stay
   // legible from the fixed camera.
   world.markers.breakables = [
-    { x: -11, z: -7, kind: 'crate' }, { x: 10, z: 11, kind: 'cask' },
+    { x: -11, z: -7, kind: 'crate' }, { x: 9.58, z: 10.58, kind: 'cask' },
     { x: 14, z: -4, kind: 'vase' }, { x: -3, z: 10, kind: 'box' },
   ];
   fallenColumn(world, -13, 8, 0.7, D, 4.2);
@@ -1160,7 +1188,7 @@ export async function buildVb2(scene) {
   crackedPile(world, 'l2_vb2_a', 11, 6);
   // THE RIBCAGE. The deepest the quarry got before something made them stop.
   world.markers.breakables = [
-    { x: -10, z: 6, kind: 'cask' }, { x: 13, z: 11, kind: 'crate' },
+    { x: -9.75, z: 6.76, kind: 'cask' }, { x: 13, z: 11, kind: 'crate' },
     { x: -14, z: 5, kind: 'jar' }, { x: 6, z: 11, kind: 'barrel' },
   ];
   ruinedHome(world, -12, 8, 0.4, D, { w: 6, d: 4.5, keep: 0.35, door: false });
@@ -1380,7 +1408,16 @@ export async function buildVc2(scene) {
   // beyond holds the Vault Plate chest, so Stoneroot's armour was unreachable
   // on foot from the day the alcove was dressed. Caught by probe-openholes
   // the first night it knew every room (2026-08-29).
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e', undefined, 5)], D, {
+  //
+  // THE ROOT CELLAR (v3.136, §2.3/§2.4 Ash Vault pattern, exactly): the west
+  // wall carries a SEPARATE door once the bramble gate itself is cut — the
+  // gate and its own alcove/chest above are unchanged. Gap+door are only
+  // emitted once `l2_bramble_gate` is cut, same as `la`'s crack: the door
+  // exists on the child's NEXT visit, not mid-session.
+  const rootCellarOpen = alreadyCut(REGION, 'l2_bramble_gate');
+  const gaps = [gap('s'), gap('n'), gap('e', undefined, 5)];
+  if (rootCellarOpen) gaps.push(gap('w', 1.8, -2));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -8, z: -7, r: 5.0, kind: 'water' }, { x: 10, z: 7, r: 4.2, kind: 'mud' },
               { x: -12, z: 6, r: 4.0, kind: 'moss' }, { x: 6, z: -10, r: 3.6, kind: 'water' }],
     paths: [[[0, 13], [-2, 4], [0, -4], [0, -13]], [[1, -3], [6, -3], [10, -3]]],
@@ -1389,6 +1426,9 @@ export async function buildVc2(scene) {
   sideDoor(world, 's', halfW, halfD, 'vc1', { x: 0, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc3', { x: 0, z: 5.5, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'vcp', { x: -7.5, z: 0, angle: Math.PI / 2 }, { centre: 5 });
+  if (rootCellarOpen) {
+    sideDoor(world, 'w', halfW, halfD, 'vr1', { x: 8.5, z: 0, angle: -Math.PI / 2 }, { centre: -2, half: 1.8 });
+  }
 
   heroProp(world, -8, -7, 'drownedDoor', D);     // ▲ THE DROWNED DOOR
   world.markers.heroSpot = { x: -8, z: -7 };
@@ -1422,6 +1462,122 @@ export async function buildVc2(scene) {
   rubbleField(world, 14, 9, 2.6, D, 11);
   aftermath(world, -11, 6, 2.0, D, 32);
   scatter(world, halfW, halfD, D, 102, 6, { spin: 1, kinds: ['rockSB', 'rockLC', 'column', 'brick'] });
+  return finish(world, spec, D);
+}
+
+// ===========================================================================
+// THE ROOT CELLAR (v3.136, design/WIDER-WORLD.md §2.3/§2.4/§2.6) — Stoneroot's
+// pocket dungeon, off vc2's own bramble gate. Built to the Ash Vault template
+// (js/level1.js buildLv1/buildLv2/buildLv3) rung for rung: a no-fight pocket
+// with the lost wolf, an island with the fight AND this dungeon's own named
+// guardian (the Rootbound Wight — the LEVEL-DESIGN-BRANCHES.md 2026-09-10
+// amendment this unblocks), and a gold pocket behind the plug the guardian's
+// own death opens.
+// ===========================================================================
+
+export async function buildVr1(scene) {
+  const { world, spec, D } = base(scene, 'vr1');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -3, z: 2, r: 3.0, kind: 'moss' }, { x: 4, z: -3, r: 2.6, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[9, 0], [0, 0], [-9, 0]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'vc2', { x: -14.5, z: -2, angle: Math.PI / 2 });
+  sideDoor(world, 'w', halfW, halfD, 'vr2', { x: 14.5, z: 0, angle: -Math.PI / 2 });
+
+  await spawnLostWolf(world, {
+    id: 'vr1_wolf', x: -6.5, z: 5, coat: COAT.stone,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+
+  if (!GREY()) {
+    const ped = tinted(caveKit.pedestal, 'vr1Pedestal', D.propTint);
+    ped.position.set(6, 0, 5.2); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(6, 5.2, 0.85);
+    const skull = tinted(caveKit.skull, 'vr1Skull', 0xb9c7a6);
+    skull.position.set(6, 1.86, 5.2); skull.scale.setScalar(1.4); skull.rotation.y = 0.6;
+    world.add(skull);
+    for (const [cx, cz] of [[5.3, 4.6], [6.7, 4.7], [6.1, 6.0]]) {
+      const coin = tinted(caveKit.coins, 'vr1Coins', 0xd8b84a);
+      coin.position.set(cx, 0, cz); coin.scale.setScalar(3.6);
+      world.add(coin);
+    }
+    const web = tinted(caveKit.cobweb, 'vr1Cobweb', 0x6a7a5c);
+    web.position.set(-9, 1.4, -6); web.scale.setScalar(1.1); web.rotation.y = Math.PI * 0.75;
+    world.add(web);
+    const bars = tinted(caveKit.bars, 'vr1Bars', D.wallTint);
+    bars.position.set(9.4, 0, -3); bars.rotation.y = -Math.PI / 2;
+    world.add(bars);
+  }
+
+  rubbleField(world, 2, 6, 2.0, D, 9);
+  aftermath(world, -3, -6, 2.0, D, 10);
+  scatter(world, halfW, halfD, D, 103, 5);
+  return finish(world, spec, D);
+}
+
+export async function buildVr2(scene) {
+  const { world, spec, D } = base(scene, 'vr2');
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('w')], D, {
+    patches: [{ x: -8, z: 6, r: 4.2, kind: 'moss' }, { x: 8, z: -6, r: 3.8, kind: 'rubble' },
+              { x: 0, z: 8, r: 3.4, kind: 'moss' }],
+    pathWidth: 2.6,
+    paths: [[[13, 0], [-13, 0]]],
+  });
+  world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'vr1', { x: -8.5, z: 0, angle: Math.PI / 2 });
+
+  world.markers.shadowed = true;
+  world.markers.stoneColossusSpots = [{ x: 0, z: 5 }];
+  world.markers.cinderImpSpots = [{ x: -6, z: -3 }, { x: 6, z: -3 }];
+  // THE ROOTBOUND WIGHT — MINI_ROSTER (js/enemies.js), a named guardian on
+  // tower-wight.glb, moss over old bone, weak to verdant. Gone for good once
+  // the wound is banked (see BoneWarden's opts.hpGet/hpSet/onDefeated): a
+  // returning child who already cleared this room finds only the mooks.
+  const wightDown = !!(state.flags.world && state.flags.world.vault && state.flags.world.vault.mini_rootbound_wight);
+  if (!wightDown) world.markers.miniSpot = { id: 'rootbound_wight', x: 0, z: -3 };
+
+  const openVr3 = () => sideDoor(world, 'w', halfW, halfD, 'vr3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
+  if (WS.get(REGION, 'dungeon')) openVr3();
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openVr3);
+
+  world.markers.breakables = [
+    { x: -4, z: 8.5, kind: 'crate' }, { x: 4, z: -8.5, kind: 'barrel' },
+  ];
+  fallenColumn(world, 8, 2, -0.6, D, 3.6);
+  lowWall(world, -9, 2.5, 0.2, D, 3.2);
+  rubbleField(world, 11, 1, 2.6, D, 11);
+  rubbleField(world, -11, -1, 2.4, D, 10);
+  aftermath(world, -10, 8, 2.2, D, 13);
+  aftermath(world, 8.5, -8.5, 2.0, D, 9);
+  scatter(world, halfW, halfD, D, 104, 6);
+  return finish(world, spec, D);
+}
+
+export async function buildVr3(scene) {
+  const { world, spec, D } = base(scene, 'vr3');
+  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+    patches: [{ x: 0, z: -2, r: 3.0, kind: 'moss' }],
+    pathWidth: 2.6,
+    paths: [[[9, 0], [0, -1]]],
+  });
+  world.spawn = { x: 8.5, z: 0, angle: -Math.PI / 2 };
+  sideDoor(world, 'e', halfW, halfD, 'vr2', { x: -9.5, z: 0, angle: Math.PI / 2 });
+
+  visibleReward(world, 0, -6.2, 'vr3_rootbound', { shards: 30, heartPiece: 1, gear: 'hammer_c', seed: 'stone' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -6.5, z: -5.5, kind: 'jar' }, { x: 6.5, z: -5.5, kind: 'vase' },
+  ];
+  fallenColumn(world, -5, 6.5, 0.7, D, 3.0);
+  fallenColumn(world, 5, 6.5, -0.7, D, 3.0);
+  rubbleField(world, -8, -4.5, 2.0, D, 9);
+  rubbleField(world, 8, -4.5, 2.0, D, 9);
+  aftermath(world, 0, 6.8, 2.0, D, 14);
+  scatter(world, halfW, halfD, D, 105, 5);
   return finish(world, spec, D);
 }
 
@@ -1615,4 +1771,6 @@ export const LEVEL2_ROOMS = {
   vgb: buildVgb, vb1: buildVb1, vb2: buildVb2, vbp: buildVbp, vb3: buildVb3,
   vgc: buildVgc, vc1: buildVc1, vc2: buildVc2, vcp: buildVcp, vc3: buildVc3,
   vz: buildVz,
+  // THE ROOT CELLAR (v3.136, §2.3)
+  vr1: buildVr1, vr2: buildVr2, vr3: buildVr3,
 };
