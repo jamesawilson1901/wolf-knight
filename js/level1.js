@@ -865,24 +865,25 @@ export async function buildLg1(scene) {
 
   coldHearth(world, 0, 0.6, D);
   wayshrine(world, -4.6, -2.2, 0.5, D);
-  // SHORTENED, NOT MOVED (2026-09-10, dev-export #2). At its old len (2.6)
-  // the column's own far drums fell inside `lg1VaultLane`'s keep-clear (x
-  // 4.5, z 0.4-2.0), so `world.blocked()` silently skipped placing them — no
-  // mesh, no collider — leaving a body-width gap in what read as one solid
-  // collapse, and a child walked straight through it.
+  // LENGTH STAYS AT 1.0 (2026-09-11 attempt to restore 2.6, reverted same
+  // day). dev-export #2 was this column's far drums falling inside
+  // `lg1VaultLane`'s keep-clear and getting silently dropped — no mesh, no
+  // collider — which read as one solid collapse but had a body-width gap a
+  // child could walk straight through. Shortened to len 1.0 as a same-day
+  // workaround (a shorter, fully-solid column beats a longer one with a
+  // hidden gap).
   //
-  // The first fix moved the whole column further away instead, and that was
-  // worse: verify-chests caught it — the vault chest at (4.5,4.0) went from
-  // reachable to permanently unreachable, because the new spot happened to
-  // sit across the ONLY approach to the nook the vault's walls leave open (a
-  // flood fill from spawn never reached it, even with every gate forced
-  // open). A column you cannot see through is a much smaller sin than a
-  // reward you can never take.
-  //
-  // So: same spot, shorter reach (2.6 -> 1.0). Every drum this radius asks
-  // for lands outside the vault lane's keep-clear (nearest drum is 2.1u from
-  // it against a 1.7u threshold), so nothing gets silently skipped and the
-  // whole collapse is solid, continuous ground-truth verified both ways.
+  // fallenColumn() now nudges a blocked drum sideways before dropping it, so
+  // trying 2.6 again looked safe by the same measure that caught the
+  // original bug (verify-decor-gaps.mjs found zero gaps here) — but the
+  // nudge only checks the soft keep-clear register, not the actual corridor:
+  // it pushed both far drums out of `lg1VaultLane`'s reservation and 0.7u
+  // sideways into the open floor the room's own approach path runs through,
+  // which is narrow enough there that the two drums together sealed it —
+  // verify-chests' flood fill caught what the gap sweep could not:
+  // `lg1/l1_lg1_vault@4.5,4` unreachable. A nudge that only escapes the
+  // register, without checking whether the spot it lands on still leaves a
+  // body-width way through, is not enough here. 1.0 stays.
   fallenColumn(world, 4.4, -2.6, -0.4, D, 1.0);
   rubbleField(world, 4.8, 2.8, 2.2, D, 10);
   rubbleField(world, -4.8, 2.6, 2.0, D, 9);

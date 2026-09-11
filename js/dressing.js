@@ -324,17 +324,44 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
         : dz < -0.001 ? (-room.halfD + MARGIN - z) / dz : Infinity;
       len = Math.max(1.5, Math.min(len, reachX, reachZ));
     }
-    if (!world.blocked(x, z, 0.7)) {
-      place(world, g, K().column, 'fallCol', 0, 0, 0, 1.0, 0, 0, D.propTint || D.wallTint);
-      world.addCircle(x, z, 0.6, 'decor');
-    }
+    // A KEEP-CLEAR RESERVATION IS NOT A SOLID OBJECT, so `blocked()` rejecting
+    // a spot here used to mean the whole piece — mesh AND collider — was
+    // silently dropped, which is how one call (dev-export #2, lg1's own
+    // column) read as one continuous collapse but had a body-width gap
+    // where a child could walk straight through: the far drums fell inside
+    // a vault's own approach-lane reservation and never built at all. A
+    // perpendicular nudge (the piece is a ROUND drum; a step off its own
+    // fall-line still reads as "rolled a little further off the line") finds
+    // daylight in every case that mattered without moving the piece far
+    // enough to break the "fell this way" read the whole prop exists for.
+    // Only a spot no nudge clears is skipped, same as before.
+    // A spot no nudge clears still gets skipped — but LOGGED, not silent, so
+    // tools/verify-decor-gaps.mjs can catch the next one of these instead of
+    // a screenshot having to find it.
+    const logGap = (px, pz) => (world._decorGaps || (world._decorGaps = []))
+      .push({ fn: 'fallenColumn', x: x + px, z: z + pz, room: world.roomId });
+    const clearSpot = (px, pz, r0) => {
+      if (!world.blocked(x + px, z + pz, r0)) return { px, pz };
+      const perpX = dz, perpZ = -dx;           // perpendicular to the fall line
+      for (const n of [0.7, -0.7, 1.3, -1.3]) {
+        const nx = px + perpX * n, nz = pz + perpZ * n;
+        if (!world.blocked(x + nx, z + nz, r0)) return { px: nx, pz: nz };
+      }
+      return null;
+    };
+    const origin = clearSpot(0, 0, 0.7);
+    if (origin) {
+      place(world, g, K().column, 'fallCol', origin.px, 0, origin.pz, 1.0, 0, 0, D.propTint || D.wallTint);
+      world.addCircle(x + origin.px, z + origin.pz, 0.6, 'decor');
+    } else logGap(0, 0);
     for (let i = 1; i <= 3; i++) {                    // the drums, lying down
       const t = i * (len / 3);
-      if (world.blocked(x + dx * t, z + dz * t, 0.6)) continue;
+      const spot = clearSpot(dx * t, dz * t, 0.6);
+      if (!spot) { logGap(dx * t, dz * t); continue; }
       restOnFloor(place(world, g, K().column2, 'fallCol',
-        dx * t + (r() - 0.5) * 0.5, 0, dz * t + (r() - 0.5) * 0.5,
+        spot.px + (r() - 0.5) * 0.5, 0, spot.pz + (r() - 0.5) * 0.5,
         0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint));
-      world.addCircle(x + dx * t, z + dz * t, 0.5, 'decor');
+      world.addCircle(x + spot.px, z + spot.pz, 0.5, 'decor');
     }
     g.position.set(x, 0, z);
     world.add(g);
@@ -433,9 +460,42 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const n = Math.max(1, Math.round(len / 2));
     const r = srnd(Math.round(x * 67 + z * 11));
     const P = D.propTint || D.floorTint;
+    // COVER MUST NOT STAND ON A SPAWN POINT. la's second stub ran straight
+    // through the Shade at (6, -1), and t1b's through a thorn hound, and the
+    // sweep had to declaw all four of them on every single load.
+    //
+    // A REJECTED COLLIDER POINT USED TO JUST VANISH while the wall's own
+    // visual piece above rendered UNCONDITIONALLY at that same spot, so the
+    // stub still LOOKED solid its whole length with an invisible gap nothing
+    // on screen suggested (worse than dev-export #2's column: that one at
+    // least looked broken where it was walkable) — and dad's own follow-up
+    // ("is it just that one column, or every one of these") found the same
+    // silent mismatch waiting in 40-odd rooms, mostly right where a wall run
+    // crosses a door's own crossing lane. The mesh and the collider now share
+    // one clear-spot check, along the run's own line (a cover stub is
+    // straight, so a nudge off-line would break the read), so a spot that
+    // will not take a collider does not get a visual piece either.
+    const dirX = Math.sin(ry), dirZ = Math.cos(ry);
+    const worldOf = (t) => [x + dirX * t, z + dirZ * t];
+    const logGap = (t) => {
+      const [px, pz] = worldOf(t);
+      (world._decorGaps || (world._decorGaps = [])).push({ fn: 'lowWall', x: px, z: pz, room: world.roomId });
+    };
+    const clearSpot = (t, r0) => {
+      const [px, pz] = worldOf(t);
+      if (!world.blocked(px, pz, r0)) return t;
+      for (const dt of [0.15, -0.15, 0.3, -0.3]) {
+        const nt = t + dt;
+        const [nx, nz] = worldOf(nt);
+        if (!world.blocked(nx, nz, r0)) return nt;
+      }
+      return null;
+    };
     for (let i = 0; i < n; i++) {
       const t = (i - (n - 1) / 2) * 2;
-      place(world, g, K().wallMod, 'lowWall', t, -(0.55 + r() * 0.5), 0, 1.0, Math.PI / 2, 0, P);
+      const spot = clearSpot(t, 0.9);
+      if (spot === null) { logGap(t); continue; }
+      place(world, g, K().wallMod, 'lowWall', spot, -(0.55 + r() * 0.5), 0, 1.0, Math.PI / 2, 0, P);
     }
     for (let i = 0; i < 5; i++) {
       place(world, g, K().brick, 'lowWall', (r() - 0.5) * (len + 2), 0, (r() - 0.5) * 2.4,
@@ -444,16 +504,15 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     g.position.set(x, 0, z);
     g.rotation.y = ry;
     world.add(g);
-    // the collider follows the run, in world space
-    const dx = Math.sin(ry) * len / 2, dz = Math.cos(ry) * len / 2;
+    // the collider follows the run, in world space, at a finer step than the
+    // visual segments so cover reads solid along its whole length
     const steps = Math.max(2, Math.round(len / 1.2));
     for (let i = 0; i <= steps; i++) {
-      const t = i / steps * 2 - 1;
-      // COVER MUST NOT STAND ON A SPAWN POINT. la's second stub ran straight
-      // through the Shade at (6, -1), and t1b's through a thorn hound, and the
-      // sweep had to declaw all four of them on every single load.
-      if (world.blocked(x + dx * t, z + dz * t, 0.7)) continue;
-      world.addCircle(x + dx * t, z + dz * t, 0.62, 'decor');
+      const t = (i / steps * 2 - 1) * len / 2;
+      const spot = clearSpot(t, 0.7);
+      if (spot === null) { logGap(t); continue; }
+      const [px, pz] = worldOf(spot);
+      world.addCircle(px, pz, 0.62, 'decor');
     }
     return g;
   }
