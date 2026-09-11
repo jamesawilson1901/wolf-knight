@@ -904,7 +904,7 @@ export async function buildT1b(scene) {
   // GATE — the ICE-SEALED SPRING. Level 4's tool, a whole level early.
   wallRun(world, 11, 2, 16, 2, D);
   wallRun(world, 11, 6, 16, 6, D);
-  promiseGate(world, 11, 4, 3.0, 4.0, 0x9be3ff, 'FROZEN — later', 'rockSB',
+  promiseGate(world, 11, 4, 3.0, 4.0, 0x9be3ff, 'FROZEN — later', 'rockLB',
               { system: 'shatter', id: 'l3_spring_ice', region: REGION });
   visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };

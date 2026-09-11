@@ -592,7 +592,13 @@ export function makeBuilders({ kit, isGrey }) {
     } else {
       const kit0 = K();
       const src = kit0[kindModel] || kit0.rockLB;
-      const n = Math.max(2, Math.round(span / 1.6));
+      // AT LEAST THREE, so the middle of the gap is never bare. Two pieces
+      // sit at the very edges of `span` (f = ±0.5) with nothing between them
+      // — a real hole a five-year-old can see straight through — and it only
+      // ever showed on the smaller "later" gates (levelClimb/Hollow/Plunge's
+      // own 3x2.2 ones), which is exactly the size where a blocking obstacle
+      // most needs to look unbroken.
+      const n = Math.max(3, Math.round(span / 1.6));
       for (let i = 0; i < n; i++) {
         const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
         const piece = tintedModel(src, 'gate_' + kindModel, color);

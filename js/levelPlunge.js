@@ -268,7 +268,7 @@ export async function buildP2(scene) {
   wallRun(world, -9.4, -4.0, -9.4, -12.5, D);
   wallRun(world, -9.4, -4.0, -12.2, -4.0, D);
   wallRun(world, -15.4, -4.0, -16, -4.0, D);
-  promiseGate(world, -13.8, -4.0, 3.0, 2.2, 0x4fd0e0, 'FLOODED — later', 'rockSB',
+  promiseGate(world, -13.8, -4.0, 3.0, 2.2, 0x4fd0e0, 'FLOODED — later', 'rockLB',
     { system: 'shatter', id: 'p2_ford', region: REGION });
   world.markers.waterPromise = { x: -13.8, z: -4.0 };
   world.markers.heroSpot = { x: -13.8, z: -4.0 };

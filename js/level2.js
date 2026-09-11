@@ -1440,7 +1440,7 @@ export async function buildVc2(scene) {
   // in a wet cave: obviously wrong, obviously later, reward plainly visible.
   wallRun(world, 11, -6, 16, -6, D);
   wallRun(world, 11, 0, 16, 0, D);
-  promiseGate(world, 11, -3, 2.4, 6, 0x5fae4a, 'THORNS — later', 'rockSB',
+  promiseGate(world, 11, -3, 2.4, 6, 0x5fae4a, 'THORNS — later', 'rockLB',
               { system: 'cut', id: 'l2_bramble_gate', region: REGION });
   visibleReward(world, 14, -3, 'l2_vc2_bramble', { shards: 24, gear: 'spear_legion' }, 'silver');
   world.markers.bramblePromise = { x: 11, z: -3 };

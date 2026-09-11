@@ -349,7 +349,7 @@ export async function buildG2(scene) {
   // repeated at the door of the region that keeps it.
   wallRun(world, -16, -1.0, -11.0, -1.0, D);
   wallRun(world, -16, 4.0, -11.0, 4.0, D);
-  promiseGate(world, -11.0, 1.5, 2.4, 5.0, 0x5fae4a, 'THORNS — later', 'rockSB',
+  promiseGate(world, -11.0, 1.5, 2.4, 5.0, 0x5fae4a, 'THORNS — later', 'rockLB',
               { system: 'cut', id: 'g2_bramble', region: REGION });
   visibleReward(world, -14.0, 1.5, 'g2_bramble_prize', { shards: 24, gear: 'axe_c' }, 'silver');
   world.markers.bramblePromise = { x: -11.0, z: 1.5 };

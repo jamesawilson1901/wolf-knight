@@ -555,7 +555,7 @@ export async function buildS1a(scene) {
   // one the child already had, so the promise would have paid out instantly and
   // meant nothing. It is water: it opens when you can walk on water.
   if (!canWade()) {
-    promiseGate(world, -11.5, -0.7, 3.0, 4.2, 0x4fd0e0, 'FLOODED — later', 'rockSB',
+    promiseGate(world, -11.5, -0.7, 3.0, 4.2, 0x4fd0e0, 'FLOODED — later', 'rockLB',
       { system: 'none', id: 's1a_seacave', region: REGION });
   }
   visibleReward(world, -14.0, -0.7, 's5_seacave', { shards: 26 });

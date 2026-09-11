@@ -687,7 +687,7 @@ export async function buildXr2(scene) {
   sideDoor(world, 'e', halfW, halfD, 'xr1', { x: -11, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'xr3', { x: 11, z: 0, angle: Math.PI / 2 });
   wallRun(world, -9, -4, -9, 4, D);
-  promiseGate(world, -6.5, 0, 3.4, 4.6, 0x9be3ff, 'FROZEN', 'rockSB',
+  promiseGate(world, -6.5, 0, 3.4, 4.6, 0x9be3ff, 'FROZEN', 'rockLB',
     { system: 'shatter', id: 'x_root_ice', region: REGION });
   world.markers.wingSolve = { x: -6.5, z: 0, needs: 'frost_wolf' };
   world.markers.slimeSpots = [{ x: 3, z: 4, variant: 'gloomblob' }];
