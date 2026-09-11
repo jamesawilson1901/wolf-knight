@@ -363,6 +363,7 @@ function heroProp(world, x, z, kind, D) {
 // across the room without walking into it to find out.
 // ---------------------------------------------------------------------------
 const VANE_ANGLE = { n: Math.PI, e: -Math.PI / 2, s: 0, w: Math.PI / 2 };
+const VANE_BLADE = 0xffd76a;   // same warm gold as the greybox blade — see vane()
 
 function vane(world, x, z, lane, D) {
   const g = new THREE.Group();
@@ -384,8 +385,17 @@ function vane(world, x, z, lane, D) {
     spin.add(blade);
   } else {
     place(world, g, skyKit.pillar, 'pillar', x, 0, z, 1.5, 0, 0, D.propTint);
-    const b1 = place(world, spin, skyKit.bridge, 'bridge', 0, 2.35, 1.05, 0.72, 0, 0, D.tint);
-    const b2 = place(world, spin, skyKit.bridge, 'bridge', 0, 2.35, -1.05, 0.72, Math.PI, 0, D.tint);
+    // THE BLADE MUST READ AS A BLADE, NOT AS SCENERY. It is a `bridge-stone`
+    // slab pressed into service as a weathervane arm (the kit has no purpose-
+    // built one) — tinted with the room's own drab stone `D.tint` it merged
+    // into the palette instead of standing out of it, and read back from
+    // dad's own play-test as "floating grey square things", not as something
+    // to look at and read. VANE_BLADE is the exact warm gold the greybox
+    // build already uses for this same reason (a five-year-old has to tell
+    // its heading from across the room), so both costumes teach the same
+    // shape and the fix is the one thing that changes: the colour.
+    const b1 = place(world, spin, skyKit.bridge, 'bridge', 0, 2.35, 1.05, 0.72, 0, 0, VANE_BLADE);
+    const b2 = place(world, spin, skyKit.bridge, 'bridge', 0, 2.35, -1.05, 0.72, Math.PI, 0, VANE_BLADE);
     if (b1) b1.rotation.z = 0.08;
     if (b2) b2.rotation.z = -0.08;
   }
