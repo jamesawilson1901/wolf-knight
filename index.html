@@ -341,6 +341,15 @@
     }
     .profile-btn.new { border-style: dashed; opacity: .85; }
     .profile-icon { font-size: 40px; line-height: 1; }
+    /* RESTORE FROM BACKUP — a quiet link under the profile grid, not a
+       button the same weight as "New Player": this is a recovery path a
+       parent reaches for, not a choice a child makes every session. */
+    .title-restore {
+      flex-basis: 100%; text-align: center; margin-top: 4px;
+      color: #ffe9c8; opacity: .7; font-size: 15px; font-weight: 700;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .title-restore:active { opacity: 1; }
     #profile-detail, #profile-create { display: none; flex-direction: column; align-items: center; gap: 14px; }
     .detail-name { color: #ffe9c8; font-size: 26px; font-weight: 800; margin-bottom: 4px; }
     #t-name {
@@ -1257,7 +1266,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.159.0</div>
+  <div id="badge">Wolf Knight &middot; v3.160.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

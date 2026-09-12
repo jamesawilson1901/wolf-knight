@@ -2285,6 +2285,20 @@ let travelWasNear = false;
 let gardenWasNear = false;
 let gardenCooldown = 0;
 
+// SAVES ARE localStorage, and a full phone can make the browser evict an
+// origin's storage to make room — silently, with nothing for a parent to
+// see or undo. `persist()` asks the browser to exempt this origin from that
+// eviction; a browser is free to refuse (it usually grants it once the PWA
+// is installed or bookmarked), but asking costs nothing and is the only
+// defence against the INVISIBLE loss. It does nothing for a save wiped on
+// purpose (a phone's "clear site data"/factory reset) — that is what the
+// export/import backup on the title screen (js/title.js) is for.
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist()
+    .then((granted) => console.log('[storage] persistent storage', granted ? 'granted' : 'not granted'))
+    .catch((e) => console.warn('[storage] persist() request failed:', e));
+}
+
 async function start() {
   // Assets stream in while the title screen is up.
   player = new Player();
