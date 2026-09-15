@@ -72,6 +72,32 @@ export function showTitle() {
     let selected = null;
     let confirmingNewGame = false;
 
+    // RESTORE FROM BACKUP — a small icon button pinned to the corner of the
+    // whole title screen, not a row inside the profile grid: it used to sit
+    // as plain text among the profile icons and looked like a stray label
+    // rather than part of the game. One button, created once, shown only
+    // over the profile-list screen (hidden the instant a profile is picked
+    // or a new one is being made) so it never competes with those flows.
+    const restoreBtn = document.createElement('div');
+    restoreBtn.className = 'title-restore-btn ui';
+    restoreBtn.textContent = '📥';
+    restoreBtn.title = 'Restore from a backup file';
+    restoreBtn.addEventListener('pointerdown', () => {
+      audio.play('ui-click', { volume: 0.6 });
+      pickRestoreFile((payload, err) => {
+        if (err || !payload) { restoreBtn.textContent = '⚠️'; }
+        else {
+          try {
+            importProfile(payload);
+            renderList(); // the restored profile now needs to appear
+            return;
+          } catch (e) { restoreBtn.textContent = '⚠️'; }
+        }
+        setTimeout(() => { restoreBtn.textContent = '📥'; }, 2600);
+      });
+    });
+    el.appendChild(restoreBtn);
+
     const finish = (profile, save) => {
       // Landscape lock + fullscreen ride on this tap (best effort).
       try {
@@ -92,6 +118,7 @@ export function showTitle() {
       detail.style.display = 'none';
       create.style.display = 'none';
       list.style.display = 'flex';
+      restoreBtn.hidden = false;
       for (const p of profiles) {
         const b = document.createElement('div');
         b.className = 'profile-btn ui';
@@ -111,32 +138,12 @@ export function showTitle() {
         renderCreate();
       });
       list.appendChild(add);
-
-      // A quiet link, not a button the same weight as New Player: this is
-      // the way back after a wipe, not a thing most sessions ever touch.
-      const restore = document.createElement('div');
-      restore.className = 'title-restore ui';
-      restore.textContent = '📥 Restore from a backup file';
-      restore.addEventListener('pointerdown', () => {
-        audio.play('ui-click', { volume: 0.6 });
-        pickRestoreFile((payload, err) => {
-          if (err || !payload) { restore.textContent = '⚠️ Not a Wolf Knight save file'; }
-          else {
-            try {
-              importProfile(payload);
-              renderList(); // the restored profile now needs to appear
-              return;
-            } catch (e) { restore.textContent = '⚠️ Could not restore that file'; }
-          }
-          setTimeout(() => { restore.textContent = '📥 Restore from a backup file'; }, 2600);
-        });
-      });
-      list.appendChild(restore);
     };
 
     const renderDetail = () => {
       list.style.display = 'none';
       detail.style.display = 'flex';
+      restoreBtn.hidden = true;
       confirmingNewGame = false;
       const save = loadSave(selected.id);
       detail.innerHTML = `
@@ -179,6 +186,7 @@ export function showTitle() {
     const renderCreate = () => {
       list.style.display = 'none';
       create.style.display = 'flex';
+      restoreBtn.hidden = true;
       create.innerHTML = `
         <input id="t-name" maxlength="12" placeholder="Your name" autocomplete="off">
         <div id="t-icons"></div>
