@@ -980,7 +980,18 @@ export async function spawnChests(world, defs) {
   if (!chestKit) chestKit = await loadGLB('./assets/env/props/chest-kit.glb');
   for (const def of defs) {
     const opened = !!state.flags.chests[def.id];
-    const tier = def.tier === 'gold' ? 'gold' : def.tier === 'silver' ? 'silver' : 'wood';
+    // TWO KINDS OF CHEST, decided by what's inside — dad: "any chest
+    // containing shields, armour, weapons or a full heart has the gold
+    // trim. All other chests [get] the silver trim." A room's own `tier`
+    // field is never read for this any more: the content is the only thing
+    // a child reads a chest by, and a hand-set tier string is exactly the
+    // kind of label that goes stale the day a chest's loot changes but
+    // nobody remembers to touch its tier too. `gear` already covers both
+    // weapons and shields (js/main.js giveLoot: `WEAPONS[L.gear] ||
+    // SHIELDS[L.gear]`).
+    const L = def.loot || {};
+    const gold = !!(L.gear || L.armour || L.heartPiece);
+    const tier = gold ? 'gold' : 'silver';
     const kit = buildKitChest(tier);
     const mesh = kit.group;
     // MEASURE THE MODEL. DO NOT TYPE A NUMBER AT IT.
@@ -999,7 +1010,7 @@ export async function spawnChests(world, defs) {
     // model against itself. This does.
     const bb = new THREE.Box3().setFromObject(mesh);
     const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
-    const want = def.tier === 'gold' ? 1.15 : 0.95;   // a chest a child walks up to
+    const want = gold ? 1.15 : 0.95;   // a chest a child walks up to
     const s = want / Math.max(0.01, dx, dy, dz);
     mesh.position.set(def.x, 0, def.z);
     mesh.rotation.y = def.ry || 0;
@@ -1021,9 +1032,8 @@ export async function spawnChests(world, defs) {
       // EVERY UNOPENED CHEST GLOWS, not just the gold ones. A reward you cannot
       // see is not a reward, and this is the exact promise the cracked-wall
       // gates make: the thing behind them was an unlit box a child had to walk
-      // into by accident. Wood and silver get a cooler, quieter light so gold
-      // still reads as the good one.
-      const gold = def.tier === 'gold';
+      // into by accident. Silver gets a cooler, quieter light so gold still
+      // reads as the good one.
       const glow = new THREE.PointLight(gold ? 0xffd76a : 0xbfe6ff, gold ? 3 : 1.7,
         gold ? 5 : 3.6, 1.9);
       glow.position.set(def.x, 0.8, def.z);

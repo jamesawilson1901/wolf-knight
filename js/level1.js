@@ -37,6 +37,8 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
+import { juice } from './juice.js';
+import { audio } from './audio.js';
 import { isHealed, COAT } from './restoration.js';
 import { bumpCounter } from './progress.js';
 
@@ -146,6 +148,10 @@ export const L1 = {
          label: 'THE CHARRED SPAN', beat: 'optional · burn + the crossing' },
   lk3: { kind: 'pocket', w: 20, d: 16, district: 'kiln',     loopsTo: 'lk2',
          label: 'THE BANKED FIRE', beat: 'optional · light the ring · gold' },
+  // THE KINDLED HOARD (play-test #19): the ring's real payoff, sealed
+  // behind a vault door that only opens once every lamp is lit.
+  lk4: { kind: 'pocket', w: 20, d: 16, district: 'kiln',     loopsTo: 'lk3',
+         label: 'THE KINDLED HOARD', beat: 'optional · the ring\'s reward · 6 chests' },
   // THE ASH VAULT (v3.130, design/WIDER-WORLD.md §2.4) — the first dungeon,
   // and the template every later one copies. Behind la's own cracked wall,
   // Earth Wolf only. spine: false throughout: optional, same rule as
@@ -434,9 +440,9 @@ function slab(world, x, z, w, d, D) {
 
 // The teach braziers, dressed. In greybox these are markers only — a brazier
 // is a gameplay object, and the greybox exists to test SPACE, not systems.
-function teachBraziers(world, spots, prefix, onLit) {
+function teachBraziers(world, spots, prefix, onLit, startLit = false) {
   if (GREY()) return;
-  spots.forEach((sp, i) => brazier(world, prepareModel, emberKit.torch, `${prefix}${i + 1}`, sp.x, sp.z, onLit));
+  spots.forEach((sp, i) => brazier(world, prepareModel, emberKit.torch, `${prefix}${i + 1}`, sp.x, sp.z, onLit, startLit));
 }
 
 // A hero prop: the district's memory anchor. Greybox form is a bold blocky
@@ -1569,7 +1575,19 @@ export async function buildLe(scene) {
   world.markers.cageBraziers = [
     { x: -4, z: -6 }, { x: 4, z: -6 }, { x: -4, z: 2 }, { x: 4, z: 2 },
   ];
-  teachBraziers(world, world.markers.cageBraziers, 'le_cage');
+  // Play-test #22, verbatim: "Lighting all torches needs a reward and a
+  // sound effect signifying a reward." js/gates.js already brightens the
+  // room and plays 'checkpoint' the instant every brazier here catches —
+  // that half was already true. What was missing was an actual find: a
+  // real chest, visible from the spawn door the whole time, same law as
+  // every other teach-brazier room in this branch (lk3's own note above).
+  visibleReward(world, 0, 6, 'le_cage_reward', { shards: 24, potion: 1 }, 'silver');
+  let cageLit = 0;
+  teachBraziers(world, world.markers.cageBraziers, 'le_cage', () => {
+    cageLit++;
+    if (cageLit < world.markers.cageBraziers.length) return;
+    bigToastSafe('Every flame in the Hollow, burning again.');
+  });
   // the ring of what was here before the cage was — perimeter only
   for (const [cx, cz, cr] of [[-11, -9, 0.4], [11, -9, -0.4], [-11.5, 9, 1.2], [11.5, 9, -1.2]]) {
     fallenColumn(world, cx, cz, cr, D, 3.0);
@@ -1806,7 +1824,7 @@ export async function buildLk2(scene) {
 // --- EMBER DEEP 3 — THE BANKED FIRE (master: fire brings a place back) ------
 export async function buildLk3(scene) {
   const { world, spec, D } = base(scene, 'lk3');
-  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+  const { halfW, halfD } = shell(world, spec, [gap('e'), gap('n')], D, {
     patches: [{ x: 0, z: -1, r: 4.4, kind: 'scorch' }, { x: -7, z: 4, r: 2.6, kind: 'gravel' },
               { x: 7, z: 4, r: 2.6, kind: 'gravel' }],
     pathWidth: 2.6,
@@ -1819,6 +1837,24 @@ export async function buildLk3(scene) {
   heroProp(world, 0, -1, 'bowl', D.tint, D);
   world.markers.heroSpot = { x: 0, z: -1 };
 
+  // THE VAULT DOOR — dad's own ask (play-test #19): "lighting all torches
+  // needs to unlock something... put the door in this room." Sealed behind
+  // rockLB rubble, same onwardPlug law every other boss/puzzle reveal in the
+  // game already uses — but ROOMS REBUILD FROM SCRATCH ON EVERY VISIT, and
+  // nothing here would remember the ring was already lit without a flag: a
+  // child who lit it, walked into lk4, then walked straight back would find
+  // the rubble had grown back over the door they just opened. `bossDefeated`
+  // is `le`'s own version of this same check. `lk3RingLit` is this room's.
+  // Thinner and closer to the wall than the usual onwardPlug (w=3.4, d=1.5
+  // everywhere else): the Forge Heart's own hard collider (heroProp 'bowl',
+  // r 5.2 from (0,-1)) already reaches to z -6.2, and the usual depth would
+  // have left less than half a metre of open floor between the two — not
+  // enough for a body to land in without a stray push in either direction.
+  const ringLit = !!state.flags.lk3RingLit;
+  const openVault = () => sideDoor(world, 'n', halfW, halfD, 'lk4', { x: 0, z: 7.5, angle: Math.PI });
+  if (ringLit) openVault();
+  else onwardPlug(world, 0, -halfD + 0.3, 3.4, 0.5, 'rockLB', D.propTint, openVault);
+
   // THE RING. Five lamps around the hearth, and the chamber only comes back
   // when every one of them is burning. No dark zone here, for the same reason
   // lk1 has none: the readout is the RING itself — each brazier's act-here halo
@@ -1830,17 +1866,17 @@ export async function buildLk3(scene) {
   teachBraziers(world, ring, 'lk3_ring', () => {
     lit++;
     if (lit < ring.length) return;
-    // EVERY LAMP BURNING. The reward is not handed over by a counter a child
-    // cannot see — the room itself says so, and the chest has been in plain
-    // sight the whole time so they knew what they were working toward.
-    bigToastSafe('The Deep remembers its fire.');
-  });
+    // EVERY LAMP BURNING. Dad's own ask, in full: a treasure room, a door,
+    // a shake and a sound to say it opened — not a counter a child cannot
+    // see. The room itself said so already (js/gates.js's own brighten); this
+    // is the moment that brightening was building toward.
+    state.flags.lk3RingLit = true;
+    bigToastSafe('The Deep remembers its fire — the vault is open!');
+    audio.play('slam', { volume: 0.9, rate: 0.55 });
+    if (juice.effects) juice.effects.shake(0.4, 0.5);
+    if (world.openOnward) world.openOnward();
+  }, ringLit);
   world.markers.teachBrazier = ring[0];
-
-  // The payoff, visible from the doorway from the first step in — a child
-  // should WANT the ring lit, which means seeing what lighting it is for.
-  visibleReward(world, 0, -6.2, 'lk3_banked',
-    { shards: 40, heartPiece: 1, gear: 'hammer_c', treasure: 'banked_ember' }, 'gold');
 
   world.markers.emberWretchSpots = [{ x: -2.5, z: 4.5 }, { x: 2.5, z: 4.8 }];
   world.markers.mothSpots = [{ x: 4, z: -5 }];
@@ -1859,6 +1895,70 @@ export async function buildLk3(scene) {
   rubbleField(world, 8, -4.5, 2.0, D, 9);
   aftermath(world, 0, 6.8, 2.0, D, 14);
   scatter(world, halfW, halfD, D, 73, 5);
+  return finish(world, spec, D);
+}
+
+// --- EMBER DEEP 4 — THE KINDLED HOARD (the payoff behind the ring) ---------
+// Dad's own ask, play-test #19, verbatim: "I want a treasure room with a
+// heart. Elemental armour an elemental weapon and a shield and heaps of
+// coins. All in different chests." Every reward here is a REAL find, not a
+// new system: sword_b (the Ember Blade, element: fire), armour 'ember' (the
+// Kiln Plate) and shield_a (the Round Guard) already exist in items.js and
+// were never placed in the world as a find — only ever bought. `lk3_banked`
+// itself MOVES here unchanged (same id, so an already-opened save still
+// reads it opened) — the heart piece, shards, hammer and the branch's own
+// keepsake (banked_ember) were always meant to live behind the door, not in
+// the room that unlocks it.
+export async function buildLk4(scene) {
+  const { world, spec, D } = base(scene, 'lk4');
+  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+    patches: [{ x: 0, z: 1, r: 4.4, kind: 'scorch' }, { x: -6, z: -4, r: 2.6, kind: 'gravel' },
+              { x: 6, z: -4, r: 2.6, kind: 'gravel' }],
+    pathWidth: 2.6,
+    paths: [[[0, 8], [0, 1]]],
+  });
+  world.spawn = { x: 0, z: 7.5, angle: Math.PI };
+  // z -6.8: the sliver of open floor between lk3's vault rubble (hugs the
+  // wall out to z -7.45 while unlit) and the Forge Heart's own 5.2-radius
+  // collider (blocks from z -6.2 south). x has to stay near 0 — the door
+  // gap itself is only ~2.4u wide, and a metre either side is already the
+  // solid wall either half of it cuts through.
+  sideDoor(world, 's', halfW, halfD, 'lk3', { x: 0, z: -6.8, angle: 0 });
+
+  // THE HOARD ITSELF — the pile the room is named for, dressed under the
+  // gold chest so the "heaps of coins" line is a thing you SEE, not only a
+  // shards number. Coin_Pile.glb (emberKit.coins) is precached and, until
+  // now, placed nowhere.
+  if (!GREY()) {
+    const pile = tinted(emberKit.coins, 'lk4Coins', 0xd4a838, 1);
+    pile.position.set(0, 0, -3.4);
+    pile.scale.setScalar(1.6);
+    world.add(pile);
+  }
+
+  // THE ORIGINAL BANKED-FIRE REWARD, moved here whole (same id: an already-
+  // opened save must not see it unopened again).
+  visibleReward(world, -4.5, -3.4, 'lk3_banked',
+    { shards: 40, heartPiece: 1, gear: 'hammer_c', treasure: 'banked_ember' }, 'gold');
+  // THE ELEMENTAL WEAPON.
+  visibleReward(world, 4.5, -3.4, 'lk4_emberblade', { gear: 'sword_b' }, 'silver');
+  // THE ELEMENTAL ARMOUR.
+  visibleReward(world, -4.5, 2.0, 'lk4_kilnplate', { armour: 'ember' }, 'silver');
+  // THE SHIELD.
+  visibleReward(world, 4.5, 2.0, 'lk4_roundguard', { gear: 'shield_a' }, 'silver');
+  // ...AND HEAPS OF COINS, IN THEIR OWN CHESTS — dad's own words, plural.
+  visibleReward(world, -2.2, 5.6, 'lk4_coins1', { shards: 30 }, 'wood');
+  visibleReward(world, 2.2, 5.6, 'lk4_coins2', { shards: 30 }, 'wood');
+
+  world.markers.breakables = [
+    { x: -8, z: 2.5, kind: 'jar' }, { x: 8, z: 2.5, kind: 'vase' },
+  ];
+  wayshrine(world, 0, -6.5, 0.4, D);
+  fallenColumn(world, -7, 5.5, 0.7, D, 2.6);
+  fallenColumn(world, 7, 5.5, -0.7, D, 2.6);
+  rubbleField(world, -7, -1, 1.8, D, 8);
+  rubbleField(world, 7, -1, 1.8, D, 8);
+  scatter(world, halfW, halfD, D, 74, 5);
   return finish(world, spec, D);
 }
 
@@ -2031,7 +2131,7 @@ export const LEVEL1_ROOMS = {
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
   lc: buildLc, lc1: buildLc1, lg3: buildLg3,
   ld: buildLd, ld1: buildLd1, lg4: buildLg4,
-  lk1: buildLk1, lk2: buildLk2, lk3: buildLk3,   // EMBER DEEP
+  lk1: buildLk1, lk2: buildLk2, lk3: buildLk3, lk4: buildLk4,   // EMBER DEEP
   lv1: buildLv1, lv2: buildLv2, lv3: buildLv3,   // THE ASH VAULT
   le: buildLe,
   zoo: buildZoo,
