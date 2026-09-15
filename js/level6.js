@@ -934,7 +934,7 @@ export async function buildD3b(scene) {
   // nothing behind it but dark, which is exactly what the Shadow Court is.
   wallRun(world, -16, -9.5, -10, -9.5, D);
   wallRun(world, -16, -5.0, -10, -5.0, D);
-  promiseGate(world, -10, -7.2, 3.0, 4.2, 0x9f7fd0, 'DARK — later', 'rockSB',
+  promiseGate(world, -10, -7.2, 3.0, 4.2, 0x9f7fd0, 'DARK — later', 'rockLB',
     { system: 'shatter', id: 'd3b_ghost', region: REGION });
   visibleReward(world, -13, -7.2, 'd6_ghost', { shards: 28, gear: 'cleaver_orc' }, 'gold');
   world.markers.ghostPromise = { x: -10, z: -7.2 };

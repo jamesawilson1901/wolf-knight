@@ -70,7 +70,14 @@ export const CONFIG = {
     PER_HURT: 0.10,        // each hit Kael takes — pressure feeds the moon
     COMBAT_PER_S: 0.016,   // trickle while enemies are close (hidden assist)
     PERK_MULT: 0.25,       // Quicker Moon: fill bonus per rank
-    CEREMONY: 2.5,         // s, the transformation ceremony
+    // s, the transformation ceremony. Must cover the moon's own RISE+HOLD+
+    // DIVE (2.2+0.8+0.5=3.5s, js/effects.js surgeCeremony) plus a hair —
+    // it used to end at 2.5s, handing control back and firing Kael's own
+    // shockwave a full second BEFORE the moon it promised had even landed,
+    // so "the blood moon must visibly slam into someone" (playtest ask,
+    // same comment) fired late, off in the background, after the fight had
+    // already resumed. 3.6 lets the crash land inside the cinematic.
+    CEREMONY: 3.6,
     SURGE_DUR: 10,         // s of Blood Moon Surge
     WARN: 2,               // s left when the warning flicker starts
     SURGE_SCALE: 1.0,      // same size as every wolf (playtest) — the red

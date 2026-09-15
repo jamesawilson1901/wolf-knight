@@ -48,10 +48,9 @@ const formIcon = (id, meta) => (PORTRAITS[id]
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
 export class UI {
-  constructor({ onFormPick, onSpecial, onSurge }) {
+  constructor({ onFormPick, onSpecial }) {
     this.onFormPick = onFormPick;
     this.onSpecial = onSpecial;
-    this.onSurge = onSurge;
     this._pickerPointer = null;
     this._options = [];
 
@@ -61,7 +60,12 @@ export class UI {
     this.specialIcon = document.getElementById('special-icon');
     this.badge = document.getElementById('form-badge');
     // The MOON GAUGE: a crescent that fills toward the Blood Moon Surge.
-    // Tapping it while FULL fires the surge (from any form).
+    // Display-only. It's only ever revealed while state.form === 'dark_wolf'
+    // (see refreshBadge below), and #special-btn's onSpecial already fires
+    // the surge in that form (trySpecial has no dark_wolf branch, so it
+    // falls through to triggerSurge()). A second live pointerdown handler
+    // here used to fire the exact same surge from the exact same tap
+    // target's neighbor, i.e. a second button players didn't need.
     this.moonGauge = document.getElementById('moon-gauge');
     this.moonRing = document.getElementById('moon-ring');
     this.moonIcon = document.getElementById('moon-icon');
@@ -69,10 +73,6 @@ export class UI {
     this.specialBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       this.onSpecial();
-    });
-    this.moonGauge.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      if (this.onSurge) this.onSurge();
     });
 
     window.addEventListener('pointermove', (e) => this._pickerMove(e));

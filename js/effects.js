@@ -196,7 +196,17 @@ export class Effects {
       })
     );
     const moonLight = new THREE.PointLight(0xff2233, 0, 34, 1.5);
-    moon.position.set(pos.x - 3.5, 0.4, pos.z - 9);
+    // NOT the pos.z - 9 this shipped with: at this camera's pitch (~48deg)
+    // and FOV (50), z-9 projects to NDC y=0.79 before it has even left the
+    // ground, and clears the top edge (y=1) by a third of the way up its
+    // climb — the whole "huge red disc climbing the sky" beat played
+    // entirely above the viewport, every time, on every device this
+    // camera ships on (measured with tools/wk-drive.mjs + Vector3.project,
+    // not eyeballed). Dropping the z-offset to 0 and the climb from 6.2 to
+    // 1.0 keeps its top edge under NDC y~0.4 through the whole rise —
+    // clear of the HUD row (starts ~0.5) — while still reading as a big
+    // disc rising behind Kael.
+    moon.position.set(pos.x - 3.5, 0.4, pos.z);
     moonLight.position.copy(moon.position);
     scene.add(moon, moonLight);
 
@@ -214,7 +224,7 @@ export class Effects {
         const f = elapsed / RISE;
         const e = 1 - (1 - f) * (1 - f); // decelerate upward
         wash.intensity = f * 2.2 * fScale;
-        moon.position.y = 0.4 + e * 6.2;
+        moon.position.y = 0.4 + e * 1.0;
         moonLight.position.copy(moon.position);
         moonLight.intensity = f * 14 * fScale;
         this.zoom = Math.max(this.zoom, f * 0.85 * zScale); // the camera leans in

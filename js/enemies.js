@@ -1720,11 +1720,21 @@ class SkeletonBase extends Enemy {
     return false;
   }
 
+  // dev-export #11 (lc): the Emberfang chasing Kael straight across the lava
+  // band — `chaseToward` resolved against `world.resolveCircle` directly
+  // (walls and props only) instead of `_moveSolved` (walls, props, AND
+  // "grounded enemies obey lava exactly like Kael" a few lines above), so a
+  // chasing enemy never learned lava existed until it happened to lunge into
+  // one with a move that already went through `_moveSolved`. Every class that
+  // calls `chaseToward` for its ordinary pursuit — not just the Flanker —
+  // shared the same gap; routing through `_moveSolved` here closes it for
+  // all of them at once, the same way the earlier `_moveSolved` calls always
+  // have.
   chaseToward(dt, dx, dz, d, speed) {
     if (d < 0.01) return;
     const nx = this.x + (dx / d) * speed * dt;
     const nz = this.z + (dz / d) * speed * dt;
-    const solved = this.world.resolveCircle(nx, nz, this.radius);
+    const solved = this._moveSolved(nx, nz);
     this.root.position.x = solved.x;
     this.root.position.z = solved.z;
     this.root.rotation.y = Math.atan2(dx, dz);
@@ -3758,7 +3768,19 @@ const MONSTER_ROSTER = {
   // first region's flyer from being a shrunken copy of the fourth region's
   // boss. wasp.glb: 1606 tris, two skinned meshes, Idle_Flying / Attacking /
   // Death — its own clip vocabulary, so no motion is borrowed.
-  'ember-wasp': { cls: Dragonling, base: 'wasp', hp: 6, weakness: 'frost', fitHeight: 1.75,
+  //
+  // fitHeight 1.75 CARRIED OVER the dragon it replaced, and a dragon and a
+  // wasp are not the same shape at the same height: `fitHeight` scales
+  // uniformly, so matching the dragon's height also gave the wasp the
+  // dragon's footprint. Measured live (tools, buildRoom lb): 1.85 x 2.45 in
+  // x/z — wider and longer than anything else in the room, including the
+  // player at 1.9 tall, which is exactly what dad's report #3 photographed
+  // (a leg span dwarfing Kael, cropped at the frame edge). The collision
+  // radius is a fixed 0.55 regardless of fitHeight (see the constructor
+  // above), so this changes nothing about what the wasp hits or how hard —
+  // only how big it looks. 0.95 puts its footprint at roughly 1.0 x 1.3,
+  // in line with the room's own props rather than looming over them.
+  'ember-wasp': { cls: Dragonling, base: 'wasp', hp: 6, weakness: 'frost', fitHeight: 0.95,
     puffTint: 0xffb25a,
     clips: { fly: 'Idle_Flying', bite: 'Attacking' } },
   'frost-dragonling': { cls: Dragonling, base: 'dragon', hp: 6, weakness: 'fire', scale: 0.5,

@@ -24,9 +24,29 @@ const HIT_CAP = 3;        // any single strike caps at 3 (surges stay strong, ne
 const ATTACK_DMG = 1.5;   // "his attack is more" — hounds hit for 1
 
 // The clip lookup every SKIN uses unless it sets its own `clips` map. wolf.gltf
-// (shadowgrip/sylva/aria/grimm's body) happens to name its clips exactly
-// these five words, so this table doubles as "the wolf's own names."
-const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Attack', death: 'Death' };
+// (still shadowgrip and grimm's body — sylva and aria moved to minotaur.glb
+// and sea-dragon.glb, each with its own `clips` map, see their SKINS entries)
+// happens to name its clips exactly these five words, so this table doubles
+// as "the wolf's own names."
+//
+// `hurt`/`arise` were missing entirely — wolf.gltf has no clip by either
+// name, so both dropped out silently (js/boss.js's own `clip()` helper
+// returns undefined for a key nobody named, same failure shape the combat
+// context doc already warns about for material tints). The real bug that
+// hid behind it: `_knockDown()` called `this.hurtAction.reset()`
+// unconditionally, and a null hurtAction threw the moment a child landed
+// the third hit in an opening window — dad's own "keeps attacking cause a
+// knock down" design, on the FIRST and LAST bosses in the game (grimm also
+// rides DEFAULT_CLIPS). The throw is fixed at its own call site now
+// regardless of clips; these two entries additionally give the wolf a real
+// pose instead of just not crashing — `Idle_HitReact1` (0.67s) for getting
+// hit, `Jump_ToIdle` (1.33s, the only clip that reads as "settling back
+// onto all fours" rather than idling or attacking) for getting up. Neither
+// is a purpose-built reaction, but both are real clips this exact model
+// already ships, same idiom as reusing the greybox blade colour rather
+// than inventing new geometry.
+const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', run: 'Gallop', attack: 'Attack', death: 'Death',
+  hurt: 'Idle_HitReact1', arise: 'Jump_ToIdle' };
 
 // v3.19: the class is now a reusable GIANT-WOLF DUEL — the Shadowgrip wears
 // it by default; Sylva the Thornbound (Wild Woods) wears it in green. Same
@@ -1478,7 +1498,18 @@ export class Shadowgrip {
     if (this.attackAction) this.attackAction.fadeOut(0.1);
     if (this.skillAction) this.skillAction.fadeOut(0.1);
     if (this.staggerAction) this.staggerAction.fadeOut(0.12);
-    this.hurtAction.reset().fadeIn(0.06).play();
+    // GUARDED LIKE EVERY OTHER OPTIONAL CLIP ABOVE — this one was not, and
+    // it is not optional in practice: a body with no `hurt` in its clips map
+    // (shadowgrip and grimm on DEFAULT_CLIPS, which has no such key at all;
+    // sylva and aria on their own custom maps, neither of which names one
+    // either) leaves `hurtAction` null, and this line threw the moment a
+    // child landed the third hit in a window — the exact mainline move dad
+    // asked for ("keeps attacking cause a knock down"). The throw happens
+    // inside the boss's own per-frame update, so the boss simply stops
+    // updating mid-animation from then on: not literally "stuck standing
+    // up", but "frozen wherever the fall was" reads the same to a five-
+    // year-old, and it is this line, not a broken clip.
+    if (this.hurtAction) this.hurtAction.reset().fadeIn(0.06).play();
     const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
     audio.play('slam', { volume: 1, rate: 0.55 });
     juice.burst(bx, 0.5, bz, this.skin.burst, 16);

@@ -2218,9 +2218,10 @@ let ui = null;
 let menus = null;
 const surgeVignetteEl = document.getElementById('surge-vignette');
 
-// THE BLOOD MOON SURGE trigger — tap the full moon gauge (or the special
-// button/K in a form with no cooldown special). Guarded so the ceremony can
-// never collide with scripted beats, room transitions or menus.
+// THE BLOOD MOON SURGE trigger — Dark Wolf's special button (K, or
+// #special-btn; onSpecial falls through to this since trySpecial has no
+// dark_wolf branch). Guarded so the ceremony can never collide with
+// scripted beats, room transitions or menus.
 function triggerSurge() {
   if (!player || !world || !effects) return false;
   if (transitioning || paused || menuPaused || narration.blocking) return false;
@@ -2283,6 +2284,20 @@ let shopWasNear = false;
 let travelWasNear = false;
 let gardenWasNear = false;
 let gardenCooldown = 0;
+
+// SAVES ARE localStorage, and a full phone can make the browser evict an
+// origin's storage to make room — silently, with nothing for a parent to
+// see or undo. `persist()` asks the browser to exempt this origin from that
+// eviction; a browser is free to refuse (it usually grants it once the PWA
+// is installed or bookmarked), but asking costs nothing and is the only
+// defence against the INVISIBLE loss. It does nothing for a save wiped on
+// purpose (a phone's "clear site data"/factory reset) — that is what the
+// export/import backup on the title screen (js/title.js) is for.
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist()
+    .then((granted) => console.log('[storage] persistent storage', granted ? 'granted' : 'not granted'))
+    .catch((e) => console.warn('[storage] persist() request failed:', e));
+}
 
 async function start() {
   // Assets stream in while the title screen is up.
@@ -2371,7 +2386,6 @@ async function start() {
     },
     // knight/dark have no cooldown special — a full moon gauge answers instead
     onSpecial: () => { if (!player.trySpecial(effects, world)) triggerSurge(); },
-    onSurge: () => triggerSurge(),
   });
 
   // ORDINARY-SWITCH SPECTACLE: every transformation is a tiny event — a

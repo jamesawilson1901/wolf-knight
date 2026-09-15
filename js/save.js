@@ -81,6 +81,65 @@ export function clearSave(profileId) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// BACKUP / RESTORE (js/title.js). Everything above lives in localStorage,
+// which a full phone's "clear site data" (or a factory reset, or a new
+// device) wipes right alongside the browser's own cache — the two are the
+// same kind of storage from the OS's point of view, however clearly this
+// codebase keeps them apart internally (sw.js never touches localStorage).
+// A file on the child's own device, outside the browser's storage entirely,
+// is the only thing that survives that. The BACKUP_VERSION marker exists so
+// a future save-shape change can tell an old export apart from a new one —
+// there is only one shape so far, so importProfile has nothing to migrate
+// yet, but the field is real from day one rather than bolted on once it is
+// needed and every export before that day is unmarked.
+const BACKUP_VERSION = 1;
+
+// A profile's whole save, as a plain object ready to hand to JSON.stringify.
+// Returns null rather than throwing — a profile with no save yet (picked but
+// never played) has nothing to back up, and the caller decides what that
+// means for its own UI rather than catching an exception for it.
+export function exportProfile(profileId) {
+  const profiles = loadProfiles();
+  const profile = profiles.find((p) => p.id === profileId);
+  const save = loadSave(profileId);
+  if (!profile || !save) return null;
+  return {
+    wolfKnightBackup: BACKUP_VERSION,
+    exportedAt: Date.now(),
+    profile: { id: profile.id, name: profile.name, icon: profile.icon },
+    save,
+  };
+}
+
+// The inverse. NEVER overwrites an existing profile silently: if the
+// backup's own id is already in use (restoring onto the same browser that
+// still has it, most likely) a fresh id is minted instead, so a restore can
+// only ever ADD a profile, never destroy one already on this device. Throws
+// on anything that is not a Wolf Knight backup — title.js decides how to
+// tell a parent that, this module only tells the truth about what it read.
+export function importProfile(payload) {
+  if (!payload || typeof payload !== 'object' || !payload.wolfKnightBackup
+      || !payload.profile || !payload.profile.name || !payload.save) {
+    throw new Error('not a Wolf Knight save file');
+  }
+  const profiles = loadProfiles();
+  const taken = new Set(profiles.map((p) => p.id));
+  let id = payload.profile.id;
+  if (!id || taken.has(id)) {
+    id = 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+  }
+  profiles.push({ id, name: payload.profile.name, icon: payload.profile.icon, updatedAt: Date.now() });
+  if (!saveProfiles(profiles)) throw new Error('could not write the restored profile');
+  try {
+    localStorage.setItem(SAVE_PREFIX + id, JSON.stringify({ ...payload.save, profileId: id }));
+  } catch (e) {
+    reportSaveFailure('restoring a backup', e);
+    throw e;
+  }
+  return { id, name: payload.profile.name, icon: payload.profile.icon };
+}
+
 // Serialize the live run into the profile's save slot.
 export function persist() {
   if (!state.profileId) return false;
