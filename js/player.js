@@ -106,6 +106,10 @@ const FORM_DEFS = {
       // that clip is 2.4s with 0.6s of dead wind-up, so at our 0.75s lock it
       // was cut before the body ever turned ("Kael just stands there" bug).
       special: 'Melee_2H_Attack_Spinning',
+      // three real, rigged, already-loaded clips nothing was using: a swing
+      // shaped for the air instead of reusing the ground slice while
+      // airborne, a flinch on taking a hit, and a touchdown pose on landing.
+      jumpAttack: 'Melee_1H_Attack_Jump_Chop', hurt: 'Hit_A', land: 'Jump_Land',
     },
     attack: { lock: 0.55, hitAt: 0.3, range: 2.0, dmg: 1 },
     boltColor: 0xbfe3ff, rangedKind: 'spark',   // classic dart: one target
@@ -386,6 +390,10 @@ export class Player {
     this.onFormChanged = null;
     this.forms = {};             // name -> {model, mixer, actions, def}
     this._current = null;        // action name playing on the active form
+    this._poseHoldT = 0;         // seconds left to protect a one-shot pose
+                                  // (hurt/land) from the per-frame idle/walk/
+                                  // run/jump driver below overriding it the
+                                  // very next frame
     this._popTime = 0;
 
     // Dark Wolf "see in the dark": a moonlit lamp that rides on Kael.
@@ -975,6 +983,16 @@ export class Player {
     this._current = name;
   }
 
+  // Play a one-shot pose and hold it against the idle/walk/run/jump driver
+  // for `dur` seconds — otherwise that driver picks a new action the very
+  // next frame and the pose is never actually seen. A no-op on any form
+  // (the wolves) that has no clip mapped to `name`.
+  _holdPose(name, dur) {
+    if (!this.form.actions[name]) return;
+    this._playOnce(name, 0.08);
+    this._poseHoldT = dur;
+  }
+
   // The knight's melee numbers come from the equipped weapon + sword perks;
   // wolves use their natural bite. Fury triples everything briefly.
   attackConfig() {
@@ -1078,7 +1096,10 @@ export class Player {
       // off to the side watched a broad sweep miss. The stab clip is already
       // loaded (it is the combo follow-up), so a spear now looks like a spear.
       const narrow = cfg.arcCos !== undefined && cfg.arcCos > NARROW_ARC_COS;
-      this._playOnce(narrow && this.form.actions.attack2 ? 'attack2' : 'attack');
+      // airborne swings a shape cut for the air instead of the ground slice
+      // (nothing else changes — hitbox/lock/combo timing stay the config's)
+      const jumping = this.airY > 0 && this.form.actions.jumpAttack;
+      this._playOnce(jumping ? 'jumpAttack' : (narrow && this.form.actions.attack2 ? 'attack2' : 'attack'));
       this.lockTime = cfg.lock;
       this._pendingHit = {
         timer: cfg.hitAt, range: cfg.range, dmg: cfg.dmg,
@@ -2306,6 +2327,7 @@ export class Player {
           // (CONFIG.ACCESSIBILITY: not camera motion).
           juice.burst(this.root.position.x, 0.12, this.root.position.z, 0xcfc8bc, 6);
           audio.play('puff', { volume: 0.4, rate: 0.85, vary: 0.12 });
+          if (this.lockTime <= 0) this._holdPose('land', 0.2);
         }
         this.jumpsUsed = 0;
       }
@@ -2527,6 +2549,8 @@ export class Player {
 
     if (locked) {
       // keep the attack animation; just drift
+    } else if (this._poseHoldT > 0) {
+      this._poseHoldT -= dt; // let a hurt/land pose finish before idle/walk takes over
     } else if (this.airY > 0) this._play('jump', 0.1);
     else if (this.defending) this._play('block', 0.12);
     else if (vmag > 0.1) this._play(vmag / Math.max(0.01, f.def.speed * speedMult) > RUN_THRESHOLD ? 'run' : 'walk');
@@ -2665,6 +2689,9 @@ export class Player {
   damage(n) {
     this.hearts = Math.max(0, this.hearts - n);
     this.hurtFlashT = 0.9;
+    // a flinch, but never fighting a swing/special already in progress —
+    // lockTime already owns the pose in that case
+    if (this.lockTime <= 0) this._holdPose('hurt', 0.35);
     this.gainMoon(CONFIG.MOON.PER_HURT); // pressure feeds the moon
     audio.play('hurt', { volume: 0.9 });
     if (this.onDamaged) this.onDamaged(this.hearts);
