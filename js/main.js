@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { manager, setLoadGiveUpHandler } from './assets.js';
+import { createLoadingHero } from './loadinghero.js';
 import { Input } from './input.js';
 import { buildRoom } from './rooms.js';
 import { villageCleared } from './levelVillage.js';
@@ -226,6 +227,99 @@ function showError(text) {
 // give-up handler below is what actually means "this file is not coming".
 manager.onError = (url) => console.warn('[assets] load error (will retry):', url);
 setLoadGiveUpHandler((url) => showError('Failed to load: ' + url));
+
+// THE LOADING BAR. This vendored three.js's LoadingManager (r185) carries
+// NO public itemsLoaded/itemsTotal properties to read at will — checked
+// live (Object.getOwnPropertyNames on the real instance): onStart/onLoad/
+// onProgress/onError/itemStart/itemEnd/itemError and nothing else. The
+// running counts exist ONLY as the arguments those callbacks are called
+// with, so they are kept here instead, fed by ONE listener installed once
+// at module load and never torn down — the only way to know the current
+// totals between callback firings, since there is nowhere else to read
+// them from. (An earlier version of this tried `manager.itemsLoaded`
+// directly — always `undefined` on this three.js version — and the bar
+// sat at a permanent, silent 0%: worse than the pulsing dot it replaced,
+// since a dot that never moves at least never claims to be counting.)
+//
+// No baseline snapshot needed: `start()` runs exactly ONCE per page life —
+// "quit to title" is a full location.reload() (below), not a return to a
+// live title screen — so nothing has asked the manager for anything before
+// player.load()/pip.load() fire at the top of this same function, and
+// allLoaded/allTotal genuinely start this session at 0/0 the moment this
+// file's module code runs. A page that ever reused this manager for a
+// second session without reloading would need one back.
+//
+// The total GROWS mid-flight — the manager only learns about a file the
+// moment something asks for it, so a batch of enemies discovered while the
+// first is still downloading can make the denominator jump. The fix is
+// not to fight that (the fraction is still honest); it is to never let the
+// DISPLAYED bar move backward when it does, since a filling bar that
+// visibly retreats reads as more broken than one that free-jumps ahead.
+let allLoaded = 0, allTotal = 0, shownPct = 0;
+manager.onStart = (url, loaded, total) => { allLoaded = loaded; allTotal = total; paintLoadingBar(); };
+manager.onProgress = (url, loaded, total) => { allLoaded = loaded; allTotal = total; paintLoadingBar(); };
+
+let loadingBar = null;
+function paintLoadingBar() {
+  if (!loadingBar) return;
+  const pct = allTotal > 0 ? Math.max(0, Math.min(100, Math.round((allLoaded / allTotal) * 100))) : 0;
+  if (pct > shownPct) shownPct = pct;
+  loadingBar.track.style.width = shownPct + '%';
+  loadingBar.label.textContent = `Loading… ${shownPct}%`;
+}
+function showLoadingBar() {
+  shownPct = 0;
+  loadingBar = {
+    track: document.getElementById('loading-bar-fill'),
+    label: document.getElementById('loading-label'),
+  };
+  paintLoadingBar();
+
+  const canvas = document.getElementById('loading-hero');
+  canvas.classList.remove('hidden');
+  loadingBar.heroPromise = createLoadingHero(canvas).then((hero) => {
+    // the screen may already be gone by the time the hero's own small
+    // asset set finishes — never let a late-arriving hero outlive the
+    // screen it was built for
+    if (!loadingBar) { hero.stop(); return; }
+    loadingBar.hero = hero;
+    loadingBar.heroShownAt = performance.now();
+  }).catch((e) => {
+    console.warn('[loading] hero preview skipped:', e);
+    canvas.classList.add('hidden'); // the bar alone still answers "frozen?"
+  });
+}
+// MEASURED, NOT ASSUMED: the hero's own six small files (character, sword,
+// shield, three anim libraries — its own private loader, js/loadinghero.js
+// says why) routinely finish loading AFTER the room the rest of the boot
+// only needs a handful of files for, especially the first room, which is
+// light on props. Without this, `hideLoadingBar()` tore the hero down
+// (`if (loadingBar) ... else hero.stop()` above) before its own load had
+// even resolved — a live capture of the real boot path confirmed it:
+// bar reaches 100%, hero canvas stays completely empty the whole time.
+// So this is `async` now (`start()` awaits it) and gives the hero two
+// bounded, deliberate windows instead of racing it against everything
+// else: up to 600ms to finish loading if it hasn't already, then — once
+// it HAS rendered — a floor of 800ms actually on screen, so a hero that
+// loads and would otherwise be torn down in the same tick gets an actual
+// moment rather than a flicker. Both windows are capped, so a hero that
+// genuinely cannot load (a permanently missing file, all three retries
+// spent) never holds up real gameplay past its own 600ms grace period.
+async function hideLoadingBar() {
+  if (!loadingBar) return;
+  const bar = loadingBar;
+  bar.track.style.width = '100%';
+  if (bar.heroPromise && !bar.hero) {
+    await Promise.race([bar.heroPromise, new Promise((r) => setTimeout(r, 600))]);
+  }
+  if (bar.hero) {
+    const MIN_SHOWN_MS = 800;
+    const elapsed = performance.now() - bar.heroShownAt;
+    if (elapsed < MIN_SHOWN_MS) await new Promise((r) => setTimeout(r, MIN_SHOWN_MS - elapsed));
+    bar.hero.stop();
+  }
+  loadingBar = null;
+}
 
 // A SAVE THAT CANNOT WRITE MUST SAY SO. Quota exceeded, private browsing, a
 // full disk — the child otherwise plays a whole evening and loses it silently.
@@ -2338,6 +2432,7 @@ async function start() {
   applySave(profile.id, profile.name, save);
 
   document.getElementById('loading').style.display = 'flex';
+  showLoadingBar();
   await loading;
   scene.add(player.root);
   scene.add(pip.root);
@@ -2499,6 +2594,7 @@ async function start() {
   await buildRoomInitial();
   renderPups();
 
+  await hideLoadingBar();
   document.getElementById('loading').style.display = 'none';
 
   renderer.setAnimationLoop(() => {
