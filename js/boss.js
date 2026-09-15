@@ -158,7 +158,7 @@ export const SKINS = {
       keep: ['black', 'Material.002', 'Material.001'],  // horns, hooves, belt
     },
     clips: { idle: 'Armature|idle', walk: 'Armature|Walk', run: 'Armature|Walk',
-      attack: 'Armature|Attack', death: 'Armature|Death' },
+      attack: 'Armature|Attack', attack2: 'Armature|Attack Double', death: 'Armature|Death' },
     hide: 0x24381c, glow: 0x2e5220, eyes: 0xcaff8a, burst: 0x8fdc6a,
     maxHp: 24, dmg: 1.5, saveKey: 'sylvaHp', legacyPhases: false,
     cinder: 0xb8ffc8, // her own leaf-light, smothered in thorns
@@ -503,6 +503,12 @@ export class Shadowgrip {
     this.runAction = clip('run') ? this.mixer.clipAction(clip('run')) : null;
     this.attackAction = clip('attack') ? this.mixer.clipAction(clip('attack')) : null;
     if (this.attackAction) this.attackAction.setLoop(THREE.LoopOnce);
+    // THE HARDER SWING. Optional, like skill/hurt/arise/stagger above: only
+    // Sylva's clips map names one (minotaur.glb's own 'Attack Double', a
+    // second swing the wolf body never had) — every other skin's `swipe`
+    // keeps using `attackAction` alone, unaffected by this existing.
+    this.attack2Action = clip('attack2') ? this.mixer.clipAction(clip('attack2')) : null;
+    if (this.attack2Action) this.attack2Action.setLoop(THREE.LoopOnce);
     // HER SPECIAL, HER FLINCH, AND HER GETTING BACK UP. All three optional:
     // a body without them simply never enters the states that use them, so
     // every wolf-bodied boss is untouched.
@@ -863,6 +869,7 @@ export class Shadowgrip {
     this.actionT = Math.max(1.4, sec);
     this.core.scale.y = 1;
     if (this.attackAction) this.attackAction.fadeOut(0.15);
+    if (this.attack2Action) this.attack2Action.fadeOut(0.15);
     this._setAnim('idle');
     this.eyeMat.emissiveIntensity = 0.4;
     audio.play('parry', { volume: 0.6, rate: 0.85 });
@@ -1155,7 +1162,11 @@ export class Shadowgrip {
         this.action = 'swipe';
         this.actionT = 0.55;
         this._swipeHit = false;
-        if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
+        // below half health, a skin that brought a harder swing throws it
+        // instead — same timing/hitbox/damage, a heavier animation is the tell
+        const swingAction = (this.attack2Action && this.coreHp <= this.maxHp / 2)
+          ? this.attack2Action : this.attackAction;
+        if (swingAction) swingAction.reset().fadeIn(0.06).play();
         audio.play('whoosh', { volume: 0.85, rate: 0.65 });
       }
     } else if (A === 'swipe') {
@@ -1496,6 +1507,7 @@ export class Shadowgrip {
     this.openT = Math.max(this.openT, this.actionT + 0.25);
     this.tiredRing.visible = true;
     if (this.attackAction) this.attackAction.fadeOut(0.1);
+    if (this.attack2Action) this.attack2Action.fadeOut(0.1);
     if (this.skillAction) this.skillAction.fadeOut(0.1);
     if (this.staggerAction) this.staggerAction.fadeOut(0.12);
     // GUARDED LIKE EVERY OTHER OPTIONAL CLIP ABOVE — this one was not, and
@@ -1955,9 +1967,26 @@ export class Boreal {
       // wings folded, sprawled on the ice: hit it with everything
       if (this.idleGroundAction && !this._onGroundClip) {
         this._onGroundClip = true;
+        this._groundT = 0;
+        this._stalkedIn = false;
         if (this.flyAction) this.flyAction.fadeOut(0.25);
         if (this.riseAction) this.riseAction.stop();
-        this.idleGroundAction.reset().fadeIn(0.25).play();
+        // SHE HITS THE ICE PROWLING, not already still — Walk_menacing_loop
+        // was loaded (mk('Walk_menacing_loop') above) and never once played
+        // in the whole fight. A crash landing that's still dangerous is
+        // exactly the beat it was built for; she settles into the sprawled
+        // idleGroundAction a beat later, well inside every grounded window
+        // (2.2s minimum vs. this 0.8s prowl).
+        if (this.stalkAction) this.stalkAction.reset().fadeIn(0.2).play();
+        else this.idleGroundAction.reset().fadeIn(0.25).play();
+      }
+      if (this.stalkAction && !this._stalkedIn) {
+        this._groundT += dt;
+        if (this._groundT > 0.8) {
+          this._stalkedIn = true;
+          this.stalkAction.fadeOut(0.3);
+          this.idleGroundAction.reset().fadeIn(0.3).play();
+        }
       }
       this.core.position.y += (0.2 - this.core.position.y) * Math.min(1, dt * 6);
       this.tiredRing.position.x = this.x + this.off.x;
@@ -1974,6 +2003,7 @@ export class Boreal {
         // take over underneath as it finishes. Bodies without that clip fall
         // straight back to the loop, which is what shipped before.
         if (this.idleGroundAction) this.idleGroundAction.fadeOut(0.2);
+        if (this.stalkAction) this.stalkAction.fadeOut(0.2);
         if (this.riseAction) this.riseAction.reset().fadeIn(0.1).play();
         if (this.flyAction) this.flyAction.reset().fadeIn(this.riseAction ? 0.6 : 0.2).play();
         audio.play('whoosh', { volume: 0.7, rate: 1.2 });
