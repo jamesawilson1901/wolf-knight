@@ -1742,6 +1742,9 @@ export async function buildLk1(scene) {
 
   world.markers.cinderImpSpots = [{ x: 6.5, z: 3.5 }];
   world.markers.emberWretchSpots = [{ x: -5, z: -3 }];
+  // v3.167: Ember Deep's own cellar, its own vermin — MONSTER_ROSTER's new
+  // Rat body (js/enemies.js), the first room to use it.
+  world.markers.cellarRatSpots = [{ x: -6.5, z: 5.5 }];
   world.markers.breakables = [
     { x: 7.5, z: -3.5, kind: 'crate' }, { x: -6.5, z: -3, kind: 'barrel' },
     { x: -1, z: 5.5, kind: 'jar' },

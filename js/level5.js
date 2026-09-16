@@ -35,6 +35,7 @@ import { canWade } from './water.js';
 import { iceGate, boulderGate } from './gates.js';
 import { spawnLostWolf } from './pip.js';
 import { COAT } from './restoration.js';
+import { installFishHost } from './mg-fish.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -608,6 +609,12 @@ export async function buildS1a(scene) {
   aftermath(world, -12, -8, 2.2, D, 5);
   wayshrine(world, 12.5, 3.5, -0.6, D);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  // FISHING (v3.167, design/WIDER-WORLD.md §3.4) — the storm settler's own
+  // trade, a rod cast off the shore north of the ruined home, clear of it
+  // and of coldHearth. installFishHost checks its own water is real before
+  // adding anything, so a future edit that moves this patch silently drops
+  // the ring rather than leaving it standing over dry ground.
+  installFishHost(world, -6, 10);
   return finish(world, spec, D);
 }
 

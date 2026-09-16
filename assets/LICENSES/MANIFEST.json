@@ -421,6 +421,34 @@
     "assets/chars/monsters/cave-biped.glb"
    ],
    "note": "Nine separate 12MB exports (one per animation, each carrying a full copy of the mesh and a 3.9MB texture, 106MB in total) reduced to one 850KB file with nine clips. Mesh simplified 203,207 -> 4,470 triangles with @gltf-transform/cli; clips merged by tools/merge-meshy-clips.py; James's own texture KEPT, resized 2048 -> 512 and re-encoded as JPEG (3.9MB -> 101KB). 512 rather than 256 because the UV atlas is hundreds of small islands and 256 visibly bleeds colour across their seams. 24-joint humanoid rig with conventional bone names. Verified: all nine clips drive all 24 bones, no orphan tracks."
+  },
+  {
+   "pack": "Quaternius — Animated Enemies",
+   "licence": null,
+   "states": "UNVERIFIED — dad supplied the pack directly as Animated_Enemies-glb.zip (loose .glb files only, no licence file inside the download itself). Same clip-naming convention (`XArmature|X_Idle`/`X_Attack`/`X_Death`) as the already-shipping Slime/Bat/Dragon family above, which is Quaternius's own house style — same publisher, same distribution shape.",
+   "source": "https://quaternius.com",
+   "covers": [
+    "assets/chars/monsters/Frog.glb",
+    "assets/chars/monsters/Rat.glb",
+    "assets/chars/monsters/Snake.glb",
+    "assets/chars/monsters/Spider.glb"
+   ],
+   "note": "v3.167: replaces some of MONSTER_ROSTER's own tint-only reskins (js/enemies.js) with real distinct bodies — the same four base models (Dragon/Bat/Slime/wasp.glb) had been carrying nine named enemies between them. This build environment's network policy also refuses quaternius.com, so the pack's own licence page could not be fetched here either. FIX: download the pack and drop its License.txt in as quaternius-animated-enemies.txt.",
+   "accepted": "private-family-use 2026-09-16",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
+  },
+  {
+   "pack": "Quaternius — Animated Fish Bundle (rod)",
+   "licence": null,
+   "states": "UNVERIFIED — dad supplied the pack directly as Animated_Fish_Bundle-glb.zip (loose .glb files, no licence file inside the download itself). A DIFFERENT pack from the \"Fish Pack (Animated)\" entry above (that one supplied the seven catch species; this one is where the rod and bait came from) — same distribution shape, presumed same publisher.",
+   "source": "https://quaternius.com",
+   "covers": [
+    "assets/env/fishing-rod.glb",
+    "assets/env/worm.glb"
+   ],
+   "note": "design/WIDER-WORLD.md §3.4's fishing minigame (js/mg-fish.js, v3.167) — the rod planted at the water's edge and the bait, neither of which any prior pack in this repo supplied. Only two files taken from a much larger bundle (dozens of named fish species, a dock, several lures); the species pool stays the seven already-vendored, already-recorded fish above rather than duplicating a second, differently-licensed set of the same kind of asset.",
+   "accepted": "private-family-use 2026-09-16",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified."
   }
  ],
  "distribution": {

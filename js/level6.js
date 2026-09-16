@@ -27,6 +27,7 @@ import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { waterZone, buildWaterField, quenchable, canWade } from './water.js';
 import { registerCuttable } from './gates.js';
+import { installFishHost } from './mg-fish.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -625,6 +626,10 @@ export async function buildD1a(scene) {
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  // FISHING (v3.167, design/WIDER-WORLD.md §3.4) — the vale settler's own
+  // trade, off the lagoon's own north bank, clear of the wight and both
+  // named spots. installFishHost checks its own water is real first.
+  installFishHost(world, -8, 9);
   return finish(world, spec, D);
 }
 

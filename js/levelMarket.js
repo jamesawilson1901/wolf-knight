@@ -42,6 +42,7 @@ import { flattenStatic } from './batch.js';
 import { iceGate } from './gates.js';
 import { waterZone } from './water.js';
 import { registerDistrictTints } from './districts.js';
+import { installFishHost } from './mg-fish.js';
 
 export const REGION = 'market';
 
@@ -279,6 +280,11 @@ export async function buildQ1(scene) {
   rubbleField(world, -12, -8, 2.6, D, 11);
   rubbleField(world, 6.0, 11.5, 2.2, D, 9);
   scatter(world, halfW, halfD, D, 91, 14, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLA'] });
+  // FISHING (v3.167, design/WIDER-WORLD.md §3.4): "a rod on a rock at q1
+  // (region 4, the earliest water) ungated so children in region 4 see it
+  // first" — the near bank of the first channel, south of the dense market
+  // clutter. installFishHost checks its own water is real first.
+  installFishHost(world, 3, -5);
   return finish(world, spec, D);
 }
 

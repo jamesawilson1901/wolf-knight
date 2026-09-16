@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.166.0';
+const CACHE_NAME = 'wolfknight-v3.167.0';
 
 const PRECACHE = [
   './',
@@ -46,6 +46,7 @@ const PRECACHE = [
   './js/loot.js',
   './js/menus.js',
   './js/mg-fetch.js',
+  './js/mg-fish.js',
   './js/mg-quiz.js',
   './js/minigame.js',
   './js/minigames.js',
@@ -402,7 +403,11 @@ const PRECACHE = [
   './assets/chars/mage.glb',
   './assets/chars/monsters/Bat.glb',
   './assets/chars/monsters/Dragon.glb',
+  './assets/chars/monsters/Frog.glb',
+  './assets/chars/monsters/Rat.glb',
   './assets/chars/monsters/Slime.glb',
+  './assets/chars/monsters/Snake.glb',
+  './assets/chars/monsters/Spider.glb',
   './assets/chars/monsters/cave-biped.glb',
   './assets/chars/monsters/dodo.glb',
   './assets/chars/monsters/minotaur.glb',
@@ -456,6 +461,7 @@ const PRECACHE = [
   './assets/env/dungeon/WallCover_Modular.glb',
   './assets/env/dungeon/Wall_Modular.glb',
   './assets/env/dungeon/Woodfire.glb',
+  './assets/env/fishing-rod.glb',
   './assets/env/floor-tile.glb',
   './assets/env/flower-a.glb',
   './assets/env/flower-b.glb',

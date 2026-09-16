@@ -1024,20 +1024,46 @@ export class Hound extends Enemy {
 // ---------------------------------------------------------------------------
 
 export class Slime extends Enemy {
-  constructor(world, x, z, gltf) {
+  constructor(world, x, z, gltf, opts = {}) {
     super(world, x, z, { hp: 2, radius: 0.4 });
     this.puffTint = 0x7fc46a;
     this.aggroRange = 6.5;
     this.speed = 1.2; // playtest bump
     this.splits = true;   // cave slimes burst into two minis when smashed
     this._gltf = gltf;
+    // A SKINNED MESH'S GEOMETRY CACHES ITS BOUNDING BOX ONCE, GLOBALLY, ON
+    // WHATEVER OBJECT MEASURES IT FIRST. SkeletonUtils.clone() shares the
+    // source BufferGeometry rather than copying it (the normal, efficient
+    // behaviour for cloning many instances of one body) — so if a CLONE's
+    // own Box3 runs first, before its own bones have ever had
+    // updateWorldMatrix called on them, geometry.boundingBox gets computed
+    // and cached from a skeleton still sitting at its all-identity pre-pose
+    // state, and every clone after it — this one included — inherits that
+    // one wrong cached box forever. Measured live: Rat.glb's fitHeight came
+    // out 680x too tall this way. Reading the box on gltf.scene ITSELF
+    // first — the original the loader already posed correctly — caches the
+    // right one before any clone gets the chance to cache the wrong one.
+    if (opts.fitHeight) new THREE.Box3().setFromObject(gltf.scene);
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    model.scale.setScalar(0.26);
+    // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN (Dragonling's own law): a
+    // body that is not Slime.glb was modelled in different units, and 0.26
+    // is Slime.glb's own constant, tuned for its own mesh.
+    if (opts.fitHeight) {
+      model.updateWorldMatrix(true, true);
+      const bb = new THREE.Box3().setFromObject(model);
+      const h = Math.max(0.01, bb.max.y - bb.min.y);
+      model.scale.setScalar(opts.fitHeight / h);
+    } else {
+      model.scale.setScalar(opts.scale ?? 0.26);
+    }
     this.model = model;
     this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.actions = {};
-    for (const [k, n] of Object.entries({
+    // A BODY BRINGS ITS OWN CLIP NAMES (Dragonling's own law, js/enemies.js —
+    // a clip lookup that finds nothing is silent). Slime.glb's own names are
+    // still the default so every existing MONSTER_ROSTER hopper is untouched.
+    for (const [k, n] of Object.entries(opts.clips || {
       idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack',
     })) {
       const clip = gltf.animations.find((c) => c.name === n);
@@ -3308,7 +3334,7 @@ export class SlowStomper extends SkeletonBase {
 // and contact damage for free.
 export class Hopper extends Slime {
   constructor(world, x, z, gltf, opts = {}) {
-    super(world, x, z, gltf);
+    super(world, x, z, gltf, opts);
     if (opts.weakness !== undefined) this.weakness = opts.weakness;
     if (opts.resist !== undefined) this.resist = opts.resist;
     if (opts.hp !== undefined) {
@@ -3807,10 +3833,22 @@ const MONSTER_ROSTER = {
     tint: { Body: 0xff6a1a, Eyes: 0x2a1410 } },
   'rime-slime': { cls: Hopper, base: 'slime', hp: 3,
     tint: { Body: 0x8fd0f0, Eyes: 0x1a2630 } },
-  'gloom-slime': { cls: Hopper, base: 'slime', hp: 4, weakness: 'moon',
-    tint: { Body: 0x5b4770, Eyes: 0xb45cff } },
-  'toxin-slime': { cls: Hopper, base: 'slime', hp: 2,
-    tint: { Body: 0x8fd63c, Eyes: 0x1c2419 } },
+  // v3.167 (Animated Enemies pack, replacing tint-only reskins with real
+  // bodies — 9 roster ids had only 4 real bodies between them). gloom-slime
+  // and toxin-slime keep their own id, hp and weakness untouched — every
+  // room that already spawns them via markers gets the new body for free,
+  // no room file touched — only the base model and its own clip vocabulary
+  // change. splits:false: a spider or a frog bursting into two minis on
+  // death is Slime's own flavour, not theirs.
+  'gloom-slime': { cls: Hopper, base: 'spider', hp: 4, weakness: 'moon', splits: false,
+    fitHeight: 0.6, clips: { idle: 'SpiderArmature|Spider_Idle', attack: 'SpiderArmature|Spider_Attack' } },
+  'toxin-slime': { cls: Hopper, base: 'frog', hp: 2, splits: false,
+    fitHeight: 0.5, clips: { idle: 'FrogArmature|Frog_Idle', attack: 'FrogArmature|Frog_Attack' } },
+  // NEW: a fast, low vermin swarm for cellars and ruins — nothing in the
+  // roster stood in for "small and quick" before this; every existing hopper
+  // reads as a lumbering blob or a leggy ambusher.
+  'cellar-rat': { cls: Hopper, base: 'rat', hp: 2, splits: false, fitHeight: 0.42,
+    clips: { idle: 'RatArmature|Rat_Idle', attack: 'RatArmature|Rat_Attack' } },
 };
 
 function makeMonsterTint(map) {
@@ -4031,11 +4069,17 @@ export async function spawnEnemies(world) {
     if (monsterIds.length) {
       const bases = [...new Set(monsterIds.map((id) => MONSTER_ROSTER[id].base))];
       const loaded = {};
+      // v3.167: the Animated Enemies family (Frog/Rat/Snake/Spider) joins
+      // Slime/Bat/Dragon/wasp here — real distinct bodies for MONSTER_ROSTER
+      // ids that used to share one of the original four with only a tint.
+      const BASE_PATH = {
+        dragon: './assets/chars/monsters/Dragon.glb', wasp: './assets/chars/monsters/wasp.glb',
+        bat: './assets/chars/monsters/Bat.glb', slime: './assets/chars/monsters/Slime.glb',
+        frog: './assets/chars/monsters/Frog.glb', rat: './assets/chars/monsters/Rat.glb',
+        snake: './assets/chars/monsters/Snake.glb', spider: './assets/chars/monsters/Spider.glb',
+      };
       await Promise.all(bases.map(async (b) => {
-        const path = b === 'dragon' ? './assets/chars/monsters/Dragon.glb'
-          : b === 'wasp' ? './assets/chars/monsters/wasp.glb'
-          : b === 'bat' ? './assets/chars/monsters/Bat.glb' : './assets/chars/monsters/Slime.glb';
-        loaded[b] = await loadGLB(path);
+        loaded[b] = await loadGLB(BASE_PATH[b] || BASE_PATH.slime);
       }));
       for (const id of monsterIds) {
         const cfg = MONSTER_ROSTER[id];
@@ -4049,7 +4093,8 @@ export async function spawnEnemies(world) {
               tint: cfg.tint ? makeMonsterTint(cfg.tint) : undefined,
             });
           } else if (cfg.cls === Hopper) {
-            e = new Hopper(world, s.x, s.z, gltf, { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist });
+            e = new Hopper(world, s.x, s.z, gltf, { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist,
+              splits: cfg.splits, scale: cfg.scale, fitHeight: cfg.fitHeight, clips: cfg.clips });
             if (cfg.tint) {
               e.model.traverse((n) => {
                 if (!n.isMesh) return;
