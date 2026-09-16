@@ -4,6 +4,18 @@
 // grass begins to return, flowers. lava cools to rock. water returns, winds
 // calm. animals replace enemies harmlessly grazing. a real terranigma moment."
 //
+// AMENDMENT (v3.170, the crafting system's own §0): "animals replace enemies"
+// is walked back on dad's own later instruction — crafting needs enemies
+// farmable everywhere, in every region, whether it has healed or not, so the
+// heal can no longer take the fight out of a room. Every OTHER part of the
+// original ask stands untouched: the ground, the light, the lava, the wind,
+// the blooms, the water. Section 3 below asserts the fight SURVIVES the heal
+// now instead of vanishing from it; the old "a pack grazes here" section is
+// gone, not adapted — that pack only ever existed to replace the shadows
+// this amendment now keeps. The pup pen's own herd (js/restoration.js,
+// design/WIDER-WORLD.md §1.4 stage 2) shares graze()/updateHerd() machinery
+// but is a wholly separate feature and is untouched by this change.
+//
 // The thing this suite exists to stop is the thing it was written to fix:
 // js/main.js has set `WS.set(<region>, 'restored')` on every boss defeat since
 // the day it was written, and until 2026-09-08 NOT ONE ROOM IN ANY REBUILT
@@ -143,8 +155,8 @@ for (const s of SAMPLE) {
 }
 for (const s of SAMPLE) {
   const b = before[s.room], a = after[s.room];
-  check(`${s.room}: the shadows are gone and a pack grazes where they stood`,
-    b.foes > 0 && a.foes === 0 && a.grazers > 0, { before: b.foes, after: [a.foes, a.grazers] });
+  check(`${s.room}: the fight is untouched by the heal — the same foes remain`,
+    b.foes > 0 && a.foes === b.foes && a.grazers === 0, { before: b.foes, after: [a.foes, a.grazers] });
   check(`${s.room}: flowers and grass come up`, a.blooms > 0, { blooms: a.blooms });
   check(`${s.room}: it still fits in the draw-call budget`, a.calls <= 125,
     { before: b.calls, after: a.calls });
@@ -217,39 +229,7 @@ for (const s of SAMPLE) {
 }
 
 // ---------------------------------------------------------------------------
-console.log('\n── 7 · the pack is harmless, and cannot wedge anybody ─');
-await wk.jump('t2a', ALL);
-const pack = await page.evaluate(() => {
-  const w = window.__game.world;
-  const g = w.grazers || [];
-  // No colliders (Biscuit's rule): a healed room must not be a room a child
-  // can be shoved around in, and a wandering body with a collider is a
-  // wandering obstacle.
-  const solid = g.filter((a) => w.circleColliders.some((c) =>
-    Math.hypot(c.x - a.model.position.x, c.z - a.model.position.z) < 0.4));
-  return { n: g.length, solid: solid.length, ticks: typeof w.updateGrazers,
-    foes: (w.enemies || []).filter((e) => !e.scenery).length,
-    drawn: g.every((a) => !!a.model.parent) };
-});
-check('they are drawn, they are ticked, and nothing about them is solid',
-  pack.n > 0 && pack.solid === 0 && pack.ticks === 'function' && pack.drawn, pack);
-check('there is nothing left in the room that fights back', pack.foes === 0, pack);
-// they must actually MOVE — a herd of statues is a prop, not an animal
-const moved = await page.evaluate(() => {
-  const g = window.__game.world.grazers;
-  return g.map((a) => ({ x: a.model.position.x, z: a.model.position.z }));
-});
-await page.waitForTimeout(9000);
-const moved2 = await page.evaluate(() => {
-  const g = window.__game.world.grazers;
-  return g.map((a) => ({ x: a.model.position.x, z: a.model.position.z }));
-});
-check('...and at least one of them has wandered a pace in nine seconds',
-  moved.some((p, i) => Math.hypot(p.x - moved2[i].x, p.z - moved2[i].z) > 0.05),
-  moved.map((p, i) => +Math.hypot(p.x - moved2[i].x, p.z - moved2[i].z).toFixed(2)));
-
-// ---------------------------------------------------------------------------
-console.log('\n── 8 · the ground substitution really reaches the room ───');
+console.log('\n── 7 · the ground substitution really reaches the room ───');
 // §2 proves the FUNCTION. This proves the WIRING: tgl carries a mud patch at
 // (-8, -9), and levelkit's shell derives world.waterPatches from the patch
 // list AFTER the healing pass — so if the substitution is plumbed in, that
@@ -264,7 +244,7 @@ check('the Glade\u2019s mud flat is water once the Woods are free',
   wetWoods === dryWoods + 1, { before: dryWoods, after: wetWoods });
 
 // ---------------------------------------------------------------------------
-console.log('\n── 9 · the moment is witnessed, not found later ──────');
+console.log('\n── 8 · the moment is witnessed, not found later ──────');
 // Ember and Stoneroot grow their green around the player's feet the instant
 // the fight ends. Five regions had a background-colour change on the next
 // rebuild and nothing else — five of the seven biggest moments in the game,
