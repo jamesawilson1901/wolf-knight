@@ -649,6 +649,7 @@ class Enemy {
       // make experimentation LOUD: gold flare + a SUPER! callout so kids
       // instantly see "this element is the one" (Pip teaches it once too)
       juice.burst(this.x, 0.9, this.z, 0xffe14a, 8);
+      juice.flare(this.x, 0.9, this.z, 0xffe14a);
       if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'SUPER!');
       bumpCounter('weakHits');
     }
