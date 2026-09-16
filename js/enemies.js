@@ -2691,9 +2691,17 @@ export class RangedLobber extends SkeletonBase {
 // straight fast bolt, and it holds ground rather than kiting (a caster, not
 // a skirmisher). The speed is entirely in the CLOCK, never the windup floor.
 export class RangedBolter extends SkeletonBase {
+  // `opts.hpGet/hpSet/onDefeated` (v3.168, design/WIDER-WORLD.md §2.6/§2.3
+  // vale row): the Bone Sage is a MINI_ROSTER guardian on this class rather
+  // than BoneWarden — the region's own guardian archetype is a caster, not a
+  // duelist — so it needs the same "wound persists across deaths, banked
+  // outside state.flags" mechanic BoneWarden already carries, generalised
+  // here rather than copied into a second class. Every field defaults to a
+  // no-op, so `stormcaller` (the regular mook already on this class) is
+  // unchanged byte-for-byte.
   constructor(world, x, z, gltf, anims, opts = {}) {
     super(world, x, z, {
-      hp: opts.hp ?? 4, radius: 0.34, scale: 0.48, gltf, anims,
+      hp: opts.hp ?? 4, radius: 0.34, scale: opts.scale ?? 0.48, gltf, anims,
       clips: { idle: 'Idle_A', walk: 'Walking_A', cast: 'Throw' },
     });
     applyRosterWeak(this, opts);
@@ -2703,12 +2711,28 @@ export class RangedBolter extends SkeletonBase {
     this._shotT = 0.9;
     this._windup = 0;
     this._bolts = [];
+    this._hpGet = opts.hpGet || (() => 0);
+    this._hpSet = opts.hpSet || (() => {});
+    this._onDefeated = opts.onDefeated || (() => {});
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
     // A CASTER SHOULD BE HOLDING SOMETHING TO CAST WITH. Same reasoning as the
     // archer's bow above, and the opposite silhouette on purpose: a short wand
     // held high reads as "this one throws magic", a long bow as "this one
     // shoots". Two ranged classes that a child could not tell apart now differ
     // at a glance, before either has fired. wand_A, same KayKit pack.
     if (opts.wandGltf) this.mount('r', opts.wandGltf, 0.9);
+  }
+
+  die() {
+    this._hpSet(0);   // the duel is over — no stale wound to restore
+    this._onDefeated(this);
+    super.die();
+  }
+
+  takeDamage(n, element, kind) {
+    super.takeDamage(n, element, kind);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
   _fire(player) {
@@ -3794,6 +3818,24 @@ const MINI_ROSTER = {
     region: 'storm', key: 'ash_warden',
     tint: (m) => { if (m.color) m.color.setHex(0x5a5450); }, // ash over old iron
   },
+  // v3.168, design/WIDER-WORLD.md §2.3 vale row: the Sunken Vale's own
+  // guardian, and the first NOT on BoneWarden — a caster, not a duelist,
+  // which the region's own drowned-soldier roster (visored-wight, quiverbones
+  // etc., js/level6.js buildD1a) never had either. `RangedBolter` is already
+  // shipping as the regular mook `stormcaller`; `Skeleton_Mage.glb` is the
+  // one KayKit skeleton body this game has never rendered. weakness fire
+  // matches the Vale's own mook weakness (boss.js's Meri entry).
+  bone_sage: {
+    cls: RangedBolter, body: 'Skeleton_Mage.glb', scale: 0.8, hp: 14,
+    weakness: 'fire', region: 'vale', key: 'bone_sage',
+    tint: (m) => {
+      if (m.name === 'skeleton' && m.color) m.color.setHex(0x4a6b6a); // waterlogged bone
+      if (m.name === 'Glow') {
+        if (m.color) m.color.setHex(0x5ce8d8);
+        if (m.emissive) { m.emissive.setHex(0x5ce8d8); m.emissiveIntensity = 1.6; }
+      }
+    },
+  },
 };
 
 const MONSTER_ROSTER = {
@@ -3998,21 +4040,15 @@ export async function spawnEnemies(world) {
     // the same idiom — but keyed to any MINI_ROSTER id, not a singleton.
     if (mk.miniSpot) {
       const cfg = MINI_ROSTER[mk.miniSpot.id];
-      const [miniBodyGltf, miniAxeGltf, miniShieldGltf] = await Promise.all([
-        loadGLB(`./assets/generated/enemies/${cfg.body}`),
-        cfg.mounts && cfg.mounts.r === 'axe' ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
-        cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
-      ]);
       const { region, key } = cfg;
       // `WS.get` answers only true/false (its job is milestone checks); a
       // wound is a number, so read the raw stored value straight off
       // state.flags.world the way WS.get itself does internally, bypassing
       // its boolean coercion. `WS.set` is still the writer — it stores
       // whatever it is given (design/WIDER-WORLD.md §2.6: "WS.set takes
-      // any value").
+      // any value"). Shared by every guardian class below.
       const hpKey = 'mini_' + key + '_hp';
-      const mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
-        hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint,
+      const bankedOpts = {
         hpGet: () => (state.flags.world && state.flags.world[region] && state.flags.world[region][hpKey]) || 0,
         hpSet: (n) => WS.set(region, hpKey, n),
         onDefeated: () => {
@@ -4025,7 +4061,36 @@ export async function spawnEnemies(world) {
           if (WS.complete(region, 'dungeon')) bumpCounter('dungeonsCleared');
           if (world.openOnward) world.openOnward();
         },
-      });
+      };
+      let mini;
+      if (cfg.cls === RangedBolter) {
+        // v3.168: the Bone Sage — the first guardian NOT on BoneWarden. A
+        // caster archetype, on Skeleton_Mage.glb (`assets/chars/skeletons`,
+        // never used before this) rather than a generated body, so it does
+        // not share BoneWarden's `assets/generated/enemies/` path.
+        const [miniBodyGltf, wandGltf] = await Promise.all([
+          loadGLB(`./assets/chars/skeletons/${cfg.body}`),
+          loadGLB('./assets/gear/wand_A.gltf'),
+        ]);
+        mini = new RangedBolter(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, wandGltf, ...bankedOpts,
+        });
+        if (cfg.tint) {
+          mini.model.traverse((n) => {
+            if (!n.isMesh) return;
+            for (const m of (Array.isArray(n.material) ? n.material : [n.material])) cfg.tint(m);
+          });
+        }
+      } else {
+        const [miniBodyGltf, miniAxeGltf, miniShieldGltf] = await Promise.all([
+          loadGLB(`./assets/generated/enemies/${cfg.body}`),
+          cfg.mounts && cfg.mounts.r === 'axe' ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
+          cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
+        ]);
+        mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint, ...bankedOpts,
+        });
+      }
       world.miniBoss = mini;
       world.enemies.push(mini);
     }

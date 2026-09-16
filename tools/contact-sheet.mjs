@@ -112,7 +112,11 @@ const SECTIONS = [
   ], 'storm'],
   ['The Sunken Vale — four shores that drowned', 'Level 6 · a lagoon that becomes a hub; Meri under it all.', [
     ['d1a', 'THE SHALLOWS'], ['d1b', 'deeper in'], ['d1p', 'optional'],
-    ['dg1', 'rest'], ['d2a', 'THE REEDS'], ['d2b', 'deeper'], ['d2p', 'optional'],
+    ['dg1', 'rest'],
+    ['d1c', "THE CRYPT'S MOUTH — the Bone Crypt, room 1: no fight, a lost wolf"],
+    ['d1d', 'THE BONE HALL — the fight: drowned soldiers x2, and the Bone Sage'],
+    ['d1e', 'THE DROWNED ALTAR — gold: heart piece + shards + Halberd'],
+    ['d2a', 'THE REEDS'], ['d2b', 'deeper'], ['d2p', 'optional'],
     ['dsh', 'the shrine (tide detour)'], ['dg2', 'rest'],
     ['d3a', 'THE DROWNED TOWN'], ['d3b', 'deeper'], ['d3p', 'optional'],
     ['dtp', 'the tide pools'], ['dg3', 'rest'],

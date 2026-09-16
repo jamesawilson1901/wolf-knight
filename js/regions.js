@@ -196,7 +196,7 @@ export const REGIONS = {
     name: 'Sunken Vale', built: true, spirit: 'Meri',
     grants: 'tide_wolf', grantAt: "dsh (Meri's Spring, the reed pocket)",
     threshold: 'scr north — down off the cliffs into the drowned valley, once Aria is calmed',
-    rooms: ['d1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2',
+    rooms: ['d1a', 'd1b', 'd1p', 'dg1', 'd1c', 'd1d', 'd1e', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2',
       'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp'],
     beats: {
       approach: 'scr → d1a, out of the storm and down into still, deep water',

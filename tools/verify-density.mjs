@@ -182,7 +182,10 @@ const ROOMS = [
   // holding it to the island bar would mean filling the one space in the game
   // whose whole job is to be empty and uncrossable.
   { id: 'd1a', kind: 'island' }, { id: 'd1b', kind: 'island' }, { id: 'd1p', kind: 'pocket' },
-  { id: 'dg1', kind: 'choke' },  { id: 'd2a', kind: 'island' }, { id: 'd2b', kind: 'island' },
+  { id: 'dg1', kind: 'choke' },
+  // The Bone Crypt (v3.168) — the Sunken Vale's own pocket dungeon, off d1a.
+  { id: 'd1c', kind: 'pocket' }, { id: 'd1d', kind: 'island' }, { id: 'd1e', kind: 'pocket' },
+  { id: 'd2a', kind: 'island' }, { id: 'd2b', kind: 'island' },
   { id: 'd2p', kind: 'pocket' }, { id: 'dsh', kind: 'pocket' }, { id: 'dg2', kind: 'choke' },
   { id: 'd3a', kind: 'island' }, { id: 'd3b', kind: 'island' }, { id: 'd3p', kind: 'pocket' },
   { id: 'dtp', kind: 'puzzle' }, { id: 'dg3', kind: 'choke' },  { id: 'd4a', kind: 'island' },
