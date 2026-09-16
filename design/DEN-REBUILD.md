@@ -202,9 +202,8 @@ is still owed before this merges to `main`.
   philosophy) and are explicitly open to retuning once real play against
   `GAME-CONTRACT.md`'s shard economy says whether 20 minutes/cap 3 feels
   right for a five-year-old's actual play sessions.
-- **`ingot` has no recipe yet.** It exists as a material the Forge can pay
-  out; a crafting recipe that actually spends it (an "ultimate" upgrade, or
-  a new tier) is future `js/crafting.js` work, not this slice's.
+- ~~**`ingot` has no recipe yet.**~~ Closed in `design/CRAFTING.md` §4
+  (v3.178) — added as a cost line to all three existing ultimate recipes.
 - **Visual tool-swap and a live restore moment**, the same open item
   mining/woodcutting already carries forward (`design/MINING.md`'s own
   "still to design"): seeing something happen in-hand or a bigger flourish

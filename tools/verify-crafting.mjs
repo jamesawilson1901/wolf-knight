@@ -96,7 +96,7 @@ const gearCraft = await wk.page.evaluate(async () => {
   const g = window.__game;
   g.state.inventory.gear = g.state.inventory.gear.filter((x) => x !== 'shield_ultimate');
   g.state.inventory.crafted = ['a', 'b']; // tier 2 open
-  g.state.inventory.materials = { shard_earth: 3, shard_storm: 3, crystal: 2 };
+  g.state.inventory.materials = { shard_earth: 3, shard_storm: 3, crystal: 2, ingot: 2 };
   const ok = c.craftItem('shield_ultimate');
   return { ok, owns: i.ownsGear('shield_ultimate') };
 });
@@ -107,7 +107,7 @@ const armourCraft = await wk.page.evaluate(async () => {
   const g = window.__game;
   g.state.inventory.armours = g.state.inventory.armours.filter((x) => x !== 'alpha_mantle');
   g.state.inventory.crafted = ['a', 'b', 'c', 'd']; // tier 3 open
-  g.state.inventory.materials = { shard_verdant: 2, shard_tide: 2, wisp: 4, crystal: 3 };
+  g.state.inventory.materials = { shard_verdant: 2, shard_tide: 2, wisp: 4, crystal: 3, ingot: 2 };
   const ok = c.craftItem('armour_ultimate');
   return { ok, owns: g.state.inventory.armours.includes('alpha_mantle') };
 });
@@ -120,7 +120,7 @@ const hiddenGate = await wk.page.evaluate(async () => {
   const g = window.__game;
   g.state.inventory.recipesKnown = [];
   g.state.inventory.crafted = ['a', 'b'];
-  g.state.inventory.materials = { shard_fire: 3, shard_frost: 3, shard_moon: 3, crystal: 2 };
+  g.state.inventory.materials = { shard_fire: 3, shard_frost: 3, shard_moon: 3, crystal: 2, ingot: 3 };
   const before = c.canCraft('sword_ultimate');
   c.unlockRecipe('sword_ultimate');
   const after = c.canCraft('sword_ultimate');

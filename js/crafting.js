@@ -33,7 +33,14 @@ export const RECIPES = {
   },
   shield_ultimate: {
     name: "Alpha's Aegis", icon: '🛡️', tier: 2,
-    cost: { shard_earth: 3, shard_storm: 3, crystal: 2 },
+    // `ingot` (design/DEN-REBUILD.md's Forge payout) added here and to the
+    // other two ultimates below — the one gap both design docs flagged: the
+    // Forge could be built and could pay out, but nothing ever spent what it
+    // made. Forged steel belongs in the game's best-in-class GEAR
+    // specifically (not the potions above, which are brewed, not forged),
+    // so all three ultimate recipes take a share rather than inventing a
+    // fourth "ingot-only" item that would duplicate what these already are.
+    cost: { shard_earth: 3, shard_storm: 3, crystal: 2, ingot: 2 },
     gear: 'shield_ultimate', kind: 'shield',
     blurb: 'The pack stands behind it.',
   },
@@ -43,13 +50,13 @@ export const RECIPES = {
   // not the thing the tab always showed them.
   sword_ultimate: {
     name: 'Wolf Fang', icon: '🗡️', tier: 2, hidden: true,
-    cost: { shard_fire: 3, shard_frost: 3, shard_moon: 3, crystal: 2 },
+    cost: { shard_fire: 3, shard_frost: 3, shard_moon: 3, crystal: 2, ingot: 3 },
     gear: 'sword_ultimate', kind: 'weapon',
     blurb: 'Every element the pack ever carried, in one blade.',
   },
   armour_ultimate: {
     name: "Alpha's Mantle", icon: '🐺', tier: 3,
-    cost: { shard_verdant: 2, shard_tide: 2, wisp: 4, crystal: 3 },
+    cost: { shard_verdant: 2, shard_tide: 2, wisp: 4, crystal: 3, ingot: 2 },
     gear: 'alpha_mantle', kind: 'armour',
     blurb: 'Worn by the wolf who came home.',
   },

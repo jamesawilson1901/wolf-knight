@@ -205,3 +205,19 @@ one-line tutorial. Next in dad's own ordering: the FX pass (Kenney
 Particle Pack), then mining & woodcutting (`design/DEN-REBUILD.md`'s own
 resource system depends on this), then the Den rebuild, then the
 dragon-egg side quest.
+
+## §4 — closing the ingot gap (v3.178, SHIPPED)
+
+The Den Rebuild (`design/DEN-REBUILD.md`, v3.176) gave the Forge a real
+payout — `ingot`, a new `js/materials.js` id — but no recipe ever spent it:
+a produced-and-wasted resource, flagged as an explicit loose end in that
+doc's own "still to design" section. Closed by adding `ingot` as an
+ADDITIONAL cost line to all three existing ultimate recipes
+(`shield_ultimate: +2`, `sword_ultimate: +3`, `armour_ultimate: +2`) rather
+than inventing a fourth "ingot-only" item — forged steel belongs with this
+game's best-in-class forged GEAR specifically (not the two potions above,
+which are brewed, not forged), and the three ultimates were already the
+natural home for it. `tools/verify-crafting.mjs`'s existing gear-craft
+checks were updated to grant `ingot` alongside their other materials;
+`verify-gear.mjs`'s balance/obtainability checks (unaffected — they don't
+read recipe costs) and the full `--quick` gate stayed green throughout.
