@@ -153,7 +153,7 @@ export const REGIONS = {
     name: 'Stormreach Cliffs', built: true, spirit: 'Aria',
     grants: 'storm_wolf', grantAt: 'ssh (Aria\'s Spark, mid-climb)',
     threshold: 'f5 north — the cliff path down off the summit, once Boreal is calmed',
-    rooms: ['s1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2',
+    rooms: ['s1a', 's1b', 's1p', 'sc1', 's1c', 's1d', 's1e', 's2a', 's2b', 's2p', 'ssh', 'sc2',
       's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'ssA'],
     beats: {
       approach: 'f5 → s1a, down off the calmed summit onto the sea cliffs',

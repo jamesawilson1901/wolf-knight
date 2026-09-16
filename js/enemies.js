@@ -3754,6 +3754,20 @@ const MINI_ROSTER = {
     mounts: { r: 'axe', l: 'shield' }, weakness: 'fire', region: 'frost', key: 'rime_warden',
     tint: (m) => { if (m.color) m.color.setHex(0xbcd8ea); }, // rime over old bone
   },
+  // design/WIDER-WORLD.md §2.3: Stormreach's own guardian, off s1a's flooded
+  // sea-cave gate (Tide Wolf, retro-granted from the Sunken Vale — a return
+  // trip like every other dungeon here). `molten-marauder.glb` already lives
+  // in this game as a regular KAYKIT_ROSTER mook, so the body/rig pairing is
+  // proven the same way rime_warden's was. `resist: 'fire'` on a body built
+  // for a fire-elemental mook is the joke the name is making — the region's
+  // own weakness (earth, boss.js's aria entry: "matches Stormreach's own
+  // mook weakness") is what actually opens her.
+  ash_warden: {
+    cls: BoneWarden, body: 'molten-marauder.glb', scale: 1.3, hp: 14,
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'earth', resist: 'fire',
+    region: 'storm', key: 'ash_warden',
+    tint: (m) => { if (m.color) m.color.setHex(0x5a5450); }, // ash over old iron
+  },
 };
 
 const MONSTER_ROSTER = {
@@ -3896,8 +3910,13 @@ export async function spawnEnemies(world) {
   }
   const rosterIds = Object.keys(KAYKIT_ROSTER).filter((id) => (mk[rosterKey(id)] || []).length);
 
+  // `mk.miniSpot` belongs here too — a MINI_ROSTER guardian is a BoneWarden
+  // on the same shared skeleton rig regardless of what the room's REGULAR
+  // mooks are, and Stormreach's Drowned Hold (v3.166) is the first dungeon
+  // whose regular mooks are Hounds, not a KAYKIT_ROSTER family — so this gate
+  // silently skipped the whole rig load, and the guardian never spawned.
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
-      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot || rosterIds.length) {
+      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot || mk.miniSpot || rosterIds.length) {
     const [special, movement, general, combat] = await Promise.all([
       loadGLB('./assets/anims/rig-medium-special.glb'),
       loadGLB('./assets/anims/rig-medium-movement-basic.glb'),

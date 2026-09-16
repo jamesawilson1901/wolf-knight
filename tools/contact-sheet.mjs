@@ -98,7 +98,11 @@ const SECTIONS = [
   ], 'frost'],
   ['Stormreach Cliffs — a climb into weather', 'Level 5 · a switchback up the sea-cliffs; the wind is the wall.', [
     ['s1a', 'THE LANDING'], ['s1b', 'up from the shore'], ['s1p', 'optional'],
-    ['sc1', 'rest'], ['s2a', 'THE GALESTAIR'], ['s2b', 'higher'], ['s2p', 'optional'],
+    ['sc1', 'rest'],
+    ['s1c', "THE HOLD'S MOUTH — the Drowned Hold, room 1: no fight, a lost wolf"],
+    ['s1d', 'THE DROWNED HALL — the fight: gale hound x2, and the Ash Warden'],
+    ['s1e', 'THE LOW VAULT — gold: heart piece + shards + Storm Sword'],
+    ['s2a', 'THE GALESTAIR'], ['s2b', 'higher'], ['s2p', 'optional'],
     ['ssh', 'the shrine (storm detour)'], ['sc2', 'rest'],
     ['s3a', 'THE THUNDER SHELF'], ['s3b', 'higher'], ['s3p', 'optional'],
     ['svn', 'the weathervane room (detour)'], ['sc3', 'rest'],

@@ -33,6 +33,8 @@ import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField, turnVane, WIND } from './wind.js';
 import { canWade } from './water.js';
 import { iceGate, boulderGate } from './gates.js';
+import { spawnLostWolf } from './pip.js';
+import { COAT } from './restoration.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -56,6 +58,13 @@ export const DISTRICTS = {
                ground: 'opensky',   name: 'THE OPEN SKY',     hero: 'THE SKY SHRINE' },
   crown:     { tint: 0xfff0c0, floorTint: 0x9a9080, wallTint: 0x554e40, propTint: 0xc4b79a,
                ground: 'crown',     name: "ARIA'S CROWN",     hero: 'THE CROWN STONES' },
+  // THE DROWNED HOLD (v3.166, design/WIDER-WORLD.md §2.3) — Stormreach's own
+  // pocket dungeon, off s1a's own flooded sea-cave gate. Reuses the Landing's
+  // own `ground: 'landing'` floor style (the Ash Vault's own precedent for a
+  // dungeon district — ashvault reuses 'ashfall' rather than inventing a new
+  // style) darkened and tealed toward the water the cave is actually full of.
+  seacave:   { tint: 0x33505c, floorTint: 0x2a4048, wallTint: 0x16242a, propTint: 0x3a5460,
+               ground: 'landing',   name: 'THE DROWNED HOLD', hero: 'THE SUNKEN ARCH' },
 };
 
 // The one new module.
@@ -72,6 +81,17 @@ export const L5 = {
          label: 'The Winch Shed', beat: 'optional · pup' },
   sc1: { ...STAIR, kind: 'stair', district: 'landing', spine: true,
          label: 'THE FIRST STAIR', beat: 'REST · the climb begins' },
+
+  // THE DROWNED HOLD (v3.166, §2.3) — Stormreach's own pocket dungeon, off
+  // s1a's flooded sea-cave gate. spine: false throughout, the Ash Vault's own
+  // rule: optional, never on the critical path. `dungeon: true` on the
+  // entrance only — one offshoot card for the whole branch on the map (§5.3).
+  s1c: { ...M.pocket, kind: 'pocket', district: 'seacave', loopsTo: 's1a',
+         label: "THE HOLD'S MOUTH", beat: 'optional · the lost wolf · gold', dungeon: true },
+  s1d: { ...M.island, kind: 'island', district: 'seacave',
+         label: 'THE DROWNED HALL', beat: 'optional · gale hound x2 · the Ash Warden' },
+  s1e: { ...M.pocket, kind: 'pocket', district: 'seacave', loopsTo: 's1d',
+         label: 'THE LOW VAULT', beat: 'optional · gold + heart piece' },
 
   // ---- TERRACE 2 · THE GALE STAIR (west) ----------------------------------
   s2a: { ...M.island, kind: 'island', district: 'galestair', spine: true, junction: true,
@@ -240,6 +260,11 @@ function base(scene, id) {
   world.roomId = id;
   reserveLandings(world, id);
   return { world, spec, D: DISTRICTS[spec.district] };
+}
+
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 function finish(world, spec, D) {
@@ -517,8 +542,17 @@ function galePromise(world, { x, z, w, d, dir, id, reward }) {
 export async function buildS1a(scene) {
   const { world, spec, D } = base(scene, 's1a');
   const bridged = WS.get(REGION, 'windBridge');
+  // THE DROWNED HOLD (v3.166, §2.3) — a second, separate door off s1a's own
+  // unused north wall, clear of every existing prop (nearest dressing sits at
+  // z ≥ -9; the wall is z -13). The west alcove a few lines down is the
+  // PROMISE (a chest shown early, behind glass); this is the actual dungeon
+  // door, and — like l1_crack_gate's own vault door — it carries no separate
+  // visual promise of its own, because the alcove already made the promise
+  // for the whole gate. Same unlock as the alcove: canWade(), which is
+  // permanent once true, so there is no separate persisted flag to drift.
   const gaps = [gap('s'), gap('e')];
   if (bridged) gaps.push(gap('w'));
+  if (canWade()) gaps.push(gap('n', 1.2, 4));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 5.0, kind: 'water' },
               { x: 12, z: -8, r: 4.4, kind: 'gravel' },
@@ -534,6 +568,8 @@ export async function buildS1a(scene) {
   // of out-of-room black instead of the room.
   sideDoor(world, 'e', halfW, halfD, 's1b', { x: -13, z: 0, angle: Math.PI / 2 });
   if (bridged) sideDoor(world, 'w', halfW, halfD, 'ssA', { x: 10, z: 0, angle: Math.PI / 2 });
+  if (canWade()) sideDoor(world, 'n', halfW, halfD, 's1c', { x: 4, z: 6, angle: Math.PI },
+    { centre: 4 });
 
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'gatehouse', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
@@ -572,6 +608,121 @@ export async function buildS1a(scene) {
   aftermath(world, -12, -8, 2.2, D, 5);
   wayshrine(world, 12.5, 3.5, -0.6, D);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  return finish(world, spec, D);
+}
+
+// ===========================================================================
+// THE DROWNED HOLD (v3.166, design/WIDER-WORLD.md §2.3) — Stormreach's own
+// pocket dungeon, off s1a's own north gate. Built to the Sunken Hearth's
+// template (js/level4.js buildF1c/d/e) rung for rung: a no-fight pocket with
+// the lost wolf, an island with the fight AND this dungeon's own guardian
+// (the Ash Warden), a gold pocket behind the plug her death opens. Unlike
+// the Hearth (open from region 1 on the Fire Wolf, the FIRST wolf a child
+// owns), this one needs the region's OWN wolf — Tide, granted at the END of
+// Stormreach — so it is the one dungeon in the game reached only by walking
+// back into a region already cleared.
+// ===========================================================================
+
+export async function buildS1c(scene) {
+  const { world, spec, D } = base(scene, 's1c');
+  const gaps = [gap('s', 1.2, 4), gap('n')];
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -3, z: 2, r: 3.0, kind: 'water' }, { x: 4, z: -3, r: 2.6, kind: 'gravel' }],
+    pathWidth: 2.4,
+    paths: [[[4, 6], [0, 0], [0, -6]]],
+  });
+  world.spawn = { x: 4, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 's1a', { x: 4, z: -11.2, angle: 0 }, { centre: 4 });
+  sideDoor(world, 'n', halfW, halfD, 's1d', { x: 0, z: 10.4, angle: Math.PI });
+
+  await spawnLostWolf(world, {
+    id: 's1c_wolf', x: -6, z: -4, coat: COAT.storm,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  // the hold's own mouth — old dungeon stonework, half swallowed by the water.
+  // Centre of the room, clear of both door reservations (halfD-1.6 = ±6.4)
+  // and every other marker — verify-reachable's own bug class caught this at
+  // (0, -5.5), 0.9u off the north door's own landing spot.
+  if (!GREY()) {
+    const arch = tinted(skyKit.archDoor, 's1cArch', D.propTint);
+    arch.position.set(0, 0, 3);
+    world.add(arch); world.addCircle(0, 3, 1.0);
+    const ped = tinted(skyKit.pedestal, 's1cPedestal', D.propTint);
+    ped.position.set(6, 0, 4); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(6, 4, 0.85);
+  }
+
+  world.markers.breakables = [{ x: -6, z: 4, kind: 'crate' }];
+  rubbleField(world, 6, -4, 1.6, D, 8);
+  wayshrine(world, -6, 0, 0.4, D);
+  lowWall(world, 2, -2, 0.0, D, 3.0);
+  scatter(world, halfW, halfD, D, 561, 8);
+  return finish(world, spec, D);
+}
+
+export async function buildS1d(scene) {
+  const { world, spec, D } = base(scene, 's1d');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -8, z: 6, r: 4.2, kind: 'water' }, { x: 8, z: -6, r: 3.8, kind: 'gravel' },
+              { x: 0, z: 8, r: 3.4, kind: 'water' }],
+    pathWidth: 2.6,
+    paths: [[[0, 13], [0, -13]]],
+  });
+  world.spawn = { x: 0, z: 12.5, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 's1c', { x: 0, z: -6.4, angle: 0 });
+
+  world.markers.shadowed = true;
+  world.markers.houndSpots = [{ x: -6, z: -3, variant: 'gale' }, { x: 6, z: -3, variant: 'gale' }];
+  // THE ASH WARDEN — MINI_ROSTER (js/enemies.js), a named guardian on
+  // molten-marauder.glb, ash over old iron, weak to earth. Gone for good
+  // once the wound is banked, the Rime Warden's own pattern.
+  const wardenDown = !!(state.flags.world && state.flags.world.storm && state.flags.world.storm.mini_ash_warden);
+  if (!wardenDown) world.markers.miniSpot = { id: 'ash_warden', x: 0, z: -3 };
+
+  const openS1e = () => sideDoor(world, 'n', halfW, halfD, 's1e', { x: 0, z: 6.4, angle: Math.PI });
+  if (WS.get(REGION, 'dungeon')) openS1e();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, openS1e);
+
+  // ARRIVAL-FRAME FLOOR (js/level4.js buildF1d's own note): spawn is (0, 12.5)
+  // facing north, so verify-density's own ruler only sees z ≥ -0.4 — the
+  // first pass put half this room's dressing at z ≤ -1, out of that frame
+  // entirely, and came up 13 short of the island floor.
+  world.markers.breakables = [
+    { x: -4, z: 8.5, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },
+  ];
+  fallenColumn(world, 8, 2, 1, D, 4);
+  fallenColumn(world, -10, 2, 4, D, 4);
+  cartWreck(world, 5, 4, 0.6, D);
+  lowWall(world, -4, 7.5, 0.0, D, 4.0);
+  rubbleField(world, 11, 1, 2.0, D, 9);
+  rubbleField(world, -11, -1, 1.8, D, 8);
+  rubbleField(world, 6, 0, 1.6, D, 8);
+  rubbleField(world, -8, 4, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 562, 10, { spin: 1, kinds: ['rockLA', 'rockSA', 'rockSB', 'stump'] });
+  return finish(world, spec, D);
+}
+
+export async function buildS1e(scene) {
+  const { world, spec, D } = base(scene, 's1e');
+  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+    patches: [{ x: 0, z: 2, r: 3.0, kind: 'water' }],
+    pathWidth: 2.6,
+    paths: [[[0, 6], [0, 0]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 's1d', { x: 0, z: -9.5, angle: 0 });
+
+  // THE LOW VAULT — the last dry room in the hold, and the deepest.
+  visibleReward(world, 0, -6.2, 's1e_hold', { shards: 30, heartPiece: 1, gear: 'sword_storm', seed: 'storm' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -6.5, z: -5.5, kind: 'crate' }, { x: 6.5, z: -5.5, kind: 'barrel' },
+  ];
+  rubbleField(world, -8, -4.5, 1.8, D, 8);
+  rubbleField(world, 8, -4.5, 1.8, D, 8);
+  rubbleField(world, 5, 1.5, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 563, 5);
   return finish(world, spec, D);
 }
 
@@ -1311,6 +1462,7 @@ export async function buildSsA(scene) {
 
 export const LEVEL5_ROOMS = {
   s1a: buildS1a, s1b: buildS1b, s1p: buildS1p, sc1: buildSc1,
+  s1c: buildS1c, s1d: buildS1d, s1e: buildS1e,
   s2a: buildS2a, s2b: buildS2b, s2p: buildS2p, ssh: buildSsh, sc2: buildSc2,
   s3a: buildS3a, s3b: buildS3b, s3p: buildS3p, svn: buildSvn, sc3: buildSc3,
   s4a: buildS4a, s4b: buildS4b, s4p: buildS4p, sc4: buildSc4,

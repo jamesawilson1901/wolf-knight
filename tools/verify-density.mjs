@@ -168,7 +168,10 @@ const ROOMS = [
   // narrower box, and holding it to the island bar would only push clutter into
   // a space whose whole point is that you walk through it.
   { id: 's1a', kind: 'island' }, { id: 's1b', kind: 'island' }, { id: 's1p', kind: 'pocket' },
-  { id: 'sc1', kind: 'choke' },  { id: 's2a', kind: 'island' }, { id: 's2b', kind: 'island' },
+  { id: 'sc1', kind: 'choke' },
+  // The Drowned Hold (v3.166) — Stormreach's own pocket dungeon, off s1a.
+  { id: 's1c', kind: 'pocket' }, { id: 's1d', kind: 'island' }, { id: 's1e', kind: 'pocket' },
+  { id: 's2a', kind: 'island' }, { id: 's2b', kind: 'island' },
   { id: 's2p', kind: 'pocket' }, { id: 'ssh', kind: 'pocket' }, { id: 'sc2', kind: 'choke' },
   { id: 's3a', kind: 'island' }, { id: 's3b', kind: 'island' }, { id: 's3p', kind: 'pocket' },
   { id: 'svn', kind: 'puzzle' }, { id: 'sc3', kind: 'choke' },  { id: 's4a', kind: 'island' },
