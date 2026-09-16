@@ -39,6 +39,12 @@ export const state = {
     materials: {},               // crafting materials (design/CRAFTING.md), id -> count
     crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
     recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
+    // DRAGON EGGS (design/DRAGON-EGGS.md) — element -> true. Deliberately
+    // three small flag bags rather than one shape, so "found" / "hatched" /
+    // "currently worn" can each be answered with a single lookup.
+    dragonEggs: {},               // element -> true (egg found, not yet thrown)
+    dragonsHatched: {},           // element -> true (thrown at its shrine, hatched forever)
+    dragonEquipped: null,         // element | null — which hatched dragon runs with Kael
   },
   moonGauge: 0,                 // 0..1 — the Blood Moon Surge charge
   xp: 0,

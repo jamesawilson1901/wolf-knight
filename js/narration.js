@@ -356,6 +356,25 @@ export const LINES = {
   // sunkenvale; this line now agrees with it, and the water gets its own.
   luna_dream_4: { voice: 'luna', text: 'Four lights, brave one. The frost has forgiven you. Now look up — the wind is crying on the cliffs.' },
   luna_dream_5: { voice: 'luna', text: 'Five lights. The sky breathes again. Listen now for water — something calls beneath the waves.' },
+
+  // THE DRAGON EGGS (design/DRAGON-EGGS.md, this session's own hidden side
+  // quest) — a quiet secret, so these never fire on their own; js/main.js
+  // only says them off js/dragonEggs.js's own edge-triggered shrine events.
+  // Hints repeat (a child may pass a shrine many times before finding the
+  // matching egg); confirm lines do NOT repeat, which is what makes them
+  // PAUSE the game the one time they matter (js/narration.js's own
+  // `blocking` getter freezes play for any non-repeat line) — "approaching
+  // a shrine while holding the matching egg pauses and has Pip read a
+  // confirm-before-throw line aloud", the brief's own words.
+  dragon_hint_fire: { voice: 'pip', text: 'A fire shrine… I can feel it waiting for something. Ember-warm, and empty.', repeat: true },
+  dragon_confirm_fire: { voice: 'pip', text: 'The egg in your bag — it’s WARM, Kael! This shrine wants it. See the glowing button? Tap it to let the egg hatch here!' },
+  dragon_hatch_fire: { voice: 'pip', text: 'An Ember Dragon! Kael, you have a DRAGON now! Pick him from your backpack and he’ll fly right beside you.' },
+  dragon_hint_tide: { voice: 'pip', text: 'A tide shrine… still and cool, like it’s holding its breath for something.', repeat: true },
+  dragon_confirm_tide: { voice: 'pip', text: 'That egg feels COLD and wet, Kael — this is its shrine! Tap the glowing button to hatch it!' },
+  dragon_hatch_tide: { voice: 'pip', text: 'A Tide Dragon! He’ll swim right alongside you now — check your backpack!' },
+  dragon_hint_storm: { voice: 'pip', text: 'A storm shrine… the air crackles here, like it’s waiting for lightning.', repeat: true },
+  dragon_confirm_storm: { voice: 'pip', text: 'That egg is CRACKLING, Kael! This is the one — tap the glowing button to hatch it!' },
+  dragon_hatch_storm: { voice: 'pip', text: 'A Storm Dragon! Pick him from your backpack, Kael — he won’t leave your side now.' },
 };
 
 export class Narration {

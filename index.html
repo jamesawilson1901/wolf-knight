@@ -561,8 +561,21 @@
     #btn-defend:active { border-color: #9fd0ff; box-shadow: 0 0 12px rgba(120,190,255,.5); }
     #btn-jump { right: calc(162px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); width: 68px; height: 68px; background: rgba(72, 84, 52, .75); display: none; }
     #form-badge { display: none; }
+    /* THE DRAGON-EGG CONFIRM BUTTON (design/DRAGON-EGGS.md) — the SAME
+       contextual-action idiom as #btn-ranged/#btn-defend/#btn-jump above:
+       hidden by default, `.revealed` toggled per-frame by js/main.js only
+       while standing at a shrine holding its matching, unhatched egg. This
+       IS "a clear visual/button prompt, not text a child has to parse" —
+       Pip's own confirm line (js/narration.js) is spoken aloud alongside it,
+       but the ACTION is tapping this button, never reading anything. */
+    #btn-dragon {
+      right: calc(10px + env(safe-area-inset-right)); bottom: calc(190px + env(safe-area-inset-bottom));
+      width: 68px; height: 68px; display: none; border-color: #ffd76a;
+      box-shadow: 0 0 18px rgba(255, 215, 106, .7), 0 3px 10px rgba(0,0,0,.45);
+    }
+    #btn-dragon .ctl-glyph { background-color: #ffd76a; }
     #btn-ranged.revealed, #btn-defend.revealed, #btn-jump.revealed,
-    #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
+    #btn-dragon.revealed, #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
     @keyframes reveal-pop {
       0% { transform: scale(0); }
       70% { transform: scale(1.25); }
@@ -1312,6 +1325,7 @@
   <div id="btn-ranged" class="action-btn ui"><span class="ctl-glyph ctl-star"></span></div>
   <div id="btn-defend" class="action-btn ui"><span class="ctl-glyph ctl-shield"></span></div>
   <div id="btn-jump" class="action-btn ui"><span class="ctl-glyph ctl-jump"></span></div>
+  <div id="btn-dragon" class="action-btn ui"><span class="ctl-glyph ctl-star"></span></div>
   <div id="potions"></div>
   <div id="hud-top">
     <div id="shards">0</div>
@@ -1327,7 +1341,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.176.0</div>
+  <div id="badge">Wolf Knight &middot; v3.177.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

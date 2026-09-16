@@ -3442,6 +3442,72 @@ export class Hopper extends Slime {
   }
 }
 
+// SHARED DRAGON.GLB BODY BUILDER (design/DRAGON-EGGS.md) — extracted from
+// Dragonling below so the companion dragon (js/companionDragon.js) can reuse
+// the exact same model/scale/tint/clip/eye-rig-sync handling without
+// instantiating a hostile Enemy subclass. Dragonling itself now calls this;
+// nothing about its own behaviour changed, only where the code that builds
+// its BODY (as opposed to its combat state machine) lives.
+export function buildDragonBody(gltf, opts = {}) {
+  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+  // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN. Dragon.glb has always come
+  // in at a flat 0.5; a body that is not Dragon.glb is a different size in
+  // its own units, and typing a second constant at it is how the chests, the
+  // crate and the vase each went wrong in turn. `fitHeight` scales a model
+  // so it stands exactly that tall, whatever it was modelled at.
+  if (opts.fitHeight) {
+    model.updateWorldMatrix(true, true);
+    const bb = new THREE.Box3().setFromObject(model);
+    const h = Math.max(0.01, bb.max.y - bb.min.y);
+    model.scale.setScalar(opts.fitHeight / h);
+  } else {
+    model.scale.setScalar(opts.scale ?? 0.5);
+  }
+  if (opts.tint) {
+    model.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+  }
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = {};
+  // A BODY BRINGS ITS OWN CLIP NAMES. Dragon.glb calls them
+  // 'DragonArmature|Dragon_Flying' / '...Attack'; the Ember Wasp calls them
+  // 'Idle_Flying' / 'Attacking'. Hard-coding one body's names into the class
+  // is the exact fault that left Meri frozen in her bind pose for a month
+  // (js/boss.js SKINS.meri) — a clip lookup that finds nothing is silent.
+  for (const [k, n] of Object.entries(opts.clips || {
+    fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
+  })) {
+    const clip = gltf.animations.find((c) => c.name === n);
+    if (clip) actions[k] = mixer.clipAction(clip);
+  }
+  // Dragon.glb's eyes are a SEPARATE skinned sub-rig (its own tiny
+  // EyeArmature, not parented under the body's Head bone) — and none of
+  // the model's 5 animation clips ever touch it, confirmed by reading the
+  // .glb's own animation channel targets. Left alone they sit frozen at
+  // their bind pose forever while the neck/head bends through Flying/
+  // Attack, reading as two eyes floating in empty air above the dragon.
+  // Locking them to the Head bone's live world position every frame is
+  // the fix — no shared vendored asset touched, contained here.
+  const headBone = model.getObjectByName('Head');
+  const eyeRig = ['EyeArmature', 'Eyes'].map((n) => model.getObjectByName(n)).filter(Boolean);
+  const eyeOffset = new THREE.Vector3(0, 0.02, 0.06);
+  function syncEyes() {
+    if (!headBone || !eyeRig.length) return;
+    const headWorld = new THREE.Vector3();
+    headBone.getWorldPosition(headWorld);
+    for (const rig of eyeRig) {
+      if (!rig.parent) continue;
+      const local = rig.parent.worldToLocal(headWorld.clone());
+      rig.position.copy(local).add(eyeOffset);
+    }
+  }
+  return { model, mixer, actions, syncEyes };
+}
+
 // Ember / Frost / Shadow Dragonling — Dragon.glb (fully rigged: 5 clips,
 // 2 skins, real bones), never wired to an enemy before. Same roost/hover/
 // telegraph/dive/grounded/return grammar as the Cave Bat, at dragon scale,
@@ -3455,43 +3521,11 @@ export class Dragonling extends Enemy {
     this.puffTint = opts.puffTint ?? 0x4a3f5c;
     this.flying = true;
     this.home = { x, z };
-    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN. Dragon.glb has always come
-    // in at a flat 0.5; a body that is not Dragon.glb is a different size in
-    // its own units, and typing a second constant at it is how the chests, the
-    // crate and the vase each went wrong in turn. `fitHeight` scales a model
-    // so it stands exactly that tall, whatever it was modelled at.
-    if (opts.fitHeight) {
-      model.updateWorldMatrix(true, true);
-      const bb = new THREE.Box3().setFromObject(model);
-      const h = Math.max(0.01, bb.max.y - bb.min.y);
-      model.scale.setScalar(opts.fitHeight / h);
-    } else {
-      model.scale.setScalar(opts.scale ?? 0.5);
-    }
-    if (opts.tint) {
-      model.traverse((n) => {
-        if (!n.isMesh) return;
-        const mats = Array.isArray(n.material) ? n.material : [n.material];
-        n.material = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
-        if (n.material.length === 1) n.material = n.material[0];
-      });
-    }
-    this.root.add(model);
-    this.model = model;
-    this.mixer = new THREE.AnimationMixer(model);
-    this.actions = {};
-    // A BODY BRINGS ITS OWN CLIP NAMES. Dragon.glb calls them
-    // 'DragonArmature|Dragon_Flying' / '...Attack'; the Ember Wasp calls them
-    // 'Idle_Flying' / 'Attacking'. Hard-coding one body's names into the class
-    // is the exact fault that left Meri frozen in her bind pose for a month
-    // (js/boss.js SKINS.meri) — a clip lookup that finds nothing is silent.
-    for (const [k, n] of Object.entries(opts.clips || {
-      fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
-    })) {
-      const clip = gltf.animations.find((c) => c.name === n);
-      if (clip) this.actions[k] = this.mixer.clipAction(clip);
-    }
+    const body = buildDragonBody(gltf, opts);
+    this.root.add(body.model);
+    this.model = body.model;
+    this.mixer = body.mixer;
+    this.actions = body.actions;
     this._current = null;
     if (this.actions.fly) { this.actions.fly.play(); this.actions.fly.timeScale = 0.35; }
     this._flashMats = [];
@@ -3502,29 +3536,7 @@ export class Dragonling extends Enemy {
     this.diveDir = { x: 0, z: 0 };
     this._seed = x * 2.3 + z;
     this.root.position.y = 2.0;
-
-    // Dragon.glb's eyes are a SEPARATE skinned sub-rig (its own tiny
-    // EyeArmature, not parented under the body's Head bone) — and none of
-    // the model's 5 animation clips ever touch it, confirmed by reading the
-    // .glb's own animation channel targets. Left alone they sit frozen at
-    // their bind pose forever while the neck/head bends through Flying/
-    // Attack, reading as two eyes floating in empty air above the dragon.
-    // Locking them to the Head bone's live world position every frame is
-    // the fix — no shared vendored asset touched, contained to this class.
-    this._headBone = model.getObjectByName('Head');
-    this._eyeRig = ['EyeArmature', 'Eyes'].map((n) => model.getObjectByName(n)).filter(Boolean);
-    this._eyeOffset = new THREE.Vector3(0, 0.02, 0.06);
-  }
-
-  _syncEyes() {
-    if (!this._headBone || !this._eyeRig.length) return;
-    const headWorld = new THREE.Vector3();
-    this._headBone.getWorldPosition(headWorld);
-    for (const rig of this._eyeRig) {
-      if (!rig.parent) continue;
-      const local = rig.parent.worldToLocal(headWorld.clone());
-      rig.position.copy(local).add(this._eyeOffset);
-    }
+    this._syncEyes = body.syncEyes;
   }
 
   _play(name) {

@@ -275,6 +275,11 @@ export function applySave(profileId, profileName, data) {
     if (!state.inventory.materials) state.inventory.materials = {};
     if (!state.inventory.crafted) state.inventory.crafted = [];
     if (!state.inventory.recipesKnown) state.inventory.recipesKnown = [];
+    // SAME REASON AGAIN (design/DRAGON-EGGS.md): a save from before the
+    // dragon-egg side quest existed has none of these three fields.
+    if (!state.inventory.dragonEggs) state.inventory.dragonEggs = {};
+    if (!state.inventory.dragonsHatched) state.inventory.dragonsHatched = {};
+    if (state.inventory.dragonEquipped === undefined) state.inventory.dragonEquipped = null;
   }
   state.moonGauge = data.moonGauge || 0; // additive: old saves start empty
   state.xp = data.xp || 0;

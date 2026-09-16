@@ -15,6 +15,7 @@ import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
 import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked } from './crafting.js';
 import { MATERIALS, materialCount } from './materials.js';
+import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -156,7 +157,16 @@ export class Menus {
 
     const tabs = document.createElement('div');
     tabs.className = 'arm-tabs';
-    for (const [id, label] of [['gear', '⚔️ Gear'], ['craft', '🔨 Craft']]) {
+    // THE DRAGONS TAB ONLY EXISTS ONCE ONE HAS HATCHED (design/DRAGON-EGGS.md).
+    // The Crafting tab teases itself on purpose (a greyed "???" row, a one-
+    // line tutorial) because dad wanted the hidden-recipe ladder discovered
+    // through the backpack. Dragons are meant to be quieter than that — no
+    // quest marker, no counter — so the tab itself stays invisible until a
+    // child has actually thrown an egg, rather than advertising "there is a
+    // third tab" to every save that has never found one.
+    const tabDefs = [['gear', '⚔️ Gear'], ['craft', '🔨 Craft']];
+    if (hatchedDragons().length) tabDefs.push(['dragons', '🐉 Dragons']);
+    for (const [id, label] of tabDefs) {
       const t = document.createElement('div');
       t.className = 'arm-tab ui' + (this._armTab === id ? ' on' : '');
       t.textContent = label;
@@ -268,7 +278,54 @@ export class Menus {
 
   _paintRight() {
     if (this._armTab === 'craft') this._paintCraftTab();
+    else if (this._armTab === 'dragons') this._paintDragonsTab();
     else this._paintRacks();
+  }
+
+  // ---- THE DRAGONS TAB (design/DRAGON-EGGS.md) ----------------------------
+  //
+  // The same rack-row chrome the gear/craft tabs use. Only ever lists
+  // dragons actually hatched — never the total of three, never a locked
+  // "???" row for the ones not found yet, which is what keeps this quest
+  // "quiet, unflagged" even inside its own menu. A "None" row lets a child
+  // send the dragon home without hatching a different one.
+  _paintDragonsTab() {
+    if (!this._racks) return;
+    this._racks.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'rack-head';
+    head.textContent = 'Dragons';
+    this._racks.appendChild(head);
+
+    const current = equippedDragon();
+    const rows = [...hatchedDragons().map((el) => [el, DRAGON_ELEMENTS[el]]), [null, null]];
+    for (const [el, def] of rows) {
+      const equipped = current === el;
+      const row = document.createElement('div');
+      row.className = 'rack-row ui' + (equipped ? ' on' : '');
+      const art = document.createElement('div');
+      art.className = 'rack-art';
+      art.style.cssText = 'display:flex; align-items:center; justify-content:center; font-size:26px;';
+      art.textContent = def ? '🐉' : '—';
+      const body = document.createElement('div');
+      body.className = 'rack-body';
+      body.innerHTML = `<div class="rack-name">${def ? def.name : 'No dragon'}</div>
+        <div class="rack-blurb">${def ? 'Flies beside you and bites anything that gets close.' : 'Kael walks alone.'}</div>`;
+      const mark = document.createElement('div');
+      mark.className = 'rack-mark';
+      mark.textContent = equipped ? 'WORN' : '';
+      row.appendChild(art);
+      row.appendChild(body);
+      row.appendChild(mark);
+      row.addEventListener('pointerdown', () => {
+        if (equippedDragon() === el) return;
+        setEquippedDragon(el);
+        audio.play('form-switch', { volume: 0.8 });
+        persist();
+        this._paintDragonsTab();
+      });
+      this._racks.appendChild(row);
+    }
   }
 
   // ---- THE CRAFTING TAB (design/CRAFTING.md §3) --------------------------

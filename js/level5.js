@@ -1424,6 +1424,16 @@ export async function buildScr(scene) {
       { id: 'c_scr_crown', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 40 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
+    // THE GRAND STORM SHRINE (design/DRAGON-EGGS.md) — the same "quiet gets
+    // in once the story earned it" gate as the memorial above, tucked into
+    // the arena's own far corners well clear of the crownstones, the
+    // memorial and its chest, and the gravel patch — confirmed clear by a
+    // real arrival screenshot before ship, per CLAUDE.md's room-contents rule.
+    world.reserve(9, 9, 3.4, 'dragonShrine');
+    world.markers.dragonShrineSpots = [{ x: 9, z: 9, element: 'storm' }];
+    world.markers.chestDefs.push(
+      { id: 'scr_dragon_egg', tier: 'gold', x: -9, z: 9, ry: 0.2, loot: { dragonEgg: 'storm' } });
+    world.reserve(-9, 9, 2.6, 'chest');
   }
   scatter(world, halfW, halfD, D, 541, 4, { spin: 1, kinds: ['rockSA', 'flowerB'] });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

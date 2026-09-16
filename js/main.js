@@ -27,6 +27,8 @@ import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes } from './nodes.js';
+import { spawnDragonShrines, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
+import { CompanionDragon } from './companionDragon.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -551,6 +553,20 @@ document.getElementById('resume-btn').addEventListener('pointerdown', (e) => {
   audio.play('ui-click', { volume: 0.7 });
   setPaused(false);
 });
+// THE DRAGON-EGG CONFIRM TAP (design/DRAGON-EGGS.md) — only ever visible
+// (`.revealed`, toggled every frame off world.dragonPromptElement) while
+// standing at a shrine holding its matching, unhatched egg, so a stray tap
+// here the rest of the game does nothing at all.
+document.getElementById('btn-dragon').addEventListener('pointerdown', async (e) => {
+  e.stopPropagation();
+  if (!world || !world.confirmDragonThrow) return;
+  const el = world.confirmDragonThrow();
+  if (!el) return;
+  document.getElementById('btn-dragon').classList.remove('revealed');
+  await ensureDragon();
+  if (narration) narration.say(DRAGON_ELEMENTS[el].hatchLine);
+  persist();
+});
 // The ✕ stays pinned in the corner even when the menu scrolls — there is
 // ALWAYS a visible way back to the game.
 document.getElementById('pause-close').addEventListener('pointerdown', (e) => {
@@ -754,6 +770,46 @@ let player = null;
 let pip = null;
 let transitioning = false;
 let narration = null;
+// THE COMPANION DRAGON (design/DRAGON-EGGS.md) — created lazily, the first
+// time one is actually needed (a fresh throw, or a save that loads with one
+// already equipped), rather than always paid for like Pip is: most saves
+// will never find an egg at all, and Dragon.glb is not free to fetch and
+// skin. Once created it persists across room loads exactly like `pip` does
+// (its root is added straight to `scene`, never to `world.root`, so
+// `world.dispose()` on a room change never touches it).
+let dragon = null;
+let dragonLoading = false;
+
+async function ensureDragon() {
+  if (dragon || dragonLoading) return;
+  dragonLoading = true;
+  try {
+    const d = new CompanionDragon();
+    await d.load(equippedDragon() || 'fire');
+    scene.add(d.root);
+    dragon = d;
+  } finally {
+    dragonLoading = false;
+  }
+}
+
+// Called every frame regardless of room (dragon.root lives on `scene`, not
+// `world.root` — see the field's own comment above). Lazily loads the model
+// on the first frame something is actually equipped, mirrors the equipped
+// element onto the live body (a swap retints in place — js/companionDragon.js
+// setElement()), and hides the body entirely once nothing is equipped rather
+// than despawning it (cheaper on a second swap back).
+function updateCompanionDragon(dt, t, player, world) {
+  const el = equippedDragon();
+  if (!el) { if (dragon) dragon.root.visible = false; return; }
+  if (!dragon) { if (!dragonLoading) ensureDragon(); return; }
+  if (dragon.element !== el) dragon.setElement(el);
+  if (!dragon.root.visible) {
+    dragon.root.visible = true;
+    dragon.place(player.root.position.x - 1.5, player.root.position.z - 1.5);
+  }
+  dragon.update(dt, t, player, world);
+}
 
 // ---------------------------------------------------------------------------
 // Narration triggers (design/NARRATION-SCRIPT.md). Story lines fire once per
@@ -1763,6 +1819,23 @@ function giveLoot(chest) {
         { file: td.file, tint: td.tint, size: 1.0 }, seat++);
     }
   }
+  // A DRAGON EGG (design/DRAGON-EGGS.md) — a quiet, hand-placed find, exactly
+  // as rare as a keepsake (js/treasures.js) and idempotent the same way: a
+  // chest re-opened (or a save re-read) never double-counts a find. Pops as
+  // a real vendored gem (this game's own treasure-pop asset, already reused
+  // across armour/keepsake pickups) tinted the egg's own element rather than
+  // a code-built egg shape — CLAUDE.md's asset rule is about CREATURES, but
+  // reusing an existing pack asset here rather than hand-rolling a new
+  // primitive shape keeps this on the same "one file, many tints" idiom
+  // every other pickup in the game already follows.
+  if (L.dragonEgg && DRAGON_ELEMENTS[L.dragonEgg]) {
+    const dd = DRAGON_ELEMENTS[L.dragonEgg];
+    if (addEgg(L.dragonEgg)) {
+      lines.push(dd.eggName);
+      spawnGearDrop(world, chest.x, chest.z,
+        { file: './assets/loot/treasure/gem-diamond.glb', tint: dd.tint, size: 1.1 }, seat++);
+    }
+  }
   // A SEED FOR THE GARDEN BED (design/WIDER-WORLD.md §3.2/§2.3) — one per
   // dungeon gold chest, the region's own flora. `WS.complete` makes this
   // idempotent like L.treasure above: a chest opened twice (or a save that
@@ -1922,6 +1995,7 @@ async function setupRoomExtras() {
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnResourceNodes(world, world.markers.rockSpots || [], world.markers.treeSpots || []);
+  await spawnDragonShrines(world, world.markers.dragonShrineSpots || []); // design/DRAGON-EGGS.md
   await spawnPups(world, onPupCollected);
   // THE HEARTH, if this room is one and its region has grown enough to have
   // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
@@ -2093,7 +2167,7 @@ async function loadRoom(rawId, entry, handoff = null) {
   if (id === 'xh') narration.say('court_wings');
   if (id === 'xm2') narration.say('court_mirrors');
   if (id === 'xth' && world.boss && !world.boss.defeated) narration.say('grimm_intro');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } }; // debug/testing hook
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, get dragon() { return dragon; }, ensureDragon, lights: { hemi, key, HEMI_BASE, KEY_BASE } }; // debug/testing hook
   initDevHarness();
   initDevMode();
   await fadeTo(0, ms);
@@ -2298,7 +2372,7 @@ async function respawnAtCheckpoint() {
   snapCamera();
   updateMusic();
   narration.say('respawn');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, get dragon() { return dragon; }, ensureDragon, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
   initDevHarness();
   initDevMode();
   await fadeTo(0, 400);
@@ -2438,6 +2512,9 @@ async function start() {
   await loading;
   scene.add(player.root);
   scene.add(pip.root);
+  // A save that already had a dragon equipped needs its body loaded before
+  // the first frame draws it, the same way player/pip are loaded above.
+  if (equippedDragon()) await ensureDragon();
 
   // Restore the loaded run onto the already-built player.
   player.maxHearts = state.maxHearts;
@@ -2681,6 +2758,13 @@ async function start() {
       if (world.updateLostWolf) world.updateLostWolf(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       if (world.updateNodes) world.updateNodes(dt, t, player); // mining/woodcutting
+      if (world.updateDragonShrines) { // design/DRAGON-EGGS.md
+        world.updateDragonShrines(dt, t, player);
+        const ev = world.dragonShrineEvent;
+        if (ev) narration.say(DRAGON_ELEMENTS[ev.element][ev.type === 'hint' ? 'hintLine' : 'confirmLine']);
+        document.getElementById('btn-dragon').classList.toggle('revealed', !!world.dragonPromptElement);
+      }
+      updateCompanionDragon(dt, t, player, world);
       // ...and the pack grazing where the shadows used to stand
       if (world.updateGrazers) world.updateGrazers(dt, t, player);
       if (world.updateDenBuildings) world.updateDenBuildings(dt, t, player); // design/DEN-REBUILD.md
@@ -2965,7 +3049,7 @@ async function buildRoomInitial() {
   snapCamera();
   updateMusic();
   narration.say('intro_arrival');
-  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
+  window.__game = { player, world, state, effects, pip, narration, audio, juice, CONFIG, camera, scene, perf, renderer, WS, persist, resolveRoom, applySave, bigToast, input, guideTarget, nextRoom, renderShards, get dragon() { return dragon; }, ensureDragon, lights: { hemi, key, HEMI_BASE, KEY_BASE } };
   initDevHarness();
   initDevMode();
 }

@@ -1605,6 +1605,21 @@ export async function buildLe(scene) {
   rubbleField(world, 0, -11.5, 2.8, D, 12);
   aftermath(world, -9, -10, 2.0, D, 18);
   aftermath(world, 9, -10, 2.0, D, 19);
+  // THE GRAND EMBER SHRINE (design/DRAGON-EGGS.md) — placed once the
+  // Shadowgrip falls, the same "the story has reached far enough for this"
+  // gate js/level5.js buildScr / js/level6.js buildDdp already use for their
+  // own post-boss memorials, in the far NE corner of the arena's own
+  // perimeter (clear of the cage, its braziers, the reward chest and every
+  // fallenColumn/rubbleField/aftermath placed above — this exact spot was
+  // confirmed clear by a real arrival screenshot, not by reading coordinates
+  // alone, per CLAUDE.md's room-contents rule).
+  if (onward) {
+    world.reserve(6, 9, 3.4, 'dragonShrine');
+    world.markers.dragonShrineSpots = [{ x: 6, z: 9, element: 'fire' }];
+    world.markers.chestDefs = (world.markers.chestDefs || []).concat(
+      { id: 'le_dragon_egg', tier: 'gold', x: -6, z: 9, ry: -0.4, loot: { dragonEgg: 'fire' } });
+    world.reserve(-6, 9, 2.6, 'chest');
+  }
   return finish(world, spec, D);
 }
 

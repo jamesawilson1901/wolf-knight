@@ -1441,6 +1441,17 @@ export async function buildDdp(scene) {
       { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
+    // THE GRAND TIDE SHRINE (design/DRAGON-EGGS.md) — the same "quiet gets
+    // in once the story earned it" gate as the memorial above, sitting in
+    // the shallow water either side of the hall, clear of the memorial, its
+    // chest and the fallenColumn/rubbleField dressing placed below —
+    // confirmed clear by a real arrival screenshot before ship, per
+    // CLAUDE.md's room-contents rule.
+    world.reserve(8.5, -2, 3.4, 'dragonShrine');
+    world.markers.dragonShrineSpots = [{ x: 8.5, z: -2, element: 'tide' }];
+    world.markers.chestDefs.push(
+      { id: 'ddp_dragon_egg', tier: 'gold', x: -8.5, z: -2, ry: 0.6, loot: { dragonEgg: 'tide' } });
+    world.reserve(-8.5, -2, 2.6, 'chest');
   }
   scatter(world, halfW, halfD, D, 641, 4, { spin: 1, kinds: ['rockSA', 'brick'] });
   // THE RIM ONLY. An arena's middle stays clear — a boss that lands on a
