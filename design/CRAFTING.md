@@ -95,24 +95,70 @@ kill's own weakness, a breakable's Wisp roll, walking onto a drop credits the
 right bucket, `canAfford`/`spendMaterials` round-trip a cost correctly, and
 materials/crafted survive a real save→load cycle.
 
-## §2 — still to design
+## §2 — recipes, tiers, hidden recipes (v3.172, SHIPPED)
 
-Nothing below this line is built yet. Loose notes only, so a session picking
-this up does not start from nothing:
+Five recipes, `js/crafting.js`, `RECIPES`:
 
-- **Recipes & tiers**: potions (health/stat boosts), shields, armour,
-  swords, and an "ultimate" tier of each. `js/items.js`'s existing
-  "one file, many tints" idiom is the natural way to make an ultimate a real
-  reskin rather than a new asset (CLAUDE.md's no-code-built-creatures rule
-  has a gear equivalent: dress what already shipped).
-- **Progressive unlock**: "the more different items crafted unlocks better
-  items to craft" wants a usage-count gate, not a story-state gate — most
-  likely a new counter in `state.counters` (`js/progress.js`'s existing
-  free-form tally, already the sticker book's own mechanism) rather than
-  reusing the region-`WS.set(...,'restored')` gate every other unlock in
-  this game uses.
-- **Hidden recipes**: found the same way a heart piece or a keepsake is —
-  enemy drop, pot, crate, chest — per dad's own list.
+| id | tier | cost | pays out |
+|---|---|---|---|
+| `healing_draught` | 1 | 2 wisp | +1 potion (capped 3, same as buying one) |
+| `might_draught` | 1 | 2 shard_fire + 1 wisp | 45s, ×1.5 melee damage (`player.drinkMight()`) |
+| `shield_ultimate` | 2 | 3 shard_earth + 3 shard_storm + 2 crystal | "Alpha's Aegis" (`js/items.js`) |
+| `sword_ultimate` | 2, **hidden** | 3 shard_fire + 3 shard_frost + 3 shard_moon + 2 crystal | "Wolf Fang" |
+| `armour_ultimate` | 3 | 2 shard_verdant + 2 shard_tide + 4 wisp + 3 crystal | "Alpha's Mantle" |
+
+**Tiers** (`tierUnlocked()`) gate on `state.inventory.crafted.length` — a
+usage-count ladder, not a story-state one, exactly as asked ("the more
+different items crafted unlocks better items to craft"): tier 1 open from
+the start, tier 2 at 2 unique things ever crafted, tier 3 at 4. This is the
+SAME shape as the shop's own tier ladder (`items.js` `shopTierOpen`) with a
+crafted-count gate instead of a `WS.get(region,'restored')` one.
+
+**The hidden recipe** (`sword_ultimate`) is invisible — `isRecipeVisible()`
+returns false — until its id is in `state.inventory.recipesKnown`, gained
+ONLY from a gold chest's own rare roll (`js/loot.js` `Breakable.takeDamage()`,
+20% on top of the existing crystal roll) via `discoverRandomHiddenRecipe()`,
+which finds any still-undiscovered hidden recipe at random (returns `null`
+once none remain) and fires a toast (`lootEvents.onRecipeFound`, wired in
+`js/main.js`) — "found the same way a heart piece or a keepsake is."
+
+**A crafted "ultimate"** is the same "one file, many tints" trick every
+other reskin in this game already uses — `sword_ultimate`/`shield_ultimate`
+retint an existing model near-black; `alpha_mantle` (armour) retints the
+knight's own plate — no new geometry, and none are ever sold or found in a
+chest, only made (`tools/verify-gear.mjs` amended to know crafting is now a
+FOURTH acquisition path, reading `js/crafting.js`'s own `RECIPES` rather
+than a hand-kept exemption list, the same "can't rot" reasoning that suite
+already applies to reading level files out of `sw.js`'s precache list).
+Each ultimate sits at or just past the game's own existing power ceiling
+per slot WITHOUT breaking an existing balance rule — `alpha_mantle` first
+shipped at soak 2.0/weight −0.02 and `verify-gear.mjs` correctly caught
+both "a hit must always cost something" (soak ≤ 1.5, a real, pre-existing
+rule) and "the heaviest soak also costs speed" (moon's own named exception
+aside); it now ties Moonplate's soak ceiling and pays for it in weight
+instead, which is the actual trade a top-tier suit should offer.
+
+`Might Draught`'s buff (`player._mightT`, `attackConfig()`, `js/player.js`)
+is a flat, timed multiplier independent of the Surge/perks, the smallest
+possible addition — no new buff-stacking system, no UI countdown (mirrors
+the garden bed's own "no numbers, just an effect" idiom).
+
+Verified: `tools/verify-crafting.mjs` (new) — tier visibility at each
+threshold, affordability gating, `craftItem()`'s real effects (a potion
+appears, materials are actually spent, a timed buff really raises live
+attack damage, gear lands in the RIGHT bucket — `.gear` for weapons/shields,
+`.armours` for armour, never confused), the hidden recipe staying uncraftable
+until discovered, `discoverRandomHiddenRecipe()` never handing out a
+duplicate, and a real `Breakable` forced to `goldchest` actually reaching
+into `js/crafting.js` and firing the toast hook end-to-end (not just the
+standalone functions in isolation). `tools/verify-gear.mjs`,
+`tools/verify-materials.mjs` and `tools/verify-armoury.mjs` all still pass.
+
+## §3 — still to design
+
+Nothing below this line is built yet. Loose notes only, so a session
+picking this up does not start from nothing:
+
 - **UI**: `js/menus.js`'s Armoury (`#inv-menu`) is the backpack; there is no
   tab strip inside any panel today, each "screen" (Armoury/shop/map/sticker
   book) is its own top-level DOM panel toggled by `Menus._open()`'s

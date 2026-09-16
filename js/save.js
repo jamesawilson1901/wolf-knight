@@ -274,6 +274,7 @@ export function applySave(profileId, profileName, data) {
     // materials existed has neither bucket.
     if (!state.inventory.materials) state.inventory.materials = {};
     if (!state.inventory.crafted) state.inventory.crafted = [];
+    if (!state.inventory.recipesKnown) state.inventory.recipesKnown = [];
   }
   state.moonGauge = data.moonGauge || 0; // additive: old saves start empty
   state.xp = data.xp || 0;

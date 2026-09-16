@@ -2556,6 +2556,7 @@ async function start() {
     spawnPotionDrop(world, x, z);
   };
   lootEvents.onPotion = () => { player.addPotion(); renderPotions(player); };
+  lootEvents.onRecipeFound = (r) => bigToast(`📜 New recipe: ${r.name}`);
   progressEvents.onXp = () => renderLevel();
   progressEvents.onLevelUp = (level) => {
     audio.fanfare(); // C-E-G-C — a real moment, not a chime

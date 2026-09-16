@@ -11,8 +11,9 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
 import { spawnMaterialDrop } from './materials.js';
+import { discoverRandomHiddenRecipe } from './crafting.js';
 
-export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null }; // main.js wires HUD
+export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null, onRecipeFound: null }; // main.js wires HUD
 
 // ---------------------------------------------------------------------------
 // Shards
@@ -834,6 +835,14 @@ export class Breakable {
     }
     if (this.kind === 'goldchest' && Math.random() < 0.35) {
       spawnMaterialDrop(this.world, this.x + 0.3, this.z, 'crystal');
+    }
+    // A HIDDEN RECIPE'S SCROLL (design/CRAFTING.md §2) — dad's own list of
+    // places to hide one: "enemy drop, pot, crate, chest". A gold chest is
+    // this game's existing "run across the room for it" tier, so it carries
+    // the roll; ordinary breakables do not, to keep a hidden recipe rare.
+    if (this.kind === 'goldchest' && Math.random() < 0.2) {
+      const found = discoverRandomHiddenRecipe();
+      if (found && lootEvents.onRecipeFound) lootEvents.onRecipeFound(found);
     }
   }
   // The only breakable that does anything on its own: a chest opens when the

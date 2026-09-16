@@ -191,6 +191,16 @@ export const WEAPONS = {
     dmg: 2.8, lock: 0.8, range: 1.85, price: 380, arc: 88, stun: 0.5,
     blurb: 'It rings when it lands.',
   },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Not sold, not found in any chest:
+  // the one thing a full run of the crafting ladder buys that nothing else
+  // in the game does. sword_C.gltf's own silhouette (Broadblade), the old
+  // developer trick one more time: a deep near-black tint over the game's
+  // single best swing (dmg beats sword_storm's 2.2, arc as wide as an axe).
+  sword_ultimate: {
+    name: 'Wolf Fang', icon: '🗡️', file: './assets/gear/sword_C.gltf', tint: 0x141018,
+    dmg: 2.6, lock: 0.58, range: 2.2, arc: 80, stun: 0.4,
+    blurb: 'Every element the pack ever carried, in one blade.',
+  },
 };
 
 export const SHIELDS = {
@@ -228,6 +238,13 @@ export const SHIELDS = {
     // readable signal for "nothing gets past".
     blunt: 0.2, parryBonus: 0, price: 300, scale: 1.4,
     blurb: 'Nothing gets past. Nothing.',
+  },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Iron Wall's own shape, one tint
+  // darker, beating both its block AND Moonguard's parry window at once.
+  shield_ultimate: {
+    name: "Alpha's Aegis", icon: '🛡️', file: './assets/gear/shield_tower_iron.glb', tint: 0x1c1620,
+    blunt: 0.15, parryBonus: 0.2, scale: 1.4,
+    blurb: 'The pack stands behind it.',
   },
 };
 
@@ -268,6 +285,15 @@ export const ARMOURS = {
   moon: {
     name: 'Moonplate', icon: '🌙', tint: 0xc4b0ff, soak: 1.5, weight: 0, price: 480,
     blurb: "Luna's own. Nothing weighs it down.",
+  },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Ties Moonplate's own soak ceiling
+  // (1.5 is the game's hard cap — verify-gear's own "a hit always costs
+  // something" rule) rather than beating it outright; what a full crafting
+  // ladder buys is the REAL trade Moonplate never asks for (soak this high
+  // costs speed everywhere else, moon's own named exception aside).
+  alpha_mantle: {
+    name: "Alpha's Mantle", icon: '🐺', tint: 0x2a2430, soak: 1.5, weight: 0.05,
+    blurb: 'Worn by the wolf who came home.',
   },
 };
 

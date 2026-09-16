@@ -38,6 +38,7 @@ export const state = {
     heartPieces: 0,
     materials: {},               // crafting materials (design/CRAFTING.md), id -> count
     crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
+    recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
   },
   moonGauge: 0,                 // 0..1 — the Blood Moon Surge charge
   xp: 0,
