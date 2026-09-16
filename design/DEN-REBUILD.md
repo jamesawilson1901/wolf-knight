@@ -9,45 +9,81 @@ amount of minutes. Forge gives ingotts every x amount of minutes so on and
 so forth."
 
 An Assassin's-Creed-style base-building meta-progression: gathered resources
-(mining/woodcutting, queued; `js/materials.js`'s crafting materials, shipped
-v3.171) spend on restoring buildings around the Den, each of which then
-passively generates a reward over real time — the game's own garden bed
-(`js/rooms.js`) already proves this exact idiom (a real-world-clock timer,
-device-clock-rollback-proof, collected on visit) at a single-plant scale;
-this is that mechanic generalized to a whole town.
+spend on restoring buildings around the Den, each of which then passively
+generates a reward over real time. Queued after mining & woodcutting (this
+needs ore/wood to spend) and before the dragon-egg side quest.
 
-Queued after mining & woodcutting (this needs something to spend) and
-before the dragon-egg side quest, per dad's own backlog ordering.
+## What's already true (researched, not yet built on)
 
-## Still to design
+- **The Den today**: `js/rooms.js` `buildDen()`, ONE hand-built room
+  (24x18 — not on the shared `MODULES`/`shell()`/`sideDoor()` toolkit every
+  region uses), already near its own draw-call ceiling (135 max, 137
+  measured with everything present). **"Bigger" has to mean a real
+  multi-room Den TOWN built on that same shared toolkit** (`M.hub` square +
+  1-3 `M.pocket` districts, exactly the pattern `js/levelVillage.js` already
+  uses), not cramming more buildings into the current room.
+- **The reusable timer idiom** (`js/restoration.js`'s garden bed,
+  1020-1167): a raw `Date.now()` timestamp (`WS.set('den','gardenPlanted',
+  Date.now())`), a stage DERIVED from elapsed real time
+  (`Math.floor((Date.now()-planted)/DAY_MS)`), and a ratchet that only ever
+  writes the stage FORWARD (`stage = Math.max(stored, elapsed)`) so a wrong
+  device clock can't walk it backwards. No numeric countdown UI anywhere —
+  progress is shown diegetically (the plant visibly grows). **This is the
+  exact mechanic a building's payout timer reuses**, generalized from one
+  planting to N buildings.
+- **Building assets**: no tavern/forge/monument-specific model exists
+  anywhere vendored. What DOES exist and is already proven: `houses-pack.glb`
+  is split into individually-placeable, individually-tintable buildings by
+  `js/levelVillage.js`'s `splitBuildings()` (union-find over overlapping
+  AABBs) — the Village's whole town is built this way. `hut.glb`,
+  `tower-2.glb`, `tower-3.glb`, `walls-pack.glb`, `wagons.glb` are all
+  already loaded by that same kit and unused elsewhere. **A Den-town reuses
+  this exact kit and this exact split-and-retint technique** — one split
+  building retinted warm/hearth-coloured reads as a tavern, another retinted
+  dark/iron reads as a forge, purely through `tintedModel()`'s
+  corrupt→restored colour blend (the SAME idiom gear/enemies already use) —
+  no new geometry, per the standing rule. `FirePlace_1_1_A.glb` (village
+  prop set) dresses a tavern's hearth; `Grinder_A.glb`/`Wheel_A.glb` dress a
+  forge/mill.
+- **The pup pen is decorative only today** (`js/restoration.js`
+  `spawnPupPen`, 955-1018): filling a region's row flips a WorldState flag
+  and fires a narration/toast callback, no resource payout. Dad named it
+  alongside buildings, so it needs the SAME payout hook the others get.
+- **The Village's `guardiansDown()`/`blend` model** (continuous 0-6 progress
+  driving a corrupt→restored colour mix and a growing flower ring as the
+  ONLY progress readout, `js/levelVillage.js`) is the right template for
+  "how many of N things are restored" — closer to what a Den-town needs than
+  `growthStage()` (which is combat/exploration-driven, per-region weather
+  healing). This should be its OWN stage function, resource-spend-driven,
+  the same way `guardiansDown()` is its own function rather than reusing
+  `growthStage`. `healKeyOf('den') === null` (the Den has no weather/enemies
+  to heal) is orthogonal to this and does not need to change.
+- **Resources**: `js/materials.js`'s `MATERIALS`/`canAfford(cost)`/
+  `spendMaterials(cost)` are already generic multi-line-cost primitives —
+  directly reusable for "N ore + M wood restores the tavern." Ore and wood
+  themselves don't exist yet; they arrive with the mining/woodcutting system
+  this is queued behind.
 
-Research in flight (asset inventory, the Den's current footprint, the
-garden bed's exact timer mechanic, the pup pen's current benefit-or-not
-status, the Village's own restoration-by-stage precedent, and whether
-`js/regions.js` treating the Den as a place that deliberately never heals
-would need to change). Loose open questions to resolve once that lands:
+## A concrete first draft (adjust freely when actually building this)
 
-- **How much bigger, physically**: one enlarged room, or a real multi-room
-  "Den town" the way every other region already is (which the Village level
-  already proves works for "a ruined town restored in stages")?
-- **What buildings, on what assets**: dad named tavern, forge, monument, and
-  "pup pen etc" explicitly — every one has to be a REAL vendored building
-  asset, reskinned/positioned the way every other prop in this game is
-  (CLAUDE.md's no-code-built-creatures rule has an unwritten structures
-  equivalent: nothing gets modelled out of primitives in JS). Building
-  count depends entirely on what's actually sitting in the asset packs.
-- **The cost ladder**: how much of which resource restores which building,
-  and whether that's a flat cost or scales with how many buildings are
-  already up (Rome/Ravensthorpe-style settlements usually gate later
-  buildings behind earlier ones for a visible sense of a town filling in).
-- **The payout ladder**: "coins every X minutes" (tavern), "ingots every X
-  minutes" (forge) — needs the exact X, the cap (the garden bed caps
-  accrual at some maximum so a long absence doesn't dump an unbounded
-  reward), and whether every building pays the SAME two currencies or each
-  pays something distinct to its theme.
-- **The pup pen's place in this**: dad listed it alongside buildings/
-  monuments. If it doesn't already have a restoration-for-benefit shape,
-  it may need one to fit the same system rather than staying a one-off.
-- **UI**: does collecting from N buildings need its own screen (a "town"
-  tab), or does walking up to each building in the (bigger) Den do it the
-  way the garden bed already works — walk up, tap, collect?
+Four restorable structures, matching dad's own list, each on a
+`spendMaterials()`-gated cost and a garden-bed-style real-time payout timer:
+
+| structure | asset | cost (draft) | payout | interval (draft) |
+|---|---|---|---|---|
+| Tavern | split `houses-pack` building, warm retint, `FirePlace_1_1_A` | wood-heavy | shards (coins) | ~20 min, cap ~3 collections |
+| Forge | split `houses-pack` building, iron retint, `Grinder_A`/`Wheel_A` | ore-heavy | a new `ingot` material (feeds crafting/ultimate recipes) | ~20 min, cap ~3 |
+| Mill | `hut.glb`, retinted | wood + a little ore | wood back out at a small profit (a "the mill pays for itself" idiom kids read fast) | ~20 min, cap ~3 |
+| Pup Pen | already exists — no new asset | free (already rescued the pups) | its first real benefit: a small XP trickle, "the pack brings something back" | ~20 min, cap ~3 |
+
+Same cap philosophy as the garden bed (`GARDEN_HARVEST_SHARDS = 12`, "a
+pot's worth" — dad's own economy-freeze rule): a payout that stops accruing
+past a few collections' worth, so leaving the game running overnight isn't
+a shortcut, and a design a five-year-old already understands ("come back
+later, don't need to watch a clock").
+
+Open for the actual build session: exact costs/intervals/caps (tune against
+`GAME-CONTRACT.md`'s existing shard-economy amendment once ore/wood exist),
+whether the Den-town is 2 or 3 extra rooms, and whether collecting is purely
+walk-up-and-tap (garden bed's own idiom) or gets a small "town status" HUD
+element the way the sticker book gives collection systems their own screen.
