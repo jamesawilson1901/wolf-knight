@@ -27,6 +27,11 @@ export const MATERIALS = {
   // SAME materials pool/bucket as everything above, not a parallel one.
   ore:           { name: 'Ore', icon: '⛏️', color: 0xb0a89a },
   wood:          { name: 'Timber', icon: '🪵', color: 0xa07a4a },
+  // THE DEN REBUILT (design/DEN-REBUILD.md) — the Forge's own payout, once
+  // restored: smelted ore, a step up from raw ore the same way a crafted
+  // recipe is a step up from a raw shard. Feeds the SAME bucket as
+  // everything above (canAfford/spendMaterials work with it for free).
+  ingot:         { name: 'Ingot', icon: '🔩', color: 0xc9c9d4 },
 };
 
 // An enemy's own `weakness` names the shard it pays in; anything with no

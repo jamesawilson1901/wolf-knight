@@ -38,6 +38,7 @@ import { LEVELPLUNGE_ROOMS, loadPlungeKit } from './levelPlunge.js';  // Stormre
 import { LEVELHOLLOW_ROOMS, loadHollowKit } from './levelHollow.js';  // the Vale → the Court
 import { LEVELSPIRE_ROOMS } from './levelSpire.js';   // built from Ember's kit — no loader of its own
 import { buildPotionMesh } from './loot.js';
+import { DENREBUILD_ROOMS } from './levelDenRebuild.js'; // design/DEN-REBUILD.md — 'dr', off the Den
 
 // ---------------------------------------------------------------------------
 // Shared kit-bash helpers
@@ -822,7 +823,12 @@ async function buildDen(scene) {
   // save flag: the vault's own stage already IS the gate.
   const vaultLoop = WS.stage('vault') >= 1;
   for (let z = -halfD + 0.5; z <= halfD - 0.5; z += 1) {
-    addWall(-halfW - 0.5, z);
+    // THE WEST GAP — Den -> dr, the rebuilt outer camp (design/DEN-REBUILD.md).
+    // Open from the start, unlike the vault/village loops above: rebuilding
+    // needs nothing earned first, only materials a child can already be
+    // gathering (js/nodes.js's mining/woodcutting, queued and shipped ahead
+    // of this on purpose).
+    if (!(z > -1.4 && z < 1.4)) addWall(-halfW - 0.5, z);
     if (!(vaultLoop && z > -1.4 && z < 1.4)) addWall(halfW + 0.5, z);
   }
   world.add(instancePlacements(kit.cliff.scene, wallPlacements, {
@@ -836,7 +842,8 @@ async function buildDen(scene) {
   }
   world.addBox(-halfW - 1, -1.5, halfD, halfD + 1);         // south wall, either
   world.addBox(1.5, halfW + 1, halfD, halfD + 1);           // side of the stair
-  world.addBox(-halfW - 1, -halfW, -halfD - 1, halfD + 1);
+  world.addBox(-halfW - 1, -halfW, -halfD - 1, -1.4);       // west wall, either
+  world.addBox(-halfW - 1, -halfW, 1.4, halfD + 1);         // side of the dr gap
   if (vaultLoop) {
     world.addBox(halfW, halfW + 1, -halfD - 1, -1.4);
     world.addBox(halfW, halfW + 1, 1.4, halfD + 1);
@@ -846,6 +853,9 @@ async function buildDen(scene) {
   world.spawn = { x: 0, z: 7.4, angle: Math.PI };
   world.addDoor(-1.4, 1.4, halfD - 0.15, halfD + 0.9, 'la', { x: 0, z: 9, angle: Math.PI });
   doorway(world, 0, halfD - 0.6, 'x');
+  // THE OUTER CAMP (design/DEN-REBUILD.md) — always open, west of the plaza.
+  world.addDoor(-halfW - 0.9, -halfW + 0.15, -1.4, 1.4, 'dr', { x: 8, z: 0, angle: -Math.PI / 2 });
+  doorway(world, -halfW + 0.6, 0, 'z');
   if (vaultLoop) {
     // lands at vh's own spawn (js/level2.js:565) — the same arrival point
     // its south door already uses, so this is a loop back to one place, not
@@ -3517,7 +3527,7 @@ function blockRowRocks(world, x0, z0, x1, z1) {
 // them: r1/r2/r3 are what kids are playing right now, and a greybox is not
 // something you ship to a child. Reached from the cheat menu until dressed
 // and approved. Nothing existing was rescaled (dad's law).
-export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_ROOMS, ...LEVELCLIMB_ROOMS, ...LEVELPLUNGE_ROOMS, ...LEVELHOLLOW_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
+export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_ROOMS, ...LEVELCLIMB_ROOMS, ...LEVELPLUNGE_ROOMS, ...LEVELHOLLOW_ROOMS, ...LEVEL4_ROOMS, ...LEVELSPIRE_ROOMS, ...LEVEL1_ROOMS, ...LEVEL2_ROOMS, ...LEVEL3_ROOMS, ...LEVEL5_ROOMS, ...LEVEL6_ROOMS, ...LEVEL7_ROOMS, ...LEVELVILLAGE_ROOMS, ...DENREBUILD_ROOMS, r1: buildR1, r1b: buildR1b, r2: buildR2, r2b: buildR2b, k1: buildK1, ka: buildKa, kb: buildKb, r3: buildR3, den: buildDen, e1: buildE1, e1b: buildE1b, e2: buildE2, e2b: buildE2b, e3: buildE3, w1: buildW1, w1b: buildW1b, w2: buildW2, w2b: buildW2b, w3: buildW3, w4: buildW4, w5: buildW5 };
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
@@ -3533,8 +3543,13 @@ export async function buildRoom(rawId, scene) {
     if (state.settings.greybox === false) await loadWoodKit();
   } else if (id[0] === 's') {
     if (state.settings.greybox === false) await loadSkyKit();
-  } else if (id[0] === 'd' && id !== 'den') {
+  } else if (id[0] === 'd' && id !== 'den' && id !== 'dr') {
     if (state.settings.greybox === false) await loadValeKit();
+  } else if (id === 'dr') {
+    // THE DEN REBUILT (design/DEN-REBUILD.md) — a pocket room off the Den,
+    // reusing the Village's own houses-pack/prop kit rather than the Vale's
+    // (js/levelDenRebuild.js self-loads it and needs no help from here; this
+    // branch exists only so 'dr' does not fall into the 'd' branch above).
   } else if (id[0] === 'x') {
     if (state.settings.greybox === false) await loadCourtKit();
   } else if (id[0] === 'y') {

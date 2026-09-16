@@ -64,26 +64,148 @@ needs ore/wood to spend) and before the dragon-egg side quest.
   themselves don't exist yet; they arrive with the mining/woodcutting system
   this is queued behind.
 
-## A concrete first draft (adjust freely when actually building this)
+## v3.176 — one new room, three buildings, the pup pen's first real payout (SHIPPED)
 
-Four restorable structures, matching dad's own list, each on a
-`spendMaterials()`-gated cost and a garden-bed-style real-time payout timer:
+**The scope decision, made before any code**: the current `den` room
+(`js/rooms.js` `buildDen()`) measured 137 draw calls against a 135 ceiling
+and is not built on the shared toolkit — rewriting or expanding it in place
+was judged too risky for a first slice. So this ships as **one new room,
+`dr`** ("the Outer Camp"), reached through an always-open door on the Den's
+own west wall (mirrored back), built on `js/levelkit.js`'s `shell()`/
+`sideDoor()`/`gap()` toolkit at `MODULES.pocket` (20x16) — the same toolkit
+`js/levelVillage.js` proved for a multi-building town, an `M.pocket` rather
+than a full hub since three buildings do not need one. A bigger multi-
+district town is still deferred (see "still to design" below); this is the
+same "one proven room first" shape mining/woodcutting shipped with.
 
-| structure | asset | cost (draft) | payout | interval (draft) |
-|---|---|---|---|---|
-| Tavern | split `houses-pack` building, warm retint, `FirePlace_1_1_A` | wood-heavy | shards (coins) | ~20 min, cap ~3 collections |
-| Forge | split `houses-pack` building, iron retint, `Grinder_A`/`Wheel_A` | ore-heavy | a new `ingot` material (feeds crafting/ultimate recipes) | ~20 min, cap ~3 |
-| Mill | `hut.glb`, retinted | wood + a little ore | wood back out at a small profit (a "the mill pays for itself" idiom kids read fast) | ~20 min, cap ~3 |
-| Pup Pen | already exists — no new asset | free (already rescued the pups) | its first real benefit: a small XP trickle, "the pack brings something back" | ~20 min, cap ~3 |
+**The economy** (`js/denRebuild.js`, mirroring `js/nodes.js`/
+`js/materials.js`'s own leaf-module style): a `BUILDINGS` registry, one entry
+per structure, each a `spendMaterials()`-gated cost plus a real-time payout
+timer. Numbers shipped exactly as drafted, with one addition (the Mill's
+own "pays for itself" framing, spelled out below) and one visual fix (the
+Mill's restored tint, below):
 
-Same cap philosophy as the garden bed (`GARDEN_HARVEST_SHARDS = 12`, "a
-pot's worth" — dad's own economy-freeze rule): a payout that stops accruing
-past a few collections' worth, so leaving the game running overnight isn't
-a shortcut, and a design a five-year-old already understands ("come back
-later, don't need to watch a clock").
+| structure | asset | cost | payout | interval | cap |
+|---|---|---|---|---|---|
+| Tavern | split `houses-pack` building, warm retint (`0xd88a4a`), `FirePlace_1_1_A` nearby | 15 wood + 3 ore | 6 shards (coins) | 20 min | 3 |
+| Forge | split `houses-pack` building, iron retint (`0x565a62`), `Grinder_A` + `Wheel_A` nearby | 15 ore + 3 wood | 2 `ingot` (new material — feeds future crafting/ultimate recipes) | 20 min | 3 |
+| Mill | split `houses-pack` building, pale wheat retint (`0xd9c48a`) | 10 wood + 4 ore | 4 wood | 20 min | 3 |
+| Pup Pen | the EXISTING pen in `den` (`js/restoration.js` `spawnPupPen`) — no new geometry | free — already rescued the pups | 4 xp | 20 min | 3 |
 
-Open for the actual build session: exact costs/intervals/caps (tune against
-`GAME-CONTRACT.md`'s existing shard-economy amendment once ore/wood exist),
-whether the Den-town is 2 or 3 extra rooms, and whether collecting is purely
-walk-up-and-tap (garden bed's own idiom) or gets a small "town status" HUD
-element the way the sticker book gives collection systems their own screen.
+Every unrestored building renders in one shared `RUIN_TINT` (`0x716c5e`,
+plain unpainted timber) at build time, then in its own theme once
+`isRestored()` — the same "next visit reflects the change" contract
+`guardiansDown()`'s corrupt/warm split already keeps, generalized to a
+timer instead of a kill count. No live re-tint mid-visit (flattenStatic has
+already merged the room by the time a child could see it) — restoring or
+collecting gets a `js/juice.js` burst instead, the same "small juice moment,
+no new VFX" idiom every other system this session shipped.
+
+**The Mill's own "pays for itself" idiom**: 10 wood + 4 ore spent once, 4
+wood back every 20 minutes forever after — three collections (~an hour)
+already nets back everything spent, and every visit after that is pure
+profit, a shape a five-year-old can read without doing the maths.
+
+**The timer is NOT the garden bed's exact formula, and the module header
+says why.** The garden bed grows to a capped stage once and stays there
+until harvested-and-replanted by hand. A building here has to recur forever
+("Forge gives ingots every x amount of minutes so on and so forth" — dad's
+own words), so the generalization keeps the garden bed's forward-ratchet
+LAW (a device clock can only ever push progress forward, never backward)
+but applies it to a different quantity: `since` (the restoration timestamp)
+is written once and never touched again; `total` (intervals elapsed since
+`since`) is unbounded and keeps climbing forever, which is what lets the
+building keep producing rather than dying the moment its first `cap`
+intervals have passed; `collected` is a forward-only high-water mark against
+`total`, and a `collect()` call pays `min(cap, total - collected)` then
+ratchets `collected` all the way up to the CURRENT `total` — discarding
+whatever backlog lay beyond the cap rather than leaving it payable again for
+free on an immediate second call. An earlier draft advanced `collected` by
+only what it had just paid (`collected + n`); `tools/verify-denrebuild.mjs`
+caught that this lets a huge backlog (an AFK save) be re-cashed at the cap
+again and again with zero real time passing between calls, which is exactly
+the exploit the cap exists to prevent. Fixed before ship, and the suite's
+own §5 asserts it stays fixed.
+
+**The pup pen** (`js/restoration.js` `spawnPupPen`) needed no new geometry —
+`isRestored('pupPen')` is true the moment any pup has ever come home (no
+"restore" walk-up, per the design doc), and its own timer starts the first
+time anything asks about it. The payout check is piggybacked onto the SAME
+`world.updateGrazers` hook the herd's wander/graze animation already runs
+every frame in `den` (which only exists at all once a pup is home — the
+same condition, so the two never disagree), rather than adding a second
+per-frame hook: a nearSpot+edge-flag hysteresis check centred on the six
+wander spots' own middle, collecting through `denRebuild.js`'s
+`collect('pupPen')` with the same small juice burst every other building
+gets.
+
+**The interaction model** is this game's only one — walk into it, nothing
+else (`js/nodes.js`'s own header: no tap-to-target anywhere). Each building
+carries an approach spot just outside its own footprint; walking into it
+either restores (if affordable — unaffordable is silent, `js/nodes.js`'s own
+"no tool = does nothing" precedent) or collects (if something is pending).
+No new UI, no numeric countdown, no narration line added (a nice-to-have
+the brief allowed skipping, and skipped here rather than guessing at the
+narration API under time pressure).
+
+**A visual fix caught in the pre-ship look-over**: the Mill's first restored
+tint (`0x9a8a6a`, "plain workaday timber") read almost the same as
+`RUIN_TINT` on screen — a real screenshot comparison (not inference) showed
+the "restored" Mill barely different from the "ruined" one, which defeats
+the whole point of a visible before/after. Moved to a pale wheat/cream
+(`0xd9c48a`), visibly lighter in a side-by-side shot. The Tavern's warm
+orange and the Forge's cool iron grey were both already distinct enough
+from `RUIN_TINT` and needed no change.
+
+**`ingot`** is a new `js/materials.js` id (added the same way `ore`/`wood`
+were), in the same shared bucket every other material already uses — no
+recipe consumes it yet (that is future crafting work, noted below).
+
+Verified: `tools/verify-denrebuild.mjs` (new, 22 checks) — `canRestore`
+false/true across the affordability line, `restore()` actually spends and
+flips the flag exactly once (a second `restore()` on an already-restored
+building refuses and spends nothing further), the forward-ratchet timer
+(elapsed time simulated by rewriting the stored WS timestamp directly,
+never by waiting), cap enforcement against a manufactured 100-interval
+backlog, an adverse clock jump forward never producing a negative-pending
+read or a re-pay, `collect()` dispensing the right material/xp and never
+double-paying on an immediate second call, the pup pen's own free-restore
+and xp payout, and a real room jump (`window.__wkJump`) proving `den` has a
+door to `dr`, `dr` has a door back, and `dr` really wires its own
+walk-into trigger. `sh tools/lint.sh`, `node tools/verify-boot.mjs`
+(precache/badge resynced via `tools/sync-cache.mjs --write` for the two new
+modules) and `sh tools/verify-all.sh --quick` all green. A real Playwright
+screenshot pass (arrival, each building both un/restored, from multiple
+standing spots) confirmed no floating/buried/overlapping geometry before
+shipping the tint fix above — the same human-eye-on-the-room law this
+project holds every room-contents change to, though the human pass proper
+is still owed before this merges to `main`.
+
+## Still to design
+
+- **A bigger, multi-district Den town.** This slice is deliberately ONE
+  room with THREE buildings — dad's own "much bigger... rebuild the town
+  around the den" ask is only partly answered. A real rollout (more
+  buildings, a monument or two, maybe a second room) is a future increment,
+  the same "one proven room first" shape mining/woodcutting took before its
+  own promised regional rollout.
+- **More buildings and monuments.** Dad named "each building, monument, pup
+  pen etc" — a monument (a pure milestone/cosmetic reward, no payout) is
+  the obvious next structure once the town has room to hold one.
+- **A small "town status" HUD element**, the way the sticker book gives
+  collection systems their own screen — left out of v1 because a walk-up
+  check already answers "is anything ready" without one, and the design
+  doc's own original open question (whether collecting needs a HUD) is
+  answered "not yet" rather than "no."
+- **Tuning** — costs/intervals/caps are a first, reasonable guess (round
+  numbers, modest scope, matching the garden bed's own economy-freeze
+  philosophy) and are explicitly open to retuning once real play against
+  `GAME-CONTRACT.md`'s shard economy says whether 20 minutes/cap 3 feels
+  right for a five-year-old's actual play sessions.
+- **`ingot` has no recipe yet.** It exists as a material the Forge can pay
+  out; a crafting recipe that actually spends it (an "ultimate" upgrade, or
+  a new tier) is future `js/crafting.js` work, not this slice's.
+- **Visual tool-swap and a live restore moment**, the same open item
+  mining/woodcutting already carries forward (`design/MINING.md`'s own
+  "still to design"): seeing something happen in-hand or a bigger flourish
+  than a juice burst, if it ever earns the extra draw calls.

@@ -2683,6 +2683,7 @@ async function start() {
       if (world.updateNodes) world.updateNodes(dt, t, player); // mining/woodcutting
       // ...and the pack grazing where the shadows used to stand
       if (world.updateGrazers) world.updateGrazers(dt, t, player);
+      if (world.updateDenBuildings) world.updateDenBuildings(dt, t, player); // design/DEN-REBUILD.md
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games
       updateShards(world, dt, t, player);
       updateChests(world, player, giveLoot);

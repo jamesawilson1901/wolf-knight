@@ -122,7 +122,11 @@ export function regionOf(id) {
   if (r[0] === 't') return 'wildwoods';
   if (r[0] === 'f') return 'frostpeak';
   if (r[0] === 's') return 'stormreach';
-  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
+  // 'dr' is the Den's own rebuilt outer camp (design/DEN-REBUILD.md) — a
+  // pocket room off the Den, not a Sunken Vale room, so it is excluded here
+  // the same way 'den' itself already is and falls through to the same
+  // 'ember_hollow' default the Den uses.
+  if (r[0] === 'd' && r !== 'den' && r !== 'dr') return 'sunkenvale';
   if (r[0] === 'x') return 'shadowcourt';
   if (r[0] === 'y') return 'village';
   if (r[0] === 'm') return 'spire';

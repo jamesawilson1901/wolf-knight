@@ -53,6 +53,8 @@ import { characterNpc, SETTLER_POSTS } from './npcs.js';
 import { audio } from './audio.js';
 import { flattenStatic } from './batch.js';
 import { bumpCounter } from './progress.js';
+import { pendingCollections, collect } from './denRebuild.js';
+import { juice } from './juice.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
 // always been spelled differently ('ember_hollow' vs 'ember'). One table, so
@@ -1014,7 +1016,31 @@ export async function spawnPupPen(world, onRowFilled) {
     });
   }
   world.grazers = herd;
-  world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
+  // THE PEN'S OWN PAYOUT (design/DEN-REBUILD.md) — the pen was decorative
+  // only until now; Dad named it alongside the Tavern/Forge/Mill, so it gets
+  // the SAME js/denRebuild.js mechanism, wired here rather than duplicated:
+  // there is no new geometry, only a proximity check piggybacked onto the
+  // herd's own already-ticking update hook (which only exists at all when at
+  // least one pup is home — exactly when js/denRebuild.js's isRestored
+  //('pupPen') is true, so the two conditions never disagree). Centred on the
+  // six wander spots' own middle; the same nearSpot+edge-flag hysteresis
+  // idiom the shop/travel/garden spots already use, and a small juice burst
+  // on collection — no new UI, per the design doc's interaction law.
+  const PEN_PAYOUT_SPOT = { x: 0.1, z: 3.7 };
+  let penArmed = false;
+  world.updateGrazers = (dt, t, player) => {
+    updateHerd(world, dt, player);
+    if (!player) return;
+    const dx = player.root.position.x - PEN_PAYOUT_SPOT.x;
+    const dz = player.root.position.z - PEN_PAYOUT_SPOT.z;
+    const r = penArmed ? 3.4 : 2.4;
+    const near = (dx * dx + dz * dz) < r * r;
+    if (near && !penArmed && pendingCollections('pupPen') > 0) {
+      const c = collect('pupPen');
+      if (c && c.count > 0) juice.burst(PEN_PAYOUT_SPOT.x, 0.6, PEN_PAYOUT_SPOT.z, 0xffe9b0, 14);
+    }
+    penArmed = near;
+  };
 }
 
 // ---------------------------------------------------------------------------
