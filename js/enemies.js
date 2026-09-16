@@ -2873,13 +2873,32 @@ export class DashStriker extends SkeletonBase {
 export class Duellist extends SkeletonBase {
   constructor(world, x, z, gltf, anims, opts = {}) {
     super(world, x, z, {
-      hp: opts.hp ?? 6, radius: 0.38, scale: 0.5, gltf, anims,
+      hp: opts.hp ?? 6, radius: 0.38, scale: opts.scale ?? 0.5, gltf, anims,
       clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_1H_Attack_Chop' },
     });
     applyRosterWeak(this, opts);
     this.state = 'chase';
     this.swingTimer = 1.8;
     if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+    // MINI_ROSTER hp-banking (v3.169, the court_chancellor guardian): same
+    // no-op-by-default fields RangedBolter carries, so the regular mook
+    // `gilded-husk` (js/level7.js buildXa3) is unchanged byte-for-byte.
+    this._hpGet = opts.hpGet || (() => 0);
+    this._hpSet = opts.hpSet || (() => {});
+    this._onDefeated = opts.onDefeated || (() => {});
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
+  }
+
+  die() {
+    this._hpSet(0);
+    this._onDefeated(this);
+    super.die();
+  }
+
+  takeDamage(n, element, kind) {
+    super.takeDamage(n, element, kind);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
   update(dt, t, player) {
@@ -3836,6 +3855,19 @@ const MINI_ROSTER = {
       }
     },
   },
+  // v3.169, design/WIDER-WORLD.md §2.3 court row: the Shadow Court's own
+  // guardian, and the last of the seven region dungeons — off x1's own
+  // unused east wall (the west wall already carries the watcher's lock).
+  // `Duellist` is already shipping as the regular mook `gilded-husk`
+  // (js/level7.js buildXa3); this is the first MINI_ROSTER guardian built on
+  // it rather than BoneWarden or RangedBolter, so the Court's own duelling
+  // family finally gets a named elite. weakness moon matches every other
+  // KAYKIT_ROSTER id this region has.
+  court_chancellor: {
+    cls: Duellist, body: 'gilded-husk.glb', scale: 0.75, hp: 14,
+    weakness: 'moon', region: 'court', key: 'court_chancellor',
+    tint: (m) => { if (m.color) m.color.setHex(0x120c1c); }, // black over the old gilt
+  },
 };
 
 const MONSTER_ROSTER = {
@@ -4074,6 +4106,24 @@ export async function spawnEnemies(world) {
         ]);
         mini = new RangedBolter(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
           hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, wandGltf, ...bankedOpts,
+        });
+        if (cfg.tint) {
+          mini.model.traverse((n) => {
+            if (!n.isMesh) return;
+            for (const m of (Array.isArray(n.material) ? n.material : [n.material])) cfg.tint(m);
+          });
+        }
+      } else if (cfg.cls === Duellist) {
+        // v3.169: the Court's own guardian — the first on Duellist rather
+        // than BoneWarden or RangedBolter, reusing the regular mook
+        // `gilded-husk`'s own body/blade pairing (js/level7.js buildXa3) the
+        // same way every other MINI_ROSTER guardian reuses a proven body.
+        const [miniBodyGltf, miniBladeGltf] = await Promise.all([
+          loadGLB(`./assets/generated/enemies/${cfg.body}`),
+          loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
+        ]);
+        mini = new Duellist(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, bladeGltf: miniBladeGltf, ...bankedOpts,
         });
         if (cfg.tint) {
           mini.model.traverse((n) => {

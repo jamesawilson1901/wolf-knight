@@ -15,13 +15,15 @@ import { state } from './state.js';
 import { protoLabel } from './proto.js';
 import { loadGLB } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
-  reserveLandings, spiritShrine } from './levelkit.js';
+  reserveLandings, spiritShrine, DOOR_HALF } from './levelkit.js';
 import { flattenStatic } from './batch.js';
 import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField } from './wind.js';
 import { waterZone, buildWaterField, quenchable } from './water.js';
+import { spawnLostWolf } from './pip.js';
+import { COAT } from './restoration.js';
 
 let courtKit = null;
 const GREY = () => !courtKit || state.settings.greybox !== false;
@@ -47,6 +49,8 @@ export const DISTRICTS = {
             ground: 'mirrorwing', name: 'THE MIRROR WING',  hero: 'THE STANDING MIRRORS' },
   throne: { tint: 0xc9b8ff, floorTint: 0x6c5799, wallTint: 0x362a55, propTint: 0x7a6ea8,
             ground: 'throne',     name: 'THE THRONE',       hero: "GRIMM'S SEAT" },
+  veil:   { tint: 0x4a3f6e, floorTint: 0x453a68, wallTint: 0x241c3a, propTint: 0x4a405e,
+            ground: 'court',      name: 'THE VEILED VAULT', hero: 'THE SILENT CHANCELLOR' },
 };
 
 const WING = { w: 26, d: 20 };
@@ -79,6 +83,14 @@ export const L7 = {
 
   xp1: { ...M.pocket, kind: 'pocket', district: 'court', loopsTo: 'xh', label: 'The Undercroft', beat: 'optional · pup' },
   xp2: { ...M.pocket, kind: 'pocket', district: 'court', loopsTo: 'xh', label: 'The Long Gallery', beat: 'optional · chest' },
+
+  xc1: { ...M.pocket, kind: 'pocket', district: 'veil', loopsTo: 'x1',
+         label: 'THE VEILED STAIR', beat: 'optional · the lost wolf · gold' },
+  xc2: { ...M.island, kind: 'island', district: 'veil',
+         label: 'THE MASKED HALL', beat: 'optional · shadow hounds x2 · the Chancellor' },
+  xc3: { ...M.pocket, kind: 'pocket', district: 'veil', loopsTo: 'x1',
+         label: 'THE HOARD', beat: 'optional · gold + heart piece' },
+
   xst: { ...STAIR, kind: 'stair', district: 'throne', spine: true, label: 'THE THRONE STAIR', beat: 'REST · the last rest' },
   xth: { ...M.arena, kind: 'arena', district: 'throne', spine: true, label: 'THE THRONE', beat: 'SHADOW-GRIMM' },
 };
@@ -132,7 +144,7 @@ export async function loadCourtKit() {
   return courtKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward } =
+const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug } =
   makeBuilders({ kit: () => courtKit, isGrey: () => GREY() });
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
@@ -147,6 +159,11 @@ function base(scene, id) {
   reserveLandings(world, id);
   world.bgColor = 0x171128;
   return { world, spec, D: DISTRICTS[spec.district] };
+}
+
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 function finish(world, spec, D) {
@@ -340,7 +357,16 @@ function relic(world, x, z, name, D) {
 // ---------------------------------------------------------------------------
 export async function buildX1(scene) {
   const { world, spec, D } = base(scene, 'x1');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  // THE VEILED STAIR (v3.169, design/WIDER-WORLD.md §2.3 court row) — the
+  // Shadow Court's own pocket dungeon, and the last of the seven region
+  // dungeons. The Court Gate's west wall already carries the watcher's lock;
+  // the east wall has never held anything but scatter. Same 'shatter' verb
+  // as every other region's own dungeon gate: the Frost Wolf, old news by
+  // region 4 and still opening new rooms in the last one.
+  const vault = !!WS.get(REGION, 'ice_x1_vault');
+  const gaps = [gap('s'), gap('n')];
+  if (vault) gaps.push(gap('e', DOOR_HALF, -2));
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'corruption', alpha: 0.3 },
               { x: 12, z: -8, r: 4.2, kind: 'rubble' }],
   });
@@ -366,10 +392,123 @@ export async function buildX1(scene) {
   watcher(world, -8.5, -3.8, D);
   visibleReward(world, -13, -3.8, 'x7_gate', { shards: 30 });
   world.markers.watcherPromise = { x: -8.5, z: -3.8 };
+  if (vault) sideDoor(world, 'e', halfW, halfD, 'xc1', { x: 4, z: 6, angle: Math.PI }, { centre: -2 });
+  else {
+    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'DARK — later', 'rockLB',
+      { system: 'shatter', id: 'x1_vault', region: REGION });
+    world.markers.vaultPromise = { x: halfW - 1.5, z: -2 };
+  }
   world.markers.houndSpots = [{ x: 7, z: -5, variant: 'shadewalker' }];
   scatter(world, halfW, halfD, D, 701, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressCourt(world, halfW, halfD, D, 7011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  return finish(world, spec, D);
+}
+
+// ---------------------------------------------------------------------------
+// THE VEILED VAULT (v3.169, design/WIDER-WORLD.md §2.3 court row) — the
+// Shadow Court's own pocket dungeon, off the Court Gate's east gate. Built to
+// the Sunken Hearth / Drowned Hold / Bone Crypt template rung for rung: a
+// no-fight pocket with the lost wolf, an island with the fight AND this
+// dungeon's own guardian (the Chancellor — a Duellist rather than a
+// BoneWarden or RangedBolter, the Court's own duelling family finally
+// getting a named elite), a gold pocket at the end. Needs the Frost Wolf —
+// old news by region 4, and still opening new rooms in the last region.
+// ---------------------------------------------------------------------------
+export async function buildXc1(scene) {
+  const { world, spec, D } = base(scene, 'xc1');
+  const { halfW, halfD } = shell(world, spec, [gap('s', DOOR_HALF, -2), gap('n')], D, {
+    patches: [{ x: -3, z: 2, r: 3.0, kind: 'corruption', alpha: 0.24 }, { x: 4, z: -3, r: 2.6, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[-2, 6], [0, 0], [0, -6]]],
+  });
+  world.spawn = { x: -2, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'x1', { x: 12, z: -2, angle: -Math.PI / 2 }, { centre: -2 });
+  sideDoor(world, 'n', halfW, halfD, 'xc2', { x: 0, z: 10.4, angle: Math.PI });
+
+  await spawnLostWolf(world, {
+    id: 'xc1_wolf', x: -6, z: -4, coat: COAT.court,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  // the vault's own mouth — old dungeon stonework behind the watcher's own wall
+  if (!GREY()) {
+    const arch = tinted(courtKit.archDoor, 'xc1Arch', D.propTint);
+    arch.position.set(0, 0, 3);
+    world.add(arch); world.addCircle(0, 3, 1.0);
+    const ped = tinted(courtKit.pedestal, 'xc1Pedestal', D.propTint);
+    ped.position.set(6, 0, 4); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(6, 4, 0.85);
+  }
+
+  world.markers.breakables = [{ x: -6, z: 4, kind: 'crate' }];
+  rubbleField(world, 6, -4, 1.6, D, 8);
+  wayshrine(world, -8, -2, 0.4, D);
+  lowWall(world, 2, -2, 0.0, D, 3.0);
+  scatter(world, halfW, halfD, D, 771, 8);
+  return finish(world, spec, D);
+}
+
+export async function buildXc2(scene) {
+  const { world, spec, D } = base(scene, 'xc2');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -8, z: 6, r: 4.2, kind: 'corruption', alpha: 0.24 }, { x: 8, z: -6, r: 3.8, kind: 'rubble' },
+              { x: 0, z: 8, r: 3.4, kind: 'corruption', alpha: 0.24 }],
+    pathWidth: 2.6,
+    paths: [[[0, 13], [0, -13]]],
+  });
+  world.spawn = { x: 0, z: 12.5, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'xc1', { x: 0, z: -6.4, angle: 0 });
+
+  world.markers.shadowed = true;
+  // shadow hounds, the Court's own established mook family (js/level7.js
+  // buildXr3/buildXg3/buildXm3's own relic-room guards) — not a new body.
+  world.markers.houndSpots = [{ x: -6, z: -3, variant: 'courtwarden' }, { x: 6, z: -3, variant: 'courtwarden' }];
+  // THE CHANCELLOR — MINI_ROSTER (js/enemies.js), a named guardian on
+  // gilded-husk.glb through Duellist, weak to moon. Gone for good once the
+  // wound is banked, the Rime/Ash Warden/Bone Sage's own pattern.
+  const wardenDown = !!(state.flags.world && state.flags.world.court && state.flags.world.court.mini_court_chancellor);
+  if (!wardenDown) world.markers.miniSpot = { id: 'court_chancellor', x: 0, z: -3 };
+
+  const openXc3 = () => sideDoor(world, 'n', halfW, halfD, 'xc3', { x: 0, z: 6.4, angle: Math.PI });
+  if (WS.get(REGION, 'dungeon')) openXc3();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, openXc3);
+
+  world.markers.breakables = [
+    { x: -4, z: 8.5, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },
+  ];
+  fallenColumn(world, 8, 2, 1, D, 4);
+  fallenColumn(world, -10, 2, 4, D, 4);
+  cartWreck(world, 5, 4, 0.6, D);
+  lowWall(world, -4, 7.5, 0.0, D, 4.0);
+  rubbleField(world, 11, 1, 2.0, D, 9);
+  rubbleField(world, -11, -1, 1.8, D, 8);
+  rubbleField(world, 6, 0, 1.6, D, 8);
+  rubbleField(world, -8, 4, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 772, 10);
+  return finish(world, spec, D);
+}
+
+export async function buildXc3(scene) {
+  const { world, spec, D } = base(scene, 'xc3');
+  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+    patches: [{ x: 0, z: 2, r: 3.0, kind: 'corruption', alpha: 0.2 }],
+    pathWidth: 2.6,
+    paths: [[[0, 6], [0, 0]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'xc2', { x: 0, z: -9.5, angle: 0 });
+
+  // THE HOARD — the Chancellor's own vault, cracked open at last.
+  visibleReward(world, 0, -6.2, 'xc3_veil', { shards: 30, heartPiece: 1, gear: 'staff_moon', seed: 'court' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -6.5, z: -5.5, kind: 'crate' }, { x: 6.5, z: -5.5, kind: 'barrel' },
+  ];
+  rubbleField(world, -8, -4.5, 1.8, D, 8);
+  rubbleField(world, 8, -4.5, 1.8, D, 8);
+  rubbleField(world, 5, 1.5, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 773, 5);
   return finish(world, spec, D);
 }
 
@@ -1011,5 +1150,6 @@ export const LEVEL7_ROOMS = {
   xg1: buildXg1, xg2: buildXg2, xg3: buildXg3,
   xm1: buildXm1, xm2: buildXm2, xm3: buildXm3,
   xp1: buildXp1, xp2: buildXp2,
+  xc1: buildXc1, xc2: buildXc2, xc3: buildXc3,
   xst: buildXst, xth: buildXth,
 };

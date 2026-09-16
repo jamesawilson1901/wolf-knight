@@ -200,6 +200,8 @@ const ROOMS = [
   { id: 'xg1', kind: 'island' }, { id: 'xg2', kind: 'pocket' }, { id: 'xg3', kind: 'island' },
   { id: 'xm1', kind: 'island' }, { id: 'xm2', kind: 'puzzle' }, { id: 'xm3', kind: 'island' },
   { id: 'xp1', kind: 'pocket' }, { id: 'xp2', kind: 'pocket' },
+  // The Veiled Vault (v3.169) — the Shadow Court's own pocket dungeon, off x1.
+  { id: 'xc1', kind: 'pocket' }, { id: 'xc2', kind: 'island' }, { id: 'xc3', kind: 'pocket' },
   { id: 'xst', kind: 'choke' },  { id: 'xth', kind: 'arena' },
 ];
 

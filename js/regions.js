@@ -231,7 +231,8 @@ export const REGIONS = {
     grantAt: "xsh (Luna's Light, the second room)",
     threshold: "ddp north — the way out of Meri's Deep, once the vale drains",
     rooms: ['x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3',
-      'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'],
+      'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth',
+      'xc1', 'xc2', 'xc3'],
     beats: {
       approach: 'ddp → x1, out of the drowned vale and up to his house',
       lockVisible: 'a watcher in the first room, standing over a gold chest, unpassable and harmless',

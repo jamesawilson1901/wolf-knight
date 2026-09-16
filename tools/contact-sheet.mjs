@@ -130,6 +130,9 @@ const SECTIONS = [
     ['xg1', 'Tide Wing'], ['xg2', 'deeper'], ['xg3', 'the relic'],
     ['xm1', 'Mirror Wing'], ['xm2', 'deeper'], ['xm3', 'the relic'],
     ['xp1', 'pocket'], ['xp2', 'pocket'],
+    ['xc1', "THE VEILED STAIR — the Veiled Vault, room 1: no fight, a lost wolf"],
+    ['xc2', 'THE MASKED HALL — the fight: shadow hounds x2, and the Chancellor'],
+    ['xc3', 'THE HOARD — gold: heart piece + shards + a moon staff'],
     ['xst', 'THE THRONE STAIR'], ['xth', 'THE THRONE — Grimm'],
   ], 'court'],
   ['The Village — cleared street by street', 'Epilogue · overrun and dark until all six guardians fall; then the sun.', [
