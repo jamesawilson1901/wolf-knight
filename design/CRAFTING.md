@@ -51,28 +51,55 @@ before/after a region heals rather than an empty room with a grazing pack;
 the old §7, which existed only to test the grazing pack's harmlessness, is
 gone rather than adapted, since there is no pack left for it to test).
 
-## §1 — still to design
+## §1 — materials & drop tables (v3.171, SHIPPED)
+
+Nine materials, `js/materials.js` — deliberately reusing the game's own
+seven-element vocabulary (an enemy's `weakness`) rather than inventing a
+parallel taxonomy, since a fire-weak enemy already reads as "the fire one":
+
+| id | name | source |
+|---|---|---|
+| `shard_fire`/`shard_earth`/`shard_verdant`/`shard_frost`/`shard_storm`/`shard_tide`/`shard_moon` | Ember/Stone/Thorn/Rime/Storm/Tide/Moon Shard | any enemy with that weakness |
+| `wisp` | Shadow Wisp | any enemy with no weakness; every breakable |
+| `crystal` | Wolf's Crystal | rare — elites/guardians, gold chests |
+
+**Enemy kills** (`js/enemies.js` `Enemy.die()`, `dropMaterial()`): its own
+weakness's shard at `dropChance` (the SAME frequency already tuned for the
+ember heal — an independent roll, so a kill can pay in both, one, or
+neither), plus elites/guardians (`dropChance >= 1`) get a further 15% shot
+at a Crystal. **Breakables** (`js/loot.js` `Breakable`, new `materialChance`
+field alongside the existing `potionChance`): a Wisp at 15% ordinary / 50%
+chest / 80% gold chest, and a gold chest further rolls 35% for a Crystal.
+Both are drops ON TOP of the existing shard/potion/ember rolls, never a
+replacement or a shared roll — `design/GAME-CONTRACT.md`'s ~120-160
+shards/region number is untouched, and the amendment there says so.
+
+The pickup itself (`spawnMaterialDrop`, `js/materials.js`) reuses the ember
+heal's own floating-gem-that-fizzles-after-12s shape (now generalized in
+`js/enemies.js`'s `updateDrops` via a `kind` field) rather than a second
+visual language — collecting one credits `state.inventory.materials` instead
+of hearts. Kept in `js/materials.js` rather than `js/enemies.js` or
+`js/loot.js` specifically so both of those (which already import from each
+other) can drop a material without a third import cycle.
+
+`state.inventory.materials` (`{id: count}`) and `state.inventory.crafted`
+(ids of every unique thing ever crafted, for §1's own unlock ladder) are new,
+additive-forever fields — `js/save.js` backfills both on load exactly the
+way `treasures`/`armours` were backfilled when THEY arrived, so a save from
+before this system existed still loads. `canAfford(cost)`/`spendMaterials(
+cost)` (`js/materials.js`) are the recipe-affordability primitives the next
+section's `craft()` will call.
+
+Verified: `tools/verify-materials.mjs` (new) — the right shard drops for a
+kill's own weakness, a breakable's Wisp roll, walking onto a drop credits the
+right bucket, `canAfford`/`spendMaterials` round-trip a cost correctly, and
+materials/crafted survive a real save→load cycle.
+
+## §2 — still to design
 
 Nothing below this line is built yet. Loose notes only, so a session picking
 this up does not start from nothing:
 
-- **Materials**: no "resource"/"material" item type exists anywhere in the
-  game yet (`js/items.js` only has weapon/shield/armour; `state.js`'s
-  `inventory` has `gear`/`armours`/`treasures`, nothing material-shaped).
-  Needs a new typed drop, a new `state.inventory.materials` (or similar)
-  bucket, and — since saves are additive-forever — a schema that never has
-  to remove a field later.
-- **Drop tables**: today's enemy drops are untyped (an ember heal pickup,
-  rarely a whole weapon) and pot/crate/chest drops are shards + an
-  occasional potion (`js/loot.js`'s `potionChance` per breakable kind). A
-  materials drop needs its own rate per enemy family/tier and per
-  breakable kind, additively — it should not just replace what drops today.
-- **GAME-CONTRACT.md's shard economy** (`~120-160 shards per region`) is a
-  binding number this session's own CLAUDE.md treats as load-bearing;
-  a second drop competing for the same kill/breakable rolls needs a written
-  amendment stating the new expected materials yield and how it composes
-  with that number, the same way "a branch ends in a reward, not a duel"
-  got one before MINI_ROSTER shipped.
 - **Recipes & tiers**: potions (health/stat boosts), shields, armour,
   swords, and an "ultimate" tier of each. `js/items.js`'s existing
   "one file, many tints" idiom is the natural way to make an ultimate a real

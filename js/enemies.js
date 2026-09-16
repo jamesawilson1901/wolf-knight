@@ -21,6 +21,7 @@ import { juice } from './juice.js';
 import { spawnGearDrop } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { WS } from './worldstate.js';
+import { materialForWeakness, addMaterial, spawnMaterialDrop } from './materials.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -665,6 +666,7 @@ class Enemy {
     const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
     if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
     dropWeapon(this);
+    dropMaterial(this);
     this.world.root.remove(this.root);
   }
 
@@ -3655,6 +3657,21 @@ function dropWeapon(e) {
   if (gd && gd.file) spawnGearDrop(e.world, e.x, e.z, gd);
 }
 
+// design/CRAFTING.md §1 — a crafting material, on the SAME roll frequency
+// dad already tuned for the ember heal (`dropChance`), but its own
+// independent roll: a kill can pay in both, either, or neither. An elite
+// (dropChance >= 1) additionally has a real shot at the rare universal
+// Wolf's Crystal, the one material every "ultimate" recipe wants a stack of.
+function dropMaterial(e) {
+  const chance = e.dropChance !== undefined ? e.dropChance : 0.35;
+  if (Math.random() < chance) {
+    spawnMaterialDrop(e.world, e.x, e.z, materialForWeakness(e.weakness));
+  }
+  if ((e.dropChance || 0) >= 1 && Math.random() < 0.15) {
+    spawnMaterialDrop(e.world, e.x + 0.4, e.z, 'crystal');
+  }
+}
+
 function spawnEmberDrop(world, x, z) {
   if (!world.drops) world.drops = [];
   const spark = new THREE.Mesh(
@@ -3666,7 +3683,7 @@ function spawnEmberDrop(world, x, z) {
   const glow = new THREE.PointLight(0xffa04a, 2.2, 4, 1.9);
   glow.position.set(x, 0.6, z);
   world.add(glow);
-  world.drops.push({ x, z, spark, glow, life: 12, taken: false });
+  world.drops.push({ x, z, spark, glow, life: 12, taken: false, kind: 'heal' });
 }
 
 function updateDrops(world, dt, t, player) {
@@ -3689,9 +3706,13 @@ function updateDrops(world, dt, t, player) {
       world.root.remove(d.glow);
       if (!gone) {
         audio.play('pup-chime', { volume: 0.45, rate: 1.7 });
-        if (player.hearts < player.maxHearts) {
-          player.hearts = Math.min(player.maxHearts, player.hearts + 0.5);
-          if (player.onDamaged) player.onDamaged(player.hearts); // refresh HUD
+        if (d.kind === 'heal') {
+          if (player.hearts < player.maxHearts) {
+            player.hearts = Math.min(player.maxHearts, player.hearts + 0.5);
+            if (player.onDamaged) player.onDamaged(player.hearts); // refresh HUD
+          }
+        } else {
+          addMaterial(d.kind, 1);
         }
       }
     }

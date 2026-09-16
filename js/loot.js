@@ -10,6 +10,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
+import { spawnMaterialDrop } from './materials.js';
 
 export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null }; // main.js wires HUD
 
@@ -598,10 +599,10 @@ const BREAK_KINDS = {
   // different thing with a different promise. This is the one a child hopes
   // for: five coins, and a potion better than half the time.
   chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.25, shards: 5,
-    potion: 0.55 },
+    potion: 0.55, material: 0.5 },
   // and the rare one, worth running across a room for
   goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.25, shards: 12,
-    potion: 0.75 },
+    potion: 0.75, material: 0.8 },
 };
 const breakGltf = {};
 const breakCollapsed = {};
@@ -685,7 +686,7 @@ function collapse(gltf) {
 
 export class Breakable {
   constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
-    potion = 0.14, collapsed = null, kind = 'crate' } = {}) {
+    potion = 0.14, material = 0.15, collapsed = null, kind = 'crate' } = {}) {
     this.world = world;
     this.kind = kind;   // chooses the smash sound (SMASH_SFX)
     const model = collapsed
@@ -735,6 +736,7 @@ export class Breakable {
                          // never shoved by transformation shockwaves
     this.shardCount = shards;
     this.potionChance = potion;
+    this.materialChance = material;
     world.addCircle(x, z, Math.max(0.34, foot * 0.46));
     this._collider = world.circleColliders[world.circleColliders.length - 1];
     // A CHEST OPENS WHEN YOU WALK INTO IT. ALL OF THEM.
@@ -821,6 +823,17 @@ export class Breakable {
     // coins do and waits to be walked over.
     if (lootEvents.onPotionDrop && Math.random() < this.potionChance) {
       lootEvents.onPotionDrop(this.x, this.z);
+    }
+    // AND SOMETIMES A CRAFTING MATERIAL (design/CRAFTING.md §1) — a breakable
+    // has no element of its own the way an enemy's weakness gives it one, so
+    // it always pays in a Shadow Wisp; a gold chest additionally has a real
+    // shot at the rare universal Wolf's Crystal, the one thing every
+    // "ultimate" recipe wants a stack of.
+    if (Math.random() < this.materialChance) {
+      spawnMaterialDrop(this.world, this.x, this.z, 'wisp');
+    }
+    if (this.kind === 'goldchest' && Math.random() < 0.35) {
+      spawnMaterialDrop(this.world, this.x + 0.3, this.z, 'crystal');
     }
   }
   // The only breakable that does anything on its own: a chest opens when the

@@ -36,6 +36,8 @@ export const state = {
     equipped: { weapon: 'sword_knight', shield: 'shield_badge', armour: 'plain' },
     treasures: [],
     heartPieces: 0,
+    materials: {},               // crafting materials (design/CRAFTING.md), id -> count
+    crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
   },
   moonGauge: 0,                 // 0..1 — the Blood Moon Surge charge
   xp: 0,
