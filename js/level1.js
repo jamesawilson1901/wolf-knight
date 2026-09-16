@@ -1197,6 +1197,14 @@ export async function buildLc(scene) {
   ];
   world.markers.emberfangSpots = [{ x: 8, z: -8 }];
   world.markers.mothSpots = [{ x: -6, z: 5 }];
+  // MINING & WOODCUTTING (design/MINING.md, v3.175) — the first live spots
+  // in the game, on lc's own rock-large-b/tree-a already scattered here as
+  // scenery. Clear of the lava band (z -3..1 is INCLUSIVE at both ends —
+  // z=-3 itself is lava, caught by an arrival-frame screenshot showing the
+  // tree spot standing in the hazard), the two safe slabs, and every other
+  // hand-placed marker in this room.
+  world.markers.rockSpots = [{ x: 10, z: 7 }];
+  world.markers.treeSpots = [{ x: -9, z: -6 }];
   // WHERE THE JUMP IS TAUGHT. On the approach to the lava band (z -3..1),
   // south of it, where a child walking up from lg2 first sees molten rock and
   // stops. It moved here from lb's phantom geyser markers: a teach line has to

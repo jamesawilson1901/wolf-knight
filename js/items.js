@@ -191,6 +191,17 @@ export const WEAPONS = {
     dmg: 2.8, lock: 0.8, range: 1.85, price: 380, arc: 88, stun: 0.5,
     blurb: 'It rings when it lands.',
   },
+  // MINING (design/MINING.md) — the tool a rock needs before it gives up
+  // its ore. axe_c.gltf's own shape one more time, the old developer trick:
+  // a single asymmetric head on a long haft reads close enough to a pick
+  // that nothing about it looks borrowed once it is the only steel-grey
+  // one in the rack. Bought, not found — tier 1, the way every starting
+  // tool in this game arrives.
+  pickaxe: {
+    name: "Miner's Pick", icon: '⛏️', file: './assets/gear/axe_C.gltf', tint: 0x8a8f96,
+    dmg: 1.4, lock: 0.6, range: 1.9, price: 60, arc: 60,
+    blurb: 'Rock does not stand a chance.',
+  },
   // CRAFT-ONLY — design/CRAFTING.md §2. Not sold, not found in any chest:
   // the one thing a full run of the crafting ladder buys that nothing else
   // in the game does. sword_C.gltf's own silhouette (Broadblade), the old
@@ -329,6 +340,7 @@ export const SHOP_STOCK = [
   { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
   { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
   { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'pickaxe', price: 60, tier: 1 },
   { kind: 'weapon', id: 'sword_b', price: 90, tier: 2 },
   { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
   { kind: 'shield', id: 'shield_c', price: 180, tier: 3 },

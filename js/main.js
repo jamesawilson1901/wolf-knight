@@ -26,6 +26,7 @@ import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
+import { spawnResourceNodes } from './nodes.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -1920,6 +1921,7 @@ async function setupRoomExtras() {
   await preloadPotionDrop();
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
+  await spawnResourceNodes(world, world.markers.rockSpots || [], world.markers.treeSpots || []);
   await spawnPups(world, onPupCollected);
   // THE HEARTH, if this room is one and its region has grown enough to have
   // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
@@ -2678,6 +2680,7 @@ async function start() {
       if (world.updatePups) world.updatePups(dt, t, player);
       if (world.updateLostWolf) world.updateLostWolf(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
+      if (world.updateNodes) world.updateNodes(dt, t, player); // mining/woodcutting
       // ...and the pack grazing where the shadows used to stand
       if (world.updateGrazers) world.updateGrazers(dt, t, player);
       if (world.updateMinigames) world.updateMinigames(dt, t, player); // den games

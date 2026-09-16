@@ -22,6 +22,11 @@ export const MATERIALS = {
   // Universal and rare — elites/guardians and gold chests only. The one
   // material every "ultimate" recipe needs a stack of, regardless of element.
   crystal:       { name: "Wolf's Crystal", icon: '💎', color: 0xeaf6ff },
+  // MINING & WOODCUTTING (design/MINING.md) — the two gathered resources,
+  // from a rock or a tree rather than a kill or a breakable. Both feed the
+  // SAME materials pool/bucket as everything above, not a parallel one.
+  ore:           { name: 'Ore', icon: '⛏️', color: 0xb0a89a },
+  wood:          { name: 'Timber', icon: '🪵', color: 0xa07a4a },
 };
 
 // An enemy's own `weakness` names the shard it pays in; anything with no
