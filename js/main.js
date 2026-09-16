@@ -2532,6 +2532,7 @@ async function start() {
     // renderer rather than a second context — one still frame per model, cached
     // forever. Only the turning knight needs a live context of its own.
     renderer,
+    narration,
     onPauseGame: () => { menuPaused = true; },
     onResumeGame: () => { menuPaused = false; },
     onTravel: (room) => {

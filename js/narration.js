@@ -27,6 +27,11 @@ export const LINES = {
   // Part A — story beats (fire once, in order along the critical path)
   intro_arrival: { voice: 'pip', text: 'This is Ember Hollow, Kael. The shadows crept in here… I feel it. Stay close.' },
   first_enemy: { voice: 'pip', text: 'Careful — a shadow! Tap to swing your sword.' },
+  // CRAFTING (design/CRAFTING.md §3) — the tutorial is this ONE line, fired
+  // the first time the Crafting tab opens, plus the tab itself: a
+  // greyed "???" row already shows there is more to find without a word,
+  // the same demo-then-mash idiom the minigame harness uses.
+  craft_intro: { voice: 'pip', text: 'This is crafting! Bits you find make potions and gear. Tap Craft when you have enough.' },
   dark_nook: { voice: 'pip', text: 'It’s too dark to see in there. Hold the wolf button — the round one down there — and pick the Dark Wolf. He can see in the shadows.' },
   // THE NIGHT ROAD (js/levelNight.js). Two lines, because a road at night is
   // the one place in the game where a child can be genuinely unsure there is a

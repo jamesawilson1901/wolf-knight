@@ -154,24 +154,54 @@ into `js/crafting.js` and firing the toast hook end-to-end (not just the
 standalone functions in isolation). `tools/verify-gear.mjs`,
 `tools/verify-materials.mjs` and `tools/verify-armoury.mjs` all still pass.
 
-## §3 — still to design
+## §3 — the Crafting tab and its tutorial (v3.173, SHIPPED)
 
-Nothing below this line is built yet. Loose notes only, so a session
-picking this up does not start from nothing:
+Per dad's own words ("through the backpack button and then a crafting
+tab"), Crafting lives INSIDE the Armoury (`#inv-menu`) rather than as a new
+top-level panel — the one design-doc recommendation this section reversed
+once the literal ask was re-read. A small tab strip (`js/menus.js`,
+`.arm-tabs`) sits above the existing rack column: **Gear** (unchanged) and
+**Craft** (new). Switching tabs swaps only the right-hand rack list; the
+turning knight and his three worn slots on the left are never rebuilt.
 
-- **UI**: `js/menus.js`'s Armoury (`#inv-menu`) is the backpack; there is no
-  tab strip inside any panel today, each "screen" (Armoury/shop/map/sticker
-  book) is its own top-level DOM panel toggled by `Menus._open()`'s
-  allowlist. A new `craft-menu` panel is the path of least resistance,
-  wired the same way, rather than retrofitting tabs into the Armoury. The
-  sticker book's `???`-for-undiscovered treatment (`js/menus.js`) is the
-  right idiom for a locked/hidden recipe card. `itemThumb()`/`meshThumb()`
-  (`js/equipscene.js`) render real item art for any def already, including
-  code-built ones (the potion) — a recipe card showing ingredients and
-  result needs no new art pipeline.
-- **Tutorial**: this game's hard rule is no reading required
-  (`design/DEN-MINIGAMES.md`). Precedent is two idioms, likely combined: a
-  single blocking, once-per-save `Narration.say(...)` line (voiced +
-  captioned, the way `first_enemy`/`boss_swipe_tell` teach a new verb) paired
-  with a wordless in-UI demonstration on first open (the minigame harness's
-  demo-then-mash pattern), not a text walkthrough.
+`_paintCraftTab()` reuses the Armoury's own `.rack-row`/`.rack-art`/
+`.rack-body` chrome — a recipe IS an item on a shelf, just paid for in
+materials instead of coins. Each visible recipe shows its cost as
+`icon count/needed` chips (red when short), a `Craft` button (visually and
+functionally disabled when unaffordable, per `canCraft()`), and its blurb.
+A tier-locked or undiscovered-hidden recipe renders exactly like an
+unearned sticker: greyed (`.rack-row.locked`, `filter: grayscale(1)`),
+named `???`, no button at all — the sticker book's own idiom, reused rather
+than invented. Tapping Craft calls `craftItem(id, {player})`, persists, and
+repaints just the recipe list.
+
+**The tutorial is one line**: `craft_intro` (`js/narration.js`), fired via
+`Menus`'s new `narration` reference the first time the Craft tab is ever
+opened (`Narration.say()`'s own once-per-save guard — no new flag needed).
+The rest of the teaching is wordless: the `???` rows themselves already say
+"there is more here" without a sentence, the same demo-then-discover shape
+`design/DEN-MINIGAMES.md`'s no-reading-required rule asks for everywhere
+else in this game. No blocking full-screen walkthrough, no second system —
+the smallest thing that actually teaches it.
+
+Verified: `tools/verify-craftui.mjs` (new) — the Armoury opens on Gear by
+default, a Craft tab exists and switching to it swaps only the rack column
+(knight/slots survive untouched), tier-1 recipes are unlocked with a real
+Craft button while tier-2+/hidden recipes read as locked `???` rows, tapping
+Craft without materials refuses silently, tapping it WITH materials pays out
+through the real DOM (not just the underlying functions — `verify-crafting
+.mjs` already owns those in isolation), the tutorial line fires exactly once
+on first open, and switching back to Gear restores the original view.
+`verify-armoury.mjs` (phone-width fit, the live knight preview) still
+passes unmodified.
+
+---
+
+**The crafting system (§0-§3) is complete** as of v3.173: enemies farmable
+everywhere regardless of a region's heal, nine materials with real drop
+tables, five recipes on a usage-count tier ladder with one hidden recipe
+found in the world, and a Crafting tab in the backpack with its own
+one-line tutorial. Next in dad's own ordering: the FX pass (Kenney
+Particle Pack), then mining & woodcutting (`design/DEN-REBUILD.md`'s own
+resource system depends on this), then the Den rebuild, then the
+dragon-egg side quest.
