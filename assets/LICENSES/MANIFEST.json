@@ -461,6 +461,19 @@
     "assets/fx/flash.png"
    ],
    "note": "design/FX.md, v3.174 — billboarded THREE.Sprite hit-feedback (js/juice.js), extending the pooled hit-spark burst that already existed with real texture instead of a flat coloured square, plus two new one-off flourishes (a weakness-hit flare, a heavy-hit flash). Resized from the pack's own 512x512 source to 128x128 — plenty for a particle a few pixels across on screen, a fraction of the precache weight."
+  },
+  {
+   "pack": "Fantasy Portal 3D LowPoly Model",
+   "licence": null,
+   "evidence": "fantasy-portal-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied the pack directly via chat upload (a .rar containing a .blend, an .fbx export, and three PNG textures), and stated when asked that it is \"CC0 (public domain)\". No LICENSE.txt/README shipped inside the archive itself and no source URL was given, so nothing here can be checked against a posted licence page the way kenney.nl's or Quaternius's packs can be.",
+   "source": null,
+   "covers": [
+    "assets/env/shrine/portal.glb"
+   ],
+   "note": "design/DRAGON-EGGS.md — replaces the light-only spiritShrine() placeholder at all three Grand Elemental Shrines with a real vendored portal model, retinted per element. Converted from the supplied .fbx to a single self-contained .glb (assimp + pygltflib): all three textures re-embedded as binary chunks rather than shipped as loose files, and the glowing disk (already a separate mesh in the source file, Portal_01_Hole) given its own material so it can be recoloured per element without repainting the stone frame/moss/root. The original .fbx/.blend/loose PNGs are not vendored, only the converted .glb.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in fantasy-portal-attestation.txt is still what would clear it."
   }
  ],
  "distribution": {

@@ -28,7 +28,7 @@ import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes } from './nodes.js';
 import { spawnDragonShrines, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
-import { CompanionDragon } from './companionDragon.js';
+import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
 import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
@@ -557,15 +557,62 @@ document.getElementById('resume-btn').addEventListener('pointerdown', (e) => {
 // (`.revealed`, toggled every frame off world.dragonPromptElement) while
 // standing at a shrine holding its matching, unhatched egg, so a stray tap
 // here the rest of the game does nothing at all.
+//
+// TAPPING IS "YES" — dad's own ask, "if they say yes then the egg is
+// already in their hands and Kael drops it straight in. No throwing
+// animation needed." The state flips immediately (throwEgg() below), but
+// the VISUAL reveal waits: `dragonEmerging` keeps #caption in its big
+// `.big-cover` state (the per-frame toggle further down) through the whole
+// delay, covering the player exactly where the "drop it in" moment would
+// otherwise need an animation nobody built. `EMERGE_DELAY_MS` later, the
+// companion appears at the SHRINE (not beside Kael) via
+// CompanionDragon#emergeAt() — "the baby dragon after a few seconds jumps
+// out," the way the brief asked for it.
+//
+// A real bug caught after the first draft "worked": narration.say() for
+// the hatch line was fired IMMEDIATELY after emergeAt(), in the same task —
+// but that line is a one-shot, non-repeat story beat, so js/narration.js's
+// own `blocking` getter goes true the instant it starts, and the WHOLE
+// per-frame loop (js/main.js) early-returns on `if (narration.blocking)`
+// BEFORE it ever reaches the `.big-cover` toggle or CompanionDragon#update()
+// itself. The cover would freeze on screen and the rise animation would
+// freeze mid-scale for as long as the line takes to speak, only finishing
+// once it stopped — not a smooth reveal, and `tools/verify-dragoneggs.mjs`
+// (draining the SAME narration queue this session's other suites already
+// document racing with the real render loop) is what caught it. FIX: wait
+// out EMERGE_RISE_TIME for real BEFORE clearing dragonEmerging/saying the
+// hatch line, so the per-frame loop gets that whole window unblocked to
+// finish the reveal and actually apply the cleared cover once, before the
+// hatch line's own pause is allowed to freeze anything again.
+const EMERGE_DELAY_MS = 2200;
+let dragonEmerging = false;
 document.getElementById('btn-dragon').addEventListener('pointerdown', async (e) => {
   e.stopPropagation();
   if (!world || !world.confirmDragonThrow) return;
+  const pos = world.dragonPromptPos; // read BEFORE confirmDragonThrow() clears "armed"
   const el = world.confirmDragonThrow();
   if (!el) return;
   document.getElementById('btn-dragon').classList.remove('revealed');
-  await ensureDragon();
-  if (narration) narration.say(DRAGON_ELEMENTS[el].hatchLine);
   persist();
+  // A second/third hatch while a dragon is already out and about leaves the
+  // equip choice untouched (design/DRAGON-EGGS.md) — nothing is about to
+  // visibly appear, so skip the cover-and-wait staging entirely; the
+  // Dragons tab is where that dragon gets its turn.
+  if (equippedDragon() !== el) return;
+  dragonEmerging = true;
+  await new Promise((r) => setTimeout(r, EMERGE_DELAY_MS));
+  await ensureDragon();
+  if (dragon && pos) dragon.emergeAt(pos.x, pos.z);
+  await new Promise((r) => setTimeout(r, EMERGE_RISE_TIME * 1000));
+  dragonEmerging = false;
+  // A real gap, not the next statement — `dragonEmerging = false` and
+  // narration.say() being back-to-back in the same task was the SAME bug
+  // as above in miniature: zero real frames land between them, so the
+  // per-frame loop's own `.big-cover` toggle never gets a chance to apply
+  // "cleared" even once before the hatch line's own blocking freezes it
+  // again. One frame's worth of real time is enough for that one toggle.
+  await new Promise((r) => setTimeout(r, 100));
+  if (narration) narration.say(DRAGON_ELEMENTS[el].hatchLine);
 });
 // The ✕ stays pinned in the corner even when the menu scrolls — there is
 // ALWAYS a visible way back to the game.
@@ -2763,6 +2810,12 @@ async function start() {
         const ev = world.dragonShrineEvent;
         if (ev) narration.say(DRAGON_ELEMENTS[ev.element][ev.type === 'hint' ? 'hintLine' : 'confirmLine']);
         document.getElementById('btn-dragon').classList.toggle('revealed', !!world.dragonPromptElement);
+        // THE "COVER THE PLAYER" POPUP (design/DRAGON-EGGS.md) — big and
+        // centred instead of the usual thin bottom strip, for exactly the
+        // window a matching egg is armed at a shrine AND the whole
+        // cover-and-wait delay after confirming, so the reveal never shows
+        // Kael still holding an egg with no dragon and no throw to explain it.
+        document.getElementById('caption').classList.toggle('big-cover', !!world.dragonPromptElement || dragonEmerging);
       }
       updateCompanionDragon(dt, t, player, world);
       // ...and the pack grazing where the shadows used to stand

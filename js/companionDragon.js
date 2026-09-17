@@ -19,6 +19,7 @@ import { loadGLB } from './assets.js';
 import { buildDragonBody } from './enemies.js';
 import { WOLF_TINTS } from './player.js';
 import { audio } from './audio.js';
+import { juice } from './juice.js';
 
 const DRAGON_URL = './assets/chars/monsters/Dragon.glb';
 
@@ -72,6 +73,7 @@ const BITE_DMG = 1.5;        // modest support damage — a companion, not a sec
 const CHASE_SPEED = 6.0;
 const FOLLOW_SPEED_FAR = 6.4;
 const FOLLOW_SPEED_NEAR = 3.6;
+export const EMERGE_RISE_TIME = 0.9; // seconds the "jumps out of the portal" scale-up takes
 
 let cachedGltf = null;
 async function dragonGltf() {
@@ -87,6 +89,7 @@ export class CompanionDragon {
     this._loaded = false;
     this._target = null;
     this._biteT = 0;
+    this._emergeT = 0;
     this._seed = Math.random() * 10;
   }
 
@@ -138,11 +141,38 @@ export class CompanionDragon {
     this.x = x; this.z = z;
   }
 
+  // THE HATCH MOMENT (design/DRAGON-EGGS.md) — dad's own ask: "the baby
+  // dragon after a few seconds jumps out." js/main.js's #btn-dragon handler
+  // calls this once the covering popup's own delay has elapsed, at the
+  // SHRINE's position rather than the player's own (place()'s usual spot) —
+  // it visibly comes OUT of the portal, not out of thin air beside Kael.
+  // Scales up from near-nothing over EMERGE_RISE_TIME; `update()` below
+  // holds off on follow/hunt logic for exactly that long so it does not
+  // immediately dash toward the player mid-reveal.
+  emergeAt(x, z) {
+    this.x = x; this.z = z;
+    this.root.position.set(x, 0.9, z);
+    this.root.visible = true;
+    this.root.scale.setScalar(0.05);
+    this._emergeT = EMERGE_RISE_TIME;
+    juice.burst(x, 0.9, z, WOLF_TINTS[this.element + '_wolf']?.main ?? 0xffffff, 22);
+    audio.play('checkpoint', { volume: 0.7, rate: 1.3 });
+  }
+
   // `dt`/`t`/`player`/`world` — the SAME signature as Pip's own
   // update(dt, t, player, world), the direct template for the follow half.
   update(dt, t, player, world) {
     if (!this._loaded || !this.root.visible) return;
     if (this.x === undefined) { this.x = this.root.position.x; this.z = this.root.position.z; }
+    if (this._emergeT > 0) {
+      this._emergeT -= dt;
+      const p = 1 - Math.max(0, this._emergeT) / EMERGE_RISE_TIME;
+      this.root.scale.setScalar(0.05 + 0.95 * Math.min(1, p));
+      this._play('fly');
+      this.mixer.update(dt);
+      if (this.syncEyes) this.syncEyes();
+      return; // no follow/hunt while still rising out of the portal
+    }
     const px = player.root.position.x, pz = player.root.position.z;
 
     // Pick or drop a hunt target. Enemies live in world.enemies (the same

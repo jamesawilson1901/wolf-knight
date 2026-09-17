@@ -1,0 +1,32 @@
+UPLOADER ATTESTATION — FANTASY PORTAL 3D LOWPOLY MODEL
+=======================================================
+Recorded: 2026-09-17
+
+The repository owner supplied "Fantasy Portal 3D LowPoly Model" (a .rar
+containing a .blend, an .fbx export, and three PNG textures — diffuse,
+metallic, emissive) via chat upload and stated, when asked directly which
+license/source applies:
+
+    "CC0 (public domain)"
+
+This file records that permission in plain words. It is NOT a formal
+licence grant: no LICENSE.txt, README, or other licence document shipped
+inside the archive itself, and no source URL was given, so nothing here can
+be checked against a posted licence the way kenney.nl's or Quaternius's
+packs can be.
+
+WHAT WOULD CLEAR IT
+The source page (itch.io, Sketchfab, or wherever this was downloaded from)
+almost certainly states its own licence in writing — copying that page's
+licence text (or a screenshot of it) into this directory and replacing this
+attestation with it in MANIFEST.json would fully clear this entry the same
+way kenney/Quaternius packs already are.
+
+WHAT IS SHIPPING FROM THIS PACK
+  assets/env/shrine/portal.glb — the Grand Elemental Shrine (design/DRAGON-EGGS.md),
+  reused at all three shrines (fire/tide/storm), retinted per element. The
+  original .fbx/.blend/loose PNGs are NOT vendored — only a single
+  self-contained .glb converted from the .fbx via assimp/pygltflib, with all
+  three textures re-embedded as binary chunks (no external texture files),
+  and the glowing disk split onto its own material so it can be recoloured
+  per element without repainting the stone frame.

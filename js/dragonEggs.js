@@ -18,16 +18,35 @@
 // happened as a plain event object and main.js decides what, if anything, to
 // say about it, the same separation js/nodes.js's ResourceNode and
 // js/denRebuild.js's building spots already keep from their own callers.
+//
+// v2 REVISION (2026-09-17, dad's own review of the first screenshots): the
+// original shrine was js/levelkit.js's spiritShrine() — a pure light effect,
+// nothing to actually THROW an egg INTO. Dad: "you can't reuse those assets
+// as the shrines, it will confuse the player. There was also meant to be
+// some sort of moat surrounding it to throw the egg into." Replaced with a
+// real vendored portal model (assets/env/shrine/portal.glb, a CC0 upload —
+// see assets/LICENSES/MANIFEST.json) ringed by a literal moat (a flat water-
+// tinted ring, js/water.js's own WATER.shallow palette so it reads as the
+// SAME water this game already has rather than a new material) — touching
+// the moat is now the trigger radius, not an invisible circle floating in
+// open air. Dad also asked for the confirm prompt to "cover up the player"
+// so no throw animation is needed ("the egg is already in their hands...
+// Kael drops it straight in") and for the dragon to "jump out" a few seconds
+// later rather than appear instantly — both handled in js/main.js (the
+// #caption.big-cover CSS state and the EMERGE_DELAY_MS sequence) and
+// js/companionDragon.js (CompanionDragon#emergeAt(), a scale-up reveal).
+import * as THREE from 'three';
 import { state } from './state.js';
-import { spiritShrine } from './levelkit.js';
+import { loadGLB, prepareModel } from './assets.js';
+import { WATER } from './water.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 
-// One entry per element. `tint` colours the shrine's own light effect
-// (js/levelkit.js spiritShrine, reused as-is — a shrine is light, not a
-// creature, the same reasoning that function's own header already gives for
-// why it is built from primitives rather than a vendored model) and is also
-// the base colour js/companionDragon.js reads off js/player.js's own
+// One entry per element. `tint` colours the shrine's own portal disk (only
+// the disk — js/levelkit.js's spiritShrine() header explains why a shrine
+// used to be pure light; the portal keeps the same "colour says which
+// element" law, just on a real mesh's own isolated material instead) and is
+// also the base colour js/companionDragon.js reads off js/player.js's own
 // WOLF_TINTS for the matching wolf form, so a fire dragon is exactly Fire
 // Wolf orange rather than a fourth new palette.
 export const DRAGON_ELEMENTS = {
@@ -45,7 +64,16 @@ export const DRAGON_ELEMENTS = {
   },
 };
 
-const NEAR_R = 3.2; // walk-up radius — this game's only interaction law (js/nodes.js's own header)
+const PORTAL_URL = './assets/env/shrine/portal.glb';
+let portalGltf = null;
+async function preloadPortal() {
+  if (!portalGltf) portalGltf = await loadGLB(PORTAL_URL);
+}
+
+const SHRINE_HEIGHT = 2.6;   // fitHeight target — a little taller than Kael, a real set-piece
+const MOAT_INNER = 1.7;      // just outside the portal's own stone base
+const MOAT_OUTER = 2.6;      // the moat's outer edge IS the walk-up/touch radius now
+const NEAR_R = MOAT_OUTER;
 
 export function hasEgg(el) { return !!(state.inventory.dragonEggs || {})[el]; }
 
@@ -90,12 +118,61 @@ export function setEquippedDragon(el) {
   return true;
 }
 
-// One shrine's own tiny state machine — walk up, get told what to do (an
-// event main.js turns into a narration line) or get shown nothing at all.
+// A real vendored portal (CC0, converted to a self-contained .glb — see
+// assets/LICENSES/MANIFEST.json), ringed by a flat water-tinted moat. Only
+// the portal's own glowing disk is tinted per element — it is a SEPARATE
+// mesh in the source file (Portal_01_Hole) with its own material
+// ('PortalDisk'), so recolouring it never repaints the stone frame, moss or
+// root the model already carries.
 class DragonShrine {
   constructor(world, x, z, element) {
     this.x = x; this.z = z; this.element = element;
-    spiritShrine(world, x, z, DRAGON_ELEMENTS[element].tint, 1.15);
+    const tint = DRAGON_ELEMENTS[element].tint;
+
+    const model = prepareModel(portalGltf.scene.clone());
+    const bb = new THREE.Box3().setFromObject(model);
+    const h = Math.max(0.01, bb.max.y - bb.min.y);
+    const s = SHRINE_HEIGHT / h;
+    model.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+    model.traverse((n) => {
+      if (!n.isMesh || !n.material || n.material.name !== 'PortalDisk') return;
+      n.material = n.material.clone();
+      n.material.color.setHex(tint);
+      n.material.emissive.setHex(tint);
+      n.material.emissiveIntensity = 2.2;
+    });
+    const root = new THREE.Group();
+    root.add(model);
+    root.scale.setScalar(s);
+    root.position.set(x, world.deckY || 0, z);
+    world.add(root);
+
+    // THE MOAT — a flat ring using the SAME water tint/alpha
+    // js/water.js's own WATER.shallow already uses (this game's one
+    // established "this is water" read), not a new material. Visual only —
+    // it does not slow the player like a real waterZone() the way Sunken
+    // Vale's own water does; that would need registering an actual
+    // collision/depth zone for a handful of one-off rings, more machinery
+    // than three fixed, dry-floored boss arenas need. Documented as a
+    // deliberate simplification, not an oversight.
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(MOAT_INNER, MOAT_OUTER, 40),
+      new THREE.MeshStandardMaterial({
+        color: WATER.shallow.tint, transparent: true, opacity: WATER.shallow.alpha,
+        side: THREE.DoubleSide, roughness: 0.35, metalness: 0,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, (world.deckY || 0) + 0.015, z);
+    world.add(ring);
+    this.portalRoot = root; // kept for tools/verify-dragoneggs.mjs's own introspection
+    this.moatRing = ring;
+    // NOT reserved here — each room builder already calls world.reserve(x,
+    // z, 3.4, 'dragonShrine') itself, comfortably bigger than MOAT_OUTER,
+    // BEFORE its own scatter() pass runs (js/level1.js/level5.js/level6.js).
+    // A second reserve() from inside this shared class would only duplicate
+    // that, at a smaller radius, with no ordering guarantee of its own.
+
     this._near = false;
     this.armed = false; // true only while near, egg in hand, not yet hatched
   }
@@ -121,6 +198,11 @@ class DragonShrine {
     return event;
   }
 
+  // Spends the egg and flips the state immediately (owning the dragon is
+  // real the instant you say yes) but does NOT touch the companion body —
+  // js/main.js's #btn-dragon handler owns the "cover the player, wait a few
+  // seconds, then it jumps out of the portal" choreography, since that is a
+  // UI sequencing concern, not this module's own state-machine.
   throwEgg() {
     if (!this.armed) return false;
     if (!hatchEgg(this.element)) return false;
@@ -129,8 +211,6 @@ class DragonShrine {
     // the equip choice alone — swapping between hatched dragons is what the
     // backpack's own Dragons tab (js/menus.js) is for.
     if (!equippedDragon()) setEquippedDragon(this.element);
-    juice.burst(this.x, 1.0, this.z, DRAGON_ELEMENTS[this.element].tint, 26);
-    juice.flare(this.x, 1.0, this.z, DRAGON_ELEMENTS[this.element].tint);
     audio.play('checkpoint', { volume: 0.8, rate: 0.75 });
     return this.element;
   }
@@ -142,18 +222,21 @@ class DragonShrine {
 // same data-only contract js/nodes.js's rockSpots/treeSpots already keep.
 export async function spawnDragonShrines(world, spots = []) {
   if (!spots.length) return;
+  await preloadPortal();
   world.dragonShrines = spots.map((s) => new DragonShrine(world, s.x, s.z, s.element));
   world.dragonShrineEvent = null;    // this frame's edge-triggered event, or null
   world.dragonPromptElement = null;  // element of the currently-armed shrine, or null
+  world.dragonPromptPos = null;      // {x,z} of the currently-armed shrine, or null
   world.updateDragonShrines = (dt, t, player) => {
-    let event = null, armed = null;
+    let event = null, armed = null, pos = null;
     for (const s of world.dragonShrines) {
       const e = s.update(player);
       if (e) event = e;
-      if (s.armed) armed = s.element;
+      if (s.armed) { armed = s.element; pos = { x: s.x, z: s.z }; }
     }
     world.dragonShrineEvent = event;
     world.dragonPromptElement = armed;
+    world.dragonPromptPos = pos;
   };
   // THE CONFIRM TAP. main.js wires the one on-screen button
   // (#btn-dragon, revealed only while world.dragonPromptElement is set —
@@ -164,7 +247,11 @@ export async function spawnDragonShrines(world, spots = []) {
   // other "no tool = does nothing" precedent in this game (js/nodes.js).
   world.confirmDragonThrow = () => {
     for (const s of world.dragonShrines) {
-      if (s.armed) return s.throwEgg();
+      if (s.armed) {
+        const el = s.throwEgg();
+        if (el) juice.burst(s.x, 1.0, s.z, DRAGON_ELEMENTS[el].tint, 26);
+        return el;
+      }
     }
     return null;
   };

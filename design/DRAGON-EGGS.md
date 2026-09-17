@@ -159,7 +159,14 @@ region's own boss falls, so this quest interleaves with, rather than runs
 fully alongside, the main story. Documented here as the explicit call this
 session made rather than left implicit.
 
-### The Grand Elemental Shrines — `spiritShrine()`, reused and retinted
+### The Grand Elemental Shrines — `spiritShrine()`, reused and retinted (v1 — SUPERSEDED, see v2 below)
+
+> **Superseded in v2** (below): dad's own review of these screenshots —
+> "you can't reuse those assets as the shrines, it will confuse the
+> player" — replaced `spiritShrine()` with a real portal model. Left as
+> written for the historical record of why `spiritShrine()` looked like a
+> reasonable v1 choice at the time; nothing in this subsection reflects
+> what actually ships.
 
 Three calls to the existing `js/levelkit.js` `spiritShrine(world, x, z,
 colour, top)`, one per boss-arena room, at a colour matching each element's
@@ -391,15 +398,156 @@ icon — throwing an egg is close enough in kind) at the button's own gold
 accent colour, confirmed by a follow-up screenshot with the button actually
 armed and visible on screen.
 
+## v2 — the real shrine, the moat, and the cover-the-player reveal (2026-09-17, SHIPPED)
+
+Dad, on seeing the v1 screenshots: "you can't reuse those assets as the
+shrines, it will confuse the player. There was also meant to be some sort
+of moat surrounding it to throw the egg into. I suggest we use the pop up
+question to cover up the player. The question fires when the player
+touches the moat. The text box covers the player and if they say yes then
+the egg is already in their hands and kael drops it straight in. No
+throwing animation needed. The baby dragon after a few seconds jumps out."
+He also supplied a real model — "Fantasy Portal 3D LowPoly Model" — and
+asked whether its face count was too high.
+
+**The face-count check, before anything else**: 3,765 triangles (2 meshes,
+1 material, no bones/animation), converted from the supplied `.fbx` and
+benchmarked against what already ships — `rock-large-b.glb` (85 faces),
+`Dragon.glb` (1,344, fully rigged/animated), and the closest existing
+"big stone set-piece," the dungeon kit's own `Arch.glb` (4,484 faces,
+already shipping). The portal sits comfortably under that Arch and well
+above simple decor, and only 3 will ever exist in the whole game (one per
+element, one per boss-arena room, never repeated) — not a budget concern.
+Style-wise it's chunky, flat-shaded low-poly stone with moss accents,
+compatible with the existing look. Verdict: usable as supplied, no need for
+a different asset.
+
+**License**: the pack shipped with no `LICENSE.txt`/README inside the
+archive and no source URL; dad stated directly it is CC0 when asked.
+Recorded honestly in `assets/LICENSES/MANIFEST.json` — `licence: null`,
+`evidence: fantasy-portal-attestation.txt` (a plain-words record of that
+exact exchange, dated, mirroring this session's own existing
+`uploader-batch-2026-09-03-attestation.txt` precedent for the same
+situation) — under the project's standing private-family-use decision,
+not claimed as formally verified.
+
+**The asset conversion** (`assets/env/shrine/portal.glb`, self-contained):
+the supplied `.fbx` referenced its three textures (diffuse, metallic,
+emissive) by absolute Windows paths that don't resolve anywhere but the
+original machine. Converted via `assimp` (FBX → glTF) then `pygltflib`
+(re-embedding all three textures as binary buffer chunks, dropping the
+broken external URIs) into one portable `.glb`, matching how every other
+single-file vendored model in this game already ships. A genuine discovery
+made along the way: the model's glowing disk (what an egg is actually
+thrown into) turned out to already be a SEPARATE mesh in the source file
+(`Portal_01_Hole`, oddly named, 20 faces) sharing the frame's own material
+by what looks like an export oversight — giving it its OWN material
+(`PortalDisk`, base colour neutral, its emissive texture desaturated to a
+grayscale mask so `.color`/`.emissive` multiply into a clean, predictable
+tint) means only the disk recolours per element; the stone frame, moss and
+root (`PortalFrame`, the original, untouched diffuse texture) never do.
+Confirmed with real Playwright renders of the retint at all three elements
+before wiring it into the game at all — a global tint (the first, wrong
+attempt) painted the WHOLE model each element's colour, moss and stone
+included, which read as wrong the moment it was screenshotted.
+
+**The shrine** (`js/dragonEggs.js`'s `DragonShrine`): the portal replaces
+`spiritShrine()` outright — `fitHeight`-scaled to 2.6u (a little taller than
+Kael, a real set-piece), the disk material's `.color`/`.emissive` set to
+the element's own tint (`DRAGON_ELEMENTS[el].tint`, unchanged from v1)
+at `emissiveIntensity: 2.2`.
+
+**The moat**: a flat `THREE.RingGeometry` (inner radius 1.7, outer 2.6)
+laid flush with the floor, using `js/water.js`'s own `WATER.shallow`
+tint/alpha — the SAME material read as "this is water" everywhere else in
+the game, not a new one — rather than a light effect standing in for one.
+`MOAT_OUTER` (2.6) is now also the shrine's own walk-up/touch radius
+(`NEAR_R`), replacing v1's arbitrary invisible 3.2u circle — "touching the
+moat" is now literally what the ring you can see means, not a separate
+number nobody could see. Deliberately visual-only: it does not slow the
+player the way Sunken Vale's own real water zones do (that machinery is
+built for a handful of dedicated rooms, not three one-off rings in
+otherwise-dry boss arenas) — documented as a scope decision, not an
+oversight.
+
+**"Cover the player," no throw animation, jump out after a few seconds**
+(`js/main.js`'s `#btn-dragon` handler): tapping confirm is the entire "yes"
+— the state flips immediately (`throwEgg()`: hatched, auto-equipped, egg
+spent, unchanged from v1), but the companion's own appearance waits.
+`dragonEmerging` (a new module flag) keeps `#caption` in a new, much bigger
+centred `.big-cover` CSS state (up from a thin bottom strip to a
+`min-height: 34vh` centred card) for the whole `EMERGE_DELAY_MS` (2200ms)
+wait — literally covering the area Kael stands in, which is the entire
+point: nothing needs to animate an egg leaving his hands because the
+player cannot see that moment happen at all. `EMERGE_DELAY_MS` later,
+`CompanionDragon#emergeAt(x, z)` (new) places the companion AT THE SHRINE
+(not beside Kael, `place()`'s usual spot) and scales it up from 0.05 to
+1.0 over `EMERGE_RISE_TIME` (0.9s) — "the baby dragon after a few seconds
+jumps out," the way the brief asked for it, word for word.
+
+**Two real bugs, both caught by the mandatory verification pass, not
+assumed away:**
+
+1. *A visual bug*, in the same family as the emoji-button catch above:
+   a naive per-element retint set `material.color` on the WHOLE model, so
+   the fire shrine's frame, moss and root all turned uniform orange — a
+   real screenshot comparison (not inference) showed a monochrome statue
+   rather than a stone shrine with a glowing disk. Fixed by discovering and
+   using the disk's own separate mesh/material (above) instead of
+   attempting a same-material split by hand.
+2. *A real sequencing bug*, caught by `tools/verify-dragoneggs.mjs`'s own
+   real-button test: the first draft called `narration.say(hatchLine)`
+   immediately after `emergeAt()`/`dragonEmerging = false`, in the same
+   synchronous task. `js/narration.js`'s `blocking` getter freezes the
+   ENTIRE per-frame loop (`js/main.js`) the instant a non-repeat line
+   starts — including the very `.big-cover` toggle and
+   `CompanionDragon#update()` this feature depends on — so with zero real
+   frames landing between "cleared" and "the hatch line starts," the cover
+   would freeze on screen and the rise animation would freeze mid-scale for
+   as long as the line took to speak, restarting only once it stopped: not
+   a smooth reveal, and a real device with functioning TTS would show this
+   every single time, not just under test. Fixed by waiting out
+   `EMERGE_RISE_TIME` for real before clearing `dragonEmerging`, and adding
+   one more short real gap (100ms) before the hatch line itself, so the
+   per-frame loop gets an actual free window to apply "reveal complete,
+   cover cleared" before allowing itself to freeze again for the
+   announcement.
+
+**Verified**: `tools/verify-dragoneggs.mjs` grew real portal/moat
+assertions (a `PortalDisk` material recoloured to the right tint, on its
+own — not the frame's — material; a moat ring present) and a REAL
+`#btn-dragon` click driving the whole sequence end to end: state flips
+instantly, the companion is provably NOT visible during the wait, `.big-
+cover` is seen applied at some point during it, the companion appears
+EXACTLY at the shrine's coordinates once the delay elapses, and the cover
+clears once it has. This test surfaced a THIRD thing worth recording
+plainly, this time about testing itself rather than the game: the shrine's
+own real confirm line is a genuine, non-repeat `narration.say()` that the
+real per-frame render loop can race into existence at any point, and
+headless Chromium has no real TTS to ever finish a line on its own — its
+text-length-based fallback timer can run for several real seconds, which
+is longer than earlier draft's own fixed test waits. `waitQuiet()` (new,
+polls and actively `skip()`s until narration is quiet for several
+consecutive checks) reaches the same real eventual state — the line
+finishing to speak, exactly as it would on a device with working TTS —
+deterministically, 8/8 consecutive runs, rather than depending on which
+side of a timing race one particular run happened to land on. A second,
+unrelated hazard the same debugging pass found: `le`'s own fast-travel spot
+sits close enough to the shrine's coordinates that teleporting the player
+there for these checks also satisfies the travel spot's OWN proximity
+trigger, popping the map menu open and freezing everything the same way —
+the exact hazard `tools/shot-dragoneggs.mjs`'s own screenshot pass had
+already found and stripped for this identical reason, applied here too.
+
+`sh tools/lint.sh`, `node tools/verify-boot.mjs` (precache resynced for the
+new `assets/env/shrine/portal.glb`), and `sh tools/verify-all.sh --quick`
+all green. A real Playwright screenshot pass of all three retinted shrines
+plus the companion mid-rise and fully emerged confirmed the visuals read
+correctly before shipping — the human pass CLAUDE.md requires before a
+merge to `main` is still owed and not claimed here.
+
 ## Still to design
 
-- **A visible tool-swap moment for the throw itself.** The egg simply
-  vanishes from the inventory and the dragon appears at the shrine — there
-  is no "Kael actually holds the egg up and throws it" animation, the same
-  scope cut `design/MINING.md`'s own "still to design" section already
-  named for the pickaxe/axe not visibly appearing in Kael's hand mid-swing.
-  A future pass could add a short held-item throw animation using the same
-  hand-mesh-swap idiom that note describes.
 - **A fourth or later dragon.** The system supports any number of elements
   trivially (`DRAGON_ELEMENTS` is a plain registry), but only three shrines
   exist in the world right now, matching dad's own "three dragon eggs"

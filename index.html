@@ -289,6 +289,19 @@
     }
     #caption.show { pointer-events: auto; cursor: pointer; }
     #caption.show::after { content: '  ▸'; opacity: .6; }
+    /* THE DRAGON-EGG "COVER THE PLAYER" POPUP (design/DRAGON-EGGS.md) — the
+       SAME #caption element, big and centred instead of a thin bottom strip,
+       for the window a matching egg is armed at a shrine through the whole
+       cover-and-wait delay after confirming. Only ever toggled by the
+       dragon-shrine per-frame code (js/main.js) — every other narration
+       line in the game keeps the normal small bar. */
+    #caption.big-cover {
+      left: 50%; bottom: 50%; transform: translate(-50%, 50%);
+      max-width: min(84vw, 640px); width: 84vw; min-height: 34vh;
+      padding: 24px; border-radius: 22px; font-size: 19px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(10, 7, 18, .95);
+    }
     #voice-pick { min-width: 128px; padding: 8px 12px; font-size: 15px; margin: 0; }
     /* A settings row is a plank on the same shelf as everything else: dark
        inset, brass hairline, gold icon, cream label. */
@@ -1341,7 +1354,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.179.0</div>
+  <div id="badge">Wolf Knight &middot; v3.180.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.
