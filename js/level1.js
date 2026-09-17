@@ -40,6 +40,7 @@ import { carryItem, socket } from './carry.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
 import { isHealed, COAT } from './restoration.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
 import { bumpCounter } from './progress.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
@@ -718,6 +719,18 @@ export async function buildLa(scene) {
   // gone, 2026-08-30. The l1_ash_nook save flag stays honoured if already
   // collected — saves are additive-forever — the spawn is simply not built.)
 
+  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the FIRST of three, half-
+  // buried in the room's own ash patch (x 6 z 10, r 4.5), clear of the
+  // cartWreck/stump cluster around it. Wordless: a child who notices it has
+  // no way yet to know it marks the start of the path to a hidden Ember
+  // Dragon egg — the point is remembering it once the egg turns up later.
+  // Reserved before `scatter()` right below so its own seeded clutter can
+  // never land on top of it.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, 9, 11, 0.4);
+  }
+  world.reserve(9, 11, 2.4, 'dragonSkeleton');
   scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
   // The two wall runs are the point: without them the "gate" sat alone in the

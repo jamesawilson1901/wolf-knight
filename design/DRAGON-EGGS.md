@@ -619,6 +619,61 @@ warm orange-red, faceted low-poly ovoid that reads clearly against the
 room's stone and sits comfortably next to the game's other flat-shaded
 assets — confirmed by eye before calling this shippable.
 
+## v2.2 — a skeleton marks where each path begins (2026-09-17, SHIPPED)
+
+Dad's ask, verbatim: "I want to use this skeleton as a hint that this is the
+beginning of a set of rooms that ends with a dragon egg." Supplied a Tripo
+AI generation — a curled dragon skeleton, ribcage, skull, wing-finger bones
+fanned out, a curled tail — 4,896 faces, one mesh, one material, the same
+clean profile the Den town's own Tavern/Forge/Mill retries came back with.
+Confirmed by AskUserQuestion which of the three existing egg paths it
+should open: all three.
+
+**Wordless, per this game's own no-reading-required law**: no narration
+line, no marker, no map pin — a child who notices it has no way yet to know
+what it means, and remembers it once the hidden egg turns up later in the
+same region. Placed in each element's own FIRST room, never the room with
+the egg's own chest, since the whole point is the walk between clue and
+answer: `la` (Ember Hollow, fire), `s1a` (Stormreach, storm), `d1a` (Sunken
+Vale, tide).
+
+**Kept as supplied**, the same call as the Monument
+(`design/DEN-REBUILD.md`'s v1.1): bone is already close to flat pale in the
+source texture, so no stripping was needed, and it is a one-off set piece
+never retinted per element — three placements, one shared file, no tint
+argument at all. `spawnDragonSkeletonHint()` (new, `js/dragonEggs.js`)
+mirrors `DragonShrine`'s own recentre/ground/fit-to-diameter math exactly,
+and is guarded behind each level file's own `GREY()` the same way every
+other real-mesh dressing call already is. No collider — a ground-hugging
+ruin a child walks over, the same "small clutter, no box" idiom
+`rubbleField()` already uses in these same level files — but each spot IS
+`world.reserve()`d before that room's own seeded `scatter()` pass, so
+procedural clutter can never land on top of it.
+
+**Coordinates were chosen by reading each room's own already-shipped
+marker list** (breakables, enemy spots, props, water/gale zones, promise
+gates) rather than by trial and error in a live room — `la` sits inside the
+room's own existing ash patch near the cartwreck cluster, `s1a` sits deep
+in the south floor clear of the hound/rock/fallenColumn cluster, `d1a`
+sits on the dry east shore clear of the lagoon's water zones and the tree/
+slime spots. All three confirmed by a real Playwright screenshot pass
+(`tools/shot-skeleton-hints.mjs`, not a gate suite): grounded, no clipping
+into existing props, no floating.
+
+**Licence**: `assets/env/dragon-skeleton.glb`, recorded in
+`assets/LICENSES/MANIFEST.json` under the same private-family-use decision
+and uploader-attestation pattern as the Den town models and the dragon egg
+— dad's stated ownership of the generating Tripo AI account.
+
+Verified: `sh tools/lint.sh`, `node tools/verify-boot.mjs` (precache/badge
+resynced via `tools/sync-cache.mjs --write` for the new asset),
+`node tools/verify-level1.mjs`/`verify-level5.mjs`/`verify-level6.mjs`
+(all three regions ALL CLEAN, draw-call/triangle budgets unaffected —
+one extra mesh in one room each), `node tools/verify-dragoneggs.mjs`
+(29/29 — `spawnDragonSkeletonHint()` is new code, additive only, touches
+nothing the shrine/hatch/save-round-trip checks exercise), `sh tools/
+verify-all.sh --quick` (12/12).
+
 ## Still to design
 
 - **A fourth or later dragon.** The system supports any number of elements

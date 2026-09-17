@@ -118,6 +118,43 @@ export function setEquippedDragon(el) {
   return true;
 }
 
+// THE SKELETON HINT (2026-09-17, dad's own ask): a curled dragon skeleton —
+// ribcage, skull, wing-finger bones fanned out, a curled tail — half-buried
+// in each element region's own FIRST room, well clear of any fight zone.
+// Wordless foreshadowing, the same "no reading required" idiom every other
+// hint in this game already follows: a child who notices it has no way to
+// know what it means yet, but remembers it once the egg turns up later. One
+// per element (fire/tide/storm) in that region's own opening room — la
+// (Ember Hollow), d1a (Sunken Vale), s1a (Stormreach) — never the same room
+// as the egg's own chest, since the point is the LONG walk between "here is
+// a clue" and "here is the answer".
+//
+// Kept-as-supplied material, same reasoning as js/levelDenRebuild.js's
+// Monument: a one-off set piece, never retinted per-instance, so its own
+// bone-white colour survives untouched. No collider — a ground-hugging ruin
+// a child walks over, the same "small clutter, no box" idiom every level
+// file's own rubbleField()/similar dressing already uses.
+const SKELETON_URL = './assets/env/dragon-skeleton.glb';
+let skeletonGltf = null;
+export async function preloadDragonSkeleton() {
+  if (!skeletonGltf) skeletonGltf = await loadGLB(SKELETON_URL);
+}
+
+export function spawnDragonSkeletonHint(world, x, z, ry, targetDiameter = 4.2) {
+  if (!skeletonGltf) return;   // greybox, or preloadDragonSkeleton() skipped
+  const model = prepareModel(skeletonGltf.scene.clone());
+  const bb = new THREE.Box3().setFromObject(model);
+  const size = bb.getSize(new THREE.Vector3());
+  const s = targetDiameter / Math.max(size.x, size.z);
+  model.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.scale.setScalar(s);
+  holder.position.set(x, 0, z);
+  holder.rotation.y = ry;
+  world.add(holder);
+}
+
 // A real vendored portal (CC0, converted to a self-contained .glb — see
 // assets/LICENSES/MANIFEST.json), ringed by a flat water-tinted moat. Only
 // the portal's own glowing disk is tinted per element — it is a SEPARATE

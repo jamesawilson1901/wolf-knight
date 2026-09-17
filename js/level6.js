@@ -30,6 +30,7 @@ import { registerCuttable } from './gates.js';
 import { installFishHost } from './mg-fish.js';
 import { spawnLostWolf } from './pip.js';
 import { COAT } from './restoration.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -668,6 +669,16 @@ export async function buildD1a(scene) {
   // `scatter()` pass right below so it can never land a tree on top.
   world.markers.treeSpots = [{ x: 3, z: 3, tint: 0x3fb0c4 }];
   world.reserve(3, 3, 1.6, 'node');
+  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the THIRD of three, on the
+  // dry east floor clear of the lagoon's water zones, the tree, the slime
+  // and restSpot. Wordless, the same idiom as la's and s1a's own: a child
+  // remembers it once the hidden Tide Dragon egg turns up later, not
+  // before. Reserved before `scatter()` right below.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, 11, 1, -0.5);
+  }
+  world.reserve(11, 1, 2.4, 'dragonSkeleton');
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

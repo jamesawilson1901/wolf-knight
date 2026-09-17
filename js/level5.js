@@ -36,6 +36,7 @@ import { iceGate, boulderGate } from './gates.js';
 import { spawnLostWolf } from './pip.js';
 import { COAT } from './restoration.js';
 import { installFishHost } from './mg-fish.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -609,6 +610,16 @@ export async function buildS1a(scene) {
   // `scatter()` pass right below so it can never land a rock on top.
   world.markers.rockSpots = [{ x: 9, z: -2, tint: 0xc9d4ff }];
   world.reserve(9, -2, 1.3, 'node');
+  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the SECOND of three, deep in
+  // the room's own south floor, clear of the hound/rock/fallenColumn
+  // cluster. Wordless, the same idiom as la's own (js/level1.js): a child
+  // remembers it once the hidden Storm Dragon egg turns up later, not
+  // before. Reserved before `scatter()` right below.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, 2, -9.5, 1.0);
+  }
+  world.reserve(2, -9.5, 2.4, 'dragonSkeleton');
   scatter(world, halfW, halfD, D, 501, 7, { spin: 1, kinds: ['rockLA', 'rockSA', 'rockSB', 'stump'] });
   ruinedHome(world, -10, 7.5, 0.4, D, { w: 7, d: 5.5, keep: 0.45 });
   coldHearth(world, -8.5, 4.6, D);
