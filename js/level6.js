@@ -659,6 +659,15 @@ export async function buildD1a(scene) {
   // a body being shoved back out by resolveCircle every frame. The heavy is
   // held back for a room with a floor.
   world.markers.visoredWightSpots = [{ x: -6, z: 4 }];
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — the Sunken Vale's own
+  // tree, tide-tinted (js/player.js WOLF_TINTS.tide_wolf.main — a waterlogged
+  // teal), the SAME tree-a.glb every node in the game stands on. Well clear
+  // of the lagoon's own deep/shallow water zones (x -17..-6.25 — nothing
+  // here comes within 9u of either), the wight and the slime — confirmed
+  // against a real dump of this room's colliders. Reserved before the seeded
+  // `scatter()` pass right below so it can never land a tree on top.
+  world.markers.treeSpots = [{ x: 3, z: 3, tint: 0x3fb0c4 }];
+  world.reserve(3, 3, 1.6, 'node');
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

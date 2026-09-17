@@ -139,7 +139,94 @@ const rebuilt = await wk.page.evaluate(() => {
 check('rebuilding the room (leaving and returning) restores both nodes fresh, none depleted',
   rebuilt.count === 2 && !rebuilt.anyDepleted, rebuilt);
 
+// 7. THE ROLLOUT (design/MINING.md, 2026-09-16) — six more rooms each got
+// their own rock/tree, most of them tinted. The MECHANIC is already proven
+// end to end above and js/nodes.js's ResourceNode.update() has no
+// `if (roomId === ...)` anywhere in it to make room-specific behaviour even
+// possible — so every new room gets the cheap check (seeded with the right
+// kind(s), x/z and tint, and standing somewhere the room's own hazard zones
+// and colliders actually clear), and only two of the six (one rock, one
+// tree — one of each kind, proving the mechanic really does fire from a
+// non-`lc` room and a non-default tint too) get the full channel-and-deplete
+// replay that checks 2-5 above already ran on `lc`.
+async function gotoRoom(room) {
+  await wk.page.evaluate((r) => window.__wkJump(r, ['knight']), room);
+  await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
+    && !window.__wk.gates.transitioning, room, { timeout: 60000 });
+}
+
+// Expected seeding per room, exactly matching design/MINING.md's table.
+const EXPECTED = [
+  { room: 't1a', kind: 'tree', x: 10, z: -1, tint: 0x6fae4a },
+  { room: 'f1', kind: 'rock', x: 1.5, z: 7, tint: 0x9be3ff },
+  { room: 's1a', kind: 'rock', x: 9, z: -2, tint: 0xc9d4ff },
+  { room: 'd1a', kind: 'tree', x: 3, z: 3, tint: 0x3fb0c4 },
+  { room: 'x1', kind: 'rock', x: 11, z: -8, tint: 0xe8e4ff },
+  { room: 'dr', kind: 'rock', x: 6.5, z: 3, tint: undefined },
+  { room: 'dr', kind: 'tree', x: 6.5, z: -3, tint: undefined },
+];
+
+// Group by room so `dr` (which carries two nodes) is only visited once.
+const byRoom = [...new Set(EXPECTED.map((e) => e.room))];
+for (const room of byRoom) {
+  await gotoRoom(room);
+  const want = EXPECTED.filter((e) => e.room === room);
+  const got = await wk.page.evaluate(() => {
+    const w = window.__game.world;
+    // reachability, the SAME hazard/collider dump this session used to pick
+    // every one of these coordinates in the first place, re-run here as an
+    // assertion: no lava/deep-water/pit zone contains it, and its nearest
+    // OTHER collider clears by more than a body-width (0 would be touching).
+    const inLava = (x, z) => w.lavaZones.some((l) => x >= l.minX && x <= l.maxX && z >= l.minZ && z <= l.maxZ);
+    const inDeepWater = (x, z) => w.waterZones.some((wz) => wz.deep && x >= wz.minX && x <= wz.maxX && z >= wz.minZ && z <= wz.maxZ);
+    const inPit = (x, z) => w.pitZones.some((p) => x >= p.minX && x <= p.maxX && z >= p.minZ && z <= p.maxZ);
+    return (w.nodes || []).map((n) => ({
+      kind: n.kind, x: n.x, z: n.z, tint: n._tint,
+      hazard: inLava(n.x, n.z) || inDeepWater(n.x, n.z) || inPit(n.x, n.z),
+      nearestOtherClear: w.circleColliders
+        .filter((c) => !(c.x === n.x && c.z === n.z))
+        .map((c) => Math.hypot(c.x - n.x, c.z - n.z) - c.r - (n._collider ? n._collider.r : 0.5))
+        .sort((a, b) => a - b)[0],
+    }));
+  });
+  for (const w of want) {
+    const g = got.find((n) => n.kind === w.kind && Math.abs(n.x - w.x) < 0.01 && Math.abs(n.z - w.z) < 0.01);
+    check(`${room}: ${w.kind} seeded at (${w.x},${w.z})`, !!g, { got });
+    if (g) {
+      check(`${room}: ${w.kind}'s tint is ${w.tint === undefined ? 'none (untinted)' : '0x' + w.tint.toString(16)}`,
+        w.tint === undefined ? g.tint === undefined : g.tint === w.tint, g);
+      check(`${room}: ${w.kind}'s hazard-free (no lava/deep-water/pit at its own spot)`, !g.hazard, g);
+      check(`${room}: ${w.kind} clears every other collider by more than a body-width`,
+        g.nearestOtherClear === undefined || g.nearestOtherClear > 0.3, g);
+    }
+  }
+}
+
+// The two full-mechanic replays: f1's rock (frost-tinted), d1a's tree
+// (tide-tinted) — one of each kind, each a non-default tint, each in a
+// region-1-style early room rather than `lc` itself.
+async function fullChannelCheck(room, kind, tool, material) {
+  await gotoRoom(room);
+  const r = await wk.page.evaluate(async ({ kind, tool, material }) => {
+    const items = await import('/js/items.js');
+    const g = window.__game;
+    const w = g.world;
+    items.addGear(tool);
+    const node = w.nodes.find((n) => n.kind === kind);
+    g.player.root.position.x = node.x; g.player.root.position.z = node.z;
+    const before = g.state.inventory.materials[material] || 0;
+    for (let i = 0; i < 3; i++) w.updateNodes(0.7, 0, g.player);
+    const drop = w.drops.find((d) => !d.taken);
+    if (drop) { g.player.root.position.x = drop.x; g.player.root.position.z = drop.z; w.updateEnemies(0.016, 0, g.player); }
+    return { depleted: node.depleted, before, after: g.state.inventory.materials[material] || 0 };
+  }, { kind, tool, material });
+  check(`${room}: owning ${tool}, the ${kind} channels and depletes exactly like lc's own`, r.depleted, r);
+  check(`${room}: the depleted ${kind} paid out one ${material}`, r.after === r.before + 1, r);
+}
+await fullChannelCheck('f1', 'rock', 'pickaxe', 'ore');
+await fullChannelCheck('d1a', 'tree', 'axe_b', 'wood');
+
 console.log('\nERRORS', JSON.stringify(wk.errors.slice(0, 5)));
-console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — mining/woodcutting channels, gates by tool, pays out, cancels on distance, respawns on rebuild');
+console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — mining/woodcutting channels, gates by tool, pays out, cancels on distance, respawns on rebuild, and the full 2026-09-16 rollout seeds every new room correctly');
 await wk.b.close();
 process.exit(errs.length ? 1 : 0);

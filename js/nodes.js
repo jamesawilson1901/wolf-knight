@@ -32,10 +32,26 @@ export async function preloadNodes() {
 }
 
 export class ResourceNode {
-  constructor(world, x, z, kind) {
+  // `tint` (optional, the 2026-09-16 region rollout, design/MINING.md): a
+  // single hex colour, applied to every mesh material the SAME way
+  // `Player.js`'s own `_tintGear` recolours a cloned weapon — clone each
+  // material, set `.color`, never touch the loader's shared cache. Omitted
+  // entirely, a node renders exactly as lc's original untinted pair always
+  // has: no regression, pure opt-in. Kept on the instance (`this._tint`)
+  // purely so a verify suite can read back what a room asked for.
+  constructor(world, x, z, kind, tint) {
     const cfg = NODE_KINDS[kind];
     const gltf = nodeGltf[cfg.url];
     const model = prepareModel(gltf.scene.clone());
+    this._tint = tint;
+    if (tint) {
+      model.traverse((n) => {
+        if (!n.isMesh || !n.material) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        const cloned = mats.map((m) => { const c = m.clone(); if (c.color) c.color.setHex(tint); return c; });
+        n.material = Array.isArray(n.material) ? cloned : cloned[0];
+      });
+    }
     const bb = new THREE.Box3().setFromObject(model);
     const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
     const s = cfg.size / Math.max(0.01, dx, dy, dz);
@@ -102,8 +118,8 @@ export async function spawnResourceNodes(world, rockSpots = [], treeSpots = []) 
   if (!rockSpots.length && !treeSpots.length) return;
   await preloadNodes();
   if (!world.nodes) world.nodes = [];
-  for (const s of rockSpots) world.nodes.push(new ResourceNode(world, s.x, s.z, 'rock'));
-  for (const s of treeSpots) world.nodes.push(new ResourceNode(world, s.x, s.z, 'tree'));
+  for (const s of rockSpots) world.nodes.push(new ResourceNode(world, s.x, s.z, 'rock', s.tint));
+  for (const s of treeSpots) world.nodes.push(new ResourceNode(world, s.x, s.z, 'tree', s.tint));
   world.updateNodes = (dt, t, player) => {
     for (const n of world.nodes) n.update(dt, t, player, world);
   };

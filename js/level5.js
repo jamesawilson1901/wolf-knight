@@ -599,6 +599,16 @@ export async function buildS1a(scene) {
   world.markers.tidePromise = { x: -11.5, z: -0.7 };
 
   world.markers.houndSpots = [{ x: 8, z: -5, variant: 'gale' }];
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — Stormreach's own rock,
+  // storm-tinted (js/player.js WOLF_TINTS.storm_wolf.main — a pale
+  // storm-grey/periwinkle), the SAME rock-large-b.glb every node in the game
+  // stands on. Sits in this room's own 'gravel' ground patch (the SE corner,
+  // patches: {x:12,z:-8,kind:'gravel'}), clear of the gale hound, the
+  // rubbleField at (11,-9) and every other marker here — confirmed against a
+  // real dump of this room's colliders. Reserved before the seeded
+  // `scatter()` pass right below so it can never land a rock on top.
+  world.markers.rockSpots = [{ x: 9, z: -2, tint: 0xc9d4ff }];
+  world.reserve(9, -2, 1.3, 'node');
   scatter(world, halfW, halfD, D, 501, 7, { spin: 1, kinds: ['rockLA', 'rockSA', 'rockSB', 'stump'] });
   ruinedHome(world, -10, 7.5, 0.4, D, { w: 7, d: 5.5, keep: 0.45 });
   coldHearth(world, -8.5, 4.6, D);

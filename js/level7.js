@@ -399,6 +399,26 @@ export async function buildX1(scene) {
     world.markers.vaultPromise = { x: halfW - 1.5, z: -2 };
   }
   world.markers.houndSpots = [{ x: 7, z: -5, variant: 'shadewalker' }];
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — the Shadow Court's own
+  // rock, the SAME rock-large-b.glb every node in the game stands on: broken
+  // masonry among this room's own 'rubble' ground patch (patches: {x:12,
+  // z:-8,kind:'rubble'}). Clear of the shadewalker hound, the watcher and
+  // its promise chest on the far side of the room, and every scatter/
+  // dressCourt collider — confirmed against a real dump of this room's
+  // colliders. Reserved before the seeded `scatter()` pass right below so
+  // it can never land a rock on top.
+  //
+  // TINT: `dark_wolf`'s own 0x4a3b6b (this session's first choice) was
+  // caught by a follow-up review — a dark-violet rock against this room's
+  // OWN already-dark-violet palette barely registers as a distinct object
+  // at all, the exact failure a human eye is supposed to catch before a
+  // node ships invisible. `ghost_wolf`'s pale moonlight (0xe8e4ff) is
+  // exactly as thematically valid — x1 grants the 'moon' element and BOTH
+  // dark_wolf and ghost_wolf map to it (js/player.js FORM_ELEMENT) — but
+  // reads as a bright, unmistakable object in a dark room instead of
+  // vanishing into it.
+  world.markers.rockSpots = [{ x: 11, z: -8, tint: 0xe8e4ff }];
+  world.reserve(11, -8, 1.3, 'node');
   scatter(world, halfW, halfD, D, 701, 6, { spin: 1, kinds: ['rockLA', 'brick', 'rockSB'] });
   dressCourt(world, halfW, halfD, D, 7011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);

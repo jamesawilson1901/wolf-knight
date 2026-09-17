@@ -542,6 +542,16 @@ export async function buildF1(scene) {
     { x: -1.2, z: 2.4, variant: 'rime' }, { x: 1.4, z: -3.6, variant: 'rime' },
   ];
   world.markers.rimeSlimeSpots = [{ x: -2.0, z: -7.5 }];
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — Frostpeak's own rock,
+  // frost-tinted (js/player.js WOLF_TINTS.frost_wolf.main), the SAME
+  // rock-large-b.glb every node in the game stands on. On the room's own
+  // north-walking spine (the strip `mountain()` below deliberately keeps
+  // clear of its rockfall dressing, x -2.5..2.5), between the hound gauntlet
+  // and the drift/firs dressing on either side — clear of both, confirmed
+  // against a real dump of this room's colliders. Reserved before the seeded
+  // `scatter()` pass at the end so it can never land a rock on top.
+  world.markers.rockSpots = [{ x: 1.5, z: 7, tint: 0x9be3ff }];
+  world.reserve(1.5, 7, 1.3, 'node');
   campfire(world, 'cp_f1', -8.5, 8.5);
   potion(world, 8.5, 8.0);
   world.markers.chestDefs = [

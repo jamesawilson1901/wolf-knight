@@ -137,6 +137,19 @@ export async function buildDr(scene) {
     placeOne(world, kit.cartwheel, 'cartwheel', -3.4, 3.7, 1.0, 0.7, D.propTint);
   }
 
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — the Outer Camp is
+  // literally the room whose own greybox label already reads "mine, chop,
+  // and rebuild" (see `finish()` above), so it gets BOTH kinds, untinted
+  // (this is home base, not one of the seven elemental regions — nothing in
+  // js/player.js WOLF_TINTS names it, so it renders exactly as lc's original
+  // pair always has). Both sit in the room's open east half, clear of the
+  // three restorable buildings' footprints and both breakables — confirmed
+  // against a real dump of this room's colliders. Reserved before
+  // `potSpotsOrFewer` right below so a pot can never land on either.
+  world.markers.rockSpots = [{ x: 6.5, z: 3 }];
+  world.markers.treeSpots = [{ x: 6.5, z: -3 }];
+  world.reserve(6.5, 3, 1.3, 'node');
+  world.reserve(6.5, -3, 1.6, 'node');
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, { label: 'dr' });
 
   // THE WALK-INTO TRIGGER — this game's only interaction law (js/nodes.js's
