@@ -487,6 +487,22 @@
    "note": "design/DRAGON-EGGS.md — replaces the gem-diamond.glb stand-in used for the hidden dragon-egg pickup. The ORIGINAL supplied .glb (~67,000 triangles, full PBR diffuse/metallic-roughness/normal material, ~5.4MB of JPEGs) is NOT vendored — wildly outside this game's low-poly, flat-shaded budget. Decimated to 900 triangles (pymeshlab, quadric edge collapse) with the PBR textures stripped for a single flat material (js/loot.js's own preparePopModel() already overwrites material.color per drop, the same as every other treasure pop), matching every other asset's asset-reuse-via-tint idiom. A real trade-off: the original's baked crack/scale detail did not survive decimation and reads as a plain bumpy low-poly shell instead — documented, not hidden.",
    "accepted": "private-family-use 2026-09-17",
    "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in meshy-dragon-egg-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Den Town Models (Tripo AI)",
+   "licence": null,
+   "evidence": "den-town-tripo-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied four Tripo AI text/image-to-3D generations directly via chat upload (a tavern, a smithy, a watermill and a flaming tower) and stated they are his own generations, made for this project. Tripo AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/env/den-town/tavern.glb",
+    "assets/env/den-town/forge.glb",
+    "assets/env/den-town/mill.glb",
+    "assets/env/den-town/monument.glb"
+   ],
+   "note": "design/DEN-REBUILD.md v1.1 — replaces the split houses-pack.glb reskin used for the Tavern/Forge/Mill in v1, and adds a fourth structure (the Monument, a pure milestone reward). The three buildings' baked textures are NOT vendored — each was converted (assimp glb->obj->glb) to a single flat, textureless material, matching this game's asset-reuse-via-tint idiom. No decimation needed; all four arrived at 3,000-5,000 triangles. The Monument alone keeps its original baked material (lit brazier/lava-crack emissive) since it is a one-off set piece, never retinted. Two earlier generations in the same batch (a 1.4-million-triangle tavern; a watermill fused to its own terrain/river diorama) were reviewed and rejected — neither is vendored.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in den-town-tripo-attestation.txt is still what would clear it."
   }
  ],
  "distribution": {

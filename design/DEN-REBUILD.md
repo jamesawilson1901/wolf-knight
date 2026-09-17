@@ -181,17 +181,84 @@ shipping the tint fix above — the same human-eye-on-the-room law this
 project holds every room-contents change to, though the human pass proper
 is still owed before this merges to `main`.
 
+## v1.1 — commissioned models replace the houses-pack reskin, plus a Monument (2026-09-17, SHIPPED)
+
+v1's Tavern/Forge/Mill were a split, retinted `houses-pack.glb` chunk — a
+placeholder, not a design intent to keep a generic Kenney cottage standing in
+for three buildings forever. Dad supplied real candidates: four Tripo AI
+generations from his own account (a tavern, a smithy, a watermill, and a
+flaming beacon tower), each reviewed for topology/face-count/style-fit
+before anything shipped — two earlier generations (a first tavern at 1.4
+MILLION triangles, and a first watermill that came back as a whole diorama
+fused to its own terrain/river/tree base) were rejected at the review stage
+rather than forced in; the ones that shipped are the retries that came back
+as clean, isolated, few-thousand-triangle single meshes.
+
+**Conversion, per building** (mirroring DRAGON-EGGS.md's own asset
+pipeline): `assimp export` glb→obj→glb to physically drop the baked
+painterly texture (a JSON-only strip leaves the orphaned image bytes sitting
+in the binary buffer — the same lesson learned decimating the egg), then a
+`pygltflib` pass replacing the material with one plain, flat, textureless
+`.color`-bearing material. No decimation was needed — all four arrived at
+3,000-5,000 faces, already inside budget. The three buildings then go
+through the EXACT SAME `tintedModel()`/`placeOne()` pipeline every Kenney
+asset in this game already uses — the source pack doesn't matter to that
+code, only that the model carries a plain material with no map — so Tavern/
+Forge/Mill keep their existing per-instance tints (`TAVERN_TINT`/
+`FORGE_TINT`/`MILL_TINT`) unchanged, retinted on the SAME ruined→restored
+switch as before.
+
+**Each model has its own native scale** (three unrelated AI generations, not
+one shared modeling unit like a houses-pack chunk), so `js/levelDenRebuild.js`
+measures each one's raw bounding box once at load time and computes its own
+fit-to-diameter scale factor (`loadTownBuilding()`) rather than reusing a
+single shared `s` the way the old houses-pack code could.
+
+**The Monument** is the fourth model — a flaming stone beacon with a
+staircase, braziers and runic base stones — and closes the "still to
+design" want directly below for one. It is NOT part of the restore/collect
+economy: no cost, no payout, nothing to walk up to. It simply appears, with
+a small juice flourish reused from the same idiom every other reward in
+this game gets, the instant all three working buildings are restored
+(`allBuildingsRestored()`). Its own baked material — including the lit
+brazier/lava-crack emissive detail — is kept AS SUPPLIED rather than
+stripped flat, unlike the three buildings: it is a one-off set piece, never
+retinted per-instance, and flattening it to a solid color would put the
+fire out. `placeOne()` still runs it through `prepareModel()` for the usual
+shadow-flag/metalness-safety pass, just with an identity (`0xffffff`) tint
+so its own colors pass through untouched.
+
+**Licence**: recorded in `assets/LICENSES/MANIFEST.json` under the
+project's private-family-use decision, with an uploader attestation
+mirroring the dragon-egg/portal entries — dad's stated ownership of the
+generating Tripo AI account, not an independently checked terms-of-service
+grant.
+
+Verified: `sh tools/lint.sh`, `node tools/verify-boot.mjs` (precache/badge
+resynced via `tools/sync-cache.mjs --write` — the four new GLBs are loaded
+by full literal path specifically so the sync script's plain-text asset
+scan can see them, the same lesson its own header documents about the
+enemy roster's template-literal miss), `node tools/verify-denrebuild.mjs`
+(22/22, unaffected by the asset swap since it only exercises the economy),
+`sh tools/verify-all.sh --quick` (12/12). A real Playwright pass
+(`tools/shot-dentown.mjs`, not a gate suite) captured the room unrestored
+and fully restored, plus a close pass on each of the four structures —
+confirmed by eye: correct scale, no floating or overlapping geometry, the
+Monument's flame reads lit in real game lighting, before calling this
+shippable.
+
 ## Still to design
 
 - **A bigger, multi-district Den town.** This slice is deliberately ONE
-  room with THREE buildings — dad's own "much bigger... rebuild the town
+  room with FOUR structures — dad's own "much bigger... rebuild the town
   around the den" ask is only partly answered. A real rollout (more
-  buildings, a monument or two, maybe a second room) is a future increment,
-  the same "one proven room first" shape mining/woodcutting took before its
-  own promised regional rollout.
-- **More buildings and monuments.** Dad named "each building, monument, pup
-  pen etc" — a monument (a pure milestone/cosmetic reward, no payout) is
-  the obvious next structure once the town has room to hold one.
+  buildings, maybe a second room) is a future increment, the same "one
+  proven room first" shape mining/woodcutting took before its own promised
+  regional rollout.
+- ~~**More buildings and monuments.**~~ Closed in v1.1 above — a Monument
+  now exists and appears once the three working buildings are restored.
+  "More buildings" beyond the four here is still open, folded into the
+  multi-district bullet above.
 - **A small "town status" HUD element**, the way the sticker book gives
   collection systems their own screen — left out of v1 because a walk-up
   check already answers "is anything ready" without one, and the design

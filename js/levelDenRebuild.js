@@ -14,19 +14,36 @@
 // multi-district town is explicitly deferred — see the design doc's own
 // "still to design" section.
 //
-// Three restorable structures (Tavern/Forge/Mill), each a SPLIT, RETINTED
-// `houses-pack.glb` building (js/levelVillage.js's own splitBuildings/
-// tintedModel technique — no new geometry, per CLAUDE.md's asset rule). The
+// Three restorable structures (Tavern/Forge/Mill) plus a fourth, cosmetic
+// Monument. v1 (2026-09) reskinned a split `houses-pack.glb` chunk for all
+// three, per CLAUDE.md's asset rule about real mesh assets. v1.1 (2026-09-17)
+// replaces that with dad's own commissioned models — a real quaint tavern, a
+// stone smithy and a proper watermill (Tripo AI generations, converted and
+// retinted the same way DRAGON-EGGS.md's egg was: baked texture stripped,
+// one flat `.color`-bearing material per model, tinted per-instance through
+// the SAME `tintedModel()`/`placeOne()` pipeline every Kenney asset in this
+// game already goes through — the source pack doesn't matter to that code
+// path, only that the model carries a plain material with no map). The
 // economy itself (costs, payout timers, the forward-ratchet math) lives in
 // js/denRebuild.js; this file only places things and answers "did the child
 // just walk up to one". The Pup Pen's own payout is wired separately, into
 // the EXISTING pen in `den` (js/restoration.js spawnPupPen) — it has no new
 // geometry here, per the design doc.
+//
+// The Monument is NOT part of that economy — no cost, no payout, nothing to
+// walk up to. It is a pure milestone reward (design/DEN-REBUILD.md's own
+// "still to design" list named this exact thing): it simply appears, with a
+// small juice flourish, the moment all three working buildings are restored.
+// Its own baked material is kept AS SUPPLIED rather than stripped flat,
+// unlike the three buildings above — it is a one-off set piece, never
+// retinted per-instance, and its lit brazier/lava-crack detail is the whole
+// point of the reward; flattening it to a solid color would put the fire out.
 import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { makeBuilders, gap, MODULES, thresholdGlow, reserveLandings, potSpotsOrFewer } from './levelkit.js';
 import { loadVillageKit, placeOne } from './levelVillage.js';
+import { loadGLB } from './assets.js';
 import { protoLabel } from './proto.js';
 import { flattenStatic } from './batch.js';
 import { BUILDINGS, isRestored, canRestore, restore, pendingCollections, collect } from './denRebuild.js';
@@ -56,6 +73,49 @@ const GREY = () => !kit || state.settings.greybox !== false;
 
 const { shell, sideDoor } = makeBuilders({ kit: () => kit, isGrey: () => GREY() });
 
+// THE COMMISSIONED TOWN MODELS. Each file is a single mesh, one flat
+// `.color`-bearing material, no baked texture (design/DEN-REBUILD.md's
+// "v1.1" section) — so `w`/`h`/`d` below are RAW model-space sizes, measured
+// once at load time, exactly like js/levelVillage.js's own splitBuildings()
+// returns for a houses-pack chunk. `s` is this specific model's own natural
+// scale-to-world-units factor (targetDiameter / its own raw footprint) —
+// computed once per model rather than shared, because these three come from
+// three separate generations at three unrelated native scales, unlike a
+// houses-pack chunk where every building already shares one modeling unit.
+// FULL LITERAL PATHS, not a shared directory constant + filename — the same
+// lesson tools/sync-cache.mjs's own header documents about the KAYKIT_ROSTER
+// template-literal miss: its runtime-asset scan is a plain regex over the
+// source TEXT (`ASSET_LIT`, any quoted `./assets/....glb` string, wherever it
+// sits), so a path built at runtime from two identifiers is invisible to it
+// no matter how the load call itself is written. Each string below is
+// exactly the file this room loads, so the scan finds it without needing a
+// hand-added exception the way the enemy roster did.
+const TOWN_SPEC = {
+  tavern: { file: './assets/env/den-town/tavern.glb', targetDiameter: 5.6 },
+  forge: { file: './assets/env/den-town/forge.glb', targetDiameter: 4.8 },
+  mill: { file: './assets/env/den-town/mill.glb', targetDiameter: 5.2 },
+  monument: { file: './assets/env/den-town/monument.glb', targetDiameter: 3.0 },
+};
+let townAssets = null;
+
+async function loadTownBuilding(file, targetDiameter) {
+  const gltf = await loadGLB(file);
+  const bb = new THREE.Box3().setFromObject(gltf.scene);
+  const size = bb.getSize(new THREE.Vector3());
+  const s = targetDiameter / Math.max(size.x, size.z);
+  return { scene: gltf.scene, w: size.x, h: size.y, d: size.z, s };
+}
+
+async function loadTownAssets() {
+  if (!townAssets) {
+    townAssets = {};
+    await Promise.all(Object.entries(TOWN_SPEC).map(async ([id, spec]) => {
+      townAssets[id] = await loadTownBuilding(spec.file, spec.targetDiameter);
+    }));
+  }
+  return townAssets;
+}
+
 function base(scene) {
   const world = new World(scene);
   world.roomId = 'dr';
@@ -81,14 +141,15 @@ function finish(world) {
 }
 
 // A building with its collider COMPUTED from its own rotated footprint — the
-// same idiom js/levelVillage.js's own (private) townhouse() uses, mirrored
-// here rather than exported/shared across two files for three call sites.
-function placeBuilding(world, list, idx, x, z, ry, tint, s = 0.6) {
-  const tpl = list[((idx % list.length) + list.length) % list.length];
+// same idiom js/levelVillage.js's own (private) townhouse() uses. `tpl` is
+// one entry from loadTownAssets() — its own natural `s` carries the scale,
+// so (unlike the old houses-pack version) no shared default is needed here.
+function placeBuilding(world, tpl, key, x, z, ry, tint) {
+  const s = tpl.s;
   const w = tpl.w * s, d = tpl.d * s;
   const c = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry));
   const hw = (w * c + d * sn) * 0.5 * 0.82, hd = (w * sn + d * c) * 0.5 * 0.82;
-  placeOne(world, tpl, `denhouse${idx}`, x, z, s, ry, tint);
+  placeOne(world, tpl, key, x, z, s, ry, tint);
   world.addBox(x - hw, x + hw, z - hd, z + hd);
   return { hw, hd };
 }
@@ -101,6 +162,13 @@ const SPOTS = [
   { id: 'forge',  bx: -5.6, bz: 3.4, ry: -0.4, tint: FORGE_TINT, sx: -3.2, sz: 2.0 },
   { id: 'mill',   bx: 1.5, bz: -4.2, ry: 0.6, tint: MILL_TINT, sx: 1.0, sz: -1.6 },
 ];
+
+// THE MONUMENT — centered in the room's own open middle, clear of every
+// building, prop, node and pot spot reserved elsewhere in this file. No
+// tint, no `sx`/`sz`, no entry in the walk-into trigger loop below: it is
+// not something a child works, it is something that appears.
+const MONUMENT_POS = { x: 0, z: 0.5, ry: 0 };
+const allBuildingsRestored = () => SPOTS.every((s) => isRestored(s.id));
 
 export async function buildDr(scene) {
   if (state.settings.greybox === false) kit = await loadVillageKit();
@@ -123,11 +191,18 @@ export async function buildDr(scene) {
       world.addBox(s.bx - 2.3, s.bx + 2.3, s.bz - 2.3, s.bz + 2.3);
       protoLabel(world, s.bx, s.bz, BUILDINGS[s.id].name, { color: '#e8d9b0', y: 3.0, size: 0.8 });
     }
-  } else if (kit.townhouses && kit.townhouses.length) {
-    let i = 0;
+    if (allBuildingsRestored()) {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.6, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd8a850, roughness: 0.9 }));
+      m.position.set(MONUMENT_POS.x, 1.3, MONUMENT_POS.z);
+      world.add(m);
+      protoLabel(world, MONUMENT_POS.x, MONUMENT_POS.z, 'MONUMENT', { color: '#e8d9b0', y: 2.8, size: 0.8 });
+    }
+  } else {
+    const town = await loadTownAssets();
     for (const s of SPOTS) {
       const tint = isRestored(s.id) ? s.tint : RUIN_TINT;
-      placeBuilding(world, kit.townhouses, i++, s.bx, s.bz, s.ry, tint);
+      placeBuilding(world, town[s.id], `denhouse_${s.id}`, s.bx, s.bz, s.ry, tint);
     }
     // ONE PROP PER TRADE, where one fits naturally and cheaply — the same
     // Small Props Pack the Village and the Den's own armoury corner already
@@ -135,6 +210,18 @@ export async function buildDr(scene) {
     placeOne(world, kit.hearth, 'hearth', -4.0, -3.2, 1.0, 0.4, D.propTint);
     placeOne(world, kit.grinder, 'grinder', -4.0, 3.0, 1.0, -0.3, D.propTint);
     placeOne(world, kit.cartwheel, 'cartwheel', -3.4, 3.7, 1.0, 0.7, D.propTint);
+    // THE MONUMENT — appears once, with its own kept-as-supplied material
+    // (see the header note above), the moment the three working buildings
+    // are all restored. No tint argument: placeOne's TINT() pipeline still
+    // runs prepareModel() over it (shadow flags, the metalness/roughness
+    // safety clamp every Kenney-adjacent model gets), but passing its own
+    // baked colour straight through leaves the lit brazier/lava-crack detail
+    // intact instead of painting it one flat colour.
+    if (allBuildingsRestored()) {
+      const mon = town.monument;
+      placeOne(world, mon, 'monument', MONUMENT_POS.x, MONUMENT_POS.z, mon.s, MONUMENT_POS.ry, 0xffffff);
+      world.addBox(MONUMENT_POS.x - 1.6, MONUMENT_POS.x + 1.6, MONUMENT_POS.z - 1.6, MONUMENT_POS.z + 1.6);
+    }
   }
 
   // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — the Outer Camp is

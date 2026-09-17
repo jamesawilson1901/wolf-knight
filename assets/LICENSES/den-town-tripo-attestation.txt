@@ -1,0 +1,46 @@
+UPLOADER ATTESTATION — DEN TOWN MODELS (TRIPO AI)
+=======================================================
+Recorded: 2026-09-17
+
+The repository owner supplied four Tripo AI text/image-to-3D generations
+via chat upload — a quaint wooden tavern, a stone smithy, a wooden
+watermill and a flaming stone tower — and stated, when asked, that these
+are his own generations, made for this project ("I want to use the fantasy
+portal and just recolour it for each one" / "Feel free to use it wherever
+you see fit").
+
+This file records that permission in plain words. It is NOT a formal
+licence grant: no LICENSE.txt/terms document was supplied alongside any of
+the models, and Tripo AI's own terms of service (which would govern
+exactly what rights a generation carries) were not independently checked
+here.
+
+Two earlier generations in the same upload batch were reviewed and
+REJECTED, not vendored: a first tavern attempt (~1.4 million triangles,
+thousands of times over this game's per-asset budget, and its topology did
+not survive decimation into anything resembling a building — see
+design/DEN-REBUILD.md's v1.1 section) and a first watermill attempt (a
+whole diorama fused to its own terrain/river/tree base in one mesh, not an
+isolated building). Neither of those two files is present anywhere in this
+repository.
+
+WHAT WOULD CLEAR IT
+Tripo AI's own published terms of service, read and confirmed to grant
+commercial/redistribution rights for generations made under a paid or free
+account, copied into this directory and replacing this attestation with it
+in MANIFEST.json.
+
+WHAT IS SHIPPING FROM THIS FILE
+  assets/env/den-town/tavern.glb   — the Tavern (design/DEN-REBUILD.md)
+  assets/env/den-town/forge.glb    — the Forge
+  assets/env/den-town/mill.glb     — the Mill
+  assets/env/den-town/monument.glb — the Monument (new structure, v1.1)
+
+The three buildings are NOT vendored with their original baked textures:
+each was converted (assimp glb->obj->glb, dropping the baked material
+entirely) to a single flat, textureless material, matching this game's own
+asset-reuse-via-tint idiom the same way the dragon egg and the shrine
+portal were. No decimation was needed — all four arrived at 3,000-5,000
+triangles, already inside budget. The Monument alone keeps its original
+baked material (including its lit brazier/lava-crack emissive detail)
+since it is a one-off set piece, never retinted per-instance.
