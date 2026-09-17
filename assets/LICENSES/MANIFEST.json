@@ -474,6 +474,19 @@
    "note": "design/DRAGON-EGGS.md — replaces the light-only spiritShrine() placeholder at all three Grand Elemental Shrines with a real vendored portal model, retinted per element. Converted from the supplied .fbx to a single self-contained .glb (assimp + pygltflib): all three textures re-embedded as binary chunks rather than shipped as loose files, and the glowing disk (already a separate mesh in the source file, Portal_01_Hole) given its own material so it can be recoloured per element without repainting the stone frame/moss/root. The original .fbx/.blend/loose PNGs are not vendored, only the converted .glb.",
    "accepted": "private-family-use 2026-09-17",
    "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in fantasy-portal-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Meshy AI — Cracked Dinosaur Egg",
+   "licence": null,
+   "evidence": "meshy-dragon-egg-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied a Meshy AI text/image-to-3D generation directly via chat upload and stated when asked that it is his own Meshy AI account's generation. Meshy AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/loot/treasure/dragon-egg.glb"
+   ],
+   "note": "design/DRAGON-EGGS.md — replaces the gem-diamond.glb stand-in used for the hidden dragon-egg pickup. The ORIGINAL supplied .glb (~67,000 triangles, full PBR diffuse/metallic-roughness/normal material, ~5.4MB of JPEGs) is NOT vendored — wildly outside this game's low-poly, flat-shaded budget. Decimated to 900 triangles (pymeshlab, quadric edge collapse) with the PBR textures stripped for a single flat material (js/loot.js's own preparePopModel() already overwrites material.color per drop, the same as every other treasure pop), matching every other asset's asset-reuse-via-tint idiom. A real trade-off: the original's baked crack/scale detail did not survive decimation and reads as a plain bumpy low-poly shell instead — documented, not hidden.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in meshy-dragon-egg-attestation.txt is still what would clear it."
   }
  ],
  "distribution": {

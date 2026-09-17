@@ -1869,18 +1869,16 @@ function giveLoot(chest) {
   // A DRAGON EGG (design/DRAGON-EGGS.md) — a quiet, hand-placed find, exactly
   // as rare as a keepsake (js/treasures.js) and idempotent the same way: a
   // chest re-opened (or a save re-read) never double-counts a find. Pops as
-  // a real vendored gem (this game's own treasure-pop asset, already reused
-  // across armour/keepsake pickups) tinted the egg's own element rather than
-  // a code-built egg shape — CLAUDE.md's asset rule is about CREATURES, but
-  // reusing an existing pack asset here rather than hand-rolling a new
-  // primitive shape keeps this on the same "one file, many tints" idiom
-  // every other pickup in the game already follows.
+  // its own dedicated egg model (assets/loot/treasure/dragon-egg.glb, a
+  // decimated/re-materialed Meshy AI generation — design/DRAGON-EGGS.md's
+  // v2 section) tinted per the egg's own element, the same "one file, many
+  // tints" idiom every other pickup in the game already follows.
   if (L.dragonEgg && DRAGON_ELEMENTS[L.dragonEgg]) {
     const dd = DRAGON_ELEMENTS[L.dragonEgg];
     if (addEgg(L.dragonEgg)) {
       lines.push(dd.eggName);
       spawnGearDrop(world, chest.x, chest.z,
-        { file: './assets/loot/treasure/gem-diamond.glb', tint: dd.tint, size: 1.1 }, seat++);
+        { file: './assets/loot/treasure/dragon-egg.glb', tint: dd.tint, size: 1.1 }, seat++);
     }
   }
   // A SEED FOR THE GARDEN BED (design/WIDER-WORLD.md §3.2/§2.3) — one per

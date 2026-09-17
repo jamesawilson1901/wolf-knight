@@ -546,6 +546,79 @@ plus the companion mid-rise and fully emerged confirmed the visuals read
 correctly before shipping — the human pass CLAUDE.md requires before a
 merge to `main` is still owed and not claimed here.
 
+## v2.1 — a dedicated egg model, replacing the gem-diamond.glb stand-in (2026-09-17, SHIPPED)
+
+Every egg found in a chest, right through v2 above, popped as this game's
+own `gem-diamond.glb` (the same treasure-pop asset already reused across
+armour/keepsake pickups) tinted per element — a deliberate placeholder, not
+a design intent to keep a gem standing in for an egg forever. Dad supplied
+a real candidate: a Meshy AI ("Cracked Dinosaur Egg") text/image-to-3D
+generation from his own account.
+
+**The asset, as supplied, did not fit.** `assimp info` on the original
+`.glb`: ~67,000 triangles, one PBR material with baked diffuse +
+metallic-roughness + normal maps (~5.4MB of JPEGs). Every other model in
+this game is a few hundred to a few thousand triangles with a single flat
+material and no normal maps anywhere — this file was two to three orders
+of magnitude over budget and used a shading approach (normal-mapped
+surface detail) nothing else in the game uses, so shipping it as-is would
+have made one pickup look like it came from a different game.
+
+**Conversion, in order:**
+1. `assimp export` (glb → obj) to get a format `pymeshlab` could load.
+2. `pymeshlab`'s `meshing_decimation_quadric_edge_collapse` down to 900
+   faces (needed `libgl1`/`libglu1-mesa` installed first — its decimation
+   plugin is OpenGL-backed even though it never opens a window).
+3. `assimp export` (obj → glb) back to glTF.
+4. A `pygltflib` script stripping every `image`/`texture`/`sampler` the OBJ
+   round-trip had introduced (including a bogus `dummy.png` reference that
+   would have 404'd in-browser) and replacing them with one clean,
+   textureless `DragonEggShell` material
+   (`baseColorFactor=[0.85,0.78,0.62,1.0]`, no metalness/normal map) —
+   matching every other asset's reuse-via-tint idiom, since
+   `js/loot.js`'s `preparePopModel()` already overwrites `material.color`
+   per drop regardless of the model's own baked color.
+
+Result: `assets/loot/treasure/dragon-egg.glb`, 900 faces / 2629 vertices /
+1 mesh / 1 material. Needed no repositioning or floor-alignment work —
+`animateItemPop()` (js/loot.js) settles every pop at a fixed `y=0.55`
+regardless of the source model's own pivot.
+
+**A real trade-off, not a bug**: the original's "cracked" surface detail
+lived in its normal map, not its geometry, so it did not survive
+decimation — the shipped model reads as a plain bumpy low-poly shell
+rather than a visibly cracked egg. Dad deferred this call ("whatever you
+think will suit the game style best"): kept plain rather than adding a
+hand-authored crack decal, since the egg is only on screen briefly (a
+chest pop, then carried through the "no throwing animation" hand-off
+straight into the shrine sequence) and the hatching payoff is already
+delivered by the shrine/portal/emerge sequence in v2 above, not by the egg
+prop itself.
+
+**Licence**: the original 67K-triangle/PBR file is NOT vendored — only the
+900-triangle decimated/re-materialed derivative is. Recorded as
+`licence: null`, `accepted: private-family-use 2026-09-17` in
+`assets/LICENSES/MANIFEST.json`, with
+`assets/LICENSES/meshy-dragon-egg-attestation.txt` documenting dad's stated
+ownership of the generating Meshy AI account (an uploader attestation, not
+a checked Meshy AI terms-of-service grant — the same standing caveat every
+`licence: null` entry in this project carries).
+
+**Wired in**: `js/main.js`'s `giveLoot()` — the `L.dragonEgg` branch now
+pops `assets/loot/treasure/dragon-egg.glb` (was `gem-diamond.glb`), tinted
+per `DRAGON_ELEMENTS[...].tint` exactly as before.
+
+**Verified**: `node tools/check-licences.mjs` (MANIFEST entry valid),
+`sh tools/lint.sh`, `node tools/verify-boot.mjs` (precache/badge resynced
+for the new asset via `tools/sync-cache.mjs --write`),
+`node tools/verify-dragoneggs.mjs` (29/29, unaffected — it doesn't assert
+on the pickup's own model file), `sh tools/verify-all.sh --quick` (12/12).
+A one-off Playwright pass (`tools/shot-dragon-egg-pop.mjs`, not a gate
+suite) opened the real `le` fire-egg chest and captured the real pop: a
+warm orange-red, faceted low-poly ovoid that reads clearly against the
+room's stone and sits comfortably next to the game's other flat-shaded
+assets — confirmed by eye before calling this shippable.
+
 ## Still to design
 
 - **A fourth or later dragon.** The system supports any number of elements
