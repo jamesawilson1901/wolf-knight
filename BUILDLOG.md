@@ -5819,3 +5819,100 @@ fix closed the gap; what remains is a still-unidentified extra render pass
 that starts 14-15 real seconds into a Den visit with the scene graph itself
 provably unchanged — the next lead is each light's own shadow-casting
 state, not the object list.
+
+### Nothing stands inside anything else (v3.186.0)
+
+Dad, on a screenshot of the Den with four things circled: "a house, a wagon,
+a character and a barrel all merged and placed on top of and cutting through
+one another... these appear everywhere in the entire game making it look
+amateur and cheap."
+
+He is right, and the cause is one sentence. **Every prop position in this
+game is a hand-typed coordinate, and nothing had ever measured whether the
+model DRAWN at that spot hits the model already there.** The only footprints
+the game knew about were hand-typed circles, and they are far smaller than
+the models they stand for. Measured in the Den: the cart is drawn 1.3 x 1.6
+and declared a circle of radius 0.7; its neighbour is drawn 1.1 x 1.5 and
+declared 0.42; the merchant is drawn 1.1 x 1.0 and declared 0.35. Declared
+circles run 35-45% under the models across the board, so every clearance
+check in the codebase — `blocked()`, `resolveCircle()`, the pot placer,
+`scatter` — has been asking whether a spot is clear of a fiction. The cart
+sits at (7.2, -4.6) and its neighbour at (7.4, -4.6): two tenths apart, when
+their drawn half-widths add to 1.57.
+
+Measured across all 193 rooms before touching anything: **1,601
+interpenetrating pairs in 143 rooms** — three quarters of the game.
+
+**Why nothing caught it.** `verify-decor-overlap` checks only jars and
+crates, against the declared circles. `verify-spawn-clear` checks only
+enemies, against the declared circles. `verify-grounded` measures real
+meshes but only vertically. `tools/check-overlap.mjs` is the one tool that
+ever compared real mesh bounds pairwise — and it is a `check-*`, so the
+nightly's `tools/verify-*.mjs` glob has never run it; it is pinned to 32 of
+193 rooms; and when it was run by hand on 2026-08-22 it was closed as all
+false positives, because in its own words "a hero-prop sculpture built from
+deliberately stacked/touching pieces (the Kiln) reads geometrically
+identical to two props accidentally placed on top of each other. This tool
+cannot tell the two apart."
+
+It can, and the signal was already in the scene graph: a deliberate
+composition is built into ONE group by ONE helper (`heroProp` stacks the
+Kiln's boulders into a single `THREE.Group`; `ruinedHome` puts its walls,
+doorway and spilled goods into another). Two things a person placed
+separately are separate top-level props. **Pieces sharing a top-level prop
+are composition and are ignored; two different props sharing space is always
+a bug.** That one line is the difference between an un-actionable report and
+a gate.
+
+Three pieces:
+
+- **`World.propFootprints()`** measures every prop as actually drawn — and
+  per INSTANCE as well as per object. Most of this game's dressing is
+  instanced (`scatter`, every `instancePlacements` caller), and an
+  InstancedMesh measured whole is the bounding box of all its copies at
+  once. That is why the armoury manikin standing in the Den's cart was
+  invisible to everything that came before: it is one instance inside a
+  group, not an Object3D of its own.
+- **`World.separateProps()`** pushes clutter out of whatever it is merged
+  into. It runs from `flattenStatic` — the one seam all nineteen room
+  builders reach (`solidifyProps` is NOT: the Den and the other rooms.js
+  builders never call it, which would have missed the room in the
+  screenshot) and the last moment before merging welds every prop into one
+  geometry. It never moves a prop standing on a named `world.markers` spot,
+  a hero landmark, an NPC or a gate interactable, and a moved prop takes its
+  collider with it.
+- **`tools/verify-interpenetration.mjs`** gates it over every room. Being a
+  `verify-*`, the nightly picks it up with no wiring.
+
+**Result: 1,601 pairs down to 179, in 72 rooms rather than 143.** 742 props
+pushed clear, 203 removed for having nowhere clear to stand. The Den — the
+room in the screenshot — goes from 4 pairs to 0, three props moved, none
+removed.
+
+Four things learned the hard way, recorded so the next pass does not repeat
+them:
+
+- **The height floor had to come DOWN, not up.** `solidifyProps` ignores
+  anything under 0.9 tall because a child steps over it, and this pass
+  inherited that number — so it looked straight past the Den's cart, which
+  is 0.59 tall. A wagon you can see is not "ground". The visual floor is 0.5
+  and the collision floor stays 0.9; they are different questions.
+- **"Has a hand-registered collider" is not a signal of authorial intent.**
+  It was the first rule for what may not move, and it protected the entire
+  game: this codebase registers a circle for clutter as a matter of course
+  (the Den gives every crate and barrel its own r0.42). With that rule the
+  pass moved not one prop in the room dad photographed. What does mean it is
+  a NAMED MARKER — the Den's cart IS `markers.shopSpot`.
+- **Width separates dressing from landmarks; height does not.** A crate is
+  1.8 x 1.9 x 1.3 and a tree is 1.6 x 1.5 x 2.9, so the crate has the wider
+  footprint of the two. A height ceiling of 2.0 kept the pass off its own
+  biggest case — Frostpeak's scattered firs are 1.0 wide and 2.26 tall, and
+  the commonest single interpenetration in the game is one of those standing
+  inside a snow drift (131 of f1's 138 pair-halves were untouchable).
+- **A prop was blocked by its own collider.** `solidifyProps` has already
+  dropped a 'decor' circle on the prop before this pass runs, so the
+  candidate-spot test found that circle in every gap beside it and rejected
+  the lot — turning small nudges into big ones and, in tight rooms, calling
+  a good gap "nowhere clear" and deleting the prop. Lifting the prop's own
+  circle for the search, and handing it back wherever the prop lands, turned
+  122 deletions back into moves.
