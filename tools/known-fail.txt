@@ -223,3 +223,27 @@ verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6
 # didn't get to before running out of runway on a P3 item.
 verify-minigame.mjs | "draw calls return to where they started" fails by ~5, landing on a stable (not noisy) new value — proven NOT a teardown leak, NOT the settle-frame-count heuristic (fixed, gap persisted), NOT blocking narration (ruled out live) — an unidentified extra render (shadow?) pass starts ~14-15s into a Den visit with the scene graph itself provably unchanged | 2026-09-10, redug 2026-09-18
 verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10, redug 2026-09-18
+# 2026-09-18, found by v3.186's own regression sweep, not caused by it: the
+# Den's own west tent (rooms.js buildDen, `[tentGltf, -8.6, 0.4, 1.5, 2.2]`)
+# stands 0.51u inside the landing point of `dr`'s own door back to the Den
+# (levelDenRebuild.js, `sideDoor(world, 'e', ..., 'den', {x:-8.5, z:0})`), and
+# a second, much smaller case: `tsA`'s own door to `t1a` lands at (10, 0),
+# 0.09u inside something there. Proven pre-existing exactly as this session's
+# own convention requires: rerun with `window.__noSeparate = true` (turns off
+# every line of v3.186's own separateProps pass) — byte-identical pushedBy
+# on both. Neither door has ever been reachable without walking into
+# something on the other side; nobody had run verify-landings.mjs's own §3
+# ("...and not inside a prop") for these two legs before now. v3.186 ALSO
+# closed the matching blind spot in its own separateProps() at the same time
+# this was found — a room only knew its own outgoing doors, never another
+# room's door landing IN it, so nothing stopped a FUTURE prop move from
+# landing on either of these same two spots by accident (js/world.js
+# KNOWN_ENTRIES). Fixing the two doors themselves (move the tent; find what
+# sits at tsA's landing) is a level-design nudge for whoever picks this up,
+# not a systemic question.
+verify-landings.mjs | dr -> den: the Den's own west tent stands 0.51u inside the landing point of dr's door back to the Den. tsA -> t1a: something stands 0.09u inside that door's own landing | 2026-09-18
+# 2026-09-18, found by the same sweep, also not caused by it: xc3's own
+# crate at (-6.5, -5.5) and barrel at (6.5, -5.5) each stand ~0.65u inside
+# whatever else is already there. Proven pre-existing the same way as the
+# entry above — byte-identical with v3.186's separateProps() fully disabled.
+verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each stand ~0.65u inside something already there | 2026-09-18

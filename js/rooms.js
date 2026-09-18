@@ -684,6 +684,13 @@ const DEN_DISTRICT = {
 
 async function buildDen(scene) {
   const world = new World(scene);
+  // Stamped HERE, not left to buildRoom()'s own generic `world.roomId = id`
+  // (below, after this function returns): `flattenStatic()` runs before that
+  // line ever executes, and `World.separateProps()` (called from it) reads
+  // `this.roomId` to find doors elsewhere that land IN this room — a lookup
+  // that silently missed every time on the one room this whole feature was
+  // written for, because roomId was still undefined when it asked.
+  world.roomId = 'den';
   // ONE MATERIAL PER COLOUR, not one per prop.
   //
   // The Den tints its props by cloning the material on every mesh, which was

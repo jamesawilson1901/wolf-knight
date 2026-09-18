@@ -184,8 +184,16 @@ const posts = await page.evaluate(async () => {
 check('at least one settler post exists (Ember’s `la`, this slice)', posts.length > 0, posts);
 
 for (const post of posts) {
-  console.log(`\n── 3 · ${post.key} @ ${post.room}, LATE=0..4 ───────────────`);
-  for (let n = 0; n <= 4; n++) {
+  // The Court is gated on seen_5, not seen_4 (js/npcs.js WAYFARER_POSTS.x1,
+  // 2026-09-18): its own `restored` fact lands at the SAME moment as
+  // `grimmFreed` (the ending), unlike every other hearth, so growthStage can
+  // skip 4 entirely on a completionist run and `seen_4` is never a value this
+  // one hearth can rely on ever being observed. One extra LATE step here asks
+  // the loop below the same question every other hearth is asked, just at
+  // the value THIS hearth's own gate actually fires on.
+  const wayfarerReady = post.key === 'court' ? 5 : 4;
+  console.log(`\n── 3 · ${post.key} @ ${post.room}, LATE=0..${wayfarerReady} ───────────────`);
+  for (let n = 0; n <= wayfarerReady; n++) {
     await setStage(post.key, n);
     await wk.jump(post.room, ALL);
     await page.evaluate(async () => { for (let i = 0; i < 15; i++) await new Promise((r) => requestAnimationFrame(r)); });
@@ -262,8 +270,8 @@ for (const post of posts) {
     // earn), so asserting the hearth-only "Tam at stage 4" relationship
     // there checks a claim `ysq` never made.
     if (post.hasWayfarerPost && post.minStage >= 2) {
-      check(`${post.key} LATE=${n}: Tam takes a post at the hearth iff stage>=4 (never earlier)`,
-        snap.hasWayfarer === (n >= 4), snap);
+      check(`${post.key} LATE=${n}: Tam takes a post at the hearth iff stage>=${wayfarerReady} (never earlier)`,
+        snap.hasWayfarer === (n >= wayfarerReady), snap);
     }
   }
 }
