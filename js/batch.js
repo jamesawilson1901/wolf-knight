@@ -50,6 +50,17 @@ function bakeGeometry(source, matrix) {
 }
 
 export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
+  // SEPARATE, THEN MERGE — and in that order, because merging welds every prop
+  // into one geometry and nothing can be moved afterwards. This is the one seam
+  // all nineteen room builders reach (World.solidifyProps is not: the Den and
+  // the other rooms.js builders never call it), so it is where the room is
+  // guaranteed to be fully dressed and still made of separate objects.
+  //
+  // ABOVE the __noBatch escape below on purpose: tooling that asks for an
+  // unmerged room is asking to inspect what the game actually ships, which
+  // includes this pass. `window.__noSeparate` turns it off for measuring the
+  // raw, unseparated room.
+  if (world && typeof world.separateProps === 'function') world.separateProps();
   // A WAY TO SEE THE ROOM BEFORE IT IS GLUED TOGETHER.
   //
   // Merging is what makes the draw-call budget possible, and it is also what

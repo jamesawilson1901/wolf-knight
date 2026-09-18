@@ -153,7 +153,7 @@ export const REGIONS = {
     name: 'Stormreach Cliffs', built: true, spirit: 'Aria',
     grants: 'storm_wolf', grantAt: 'ssh (Aria\'s Spark, mid-climb)',
     threshold: 'f5 north — the cliff path down off the summit, once Boreal is calmed',
-    rooms: ['s1a', 's1b', 's1p', 'sc1', 's2a', 's2b', 's2p', 'ssh', 'sc2',
+    rooms: ['s1a', 's1b', 's1p', 'sc1', 's1c', 's1d', 's1e', 's2a', 's2b', 's2p', 'ssh', 'sc2',
       's3a', 's3b', 's3p', 'svn', 'sc3', 's4a', 's4b', 's4p', 'sc4', 'scr', 'ssA'],
     beats: {
       approach: 'f5 → s1a, down off the calmed summit onto the sea cliffs',
@@ -196,7 +196,7 @@ export const REGIONS = {
     name: 'Sunken Vale', built: true, spirit: 'Meri',
     grants: 'tide_wolf', grantAt: "dsh (Meri's Spring, the reed pocket)",
     threshold: 'scr north — down off the cliffs into the drowned valley, once Aria is calmed',
-    rooms: ['d1a', 'd1b', 'd1p', 'dg1', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2',
+    rooms: ['d1a', 'd1b', 'd1p', 'dg1', 'd1c', 'd1d', 'd1e', 'd2a', 'd2b', 'd2p', 'dsh', 'dg2',
       'd3a', 'd3b', 'd3p', 'dtp', 'dg3', 'd4a', 'd4b', 'd4p', 'dg4', 'dlg', 'ddp'],
     beats: {
       approach: 'scr → d1a, out of the storm and down into still, deep water',
@@ -231,7 +231,8 @@ export const REGIONS = {
     grantAt: "xsh (Luna's Light, the second room)",
     threshold: "ddp north — the way out of Meri's Deep, once the vale drains",
     rooms: ['x1', 'xsh', 'xh', 'xa1', 'xa2', 'xa3', 'xr1', 'xr2', 'xr3',
-      'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth'],
+      'xg1', 'xg2', 'xg3', 'xm1', 'xm2', 'xm3', 'xp1', 'xp2', 'xst', 'xth',
+      'xc1', 'xc2', 'xc3'],
     beats: {
       approach: 'ddp → x1, out of the drowned vale and up to his house',
       lockVisible: 'a watcher in the first room, standing over a gold chest, unpassable and harmless',

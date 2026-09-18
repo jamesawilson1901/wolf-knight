@@ -102,6 +102,7 @@ const ROOMS = [
   { id: 'lg3', kind: 'choke' },  { id: 'ld',  kind: 'island' }, { id: 'ld1', kind: 'puzzle' },
   { id: 'lg4', kind: 'choke' },  { id: 'le',  kind: 'arena' },
   { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
+  { id: 'lk4', kind: 'pocket' },
   { id: 'lv1', kind: 'pocket' }, { id: 'lv2', kind: 'island' }, { id: 'lv3', kind: 'pocket' },
   // The Night Road — the road between Ember Hollow and Stoneroot
   { id: 'n1',  kind: 'island' }, { id: 'n2',  kind: 'island' },
@@ -167,7 +168,10 @@ const ROOMS = [
   // narrower box, and holding it to the island bar would only push clutter into
   // a space whose whole point is that you walk through it.
   { id: 's1a', kind: 'island' }, { id: 's1b', kind: 'island' }, { id: 's1p', kind: 'pocket' },
-  { id: 'sc1', kind: 'choke' },  { id: 's2a', kind: 'island' }, { id: 's2b', kind: 'island' },
+  { id: 'sc1', kind: 'choke' },
+  // The Drowned Hold (v3.166) — Stormreach's own pocket dungeon, off s1a.
+  { id: 's1c', kind: 'pocket' }, { id: 's1d', kind: 'island' }, { id: 's1e', kind: 'pocket' },
+  { id: 's2a', kind: 'island' }, { id: 's2b', kind: 'island' },
   { id: 's2p', kind: 'pocket' }, { id: 'ssh', kind: 'pocket' }, { id: 'sc2', kind: 'choke' },
   { id: 's3a', kind: 'island' }, { id: 's3b', kind: 'island' }, { id: 's3p', kind: 'pocket' },
   { id: 'svn', kind: 'puzzle' }, { id: 'sc3', kind: 'choke' },  { id: 's4a', kind: 'island' },
@@ -178,7 +182,10 @@ const ROOMS = [
   // holding it to the island bar would mean filling the one space in the game
   // whose whole job is to be empty and uncrossable.
   { id: 'd1a', kind: 'island' }, { id: 'd1b', kind: 'island' }, { id: 'd1p', kind: 'pocket' },
-  { id: 'dg1', kind: 'choke' },  { id: 'd2a', kind: 'island' }, { id: 'd2b', kind: 'island' },
+  { id: 'dg1', kind: 'choke' },
+  // The Bone Crypt (v3.168) — the Sunken Vale's own pocket dungeon, off d1a.
+  { id: 'd1c', kind: 'pocket' }, { id: 'd1d', kind: 'island' }, { id: 'd1e', kind: 'pocket' },
+  { id: 'd2a', kind: 'island' }, { id: 'd2b', kind: 'island' },
   { id: 'd2p', kind: 'pocket' }, { id: 'dsh', kind: 'pocket' }, { id: 'dg2', kind: 'choke' },
   { id: 'd3a', kind: 'island' }, { id: 'd3b', kind: 'island' }, { id: 'd3p', kind: 'pocket' },
   { id: 'dtp', kind: 'puzzle' }, { id: 'dg3', kind: 'choke' },  { id: 'd4a', kind: 'island' },
@@ -193,6 +200,8 @@ const ROOMS = [
   { id: 'xg1', kind: 'island' }, { id: 'xg2', kind: 'pocket' }, { id: 'xg3', kind: 'island' },
   { id: 'xm1', kind: 'island' }, { id: 'xm2', kind: 'puzzle' }, { id: 'xm3', kind: 'island' },
   { id: 'xp1', kind: 'pocket' }, { id: 'xp2', kind: 'pocket' },
+  // The Veiled Vault (v3.169) — the Shadow Court's own pocket dungeon, off x1.
+  { id: 'xc1', kind: 'pocket' }, { id: 'xc2', kind: 'island' }, { id: 'xc3', kind: 'pocket' },
   { id: 'xst', kind: 'choke' },  { id: 'xth', kind: 'arena' },
 ];
 

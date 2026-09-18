@@ -36,6 +36,15 @@ export const state = {
     equipped: { weapon: 'sword_knight', shield: 'shield_badge', armour: 'plain' },
     treasures: [],
     heartPieces: 0,
+    materials: {},               // crafting materials (design/CRAFTING.md), id -> count
+    crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
+    recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
+    // DRAGON EGGS (design/DRAGON-EGGS.md) — element -> true. Deliberately
+    // three small flag bags rather than one shape, so "found" / "hatched" /
+    // "currently worn" can each be answered with a single lookup.
+    dragonEggs: {},               // element -> true (egg found, not yet thrown)
+    dragonsHatched: {},           // element -> true (thrown at its shrine, hatched forever)
+    dragonEquipped: null,         // element | null — which hatched dragon runs with Kael
   },
   moonGauge: 0,                 // 0..1 — the Blood Moon Surge charge
   xp: 0,
@@ -119,7 +128,11 @@ export function regionOf(id) {
   if (r[0] === 't') return 'wildwoods';
   if (r[0] === 'f') return 'frostpeak';
   if (r[0] === 's') return 'stormreach';
-  if (r[0] === 'd' && r !== 'den') return 'sunkenvale';
+  // 'dr' is the Den's own rebuilt outer camp (design/DEN-REBUILD.md) — a
+  // pocket room off the Den, not a Sunken Vale room, so it is excluded here
+  // the same way 'den' itself already is and falls through to the same
+  // 'ember_hollow' default the Den uses.
+  if (r[0] === 'd' && r !== 'den' && r !== 'dr') return 'sunkenvale';
   if (r[0] === 'x') return 'shadowcourt';
   if (r[0] === 'y') return 'village';
   if (r[0] === 'm') return 'spire';

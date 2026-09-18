@@ -384,7 +384,7 @@ export function stompSigil(world, x, z, radius = 1.9) {
   return m;
 }
 
-export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
+export function brazier(world, prepareModel, torchGltf, id, x, z, onLit, startLit = false) {
   const stand = prepareModel(torchGltf.scene.clone());
   stand.scale.setScalar(2.0);
   stand.position.set(x, 0, z);
@@ -433,7 +433,18 @@ export function brazier(world, prepareModel, torchGltf, id, x, z, onLit) {
   waiting.position.set(x, world.deckY + 0.03, z);
   world.add(waiting);
 
-  const b = { id, x, z, lit: false, gutterT: 0, flame, light, waiting, onLit };
+  // A SOLVED ROOM HAS TO LOOK SOLVED (the pushableBoulder `solved`/`restAt`
+  // law, applied here): a room rebuilt after its ring was already lit in a
+  // past visit must not make a child re-discover cold lamps that already
+  // caught. `onLit` never fires for this — it exists for the moment a lamp
+  // is NEWLY lit, and replaying it on a rebuild would re-trigger whatever
+  // one-shot fanfare/door-reveal that moment owns.
+  const b = { id, x, z, lit: startLit, gutterT: 0, flame, light, waiting, onLit };
+  if (startLit) {
+    flame.visible = true;
+    light.intensity = 8;
+    waiting.visible = false;
+  }
   if (!world.braziers) {
     world.braziers = [];
     // the Fire Wolf's slam calls this (hooked from player.tryGroundSlam)

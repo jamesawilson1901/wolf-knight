@@ -20,8 +20,8 @@ import { state } from './state.js';
 import { juice } from './juice.js';
 import { spawnGearDrop } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
-import { isHealed, graze } from './restoration.js';
 import { WS } from './worldstate.js';
+import { materialForWeakness, addMaterial, spawnMaterialDrop } from './materials.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -649,6 +649,7 @@ class Enemy {
       // make experimentation LOUD: gold flare + a SUPER! callout so kids
       // instantly see "this element is the one" (Pip teaches it once too)
       juice.burst(this.x, 0.9, this.z, 0xffe14a, 8);
+      juice.flare(this.x, 0.9, this.z, 0xffe14a);
       if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'SUPER!');
       bumpCounter('weakHits');
     }
@@ -666,6 +667,7 @@ class Enemy {
     const chance = this.dropChance !== undefined ? this.dropChance : 0.35;
     if (Math.random() < chance) spawnEmberDrop(this.world, this.x, this.z);
     dropWeapon(this);
+    dropMaterial(this);
     this.world.root.remove(this.root);
   }
 
@@ -1024,20 +1026,46 @@ export class Hound extends Enemy {
 // ---------------------------------------------------------------------------
 
 export class Slime extends Enemy {
-  constructor(world, x, z, gltf) {
+  constructor(world, x, z, gltf, opts = {}) {
     super(world, x, z, { hp: 2, radius: 0.4 });
     this.puffTint = 0x7fc46a;
     this.aggroRange = 6.5;
     this.speed = 1.2; // playtest bump
     this.splits = true;   // cave slimes burst into two minis when smashed
     this._gltf = gltf;
+    // A SKINNED MESH'S GEOMETRY CACHES ITS BOUNDING BOX ONCE, GLOBALLY, ON
+    // WHATEVER OBJECT MEASURES IT FIRST. SkeletonUtils.clone() shares the
+    // source BufferGeometry rather than copying it (the normal, efficient
+    // behaviour for cloning many instances of one body) — so if a CLONE's
+    // own Box3 runs first, before its own bones have ever had
+    // updateWorldMatrix called on them, geometry.boundingBox gets computed
+    // and cached from a skeleton still sitting at its all-identity pre-pose
+    // state, and every clone after it — this one included — inherits that
+    // one wrong cached box forever. Measured live: Rat.glb's fitHeight came
+    // out 680x too tall this way. Reading the box on gltf.scene ITSELF
+    // first — the original the loader already posed correctly — caches the
+    // right one before any clone gets the chance to cache the wrong one.
+    if (opts.fitHeight) new THREE.Box3().setFromObject(gltf.scene);
     const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    model.scale.setScalar(0.26);
+    // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN (Dragonling's own law): a
+    // body that is not Slime.glb was modelled in different units, and 0.26
+    // is Slime.glb's own constant, tuned for its own mesh.
+    if (opts.fitHeight) {
+      model.updateWorldMatrix(true, true);
+      const bb = new THREE.Box3().setFromObject(model);
+      const h = Math.max(0.01, bb.max.y - bb.min.y);
+      model.scale.setScalar(opts.fitHeight / h);
+    } else {
+      model.scale.setScalar(opts.scale ?? 0.26);
+    }
     this.model = model;
     this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.actions = {};
-    for (const [k, n] of Object.entries({
+    // A BODY BRINGS ITS OWN CLIP NAMES (Dragonling's own law, js/enemies.js —
+    // a clip lookup that finds nothing is silent). Slime.glb's own names are
+    // still the default so every existing MONSTER_ROSTER hopper is untouched.
+    for (const [k, n] of Object.entries(opts.clips || {
       idle: 'Armature|Slime_Idle', walk: 'Armature|Slime_Walk', attack: 'Armature|Slime_Attack',
     })) {
       const clip = gltf.animations.find((c) => c.name === n);
@@ -2665,9 +2693,17 @@ export class RangedLobber extends SkeletonBase {
 // straight fast bolt, and it holds ground rather than kiting (a caster, not
 // a skirmisher). The speed is entirely in the CLOCK, never the windup floor.
 export class RangedBolter extends SkeletonBase {
+  // `opts.hpGet/hpSet/onDefeated` (v3.168, design/WIDER-WORLD.md §2.6/§2.3
+  // vale row): the Bone Sage is a MINI_ROSTER guardian on this class rather
+  // than BoneWarden — the region's own guardian archetype is a caster, not a
+  // duelist — so it needs the same "wound persists across deaths, banked
+  // outside state.flags" mechanic BoneWarden already carries, generalised
+  // here rather than copied into a second class. Every field defaults to a
+  // no-op, so `stormcaller` (the regular mook already on this class) is
+  // unchanged byte-for-byte.
   constructor(world, x, z, gltf, anims, opts = {}) {
     super(world, x, z, {
-      hp: opts.hp ?? 4, radius: 0.34, scale: 0.48, gltf, anims,
+      hp: opts.hp ?? 4, radius: 0.34, scale: opts.scale ?? 0.48, gltf, anims,
       clips: { idle: 'Idle_A', walk: 'Walking_A', cast: 'Throw' },
     });
     applyRosterWeak(this, opts);
@@ -2677,12 +2713,28 @@ export class RangedBolter extends SkeletonBase {
     this._shotT = 0.9;
     this._windup = 0;
     this._bolts = [];
+    this._hpGet = opts.hpGet || (() => 0);
+    this._hpSet = opts.hpSet || (() => {});
+    this._onDefeated = opts.onDefeated || (() => {});
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
     // A CASTER SHOULD BE HOLDING SOMETHING TO CAST WITH. Same reasoning as the
     // archer's bow above, and the opposite silhouette on purpose: a short wand
     // held high reads as "this one throws magic", a long bow as "this one
     // shoots". Two ranged classes that a child could not tell apart now differ
     // at a glance, before either has fired. wand_A, same KayKit pack.
     if (opts.wandGltf) this.mount('r', opts.wandGltf, 0.9);
+  }
+
+  die() {
+    this._hpSet(0);   // the duel is over — no stale wound to restore
+    this._onDefeated(this);
+    super.die();
+  }
+
+  takeDamage(n, element, kind) {
+    super.takeDamage(n, element, kind);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
   _fire(player) {
@@ -2823,13 +2875,32 @@ export class DashStriker extends SkeletonBase {
 export class Duellist extends SkeletonBase {
   constructor(world, x, z, gltf, anims, opts = {}) {
     super(world, x, z, {
-      hp: opts.hp ?? 6, radius: 0.38, scale: 0.5, gltf, anims,
+      hp: opts.hp ?? 6, radius: 0.38, scale: opts.scale ?? 0.5, gltf, anims,
       clips: { idle: 'Idle_A', walk: 'Walking_A', swing: 'Melee_1H_Attack_Chop' },
     });
     applyRosterWeak(this, opts);
     this.state = 'chase';
     this.swingTimer = 1.8;
     if (opts.bladeGltf) this.mount('r', opts.bladeGltf);
+    // MINI_ROSTER hp-banking (v3.169, the court_chancellor guardian): same
+    // no-op-by-default fields RangedBolter carries, so the regular mook
+    // `gilded-husk` (js/level7.js buildXa3) is unchanged byte-for-byte.
+    this._hpGet = opts.hpGet || (() => 0);
+    this._hpSet = opts.hpSet || (() => {});
+    this._onDefeated = opts.onDefeated || (() => {});
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
+  }
+
+  die() {
+    this._hpSet(0);
+    this._onDefeated(this);
+    super.die();
+  }
+
+  takeDamage(n, element, kind) {
+    super.takeDamage(n, element, kind);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
   update(dt, t, player) {
@@ -3308,7 +3379,7 @@ export class SlowStomper extends SkeletonBase {
 // and contact damage for free.
 export class Hopper extends Slime {
   constructor(world, x, z, gltf, opts = {}) {
-    super(world, x, z, gltf);
+    super(world, x, z, gltf, opts);
     if (opts.weakness !== undefined) this.weakness = opts.weakness;
     if (opts.resist !== undefined) this.resist = opts.resist;
     if (opts.hp !== undefined) {
@@ -3371,6 +3442,72 @@ export class Hopper extends Slime {
   }
 }
 
+// SHARED DRAGON.GLB BODY BUILDER (design/DRAGON-EGGS.md) — extracted from
+// Dragonling below so the companion dragon (js/companionDragon.js) can reuse
+// the exact same model/scale/tint/clip/eye-rig-sync handling without
+// instantiating a hostile Enemy subclass. Dragonling itself now calls this;
+// nothing about its own behaviour changed, only where the code that builds
+// its BODY (as opposed to its combat state machine) lives.
+export function buildDragonBody(gltf, opts = {}) {
+  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+  // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN. Dragon.glb has always come
+  // in at a flat 0.5; a body that is not Dragon.glb is a different size in
+  // its own units, and typing a second constant at it is how the chests, the
+  // crate and the vase each went wrong in turn. `fitHeight` scales a model
+  // so it stands exactly that tall, whatever it was modelled at.
+  if (opts.fitHeight) {
+    model.updateWorldMatrix(true, true);
+    const bb = new THREE.Box3().setFromObject(model);
+    const h = Math.max(0.01, bb.max.y - bb.min.y);
+    model.scale.setScalar(opts.fitHeight / h);
+  } else {
+    model.scale.setScalar(opts.scale ?? 0.5);
+  }
+  if (opts.tint) {
+    model.traverse((n) => {
+      if (!n.isMesh) return;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      n.material = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
+      if (n.material.length === 1) n.material = n.material[0];
+    });
+  }
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = {};
+  // A BODY BRINGS ITS OWN CLIP NAMES. Dragon.glb calls them
+  // 'DragonArmature|Dragon_Flying' / '...Attack'; the Ember Wasp calls them
+  // 'Idle_Flying' / 'Attacking'. Hard-coding one body's names into the class
+  // is the exact fault that left Meri frozen in her bind pose for a month
+  // (js/boss.js SKINS.meri) — a clip lookup that finds nothing is silent.
+  for (const [k, n] of Object.entries(opts.clips || {
+    fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
+  })) {
+    const clip = gltf.animations.find((c) => c.name === n);
+    if (clip) actions[k] = mixer.clipAction(clip);
+  }
+  // Dragon.glb's eyes are a SEPARATE skinned sub-rig (its own tiny
+  // EyeArmature, not parented under the body's Head bone) — and none of
+  // the model's 5 animation clips ever touch it, confirmed by reading the
+  // .glb's own animation channel targets. Left alone they sit frozen at
+  // their bind pose forever while the neck/head bends through Flying/
+  // Attack, reading as two eyes floating in empty air above the dragon.
+  // Locking them to the Head bone's live world position every frame is
+  // the fix — no shared vendored asset touched, contained here.
+  const headBone = model.getObjectByName('Head');
+  const eyeRig = ['EyeArmature', 'Eyes'].map((n) => model.getObjectByName(n)).filter(Boolean);
+  const eyeOffset = new THREE.Vector3(0, 0.02, 0.06);
+  function syncEyes() {
+    if (!headBone || !eyeRig.length) return;
+    const headWorld = new THREE.Vector3();
+    headBone.getWorldPosition(headWorld);
+    for (const rig of eyeRig) {
+      if (!rig.parent) continue;
+      const local = rig.parent.worldToLocal(headWorld.clone());
+      rig.position.copy(local).add(eyeOffset);
+    }
+  }
+  return { model, mixer, actions, syncEyes };
+}
+
 // Ember / Frost / Shadow Dragonling — Dragon.glb (fully rigged: 5 clips,
 // 2 skins, real bones), never wired to an enemy before. Same roost/hover/
 // telegraph/dive/grounded/return grammar as the Cave Bat, at dragon scale,
@@ -3384,43 +3521,11 @@ export class Dragonling extends Enemy {
     this.puffTint = opts.puffTint ?? 0x4a3f5c;
     this.flying = true;
     this.home = { x, z };
-    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    // MEASURE, OR TAKE THE NUMBER YOU WERE GIVEN. Dragon.glb has always come
-    // in at a flat 0.5; a body that is not Dragon.glb is a different size in
-    // its own units, and typing a second constant at it is how the chests, the
-    // crate and the vase each went wrong in turn. `fitHeight` scales a model
-    // so it stands exactly that tall, whatever it was modelled at.
-    if (opts.fitHeight) {
-      model.updateWorldMatrix(true, true);
-      const bb = new THREE.Box3().setFromObject(model);
-      const h = Math.max(0.01, bb.max.y - bb.min.y);
-      model.scale.setScalar(opts.fitHeight / h);
-    } else {
-      model.scale.setScalar(opts.scale ?? 0.5);
-    }
-    if (opts.tint) {
-      model.traverse((n) => {
-        if (!n.isMesh) return;
-        const mats = Array.isArray(n.material) ? n.material : [n.material];
-        n.material = mats.map((m) => { const c = m.clone(); opts.tint(c); return c; });
-        if (n.material.length === 1) n.material = n.material[0];
-      });
-    }
-    this.root.add(model);
-    this.model = model;
-    this.mixer = new THREE.AnimationMixer(model);
-    this.actions = {};
-    // A BODY BRINGS ITS OWN CLIP NAMES. Dragon.glb calls them
-    // 'DragonArmature|Dragon_Flying' / '...Attack'; the Ember Wasp calls them
-    // 'Idle_Flying' / 'Attacking'. Hard-coding one body's names into the class
-    // is the exact fault that left Meri frozen in her bind pose for a month
-    // (js/boss.js SKINS.meri) — a clip lookup that finds nothing is silent.
-    for (const [k, n] of Object.entries(opts.clips || {
-      fly: 'DragonArmature|Dragon_Flying', bite: 'DragonArmature|Dragon_Attack',
-    })) {
-      const clip = gltf.animations.find((c) => c.name === n);
-      if (clip) this.actions[k] = this.mixer.clipAction(clip);
-    }
+    const body = buildDragonBody(gltf, opts);
+    this.root.add(body.model);
+    this.model = body.model;
+    this.mixer = body.mixer;
+    this.actions = body.actions;
     this._current = null;
     if (this.actions.fly) { this.actions.fly.play(); this.actions.fly.timeScale = 0.35; }
     this._flashMats = [];
@@ -3431,29 +3536,7 @@ export class Dragonling extends Enemy {
     this.diveDir = { x: 0, z: 0 };
     this._seed = x * 2.3 + z;
     this.root.position.y = 2.0;
-
-    // Dragon.glb's eyes are a SEPARATE skinned sub-rig (its own tiny
-    // EyeArmature, not parented under the body's Head bone) — and none of
-    // the model's 5 animation clips ever touch it, confirmed by reading the
-    // .glb's own animation channel targets. Left alone they sit frozen at
-    // their bind pose forever while the neck/head bends through Flying/
-    // Attack, reading as two eyes floating in empty air above the dragon.
-    // Locking them to the Head bone's live world position every frame is
-    // the fix — no shared vendored asset touched, contained to this class.
-    this._headBone = model.getObjectByName('Head');
-    this._eyeRig = ['EyeArmature', 'Eyes'].map((n) => model.getObjectByName(n)).filter(Boolean);
-    this._eyeOffset = new THREE.Vector3(0, 0.02, 0.06);
-  }
-
-  _syncEyes() {
-    if (!this._headBone || !this._eyeRig.length) return;
-    const headWorld = new THREE.Vector3();
-    this._headBone.getWorldPosition(headWorld);
-    for (const rig of this._eyeRig) {
-      if (!rig.parent) continue;
-      const local = rig.parent.worldToLocal(headWorld.clone());
-      rig.position.copy(local).add(this._eyeOffset);
-    }
+    this._syncEyes = body.syncEyes;
   }
 
   _play(name) {
@@ -3587,6 +3670,21 @@ function dropWeapon(e) {
   if (gd && gd.file) spawnGearDrop(e.world, e.x, e.z, gd);
 }
 
+// design/CRAFTING.md §1 — a crafting material, on the SAME roll frequency
+// dad already tuned for the ember heal (`dropChance`), but its own
+// independent roll: a kill can pay in both, either, or neither. An elite
+// (dropChance >= 1) additionally has a real shot at the rare universal
+// Wolf's Crystal, the one material every "ultimate" recipe wants a stack of.
+function dropMaterial(e) {
+  const chance = e.dropChance !== undefined ? e.dropChance : 0.35;
+  if (Math.random() < chance) {
+    spawnMaterialDrop(e.world, e.x, e.z, materialForWeakness(e.weakness));
+  }
+  if ((e.dropChance || 0) >= 1 && Math.random() < 0.15) {
+    spawnMaterialDrop(e.world, e.x + 0.4, e.z, 'crystal');
+  }
+}
+
 function spawnEmberDrop(world, x, z) {
   if (!world.drops) world.drops = [];
   const spark = new THREE.Mesh(
@@ -3598,7 +3696,7 @@ function spawnEmberDrop(world, x, z) {
   const glow = new THREE.PointLight(0xffa04a, 2.2, 4, 1.9);
   glow.position.set(x, 0.6, z);
   world.add(glow);
-  world.drops.push({ x, z, spark, glow, life: 12, taken: false });
+  world.drops.push({ x, z, spark, glow, life: 12, taken: false, kind: 'heal' });
 }
 
 function updateDrops(world, dt, t, player) {
@@ -3621,9 +3719,13 @@ function updateDrops(world, dt, t, player) {
       world.root.remove(d.glow);
       if (!gone) {
         audio.play('pup-chime', { volume: 0.45, rate: 1.7 });
-        if (player.hearts < player.maxHearts) {
-          player.hearts = Math.min(player.maxHearts, player.hearts + 0.5);
-          if (player.onDamaged) player.onDamaged(player.hearts); // refresh HUD
+        if (d.kind === 'heal') {
+          if (player.hearts < player.maxHearts) {
+            player.hearts = Math.min(player.maxHearts, player.hearts + 0.5);
+            if (player.onDamaged) player.onDamaged(player.hearts); // refresh HUD
+          }
+        } else {
+          addMaterial(d.kind, 1);
         }
       }
     }
@@ -3754,6 +3856,51 @@ const MINI_ROSTER = {
     mounts: { r: 'axe', l: 'shield' }, weakness: 'fire', region: 'frost', key: 'rime_warden',
     tint: (m) => { if (m.color) m.color.setHex(0xbcd8ea); }, // rime over old bone
   },
+  // design/WIDER-WORLD.md §2.3: Stormreach's own guardian, off s1a's flooded
+  // sea-cave gate (Tide Wolf, retro-granted from the Sunken Vale — a return
+  // trip like every other dungeon here). `molten-marauder.glb` already lives
+  // in this game as a regular KAYKIT_ROSTER mook, so the body/rig pairing is
+  // proven the same way rime_warden's was. `resist: 'fire'` on a body built
+  // for a fire-elemental mook is the joke the name is making — the region's
+  // own weakness (earth, boss.js's aria entry: "matches Stormreach's own
+  // mook weakness") is what actually opens her.
+  ash_warden: {
+    cls: BoneWarden, body: 'molten-marauder.glb', scale: 1.3, hp: 14,
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'earth', resist: 'fire',
+    region: 'storm', key: 'ash_warden',
+    tint: (m) => { if (m.color) m.color.setHex(0x5a5450); }, // ash over old iron
+  },
+  // v3.168, design/WIDER-WORLD.md §2.3 vale row: the Sunken Vale's own
+  // guardian, and the first NOT on BoneWarden — a caster, not a duelist,
+  // which the region's own drowned-soldier roster (visored-wight, quiverbones
+  // etc., js/level6.js buildD1a) never had either. `RangedBolter` is already
+  // shipping as the regular mook `stormcaller`; `Skeleton_Mage.glb` is the
+  // one KayKit skeleton body this game has never rendered. weakness fire
+  // matches the Vale's own mook weakness (boss.js's Meri entry).
+  bone_sage: {
+    cls: RangedBolter, body: 'Skeleton_Mage.glb', scale: 0.8, hp: 14,
+    weakness: 'fire', region: 'vale', key: 'bone_sage',
+    tint: (m) => {
+      if (m.name === 'skeleton' && m.color) m.color.setHex(0x4a6b6a); // waterlogged bone
+      if (m.name === 'Glow') {
+        if (m.color) m.color.setHex(0x5ce8d8);
+        if (m.emissive) { m.emissive.setHex(0x5ce8d8); m.emissiveIntensity = 1.6; }
+      }
+    },
+  },
+  // v3.169, design/WIDER-WORLD.md §2.3 court row: the Shadow Court's own
+  // guardian, and the last of the seven region dungeons — off x1's own
+  // unused east wall (the west wall already carries the watcher's lock).
+  // `Duellist` is already shipping as the regular mook `gilded-husk`
+  // (js/level7.js buildXa3); this is the first MINI_ROSTER guardian built on
+  // it rather than BoneWarden or RangedBolter, so the Court's own duelling
+  // family finally gets a named elite. weakness moon matches every other
+  // KAYKIT_ROSTER id this region has.
+  court_chancellor: {
+    cls: Duellist, body: 'gilded-husk.glb', scale: 0.75, hp: 14,
+    weakness: 'moon', region: 'court', key: 'court_chancellor',
+    tint: (m) => { if (m.color) m.color.setHex(0x120c1c); }, // black over the old gilt
+  },
 };
 
 const MONSTER_ROSTER = {
@@ -3793,10 +3940,22 @@ const MONSTER_ROSTER = {
     tint: { Body: 0xff6a1a, Eyes: 0x2a1410 } },
   'rime-slime': { cls: Hopper, base: 'slime', hp: 3,
     tint: { Body: 0x8fd0f0, Eyes: 0x1a2630 } },
-  'gloom-slime': { cls: Hopper, base: 'slime', hp: 4, weakness: 'moon',
-    tint: { Body: 0x5b4770, Eyes: 0xb45cff } },
-  'toxin-slime': { cls: Hopper, base: 'slime', hp: 2,
-    tint: { Body: 0x8fd63c, Eyes: 0x1c2419 } },
+  // v3.167 (Animated Enemies pack, replacing tint-only reskins with real
+  // bodies — 9 roster ids had only 4 real bodies between them). gloom-slime
+  // and toxin-slime keep their own id, hp and weakness untouched — every
+  // room that already spawns them via markers gets the new body for free,
+  // no room file touched — only the base model and its own clip vocabulary
+  // change. splits:false: a spider or a frog bursting into two minis on
+  // death is Slime's own flavour, not theirs.
+  'gloom-slime': { cls: Hopper, base: 'spider', hp: 4, weakness: 'moon', splits: false,
+    fitHeight: 0.6, clips: { idle: 'SpiderArmature|Spider_Idle', attack: 'SpiderArmature|Spider_Attack' } },
+  'toxin-slime': { cls: Hopper, base: 'frog', hp: 2, splits: false,
+    fitHeight: 0.5, clips: { idle: 'FrogArmature|Frog_Idle', attack: 'FrogArmature|Frog_Attack' } },
+  // NEW: a fast, low vermin swarm for cellars and ruins — nothing in the
+  // roster stood in for "small and quick" before this; every existing hopper
+  // reads as a lumbering blob or a leggy ambusher.
+  'cellar-rat': { cls: Hopper, base: 'rat', hp: 2, splits: false, fitHeight: 0.42,
+    clips: { idle: 'RatArmature|Rat_Idle', attack: 'RatArmature|Rat_Attack' } },
 };
 
 function makeMonsterTint(map) {
@@ -3816,37 +3975,8 @@ const rosterKey = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + '
 // EVERY MARKER THIS FUNCTION SPAWNS A FOE FROM, taken rather than ignored.
 //
 // A healed region has nothing left to fight (js/restoration.js), and the
-// difference between clearing the markers and skipping the reads matters: the
-// markers are read by other systems too — the density suite counts them, the
-// encounter probe walks them — and a room that still ADVERTISES eight shadows
-// while spawning none is a room that lies to every one of them. `wardenSpot`
-// is deliberately not in here: that is a boss, not a patrol.
-function takeEnemySpots(mk) {
-  const out = [];
-  const take = (key) => {
-    const v = mk[key];
-    if (!v) return;
-    if (Array.isArray(v)) {
-      for (const s of v) if (s && typeof s.x === 'number') out.push({ x: s.x, z: s.z });
-    } else if (typeof v.x === 'number') out.push({ x: v.x, z: v.z });
-    delete mk[key];
-  };
-  for (const k of ['shadeSpots', 'mothSpots', 'houndSpot', 'houndSpots', 'slimeSpots',
-    'spitterSpots', 'batSpots', 'minionSpots', 'rogueSpots', 'shieldSpots']) take(k);
-  for (const id of Object.keys(KAYKIT_ROSTER)) take(rosterKey(id));
-  for (const id of Object.keys(MONSTER_ROSTER)) take(rosterKey(id));
-  return out;
-}
-
 export async function spawnEnemies(world) {
   world.enemies = [];
-  // THE SHADOW IS GONE FROM THIS PLACE. Once a region's guardian is free,
-  // every room in it grazes instead of fighting (dad, 2026-09-08). Harvested
-  // up here, before a single read below, so there is no path that can spawn
-  // from a list this function has decided is over. A boss arena is exempt
-  // while its boss is still placed — nothing else in the game removes one.
-  const grazing = (isHealed(world.roomId) && !world.markers.bossSpot)
-    ? takeEnemySpots(world.markers) : null;
   const wolfGltf = await loadGLB('./assets/chars/wolf.gltf');
 
   if ((world.markers.shadeSpots || []).length) {
@@ -3896,8 +4026,13 @@ export async function spawnEnemies(world) {
   }
   const rosterIds = Object.keys(KAYKIT_ROSTER).filter((id) => (mk[rosterKey(id)] || []).length);
 
+  // `mk.miniSpot` belongs here too — a MINI_ROSTER guardian is a BoneWarden
+  // on the same shared skeleton rig regardless of what the room's REGULAR
+  // mooks are, and Stormreach's Drowned Hold (v3.166) is the first dungeon
+  // whose regular mooks are Hounds, not a KAYKIT_ROSTER family — so this gate
+  // silently skipped the whole rig load, and the guardian never spawned.
   if ((mk.minionSpots && mk.minionSpots.length) || (mk.rogueSpots && mk.rogueSpots.length) ||
-      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot || rosterIds.length) {
+      (mk.shieldSpots && mk.shieldSpots.length) || mk.wardenSpot || mk.miniSpot || rosterIds.length) {
     const [special, movement, general, combat] = await Promise.all([
       loadGLB('./assets/anims/rig-medium-special.glb'),
       loadGLB('./assets/anims/rig-medium-movement-basic.glb'),
@@ -3941,21 +4076,15 @@ export async function spawnEnemies(world) {
     // the same idiom — but keyed to any MINI_ROSTER id, not a singleton.
     if (mk.miniSpot) {
       const cfg = MINI_ROSTER[mk.miniSpot.id];
-      const [miniBodyGltf, miniAxeGltf, miniShieldGltf] = await Promise.all([
-        loadGLB(`./assets/generated/enemies/${cfg.body}`),
-        cfg.mounts && cfg.mounts.r === 'axe' ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
-        cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
-      ]);
       const { region, key } = cfg;
       // `WS.get` answers only true/false (its job is milestone checks); a
       // wound is a number, so read the raw stored value straight off
       // state.flags.world the way WS.get itself does internally, bypassing
       // its boolean coercion. `WS.set` is still the writer — it stores
       // whatever it is given (design/WIDER-WORLD.md §2.6: "WS.set takes
-      // any value").
+      // any value"). Shared by every guardian class below.
       const hpKey = 'mini_' + key + '_hp';
-      const mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
-        hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint,
+      const bankedOpts = {
         hpGet: () => (state.flags.world && state.flags.world[region] && state.flags.world[region][hpKey]) || 0,
         hpSet: (n) => WS.set(region, hpKey, n),
         onDefeated: () => {
@@ -3968,7 +4097,54 @@ export async function spawnEnemies(world) {
           if (WS.complete(region, 'dungeon')) bumpCounter('dungeonsCleared');
           if (world.openOnward) world.openOnward();
         },
-      });
+      };
+      let mini;
+      if (cfg.cls === RangedBolter) {
+        // v3.168: the Bone Sage — the first guardian NOT on BoneWarden. A
+        // caster archetype, on Skeleton_Mage.glb (`assets/chars/skeletons`,
+        // never used before this) rather than a generated body, so it does
+        // not share BoneWarden's `assets/generated/enemies/` path.
+        const [miniBodyGltf, wandGltf] = await Promise.all([
+          loadGLB(`./assets/chars/skeletons/${cfg.body}`),
+          loadGLB('./assets/gear/wand_A.gltf'),
+        ]);
+        mini = new RangedBolter(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, wandGltf, ...bankedOpts,
+        });
+        if (cfg.tint) {
+          mini.model.traverse((n) => {
+            if (!n.isMesh) return;
+            for (const m of (Array.isArray(n.material) ? n.material : [n.material])) cfg.tint(m);
+          });
+        }
+      } else if (cfg.cls === Duellist) {
+        // v3.169: the Court's own guardian — the first on Duellist rather
+        // than BoneWarden or RangedBolter, reusing the regular mook
+        // `gilded-husk`'s own body/blade pairing (js/level7.js buildXa3) the
+        // same way every other MINI_ROSTER guardian reuses a proven body.
+        const [miniBodyGltf, miniBladeGltf] = await Promise.all([
+          loadGLB(`./assets/generated/enemies/${cfg.body}`),
+          loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
+        ]);
+        mini = new Duellist(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, bladeGltf: miniBladeGltf, ...bankedOpts,
+        });
+        if (cfg.tint) {
+          mini.model.traverse((n) => {
+            if (!n.isMesh) return;
+            for (const m of (Array.isArray(n.material) ? n.material : [n.material])) cfg.tint(m);
+          });
+        }
+      } else {
+        const [miniBodyGltf, miniAxeGltf, miniShieldGltf] = await Promise.all([
+          loadGLB(`./assets/generated/enemies/${cfg.body}`),
+          cfg.mounts && cfg.mounts.r === 'axe' ? loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf') : null,
+          cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
+        ]);
+        mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint, ...bankedOpts,
+        });
+      }
       world.miniBoss = mini;
       world.enemies.push(mini);
     }
@@ -4012,11 +4188,17 @@ export async function spawnEnemies(world) {
     if (monsterIds.length) {
       const bases = [...new Set(monsterIds.map((id) => MONSTER_ROSTER[id].base))];
       const loaded = {};
+      // v3.167: the Animated Enemies family (Frog/Rat/Snake/Spider) joins
+      // Slime/Bat/Dragon/wasp here — real distinct bodies for MONSTER_ROSTER
+      // ids that used to share one of the original four with only a tint.
+      const BASE_PATH = {
+        dragon: './assets/chars/monsters/Dragon.glb', wasp: './assets/chars/monsters/wasp.glb',
+        bat: './assets/chars/monsters/Bat.glb', slime: './assets/chars/monsters/Slime.glb',
+        frog: './assets/chars/monsters/Frog.glb', rat: './assets/chars/monsters/Rat.glb',
+        snake: './assets/chars/monsters/Snake.glb', spider: './assets/chars/monsters/Spider.glb',
+      };
       await Promise.all(bases.map(async (b) => {
-        const path = b === 'dragon' ? './assets/chars/monsters/Dragon.glb'
-          : b === 'wasp' ? './assets/chars/monsters/wasp.glb'
-          : b === 'bat' ? './assets/chars/monsters/Bat.glb' : './assets/chars/monsters/Slime.glb';
-        loaded[b] = await loadGLB(path);
+        loaded[b] = await loadGLB(BASE_PATH[b] || BASE_PATH.slime);
       }));
       for (const id of monsterIds) {
         const cfg = MONSTER_ROSTER[id];
@@ -4030,7 +4212,8 @@ export async function spawnEnemies(world) {
               tint: cfg.tint ? makeMonsterTint(cfg.tint) : undefined,
             });
           } else if (cfg.cls === Hopper) {
-            e = new Hopper(world, s.x, s.z, gltf, { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist });
+            e = new Hopper(world, s.x, s.z, gltf, { hp: cfg.hp, weakness: cfg.weakness, resist: cfg.resist,
+              splits: cfg.splits, scale: cfg.scale, fitHeight: cfg.fitHeight, clips: cfg.clips });
             if (cfg.tint) {
               e.model.traverse((n) => {
                 if (!n.isMesh) return;
@@ -4047,9 +4230,6 @@ export async function spawnEnemies(world) {
       }
     }
   }
-
-  // ...and the pack that lives here now, standing where the shadows stood.
-  if (grazing && grazing.length) await graze(world, grazing);
 
   world.damageEnemiesAt = (x, z, r, dmg, element = 'steel') => {
     let hits = 0;

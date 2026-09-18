@@ -215,9 +215,18 @@ const sources = await page.evaluate(async () => {
   }
   return [...found];
 });
-const obtainable = new Set([...reach.stocked, ...sources, ...reach.free]);
+// CRAFTED IS A FOURTH SOURCE (v3.172, design/CRAFTING.md §2) — the first
+// items in the game that are deliberately NEVER stocked or found, only
+// made. js/crafting.js's own RECIPES is the one list that can't rot the way
+// a hand-kept one would, the same reasoning the sw.js scan above already
+// gives for reading the level files rather than naming them.
+const crafted = await page.evaluate(async () => {
+  const c = await import('/js/crafting.js');
+  return Object.values(c.RECIPES).filter((r) => r.gear).map((r) => r.gear);
+});
+const obtainable = new Set([...reach.stocked, ...sources, ...reach.free, ...crafted]);
 const unreachable = reach.all.filter((id) => !obtainable.has(id));
-check('no item is unobtainable — all are bought, found, or start on you',
+check('no item is unobtainable — bought, found, crafted, or start on you',
   unreachable.length === 0, { unreachable, total: reach.all.length });
 check('...and some are FOUND, not only bought',
   sources.filter((id) => !reach.stocked.includes(id)).length > 0 || sources.length >= 5,

@@ -289,6 +289,19 @@
     }
     #caption.show { pointer-events: auto; cursor: pointer; }
     #caption.show::after { content: '  ▸'; opacity: .6; }
+    /* THE DRAGON-EGG "COVER THE PLAYER" POPUP (design/DRAGON-EGGS.md) — the
+       SAME #caption element, big and centred instead of a thin bottom strip,
+       for the window a matching egg is armed at a shrine through the whole
+       cover-and-wait delay after confirming. Only ever toggled by the
+       dragon-shrine per-frame code (js/main.js) — every other narration
+       line in the game keeps the normal small bar. */
+    #caption.big-cover {
+      left: 50%; bottom: 50%; transform: translate(-50%, 50%);
+      max-width: min(84vw, 640px); width: 84vw; min-height: 34vh;
+      padding: 24px; border-radius: 22px; font-size: 19px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(10, 7, 18, .95);
+    }
     #voice-pick { min-width: 128px; padding: 8px 12px; font-size: 15px; margin: 0; }
     /* A settings row is a plank on the same shelf as everything else: dark
        inset, brass hairline, gold icon, cream label. */
@@ -561,8 +574,21 @@
     #btn-defend:active { border-color: #9fd0ff; box-shadow: 0 0 12px rgba(120,190,255,.5); }
     #btn-jump { right: calc(162px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); width: 68px; height: 68px; background: rgba(72, 84, 52, .75); display: none; }
     #form-badge { display: none; }
+    /* THE DRAGON-EGG CONFIRM BUTTON (design/DRAGON-EGGS.md) — the SAME
+       contextual-action idiom as #btn-ranged/#btn-defend/#btn-jump above:
+       hidden by default, `.revealed` toggled per-frame by js/main.js only
+       while standing at a shrine holding its matching, unhatched egg. This
+       IS "a clear visual/button prompt, not text a child has to parse" —
+       Pip's own confirm line (js/narration.js) is spoken aloud alongside it,
+       but the ACTION is tapping this button, never reading anything. */
+    #btn-dragon {
+      right: calc(10px + env(safe-area-inset-right)); bottom: calc(190px + env(safe-area-inset-bottom));
+      width: 68px; height: 68px; display: none; border-color: #ffd76a;
+      box-shadow: 0 0 18px rgba(255, 215, 106, .7), 0 3px 10px rgba(0,0,0,.45);
+    }
+    #btn-dragon .ctl-glyph { background-color: #ffd76a; }
     #btn-ranged.revealed, #btn-defend.revealed, #btn-jump.revealed,
-    #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
+    #btn-dragon.revealed, #form-badge.revealed { display: flex; animation: reveal-pop .5s ease; }
     @keyframes reveal-pop {
       0% { transform: scale(0); }
       70% { transform: scale(1.25); }
@@ -767,6 +793,38 @@
     }
     .arm-foot { display: flex; gap: 16px; font-size: 13px; color: #b9a88a; }
     .arm-foot b { color: #ffd76a; font-size: 15px; }
+    /* THE CRAFTING TAB (design/CRAFTING.md §3) — dad's own words: "through
+       the backpack button and then a crafting tab", so it lives INSIDE the
+       Armoury rather than as a new top-level screen, swapping only the
+       right-hand rack column; the knight and his three worn slots on the
+       left stay exactly as they are in both tabs. */
+    .arm-tabs { display: flex; gap: 6px; margin-bottom: 2px; }
+    .arm-tab {
+      flex: 1; text-align: center; padding: 7px 4px; font-size: 12px;
+      font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+      color: #b9a88a; background: rgba(0,0,0,.25);
+      border: 2px solid #5a4830; border-radius: 9px; touch-action: manipulation;
+    }
+    .arm-tab.on { color: #ffd76a; border-color: #ffd76a; background: rgba(255,215,106,.12); }
+    /* A locked/undiscovered recipe reads the sticker book's own way: greyed
+       and unlabelled rather than hidden outright, so a child can see there
+       is MORE without being told what or how yet. */
+    .rack-row.locked { opacity: .45; filter: grayscale(1); }
+    .rack-cost { display: flex; gap: 6px; margin: 3px 0; flex-wrap: wrap; }
+    .cost-chip {
+      display: flex; align-items: center; gap: 3px; font-size: 11px;
+      background: rgba(0,0,0,.3); border-radius: 7px; padding: 1px 6px;
+      color: #ddd0b8;
+    }
+    .cost-chip.short { color: #ff9a8a; }
+    .craft-btn {
+      flex: 0 0 auto; font-size: 11px; font-weight: 900; padding: 6px 12px;
+      border-radius: 8px; border: 2px solid #ffd76a; color: #1b1526;
+      background: linear-gradient(#ffe9a8, #ffd76a); touch-action: manipulation;
+    }
+    .craft-btn[disabled] {
+      opacity: .4; border-color: #6b5533; background: #3a3226; color: #b9a88a;
+    }
     /* The way out matches the room it is in. Scoped to the armoury on purpose:
        the shop, map and sticker book keep the bright button they have always
        had — this screen is the one dad asked to grow up. */
@@ -1280,6 +1338,7 @@
   <div id="btn-ranged" class="action-btn ui"><span class="ctl-glyph ctl-star"></span></div>
   <div id="btn-defend" class="action-btn ui"><span class="ctl-glyph ctl-shield"></span></div>
   <div id="btn-jump" class="action-btn ui"><span class="ctl-glyph ctl-jump"></span></div>
+  <div id="btn-dragon" class="action-btn ui"><span class="ctl-glyph ctl-star"></span></div>
   <div id="potions"></div>
   <div id="hud-top">
     <div id="shards">0</div>
@@ -1295,7 +1354,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.164.0</div>
+  <div id="badge">Wolf Knight &middot; v3.186.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

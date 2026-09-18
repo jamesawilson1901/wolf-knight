@@ -1,0 +1,29 @@
+UPLOADER ATTESTATION — DRAGON SKELETON (TRIPO AI)
+=======================================================
+Recorded: 2026-09-17
+
+The repository owner supplied a Tripo AI text/image-to-3D generation — a
+curled dragon skeleton — via chat upload and stated that it is his own
+generation, made for this project ("I want to use this skeleton as a hint
+that this is the beginning of a set of rooms that ends with a dragon egg").
+
+This file records that permission in plain words. It is NOT a formal
+licence grant: no LICENSE.txt/terms document was supplied alongside the
+model, and Tripo AI's own terms of service (which would govern exactly
+what rights a generation carries) were not independently checked here.
+
+WHAT WOULD CLEAR IT
+Tripo AI's own published terms of service, read and confirmed to grant
+commercial/redistribution rights for generations made under a paid or free
+account, copied into this directory and replacing this attestation with it
+in MANIFEST.json.
+
+WHAT IS SHIPPING FROM THIS FILE
+  assets/env/dragon-skeleton.glb — a wordless hint prop marking the start
+  of each of the three existing dragon-egg paths (design/DRAGON-EGGS.md
+  v2.2): placed once each in la (Ember Hollow), s1a (Stormreach) and d1a
+  (Sunken Vale). Vendored as supplied — 4,896 triangles, one mesh, one
+  material, already inside this game's per-asset budget, no conversion
+  needed. Kept as supplied (not stripped to a flat material) since it is a
+  one-off set piece, never retinted per-instance, and its own bone-white
+  colour already matches this game's flat-shaded style.

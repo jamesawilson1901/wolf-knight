@@ -22,6 +22,7 @@ const SPIN_RANGE = 2.3;
 const SPIN_DMG_MULT = 1.2;
 const SPIN_TIMESCALE = 1.7;     // clip playback speed — a whip-fast blur (playtest)
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
+const MIGHT_DRAUGHT_MULT = 1.5; // design/CRAFTING.md §2 — a crafted potion's bite
 const SLAM_RADIUS = 3.0;
 const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
 const STOMP_RADIUS = 3.2;
@@ -365,6 +366,10 @@ export class Player {
     this._queuedForm = null;     // switch requested mid-attack lands at its end
     this._ceremony = null;       // Blood Moon Surge transformation in progress
     this._surge = null;          // {t} — the surge itself
+    this._mightT = 0;            // Might Draught (design/CRAFTING.md §2) — a
+                                  // crafted, temporary damage buff; counts
+                                  // down to 0 in update(), read in
+                                  // attackConfig(). Independent of the surge.
     this._preSurgeForm = null;
     this.onSurgeStart = null;    // (phase) — 'ceremony' fired at trigger
     this.onSurgeEnd = null;
@@ -1012,8 +1017,13 @@ export class Player {
     }
     cfg.dmg += (state.perks.sword || 0) * 0.25;
     if (this._surge) cfg.dmg *= CONFIG.MOON.SURGE_DMG; // blood-moon bites
+    if (this._mightT > 0) cfg.dmg *= MIGHT_DRAUGHT_MULT; // a crafted potion's bite
     return cfg;
   }
+
+  // A crafted Might Draught (design/CRAFTING.md §2): a flat, timed damage
+  // multiplier, independent of and stacking with the surge/perks above.
+  drinkMight(seconds) { this._mightT = seconds; }
 
   // Tap-attack: sword swing (Knight) or bite (wolf forms), melee arc ahead.
   // A second tap right after a slash becomes a THRUST — a straight stab with
@@ -2229,6 +2239,7 @@ export class Player {
     if (this.specialCooldown > 0) this.specialCooldown -= dt;
     if (this.rangedCooldown > 0) this.rangedCooldown -= dt;
     if (this.lungeCooldown > 0) this.lungeCooldown -= dt;
+    if (this._mightT > 0) this._mightT -= dt;
     // Blood Moon Surge lifecycle (ceremony beats, then the surge timer)
     if (this._ceremony) this._tickCeremony(dt);
     else if (this._surge) this._tickSurge(dt);

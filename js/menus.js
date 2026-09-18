@@ -13,6 +13,9 @@ import { persist } from './save.js';
 import { villageCleared } from './levelVillage.js';
 import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
+import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked } from './crafting.js';
+import { MATERIALS, materialCount } from './materials.js';
+import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,14 +32,16 @@ const DUNGEON_MOUTHS = {
 };
 
 export class Menus {
-  constructor({ player, onPauseGame, onResumeGame, onTravel, renderer }) {
+  constructor({ player, onPauseGame, onResumeGame, onTravel, renderer, narration }) {
     this.player = player;
     this.onPauseGame = onPauseGame;
     this.onResumeGame = onResumeGame;
     this.onTravel = onTravel;
     this.renderer = renderer || null;   // used to render real item art
+    this.narration = narration || null; // the Crafting tab's one-line tutorial
     this.preview = null;                // the live knight, built on first open
     this._perkResolve = null;
+    this._armTab = 'gear';              // 'gear' | 'craft' — design/CRAFTING.md §3
 
     $('inv-btn').addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -145,13 +150,50 @@ export class Menus {
     this._slots.className = 'arm-slots';
     left.appendChild(this._slots);
 
-    // --- right: the racks -------------------------------------------------
+    // --- right: a tab strip (Gear / Craft), then the racks -----------------
+    const rightCol = document.createElement('div');
+    rightCol.className = 'arm-right-col';
+    rightCol.style.cssText = 'flex:1 1 auto; display:flex; flex-direction:column; min-width:0;';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'arm-tabs';
+    // THE DRAGONS TAB ONLY EXISTS ONCE ONE HAS HATCHED (design/DRAGON-EGGS.md).
+    // The Crafting tab teases itself on purpose (a greyed "???" row, a one-
+    // line tutorial) because dad wanted the hidden-recipe ladder discovered
+    // through the backpack. Dragons are meant to be quieter than that — no
+    // quest marker, no counter — so the tab itself stays invisible until a
+    // child has actually thrown an egg, rather than advertising "there is a
+    // third tab" to every save that has never found one.
+    const tabDefs = [['gear', '⚔️ Gear'], ['craft', '🔨 Craft']];
+    if (hatchedDragons().length) tabDefs.push(['dragons', '🐉 Dragons']);
+    for (const [id, label] of tabDefs) {
+      const t = document.createElement('div');
+      t.className = 'arm-tab ui' + (this._armTab === id ? ' on' : '');
+      t.textContent = label;
+      t.addEventListener('pointerdown', () => {
+        if (this._armTab === id) return;
+        audio.play('ui-click', { volume: 0.6 });
+        this._armTab = id;
+        for (const c of tabs.children) c.classList.remove('on');
+        t.classList.add('on');
+        this._paintRight();
+        // THE TUTORIAL IS THIS ONE LINE (design/CRAFTING.md §3) — fires the
+        // first time the tab is ever opened (say() is a once-per-save
+        // guard), the rest is the tab's own greyed-"???" rows teaching the
+        // "more to find" idea wordlessly.
+        if (id === 'craft' && this.narration) this.narration.say('craft_intro');
+      });
+      tabs.appendChild(t);
+    }
+    rightCol.appendChild(tabs);
+
     const right = document.createElement('div');
     right.className = 'arm-right';
     this._racks = right;
+    rightCol.appendChild(right);
 
     wrap.appendChild(left);
-    wrap.appendChild(right);
+    wrap.appendChild(rightCol);
     el.appendChild(wrap);
 
     const foot = document.createElement('div');
@@ -171,7 +213,7 @@ export class Menus {
     el.appendChild(foot);
     el.appendChild(this._closeBtn('inv-menu'));
 
-    this._paintRacks();
+    this._paintRight();
     this._paintSlots();
 
     // THE LIVE KNIGHT IS BUILT ONCE, AND ONLY BY THE MENUS THE GAME OWNS.
@@ -232,6 +274,127 @@ export class Menus {
     itemThumb(this.renderer, def).then((url) => {
       if (url) host.style.backgroundImage = `url(${url})`;
     }).catch(() => { /* keep the empty frame rather than break the screen */ });
+  }
+
+  _paintRight() {
+    if (this._armTab === 'craft') this._paintCraftTab();
+    else if (this._armTab === 'dragons') this._paintDragonsTab();
+    else this._paintRacks();
+  }
+
+  // ---- THE DRAGONS TAB (design/DRAGON-EGGS.md) ----------------------------
+  //
+  // The same rack-row chrome the gear/craft tabs use. Only ever lists
+  // dragons actually hatched — never the total of three, never a locked
+  // "???" row for the ones not found yet, which is what keeps this quest
+  // "quiet, unflagged" even inside its own menu. A "None" row lets a child
+  // send the dragon home without hatching a different one.
+  _paintDragonsTab() {
+    if (!this._racks) return;
+    this._racks.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'rack-head';
+    head.textContent = 'Dragons';
+    this._racks.appendChild(head);
+
+    const current = equippedDragon();
+    const rows = [...hatchedDragons().map((el) => [el, DRAGON_ELEMENTS[el]]), [null, null]];
+    for (const [el, def] of rows) {
+      const equipped = current === el;
+      const row = document.createElement('div');
+      row.className = 'rack-row ui' + (equipped ? ' on' : '');
+      const art = document.createElement('div');
+      art.className = 'rack-art';
+      art.style.cssText = 'display:flex; align-items:center; justify-content:center; font-size:26px;';
+      art.textContent = def ? '🐉' : '—';
+      const body = document.createElement('div');
+      body.className = 'rack-body';
+      body.innerHTML = `<div class="rack-name">${def ? def.name : 'No dragon'}</div>
+        <div class="rack-blurb">${def ? 'Flies beside you and bites anything that gets close.' : 'Kael walks alone.'}</div>`;
+      const mark = document.createElement('div');
+      mark.className = 'rack-mark';
+      mark.textContent = equipped ? 'WORN' : '';
+      row.appendChild(art);
+      row.appendChild(body);
+      row.appendChild(mark);
+      row.addEventListener('pointerdown', () => {
+        if (equippedDragon() === el) return;
+        setEquippedDragon(el);
+        audio.play('form-switch', { volume: 0.8 });
+        persist();
+        this._paintDragonsTab();
+      });
+      this._racks.appendChild(row);
+    }
+  }
+
+  // ---- THE CRAFTING TAB (design/CRAFTING.md §3) --------------------------
+  //
+  // The same rack-row chrome the gear tab uses, kept deliberately: a recipe
+  // IS an item on a shelf here, just one paid for in materials instead of
+  // coins. A locked-tier or undiscovered-hidden recipe reads exactly like an
+  // unearned sticker — greyed, named "???" — so a child sees there is more
+  // to find without being told what or how yet (dad's own "hide recipes...
+  // enemy drop, pot, crate, chest").
+  _paintCraftTab() {
+    if (!this._racks) return;
+    this._racks.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'rack-head';
+    head.textContent = 'Crafting';
+    this._racks.appendChild(head);
+
+    for (const [id, r] of Object.entries(RECIPES)) {
+      const tierOpen = tierUnlocked(r.tier);
+      const visible = isRecipeVisible(id);
+      const row = document.createElement('div');
+      row.className = 'rack-row ui' + (visible ? '' : ' locked');
+
+      const art = document.createElement('div');
+      art.className = 'rack-art';
+      art.style.cssText = 'display:flex; align-items:center; justify-content:center; font-size:22px;';
+      art.textContent = visible ? r.icon : '❔';
+
+      const body = document.createElement('div');
+      body.className = 'rack-body';
+      const name = visible ? r.name : '???';
+      const blurb = visible ? r.blurb
+        : (tierOpen ? 'Found somewhere in the world.' : 'Craft more different things to unlock this.');
+      const costHtml = visible ? Object.entries(r.cost).map(([mid, need]) => {
+        const have = materialCount(mid);
+        const def = MATERIALS[mid];
+        const short = have < need ? ' short' : '';
+        return `<span class="cost-chip${short}">${def ? def.icon : '?'} ${have}/${need}</span>`;
+      }).join('') : '';
+      body.innerHTML = `<div class="rack-name">${name}</div>
+        <div class="rack-cost">${costHtml}</div>
+        <div class="rack-blurb">${blurb}</div>`;
+
+      row.appendChild(art);
+      row.appendChild(body);
+
+      if (visible) {
+        const btn = document.createElement('div');
+        btn.className = 'craft-btn ui';
+        btn.textContent = 'Craft';
+        const affordable = canCraft(id);
+        if (!affordable) btn.setAttribute('disabled', '');
+        btn.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          if (!canCraft(id)) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
+          const ok = craftItem(id, { player: this.player });
+          if (!ok) return;
+          audio.play('checkpoint', { volume: 0.7, rate: 1.1 });
+          persist();
+          this._paintCraftTab();
+          this._paintSlots();
+        });
+        row.appendChild(btn);
+      }
+      // locked for a reason other than materials (tier/undiscovered): no
+      // button at all — nothing to tap, the same "???" idiom teaches it.
+      this._racks.appendChild(row);
+    }
   }
 
   _paintRacks() {

@@ -27,6 +27,10 @@ import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { waterZone, buildWaterField, quenchable, canWade } from './water.js';
 import { registerCuttable } from './gates.js';
+import { installFishHost } from './mg-fish.js';
+import { spawnLostWolf } from './pip.js';
+import { COAT } from './restoration.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -51,6 +55,13 @@ export const DISTRICTS = {
               ground: 'lagoon',   name: 'THE LAGOON',        hero: 'THE OPEN WATER' },
   deep:     { tint: 0x1d5a72, floorTint: 0x23485c, wallTint: 0x0f2530, propTint: 0x3f6f84,
               ground: 'deepvale', name: "MERI'S DEEP",       hero: 'THE DROWNED THRONE' },
+  // THE BONE CRYPT (v3.168, design/WIDER-WORLD.md §2.3) — the Sunken Vale's
+  // own pocket dungeon, off d1a's east wall. Reuses the Shallows' own
+  // 'shallows' ground style darkened toward stone, the same precedent every
+  // dungeon district follows (ashvault reuses 'ashfall', Stormreach's
+  // seacave reuses 'landing').
+  crypt:    { tint: 0x3a4a52, floorTint: 0x2c383e, wallTint: 0x161f24, propTint: 0x44545c,
+              ground: 'shallows', name: 'THE BONE CRYPT',    hero: 'THE DROWNED ALTAR' },
 };
 
 // Two new modules. The RIM is a shore path — shorter than a Stormreach stair
@@ -69,6 +80,16 @@ export const L6 = {
          label: '1B · THE SHALLOWS', beat: 'first Tide Blobs · THE LOCK IS SHOWN' },
   d1p: { ...M.pocket, kind: 'pocket', district: 'shallows', loopsTo: 'd1b',
          label: 'The Boathouse', beat: 'optional · pup' },
+
+  // THE BONE CRYPT (v3.168, §2.3) — the Sunken Vale's own pocket dungeon,
+  // off d1a's east gate. spine: false throughout, the Ash Vault's own rule.
+  d1c: { ...M.pocket, kind: 'pocket', district: 'crypt', loopsTo: 'd1a',
+         label: "THE CRYPT'S MOUTH", beat: 'optional · the lost wolf · gold', dungeon: true },
+  d1d: { ...M.island, kind: 'island', district: 'crypt',
+         label: 'THE BONE HALL', beat: 'optional · drowned soldiers x2 · the Bone Sage' },
+  d1e: { ...M.pocket, kind: 'pocket', district: 'crypt', loopsTo: 'd1d',
+         label: 'THE DROWNED ALTAR', beat: 'optional · gold + heart piece' },
+
   dg1: { ...RIM, kind: 'rim', district: 'shallows', spine: true,
          label: 'THE EAST RIM', beat: 'REST · round the bowl' },
 
@@ -229,6 +250,11 @@ function base(scene, id) {
   world.roomId = id;
   reserveLandings(world, id);
   return { world, spec, D: DISTRICTS[spec.district] };
+}
+
+function narrateSafe(id) {
+  const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
+  if (n) n.say(id);
 }
 
 function finish(world, spec, D) {
@@ -565,8 +591,14 @@ function rimSides(world, halfW, halfD, D, seed) {
 export async function buildD1a(scene) {
   const { world, spec, D } = base(scene, 'd1a');
   const wade = canWade();
+  // THE CRYPT DOOR (v3.168, design/WIDER-WORLD.md §2.3 vale row) — the
+  // Sunken Vale's own dungeon, off the Shallows' completely unused east
+  // wall. Same 'shatter' verb as c2_pass/l3_spring_ice: the Frost Wolf,
+  // gained back in region 4 and still opening new rooms two regions on.
+  const crypt = !!WS.get(REGION, 'ice_d1a_crypt');
   const gaps = [gap('s'), gap('n')];
   if (wade) gaps.push(gap('w'));
+  if (crypt) gaps.push(gap('e', DOOR_HALF, -2));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 5.0, kind: 'water' }, { x: 12, z: -8, r: 4.4, kind: 'sand' },
               { x: -11, z: -9, r: 3.6, kind: 'moss' }],
@@ -585,6 +617,12 @@ export async function buildD1a(scene) {
   sideDoor(world, 's', halfW, halfD, 'p2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'd1b', { x: 0, z: 10, angle: Math.PI });
   if (wade) sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 0, angle: Math.PI / 2 });
+  if (crypt) sideDoor(world, 'e', halfW, halfD, 'd1c', { x: 4, z: 6, angle: Math.PI }, { centre: -2 });
+  else {
+    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'rockLB',
+      { system: 'shatter', id: 'd1a_crypt', region: REGION });
+    world.markers.cryptPromise = { x: halfW - 1.5, z: -2 };
+  }
   heroProp(world, JUNCTION_HERO.x, JUNCTION_HERO.z, 'drownedgate', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: 7, z: 6 };
@@ -622,9 +660,141 @@ export async function buildD1a(scene) {
   // a body being shoved back out by resolveCircle every frame. The heavy is
   // held back for a room with a floor.
   world.markers.visoredWightSpots = [{ x: -6, z: 4 }];
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — the Sunken Vale's own
+  // tree, tide-tinted (js/player.js WOLF_TINTS.tide_wolf.main — a waterlogged
+  // teal), the SAME tree-a.glb every node in the game stands on. Well clear
+  // of the lagoon's own deep/shallow water zones (x -17..-6.25 — nothing
+  // here comes within 9u of either), the wight and the slime — confirmed
+  // against a real dump of this room's colliders. Reserved before the seeded
+  // `scatter()` pass right below so it can never land a tree on top.
+  world.markers.treeSpots = [{ x: 3, z: 3, tint: 0x3fb0c4 }];
+  world.reserve(3, 3, 1.6, 'node');
+  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the THIRD of three, on the
+  // dry east floor clear of the lagoon's water zones, the tree, the slime
+  // and restSpot. Wordless, the same idiom as la's and s1a's own: a child
+  // remembers it once the hidden Tide Dragon egg turns up later, not
+  // before. Reserved before `scatter()` right below.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, 11, 1, -0.5);
+  }
+  world.reserve(11, 1, 2.4, 'dragonSkeleton');
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  // FISHING (v3.167, design/WIDER-WORLD.md §3.4) — the vale settler's own
+  // trade, off the lagoon's own north bank, clear of the wight and both
+  // named spots. installFishHost checks its own water is real first.
+  installFishHost(world, -8, 9);
+  return finish(world, spec, D);
+}
+
+// ===========================================================================
+// THE BONE CRYPT (v3.168, design/WIDER-WORLD.md §2.3) — the Sunken Vale's
+// own pocket dungeon, off d1a's own east gate. Built to the Sunken Hearth /
+// Drowned Hold template rung for rung: a no-fight pocket with the lost wolf,
+// an island with the fight AND this dungeon's own guardian (the Bone Sage —
+// the first MINI_ROSTER guardian on RangedBolter rather than BoneWarden, a
+// caster archetype the region's own drowned-soldier roster never had), a
+// gold pocket behind the plug her death opens. Needs the Frost Wolf — old
+// news by region 6, and still opening new rooms.
+// ===========================================================================
+
+export async function buildD1c(scene) {
+  const { world, spec, D } = base(scene, 'd1c');
+  const gaps = [gap('s', DOOR_HALF, -2), gap('n')];
+  const { halfW, halfD } = shell(world, spec, gaps, D, {
+    patches: [{ x: -3, z: 2, r: 3.0, kind: 'moss' }, { x: 4, z: -3, r: 2.6, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[-2, 6], [0, 0], [0, -6]]],
+  });
+  world.spawn = { x: -2, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'd1a', { x: -2, z: -11.2, angle: 0 }, { centre: -2 });
+  sideDoor(world, 'n', halfW, halfD, 'd1d', { x: 0, z: 10.4, angle: Math.PI });
+
+  await spawnLostWolf(world, {
+    id: 'd1c_wolf', x: -6, z: -4, coat: COAT.vale,
+    onRescued: () => narrateSafe('lost_wolf_found'),
+  });
+
+  // the crypt's own mouth — old dungeon stonework, drowned and gone green
+  if (!GREY()) {
+    const arch = tinted(valeKit.archDoor, 'd1cArch', D.propTint);
+    arch.position.set(0, 0, 3);
+    world.add(arch); world.addCircle(0, 3, 1.0);
+    const ped = tinted(valeKit.pedestal, 'd1cPedestal', D.propTint);
+    ped.position.set(6, 0, 4); ped.scale.setScalar(0.85);
+    world.add(ped); world.addCircle(6, 4, 0.85);
+  }
+
+  world.markers.breakables = [{ x: -6, z: 4, kind: 'crate' }];
+  rubbleField(world, 6, -4, 1.6, D, 8);
+  wayshrine(world, -8, -2, 0.4, D);
+  lowWall(world, 2, -2, 0.0, D, 3.0);
+  scatter(world, halfW, halfD, D, 651, 8);
+  return finish(world, spec, D);
+}
+
+export async function buildD1d(scene) {
+  const { world, spec, D } = base(scene, 'd1d');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -8, z: 6, r: 4.2, kind: 'moss' }, { x: 8, z: -6, r: 3.8, kind: 'rubble' },
+              { x: 0, z: 8, r: 3.4, kind: 'moss' }],
+    pathWidth: 2.6,
+    paths: [[[0, 13], [0, -13]]],
+  });
+  world.spawn = { x: 0, z: 12.5, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'd1c', { x: 0, z: -6.4, angle: 0 });
+
+  world.markers.shadowed = true;
+  // drowned soldiers, the region's own established mook family (js/level6.js
+  // buildD3a/buildD3b) — not a new body, the region's OWN one.
+  world.markers.minionSpots = [{ x: -6, z: -3, variant: 'drowned' }, { x: 6, z: -3, variant: 'drowned' }];
+  // THE BONE SAGE — MINI_ROSTER (js/enemies.js), a named guardian on
+  // Skeleton_Mage.glb through RangedBolter, weak to fire. Gone for good
+  // once the wound is banked, the Rime/Ash Warden's own pattern.
+  const wardenDown = !!(state.flags.world && state.flags.world.vale && state.flags.world.vale.mini_bone_sage);
+  if (!wardenDown) world.markers.miniSpot = { id: 'bone_sage', x: 0, z: -3 };
+
+  const openD1e = () => sideDoor(world, 'n', halfW, halfD, 'd1e', { x: 0, z: 6.4, angle: Math.PI });
+  if (WS.get(REGION, 'dungeon')) openD1e();
+  else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, openD1e);
+
+  world.markers.breakables = [
+    { x: -4, z: 8.5, kind: 'crate' }, { x: 4, z: 7, kind: 'barrel' },
+  ];
+  fallenColumn(world, 8, 2, 1, D, 4);
+  fallenColumn(world, -10, 2, 4, D, 4);
+  cartWreck(world, 5, 4, 0.6, D);
+  lowWall(world, -4, 7.5, 0.0, D, 4.0);
+  rubbleField(world, 11, 1, 2.0, D, 9);
+  rubbleField(world, -11, -1, 1.8, D, 8);
+  rubbleField(world, 6, 0, 1.6, D, 8);
+  rubbleField(world, -8, 4, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 652, 10);
+  return finish(world, spec, D);
+}
+
+export async function buildD1e(scene) {
+  const { world, spec, D } = base(scene, 'd1e');
+  const { halfW, halfD } = shell(world, spec, [gap('s')], D, {
+    patches: [{ x: 0, z: 2, r: 3.0, kind: 'moss' }],
+    pathWidth: 2.6,
+    paths: [[[0, 6], [0, 0]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'd1d', { x: 0, z: -9.5, angle: 0 });
+
+  // THE DROWNED ALTAR — the last dry room in the crypt, and the deepest.
+  visibleReward(world, 0, -6.2, 'd1e_crypt', { shards: 30, heartPiece: 1, gear: 'halberd', seed: 'vale' }, 'gold');
+
+  world.markers.breakables = [
+    { x: -6.5, z: -5.5, kind: 'crate' }, { x: 6.5, z: -5.5, kind: 'barrel' },
+  ];
+  rubbleField(world, -8, -4.5, 1.8, D, 8);
+  rubbleField(world, 8, -4.5, 1.8, D, 8);
+  rubbleField(world, 5, 1.5, 1.6, D, 7);
+  scatter(world, halfW, halfD, D, 653, 5);
   return finish(world, spec, D);
 }
 
@@ -1291,6 +1461,17 @@ export async function buildDdp(scene) {
       { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
+    // THE GRAND TIDE SHRINE (design/DRAGON-EGGS.md) — the same "quiet gets
+    // in once the story earned it" gate as the memorial above, sitting in
+    // the shallow water either side of the hall, clear of the memorial, its
+    // chest and the fallenColumn/rubbleField dressing placed below —
+    // confirmed clear by a real arrival screenshot before ship, per
+    // CLAUDE.md's room-contents rule.
+    world.reserve(8.5, -2, 3.4, 'dragonShrine');
+    world.markers.dragonShrineSpots = [{ x: 8.5, z: -2, element: 'tide' }];
+    world.markers.chestDefs.push(
+      { id: 'ddp_dragon_egg', tier: 'gold', x: -8.5, z: -2, ry: 0.6, loot: { dragonEgg: 'tide' } });
+    world.reserve(-8.5, -2, 2.6, 'chest');
   }
   scatter(world, halfW, halfD, D, 641, 4, { spin: 1, kinds: ['rockSA', 'brick'] });
   // THE RIM ONLY. An arena's middle stays clear — a boss that lands on a
@@ -1309,6 +1490,7 @@ export async function buildDdp(scene) {
 
 export const LEVEL6_ROOMS = {
   d1a: buildD1a, d1b: buildD1b, d1p: buildD1p, dg1: buildDg1,
+  d1c: buildD1c, d1d: buildD1d, d1e: buildD1e,
   d2a: buildD2a, d2b: buildD2b, d2p: buildD2p, dsh: buildDsh, dg2: buildDg2,
   d3a: buildD3a, d3b: buildD3b, d3p: buildD3p, dtp: buildDtp, dg3: buildDg3,
   d4a: buildD4a, d4b: buildD4b, d4p: buildD4p, dg4: buildDg4,

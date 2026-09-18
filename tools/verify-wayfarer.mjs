@@ -27,10 +27,12 @@ const check = (n, ok, d) => {
 };
 
 const ARENAS = ['le', 'vz', 'tgl', 'f5', 'scr', 'ddp', 'xth'];
-// THE HEARTHS, ONE AT A TIME (design/WIDER-WORLD.md §5.4). `la` is the only
-// one that has reached stage 4 so far (v3.131); the other six join this list
-// as each region's own hearth gets there.
-const HEARTHS = ['la'];
+// THE HEARTHS, ONE AT A TIME (design/WIDER-WORLD.md §5.4). All seven have
+// now shipped their own settler at stage 4 (v3.131 through v3.142) — this
+// list was left at just `la` for four version bumps after the other six
+// joined it, a stale fixture rather than a real bug in the feature (found
+// while touching an unrelated part of npcs.js, 2026-09-17).
+const HEARTHS = ['la', 'vh', 't1a', 'f1', 's1a', 'd1a', 'x1'];
 const ALL_FORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf',
   'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 const FLAGS = ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
@@ -264,30 +266,43 @@ console.log('\n── 7 · the hearths (v3.131 begins the rollout) ────�
 const setStage = (key, n) => page.evaluate(async ({ key, n }) => {
   const g = window.__game;
   const { PUP_HOME } = await import('/js/pip.js');
-  const { KEEPSAKE } = await import('/js/restoration.js');
+  const { KEEPSAKE, COURT_RELICS } = await import('/js/restoration.js');
   g.WS.set(key, 'restored', n >= 1);
   for (const id of Object.keys(PUP_HOME)) if (PUP_HOME[id] === key) g.state.flags.pups[id] = n >= 2;
   if (!g.state.inventory.treasures) g.state.inventory.treasures = [];
   if (KEEPSAKE[key]) {
     g.state.inventory.treasures = g.state.inventory.treasures.filter((t) => t !== KEEPSAKE[key]);
     if (n >= 3) g.state.inventory.treasures.push(KEEPSAKE[key]);
+  } else if (key === 'court') {
+    // The Court has no KEEPSAKE entry — its own "found the keepsake" fact is
+    // all four throne relics (js/restoration.js keepsakeFoundFor's special
+    // case), not one treasure item.
+    for (const relic of COURT_RELICS) g.WS.set('court', 'relic_' + relic, n >= 3);
   }
   g.WS.set(key, 'dungeon', n >= 4);
   // §4 above sets grimmFreed globally true for the xth arena's own check, and
   // growthStage's fifth fact is that SAME global flag — left alone here, ember
-  // would silently sit at stage 4 already, one fact early. Reset it: this
-  // section only means to test stages 0-4, never grimmFreed's own stage 5.
-  g.state.flags.grimmFreed = false;
+  // would silently sit at stage 4 already, one fact early. Reset it here for
+  // every region except the one case that means to test stage 5 on purpose
+  // (x1 below): the Court's own `restored` lands at the SAME moment as
+  // `grimmFreed` for real (js/main.js's `xth` victory block), so it is the
+  // one hearth this helper is ever asked to carry all the way to 5.
+  g.state.flags.grimmFreed = n >= 5;
 }, { key, n });
 
 for (const room of HEARTHS) {
   const key = settlerKeyOf[room];
-  await setStage(key, 3);
+  // x1 is gated on `seen_5`, not `seen_4` (js/npcs.js WAYFARER_POSTS.x1) —
+  // the Court's `restored` fact coincides with `grimmFreed`, so growthStage
+  // can skip 4 entirely on a completionist run; `seen_5` is the value this
+  // hearth can actually rely on ever being observed. Test it at its own gate.
+  const readyStage = room === 'x1' ? 5 : 4;
+  await setStage(key, readyStage - 1);
   await wk.jump(room, ALL_FORMS);
   const notYet = await page.evaluate(() => !!window.__game.world.wayfarer);
-  check(`${room}: not one step before stage 4 (stage 3 has no wayfarer)`, !notYet);
+  check(`${room}: not one step before stage ${readyStage} (stage ${readyStage - 1} has no wayfarer)`, !notYet);
 
-  await setStage(key, 4);
+  await setStage(key, readyStage);
   await wk.jump('den', ALL_FORMS);   // leave, so the next jump is a fresh build
   await wk.jump(room, ALL_FORMS);
   const r = await page.evaluate(async ({ R }) => {
@@ -308,7 +323,7 @@ for (const room of HEARTHS) {
     return { there: true, clear, visible: !!(n.model && n.model.parent),
       travel: w.markers.travelSpot, x: post.x, z: post.z, ticked: typeof w.updateNpcs === 'function' };
   }, { R: 0.44 });
-  check(`${room}: at stage 4, Tam is there, drawn, ticking, on clear ground, holding the marker`,
+  check(`${room}: at stage ${readyStage}, Tam is there, drawn, ticking, on clear ground, holding the marker`,
     r.there && r.clear && r.visible && r.ticked && r.travel
     && Math.abs(r.travel.x - r.x) < 0.01 && Math.abs(r.travel.z - r.z) < 0.01, r);
 }

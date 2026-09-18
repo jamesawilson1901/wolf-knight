@@ -850,6 +850,17 @@ export async function buildT1a(scene) {
   northGate(world, 'leaningShrine', D);
   world.markers.heroSpot = { ...JUNCTION_HERO };
   world.markers.restSpot = { x: -7, z: 4 };
+  // MINING & WOODCUTTING ROLLOUT (design/MINING.md) — Wild Woods gets its own
+  // tree, verdant-tinted (js/player.js WOLF_TINTS.verdant_wolf.main), reusing
+  // the SAME tree-a.glb every other node in the game already stands on
+  // (CLAUDE.md's "no new geometry" law). Placed on the room's own east side,
+  // clear of the shrine keep-clear, restSpot, the thicket at (5,-4) and every
+  // scatter/grove collider a real dump of this room's build confirmed —
+  // reserved BEFORE the procedural breakables pass below so a pot can never
+  // land on top of it (v3.175's own lc pair had no such reservation and
+  // relied on luck; this rollout does not repeat that).
+  world.markers.treeSpots = [{ x: 10, z: -1, tint: 0x6fae4a }];
+  world.reserve(10, -1, 1.6, 'node');
   // NO ENEMIES, deliberately. The beat chart's first row is "the woods are
   // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
   // labelled "first Thorn Hounds" — a hound here contradicted both, and made

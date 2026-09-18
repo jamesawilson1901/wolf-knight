@@ -1,0 +1,39 @@
+UPLOADER ATTESTATION — MESHY AI CRACKED DINOSAUR EGG
+=======================================================
+Recorded: 2026-09-17
+
+The repository owner supplied "Meshy_AI_Cracked_Dinosaur_Egg_..._texture.glb"
+(a Meshy AI text/image-to-3D generation, ~67,000 triangles, full PBR
+material with baked diffuse/metallic-roughness/normal maps) via chat
+upload and stated, when asked directly, that it is their own Meshy AI
+generation — an account they own, which they hold to carry usage rights
+over its own outputs.
+
+This file records that permission in plain words. It is NOT a formal
+licence grant: no LICENSE.txt/terms document was supplied alongside the
+model itself, and Meshy AI's own terms of service (which would govern
+exactly what rights a generation carries) were not independently checked
+here.
+
+WHAT WOULD CLEAR IT
+Meshy AI's own published terms of service, read and confirmed to grant
+commercial/redistribution rights for generations made under a paid or
+free account, copied into this directory and replacing this attestation
+with it in MANIFEST.json.
+
+WHAT IS SHIPPING FROM THIS FILE
+  assets/loot/treasure/dragon-egg.glb — the hidden dragon-egg pickup
+  (design/DRAGON-EGGS.md), replacing the earlier gem-diamond.glb stand-in.
+  The ORIGINAL supplied .glb is NOT vendored as-is: its ~67,000-triangle
+  mesh and full PBR material set (diffuse/metallic-roughness/normal, ~5.4MB
+  of JPEGs) are wildly outside this game's low-poly, flat-shaded budget —
+  every other asset in the game is a few hundred to a few thousand
+  triangles with a single flat-tinted material, no normal maps anywhere.
+  Decimated to 900 triangles (pymeshlab, quadric edge collapse) and
+  re-exported with the PBR textures stripped entirely in favour of a
+  single flat material, matching this game's own asset-reuse-via-tint
+  idiom (js/loot.js's preparePopModel() overwrites `material.color` per
+  drop anyway, the same way every other treasure pop in this game already
+  works) — the decimation reads as a pleasant bumpy low-poly shell rather
+  than the original's baked crack/scale detail, a deliberate trade-off
+  documented in design/DRAGON-EGGS.md rather than left unstated.

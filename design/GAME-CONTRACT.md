@@ -309,6 +309,14 @@
 - Shards: a region yields ~120-160 (pots+chests+drops). Shop ladder per
   region tier ≈ 60/90/150/250/400. A kid who explores buys one big thing
   per region; completionists afford two.
+- Crafting materials (v3.171, design/CRAFTING.md, amendment): a SEPARATE,
+  ADDITIVE roll — never a cut of the shard/potion drop above, so the number
+  two lines up is unchanged. An enemy pays its own weakness's shard at the
+  same frequency dad already tuned for the ember heal (`dropChance`, ~35%
+  common / guaranteed elite), plus elites/guardians get a further 15% shot
+  at a Wolf's Crystal. A breakable pays a Shadow Wisp at 15% (ordinary),
+  50% (chest) or 80% (gold chest), and a gold chest further rolls 35% for a
+  Crystal. Nothing here removes or re-rolls an existing shard/potion chance.
 - Playtime target: 60-80 min per region incl. branch + secrets → ~8-10h
   with endgame. If a region tests under 45 min, it ships more rooms.
 

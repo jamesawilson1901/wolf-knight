@@ -70,21 +70,42 @@ const frames = (n) => page.evaluate(async (k) => {
 // calls depend on where the camera is — it is a fixed offset from the player,
 // so standing somewhere else frustum-culls a different set of props. Comparing
 // a reading at the spawn point against one by the meadow measures the walk, not
-// the teardown. Same spot, same frame budget, or the number says nothing.
+// the teardown. Same spot, same settle discipline, or the number says nothing.
 // It also waits for the camera to SETTLE, and then takes a MEDIAN. Two things
 // make a single reading lie. The camera chases the player rather than snapping
 // to them, so a reading six frames after a jump is a reading of a camera still
 // in flight, culling a different set of props on the way in than on the way
 // out. And the den runs transient effects — embers, dust — that are drawn on
 // some frames and not others, so back-to-back frames legitimately differ by two
-// or three. Sixty frames of settle, then the median of five samples spread over
-// time, measures the room rather than the moment.
+// or three.
+//
+// SETTLE IS WATCHED, NOT COUNTED (2026-09-18 fix, known-fail's own "draw
+// calls return to where they started fails by 5-10" entry). A fixed "wait 60
+// frames" assumes each requestAnimationFrame is a fixed slice of real time,
+// which headless Chromium does not honour — rAF delivery is bursty under
+// SwiftShader, sometimes stalling for ten-plus real seconds between batches
+// (proved live: a pure idle probe with camera position logged every real
+// second showed it frozen for 13 straight seconds, then jumping). Sixty rAF
+// calls can therefore span anywhere from under a second to twenty, so "the
+// camera has settled" was never actually guaranteed by the time the baseline
+// read happened — it was reading a camera still mid-lerp (js/main.js's own
+// CAM_DAMPING follow), which culls a different set of props than the one it
+// eventually rests on. Polling the camera's own position until it stops
+// moving sidesteps the frame-count assumption entirely: it waits for the
+// thing that actually matters, however many real frames that costs.
 const REST = { x: -6, z: 0 };
 const restCalls = () => page.evaluate(async (p) => {
   const g = window.__game;
   const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
   g.player.root.position.set(p.x, 0, p.z);
-  await wait(60);
+  let last = null, still = 0;
+  for (let i = 0; i < 600 && still < 6; i++) {
+    await wait(1);
+    const c = g.camera.position;
+    const moved = last ? Math.abs(c.x - last.x) + Math.abs(c.y - last.y) + Math.abs(c.z - last.z) : Infinity;
+    still = moved < 0.0005 ? still + 1 : 0;
+    last = { x: c.x, y: c.y, z: c.z };
+  }
   const s = [];
   for (let i = 0; i < 5; i++) { s.push(g.renderer.info.render.calls); await wait(12); }
   s.sort((a, b) => a - b);

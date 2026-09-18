@@ -10,6 +10,33 @@ import { isHealed } from './restoration.js';
 
 const _rollAxis = new THREE.Vector3();
 
+// WHERE A DOOR SOMEWHERE ELSE PUTS A CHILD DOWN IN THIS ROOM.
+//
+// A room only ever knows its OWN doors — the gaps physically cut into ITS
+// walls — never the doors that lead INTO it from elsewhere. `dr`'s own door to
+// `den` carries the entry point (-8.5, 0), but that number lives in `dr`'s own
+// `world.doors` when `dr` is built; when `den` is built on its own, nothing in
+// that room's own data says "someone can land at (-8.5, 0)".
+//
+// v3.186's own regression sweep (tools/verify-landings.mjs §3) went looking
+// for exactly this kind of blind spot in World.separateProps() and instead
+// found the SAME landing already 0.51u inside the Den's own west tent with
+// separation switched off entirely — a pre-existing bug (`tools/known-fail.txt`,
+// 2026-09-18), not a new one. But the blind spot is real regardless of who hits
+// it first: separateProps has no way to avoid moving a DIFFERENT prop onto that
+// same spot later, because nothing in `den`'s own build tells it the spot
+// matters. This registry is that missing information.
+//
+// Session-lifetime and shared across every World instance on purpose: door
+// numbers are literals, identical every time a room builds, so the first time
+// ANY room registers a door TO room X, that entry point is known for every
+// later build of X in this same page load — including the respawn that
+// follows a room teardown, which is most of a real session. It does not
+// protect X on the very first time it is ever built before its neighbours are,
+// which is the one gap tools/verify-landings.mjs exists to close in the case
+// this registry cannot: a fresh test run that has never built the neighbour.
+const KNOWN_ENTRIES = {};
+
 // The solid volume of a shut doorway: as wide as the opening, and 1.4 deep
 // across it so a body running flat at it is stopped rather than tunnelling
 // through on a slow frame.
@@ -259,6 +286,496 @@ export class World {
   // still sitting on a gameplay square has its COLLIDER dropped here and says
   // so. A prop you can walk through is a blemish; an enemy stuck inside one, or
   // a chest you cannot reach, is a broken game.
+  // NOTHING STANDS INSIDE ANYTHING ELSE.
+  //
+  // Dad, from play, on a screenshot of the Den with four things circled: "a
+  // house, a wagon, a character and a barrel all merged and placed on top of
+  // and cutting through one another... these appear everywhere in the entire
+  // game making it look amateur and cheap."
+  //
+  // He is right, and the cause is one sentence: every prop position in this
+  // game is a hand-typed coordinate, and nothing has ever measured whether the
+  // model DRAWN at that spot hits the model already there. The only footprints
+  // the game knew about were hand-typed circles, and they are far smaller than
+  // the models they stand for. Measured in the Den: the cart is drawn 1.3 x 1.6
+  // and declared as a circle of radius 0.7; its neighbour is drawn 1.1 x 1.5 and
+  // declared 0.42; the merchant is drawn 1.1 x 1.0 and declared 0.35. Declared
+  // circles run 35-45% smaller than the models across the board, so every
+  // clearance check in the codebase — `blocked()`, `resolveCircle()`, the pot
+  // placer, `scatter` — has been asking whether a spot is clear of a fiction.
+  // The cart sits at (7.2, -4.6) and its neighbour at (7.4, -4.6): two tenths
+  // apart, when their drawn half-widths add to 1.57.
+  //
+  // So this measures what is actually on the screen and pushes the pair apart.
+  //
+  // WHAT MAY BE MOVED, and why the rule is this one:
+  //   * only CLUTTER — a barrel, a crate, a jar, a bush. Small in both
+  //     horizontal axes and not tall. A cart, a tent, a shrine or a hero prop
+  //     is where the room's author put it and stays there; if one of those is
+  //     wrong, tools/verify-interpenetration.mjs names it and a human moves it.
+  //   * never anything carrying a collider the room registered BY HAND.
+  //     sweepKeepClear already draws exactly this line for exactly this reason
+  //     ("a prop the dressing placed is tagged 'decor' and may be swept.
+  //     Anything else belongs to the room's design"), and it is the same line
+  //     here: a hand-registered collider is an author saying "this, here".
+  //   * never a burnable, crackable, cuttable or hero mark — those are
+  //     gameplay standing in scenery's clothes.
+  //
+  // A prop with nowhere clear to stand is REMOVED rather than left merged.
+  // `ruinedHome`'s own spill loop already settled that argument for this
+  // codebase: "a ruin with one fewer jar reads fine; a jar wedged in a doorway
+  // does not."
+  //
+  // It runs from flattenStatic(), because that is the one seam every one of
+  // the nineteen room builders reaches — `solidifyProps` is not (the Den, e1-e3,
+  // w1-w5, r1-r3 and k1/ka/kb never call it, which is why the room in dad's own
+  // screenshot would have been missed) — and because merging welds the props
+  // into one geometry, after which nothing can be moved at all.
+  // EVERY PROP IN THE ROOM, AS IT IS ACTUALLY DRAWN. Shared by separateProps()
+  // below and by tools/verify-interpenetration.mjs, so the gate and the fix can
+  // never drift into measuring two different things.
+  //
+  // ONE PROP IS ONE THING A PERSON PLACED, which is not the same as one
+  // Object3D. A GLB added straight to the room (a cart) arrives as a group of
+  // meshes and is ONE prop; a dressing cluster (a ruin, a hero prop) is a group
+  // of MODELS and is several. Telling them apart is the difference between
+  // measuring a cart and measuring its left wheel: if every child is a mesh,
+  // the top-level IS the prop.
+  propFootprints() {
+    this.root.updateMatrixWorld(true);
+    const bb = new THREE.Box3();
+    const deck = this.deckY || 0;
+    // A LOWER FLOOR THAN solidifyProps USES, on purpose. That pass asks "can a
+    // child walk into this", and answers no below 0.9 because anything shorter
+    // reads as ground and is stepped over. This one asks "can a child SEE that
+    // these two things are inside each other", which is true far lower down:
+    // the Den's cart — the wagon in dad's screenshot, with an armoury manikin
+    // standing in its bed — is 0.59 tall, and at a 0.9 floor the pass looked
+    // straight past the thing it was written to find.
+    const MIN_H = 0.5;
+    const propsOf = (child) => {
+      const kids = child.children || [];
+      if (child.isMesh || !kids.length) return [child];
+      return kids.every((k) => k.isMesh) ? [child] : [...kids];
+    };
+    const measure = (model, owner) => {
+      bb.setFromObject(model);
+      if (!isFinite(bb.min.x)) return null;
+      const h = bb.max.y - bb.min.y;
+      if (h < MIN_H) return null;                // paint on the floor, not a thing
+      if (bb.min.y > deck + 0.55) return null;   // hanging: nothing is under it
+      const fx = bb.max.x - bb.min.x, fz = bb.max.z - bb.min.z;
+      if (fx > 7 || fz > 7) return null;         // a wall or a room-scale piece
+      if (fx < 0.35 || fz < 0.35) return null;   // a post you slip past
+      return { model, owner, comp: owner, h, hx: fx / 2, hz: fz / 2, area: fx * fz,
+        x: (bb.min.x + bb.max.x) / 2, z: (bb.min.z + bb.max.z) / 2,
+        // the SHORT half-axis, inset, exactly as solidifyProps reasons about a
+        // turned prop — so this only ever fires on a real merge, never on two
+        // long things lying alongside each other
+        r: Math.max(0.3, Math.min((fx / 2) * 0.78, (fz / 2) * 0.78)) };
+    };
+    // INSTANCED PROPS ARE PROPS. Most of this game's dressing is instanced —
+    // `scatter` and every `instancePlacements` caller — and an InstancedMesh
+    // measured whole is the bounding box of ALL its copies at once, which is
+    // both meaningless (a box spanning the room) and the reason the armoury
+    // manikin standing inside the Den's cart went unseen: it is one instance
+    // in a group, not an Object3D of its own. So each COPY is measured by
+    // walking the instance matrices, and `inst` carries the copy's index so
+    // separateProps can move that one copy and leave its neighbours alone.
+    const instanceBoxes = (child) => {
+      const per = new Map();
+      child.traverse((n) => {
+        if (!n.isInstancedMesh) return;
+        if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+        const mat = new THREE.Matrix4();
+        for (let i = 0; i < n.count; i++) {
+          n.getMatrixAt(i, mat);
+          const m = new THREE.Matrix4().multiplyMatrices(n.matrixWorld, mat);
+          const box = n.geometry.boundingBox.clone().applyMatrix4(m);
+          if (per.has(i)) per.get(i).box.union(box);
+          else per.set(i, { i, box });
+        }
+      });
+      return [...per.values()];
+    };
+    const fromBox = (box, owner, inst) => {
+      const h = box.max.y - box.min.y;
+      if (h < MIN_H) return null;
+      if (box.min.y > deck + 0.55) return null;
+      const fx = box.max.x - box.min.x, fz = box.max.z - box.min.z;
+      if (fx > 7 || fz > 7) return null;
+      if (fx < 0.35 || fz < 0.35) return null;
+      return { model: owner, owner, inst, h, hx: fx / 2, hz: fz / 2, area: fx * fz,
+        // each COPY is its own authored placement, so two instances of one
+        // scatter are two props that may not merge — unlike the pieces of a
+        // single composed prop, which share their `comp`
+        comp: {},
+        x: (box.min.x + box.max.x) / 2, z: (box.min.z + box.max.z) / 2,
+        r: Math.max(0.3, Math.min((fx / 2) * 0.78, (fz / 2) * 0.78)) };
+    };
+
+    const props = [];
+    for (const child of this.root.children) {
+      if (child.isBatchedMesh) continue;
+      if (this._keepLoose && this._keepLoose.includes(child)) continue;
+      let hasInstances = false;
+      child.traverse((n) => { if (n.isInstancedMesh) hasInstances = true; });
+      if (hasInstances) {
+        for (const { i, box } of instanceBoxes(child)) {
+          const m = fromBox(box, child, i);
+          if (m) props.push(m);
+        }
+        continue;
+      }
+      for (const model of propsOf(child)) {
+        const m = measure(model, child);
+        if (m) props.push(m);
+      }
+    }
+    return props;
+  }
+
+  separateProps() {
+    if (typeof window !== 'undefined' && window.__noSeparate) return null;
+    const MOVABLE_HALF = 1.2;   // a barrel, a crate, a scattered fir — not a
+    const MOVABLE_H = 3.2;      // shrine, a gate or a landmark tree
+    const PEN = 0.12;           // a whisker of contact is contact, not a merge
+    const REACH = 2.0;          // nothing is ever teleported across a room
+    const props = this.propFootprints();
+    // THE ROOM AS IT WAS, BEFORE ANY OF THIS RUNS. Every individual move below
+    // only ever asks "is the spot I am about to stand on clear" — never "does
+    // standing on it seal off somewhere else". Caught live in xa1: sixteen
+    // small moves, each one fine on its own, collectively wedged shut the one
+    // passage into a third of the room — 1,401 reachable half-metre cells fell
+    // to 166 (verify-reachable.mjs, verify-chests.mjs both went red on rooms
+    // this pass had never touched a wall in). This is the baseline the
+    // reachability check at the end of the pass measures every move against.
+    const reachBefore = this.spawn ? this._floodReachable() : null;
+
+    // WHAT MAY NOT MOVE, and why it is NOT "has a hand-registered collider".
+    //
+    // That was the first rule, and it protected the entire game: this codebase
+    // registers a circle for clutter as a matter of course — the Den gives
+    // every crate and barrel its own r0.42 — so "an author made this solid"
+    // turns out to mean nothing about whether the author chose the SPOT. With
+    // that rule the pass moved not one prop in the room dad photographed.
+    //
+    // What does mean it is a NAMED MARKER. `world.markers` is where a room
+    // writes down the places gameplay knows by name: the shop, the travel
+    // stone, the settler's post, the hero prop, the rest spot. A prop standing
+    // on one of those is the thing that marker refers to, and moving it would
+    // silently break the pairing — the Den's cart IS `markers.shopSpot`. So
+    // markers are sacred, hero marks and the gate lists are sacred, and
+    // everything else is dressing, which may be nudged.
+    const markerSpots = [];
+    const collect = (v) => {
+      if (!v) return;
+      if (Array.isArray(v)) { for (const e of v) collect(e); return; }
+      if (typeof v.x === 'number' && typeof v.z === 'number') markerSpots.push(v);
+    };
+    for (const v of Object.values(this.markers || {})) collect(v);
+    for (const c of this.checkpoints || []) collect(c);
+    collect(this.spawn);                          // not in `markers` — its own field
+    collect(KNOWN_ENTRIES[this.roomId] || []);    // doors elsewhere land HERE
+    const onMarker = (p) => markerSpots
+      .some((m) => Math.hypot(m.x - p.x, m.z - p.z) < Math.max(0.7, p.r));
+    const gameplayGroups = new Set();
+    for (const list of [this.burnables, this.crackables, this.cuttables]) {
+      for (const g of list || []) if (g && g.group) gameplayGroups.add(g.group);
+    }
+    for (const n of this.npcs || []) if (n && n.model) gameplayGroups.add(n.model);
+    const isHero = (p) => (this.heroMarks || [])
+      .some((m) => Math.hypot(m.x - p.x, m.z - p.z) < 1.5);
+    const inWall = (p) => this.boxColliders
+      .some((b) => p.x > b.minX && p.x < b.maxX && p.z > b.minZ && p.z < b.maxZ);
+    // ...and a size ceiling on top, so "dressing" never means a shrine, a gate
+    // or a landmark. WIDTH is what draws that line, not height: measured in the
+    // Den a crate is 1.8 x 1.9 x 1.3 and a tree is 1.6 x 1.5 x 2.9, so the
+    // crate has the wider footprint of the two and a height rule would keep the
+    // wrong one. Height only rules out the genuinely enormous (g2's landmark
+    // tree is 5.5 x 5.5 x 5.1).
+    //
+    // The ceiling started at 2.0 tall and had to come up. Frostpeak is dressed
+    // with scattered firs — 1.0 wide, 2.26 tall — and the commonest single bug
+    // in the game is one of those standing inside a snow drift. At 2.0 the pass
+    // called every fir a landmark and left 131 of f1's 138 halves untouchable,
+    // which is most of the residue it was written to clear. A scattered tree is
+    // clutter here, and a tree inside a rock is the bug, not the furniture.
+    const movable = (p) => p.hx <= MOVABLE_HALF && p.hz <= MOVABLE_HALF
+      && p.h <= MOVABLE_H
+      && !gameplayGroups.has(p.owner) && !gameplayGroups.has(p.model)
+      && !isHero(p) && !onMarker(p) && !inWall(p);
+
+    const inDoorway = (x, z, r) => this.doors.some((d) =>
+      x + r > d.minX - 1.2 && x - r < d.maxX + 1.2
+      && z + r > d.minZ - 1.2 && z - r < d.maxZ + 1.2);
+    // A candidate spot is good if nothing drawn is there, no wall is there, it
+    // is not on gameplay ground or in a doorway, and no NAMED SPOT says
+    // otherwise. That last one is the same law `movable()` applies to where a
+    // prop already stands, applied to where it is about to land: without it
+    // this pass moved a decoration onto a `world.markers.breakables` spot that
+    // has no mesh yet at build time (`spawnBreakables()` runs later, from
+    // main.js) — clear by every test that only checks what is drawn, occupied
+    // by the time the breakable itself exists (verify-decor-overlap.mjs).
+    const freeAt = (p, x, z) => {
+      if (inDoorway(x, z, p.r)) return false;
+      if (this.blocked(x, z, p.r)) return false;
+      // blocked()'s STANDING_ROOM list is deliberately short and does not name
+      // bossSpot or wardenSpot; _standsHere answers for every `...Spot(s)`
+      // marker, so a prop can never be parked where a guardian is born.
+      if (this._standsHere(x, z, p.r)) return false;
+      if (markerSpots.some((m) => Math.hypot(m.x - x, m.z - z) < Math.max(0.7, p.r))) return false;
+      const solved = this.resolveCircle(x, z, p.r);
+      if (Math.hypot(solved.x - x, solved.z - z) > 0.02) return false;
+      return !props.some((q) => q !== p && !q.gone
+        && Math.hypot(q.x - x, q.z - z) < q.r + p.r + 0.04);
+    };
+
+    const moved = [], dropped = [], kept = [];
+    // ONE COPY OF AN INSTANCED BATCH. The matrix that places copy `i` lives in
+    // the mesh's own space, so the step is taken in world space and converted
+    // back through the mesh's inverse — the same arithmetic as the parented
+    // case below, spelled out because there is no Object3D to hang it on.
+    const shiftInstance = (p, dx, dz) => {
+      const T = new THREE.Matrix4().makeTranslation(dx, 0, dz);
+      p.owner.traverse((n) => {
+        if (!n.isInstancedMesh || p.inst >= n.count) return;
+        const local = new THREE.Matrix4();
+        n.getMatrixAt(p.inst, local);
+        const world = new THREE.Matrix4().multiplyMatrices(n.matrixWorld, local);
+        const inv = new THREE.Matrix4().copy(n.matrixWorld).invert();
+        n.setMatrixAt(p.inst, inv.multiply(T.clone().multiply(world)));
+        n.instanceMatrix.needsUpdate = true;
+        n.computeBoundingSphere();   // or the batch culls at its old extent
+      });
+    };
+    // MOVE BY A DELTA, NEVER TO A COORDINATE. What was measured is the prop's
+    // BOUNDING BOX centre; what can be set is its origin, and place()'s own
+    // comment records that the two are routinely different ("Vase.glb sits
+    // 1.09u away from its pivot in Z"). Setting position.x = x would drop a
+    // vase a metre from where the arithmetic said it was going.
+    const shiftGeometry = (p, dx, dz) => {
+      if (p.inst !== undefined && p.inst !== false) { shiftInstance(p, dx, dz); return; }
+      const parent = p.model.parent;
+      if (parent && parent !== this.root) {
+        // the prop may live inside a group the dressing turned or scaled, so
+        // the step is taken in world space and handed back in the parent's frame
+        parent.updateMatrixWorld(true);
+        const w = p.model.getWorldPosition(new THREE.Vector3());
+        const here = parent.worldToLocal(w.clone());
+        const there = parent.worldToLocal(w.clone().add(new THREE.Vector3(dx, 0, dz)));
+        p.model.position.add(there.sub(here));
+      } else {
+        p.model.position.x += dx;
+        p.model.position.z += dz;
+      }
+      p.model.updateMatrixWorld(true);
+    };
+    // A MOVED PROP TAKES ITS COLLIDER WITH IT, ATOMICALLY — lifted from its
+    // CURRENT spot, the geometry moved, then dropped at the new one. This runs
+    // this pass runs from flattenStatic, which is AFTER solidifyProps has
+    // already dropped a 'decor' circle on every drawn obstacle (and after
+    // `scatter` registered its own for the big pieces): move the prop and
+    // leave the circle behind and the room has both a solid patch of nothing
+    // and a rock you walk straight through, the exact two bugs solidifyProps
+    // exists to prevent. Only 'decor' is ever touched — a hand-registered
+    // collider belongs to a prop this pass will not move in the first place —
+    // and being atomic and reversible both ways is what lets the reachability
+    // check below UNDO a move by simply calling this again with the original
+    // coordinates, rather than needing a second, subtly-different code path.
+    const decorNear = (x, z, r) => this.circleColliders
+      .filter((c) => c.tag === 'decor' && Math.hypot(c.x - x, c.z - z) <= r);
+    // THE ATOMIC MOVE — lift whatever 'decor' collider sits at the prop's
+    // CURRENT spot, move the geometry, drop the collider at the new spot.
+    // Used directly for an UNDO (below): the destination is already known
+    // there, so there is nothing to search for, just this one call.
+    const moveProp = (p, x, z) => {
+      const dx = x - p.x, dz = z - p.z;
+      const own = decorNear(p.x, p.z, Math.max(0.6, p.r));
+      for (const c of own) {
+        const k = this.circleColliders.indexOf(c);
+        if (k >= 0) this.circleColliders.splice(k, 1);
+      }
+      shiftGeometry(p, dx, dz);
+      p.x = x; p.z = z;
+      for (const c of own) { c.x += dx; c.z += dz; this.circleColliders.push(c); }
+    };
+
+    const moveRecords = [];   // {p, ox, oz, entry} for every real move — the
+                               // reachability check below can undo any of them
+    // A DROPPED PROP IS FLAGGED, NEVER SPLICED. Removing it from the array
+    // mid-loop shifts every index behind it and the sweep silently skips the
+    // next prop — which would leave real merges standing in exactly the rooms
+    // that had the most of them.
+    for (let i = 0; i < props.length; i++) {
+      if (props[i].gone) continue;
+      for (let j = i + 1; j < props.length; j++) {
+        const a = props[i], b = props[j];
+        if (a.gone) break;          // `a` was dropped; nothing left to compare
+        if (b.gone) continue;
+        // PIECES OF ONE PROP ARE A COMPOSITION, NOT AN ACCIDENT. The Kiln is a
+        // cone of deliberately stacked boulders and a ruin's walls meet at its
+        // corners; both are built into a single group by their own helper. Two
+        // SEPARATE props sharing space never is.
+        if (a.comp === b.comp) continue;
+        const d = Math.hypot(a.x - b.x, a.z - b.z);
+        const pen = (a.r + b.r) - d;
+        if (pen <= PEN) continue;
+        // move the smaller of the two, and only if it is clutter
+        const [big, small] = a.area >= b.area ? [a, b] : [b, a];
+        const p = movable(small) ? small : (movable(big) ? big : null);
+        if (!p) {
+          kept.push({ x: +((a.x + b.x) / 2).toFixed(1), z: +((a.z + b.z) / 2).toFixed(1),
+            pen: +pen.toFixed(2) });
+          continue;
+        }
+        const other = p === small ? big : small;
+        // LIFT THE PROP'S OWN COLLIDER BEFORE LOOKING FOR SOMEWHERE TO PUT IT.
+        // solidifyProps has already dropped a 'decor' circle on this very prop,
+        // so `freeAt`'s resolveCircle test would find the prop's own collider
+        // sitting in every nearby candidate spot and reject the lot — pushing
+        // small moves out into big ones and, where the room is tight, calling a
+        // perfectly good gap "nowhere clear" and deleting the prop instead.
+        // Lifted by hand here rather than through moveProp(), because the
+        // search below needs it OFF for several candidate checks in a row —
+        // moveProp's own lift-move-drop is one atomic step, not a hold.
+        const ox = p.x, oz = p.z;
+        const own = decorNear(ox, oz, Math.max(0.6, p.r));
+        for (const c of own) {
+          const k = this.circleColliders.indexOf(c);
+          if (k >= 0) this.circleColliders.splice(k, 1);
+        }
+        // straight out from the thing it is inside, then round the compass
+        let ang = Math.atan2(p.z - other.z, p.x - other.x);
+        if (!isFinite(ang) || (p.x === other.x && p.z === other.z)) ang = 0;
+        let placed = false;
+        // LOOK HARD BEFORE GIVING UP. Deleting a prop is the last resort, not
+        // the cheap one: the first cut searched eight rings of eight headings
+        // and removed 325 props across the game, and this codebase already
+        // carries the scar of a pass that quietly emptied rooms (solidifyProps'
+        // own note about f1 and f4 losing seventy-odd props each). Rings and
+        // headings are cheap; a fir that is simply gone from a wood is not.
+        for (let step = 0; step < 14 && !placed; step++) {
+          const need = other.r + p.r + 0.06 + step * 0.16;
+          for (let k = 0; k < 12 && !placed; k++) {
+            const t = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.42;
+            const nx = other.x + Math.cos(t) * need, nz = other.z + Math.sin(t) * need;
+            if (Math.hypot(nx - p.x, nz - p.z) > REACH) continue;
+            if (!freeAt(p, nx, nz)) continue;
+            const entry = { from: [+p.x.toFixed(1), +p.z.toFixed(1)],
+              to: [+nx.toFixed(1), +nz.toFixed(1)], pen: +pen.toFixed(2) };
+            shiftGeometry(p, nx - p.x, nz - p.z);
+            p.x = nx; p.z = nz;
+            moved.push(entry);
+            moveRecords.push({ p, ox, oz, entry });
+            placed = true;
+          }
+        }
+        // ...and the collider follows it to wherever it ended up. If it could
+        // not be placed the prop is about to go, and its circle goes with it by
+        // simply never being handed back.
+        if (placed) {
+          const ddx = p.x - ox, ddz = p.z - oz;
+          for (const c of own) { c.x += ddx; c.z += ddz; this.circleColliders.push(c); }
+        }
+        if (!placed) {
+          // NOWHERE CLEAR TO STAND, so it does not stand. One copy of an
+          // instanced batch cannot be removed from the scene graph — taking
+          // its group out would take every other copy with it — so that copy
+          // is scaled to nothing instead, which is how an InstancedMesh hides
+          // a single instance.
+          if (p.inst !== undefined && p.inst !== false) {
+            const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+            p.owner.traverse((n) => {
+              if (!n.isInstancedMesh || p.inst >= n.count) return;
+              n.setMatrixAt(p.inst, zero);
+              n.instanceMatrix.needsUpdate = true;
+              n.computeBoundingSphere();
+            });
+          } else if (p.model.parent) {
+            p.model.parent.remove(p.model);
+          }
+          p.gone = true;   // its circle was lifted above and is not handed back
+          dropped.push({ x: +p.x.toFixed(1), z: +p.z.toFixed(1), pen: +pen.toFixed(2) });
+        }
+      }
+    }
+
+    // NOTHING THIS PASS MOVES MAY SEAL OFF SOMEWHERE ELSE.
+    //
+    // Every check above is LOCAL — "is the spot I am about to stand on clear".
+    // None of them is GLOBAL — "does standing on it cut the room in two". Caught
+    // live in xa1: sixteen individually-fine moves collectively wedged shut the
+    // one passage into a third of the room, 1,401 reachable half-metre cells
+    // down to 166, and verify-reachable.mjs/verify-chests.mjs both went red on
+    // walls this pass never touched. A drop can never cause this — removing a
+    // collider only ever opens space — so only real moves are candidates.
+    //
+    // RAW CELL COUNT WAS THE WRONG RULER, tried first and thrown out live: two
+    // circles that overlap resolve a body pushed out of them to somewhere odd
+    // (the axis-of-least-penetration math was never built to answer "where do
+    // I go when I am inside BOTH"), so the room's OWN unfixed overlaps already
+    // read as a few stray "reachable" cells that a real body could never
+    // actually stand in. RESOLVING an overlap — the entire point of this pass
+    // — routinely erases a few of those, which a cell-count comparison reads
+    // as damage and reverts. Measured: nearly every move in nearly every room
+    // got undone this way, which defeats the pass at the one thing it exists
+    // to do.
+    //
+    // What actually matters is whether a body can still get to something —
+    // the exact question verify-reachable.mjs (doors) and verify-chests.mjs
+    // (chests, breakables) already ask of the shipped game — so that is what
+    // this checks, not the shape of the floor in between. Undone NEWEST
+    // FIRST, re-checking after every undo, because a cheap wrong guess here
+    // ships a room a child cannot finish.
+    let reverted = 0;
+    if (reachBefore && moveRecords.length) {
+      const targets = [];
+      for (const d of this.doors) targets.push({ x: (d.minX + d.maxX) / 2, z: (d.minZ + d.maxZ) / 2, tol: 1.0 });
+      for (const c of (this.markers && this.markers.chestDefs) || []) targets.push({ x: c.x, z: c.z, tol: 0.9 });
+      for (const b of (this.markers && this.markers.breakables) || []) targets.push({ x: b.x, z: b.z, tol: 0.9 });
+      const nearSeen = (r, x, z, tol) => {
+        for (let i = 0; i < r.nx; i++) {
+          for (let j = 0; j < r.nz; j++) {
+            if (!r.seen[i + j * r.nx]) continue;
+            const p = r.at(i, j);
+            if (Math.hypot(p.x - x, p.z - z) <= tol) return true;
+          }
+        }
+        return false;
+      };
+      // only targets this room could ALREADY reach are worth protecting — one
+      // this pass never touched a wall near stays exactly as unreachable (or
+      // reachable) as it always was
+      const guard = targets.filter((t) => nearSeen(reachBefore, t.x, t.z, t.tol));
+      const broken = (after) => guard.some((t) => !nearSeen(after, t.x, t.z, t.tol));
+      if (guard.length) {
+        let after = this._floodReachable();
+        while (broken(after) && moveRecords.length) {
+          const rec = moveRecords.pop();
+          moveProp(rec.p, rec.ox, rec.oz);
+          const mi = moved.indexOf(rec.entry);
+          if (mi >= 0) moved.splice(mi, 1);
+          reverted++;
+          after = this._floodReachable();
+        }
+      }
+      if (reverted && typeof console !== 'undefined') {
+        console.warn(`[interpenetration] ${this.roomId || '?'}: reverted ${reverted} `
+          + 'move(s) that would have sealed off a door, chest or breakable');
+      }
+    }
+
+    this._separated = { moved: moved.length, dropped: dropped.length,
+      kept: kept.length, keptAt: kept, reverted };
+    if (kept.length && typeof console !== 'undefined') {
+      console.warn(`[interpenetration] ${this.roomId || '?'}: ${kept.length} pair(s) `
+        + 'too big to move automatically — ' + kept.slice(0, 6)
+          .map((k) => `(${k.x}, ${k.z}) by ${k.pen}`).join('; '));
+    }
+    return this._separated;
+  }
+
   // ONLY SCENERY IS EVER SWEPT.
   //
   // The first version filtered every circle collider in the room and started
@@ -459,44 +976,49 @@ export class World {
   // until it can. It only ever takes back its own: a gate, a boulder or a
   // dressing collider placed on purpose is never touched, so a door that was
   // already unreachable stays that way and stays reported.
-  unsealDoors(mine) {
-    if (!mine.length || !this.spawn || !(this.doors || []).length) return 0;
-    const STEP = 0.5, BODY = 0.32;
+  // FLOOD FROM THE ARRIVAL POINT, on a coarse grid — the ruler both
+  // unsealDoors() (a door must stay reachable) and separateProps() (nothing
+  // else that was reachable may stop being so) measure against, so the two
+  // passes can never quietly disagree about what "reachable" means.
+  _floodReachable(step = 0.5, body = 0.32) {
     const halfW = this.halfW || 20, halfD = this.halfD || 20;
-    const nx = Math.max(1, Math.floor((halfW * 2) / STEP));
-    const nz = Math.max(1, Math.floor((halfD * 2) / STEP));
-    const at = (i, j) => ({ x: -halfW + (i + 0.5) * STEP, z: -halfD + (j + 0.5) * STEP });
+    const nx = Math.max(1, Math.floor((halfW * 2) / step));
+    const nz = Math.max(1, Math.floor((halfD * 2) / step));
+    const at = (i, j) => ({ x: -halfW + (i + 0.5) * step, z: -halfD + (j + 0.5) * step });
+    const seen = new Uint8Array(nx * nz);
+    if (!this.spawn) return { seen, nx, nz, at, step };
     const free = (x, z) => {
-      const r = this.resolveCircle(x, z, BODY);
+      const r = this.resolveCircle(x, z, body);
       return Math.abs(r.x - x) < 1e-6 && Math.abs(r.z - z) < 1e-6;
     };
-    // flood from the arrival point
-    const reach = () => {
-      const seen = new Uint8Array(nx * nz);
-      const si = Math.min(nx - 1, Math.max(0, Math.round((this.spawn.x + halfW) / STEP - 0.5)));
-      const sj = Math.min(nz - 1, Math.max(0, Math.round((this.spawn.z + halfD) / STEP - 0.5)));
-      const stack = [si + sj * nx];
-      seen[si + sj * nx] = 1;
-      while (stack.length) {
-        const k = stack.pop();
-        const i = k % nx, j = (k - i) / nx;
-        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const a = i + di, b = j + dj;
-          if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
-          const m = a + b * nx;
-          if (seen[m]) continue;
-          const p = at(a, b);
-          if (!free(p.x, p.z)) continue;
-          seen[m] = 1; stack.push(m);
-        }
+    const si = Math.min(nx - 1, Math.max(0, Math.round((this.spawn.x + halfW) / step - 0.5)));
+    const sj = Math.min(nz - 1, Math.max(0, Math.round((this.spawn.z + halfD) / step - 0.5)));
+    const stack = [si + sj * nx];
+    seen[si + sj * nx] = 1;
+    while (stack.length) {
+      const k = stack.pop();
+      const i = k % nx, j = (k - i) / nx;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+        const m = a + b * nx;
+        if (seen[m]) continue;
+        const p = at(a, b);
+        if (!free(p.x, p.z)) continue;
+        seen[m] = 1; stack.push(m);
       }
-      return seen;
-    };
-    const doorReached = (seen, d) => {
-      for (let i = 0; i < nx; i++) {
-        for (let j = 0; j < nz; j++) {
-          if (!seen[i + j * nx]) continue;
-          const p = at(i, j);
+    }
+    return { seen, nx, nz, at, step };
+  }
+
+  unsealDoors(mine) {
+    if (!mine.length || !this.spawn || !(this.doors || []).length) return 0;
+    const STEP = 0.5;
+    const doorReached = (r, d) => {
+      for (let i = 0; i < r.nx; i++) {
+        for (let j = 0; j < r.nz; j++) {
+          if (!r.seen[i + j * r.nx]) continue;
+          const p = r.at(i, j);
           if (p.x >= d.minX - STEP && p.x <= d.maxX + STEP
             && p.z >= d.minZ - STEP && p.z <= d.maxZ + STEP) return true;
         }
@@ -505,9 +1027,9 @@ export class World {
     };
 
     let given = 0;
-    let seen = reach();
+    let r = this._floodReachable(STEP);
     for (const d of this.doors) {
-      if (doorReached(seen, d)) continue;
+      if (doorReached(r, d)) continue;
       const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
       const order = mine.filter((c) => this.circleColliders.includes(c))
         .sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz));
@@ -516,8 +1038,8 @@ export class World {
         if (i < 0) continue;
         this.circleColliders.splice(i, 1);
         given++;
-        seen = reach();
-        if (doorReached(seen, d)) break;
+        r = this._floodReachable(STEP);
+        if (doorReached(r, d)) break;
       }
     }
     return given;
@@ -560,6 +1082,16 @@ export class World {
 
   addDoor(minX, maxX, minZ, maxZ, to, entry, when = null) {
     this.doors.push({ minX, maxX, minZ, maxZ, to, entry, when });
+    // Registered for whoever builds `to` next — see KNOWN_ENTRIES above.
+    // Deduplicated by proximity: the same door registers again every time this
+    // room rebuilds (every checkpoint respawn, every test that revisits it),
+    // and a session can do that hundreds of times.
+    if (to && entry && typeof entry.x === 'number' && typeof entry.z === 'number') {
+      const list = KNOWN_ENTRIES[to] || (KNOWN_ENTRIES[to] = []);
+      if (!list.some((e) => Math.hypot(e.x - entry.x, e.z - entry.z) < 0.05)) {
+        list.push({ x: entry.x, z: entry.z });
+      }
+    }
   }
 
   onAnimate(fn) { this._animateHooks.push(fn); }

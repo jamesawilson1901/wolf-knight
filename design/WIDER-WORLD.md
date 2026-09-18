@@ -333,23 +333,34 @@ The rules a dungeon door obeys:
 
 ### 2.3 The dungeons, per region
 
-Built in dad's order. The first three are designed in full; the rest are
-queued behind the same template and are not built until the kids are past
-region 3.
+Built in dad's order. All seven now ship (the Ash Vault, the Frozen Spring
+and the Root Cellar first, in full; the remaining four followed behind the
+same template once the kids were past region 3).
 
 | key | gate (room, id, verb) | form needed, from | rooms (id, kind) | fight | guardian | treasure | grows |
 |---|---|---|---|---|---|---|---|
 | ember | `la`, `l1_crack_gate`, crack (`level1.js:668`) | Earth Wolf, Stoneroot | `lv1` pocket loopsTo `la` · `lv2` island · `lv3` pocket loopsTo `lv2` | `lv2`: 2 ember-wretch + 1 molten-marauder by markers (`KAYKIT_ROSTER` ids) | none | `lv3` gold: heart piece + shards + a tinted KayKit blade found only here; `lv1`: the moved `l1_crack_promise` wood chest; a lost grown wolf (§2.5) | `la` to stage 4 |
 | wild | `t1b`, `l3_spring_ice`, shatter (`level3.js:868`) | Frost Wolf, Frostpeak | `tf1` pocket loopsTo `t1b` · `tf2` island · `tf3` pocket, north door → `f1b` | `tf2`: rime-minion + frost-dragonling | none | `tf3` gold: heart piece + shards + tinted spear; a lost wolf in `tf1` | `t1a` to stage 4; **closes the Woods–Climb–Frostpeak loop** |
 | stone | `vc2`, `l2_bramble_gate`, cut (`level2.js:1404`) | Verdant Wolf, Wild Woods | `vr1` pocket loopsTo `vc2` · `vr2` island · `vr3` pocket | `vr2`: stone-colossus + 2 cinder-imp (existing bodies) | **Rootbound Wight**: `MINI_ROSTER` on `tower-wight.glb`, moss tint, weakness verdant | `vr3` gold behind an `onwardPlug`: heart piece + tinted hammer; lost wolf in `vr1` | `vh` to stage 4 |
-| frost | `f1b`, `f_cairn`, iceGate (`level4.js`) | Fire Wolf (melts) — retroUse | queued | | Rime Warden on `glacier-warden.glb`, weakness fire | | `f1` |
-| storm | `s1a`, `s1a_seacave`, `none` (`level5.js:548`) | Tide Wolf, Vale | queued | | Ash Warden on `molten-marauder.glb`, resist fire | | `s1a` |
-| vale | `d3b`, `d3b_ghost`, shatter (`level6.js:937`) | Frost Wolf | queued | | Bone Sage: `Skeleton_Mage.glb` + `wand_A` through `RangedBolter` (the only unused humanoid enemy body) | | `d1a` |
-| court | `h2`, `h2_veil`, shatter (`levelHollow.js:259`) | Frost Wolf | queued | | | | `x1` |
+| frost | `f1b`, `f_cairn`, iceGate (`level4.js`) | Fire Wolf (melts) — retroUse | `f1c` pocket loopsTo `f1b` · `f1d` island · `f1e` pocket | `f1d`: 2 rime-minion + the Rime Warden | Rime Warden: `MINI_ROSTER` on `glacier-warden.glb`, rime tint, weakness fire | `f1e` gold behind an `onwardPlug`: heart piece + shards + `axe_frost`; lost wolf in `f1c` | `f1` |
+| storm | `s1a`, `s1a_seacave`, `none` (`level5.js:548`) | Tide Wolf, Vale | `s1c` pocket loopsTo `s1a` · `s1d` island · `s1e` pocket | `s1d`: 2 gale hounds + the Ash Warden | Ash Warden: `MINI_ROSTER` on `molten-marauder.glb`, ash tint, weakness earth, resist fire | `s1e` gold behind an `onwardPlug`: heart piece + shards + `sword_storm`; lost wolf in `s1c` | `s1a` |
+| vale | `d1a`, `d1a_crypt`, shatter (`level6.js`) | Frost Wolf | `d1c` pocket loopsTo `d1a` · `d1d` island · `d1e` pocket | `d1d`: 2 drowned soldiers + the Bone Sage | Bone Sage: `Skeleton_Mage.glb` + `wand_A` through `RangedBolter` (the only unused humanoid enemy body), weakness fire | `d1e` gold: heart piece + shards + `halberd`; lost wolf in `d1c` | `d1a` |
+| court | `x1`, `x1_vault`, shatter (`level7.js`) | Frost Wolf | `xc1` pocket loopsTo `x1` · `xc2` island · `xc3` pocket | `xc2`: 2 shadow hounds (`courtwarden`) + the Chancellor | The Chancellor: `MINI_ROSTER` on `gilded-husk.glb` through `Duellist` (the first guardian on it, not `BoneWarden`/`RangedBolter`), weakness moon | `xc3` gold: heart piece + shards + `staff_moon`; lost wolf in `xc1` | `x1` |
 
 The lock-before-key check in `regions.js validateRegions` is already true for
 the first three (crack shown in region 1, granted in 2; cut shown 2, granted
 3; shatter shown 3, granted 4).
+
+Two of these rows named a gate this table's own design pass had already
+spoken for elsewhere, so the shipped gate is a different one on the same
+room, not the one first written down: vale's row named `d3b_ghost`, but that
+door is region 7's own foreshadowing promise (`level6.js` buildD3b, "shown a
+region early") with its own already-balanced chest — the Bone Crypt got a
+fresh `shatter` gate on `d1a`'s own unused east wall instead. Court's row
+named `h2_veil`, but that door (`levelHollow.js`, the Hollow Road) is the
+same idiom one region early, paying in `shield_moon` on its own — the Veiled
+Vault got a fresh gate on `x1`'s own unused east wall (the west wall already
+carries the watcher's lock) instead, matching the Bone Crypt's own pattern.
 
 ### 2.4 The Ash Vault in full — the template
 

@@ -1,0 +1,40 @@
+UPLOADER ATTESTATION — THREE COMMISSIONED NPCS (TRIPO AI)
+=======================================================
+Recorded: 2026-09-18
+
+The repository owner supplied three Tripo AI text/image-to-3D generations
+via chat upload — an old man with a large backpack and staff, a wizard
+holding a staff and spellbook, and a cartoon wizard/witch holding a staff
+and potions — with a one-line brief for each ("have the wizard replace the
+guy who allows you to fast travel. Use the witch as a NPC in the village.
+Have the old man be the merchant.") and stated they are his own
+generations, made for this project.
+
+This file records that permission in plain words. It is NOT a formal
+licence grant: no LICENSE.txt/terms document was supplied alongside any of
+the models, and Tripo AI's own terms of service (which would govern
+exactly what rights a generation carries) were not independently checked
+here.
+
+WHAT WOULD CLEAR IT
+Tripo AI's own published terms of service, read and confirmed to grant
+commercial/redistribution rights for generations made under a paid or free
+account, copied into this directory and replacing this attestation with it
+in MANIFEST.json.
+
+WHAT IS SHIPPING FROM THIS FILE
+  assets/chars/wayfarer.glb — Tam the Wayfarer's new body (was Wren's own
+    rogue_hooded reskin, moon-blue washed)
+  assets/chars/merchant.glb — the Den's own shopkeeper (was mage.glb)
+  assets/chars/witch.glb    — the Village Square's own settler (was
+    another mage.glb reskin)
+
+All three are vendored as supplied — real meshes, ~4,700-4,800 triangles
+each, one material, no baked-texture stripping needed since none is
+retinted per-instance (each is a one-off face, unlike the mage.glb bodies
+they replace, which were shared across many settlers and needed a tint
+wash to read as different people). None carries a skeleton — dad's own
+words, "these characters don't move, therefore using them as they are
+should be fine" — so js/npcs.js's new staticCharacterNpc() places them as
+real, still, un-rigged bodies rather than forcing a KayKit rig clip onto a
+mesh with no bones for it to bind to.

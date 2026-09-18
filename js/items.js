@@ -191,6 +191,27 @@ export const WEAPONS = {
     dmg: 2.8, lock: 0.8, range: 1.85, price: 380, arc: 88, stun: 0.5,
     blurb: 'It rings when it lands.',
   },
+  // MINING (design/MINING.md) — the tool a rock needs before it gives up
+  // its ore. axe_c.gltf's own shape one more time, the old developer trick:
+  // a single asymmetric head on a long haft reads close enough to a pick
+  // that nothing about it looks borrowed once it is the only steel-grey
+  // one in the rack. Bought, not found — tier 1, the way every starting
+  // tool in this game arrives.
+  pickaxe: {
+    name: "Miner's Pick", icon: '⛏️', file: './assets/gear/axe_C.gltf', tint: 0x8a8f96,
+    dmg: 1.4, lock: 0.6, range: 1.9, price: 60, arc: 60,
+    blurb: 'Rock does not stand a chance.',
+  },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Not sold, not found in any chest:
+  // the one thing a full run of the crafting ladder buys that nothing else
+  // in the game does. sword_C.gltf's own silhouette (Broadblade), the old
+  // developer trick one more time: a deep near-black tint over the game's
+  // single best swing (dmg beats sword_storm's 2.2, arc as wide as an axe).
+  sword_ultimate: {
+    name: 'Wolf Fang', icon: '🗡️', file: './assets/gear/sword_C.gltf', tint: 0x141018,
+    dmg: 2.6, lock: 0.58, range: 2.2, arc: 80, stun: 0.4,
+    blurb: 'Every element the pack ever carried, in one blade.',
+  },
 };
 
 export const SHIELDS = {
@@ -228,6 +249,13 @@ export const SHIELDS = {
     // readable signal for "nothing gets past".
     blunt: 0.2, parryBonus: 0, price: 300, scale: 1.4,
     blurb: 'Nothing gets past. Nothing.',
+  },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Iron Wall's own shape, one tint
+  // darker, beating both its block AND Moonguard's parry window at once.
+  shield_ultimate: {
+    name: "Alpha's Aegis", icon: '🛡️', file: './assets/gear/shield_tower_iron.glb', tint: 0x1c1620,
+    blunt: 0.15, parryBonus: 0.2, scale: 1.4,
+    blurb: 'The pack stands behind it.',
   },
 };
 
@@ -269,6 +297,15 @@ export const ARMOURS = {
     name: 'Moonplate', icon: '🌙', tint: 0xc4b0ff, soak: 1.5, weight: 0, price: 480,
     blurb: "Luna's own. Nothing weighs it down.",
   },
+  // CRAFT-ONLY — design/CRAFTING.md §2. Ties Moonplate's own soak ceiling
+  // (1.5 is the game's hard cap — verify-gear's own "a hit always costs
+  // something" rule) rather than beating it outright; what a full crafting
+  // ladder buys is the REAL trade Moonplate never asks for (soak this high
+  // costs speed everywhere else, moon's own named exception aside).
+  alpha_mantle: {
+    name: "Alpha's Mantle", icon: '🐺', tint: 0x2a2430, soak: 1.5, weight: 0.05,
+    blurb: 'Worn by the wolf who came home.',
+  },
 };
 
 export function armourDef() {
@@ -303,6 +340,7 @@ export const SHOP_STOCK = [
   { kind: 'potion', name: 'Healing Potion', icon: '🧪', price: 15, tier: 1, blurb: '+3 hearts. Cherry flavor.' },
   { kind: 'shield', id: 'shield_a', price: 70, tier: 1 },
   { kind: 'weapon', id: 'dagger_a', price: 80, tier: 1 },
+  { kind: 'weapon', id: 'pickaxe', price: 60, tier: 1 },
   { kind: 'weapon', id: 'sword_b', price: 90, tier: 2 },
   { kind: 'weapon', id: 'spear_a', price: 120, tier: 2 },
   { kind: 'shield', id: 'shield_c', price: 180, tier: 3 },

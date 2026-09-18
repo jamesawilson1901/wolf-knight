@@ -5700,3 +5700,219 @@ One thing recorded for the next person: **a rime minion cannot cost a crossing
 at any distance.** `SkeletonMinion` has `senseRange 3.4` and `awakenTime 1.9`,
 and a runner covers 4.3u/s — it is six metres past before the thing has finished
 standing up. Shuffling one two metres sideways looks like a fix and is not.
+
+### Three commissioned faces (v3.184.0)
+
+Dad supplied three Tripo AI models with a one-line brief each: "have the
+wizard replace the guy who allows you to fast travel. Use the witch as a NPC
+in the village. Have the old man be the merchant. All these characters don't
+move, therefore using them as they are should be fine." Three real,
+one-off replacements:
+
+- **Tam the Wayfarer** (`assets/chars/wayfarer.glb`) — was Wren's own
+  `rogue_hooded` body washed moon-blue, the only way to keep him legible as
+  a different person while sharing her model. A dedicated model needs no
+  wash; he keeps his own blue-and-gold colouring now.
+- **The Den's shopkeeper** (`assets/chars/merchant.glb`) — was `mage.glb`
+  in her own colours. The old man's backpack alone tells you what he does
+  before Pip says a word.
+- **The Village Square's own settler** (`assets/chars/witch.glb`) — was
+  also a `mage.glb` reskin (`square_settler`). One of the three village
+  settlers, picked because the square is the most visible spot a distinct
+  face should stand.
+
+None of the three ships with a skeleton — a real mesh, no `Idle_A`/gesture
+clips to bind, which is exactly what "these characters don't move" means in
+this game's own terms. `js/npcs.js` gained `staticCharacterNpc()`, the
+`characterNpc()` sibling for a body with nothing to animate: it still joins
+the shared `npcList`/`updateNpcs` loop (so the whole-body turn-to-greet a
+child gets from every other NPC still applies, for free — no skeleton
+needed for that), it just never touches `AnimationMixer.clipAction()`.
+`spawnSettlers()` (js/restoration.js) picked up a `post.rigid` flag rather
+than a second code path per caller, since nine of its ten posts are still
+ordinary `mage.glb` reskins and only the Square's is not.
+
+**A real bug found while fixing an unrelated test fixture, not by this
+change.** `tools/verify-wayfarer.mjs`'s own `HEARTHS` list — the rooms its
+§7 checks Tam's post in — had been left at `['la']` since v3.131, four
+version bumps after the other six regions' hearths shipped their own posts
+(v3.139-142). Updating it to all seven surfaced two real, pre-existing
+failures that had simply never been exercised: Tam's post at `t1a` sits on
+a real collider, and his post at `x1` (the Court's own hearth) never
+actually arms — `WS.get('court','seen_4')` never gets set because nothing
+found reaches `growthStage('court') === 4` exactly rather than jumping
+straight to 5. Proven not caused by this session's own NPC swap (`git
+stash` of every production file this session touched, rerun against the
+ORIGINAL rogue_hooded/mage.glb bodies with only the `HEARTHS` fix applied:
+byte-identical failures). Recorded in `tools/known-fail.txt` rather than
+either silently reverting the fix or chasing a `court`-vs-`grimmFreed`
+design question this task never asked.
+
+### Bug triage (v3.185.0)
+
+Dad: "start fixing bugs. Triage them first." Four items sat in
+`tools/known-fail.txt`; worked in priority order.
+
+**P0 — `verify-onward.mjs` §5's `vz` crash.** Already a properly-proven
+known-fail from 2026-09-09, not something this session introduced. Spent a
+session trying to root-cause it anyway rather than just re-confirming it —
+confirmed it is genuinely flaky (resolves in 1-2s most runs, hangs 19s+ on
+others) and ruled out `respawnAtCheckpoint()` itself as the visible stall
+point (instrumented every `await` in it; every instrumented run resolved
+cleanly, never catching the hang in the act). Root cause still open;
+findings recorded in `tools/known-fail.txt` for whoever continues, including
+the specific clue that a hang reads `transitioning: false` throughout, which
+means the respawn function never STARTS on a hung run rather than starting
+and stalling partway — the more useful places to look next are the defeat
+hook itself and leftover `paused`/`menuPaused` state from the room before.
+
+**P1 — Tam's post at `t1a` overlapped a collider.** Not a coordinate typo:
+`WAYFARER_POSTS.t1a` (-9, 2.5) was clear through stage 3, but stage 4's own
+`manikin` prop (STAGE_CLUTTER.t1a[4]) lands at (-9.5, 3.5) with a 0.7u
+collider, and Tam's own 0.44u clearance overlapped it by 0.02u — a margin
+too small to have ever been eyeballed, only measurable. Fixed by nudging the
+post to (-8, 3), a spot measured clear (0.33u margin) against the room's
+FULL stage-4 collider set — every wall, hut, hearth, manikin, target, cart
+and scatter prop this room's own seed places — not just the one that
+happened to be the culprit, so this doesn't reappear at some other prop's
+edge on a future scatter-seed change.
+
+**P2 — Tam never spawns at the Court's own hearth (`x1`) at all.** The real
+bug this triage's own known-fail entry flagged as needing a design call, not
+just a nudge. `growthStage(key)` sums five independent facts (`restored`,
+pups home, keepsake found, dungeon cleared, `grimmFreed`), and every
+`WAYFARER_POSTS` hearth gates on `WS.get(key,'seen_4')` — the moment
+`spawnSettlers()` first observes exactly 4. That works for six regions
+because their own `restored` fact lands mid-game, well before the game's
+own ending sets `grimmFreed`. The Court is different by design: its
+`restored` (js/main.js's `xth` victory block) is set at the SAME beat as
+`grimmFreed`, because for this one region "healed" and "the story is over"
+are literally the same moment. A player who finishes the Court's own pups
+and mini-dungeon (its `court_chancellor` guardian) BEFORE the ending sees
+`growthStage('court')` jump 3→5 in one build the instant Grimm falls —
+`seen_4` is never observed, so a gate on it can permanently miss Tam here.
+Fixed by gating `WAYFARER_POSTS.x1` on `seen_5` instead: growthStage's own
+maximum, which — being a monotone sum — is guaranteed to be observed
+exactly once on whichever visit happens to be the one after the LAST of the
+five facts completes, in any order, on any playthrough. Also moved x1's own
+post 1.25u north: at stage 5 this room's own scatter seed lands a decor
+prop right where the original spot sat, the same class of bug as `t1a`
+above. `tools/verify-wayfarer.mjs`'s own `setStage()` test helper had a
+matching gap — it had no way to set the Court's four relic flags at all
+(`KEEPSAKE` has no `'court'` entry; the Court's own keepsake fact is
+`COURT_RELICS`, a special case in `keepsakeFoundFor()`) — fixed alongside,
+and the suite's §7 loop now tests `x1` at its own real gate (stage 5) rather
+than the generic stage 4 every other hearth uses.
+
+**P3 — Den minigame draw-call drift (`verify-minigame.mjs`,
+`verify-mg-quiz.mjs`).** Dug further without fully closing it — see
+`tools/known-fail.txt`'s own updated entry for the detail. Ruled out two
+real candidates by direct instrumentation: the suites' "wait 60
+`requestAnimationFrame` calls" settle heuristic is provably unsound in this
+headless environment (a camera position log caught it frozen 13 real
+seconds then jumping — 60 rAF calls do not represent a fixed slice of real
+time here) — fixed in both suites by polling the camera's own position
+until it stops moving instead. And blocking narration was ruled out
+directly (both suites already disable captions/voice, and
+`narration.blocking`'s own getter requires one of those to be on). Neither
+fix closed the gap; what remains is a still-unidentified extra render pass
+that starts 14-15 real seconds into a Den visit with the scene graph itself
+provably unchanged — the next lead is each light's own shadow-casting
+state, not the object list.
+
+### Nothing stands inside anything else (v3.186.0)
+
+Dad, on a screenshot of the Den with four things circled: "a house, a wagon,
+a character and a barrel all merged and placed on top of and cutting through
+one another... these appear everywhere in the entire game making it look
+amateur and cheap."
+
+He is right, and the cause is one sentence. **Every prop position in this
+game is a hand-typed coordinate, and nothing had ever measured whether the
+model DRAWN at that spot hits the model already there.** The only footprints
+the game knew about were hand-typed circles, and they are far smaller than
+the models they stand for. Measured in the Den: the cart is drawn 1.3 x 1.6
+and declared a circle of radius 0.7; its neighbour is drawn 1.1 x 1.5 and
+declared 0.42; the merchant is drawn 1.1 x 1.0 and declared 0.35. Declared
+circles run 35-45% under the models across the board, so every clearance
+check in the codebase — `blocked()`, `resolveCircle()`, the pot placer,
+`scatter` — has been asking whether a spot is clear of a fiction. The cart
+sits at (7.2, -4.6) and its neighbour at (7.4, -4.6): two tenths apart, when
+their drawn half-widths add to 1.57.
+
+Measured across all 193 rooms before touching anything: **1,601
+interpenetrating pairs in 143 rooms** — three quarters of the game.
+
+**Why nothing caught it.** `verify-decor-overlap` checks only jars and
+crates, against the declared circles. `verify-spawn-clear` checks only
+enemies, against the declared circles. `verify-grounded` measures real
+meshes but only vertically. `tools/check-overlap.mjs` is the one tool that
+ever compared real mesh bounds pairwise — and it is a `check-*`, so the
+nightly's `tools/verify-*.mjs` glob has never run it; it is pinned to 32 of
+193 rooms; and when it was run by hand on 2026-08-22 it was closed as all
+false positives, because in its own words "a hero-prop sculpture built from
+deliberately stacked/touching pieces (the Kiln) reads geometrically
+identical to two props accidentally placed on top of each other. This tool
+cannot tell the two apart."
+
+It can, and the signal was already in the scene graph: a deliberate
+composition is built into ONE group by ONE helper (`heroProp` stacks the
+Kiln's boulders into a single `THREE.Group`; `ruinedHome` puts its walls,
+doorway and spilled goods into another). Two things a person placed
+separately are separate top-level props. **Pieces sharing a top-level prop
+are composition and are ignored; two different props sharing space is always
+a bug.** That one line is the difference between an un-actionable report and
+a gate.
+
+Three pieces:
+
+- **`World.propFootprints()`** measures every prop as actually drawn — and
+  per INSTANCE as well as per object. Most of this game's dressing is
+  instanced (`scatter`, every `instancePlacements` caller), and an
+  InstancedMesh measured whole is the bounding box of all its copies at
+  once. That is why the armoury manikin standing in the Den's cart was
+  invisible to everything that came before: it is one instance inside a
+  group, not an Object3D of its own.
+- **`World.separateProps()`** pushes clutter out of whatever it is merged
+  into. It runs from `flattenStatic` — the one seam all nineteen room
+  builders reach (`solidifyProps` is NOT: the Den and the other rooms.js
+  builders never call it, which would have missed the room in the
+  screenshot) and the last moment before merging welds every prop into one
+  geometry. It never moves a prop standing on a named `world.markers` spot,
+  a hero landmark, an NPC or a gate interactable, and a moved prop takes its
+  collider with it.
+- **`tools/verify-interpenetration.mjs`** gates it over every room. Being a
+  `verify-*`, the nightly picks it up with no wiring.
+
+**Result: 1,601 pairs down to 179, in 72 rooms rather than 143.** 742 props
+pushed clear, 203 removed for having nowhere clear to stand. The Den — the
+room in the screenshot — goes from 4 pairs to 0, three props moved, none
+removed.
+
+Four things learned the hard way, recorded so the next pass does not repeat
+them:
+
+- **The height floor had to come DOWN, not up.** `solidifyProps` ignores
+  anything under 0.9 tall because a child steps over it, and this pass
+  inherited that number — so it looked straight past the Den's cart, which
+  is 0.59 tall. A wagon you can see is not "ground". The visual floor is 0.5
+  and the collision floor stays 0.9; they are different questions.
+- **"Has a hand-registered collider" is not a signal of authorial intent.**
+  It was the first rule for what may not move, and it protected the entire
+  game: this codebase registers a circle for clutter as a matter of course
+  (the Den gives every crate and barrel its own r0.42). With that rule the
+  pass moved not one prop in the room dad photographed. What does mean it is
+  a NAMED MARKER — the Den's cart IS `markers.shopSpot`.
+- **Width separates dressing from landmarks; height does not.** A crate is
+  1.8 x 1.9 x 1.3 and a tree is 1.6 x 1.5 x 2.9, so the crate has the wider
+  footprint of the two. A height ceiling of 2.0 kept the pass off its own
+  biggest case — Frostpeak's scattered firs are 1.0 wide and 2.26 tall, and
+  the commonest single interpenetration in the game is one of those standing
+  inside a snow drift (131 of f1's 138 pair-halves were untouchable).
+- **A prop was blocked by its own collider.** `solidifyProps` has already
+  dropped a 'decor' circle on the prop before this pass runs, so the
+  candidate-spot test found that circle in every gap beside it and rejected
+  the lot — turning small nudges into big ones and, in tight rooms, calling
+  a good gap "nowhere clear" and deleting the prop. Lifting the prop's own
+  circle for the search, and handing it back wherever the prop lands, turned
+  122 deletions back into moves.

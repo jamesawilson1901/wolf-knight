@@ -10,8 +10,10 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
 import { bumpCounter } from './progress.js';
+import { spawnMaterialDrop } from './materials.js';
+import { discoverRandomHiddenRecipe } from './crafting.js';
 
-export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null }; // main.js wires HUD
+export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null, onRecipeFound: null }; // main.js wires HUD
 
 // ---------------------------------------------------------------------------
 // Shards
@@ -598,10 +600,10 @@ const BREAK_KINDS = {
   // different thing with a different promise. This is the one a child hopes
   // for: five coins, and a potion better than half the time.
   chest:  { url: './assets/loot/survival/chest-wood.glb', size: 1.25, shards: 5,
-    potion: 0.55 },
+    potion: 0.55, material: 0.5 },
   // and the rare one, worth running across a room for
   goldchest: { url: './assets/loot/pirate/chest-gold.glb', size: 1.25, shards: 12,
-    potion: 0.75 },
+    potion: 0.75, material: 0.8 },
 };
 const breakGltf = {};
 const breakCollapsed = {};
@@ -685,7 +687,7 @@ function collapse(gltf) {
 
 export class Breakable {
   constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
-    potion = 0.14, collapsed = null, kind = 'crate' } = {}) {
+    potion = 0.14, material = 0.15, collapsed = null, kind = 'crate' } = {}) {
     this.world = world;
     this.kind = kind;   // chooses the smash sound (SMASH_SFX)
     const model = collapsed
@@ -735,6 +737,7 @@ export class Breakable {
                          // never shoved by transformation shockwaves
     this.shardCount = shards;
     this.potionChance = potion;
+    this.materialChance = material;
     world.addCircle(x, z, Math.max(0.34, foot * 0.46));
     this._collider = world.circleColliders[world.circleColliders.length - 1];
     // A CHEST OPENS WHEN YOU WALK INTO IT. ALL OF THEM.
@@ -821,6 +824,25 @@ export class Breakable {
     // coins do and waits to be walked over.
     if (lootEvents.onPotionDrop && Math.random() < this.potionChance) {
       lootEvents.onPotionDrop(this.x, this.z);
+    }
+    // AND SOMETIMES A CRAFTING MATERIAL (design/CRAFTING.md §1) — a breakable
+    // has no element of its own the way an enemy's weakness gives it one, so
+    // it always pays in a Shadow Wisp; a gold chest additionally has a real
+    // shot at the rare universal Wolf's Crystal, the one thing every
+    // "ultimate" recipe wants a stack of.
+    if (Math.random() < this.materialChance) {
+      spawnMaterialDrop(this.world, this.x, this.z, 'wisp');
+    }
+    if (this.kind === 'goldchest' && Math.random() < 0.35) {
+      spawnMaterialDrop(this.world, this.x + 0.3, this.z, 'crystal');
+    }
+    // A HIDDEN RECIPE'S SCROLL (design/CRAFTING.md §2) — dad's own list of
+    // places to hide one: "enemy drop, pot, crate, chest". A gold chest is
+    // this game's existing "run across the room for it" tier, so it carries
+    // the roll; ordinary breakables do not, to keep a hidden recipe rare.
+    if (this.kind === 'goldchest' && Math.random() < 0.2) {
+      const found = discoverRandomHiddenRecipe();
+      if (found && lootEvents.onRecipeFound) lootEvents.onRecipeFound(found);
     }
   }
   // The only breakable that does anything on its own: a chest opens when the
@@ -980,7 +1002,18 @@ export async function spawnChests(world, defs) {
   if (!chestKit) chestKit = await loadGLB('./assets/env/props/chest-kit.glb');
   for (const def of defs) {
     const opened = !!state.flags.chests[def.id];
-    const tier = def.tier === 'gold' ? 'gold' : def.tier === 'silver' ? 'silver' : 'wood';
+    // TWO KINDS OF CHEST, decided by what's inside — dad: "any chest
+    // containing shields, armour, weapons or a full heart has the gold
+    // trim. All other chests [get] the silver trim." A room's own `tier`
+    // field is never read for this any more: the content is the only thing
+    // a child reads a chest by, and a hand-set tier string is exactly the
+    // kind of label that goes stale the day a chest's loot changes but
+    // nobody remembers to touch its tier too. `gear` already covers both
+    // weapons and shields (js/main.js giveLoot: `WEAPONS[L.gear] ||
+    // SHIELDS[L.gear]`).
+    const L = def.loot || {};
+    const gold = !!(L.gear || L.armour || L.heartPiece);
+    const tier = gold ? 'gold' : 'silver';
     const kit = buildKitChest(tier);
     const mesh = kit.group;
     // MEASURE THE MODEL. DO NOT TYPE A NUMBER AT IT.
@@ -999,7 +1032,7 @@ export async function spawnChests(world, defs) {
     // model against itself. This does.
     const bb = new THREE.Box3().setFromObject(mesh);
     const dx = bb.max.x - bb.min.x, dy = bb.max.y - bb.min.y, dz = bb.max.z - bb.min.z;
-    const want = def.tier === 'gold' ? 1.15 : 0.95;   // a chest a child walks up to
+    const want = gold ? 1.15 : 0.95;   // a chest a child walks up to
     const s = want / Math.max(0.01, dx, dy, dz);
     mesh.position.set(def.x, 0, def.z);
     mesh.rotation.y = def.ry || 0;
@@ -1021,9 +1054,8 @@ export async function spawnChests(world, defs) {
       // EVERY UNOPENED CHEST GLOWS, not just the gold ones. A reward you cannot
       // see is not a reward, and this is the exact promise the cracked-wall
       // gates make: the thing behind them was an unlit box a child had to walk
-      // into by accident. Wood and silver get a cooler, quieter light so gold
-      // still reads as the good one.
-      const gold = def.tier === 'gold';
+      // into by accident. Silver gets a cooler, quieter light so gold still
+      // reads as the good one.
       const glow = new THREE.PointLight(gold ? 0xffd76a : 0xbfe6ff, gold ? 3 : 1.7,
         gold ? 5 : 3.6, 1.9);
       glow.position.set(def.x, 0.8, def.z);

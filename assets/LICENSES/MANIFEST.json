@@ -421,6 +421,116 @@
     "assets/chars/monsters/cave-biped.glb"
    ],
    "note": "Nine separate 12MB exports (one per animation, each carrying a full copy of the mesh and a 3.9MB texture, 106MB in total) reduced to one 850KB file with nine clips. Mesh simplified 203,207 -> 4,470 triangles with @gltf-transform/cli; clips merged by tools/merge-meshy-clips.py; James's own texture KEPT, resized 2048 -> 512 and re-encoded as JPEG (3.9MB -> 101KB). 512 rather than 256 because the UV atlas is hundreds of small islands and 256 visibly bleeds colour across their seams. 24-joint humanoid rig with conventional bone names. Verified: all nine clips drive all 24 bones, no orphan tracks."
+  },
+  {
+   "pack": "Quaternius — Animated Enemies",
+   "licence": null,
+   "states": "UNVERIFIED — dad supplied the pack directly as Animated_Enemies-glb.zip (loose .glb files only, no licence file inside the download itself). Same clip-naming convention (`XArmature|X_Idle`/`X_Attack`/`X_Death`) as the already-shipping Slime/Bat/Dragon family above, which is Quaternius's own house style — same publisher, same distribution shape.",
+   "source": "https://quaternius.com",
+   "covers": [
+    "assets/chars/monsters/Frog.glb",
+    "assets/chars/monsters/Rat.glb",
+    "assets/chars/monsters/Snake.glb",
+    "assets/chars/monsters/Spider.glb"
+   ],
+   "note": "v3.167: replaces some of MONSTER_ROSTER's own tint-only reskins (js/enemies.js) with real distinct bodies — the same four base models (Dragon/Bat/Slime/wasp.glb) had been carrying nine named enemies between them. This build environment's network policy also refuses quaternius.com, so the pack's own licence page could not be fetched here either. FIX: download the pack and drop its License.txt in as quaternius-animated-enemies.txt.",
+   "accepted": "private-family-use 2026-09-16",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line above is still what would clear it."
+  },
+  {
+   "pack": "Quaternius — Animated Fish Bundle (rod)",
+   "licence": null,
+   "states": "UNVERIFIED — dad supplied the pack directly as Animated_Fish_Bundle-glb.zip (loose .glb files, no licence file inside the download itself). A DIFFERENT pack from the \"Fish Pack (Animated)\" entry above (that one supplied the seven catch species; this one is where the rod and bait came from) — same distribution shape, presumed same publisher.",
+   "source": "https://quaternius.com",
+   "covers": [
+    "assets/env/fishing-rod.glb",
+    "assets/env/worm.glb"
+   ],
+   "note": "design/WIDER-WORLD.md §3.4's fishing minigame (js/mg-fish.js, v3.167) — the rod planted at the water's edge and the bait, neither of which any prior pack in this repo supplied. Only two files taken from a much larger bundle (dozens of named fish species, a dock, several lures); the species pool stays the seven already-vendored, already-recorded fish above rather than duplicating a second, differently-licensed set of the same kind of asset.",
+   "accepted": "private-family-use 2026-09-16",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified."
+  },
+  {
+   "pack": "Kenney — Particle Pack",
+   "licence": "kenney-particle-pack.txt",
+   "states": "VERIFIED — License.txt shipped inside the download itself (Particle Pack 1.1, Kenney, www.kenney.nl), copied into the repo as assets/LICENSES/kenney-particle-pack.txt. \"This content is free to use in personal, educational and commercial projects.\"",
+   "source": "https://kenney.nl",
+   "covers": [
+    "assets/fx/spark.png",
+    "assets/fx/flare.png",
+    "assets/fx/flash.png"
+   ],
+   "note": "design/FX.md, v3.174 — billboarded THREE.Sprite hit-feedback (js/juice.js), extending the pooled hit-spark burst that already existed with real texture instead of a flat coloured square, plus two new one-off flourishes (a weakness-hit flare, a heavy-hit flash). Resized from the pack's own 512x512 source to 128x128 — plenty for a particle a few pixels across on screen, a fraction of the precache weight."
+  },
+  {
+   "pack": "Fantasy Portal 3D LowPoly Model",
+   "licence": null,
+   "evidence": "fantasy-portal-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied the pack directly via chat upload (a .rar containing a .blend, an .fbx export, and three PNG textures), and stated when asked that it is \"CC0 (public domain)\". No LICENSE.txt/README shipped inside the archive itself and no source URL was given, so nothing here can be checked against a posted licence page the way kenney.nl's or Quaternius's packs can be.",
+   "source": null,
+   "covers": [
+    "assets/env/shrine/portal.glb"
+   ],
+   "note": "design/DRAGON-EGGS.md — replaces the light-only spiritShrine() placeholder at all three Grand Elemental Shrines with a real vendored portal model, retinted per element. Converted from the supplied .fbx to a single self-contained .glb (assimp + pygltflib): all three textures re-embedded as binary chunks rather than shipped as loose files, and the glowing disk (already a separate mesh in the source file, Portal_01_Hole) given its own material so it can be recoloured per element without repainting the stone frame/moss/root. The original .fbx/.blend/loose PNGs are not vendored, only the converted .glb.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in fantasy-portal-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Meshy AI — Cracked Dinosaur Egg",
+   "licence": null,
+   "evidence": "meshy-dragon-egg-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied a Meshy AI text/image-to-3D generation directly via chat upload and stated when asked that it is his own Meshy AI account's generation. Meshy AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/loot/treasure/dragon-egg.glb"
+   ],
+   "note": "design/DRAGON-EGGS.md — replaces the gem-diamond.glb stand-in used for the hidden dragon-egg pickup. The ORIGINAL supplied .glb (~67,000 triangles, full PBR diffuse/metallic-roughness/normal material, ~5.4MB of JPEGs) is NOT vendored — wildly outside this game's low-poly, flat-shaded budget. Decimated to 900 triangles (pymeshlab, quadric edge collapse) with the PBR textures stripped for a single flat material (js/loot.js's own preparePopModel() already overwrites material.color per drop, the same as every other treasure pop), matching every other asset's asset-reuse-via-tint idiom. A real trade-off: the original's baked crack/scale detail did not survive decimation and reads as a plain bumpy low-poly shell instead — documented, not hidden.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in meshy-dragon-egg-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Den Town Models (Tripo AI)",
+   "licence": null,
+   "evidence": "den-town-tripo-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied four Tripo AI text/image-to-3D generations directly via chat upload (a tavern, a smithy, a watermill and a flaming tower) and stated they are his own generations, made for this project. Tripo AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/env/den-town/tavern.glb",
+    "assets/env/den-town/forge.glb",
+    "assets/env/den-town/mill.glb",
+    "assets/env/den-town/monument.glb"
+   ],
+   "note": "design/DEN-REBUILD.md v1.1 — replaces the split houses-pack.glb reskin used for the Tavern/Forge/Mill in v1, and adds a fourth structure (the Monument, a pure milestone reward). The three buildings' baked textures are NOT vendored — each was converted (assimp glb->obj->glb) to a single flat, textureless material, matching this game's asset-reuse-via-tint idiom. No decimation needed; all four arrived at 3,000-5,000 triangles. The Monument alone keeps its original baked material (lit brazier/lava-crack emissive) since it is a one-off set piece, never retinted. Two earlier generations in the same batch (a 1.4-million-triangle tavern; a watermill fused to its own terrain/river diorama) were reviewed and rejected — neither is vendored.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in den-town-tripo-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Dragon Skeleton (Tripo AI)",
+   "licence": null,
+   "evidence": "dragon-skeleton-tripo-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied a Tripo AI text/image-to-3D generation (a curled dragon skeleton) directly via chat upload and stated it is his own generation, made for this project. Tripo AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/env/dragon-skeleton.glb"
+   ],
+   "note": "design/DRAGON-EGGS.md v2.2 — a wordless hint prop placed once each at the start of the three existing dragon-egg paths (la, s1a, d1a). Vendored as supplied: 4,896 triangles, one mesh, one material, already inside budget, no conversion needed. Kept as supplied rather than stripped flat, since it is a one-off set piece never retinted per-instance.",
+   "accepted": "private-family-use 2026-09-17",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in dragon-skeleton-tripo-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Three Commissioned NPCs (Tripo AI)",
+   "licence": null,
+   "evidence": "npc-tripo-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied three Tripo AI text/image-to-3D generations (an old man with a backpack, a wizard, a cartoon witch) directly via chat upload and stated they are his own generations, made for this project. Tripo AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/chars/wayfarer.glb",
+    "assets/chars/merchant.glb",
+    "assets/chars/witch.glb"
+   ],
+   "note": "BUILDLOG.md v3.184.0 — replaces three mage.glb/rogue_hooded reskins (Tam the Wayfarer, the Den's shopkeeper, the Village Square's own settler) with dedicated, one-off models. Vendored as supplied: ~4,700-4,800 triangles each, one material, no texture stripping needed since none is retinted per-instance. None carries a skeleton — js/npcs.js's new staticCharacterNpc() places them as real, still bodies rather than binding a rig clip to a mesh with no bones.",
+   "accepted": "private-family-use 2026-09-18",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in npc-tripo-attestation.txt is still what would clear it."
   }
  ],
  "distribution": {

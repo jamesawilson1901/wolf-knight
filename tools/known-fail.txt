@@ -83,6 +83,39 @@
 # §5's 60s window.
 verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09
 # ---------------------------------------------------------------------------
+# 2026-09-18: triaged this as the standing P0 and spent a session trying to
+# root-cause it rather than just re-confirm it. Findings, for whoever picks
+# this up next:
+#   - It is genuinely FLAKY, not a deterministic hang. Direct repro
+#     (window.__wkJump('vz',...) right after landing in `n1` from `le`,
+#     polling window.__wk every 1s) resolved cleanly in 1-2s on most runs but
+#     hung 19+ seconds with `window.__wk.room` stuck on the PREVIOUS room
+#     (`n1`), hearts at 0, and `gates.transitioning` reading FALSE the whole
+#     time, on at least one run.
+#   - That last detail is the odd one: `player.hurt()` → `damage()` calls
+#     `onDefeated()` synchronously when hearts hit 0, and `respawnAtCheckpoint()`
+#     sets `transitioning = true` as its very first line, before any `await`.
+#     So a hang with `transitioning: false` the whole window means
+#     `respawnAtCheckpoint()` never started at all — not that it started and
+#     stalled partway through. Something upstream of it (the defeat hook
+#     itself, or state left over from the PRECEDING `le` jump/perk-card loop)
+#     is the more likely culprit than anything inside the respawn/build path.
+#   - Added temporary `console.log` tracing to every await boundary inside
+#     `respawnAtCheckpoint()` (js/main.js) and re-ran the repro, including the
+#     suite's own §1-4 probe phase first (in case that phase leaves shared
+#     state — e.g. `state.flags`, `world` — in a shape that only bites on the
+#     SECOND jump). Every instrumented run resolved cleanly; none caught the
+#     hang in the act, so the exact stall point remains unobserved. The
+#     instrumentation was reverted (not committed) since it never caught
+#     anything worth keeping.
+#   - Next person: instrument `player.onDefeated`/`hurt()`/`damage()` itself
+#     (not just `respawnAtCheckpoint()`) to confirm whether the defeat hook
+#     even fires on a hung run, and consider whether the `le` section's own
+#     perk-card click loop can leave `paused`/`menuPaused` true on the rare
+#     run where a card is still mid-flight when §5 moves on to `vz` — either
+#     gate would silently stall the world clock the same way and read as
+#     this exact symptom from the outside.
+# ---------------------------------------------------------------------------
 # 2026-09-10, v3.136 (MINI_ROSTER + the Root Cellar, design/WIDER-WORLD.md
 # §2.6): two more found while verifying that slice, neither touched by it.
 #
@@ -152,5 +185,83 @@ verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6
 # session and stays there, and either give the suites a longer settle before
 # their baseline read or make the effect's own steady-state cost part of the
 # expected baseline instead of the ±3 noise band.
-verify-minigame.mjs | "draw calls return to where they started" fails by 5-10, landing on a stable (not noisy) new value — proven NOT a teardown leak (scene child count matches before/after; a pure 20s idle probe with no minigame touched at all reproduces the same 80→90 jump) — some Den transient effect ramps to a steady state over real time and the suite's baseline is read before it settles | 2026-09-10
-verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10
+# 2026-09-18: dug further rather than just re-confirming. Two things this
+# session's own instrumentation RULED OUT as the (sole) cause:
+#   - The suites' `restCalls()` settle step ("wait 60 requestAnimationFrame
+#     calls") IS provably unsound in this headless environment — a direct
+#     idle probe with camera position logged every real second showed it
+#     FROZEN for 13 straight real seconds, then jumping, which a fixed frame
+#     count cannot account for (60 rAF calls can span under a second or
+#     twenty, unpredictably). Fixed in both suites below: `restCalls()` now
+#     polls `camera.position` itself until it stops moving, rather than
+#     counting frames. This is a real, separate, now-fixed bug — but fixing
+#     it did NOT close the gap (before/after moved from ~83/~88 to ~91/~96,
+#     same 5-call delta), so it was not the whole story.
+#   - Blocking narration freezing the world (js/main.js's `if
+#     (narration.blocking) return`) was the FIRST suspect once the camera
+#     freeze above was seen, since a caption's read-timer would explain a
+#     multi-second stall exactly like it — but both suites explicitly set
+#     `captions = false; voice = false` before ever touching the Den, and
+#     `narration.blocking`'s own getter (js/narration.js:504) requires
+#     `captions || voice` to be true. Confirmed live: `blocking` read
+#     `false` for the suites' entire configuration, every sample, so this
+#     is not it either.
+# What remains, confirmed live with captions/voice off and the camera
+# genuinely stationary throughout (so neither ruled-out cause applies): calls
+# and triangles BOTH still jump — 88→93 calls, +~1900 triangles — in a fixed
+# window around 14-15 real seconds into a Den visit, and then hold flat
+# exactly like before. It is NOT a scene-graph change: a full mesh-by-mesh
+# visible-vertex-count diff across the jump is byte-identical before and
+# after (same names, same counts) — ruling out a delayed NPC/prop spawn or
+# anything else actually being ADDED to `scene`. Triangles inflating without
+# the named mesh set changing points at the renderer submitting EXISTING
+# geometry more than once per frame — most likely an additional shadow-map
+# pass for a light that starts casting (or updates on some new cadence)
+# around that mark — rather than at new content. Next step: instrument
+# `renderer.shadowMap` / each light's `.castShadow`/`.shadow.needsUpdate`
+# rather than the scene graph, since that is the one avenue this session
+# didn't get to before running out of runway on a P3 item.
+verify-minigame.mjs | "draw calls return to where they started" fails by ~5, landing on a stable (not noisy) new value — proven NOT a teardown leak, NOT the settle-frame-count heuristic (fixed, gap persisted), NOT blocking narration (ruled out live) — an unidentified extra render (shadow?) pass starts ~14-15s into a Den visit with the scene graph itself provably unchanged | 2026-09-10, redug 2026-09-18
+verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10, redug 2026-09-18
+# 2026-09-18, found by v3.186's own regression sweep, not caused by it: the
+# Den's own west tent (rooms.js buildDen, `[tentGltf, -8.6, 0.4, 1.5, 2.2]`)
+# stands 0.51u inside the landing point of `dr`'s own door back to the Den
+# (levelDenRebuild.js, `sideDoor(world, 'e', ..., 'den', {x:-8.5, z:0})`), and
+# a second, much smaller case: `tsA`'s own door to `t1a` lands at (10, 0),
+# 0.09u inside something there. Proven pre-existing exactly as this session's
+# own convention requires: rerun with `window.__noSeparate = true` (turns off
+# every line of v3.186's own separateProps pass) — byte-identical pushedBy
+# on both. Neither door has ever been reachable without walking into
+# something on the other side; nobody had run verify-landings.mjs's own §3
+# ("...and not inside a prop") for these two legs before now. v3.186 ALSO
+# closed the matching blind spot in its own separateProps() at the same time
+# this was found — a room only knew its own outgoing doors, never another
+# room's door landing IN it, so nothing stopped a FUTURE prop move from
+# landing on either of these same two spots by accident (js/world.js
+# KNOWN_ENTRIES). Fixing the two doors themselves (move the tent; find what
+# sits at tsA's landing) is a level-design nudge for whoever picks this up,
+# not a systemic question.
+verify-landings.mjs | dr -> den: the Den's own west tent stands 0.51u inside the landing point of dr's door back to the Den. tsA -> t1a: something stands 0.09u inside that door's own landing | 2026-09-18
+# 2026-09-18, found by the same sweep, also not caused by it: xc3's own
+# crate at (-6.5, -5.5) and barrel at (6.5, -5.5) each stand ~0.65u inside
+# whatever else is already there. Proven pre-existing the same way as the
+# entry above — byte-identical with v3.186's separateProps() fully disabled.
+verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each stand ~0.65u inside something already there | 2026-09-18
+# 2026-09-18: the same two bugs verify-landings.mjs already names above,
+# caught again here under a different suite's name — verify-reachable.mjs
+# asks the identical "does a door drop you inside a prop" question, of the
+# same two legs (dr -> den, tsA -> t1a), and known-fail.txt matches on the
+# suite name literally, so each suite that finds an already-proven bug needs
+# its own line. The full 175-room sweep's third failure at the time this was
+# first proven — "xa1: the way to xa2 is reachable" — is gone: that one WAS
+# v3.186's own bug (the global reachability fix two commits up), confirmed
+# fixed across every room in the game, not just xa1.
+verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same two pre-existing landings verify-landings.mjs already names, proven the same way | 2026-09-18
+# 2026-09-18, same sweep: verify-gauntlet.mjs's only failure, both through
+# the nightly gate (two serial runs, same result) and earlier via a direct
+# --raw comparison — f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line)
+# takes 0 hits instead of the expected graze. Byte-identical with
+# window.__noSeparate=true, so v3.186's separateProps() pass changed nothing
+# about this room's foe placement or the sprint line; f1b's own encounter
+# was already too sparse/short for this check's floor before today.
+verify-gauntlet.mjs | f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line) takes 0 hits instead of a graze — proven pre-existing via byte-identical --raw comparison, unrelated to v3.186's separateProps() | 2026-09-18

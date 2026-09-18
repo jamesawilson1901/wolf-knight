@@ -48,14 +48,23 @@ const frames = (n) => page.evaluate(async (k) => {
   for (let i = 0; i < k; i++) await new Promise((r) => requestAnimationFrame(r));
 }, n);
 
-// same baseline discipline as verify-minigame.mjs: same spot, camera settled,
-// median of five samples — see that file's own long comment for why
+// same baseline discipline as verify-minigame.mjs: same spot, camera settle
+// WATCHED rather than counted in frames (2026-09-18 fix — see that file's
+// own long comment for why a fixed frame budget doesn't hold up headless),
+// median of five samples
 const REST = { x: -6, z: 0 };
 const restCalls = () => page.evaluate(async (p) => {
   const g = window.__game;
   const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
   g.player.root.position.set(p.x, 0, p.z);
-  await wait(60);
+  let last = null, still = 0;
+  for (let i = 0; i < 600 && still < 6; i++) {
+    await wait(1);
+    const c = g.camera.position;
+    const moved = last ? Math.abs(c.x - last.x) + Math.abs(c.y - last.y) + Math.abs(c.z - last.z) : Infinity;
+    still = moved < 0.0005 ? still + 1 : 0;
+    last = { x: c.x, y: c.y, z: c.z };
+  }
   const s = [];
   for (let i = 0; i < 5; i++) { s.push(g.renderer.info.render.calls); await wait(12); }
   s.sort((a, b) => a - b);

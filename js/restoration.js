@@ -43,16 +43,18 @@
 // `village` are two hues of one ground style — so neither needs this one.
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { loadGLB, prepareCharacter, instancePlacements } from './assets.js';
+import { loadGLB, prepareCharacter, prepareModel, instancePlacements } from './assets.js';
 import { WS } from './worldstate.js';
 import { regionOf, state } from './state.js';
 import { PUP_HOME } from './pip.js';
 import { ownsTreasure } from './treasures.js';
 import { loadVillageKit, placeOne } from './levelVillage.js';
-import { characterNpc, SETTLER_POSTS } from './npcs.js';
+import { characterNpc, staticCharacterNpc, SETTLER_POSTS } from './npcs.js';
 import { audio } from './audio.js';
 import { flattenStatic } from './batch.js';
 import { bumpCounter } from './progress.js';
+import { pendingCollections, collect } from './denRebuild.js';
+import { juice } from './juice.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
 // always been spelled differently ('ember_hollow' vs 'ember'). One table, so
@@ -813,26 +815,46 @@ export async function spawnSettlers(world, onGrowIn) {
   if (stage < post.minStage) return;
 
   const kit = await loadVillageKit();
-  const rigAnims = (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
   const gltf = await loadGLB(post.file);
-  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-  model.scale.setScalar(0.5);
-  // ONE material wash, the Tam idiom: whichever KayKit body this is, its
-  // whole figure sits on one shared atlas, so one clone-and-multiply colours
-  // all of it and nothing else in the room.
-  model.traverse((n) => {
-    if (!n.isMesh) return;
-    n.material = n.material.clone();
-    n.material.color.setHex(post.tint);
-  });
   world.addCircle(post.x, post.z, 0.35); // solid, like every other friend
-  // STAGE 5 ('home'): the settler's gesture turns toward the light that just
-  // caught, the same `Interact` clip Bram already wears for the same reason
-  // (js/npcs.js:111) — no new animation needed, the rig already carries it.
-  world.settler = characterNpc(world, {
-    model, id: post.id, x: post.x, z: post.z, ry: post.ry,
-    rigAnims, gestureName: stage >= 5 ? 'Interact' : 'Idle_B',
-  });
+  if (post.rigid) {
+    // A COMMISSIONED, UN-RIGGED BODY (2026-09-17: the Square's own witch) —
+    // js/npcs.js's staticCharacterNpc, not characterNpc: no skeleton to bind
+    // 'Idle_A'/a gesture clip to, and no tint (already nobody else, unlike
+    // the mage.glb reuse every other settler still shares). Fit-to-height
+    // the same way js/npcs.js's spawnWayfarer() does, since these Tripo
+    // generations all arrive normalized to a 1.0u bounding box.
+    const model = prepareModel(gltf.scene.clone());
+    const bb = new THREE.Box3().setFromObject(model);
+    const size = bb.getSize(new THREE.Vector3());
+    const s = 1.2 / Math.max(size.y, 0.001);
+    model.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+    const holder = new THREE.Group();
+    holder.add(model);
+    holder.scale.setScalar(s);
+    world.settler = staticCharacterNpc(world, {
+      model: holder, id: post.id, x: post.x, z: post.z, ry: post.ry,
+    });
+  } else {
+    const rigAnims = (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
+    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
+    model.scale.setScalar(0.5);
+    // ONE material wash, the Tam idiom: whichever KayKit body this is, its
+    // whole figure sits on one shared atlas, so one clone-and-multiply colours
+    // all of it and nothing else in the room.
+    model.traverse((n) => {
+      if (!n.isMesh) return;
+      n.material = n.material.clone();
+      n.material.color.setHex(post.tint);
+    });
+    // STAGE 5 ('home'): the settler's gesture turns toward the light that just
+    // caught, the same `Interact` clip Bram already wears for the same reason
+    // (js/npcs.js:111) — no new animation needed, the rig already carries it.
+    world.settler = characterNpc(world, {
+      model, id: post.id, x: post.x, z: post.z, ry: post.ry,
+      rigAnims, gestureName: stage >= 5 ? 'Interact' : 'Idle_B',
+    });
+  }
   world.markers.settlerSpot = { x: post.x, z: post.z };
   // THE YARD OPENS FOR TRADE (v3.131): the same generic shopSpot check
   // main.js already runs for the Den's own cart (`nearSpot` + `menus.showShop()`)
@@ -1014,7 +1036,31 @@ export async function spawnPupPen(world, onRowFilled) {
     });
   }
   world.grazers = herd;
-  world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
+  // THE PEN'S OWN PAYOUT (design/DEN-REBUILD.md) — the pen was decorative
+  // only until now; Dad named it alongside the Tavern/Forge/Mill, so it gets
+  // the SAME js/denRebuild.js mechanism, wired here rather than duplicated:
+  // there is no new geometry, only a proximity check piggybacked onto the
+  // herd's own already-ticking update hook (which only exists at all when at
+  // least one pup is home — exactly when js/denRebuild.js's isRestored
+  //('pupPen') is true, so the two conditions never disagree). Centred on the
+  // six wander spots' own middle; the same nearSpot+edge-flag hysteresis
+  // idiom the shop/travel/garden spots already use, and a small juice burst
+  // on collection — no new UI, per the design doc's interaction law.
+  const PEN_PAYOUT_SPOT = { x: 0.1, z: 3.7 };
+  let penArmed = false;
+  world.updateGrazers = (dt, t, player) => {
+    updateHerd(world, dt, player);
+    if (!player) return;
+    const dx = player.root.position.x - PEN_PAYOUT_SPOT.x;
+    const dz = player.root.position.z - PEN_PAYOUT_SPOT.z;
+    const r = penArmed ? 3.4 : 2.4;
+    const near = (dx * dx + dz * dz) < r * r;
+    if (near && !penArmed && pendingCollections('pupPen') > 0) {
+      const c = collect('pupPen');
+      if (c && c.count > 0) juice.burst(PEN_PAYOUT_SPOT.x, 0.6, PEN_PAYOUT_SPOT.z, 0xffe9b0, 14);
+    }
+    penArmed = near;
+  };
 }
 
 // ---------------------------------------------------------------------------
