@@ -413,7 +413,7 @@ export class World {
     const MOVABLE_HALF = 1.2;   // a barrel, a crate, a scattered fir — not a
     const MOVABLE_H = 3.2;      // shrine, a gate or a landmark tree
     const PEN = 0.12;           // a whisker of contact is contact, not a merge
-    const REACH = 1.5;          // nothing is ever teleported across a room
+    const REACH = 2.0;          // nothing is ever teleported across a room
     const props = this.propFootprints();
 
     // WHAT MAY NOT MOVE, and why it is NOT "has a hand-registered collider".
@@ -588,10 +588,16 @@ export class World {
         let ang = Math.atan2(p.z - other.z, p.x - other.x);
         if (!isFinite(ang) || (p.x === other.x && p.z === other.z)) ang = 0;
         let placed = false;
-        for (let step = 0; step < 8 && !placed; step++) {
-          const need = other.r + p.r + 0.06 + step * 0.18;
-          for (let k = 0; k < 8 && !placed; k++) {
-            const t = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.55;
+        // LOOK HARD BEFORE GIVING UP. Deleting a prop is the last resort, not
+        // the cheap one: the first cut searched eight rings of eight headings
+        // and removed 325 props across the game, and this codebase already
+        // carries the scar of a pass that quietly emptied rooms (solidifyProps'
+        // own note about f1 and f4 losing seventy-odd props each). Rings and
+        // headings are cheap; a fir that is simply gone from a wood is not.
+        for (let step = 0; step < 14 && !placed; step++) {
+          const need = other.r + p.r + 0.06 + step * 0.16;
+          for (let k = 0; k < 12 && !placed; k++) {
+            const t = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.42;
             const nx = other.x + Math.cos(t) * need, nz = other.z + Math.sin(t) * need;
             if (Math.hypot(nx - p.x, nz - p.z) > REACH) continue;
             if (!freeAt(p, nx, nz)) continue;
