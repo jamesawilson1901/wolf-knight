@@ -247,3 +247,13 @@ verify-landings.mjs | dr -> den: the Den's own west tent stands 0.51u inside the
 # whatever else is already there. Proven pre-existing the same way as the
 # entry above — byte-identical with v3.186's separateProps() fully disabled.
 verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each stand ~0.65u inside something already there | 2026-09-18
+# 2026-09-18: the same two bugs verify-landings.mjs already names above,
+# caught again here under a different suite's name — verify-reachable.mjs
+# asks the identical "does a door drop you inside a prop" question, of the
+# same two legs (dr -> den, tsA -> t1a), and known-fail.txt matches on the
+# suite name literally, so each suite that finds an already-proven bug needs
+# its own line. The full 175-room sweep's third failure at the time this was
+# first proven — "xa1: the way to xa2 is reachable" — is gone: that one WAS
+# v3.186's own bug (the global reachability fix two commits up), confirmed
+# fixed across every room in the game, not just xa1.
+verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same two pre-existing landings verify-landings.mjs already names, proven the same way | 2026-09-18
