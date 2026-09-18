@@ -154,3 +154,17 @@ verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6
 # expected baseline instead of the ±3 noise band.
 verify-minigame.mjs | "draw calls return to where they started" fails by 5-10, landing on a stable (not noisy) new value — proven NOT a teardown leak (scene child count matches before/after; a pure 20s idle probe with no minigame touched at all reproduces the same 80→90 jump) — some Den transient effect ramps to a steady state over real time and the suite's baseline is read before it settles | 2026-09-10
 verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10
+# BOTH found 2026-09-18 while fixing a stale test fixture, not while touching
+# either room: verify-wayfarer.mjs's own `HEARTHS` constant (§7) had been
+# left at `['la']` since v3.131 — four version bumps (v3.139-142) shipped
+# the other six regions' hearth wayfarers without anyone adding them to this
+# list, so t1a's and x1's own posts had never once been exercised. Proven
+# NOT caused by the same-session NPC body swap (Tam/the shopkeeper/the
+# Square's own settler all got new commissioned models in v3.184): `git
+# stash` of every production file touched that session, rerun against the
+# ORIGINAL rogue_hooded/mage.glb bodies with only the HEARTHS fix applied —
+# byte-identical failures, same two rooms, same shape. Not a literal
+# git-worktree-of-main check per this file's own §6, but the same question
+# answered the same way: this branch's own last commit, untouched by the
+# session's actual changes, fails identically.
+verify-wayfarer.mjs | t1a: "clear:false" — Tam's own post (-9, 2.5) at stage 4 overlaps a real collider, never caught because t1a was missing from HEARTHS. x1: "there:false" — Tam never spawns at the Court hearth at all; WAYFARER_POSTS.x1 gates on WS.get('court','seen_4'), which spawnSettlers() only ever sets the first time growthStage('court') is observed at exactly 4, and no live playthrough or test path has been found that reaches exactly 4 for 'court' rather than jumping straight past it — needs a real design look at whether stage 4 is reachable for the game's own final region before either post can be trusted | 2026-09-18

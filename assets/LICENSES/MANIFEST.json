@@ -516,6 +516,21 @@
    "note": "design/DRAGON-EGGS.md v2.2 — a wordless hint prop placed once each at the start of the three existing dragon-egg paths (la, s1a, d1a). Vendored as supplied: 4,896 triangles, one mesh, one material, already inside budget, no conversion needed. Kept as supplied rather than stripped flat, since it is a one-off set piece never retinted per-instance.",
    "accepted": "private-family-use 2026-09-17",
    "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in dragon-skeleton-tripo-attestation.txt is still what would clear it."
+  },
+  {
+   "pack": "Three Commissioned NPCs (Tripo AI)",
+   "licence": null,
+   "evidence": "npc-tripo-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied three Tripo AI text/image-to-3D generations (an old man with a backpack, a wizard, a cartoon witch) directly via chat upload and stated they are his own generations, made for this project. Tripo AI's own terms of service (which would govern exactly what rights a generation carries) were not independently checked here.",
+   "source": null,
+   "covers": [
+    "assets/chars/wayfarer.glb",
+    "assets/chars/merchant.glb",
+    "assets/chars/witch.glb"
+   ],
+   "note": "BUILDLOG.md v3.184.0 — replaces three mage.glb/rogue_hooded reskins (Tam the Wayfarer, the Den's shopkeeper, the Village Square's own settler) with dedicated, one-off models. Vendored as supplied: ~4,700-4,800 triangles each, one material, no texture stripping needed since none is retinted per-instance. None carries a skeleton — js/npcs.js's new staticCharacterNpc() places them as real, still bodies rather than binding a rig clip to a mesh with no bones.",
+   "accepted": "private-family-use 2026-09-18",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in npc-tripo-attestation.txt is still what would clear it."
   }
  ],
  "distribution": {

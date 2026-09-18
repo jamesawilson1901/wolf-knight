@@ -18,7 +18,7 @@ import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate,
   pushableBoulder, plateSwitch } from './gates.js';
-import { spawnDenNpcs } from './npcs.js';
+import { spawnDenNpcs, staticCharacterNpc } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
 import { LEVEL2_ROOMS, loadCaveKit } from './level2.js';
@@ -710,7 +710,7 @@ async function buildDen(scene) {
     });
     return root;
   };
-  const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, mageGltf, generalAnims,
+  const [tentGltf, cartGltf, treeA, treeB, flowerA, flowerB, merchantGltf,
     barrelGltf, crateGltf, torchGltf, manikinGltf, targetGltf] =
     await Promise.all([
       loadGLB('./assets/env/den-survival/tent.glb'),
@@ -719,8 +719,7 @@ async function buildDen(scene) {
       loadGLB('./assets/env/tree-b.glb'),
       loadGLB('./assets/env/flower-a.glb'),
       loadGLB('./assets/env/flower-b.glb'),
-      loadGLB('./assets/chars/mage.glb'),
-      loadGLB('./assets/anims/rig-medium-general.glb'),
+      loadGLB('./assets/chars/merchant.glb'),
       // the things that make a camp look INHABITED rather than merely placed:
       // stores that were carried here, light someone hung up, a flag someone
       // chose to fly. All already vendored and licence-cleared 🟢.
@@ -917,22 +916,33 @@ async function buildDen(scene) {
     if (pts.length) world.add(instancePlacements(gltf.scene, pts, { castShadow: false }));
   }
 
-  // The shopkeeper: a friendly mage by her cart
+  // The shopkeeper: a commissioned old-man-merchant by his cart (2026-09-17,
+  // replacing the mage.glb reskin). Real mesh, no skeleton — dad's own call
+  // ("these characters don't move, therefore using them as they are should
+  // be fine") — so this is `staticCharacterNpc`, not a hand-rolled
+  // AnimationMixer chasing a clip he has no bones for. Fit-to-height the
+  // same way js/npcs.js's spawnWayfarer() does: every Tripo generation this
+  // session has arrived normalized to a 1.0u bounding box.
   const cart = prepareModel(cartGltf.scene.clone());
   cart.position.set(7.2, 0, -4.6);
   cart.rotation.y = -0.5;
   cart.scale.setScalar(1.1);
   world.add(cart);
   world.addCircle(7.2, -4.6, 0.7);
-  const mage = prepareCharacter(SkeletonUtils.clone(mageGltf.scene));
-  mage.scale.setScalar(0.5);
-  mage.position.set(5.9, 0, -3.7);
-  mage.rotation.y = 2.6;
-  world.add(mage);
-  const mixer = new THREE.AnimationMixer(mage);
-  const idle = generalAnims.animations.find((c) => c.name === 'Idle_A');
-  if (idle) mixer.clipAction(idle).play();
-  world.onAnimate((t, dt) => mixer.update(dt));
+  const merchantModel = prepareModel(merchantGltf.scene.clone());
+  const merchantBB = new THREE.Box3().setFromObject(merchantModel);
+  const merchantSize = merchantBB.getSize(new THREE.Vector3());
+  const merchantScale = 1.2 / Math.max(merchantSize.y, 0.001);
+  merchantModel.position.set(
+    -(merchantBB.min.x + merchantBB.max.x) / 2, -merchantBB.min.y,
+    -(merchantBB.min.z + merchantBB.max.z) / 2);
+  const merchantHolder = new THREE.Group();
+  merchantHolder.add(merchantModel);
+  merchantHolder.scale.setScalar(merchantScale);
+  world.addCircle(5.9, -3.7, 0.35);
+  staticCharacterNpc(world, {
+    model: merchantHolder, id: 'merchant', x: 5.9, z: -3.7, ry: 2.6,
+  });
   world.markers.shopSpot = { x: 5.9, z: -3.7 };
 
   // THE SPIRITS COME HOME (WORLD-DESIGN §3, finished 2026-09-08).

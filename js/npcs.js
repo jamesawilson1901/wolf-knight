@@ -18,7 +18,7 @@
 
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { loadGLB, prepareCharacter } from './assets.js';
+import { loadGLB, prepareCharacter, prepareModel } from './assets.js';
 import { WS } from './worldstate.js';
 import { state } from './state.js';
 import { villageCleared } from './levelVillage.js';
@@ -97,6 +97,27 @@ export function characterNpc(world, { model, id, x, z, ry, rigAnims, gestureName
   return npc;
 }
 
+// A STANDING BODY, NOT A RIG. Some faces (2026-09-17: the Wayfarer, the
+// Merchant, the Square's own settler) are one-off commissioned models —
+// real meshes, but not KayKit's shared Rig_Medium skeleton, so there is no
+// 'Idle_A'/gesture clip to bind. Dad's own words: "these characters don't
+// move, therefore using them as they are should be fine." `updateNpcs`
+// below still calls `n.mixer.update(dt)` on every list entry unconditionally
+// — an AnimationMixer with nothing playing is a harmless no-op — so a
+// static character still gets the one thing that costs nothing to keep: the
+// whole-body turn to face Kael when he walks up. `gesture`/`idle` are null,
+// so the occasional-gesture branch in `updateNpcs` never fires for them.
+export function staticCharacterNpc(world, { model, id, x, z, ry }) {
+  model.position.set(x, 0, z);
+  model.rotation.y = ry;
+  world.add(model);
+  const mixer = new THREE.AnimationMixer(model);
+  const npc = { id, model, mixer, homeRy: ry, x, z, gesture: null, idle: null,
+    gestureIn: Infinity };
+  npcList(world).push(npc);
+  return npc;
+}
+
 export async function spawnDenNpcs(world) {
   const rigAnims = (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
 
@@ -114,7 +135,7 @@ export async function spawnDenNpcs(world) {
   }
 
   // TAM keeps the moonstone company. Same offer, a face to hear it from.
-  await spawnWayfarer(world, WAYFARER_POSTS.den, rigAnims);
+  await spawnWayfarer(world, WAYFARER_POSTS.den);
 
   // Biscuit the den dog — her own model, her own little life
   {
@@ -235,14 +256,12 @@ function updateNpcs(world, dt, t, player) {
 // five-year-old who has used the Den moonstone once has already been taught
 // what the light means.
 //
-// HE IS A REAL PACK MODEL, TINTED (CLAUDE.md's standing rule). Every one of
-// the five KayKit humanoids is already somebody: knight is Kael, mage is
-// Maren, ranger is Rook, rogue_hooded is Wren, barbarian is Bram. So whoever
-// he was going to be, he was going to be somebody's twin — and the hood is
-// the one that reads as "walks the roads", so he is Wren's model washed
-// moon-blue over its single `rogue` material. Beside her in the Den the two
-// read as different people at a glance, which is the whole test.
-const WAYFARER_TINT = 0x9db2e8;   // moonlight on a grey cloak
+// HE WAS A REAL PACK MODEL, TINTED, THROUGH 2026-09 (CLAUDE.md's standing
+// rule about reuse-via-tint): Wren's own rogue_hooded body washed moon-blue,
+// since the hood read as "walks the roads" and a tint was the only way to
+// keep him legible as a different person standing beside her. Replaced
+// 2026-09-17 by a dedicated commissioned model (see spawnWayfarer below) —
+// already nobody else, so no tint is needed any more.
 const WAYFARER_SHARD = 0xa8bcff;  // the Den moonstone's own colour (rooms.js)
 
 // THE SETTLERS — one per healed region's hearth (design/WIDER-WORLD.md §1.5).
@@ -299,8 +318,15 @@ export const SETTLER_POSTS = {
   // town is already built, it only needed someone standing in it. Plain
   // villager tones, not a region COAT, since these three answer to no
   // region.
-  ysq: { id: 'square_settler', file: './assets/chars/mage.glb', x: 9, z: -4, ry: 2.6,
-    tint: 0xb08968, key: 'village', minStage: 1 },
+  // THE SQUARE'S OWN WITCH (2026-09-17): a commissioned model, not a mage.glb
+  // reskin — `rigid: true` tells spawnSettlers() below to place her as a
+  // static body (js/npcs.js's own staticCharacterNpc) instead of cloning a
+  // Rig_Medium skeleton onto her, since she has none. `tint` stays set for
+  // STAGE_CLUTTER's hut-recolour purpose (unrelated to her own body, which
+  // keeps its own green-and-brown colouring) even though `rigid` skips
+  // applying it to the model itself.
+  ysq: { id: 'square_settler', file: './assets/chars/witch.glb', rigid: true,
+    x: 9, z: -4, ry: 2.6, tint: 0xb08968, key: 'village', minStage: 1 },
   yhs: { id: 'highstreet_settler', file: './assets/chars/mage.glb', x: 5, z: 3, ry: -0.8,
     tint: 0x6b7f99, key: 'village', minStage: 1 },
   ylw: { id: 'lowlanes_settler', file: './assets/chars/mage.glb', x: 9, z: 3, ry: 1.9,
@@ -381,24 +407,36 @@ export function wayfarerPost(roomId) {
   return post;
 }
 
-export async function spawnWayfarer(world, post, rigAnims = null) {
+// TAM'S BODY (2026-09-17): a commissioned wizard model, standing in for the
+// hooded-wanderer reskin every post used to share. Real mesh, no skeleton —
+// dad's own call ("these characters don't move, therefore using them as
+// they are should be fine"), so this is `staticCharacterNpc`, not
+// `characterNpc`, and there is no tint wash: unlike the old rogue_hooded
+// reuse (needed to read as a different person from Wren, who wears the same
+// body), a dedicated model is already nobody else, so it keeps its own
+// blue-and-gold colouring untouched. Raw model height is a normalized 1.0u
+// (every Tripo generation this session has come back the same way); target
+// 1.2u sits between the two existing humanoid heights already on screen
+// (rogue_hooded's ~1.09u, mage's ~1.33u at their own shared 0.5 scale).
+const WAYFARER_HEIGHT = 1.2;
+
+export async function spawnWayfarer(world, post) {
   if (!post || world.wayfarer) return null;
-  const anims = rigAnims
-    || (await loadGLB('./assets/anims/rig-medium-general.glb')).animations;
-  const gltf = await loadGLB('./assets/chars/rogue_hooded.glb');
-  const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-  model.scale.setScalar(0.5);
-  // ONE material (`rogue`, a texture atlas) covers the whole figure, so one
-  // clone-and-multiply washes all of him and nothing else in the room.
-  model.traverse((n) => {
-    if (!n.isMesh) return;
-    n.material = n.material.clone();
-    n.material.color.setHex(WAYFARER_TINT);
-  });
+  const gltf = await loadGLB('./assets/chars/wayfarer.glb');
+  const model = prepareModel(gltf.scene.clone());
+  const bb = new THREE.Box3().setFromObject(model);
+  const size = bb.getSize(new THREE.Vector3());
+  const s = WAYFARER_HEIGHT / Math.max(size.y, 0.001);
+  // Recentre/ground in RAW model units, then let the holder's own scale
+  // carry both the geometry and this offset together — the same math
+  // js/dragonEggs.js's DragonShrine/spawnDragonSkeletonHint already use.
+  model.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.scale.setScalar(s);
   world.addCircle(post.x, post.z, 0.35); // solid, like every other friend
-  const npc = characterNpc(world, {
-    model, id: 'tam', x: post.x, z: post.z, ry: post.ry,
-    rigAnims: anims, gestureName: 'Idle_B',
+  const npc = staticCharacterNpc(world, {
+    model: holder, id: 'tam', x: post.x, z: post.z, ry: post.ry,
   });
 
   // THE SHARD. Same geometry, same emissive colour and same slow bob as the

@@ -5700,3 +5700,50 @@ One thing recorded for the next person: **a rime minion cannot cost a crossing
 at any distance.** `SkeletonMinion` has `senseRange 3.4` and `awakenTime 1.9`,
 and a runner covers 4.3u/s — it is six metres past before the thing has finished
 standing up. Shuffling one two metres sideways looks like a fix and is not.
+
+### Three commissioned faces (v3.184.0)
+
+Dad supplied three Tripo AI models with a one-line brief each: "have the
+wizard replace the guy who allows you to fast travel. Use the witch as a NPC
+in the village. Have the old man be the merchant. All these characters don't
+move, therefore using them as they are should be fine." Three real,
+one-off replacements:
+
+- **Tam the Wayfarer** (`assets/chars/wayfarer.glb`) — was Wren's own
+  `rogue_hooded` body washed moon-blue, the only way to keep him legible as
+  a different person while sharing her model. A dedicated model needs no
+  wash; he keeps his own blue-and-gold colouring now.
+- **The Den's shopkeeper** (`assets/chars/merchant.glb`) — was `mage.glb`
+  in her own colours. The old man's backpack alone tells you what he does
+  before Pip says a word.
+- **The Village Square's own settler** (`assets/chars/witch.glb`) — was
+  also a `mage.glb` reskin (`square_settler`). One of the three village
+  settlers, picked because the square is the most visible spot a distinct
+  face should stand.
+
+None of the three ships with a skeleton — a real mesh, no `Idle_A`/gesture
+clips to bind, which is exactly what "these characters don't move" means in
+this game's own terms. `js/npcs.js` gained `staticCharacterNpc()`, the
+`characterNpc()` sibling for a body with nothing to animate: it still joins
+the shared `npcList`/`updateNpcs` loop (so the whole-body turn-to-greet a
+child gets from every other NPC still applies, for free — no skeleton
+needed for that), it just never touches `AnimationMixer.clipAction()`.
+`spawnSettlers()` (js/restoration.js) picked up a `post.rigid` flag rather
+than a second code path per caller, since nine of its ten posts are still
+ordinary `mage.glb` reskins and only the Square's is not.
+
+**A real bug found while fixing an unrelated test fixture, not by this
+change.** `tools/verify-wayfarer.mjs`'s own `HEARTHS` list — the rooms its
+§7 checks Tam's post in — had been left at `['la']` since v3.131, four
+version bumps after the other six regions' hearths shipped their own posts
+(v3.139-142). Updating it to all seven surfaced two real, pre-existing
+failures that had simply never been exercised: Tam's post at `t1a` sits on
+a real collider, and his post at `x1` (the Court's own hearth) never
+actually arms — `WS.get('court','seen_4')` never gets set because nothing
+found reaches `growthStage('court') === 4` exactly rather than jumping
+straight to 5. Proven not caused by this session's own NPC swap (`git
+stash` of every production file this session touched, rerun against the
+ORIGINAL rogue_hooded/mage.glb bodies with only the `HEARTHS` fix applied:
+byte-identical failures). Recorded in `tools/known-fail.txt` rather than
+either silently reverting the fix or chasing a `court`-vs-`grimmFreed`
+design question this task never asked.

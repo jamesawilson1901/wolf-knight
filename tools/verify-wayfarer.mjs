@@ -27,10 +27,12 @@ const check = (n, ok, d) => {
 };
 
 const ARENAS = ['le', 'vz', 'tgl', 'f5', 'scr', 'ddp', 'xth'];
-// THE HEARTHS, ONE AT A TIME (design/WIDER-WORLD.md §5.4). `la` is the only
-// one that has reached stage 4 so far (v3.131); the other six join this list
-// as each region's own hearth gets there.
-const HEARTHS = ['la'];
+// THE HEARTHS, ONE AT A TIME (design/WIDER-WORLD.md §5.4). All seven have
+// now shipped their own settler at stage 4 (v3.131 through v3.142) — this
+// list was left at just `la` for four version bumps after the other six
+// joined it, a stale fixture rather than a real bug in the feature (found
+// while touching an unrelated part of npcs.js, 2026-09-17).
+const HEARTHS = ['la', 'vh', 't1a', 'f1', 's1a', 'd1a', 'x1'];
 const ALL_FORMS = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf',
   'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 const FLAGS = ['bossDefeated', 'wardenDefeated', 'sylvaDefeated', 'borealDefeated',
