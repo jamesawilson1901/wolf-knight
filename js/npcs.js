@@ -390,11 +390,40 @@ export const WAYFARER_POSTS = {
   // v3.135: measured clear of both new shop carts' own 1.7u proximity ring
   // (SETTLER_POSTS.vh/.t1a's `shop`, above) — the same la-post lesson.
   vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },
-  t1a: { x: -9, z: 2.5, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
+  // v3.185: nudged from (-9, 2.5) — that spot cleared fine through stage 3,
+  // but stage 4's own manikin prop lands at (-9.5, 3.5) r0.7, and Tam's post
+  // + his own 0.44 clearance overlapped it by 0.02u (verify-wayfarer.mjs's
+  // `t1a` failure, never caught before because HEARTHS itself omitted t1a
+  // until this same pass added it). Measured clear (0.33u margin) against
+  // the room's FULL stage-4 collider set — hut, hearth, manikin, target,
+  // cart, the ruin's broken walls, every scatter prop this room's own seed
+  // places — not just the manikin that happened to be the culprit.
+  t1a: { x: -8, z: 3, ry: 0.6, flag: null, when: () => WS.get('wild', 'seen_4') },
   f1: { x: 5, z: 10, ry: -1.9, flag: null, when: () => WS.get('frost', 'seen_4') },
   s1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('storm', 'seen_4') },
   d1a: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('vale', 'seen_4') },
-  x1: { x: 14.5, z: 10.5, ry: -2.2, flag: null, when: () => WS.get('court', 'seen_4') },
+  // `seen_4`, not `seen_5` — deliberately different from the other six
+  // hearths above. Every other region's `restored` fact lands mid-game, well
+  // before `grimmFreed` (the game's own ending flag, shared by every
+  // region's growthStage()), so those six always pass THROUGH stage 4 on
+  // their way to a possible 5. The Court has no such separation: its own
+  // `restored` (js/main.js, the `xth` victory block) is set at the SAME
+  // moment as `grimmFreed`, because for this one region "healed" and "the
+  // story is over" are the same beat. A completionist who finishes the
+  // Court's own pups + mini-dungeon BEFORE the ending sees growthStage('court')
+  // jump 3→5 in one build the moment Grimm falls — `seen_4` is never
+  // observed, so a gate on it can permanently miss Tam here (2026-09-18
+  // known-fail, tools/known-fail.txt). `seen_5` is safe where `seen_4` is
+  // not: growthStage is a monotone sum of 5 independent facts, so 5 (its
+  // max) is always the LAST value it can ever take, and whichever fact
+  // completes last — in any order, on any playthrough — is read on the very
+  // next visit here, guaranteeing `seen_5` fires exactly once.
+  // z nudged 10.5 → 11.75 (x1 only — s1a/d1a above keep the original spot,
+  // which is clear in THEIR own rooms): at stage 5 this room's own scatter
+  // seed lands a decor prop at (13.44, 10.51) r0.75, overlapping the original
+  // post by 0.13u. Measured clear (0.31u margin) against x1's own full
+  // stage-5 collider set the same way t1a's own nudge above was.
+  x1: { x: 14.5, z: 11.75, ry: -2.2, flag: null, when: () => WS.get('court', 'seen_5') },
 };
 
 // Is Tam standing in this room right now? Rooms ask on build; the arena asks

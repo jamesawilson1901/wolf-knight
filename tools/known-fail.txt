@@ -83,6 +83,39 @@
 # §5's 60s window.
 verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09
 # ---------------------------------------------------------------------------
+# 2026-09-18: triaged this as the standing P0 and spent a session trying to
+# root-cause it rather than just re-confirm it. Findings, for whoever picks
+# this up next:
+#   - It is genuinely FLAKY, not a deterministic hang. Direct repro
+#     (window.__wkJump('vz',...) right after landing in `n1` from `le`,
+#     polling window.__wk every 1s) resolved cleanly in 1-2s on most runs but
+#     hung 19+ seconds with `window.__wk.room` stuck on the PREVIOUS room
+#     (`n1`), hearts at 0, and `gates.transitioning` reading FALSE the whole
+#     time, on at least one run.
+#   - That last detail is the odd one: `player.hurt()` → `damage()` calls
+#     `onDefeated()` synchronously when hearts hit 0, and `respawnAtCheckpoint()`
+#     sets `transitioning = true` as its very first line, before any `await`.
+#     So a hang with `transitioning: false` the whole window means
+#     `respawnAtCheckpoint()` never started at all — not that it started and
+#     stalled partway through. Something upstream of it (the defeat hook
+#     itself, or state left over from the PRECEDING `le` jump/perk-card loop)
+#     is the more likely culprit than anything inside the respawn/build path.
+#   - Added temporary `console.log` tracing to every await boundary inside
+#     `respawnAtCheckpoint()` (js/main.js) and re-ran the repro, including the
+#     suite's own §1-4 probe phase first (in case that phase leaves shared
+#     state — e.g. `state.flags`, `world` — in a shape that only bites on the
+#     SECOND jump). Every instrumented run resolved cleanly; none caught the
+#     hang in the act, so the exact stall point remains unobserved. The
+#     instrumentation was reverted (not committed) since it never caught
+#     anything worth keeping.
+#   - Next person: instrument `player.onDefeated`/`hurt()`/`damage()` itself
+#     (not just `respawnAtCheckpoint()`) to confirm whether the defeat hook
+#     even fires on a hung run, and consider whether the `le` section's own
+#     perk-card click loop can leave `paused`/`menuPaused` true on the rare
+#     run where a card is still mid-flight when §5 moves on to `vz` — either
+#     gate would silently stall the world clock the same way and read as
+#     this exact symptom from the outside.
+# ---------------------------------------------------------------------------
 # 2026-09-10, v3.136 (MINI_ROSTER + the Root Cellar, design/WIDER-WORLD.md
 # §2.6): two more found while verifying that slice, neither touched by it.
 #
@@ -152,19 +185,41 @@ verify-grounded.mjs | lv1's Skull_Cylinder000 floats 1.82u above the floor at (6
 # session and stays there, and either give the suites a longer settle before
 # their baseline read or make the effect's own steady-state cost part of the
 # expected baseline instead of the ±3 noise band.
-verify-minigame.mjs | "draw calls return to where they started" fails by 5-10, landing on a stable (not noisy) new value — proven NOT a teardown leak (scene child count matches before/after; a pure 20s idle probe with no minigame touched at all reproduces the same 80→90 jump) — some Den transient effect ramps to a steady state over real time and the suite's baseline is read before it settles | 2026-09-10
-verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10
-# BOTH found 2026-09-18 while fixing a stale test fixture, not while touching
-# either room: verify-wayfarer.mjs's own `HEARTHS` constant (§7) had been
-# left at `['la']` since v3.131 — four version bumps (v3.139-142) shipped
-# the other six regions' hearth wayfarers without anyone adding them to this
-# list, so t1a's and x1's own posts had never once been exercised. Proven
-# NOT caused by the same-session NPC body swap (Tam/the shopkeeper/the
-# Square's own settler all got new commissioned models in v3.184): `git
-# stash` of every production file touched that session, rerun against the
-# ORIGINAL rogue_hooded/mage.glb bodies with only the HEARTHS fix applied —
-# byte-identical failures, same two rooms, same shape. Not a literal
-# git-worktree-of-main check per this file's own §6, but the same question
-# answered the same way: this branch's own last commit, untouched by the
-# session's actual changes, fails identically.
-verify-wayfarer.mjs | t1a: "clear:false" — Tam's own post (-9, 2.5) at stage 4 overlaps a real collider, never caught because t1a was missing from HEARTHS. x1: "there:false" — Tam never spawns at the Court hearth at all; WAYFARER_POSTS.x1 gates on WS.get('court','seen_4'), which spawnSettlers() only ever sets the first time growthStage('court') is observed at exactly 4, and no live playthrough or test path has been found that reaches exactly 4 for 'court' rather than jumping straight past it — needs a real design look at whether stage 4 is reachable for the game's own final region before either post can be trusted | 2026-09-18
+# 2026-09-18: dug further rather than just re-confirming. Two things this
+# session's own instrumentation RULED OUT as the (sole) cause:
+#   - The suites' `restCalls()` settle step ("wait 60 requestAnimationFrame
+#     calls") IS provably unsound in this headless environment — a direct
+#     idle probe with camera position logged every real second showed it
+#     FROZEN for 13 straight real seconds, then jumping, which a fixed frame
+#     count cannot account for (60 rAF calls can span under a second or
+#     twenty, unpredictably). Fixed in both suites below: `restCalls()` now
+#     polls `camera.position` itself until it stops moving, rather than
+#     counting frames. This is a real, separate, now-fixed bug — but fixing
+#     it did NOT close the gap (before/after moved from ~83/~88 to ~91/~96,
+#     same 5-call delta), so it was not the whole story.
+#   - Blocking narration freezing the world (js/main.js's `if
+#     (narration.blocking) return`) was the FIRST suspect once the camera
+#     freeze above was seen, since a caption's read-timer would explain a
+#     multi-second stall exactly like it — but both suites explicitly set
+#     `captions = false; voice = false` before ever touching the Den, and
+#     `narration.blocking`'s own getter (js/narration.js:504) requires
+#     `captions || voice` to be true. Confirmed live: `blocking` read
+#     `false` for the suites' entire configuration, every sample, so this
+#     is not it either.
+# What remains, confirmed live with captions/voice off and the camera
+# genuinely stationary throughout (so neither ruled-out cause applies): calls
+# and triangles BOTH still jump — 88→93 calls, +~1900 triangles — in a fixed
+# window around 14-15 real seconds into a Den visit, and then hold flat
+# exactly like before. It is NOT a scene-graph change: a full mesh-by-mesh
+# visible-vertex-count diff across the jump is byte-identical before and
+# after (same names, same counts) — ruling out a delayed NPC/prop spawn or
+# anything else actually being ADDED to `scene`. Triangles inflating without
+# the named mesh set changing points at the renderer submitting EXISTING
+# geometry more than once per frame — most likely an additional shadow-map
+# pass for a light that starts casting (or updates on some new cadence)
+# around that mark — rather than at new content. Next step: instrument
+# `renderer.shadowMap` / each light's `.castShadow`/`.shadow.needsUpdate`
+# rather than the scene graph, since that is the one avenue this session
+# didn't get to before running out of runway on a P3 item.
+verify-minigame.mjs | "draw calls return to where they started" fails by ~5, landing on a stable (not noisy) new value — proven NOT a teardown leak, NOT the settle-frame-count heuristic (fixed, gap persisted), NOT blocking narration (ruled out live) — an unidentified extra render (shadow?) pass starts ~14-15s into a Den visit with the scene graph itself provably unchanged | 2026-09-10, redug 2026-09-18
+verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10, redug 2026-09-18

@@ -5747,3 +5747,75 @@ ORIGINAL rogue_hooded/mage.glb bodies with only the `HEARTHS` fix applied:
 byte-identical failures). Recorded in `tools/known-fail.txt` rather than
 either silently reverting the fix or chasing a `court`-vs-`grimmFreed`
 design question this task never asked.
+
+### Bug triage (v3.185.0)
+
+Dad: "start fixing bugs. Triage them first." Four items sat in
+`tools/known-fail.txt`; worked in priority order.
+
+**P0 — `verify-onward.mjs` §5's `vz` crash.** Already a properly-proven
+known-fail from 2026-09-09, not something this session introduced. Spent a
+session trying to root-cause it anyway rather than just re-confirming it —
+confirmed it is genuinely flaky (resolves in 1-2s most runs, hangs 19s+ on
+others) and ruled out `respawnAtCheckpoint()` itself as the visible stall
+point (instrumented every `await` in it; every instrumented run resolved
+cleanly, never catching the hang in the act). Root cause still open;
+findings recorded in `tools/known-fail.txt` for whoever continues, including
+the specific clue that a hang reads `transitioning: false` throughout, which
+means the respawn function never STARTS on a hung run rather than starting
+and stalling partway — the more useful places to look next are the defeat
+hook itself and leftover `paused`/`menuPaused` state from the room before.
+
+**P1 — Tam's post at `t1a` overlapped a collider.** Not a coordinate typo:
+`WAYFARER_POSTS.t1a` (-9, 2.5) was clear through stage 3, but stage 4's own
+`manikin` prop (STAGE_CLUTTER.t1a[4]) lands at (-9.5, 3.5) with a 0.7u
+collider, and Tam's own 0.44u clearance overlapped it by 0.02u — a margin
+too small to have ever been eyeballed, only measurable. Fixed by nudging the
+post to (-8, 3), a spot measured clear (0.33u margin) against the room's
+FULL stage-4 collider set — every wall, hut, hearth, manikin, target, cart
+and scatter prop this room's own seed places — not just the one that
+happened to be the culprit, so this doesn't reappear at some other prop's
+edge on a future scatter-seed change.
+
+**P2 — Tam never spawns at the Court's own hearth (`x1`) at all.** The real
+bug this triage's own known-fail entry flagged as needing a design call, not
+just a nudge. `growthStage(key)` sums five independent facts (`restored`,
+pups home, keepsake found, dungeon cleared, `grimmFreed`), and every
+`WAYFARER_POSTS` hearth gates on `WS.get(key,'seen_4')` — the moment
+`spawnSettlers()` first observes exactly 4. That works for six regions
+because their own `restored` fact lands mid-game, well before the game's
+own ending sets `grimmFreed`. The Court is different by design: its
+`restored` (js/main.js's `xth` victory block) is set at the SAME beat as
+`grimmFreed`, because for this one region "healed" and "the story is over"
+are literally the same moment. A player who finishes the Court's own pups
+and mini-dungeon (its `court_chancellor` guardian) BEFORE the ending sees
+`growthStage('court')` jump 3→5 in one build the instant Grimm falls —
+`seen_4` is never observed, so a gate on it can permanently miss Tam here.
+Fixed by gating `WAYFARER_POSTS.x1` on `seen_5` instead: growthStage's own
+maximum, which — being a monotone sum — is guaranteed to be observed
+exactly once on whichever visit happens to be the one after the LAST of the
+five facts completes, in any order, on any playthrough. Also moved x1's own
+post 1.25u north: at stage 5 this room's own scatter seed lands a decor
+prop right where the original spot sat, the same class of bug as `t1a`
+above. `tools/verify-wayfarer.mjs`'s own `setStage()` test helper had a
+matching gap — it had no way to set the Court's four relic flags at all
+(`KEEPSAKE` has no `'court'` entry; the Court's own keepsake fact is
+`COURT_RELICS`, a special case in `keepsakeFoundFor()`) — fixed alongside,
+and the suite's §7 loop now tests `x1` at its own real gate (stage 5) rather
+than the generic stage 4 every other hearth uses.
+
+**P3 — Den minigame draw-call drift (`verify-minigame.mjs`,
+`verify-mg-quiz.mjs`).** Dug further without fully closing it — see
+`tools/known-fail.txt`'s own updated entry for the detail. Ruled out two
+real candidates by direct instrumentation: the suites' "wait 60
+`requestAnimationFrame` calls" settle heuristic is provably unsound in this
+headless environment (a camera position log caught it frozen 13 real
+seconds then jumping — 60 rAF calls do not represent a fixed slice of real
+time here) — fixed in both suites by polling the camera's own position
+until it stops moving instead. And blocking narration was ruled out
+directly (both suites already disable captions/voice, and
+`narration.blocking`'s own getter requires one of those to be on). Neither
+fix closed the gap; what remains is a still-unidentified extra render pass
+that starts 14-15 real seconds into a Den visit with the scene graph itself
+provably unchanged — the next lead is each light's own shadow-casting
+state, not the object list.
