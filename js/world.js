@@ -410,8 +410,8 @@ export class World {
 
   separateProps() {
     if (typeof window !== 'undefined' && window.__noSeparate) return null;
-    const MOVABLE_HALF = 1.2;   // a barrel or a crate, not a tent or a wagon
-    const MOVABLE_H = 2.0;      // ...and knee-to-chest, never a tree
+    const MOVABLE_HALF = 1.2;   // a barrel, a crate, a scattered fir — not a
+    const MOVABLE_H = 3.2;      // shrine, a gate or a landmark tree
     const PEN = 0.12;           // a whisker of contact is contact, not a merge
     const REACH = 1.5;          // nothing is ever teleported across a room
     const props = this.propFootprints();
@@ -450,10 +450,19 @@ export class World {
       .some((m) => Math.hypot(m.x - p.x, m.z - p.z) < 1.5);
     const inWall = (p) => this.boxColliders
       .some((b) => p.x > b.minX && p.x < b.maxX && p.z > b.minZ && p.z < b.maxZ);
-    // ...and a size ceiling on top, so "dressing" still never means a tent, a
-    // tree, a shrine or a wagon. Measured in the Den: a crate is 1.8 x 1.9 x
-    // 1.3 and a tree is 1.6 x 1.5 x 2.9 — the crate has the WIDER footprint, so
-    // width alone cannot tell them apart and height is what does.
+    // ...and a size ceiling on top, so "dressing" never means a shrine, a gate
+    // or a landmark. WIDTH is what draws that line, not height: measured in the
+    // Den a crate is 1.8 x 1.9 x 1.3 and a tree is 1.6 x 1.5 x 2.9, so the
+    // crate has the wider footprint of the two and a height rule would keep the
+    // wrong one. Height only rules out the genuinely enormous (g2's landmark
+    // tree is 5.5 x 5.5 x 5.1).
+    //
+    // The ceiling started at 2.0 tall and had to come up. Frostpeak is dressed
+    // with scattered firs — 1.0 wide, 2.26 tall — and the commonest single bug
+    // in the game is one of those standing inside a snow drift. At 2.0 the pass
+    // called every fir a landmark and left 131 of f1's 138 halves untouchable,
+    // which is most of the residue it was written to clear. A scattered tree is
+    // clutter here, and a tree inside a rock is the bug, not the furniture.
     const movable = (p) => p.hx <= MOVABLE_HALF && p.hz <= MOVABLE_HALF
       && p.h <= MOVABLE_H
       && !gameplayGroups.has(p.owner) && !gameplayGroups.has(p.model)
@@ -514,7 +523,6 @@ export class World {
     // vase a metre from where the arithmetic said it was going.
     const shift = (p, x, z) => {
       const dx = x - p.x, dz = z - p.z;
-      for (const c of decorNear(p.x, p.z, Math.max(0.6, p.r))) { c.x += dx; c.z += dz; }
       if (p.inst !== undefined && p.inst !== false) {
         shiftInstance(p, dx, dz);
         p.x = x; p.z = z;
@@ -564,6 +572,18 @@ export class World {
           continue;
         }
         const other = p === small ? big : small;
+        // LIFT THE PROP'S OWN COLLIDER BEFORE LOOKING FOR SOMEWHERE TO PUT IT.
+        // solidifyProps has already dropped a 'decor' circle on this very prop,
+        // so `freeAt`'s resolveCircle test would find the prop's own collider
+        // sitting in every nearby candidate spot and reject the lot — pushing
+        // small moves out into big ones and, where the room is tight, calling a
+        // perfectly good gap "nowhere clear" and deleting the prop instead.
+        const ox = p.x, oz = p.z;
+        const own = decorNear(ox, oz, Math.max(0.6, p.r));
+        for (const c of own) {
+          const k = this.circleColliders.indexOf(c);
+          if (k >= 0) this.circleColliders.splice(k, 1);
+        }
         // straight out from the thing it is inside, then round the compass
         let ang = Math.atan2(p.z - other.z, p.x - other.x);
         if (!isFinite(ang) || (p.x === other.x && p.z === other.z)) ang = 0;
@@ -580,6 +600,13 @@ export class World {
             shift(p, nx, nz);
             placed = true;
           }
+        }
+        // ...and the collider follows it to wherever it ended up. If it could
+        // not be placed the prop is about to go, and its circle goes with it by
+        // simply never being handed back.
+        if (placed) {
+          const ddx = p.x - ox, ddz = p.z - oz;
+          for (const c of own) { c.x += ddx; c.z += ddz; this.circleColliders.push(c); }
         }
         if (!placed) {
           // NOWHERE CLEAR TO STAND, so it does not stand. One copy of an
@@ -598,12 +625,7 @@ export class World {
           } else if (p.model.parent) {
             p.model.parent.remove(p.model);
           }
-          // ...and a prop that is gone leaves no solid patch of nothing behind
-          for (const c of decorNear(p.x, p.z, Math.max(0.6, p.r))) {
-            const i = this.circleColliders.indexOf(c);
-            if (i >= 0) this.circleColliders.splice(i, 1);
-          }
-          p.gone = true;
+          p.gone = true;   // its circle was lifted above and is not handed back
           dropped.push({ x: +p.x.toFixed(1), z: +p.z.toFixed(1), pen: +pen.toFixed(2) });
         }
       }
