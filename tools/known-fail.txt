@@ -257,3 +257,11 @@ verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each sta
 # v3.186's own bug (the global reachability fix two commits up), confirmed
 # fixed across every room in the game, not just xa1.
 verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same two pre-existing landings verify-landings.mjs already names, proven the same way | 2026-09-18
+# 2026-09-18, same sweep: verify-gauntlet.mjs's only failure, both through
+# the nightly gate (two serial runs, same result) and earlier via a direct
+# --raw comparison — f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line)
+# takes 0 hits instead of the expected graze. Byte-identical with
+# window.__noSeparate=true, so v3.186's separateProps() pass changed nothing
+# about this room's foe placement or the sprint line; f1b's own encounter
+# was already too sparse/short for this check's floor before today.
+verify-gauntlet.mjs | f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line) takes 0 hits instead of a graze — proven pre-existing via byte-identical --raw comparison, unrelated to v3.186's separateProps() | 2026-09-18
