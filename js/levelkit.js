@@ -478,15 +478,38 @@ export function makeBuilders({ kit, isGrey }) {
   }
 
   // An INTERIOR wall run — what makes a room a shape instead of a box.
+  //
+  // TWO WALLS SHARING A CORNER USED TO DOUBLE IT. A run places one piece at
+  // f=0 and one at f=1 — its own two endpoints — so it can be chained: room
+  // shapes are built from several wallRun() calls end to end (g2's nook is
+  // three: (10.5,-12.5)→(10.5,-7), (10.5,-7)→(12.2,-7), (14.6,-7)→(16,-7)).
+  // The corner where two of those calls MEET is one point in space, but each
+  // call places its own full piece there with no knowledge of the other —
+  // two whole cliff pieces stacked exactly on top of each other, which is
+  // exactly the "amateur and cheap" interpenetration this whole pass exists
+  // to catch (verify-interpenetration.mjs's 2026-09 sweep: the same corner,
+  // by coordinate, recurring across g1/g2/c1/xa1 and others — every room
+  // that turns a corner with two wallRun() calls has this). Fixed with a
+  // per-room registry of claimed endpoints on `world` itself: the first call
+  // through a given corner places it, same as before; the second sees it
+  // already claimed and leaves its own matching endpoint piece out, since
+  // the first call's piece already seals the join.
   function wallRun(world, x0, z0, x1, z1, D, height = 1.6) {
     if (GREY()) return protoWall(world, x0, z0, x1, z1, { height, tint: D.tint });
     const dx = x1 - x0, dz = z1 - z0;
     const count = Math.max(1, Math.round(Math.hypot(dx, dz)));
+    const claimed = world._wallRunEnds || (world._wallRunEnds = new Set());
+    const key = (x, z) => Math.round(x * 4) + ',' + Math.round(z * 4); // quarter-unit grid
     const places = [];
     for (let i = 0; i < count; i++) {
       const f = count === 1 ? 0.5 : i / (count - 1);
-      places.push({ x: x0 + dx * f, z: z0 + dz * f, ry: ((i * 3) % 4) * Math.PI / 2,
-        sy: height + (i % 3) * 0.12 });
+      const x = x0 + dx * f, z = z0 + dz * f;
+      if ((i === 0 || i === count - 1) && count > 1) {
+        const k = key(x, z);
+        if (claimed.has(k)) continue;
+        claimed.add(k);
+      }
+      places.push({ x, z, ry: ((i * 3) % 4) * Math.PI / 2, sy: height + (i % 3) * 0.12 });
     }
     world.add(instancePlacements(K().cliff.scene, places, { materialTints: wallTintMap(D) }));
     const pad = 0.5;
@@ -510,6 +533,17 @@ export function makeBuilders({ kit, isGrey }) {
     const kit0 = K();
     let s = seed * 9301;
     const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    // ONLY "big" rocks ever registered a world collider (below), so two SMALL
+    // rocks — or a small rock and a big one — could land on the identical
+    // random spot with nothing to stop either: world.blocked() only sees
+    // registered colliders, and a small rock never became one. Across many
+    // rooms calling scatter() with similar halfW/halfD and small seed values,
+    // that RNG collision recurred at the same relative offset room after
+    // room (verify-interpenetration.mjs's 2026-09 sweep). Fixed by having
+    // this call remember every spot IT has placed so far, big or small, and
+    // skip a candidate that lands on one of its own — the same self-avoidance
+    // `world.blocked` already gives every rock against everything ELSE.
+    const placed = [];
     for (let i = 0; i < count; i++) {
       const edge = i % 4;
       const along = (rnd() - 0.5) * 2;
@@ -527,6 +561,8 @@ export function makeBuilders({ kit, isGrey }) {
       // in the whole toolkit to drop a rock on a chest's only approach
       if (world.blocked(x, z, 0.9)) continue;
       const big = /rockL|Column|Brick/.test(kind);
+      const myR = (big ? 0.75 : 0.45) * scale;
+      if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + myR)) continue;
       // SHADE IN THREE STEPS, NOT CONTINUOUSLY. A per-prop random float gave
       // every rock its own material and so its own draw call — twenty props
       // meant forty calls with shadows. Three discrete shades read the same to
@@ -539,6 +575,7 @@ export function makeBuilders({ kit, isGrey }) {
       rock.rotation.y = spin ? rnd() * Math.PI * 2 : Math.floor(rnd() * 4) * Math.PI / 2;
       rock.scale.setScalar((big ? 0.8 + rnd() * 0.5 : 0.6 + rnd() * 0.4) * scale);
       world.add(rock);
+      placed.push({ x, z, r: myR });
       if (big) world.addCircle(x, z, 0.75 * scale, 'decor');
     }
   }
