@@ -43,7 +43,7 @@ const FORM_ORDER = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_w
 // Those surfaces are also the ones where an emoji is doing least harm: they
 // are lists a child reads, not a control they aim at.
 const formIcon = (id, meta) => (PORTRAITS[id]
-  ? `<img class="form-portrait" src="${PORTRAITS[id]}" alt="${meta.label}">`
+  ? `<img class="form-portrait" src="${PORTRAITS[id]}" alt="${meta.label}" draggable="false">`
   : meta.icon);
 const PICK_RADIUS = 96; // px, distance of options from the hold point
 
