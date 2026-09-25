@@ -37,8 +37,16 @@ export const MATERIALS = {
 // An enemy's own `weakness` names the shard it pays in; anything with no
 // weakness (or a weakness this table doesn't know) pays in a Wisp instead of
 // silently dropping nothing.
+//
+// SOME ENEMIES CARRY TWO WEAKNESSES (js/enemies.js, e.g. Spitter's
+// `['tide', 'frost']`) — string concatenation on an array joins it with a
+// comma ('shard_tide,frost'), which is never a real material id, so every
+// two-weakness enemy silently paid in a Wisp regardless of which element
+// actually beat it. The first listed weakness is what its own combat text
+// already calls out first, so it is what pays here too.
 export function materialForWeakness(weakness) {
-  const id = 'shard_' + weakness;
+  const w = Array.isArray(weakness) ? weakness[0] : weakness;
+  const id = 'shard_' + w;
   return MATERIALS[id] ? id : 'wisp';
 }
 

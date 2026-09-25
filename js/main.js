@@ -27,6 +27,7 @@ import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes } from './nodes.js';
+import { MATERIALS } from './materials.js';
 import { spawnDragonShrines, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
 import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
@@ -2682,6 +2683,7 @@ async function start() {
   };
   lootEvents.onPotion = () => { player.addPotion(); renderPotions(player); };
   lootEvents.onRecipeFound = (r) => bigToast(`📜 New recipe: ${r.name}`);
+  lootEvents.onMaterial = (id) => { const m = MATERIALS[id]; if (m) bigToast(`${m.icon} +1 ${m.name}`); };
   progressEvents.onXp = () => renderLevel();
   progressEvents.onLevelUp = (level) => {
     audio.fanfare(); // C-E-G-C — a real moment, not a chime
