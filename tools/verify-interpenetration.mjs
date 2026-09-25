@@ -39,7 +39,16 @@ import { launchBrowser } from './launch.mjs';
 // Deliberate compositions that are NOT one group, named one at a time with a
 // reason each. A blanket tolerance would hide the next real one; this cannot.
 // { room, x, z, r, why } — touching props inside this circle are intended.
-const ALLOWED = [];
+const ALLOWED = [
+  // f2's three braziers (js/gates.js): freezeBrazier() draws an ice shell
+  // DELIBERATELY wrapping an unlit brazier's own torch stand — two separate
+  // world.add() calls (brazier()/freezeBrazier() aren't grouped the way
+  // ruinedHome()/heroProp() are) for what is one composed object ("sealed in
+  // ice"), not two things that landed on each other by accident.
+  { room: 'f2', x: -5.4, z: -1.2, r: 0.5, why: 'freezeBrazier(): the ice shell around brazier f2_b1' },
+  { room: 'f2', x: 0, z: -4.2, r: 0.5, why: 'freezeBrazier(): the ice shell around brazier f2_b2' },
+  { room: 'f2', x: 5.4, z: -1.2, r: 0.5, why: 'freezeBrazier(): the ice shell around brazier f2_b3' },
+];
 
 const errors = [];
 const check = (n, ok, d) => {
