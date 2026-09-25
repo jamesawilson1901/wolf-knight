@@ -455,8 +455,21 @@
     /* THE REAL ANIMAL, where there is one. js/titlescene.js renders a 3/4
        portrait of every wolf for the profile picker; the badge and the radial
        show it instead of an emoji (js/ui.js formIcon). Sized to sit exactly
-       where the glyph did so nothing else in either layout moves. */
-    .form-portrait { width: 46px; height: 46px; display: block; object-fit: contain; }
+       where the glyph did so nothing else in either layout moves.
+       An <img> is not an emoji glyph: the badge is a PRESS-AND-HOLD control
+       (js/input.js opens the radial picker on it), and a hold over a plain
+       <img> is also the mobile browser's own gesture for its native
+       "copy/save image" menu — touch-action/user-select on the page don't
+       reach that, only -webkit-touch-callout does. pointer-events: none
+       keeps the image from being the hit-tested element at all (the touch
+       lands on #form-badge/.pick-option behind it, which the picker's own
+       coordinate-based hit test in js/ui.js already doesn't need the image
+       for). Found 2026-09-25: the badge stopped opening the ring on a hold
+       and showed the OS image menu instead, dating to the portrait swap. */
+    .form-portrait {
+      width: 46px; height: 46px; display: block; object-fit: contain;
+      -webkit-touch-callout: none; -webkit-user-drag: none; pointer-events: none;
+    }
     #form-badge .form-portrait { width: 52px; height: 52px; }
     .pick-option .pick-label {
       font-size: 11px; color: #fff; font-weight: 700; letter-spacing: .02em;
@@ -1354,7 +1367,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.186.0</div>
+  <div id="badge">Wolf Knight &middot; v3.187.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.
