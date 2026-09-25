@@ -572,6 +572,17 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const P = D.propTint || D.floorTint;
     const sick = opts.sick || 0;                 // 0 = whole, 1 = wholly rotten
     const n = opts.trees !== undefined ? opts.trees : 3 + Math.round(rad * 0.5);
+    // CANOPY, at its own REAL size, not the walkable collider's. 0.55*sc is
+    // the deliberately-small GAMEPLAY radius (a child brushes under the edge
+    // of a canopy rather than being blocked by its full spread) — correct for
+    // "can a body stand here", wrong for "does this crown visually reach that
+    // one": a full tree's real crown measures closer to 1.1-1.4 at these
+    // scales (verify-interpenetration.mjs's 2026-09 sweep caught two of tc2's
+    // three trees overlapping by 1.2-1.3u despite passing this loop's own
+    // world.blocked() check every time, because that check used the small
+    // collider radius too). `grown` tracks each tree's own real spread
+    // separately from the walkable collider it still registers unchanged.
+    const grown = [];
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
       const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
@@ -579,20 +590,45 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       const dead = r() < sick;
       const gltf = dead ? pick(BARE, r) : pick(TREES, r);
       const sc = (dead ? 0.9 : 1.0) * (0.8 + r() * 0.5);
+      const crown = 1.1 * sc;
+      if (grown.some((p) => Math.hypot(p.x - px, p.z - pz) < p.r + crown)) continue;
+      grown.push({ x: px, z: pz, r: crown });
       // a sick tree is drained toward the corruption's colour rather than
       // simply darker — you can SEE what the wood is losing
       const col = dead ? mixHex(P, 0x4a3a52, 0.55) : P;
       place(world, g, gltf, 'grove', px, 0, pz, sc, r() * 6.28, 0, col);
       world.addCircle(x + px, z + pz, 0.55 * sc, 'decor');
     }
-    // undergrowth: walk straight through it
+    // UNDERGROWTH: WALK STRAIGHT THROUGH IT — but "no collider" is not the
+    // same question as "nothing else is already drawn here". This loop never
+    // asked either question: it could (and did — verify-interpenetration.mjs's
+    // 2026-09 sweep, tc2) land a bush or a rock straight on top of the canopy
+    // tree it planted a breath earlier in the loop above (that tree registers
+    // a collider specifically so a check like this WOULD have caught it — the
+    // check just never ran), or two undergrowth pieces on top of each other
+    // (neither one ever registers anything, so nothing stops that either).
+    // Both are read-only checks; nothing here starts registering a collider
+    // of its own, so grass and bushes stay walk-through exactly as before.
     const under = Math.round(rad * 3.2);
+    const grownUnder = [];
     for (let i = 0; i < under; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad * 1.25;
+      const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
       const roll = r();
+      const sc = 0.6 + r() * 0.7;
+      // A BUSH IS NOT A BLADE OF GRASS. 0.85*sc against the real measured
+      // spread of a placed bush/rock at this scale (0.73-1.11 across the
+      // range this loop uses) — a flat 0.5 first tried here, sized for the
+      // thin GRASS third of `roll`, left BUSHES/FROCKS (the other two
+      // thirds) still overlapping each other and the canopy above.
+      const spread = 0.85 * sc;
+      if (world.blocked(x + px, z + pz, spread)) continue;
+      if (grown.some((p) => Math.hypot(p.x - px, p.z - pz) < p.r + spread)) continue;
+      if (grownUnder.some((p) => Math.hypot(p.x - px, p.z - pz) < p.r + spread)) continue;
+      grownUnder.push({ x: px, z: pz, r: spread });
       const gltf = roll < 0.42 ? pick(GRASS, r) : roll < 0.72 ? pick(BUSHES, r) : pick(FROCKS, r);
-      place(world, g, gltf, 'grove', Math.cos(a) * dd, 0, Math.sin(a) * dd,
-        0.6 + r() * 0.7, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
+      place(world, g, gltf, 'grove', px, 0, pz,
+        sc, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
     }
     g.position.set(x, 0, z);
     world.add(g);
@@ -601,7 +637,10 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
 
   // Undergrowth with no canopy — the gaps between groves, and the thing that
   // makes a forest floor read as ALIVE rather than as a green plane. Nothing
-  // here takes a collider.
+  // here takes a collider — but see grove()'s own undergrowth loop above:
+  // that is a reason to skip REGISTERING one, not a reason to skip CHECKING
+  // for what is already there (a canopy tree, or a piece this same loop just
+  // placed) before drawing on top of it.
   function thicket(world, x, z, rad, D, opts = {}) {
     if (GREY()) return null;
     const g = new THREE.Group();
@@ -609,12 +648,21 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
     const P = D.propTint || D.floorTint;
     const sick = opts.sick || 0;
     const n = opts.n !== undefined ? opts.n : Math.round(rad * 5);
+    const grown = [];
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad;
+      const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
       const roll = r();
+      const sc = 0.55 + r() * 0.8;
+      // 0.85*sc, not a flat 0.5 — see grove()'s own undergrowth loop above,
+      // the same bug in the same pack of BUSHES/FROCKS kinds.
+      const spread = 0.85 * sc;
+      if (world.blocked(x + px, z + pz, spread)) continue;
+      if (grown.some((p) => Math.hypot(p.x - px, p.z - pz) < p.r + spread)) continue;
+      grown.push({ x: px, z: pz, r: spread });
       const gltf = roll < 0.5 ? pick(GRASS, r) : roll < 0.85 ? pick(BUSHES, r) : pick(FROCKS, r);
-      place(world, g, gltf, 'thicket', Math.cos(a) * dd, 0, Math.sin(a) * dd,
-        0.55 + r() * 0.8, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
+      place(world, g, gltf, 'thicket', px, 0, pz,
+        sc, r() * 6.28, 0, r() < sick ? mixHex(P, 0x4a3a52, 0.5) : P, false);
     }
     g.position.set(x, 0, z);
     world.add(g);
@@ -641,10 +689,20 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       if (down) restOnFloor(bm);
       world.addCircle(x + px, z + pz, (down ? 0.75 : 0.5) * sc, 'decor');
     }
+    // Groundcover, same gap as grove()'s own undergrowth: never checked
+    // against the trunks the loop above just planted (which DO register a
+    // collider) or against its own earlier pieces.
+    const grown = [];
     for (let i = 0; i < rad * 2.5; i++) {
       const a = r() * Math.PI * 2, dd = Math.sqrt(r()) * rad * 1.2;
-      place(world, g, pick(FROCKS, r), 'blight', Math.cos(a) * dd, 0, Math.sin(a) * dd,
-        0.5 + r() * 0.6, r() * 6.28, 0, P, false);
+      const px = Math.cos(a) * dd, pz = Math.sin(a) * dd;
+      const sc = 0.5 + r() * 0.6;
+      const spread = 0.85 * sc;
+      if (world.blocked(x + px, z + pz, spread)) continue;
+      if (grown.some((p) => Math.hypot(p.x - px, p.z - pz) < p.r + spread)) continue;
+      grown.push({ x: px, z: pz, r: spread });
+      place(world, g, pick(FROCKS, r), 'blight', px, 0, pz,
+        sc, r() * 6.28, 0, P, false);
     }
     g.position.set(x, 0, z);
     world.add(g);
