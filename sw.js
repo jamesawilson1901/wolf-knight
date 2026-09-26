@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.193.0';
+const CACHE_NAME = 'wolfknight-v3.194.0';
 
 const PRECACHE = [
   './',
@@ -30,6 +30,7 @@ const PRECACHE = [
   './js/input.js',
   './js/items.js',
   './js/juice.js',
+  './js/lava.js',
   './js/level1.js',
   './js/level2.js',
   './js/level3.js',
@@ -222,6 +223,8 @@ const PRECACHE = [
   './assets/audio/vo/grimm_taunt_6.ogg',
   './assets/audio/vo/guard_broken.ogg',
   './assets/audio/vo/guide_run.ogg',
+  './assets/audio/vo/gutter_done.ogg',
+  './assets/audio/vo/gutter_hint.ogg',
   './assets/audio/vo/hound_branch.ogg',
   './assets/audio/vo/icebrazier_hint.ogg',
   './assets/audio/vo/icebrazier_open.ogg',
@@ -231,6 +234,8 @@ const PRECACHE = [
   './assets/audio/vo/key_found.ogg',
   './assets/audio/vo/kiln_enter.ogg',
   './assets/audio/vo/kiln_order.ogg',
+  './assets/audio/vo/kiln_order_done.ogg',
+  './assets/audio/vo/kiln_order_wrong.ogg',
   './assets/audio/vo/kiln_shrine.ogg',
   './assets/audio/vo/lantern_hint.ogg',
   './assets/audio/vo/lantern_lit.ogg',
@@ -262,6 +267,9 @@ const PRECACHE = [
   './assets/audio/vo/moth_intro.ogg',
   './assets/audio/vo/night_road_dark.ogg',
   './assets/audio/vo/night_road_enter.ogg',
+  './assets/audio/vo/node_need_axe.ogg',
+  './assets/audio/vo/node_need_pickaxe.ogg',
+  './assets/audio/vo/node_work.ogg',
   './assets/audio/vo/obstacle_first.ogg',
   './assets/audio/vo/parry_praise.ogg',
   './assets/audio/vo/petra_den.ogg',
