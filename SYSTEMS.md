@@ -42,9 +42,12 @@ world-verb at once (quench/crack/cut/burn).
 state.moonGauge (0..1, persisted) fills from hits landed/taken +
 in-combat time (pots excluded via Breakable.scenery); Quicker Moon perk
 boosts fills, Moon Shard fills instantly. Full = gold act-here pulse on
-the HUD crescent; tap → 2.5s ceremony (red vignette #surge-vignette,
-rising blood moon, time-slow via effects.timeScale, forced morph, howl +
-bass + haptics, no-damage shockwave stun) → 10s surge (locked 1.25x Dark
+the HUD crescent; tap → 3.6s ceremony (red vignette #surge-vignette,
+the room darkens while a textured blood moon rises, time-slow via
+effects.timeScale, forced morph, howl + bass + haptics, the moon dives
+onto the nearest enemy (damage + stun at 2.6u), no-damage shockwave stun;
+own sfx moon-rise/moon-dive/moon-crash, authored by
+tools/make-moon-sfx.py) → 10s surge (locked 1.25x Dark
 Wolf, juice.weightBoost 1, x2 staggering bites, free lunge, regen,
 gauge-as-timer, 2s warning flicker, exhale revert). main.triggerSurge
 guards scripted beats/transitions.
@@ -52,9 +55,11 @@ guards scripted beats/transitions.
 ## Effects & juice (js/effects.js)
 Self-contained updaters: screen shake, hitstop, camera zoom punch
 (punch), time-slow (slow/timeScale — main scales enemy+boss dt),
-ground-slam ring, warm flood, surge ceremony (rising blood moon + red
-wash). main.js applies shakeOffset/zoom to the camera and freezes world
-updates during hitstop. js/juice.js is the ONE hit pipeline (tiers in
+ground-slam ring, soft textured ring (softRing), warm flood, surge
+ceremony (canvas-painted moon sprite + Kenney-sprite corona/streak/
+shockwave/smoke/scorch, one pooled Points; see design/FX.md). main.js
+applies shakeOffset/zoom to the camera, effects.dim to the light rig, and
+freezes world updates during hitstop. js/juice.js is the ONE hit pipeline (tiers in
 CONFIG.JUICE, weightBoost = surge tier promotion, pooled particles,
 haptics).
 

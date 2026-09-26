@@ -3038,6 +3038,13 @@ async function start() {
     const rig = world.lightScale !== undefined ? world.lightScale : 1;
     hemi.intensity = HEMI_BASE * rig * (1 - 0.94 * darkness);
     key.intensity = KEY_BASE * rig * (1 - 0.97 * darkness);
+    // THE BLOOD MOON'S NIGHT (js/effects.js surgeCeremony): the room's own
+    // light comes down while the moon rises, so the moon and its red light are
+    // the brightest things in the world for those few seconds. 0 otherwise.
+    if (effects.dim > 0) {
+      hemi.intensity *= 1 - effects.dim;
+      key.intensity *= 1 - effects.dim;
+    }
 
     effects.update(dt, t);
     juice.update(dt);
