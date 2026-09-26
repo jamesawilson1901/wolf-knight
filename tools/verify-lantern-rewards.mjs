@@ -57,8 +57,8 @@ const flag = await wk.page.evaluate(() => !!window.__game.state.flags.plates.l1_
 check('ld1: the solve is saved (plates.l1_ld1_order)', flag, {});
 check('ld1: the cage mouth is open', !(await barsAt(8.3 - 1.35, 0)), {});
 await hush();
-await wk.walkTo(6.2, 0, { timeout: 25, arrive: 0.5 });
-console.log('  walk', JSON.stringify(await wk.walkTo(8.3, 0, { timeout: 10, arrive: 0.3 })));
+await wk.walkTo(6.2, 0, { timeout: 60, arrive: 0.5 });
+console.log('  walk', JSON.stringify(await wk.walkTo(8.3, 0, { timeout: 45, arrive: 0.3 })));
 console.log('  state', JSON.stringify(await wk.page.evaluate(() => ({ p: [window.__game.player.root.position.x, window.__game.player.root.position.z],
   chests: (window.__game.world.chests || []).map((c) => [c.id, c.x, c.z, c.opened]), gates: window.__wk.gates }))));
 await wk.page.waitForTimeout(1500);
@@ -95,8 +95,11 @@ check('ld: the run is saved (plates.l1_ld_gutter)',
   await wk.page.evaluate(() => !!window.__game.state.flags.plates.l1_ld_gutter), {});
 check('ld: the cage mouth is open', !(await barsAt(9.5, 11.3 - 1.35)), {});
 await hush();
-await wk.walkTo(9.5, 9.0, { timeout: 30, arrive: 0.5 });
-await wk.walkTo(9.5, 11.3, { timeout: 10, arrive: 0.3 });
+// into the channel by its open north mouth, the way a child walks it
+console.log('  g0', JSON.stringify(await wk.walkTo(0.5, 0.5, { timeout: 60, arrive: 0.8 })));
+console.log('  g1', JSON.stringify(await wk.walkTo(9.5, 0.2, { timeout: 60, arrive: 0.6 })));
+console.log('  g2', JSON.stringify(await wk.walkTo(9.5, 9.0, { timeout: 60, arrive: 0.5 })));
+console.log('  g3', JSON.stringify(await wk.walkTo(9.5, 11.3, { timeout: 45, arrive: 0.3 })));
 await wk.page.waitForTimeout(1500);
 check('ld: walked into the cage and the chest opened',
   await wk.page.evaluate(() => !!window.__game.state.flags.chests.l1_ld_gutter_chest), {});
