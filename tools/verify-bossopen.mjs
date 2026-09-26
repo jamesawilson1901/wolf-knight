@@ -120,6 +120,59 @@ for (const room of ROOMS) {
   check(`${r.name}: ...and damage lands inside it`, r.hurtInWindow, r);
 }
 
+// THE BLOCK-MID-CHARGE ANIMATION LEAK. "The shadow grip wold gets stuck
+// halfway through getting up and is impossible to beat" — the boss's own
+// verb IS blocking its charge (skin.open = {by:'block'}), and that is the
+// one moment `_setAnim`'s tracked `_anim` didn't match what was actually
+// playing: crouch->charge starts `runAction` with a direct `.play()`,
+// bypassing `_setAnim`, so a topple firing mid-charge faded a stale clip
+// instead and left the run cycle blended under hurt/arise/idle forever.
+// The state machine itself resolved fine (confirmed by hand before this
+// suite existed) — the game just LOOKED frozen, which reads the same to a
+// five-year-old. Drive an actual charge, block it, take the knockdown, and
+// insist every locomotion weight is back at 0 once it's done.
+console.log('\n── the block-topple mid-charge does not leak a locomotion clip ──');
+let leakR = null;
+for (let a = 0; a < 6 && !leakR; a++) {
+  try {
+    await page.evaluate(() => { const g = window.__game;
+      g.player.iframes = 0; window.__wkJump('le', ['knight']); });
+    await page.waitForFunction(() => window.__game.world
+      && window.__game.world.roomId === window.__game.resolveRoom('le')
+      && window.__game.world.boss, null, { timeout: 40000 });
+    leakR = await page.evaluate(() => {
+      const g = window.__game, boss = g.world.boss, p = g.player;
+      boss.openT = 0; boss.action = 'crouch'; boss.actionT = 0.001;
+      // tick the real per-frame update (mixer included) until it commits to charge
+      for (let i = 0; i < 40 && boss.action !== 'charge'; i++) boss.update(0.05, i * 0.05, p);
+      if (boss.action !== 'charge') return { reachedCharge: false };
+      const wasDef = p.defending; const hadShield = p.form.def && p.form.def.shield;
+      p.defending = true; p.form.def = p.form.def || {}; p.form.def.shield = true;
+      p.iframes = 999;
+      p.root.position.x = boss.x + boss.core.position.x + boss.chargeDir.x;
+      p.root.position.z = (boss.z - 1.4 + boss.wolfOff.z) + boss.chargeDir.z;
+      boss._chargeHit = false;
+      boss._strike(p, 0); // the block: this is what "its own verb" means for this boss
+      p.defending = wasDef; if (p.form.def) p.form.def.shield = hadShield; p.iframes = 0;
+      const toppled = boss.action === 'dazed' && boss.openT > 0;
+      boss._hitCore(1, 'steel'); boss._hitCore(1, 'steel'); boss._hitCore(1, 'steel');
+      for (let i = 0; i < 70; i++) boss.update(0.05, 2 + i * 0.05, p); // clear downed+rising
+      const w = (act) => act ? act.getEffectiveWeight() : 0;
+      return { reachedCharge: true, toppled, finalAction: boss.action,
+        runW: w(boss.runAction), walkW: w(boss.walkAction) };
+    });
+  } catch (e) { leakR = null; }
+}
+check('reached charge with runAction actually playing', !!(leakR && leakR.reachedCharge), leakR);
+check('blocking mid-charge topples it (its own verb)', !!(leakR && leakR.toppled), leakR);
+check('runAction is not left blended after the knockdown resolves',
+  !!(leakR && leakR.runW < 0.01), leakR);
+// walkAction legitimately comes back once prowl resumes (that's the normal
+// locomotion cycle, not a leak) — only a non-zero weight OUTSIDE prowl is
+// the bug this guards.
+check('walkAction is not left blended either',
+  !!(leakR && (leakR.finalAction === 'prowl' || leakR.walkW < 0.01)), leakR);
+
 check('nothing threw during the run',
   errors.filter((e) => e.startsWith('PAGEERROR')).length === 0);
 await b.close();

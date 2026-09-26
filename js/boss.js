@@ -1206,7 +1206,16 @@ export class Shadowgrip {
         this.actionT = 1.0;
         this._chargeDist = 0;
         this._chargeHit = false;
+        if (this.walkAction) this.walkAction.fadeOut(0.15); // prowl's walk never
+        // stopped on its own crossing crouch->charge (neither state calls
+        // _setAnim) — left unfaded it kept blending under run/hurt/arise
+        // forever once anything (a mid-charge topple, e.g. the Shadowgrip's
+        // block-to-daze) later interrupted the charge before its own natural
+        // collapse, which is the only place that used to fade it.
         if (this.runAction) this.runAction.reset().play();
+        this._anim = 'run'; // played directly above, not via _setAnim — track it
+        // anyway so a later _setAnim (topple mid-charge) knows to fade THIS
+        // clip out instead of a stale one.
         if (this.attackAction) this.attackAction.reset().fadeIn(0.06).play();
         audio.play('whoosh', { volume: 0.9, rate: 0.7 });
         audio.play('growl', { volume: 0.8, rate: 0.55 });
