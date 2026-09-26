@@ -1504,6 +1504,37 @@ export async function buildLd(scene) {
     const nBox = world.boxColliders.length;
     const gate = bossGate(world, -6, -halfD, 0, emberKit.archDoorB, D.wallTint,
       { open: kilnOpen, portal: 0xff8a3a, height: 3.4 });
+    // THE LEAVES HAVE TO READ AS A GATE. bossGate tints its leaves the room's
+    // wall colour, which in lg4 is fine (it stands open); shut, the same dark
+    // brown against a dark wall read as a dark doorway — "at the moment it's
+    // nothing" all over again. Warm dressed stone, two iron bands across each
+    // leaf, a hot seam where they meet and an ember seal over the join: a door
+    // somebody built to keep the mountain in.
+    const seals = [];
+    for (const hinge of gate.children.filter((c) => c.isGroup && Math.abs(Math.abs(c.position.x) - 1.3) < 0.01)) {
+      const side = Math.sign(hinge.position.x);            // -1 left, +1 right
+      hinge.traverse((m) => {
+        if (!m.isMesh || !m.material) return;
+        m.material = m.material.clone();
+        if (m.material.color) m.material.color.setHex(0xb0875a);
+      });
+      const iron = new THREE.MeshStandardMaterial({ color: 0x2b2522, roughness: 0.6, metalness: 0.5 });
+      for (const y of [0.9, 2.5]) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.16, 0.08), iron);
+        band.position.set(-side * 0.65, y, 0.2);
+        hinge.add(band);
+      }
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.1, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x2a0d05, emissive: 0xff7a22, emissiveIntensity: 1.8 }));
+      seam.position.set(-side * 1.26, 1.6, 0.2);
+      hinge.add(seam);
+      seals.push(seam);
+    }
+    const seal = new THREE.Mesh(new THREE.CircleGeometry(0.42, 20),
+      new THREE.MeshStandardMaterial({ color: 0x3a1206, emissive: 0xff8a2a, emissiveIntensity: 1.6,
+        transparent: true, opacity: kilnOpen ? 0 : 1 }));
+    seal.position.set(0, 1.9, 0.26);
+    gate.add(seal);
     const key = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.3),
       new THREE.MeshStandardMaterial({ color: 0x2a0d05, emissive: 0xff7a22, emissiveIntensity: 1.6, roughness: 0.6 }));
     key.position.set(0, 4.15, 0.6);
@@ -1521,6 +1552,9 @@ export async function buildLd(scene) {
     let shut = !kilnOpen;
     world.onAnimate((t) => {
       key.material.emissiveIntensity = 1.3 + 0.5 * Math.sin(t * 2.2);
+      for (const sm of seals) sm.material.emissiveIntensity = 1.4 + 0.6 * Math.sin(t * 2.2 + 1);
+      if (!shut && seal.material.opacity > 0) seal.material.opacity = Math.max(0, seal.material.opacity - 0.03);
+      else if (shut) seal.material.emissiveIntensity = 1.3 + 0.5 * Math.sin(t * 2.2);
       glow.intensity = 3.0 + 0.8 * Math.sin(t * 2.2);
       if (!shut) return;
       const p = window.__game && window.__game.player;
