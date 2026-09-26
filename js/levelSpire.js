@@ -162,13 +162,24 @@ function stairPad(world, minX, maxX, minZ, maxZ, D) {
   const g = new THREE.Group();
   const w = maxX - minX, d = maxZ - minZ;
   // tile the pad with floor pieces so its EDGE is where the geometry ends —
-  // a pad drawn smaller than its safe zone teaches the wrong landing spot
+  // a pad drawn smaller than its safe zone teaches the wrong landing spot.
+  // ABOVE THE VOID'S OWN COVER: pit() lays its hole at +0.05 and m1's depth
+  // gradient at +0.055, over the whole band, pads included. At +0.02 the
+  // tiles were underneath both and the pads vanished into the abyss.
+  // Seated and sized from the tile's MEASURED box, not a guessed offset: the
+  // kit's floor tile has its top ~0.05 below its own origin and is not 2u
+  // across, so "y 0.07, scale 1.05" put its top at 0.018 and left gaps.
+  const bb = new THREE.Box3(), sz = new THREE.Vector3();
   for (let x = minX + 1; x < maxX; x += 2) {
     for (let z = minZ + 1; z < maxZ; z += 2) {
       const t = tinted(kit().floor, 'floor', D.floorTint);
       if (!t) continue;
-      t.position.set(x, 0.02, z);
-      t.scale.setScalar(1.05);
+      t.position.set(0, 0, 0); t.scale.setScalar(1); t.updateMatrixWorld(true);
+      bb.setFromObject(t).getSize(sz);
+      t.scale.set(2.1 / (sz.x || 2), 1, 2.1 / (sz.z || 2));
+      t.updateMatrixWorld(true);
+      bb.setFromObject(t);
+      t.position.set(x - (bb.max.x + bb.min.x) / 2, 0.08 - bb.max.y, z - (bb.max.z + bb.min.z) / 2);
       g.add(t);
     }
   }
@@ -177,11 +188,38 @@ function stairPad(world, minX, maxX, minZ, maxZ, D) {
     const b = tinted(kit().brick, 'brick', D.propTint);
     if (!b) break;
     const a = (i / 6) * Math.PI * 2;
-    b.position.set(cx + Math.cos(a) * (w / 2 - 0.3), 0.05, cz + Math.sin(a) * (d / 2 - 0.3));
+    b.position.set(cx + Math.cos(a) * (w / 2 - 0.3), 0.1, cz + Math.sin(a) * (d / 2 - 0.3));
     b.rotation.y = a;
     g.add(b);
   }
+  // ITS SIDE, FALLING AWAY. The camera looks north and down, so the face of a
+  // slab standing over a drop that it can see is the SOUTH one. Painting that
+  // face just past the pad's south edge — stone at the rim darkening into the
+  // abyss — is what turns "a lighter rectangle" into "a thing you stand ON,
+  // with nothing under its edge". The ground plane covers the whole room, so
+  // real depth can't be cut; this is the same illusion the depth gradient uses.
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.8),
+    new THREE.MeshBasicMaterial({ map: padFaceTexture(), transparent: true, depthWrite: false }));
+  face.rotation.x = -Math.PI / 2;
+  face.position.set(cx, 0.065, maxZ + 0.4);
+  g.add(face);
   world.add(g);
+}
+
+// not cached: a room teardown frees its textures, and three 4x64 canvases
+// cost nothing to remake
+function padFaceTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 4; cv.height = 64;
+  const c = cv.getContext('2d');
+  const grad = c.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, 'rgba(84,78,110,1)');     // the rim: stone, clearly lit
+  grad.addColorStop(0.18, 'rgba(58,53,82,1)');   // the face in its own shadow
+  grad.addColorStop(1, 'rgba(11,9,24,0)');       // gone into the dark
+  c.fillStyle = grad; c.fillRect(0, 0, 4, 64);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +294,12 @@ export async function buildM1(scene) {
     grad.addColorStop(1, '#393552');    // near shore
     cx.fillStyle = grad; cx.fillRect(0, 0, 16, 128);
     const tex = new THREE.CanvasTexture(cv);
+    // THE COLOURS ABOVE ARE sRGB, SO SAY SO. Without this three.js read the
+    // canvas as linear and brightened it on output: the '#0b0918' abyss
+    // rendered as pale lavender, the same shade as the pads, and dad saw
+    // "just a massive pit but doesn't look like one". pitTexture() in
+    // levelkit.js has always set this; this gradient never did.
+    tex.colorSpace = THREE.SRGBColorSpace;
     const fade = new THREE.Mesh(
       new THREE.PlaneGeometry(halfW * 2, 10.4),
       new THREE.MeshBasicMaterial({ map: tex })
