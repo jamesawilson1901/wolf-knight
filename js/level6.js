@@ -509,35 +509,54 @@ function dressShore(world, halfW, halfD, D, seed, opts = {}) {
     at(4.5, -8.5), at(6.5, 8.0), at(10.5, -4.0), at(11.5, 5.5),
     at(2.0, 9.5), at(8.5, 0.5), at(13.0, -9.0), at(3.0, -11.0),
   ];
+  // SELF-AVOIDING, LIKE js/level7.js's dressCourt() (same idiom, same bug,
+  // found and fixed there first): the eight nominal spots above are spawn
+  // plus a fixed offset clamped into the room, and a spawn facing near a wall
+  // sends every "ahead" past it, collapsing several of the eight onto the
+  // same clamped point. Each maker's own world.blocked() check trusts a
+  // declared radius smaller than what it actually draws, so more than one
+  // can pass its own check and land on the identical spot. This call now
+  // remembers every spot it has used (loose clutter included) and will not
+  // hand the same one to a second maker.
+  const used = [];
+  const clear = (x, z, rad) => !used.some((u) => Math.hypot(u.x - x, u.z - z) < u.r + rad);
+  const claim = (x, z, rad) => used.push({ x, z, r: rad });
   let i = 0;
+  const nextSpot = (rad) => {
+    for (let tries = 0; tries < spots.length; tries++) {
+      const p = spots[i++ % spots.length];
+      if (clear(p.x, p.z, rad)) { claim(p.x, p.z, rad); return p; }
+    }
+    return null;
+  };
   for (let h = 0; h < homes; h++) {
-    const p = spots[i++ % spots.length];
-    if (!world.blocked(p.x, p.z, 2.6)) {
+    const p = nextSpot(2.6);
+    if (p && !world.blocked(p.x, p.z, 2.6)) {
       ruinedHome(world, p.x, p.z, r() * 6.28, washed(D, r()),
         { w: 5.5 + r() * 2, d: 4.5 + r() * 1.5, keep: 0.25 + r() * 0.4 });
     }
   }
   for (const maker of [coldHearth, cartWreck, wayshrine]) {
-    const p = spots[i++ % spots.length];
-    if (world.blocked(p.x, p.z, 1.8)) continue;
+    const p = nextSpot(1.8);
+    if (!p || world.blocked(p.x, p.z, 1.8)) continue;
     if (maker === coldHearth) coldHearth(world, p.x, p.z, washed(D, r()));
     else if (maker === cartWreck) cartWreck(world, p.x, p.z, r() * 6.28, washed(D, r()));
     else wayshrine(world, p.x, p.z, r() * 6.28, washed(D, r()));
   }
   for (let k = 0; k < 2; k++) {
-    const p = spots[i++ % spots.length];
-    if (!world.blocked(p.x, p.z, 1.6)) fallenColumn(world, p.x, p.z, k ? 1 : 0, washed(D, r()), 4 + r() * 2, { halfW, halfD });
+    const p = nextSpot(1.6);
+    if (p && !world.blocked(p.x, p.z, 1.6)) fallenColumn(world, p.x, p.z, k ? 1 : 0, washed(D, r()), 4 + r() * 2, { halfW, halfD });
   }
   for (let k = 0; k < 2; k++) {
-    const p = spots[i++ % spots.length];
-    if (!world.blocked(p.x, p.z, 2.0)) rubbleField(world, p.x, p.z, 2.4 + r() * 1.2, washed(D, r()), 9 + Math.floor(r() * 5));
+    const p = nextSpot(2.0);
+    if (p && !world.blocked(p.x, p.z, 2.0)) rubbleField(world, p.x, p.z, 2.4 + r() * 1.2, washed(D, r()), 9 + Math.floor(r() * 5));
   }
   for (let k = 0; k < 2; k++) {
-    const p = spots[i++ % spots.length];
-    if (!world.blocked(p.x, p.z, 1.6)) lowWall(world, p.x, p.z, k ? 1.57 : 0, washed(D, r()), 3.5 + r() * 2);
+    const p = nextSpot(1.6);
+    if (p && !world.blocked(p.x, p.z, 1.6)) lowWall(world, p.x, p.z, k ? 1.57 : 0, washed(D, r()), 3.5 + r() * 2);
   }
-  const p = spots[i++ % spots.length];
-  if (!world.blocked(p.x, p.z, 1.8)) aftermath(world, p.x, p.z, 2.2 + r() * 0.8, washed(D, r()), seed % 29);
+  const p = nextSpot(1.8);
+  if (p && !world.blocked(p.x, p.z, 1.8)) aftermath(world, p.x, p.z, 2.2 + r() * 0.8, washed(D, r()), seed % 29);
 
   // ...and the loose stuff, each piece its own node so the count is honest
   // SIX KINDS, THREE WEATHERS. Every (kind x tint) pair is its own batch, so
@@ -547,7 +566,9 @@ function dressShore(world, halfW, halfD, D, seed, opts = {}) {
   const KINDS = opts.kinds || ['barrel', 'crate', 'brick', 'skull', 'rockSA', 'bush'];
   for (let k = 0; k < (opts.loose || 16); k++) {
     const q = at(1.5 + r() * 12, (r() - 0.5) * 20);
-    if (world.blocked(q.x, q.z, 0.7)) continue;
+    const qr = 0.7;
+    if (world.blocked(q.x, q.z, qr) || !clear(q.x, q.z, qr)) continue;
+    claim(q.x, q.z, qr);
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
     const big = kind.startsWith('rock');
     const g = new THREE.Group();

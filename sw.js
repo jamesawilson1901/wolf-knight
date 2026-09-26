@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.187.0';
+const CACHE_NAME = 'wolfknight-v3.188.0';
 
 const PRECACHE = [
   './',
@@ -154,6 +154,7 @@ const PRECACHE = [
   './assets/audio/vo/court_watcher.ogg',
   './assets/audio/vo/court_wings.ogg',
   './assets/audio/vo/crack_prompt.ogg',
+  './assets/audio/vo/craft_intro.ogg',
   './assets/audio/vo/dark_nook.ogg',
   './assets/audio/vo/darkcave_enter.ogg',
   './assets/audio/vo/darkwolf_intro.ogg',
@@ -162,6 +163,15 @@ const PRECACHE = [
   './assets/audio/vo/den_dog.ogg',
   './assets/audio/vo/den_intro.ogg',
   './assets/audio/vo/dodo_secret.ogg',
+  './assets/audio/vo/dragon_confirm_fire.ogg',
+  './assets/audio/vo/dragon_confirm_storm.ogg',
+  './assets/audio/vo/dragon_confirm_tide.ogg',
+  './assets/audio/vo/dragon_hatch_fire.ogg',
+  './assets/audio/vo/dragon_hatch_storm.ogg',
+  './assets/audio/vo/dragon_hatch_tide.ogg',
+  './assets/audio/vo/dragon_hint_fire.ogg',
+  './assets/audio/vo/dragon_hint_storm.ogg',
+  './assets/audio/vo/dragon_hint_tide.ogg',
   './assets/audio/vo/earthwolf_grant.ogg',
   './assets/audio/vo/earthwolf_howto.ogg',
   './assets/audio/vo/element_teach.ogg',
@@ -189,6 +199,8 @@ const PRECACHE = [
   './assets/audio/vo/frostdoor_bowls.ogg',
   './assets/audio/vo/frostdoor_plates.ogg',
   './assets/audio/vo/frostpeak_open.ogg',
+  './assets/audio/vo/garden_harvest.ogg',
+  './assets/audio/vo/garden_planted.ogg',
   './assets/audio/vo/gate_promise.ogg',
   './assets/audio/vo/gear_hint.ogg',
   './assets/audio/vo/ghost_grant.ogg',

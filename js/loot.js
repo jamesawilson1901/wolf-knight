@@ -13,7 +13,14 @@ import { bumpCounter } from './progress.js';
 import { spawnMaterialDrop } from './materials.js';
 import { discoverRandomHiddenRecipe } from './crafting.js';
 
-export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null, onRecipeFound: null }; // main.js wires HUD
+// `onMaterial` — a crafting material's only on-screen confirmation. Coins
+// have a live HUD counter; a material lives nowhere visible until the
+// Armoury's own Craft tab is opened, so picking one up during a fight looked
+// exactly like picking up nothing (a chime indistinguishable from any other
+// pickup, no readout anywhere). Wired in js/main.js like every other event
+// here, fired from js/enemies.js's updateDrops() — where the pickup itself
+// already lives — not duplicated into a second collection path.
+export const lootEvents = { onShards: null, onLoot: null, onPotionDrop: null, onPotion: null, onRecipeFound: null, onMaterial: null }; // main.js wires HUD
 
 // ---------------------------------------------------------------------------
 // Shards
@@ -686,8 +693,15 @@ function collapse(gltf) {
 }
 
 export class Breakable {
+  // `material` doubled from its ship default (0.15 -> 0.3, 2026-09-25): dad
+  // — "no items in pots or crates". An ordinary room holds a handful of
+  // breakables at most, so 15% per smash meant most rooms handed back
+  // nothing at all; a crafting system with nothing feeding it reads as
+  // broken even though every roll was working as written. Still a clear
+  // step below chest (0.5) and goldchest (0.8), which keeps the "ordinary
+  // find < chest < gold chest" ladder the rest of this class already has.
   constructor(world, gltf, x, z, { shards = 2, size = 1.0, tint = 0, squash = 1,
-    potion = 0.14, material = 0.15, collapsed = null, kind = 'crate' } = {}) {
+    potion = 0.14, material = 0.3, collapsed = null, kind = 'crate' } = {}) {
     this.world = world;
     this.kind = kind;   // chooses the smash sound (SMASH_SFX)
     const model = collapsed

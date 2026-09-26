@@ -632,6 +632,31 @@ function turn(model, want, rate, dt) {
 // "budget, written down because it is tight" — same shapes, same call here).
 const HEARTH_SOLID = new Set(['hearth', 'hut', 'cart', 'target', 'manikin']);
 
+// THE HUT WAS THE SIZE OF THE CHILD IT STANDS BESIDE. `hut.glb` measures
+// 1.35u tall at scale 1 (js/levelVillage.js's own comment on the same
+// model), and every table below placed it at 0.95 — 1.28u tall, next to a
+// knight standing 1.27u (js/player.js: knightModel.scale.setScalar(0.5) on
+// a 2.54u-tall model). A settler's whole first home read as roughly the
+// same height as the settler.
+//
+// `levelVillage.js` solved this for its own three hut placements by scaling
+// UP uniformly, to 1.7-2.3 ("the hut at the scale it honestly is") — fine
+// there, where each hut gets a street corner to itself. It does not work
+// here: these seven pockets were measured clear (tools/probe-freespot.mjs)
+// for a hut with a 5.43x4.6 footprint (0.95 scale), and hut.glb's raw
+// footprint is 5.72x4.84 — scaling THAT up to a real building's height
+// scales its footprint up by the same factor, and at 1.7 it swallows every
+// neighbour in the pocket (checked live, all seven rooms: it clips the
+// hearth, the firewood, or both in every one). A real house is not a scaled
+// photograph of this barn-proportioned model — HUT_S stretches height only,
+// keeping the same footprint every pocket was already measured against.
+// Screenshotted both ways (2026-09-25, `la`) before choosing this: uniform
+// 1.7 reads as a nicer building but visibly overlaps the crates beside it;
+// this version reads as a real house beside the settler with no footprint
+// change at all.
+const HUT_S = 1.7 / 0.95;   // applied on TOP of each row's own 0.95 scale —
+                             // net (0.95, 1.7, 0.95), not (1.7, 1.7, 1.7)
+
 export const STAGE_CLUTTER = {
   la: {
     2: [
@@ -874,6 +899,13 @@ export async function spawnSettlers(world, onGrowIn) {
     for (const [key, x, z, sc, ry] of (rows[s] || [])) {
       const g = placeStageClutter(world, kit, key, x, z, sc, ry,
         key === 'hut' ? post.tint : 0xffffff);
+      // HEIGHT ONLY, not footprint — see HUT_S's own comment above. `g` is
+      // placeOne()'s wrapper group (scale 1,1,1); the real model sits one
+      // level in with `sc` already applied by place(), so stretching THAT
+      // child's y-scale (not the wrapper's) grows the roofline up from the
+      // same ground-level base place() already computed, rather than
+      // rescaling around the wrapper's own pivot and floating or sinking it.
+      if (g && key === 'hut' && g.children[0]) g.children[0].scale.y *= HUT_S;
       if (g) placed.push(g);
     }
   }

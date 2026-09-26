@@ -18,7 +18,7 @@ import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
-import { spawnGearDrop } from './loot.js';
+import { spawnGearDrop, lootEvents } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { WS } from './worldstate.js';
 import { materialForWeakness, addMaterial, spawnMaterialDrop } from './materials.js';
@@ -3726,6 +3726,7 @@ function updateDrops(world, dt, t, player) {
           }
         } else {
           addMaterial(d.kind, 1);
+          if (lootEvents.onMaterial) lootEvents.onMaterial(d.kind);
         }
       }
     }

@@ -430,6 +430,21 @@ export class Narration {
         this._voice = saved || this._voices[0] || vs[0] || null;
       };
       pick();
+      // getVoices() RETURNS EMPTY ON THIS VERY FIRST CALL on most browsers —
+      // the list loads asynchronously and `voiceschanged` is the documented
+      // way to know when. It is not a guaranteed one: some engines fire it
+      // before this listener is attached, some (older WebViews) never fire
+      // it at all despite the list being ready moments later. Either way,
+      // `this._voice` stays null/whatever `pick()` above already fell back
+      // to (the raw, unscored, often-robotic vs[0]) until the event lands —
+      // and if Pip's very first line of the session (the opening greeting,
+      // or a menu's own "test the voice" tap) fires inside that window, it
+      // is spoken with THAT voice, permanently, since nothing ever asks
+      // again. `_pickVoice` is exposed so say()/sampleVoice() can re-run
+      // this cheap, synchronous check right before speaking — catching the
+      // case where the real voice list is sitting there ready and this
+      // object just was never told.
+      this._pickVoice = pick;
       speechSynthesis.addEventListener('voiceschanged', pick);
     }
   }
@@ -471,7 +486,14 @@ export class Narration {
   }
 
   sampleVoice() {
-    if (!('speechSynthesis' in window) || !this._voice) return;
+    if (!('speechSynthesis' in window)) return;
+    // one last, cheap re-scan right before speaking: if the real voice list
+    // has since arrived and this object was never told (voiceschanged
+    // missed or not yet fired — see the constructor's own note), this picks
+    // the current best from it instead of speaking with whatever the very
+    // first, often-poorer batch left as the fallback.
+    if (this._pickVoice) this._pickVoice();
+    if (!this._voice) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance("Hello Kael! I'm Pip. Let's go!");
     const meta = VOICES.pip;
@@ -567,6 +589,11 @@ export class Narration {
   // the caption pacing at the bottom is what times it.
   _speakDevice(line, meta, done) {
     if (state.settings.voice && 'speechSynthesis' in window) {
+      // see the constructor's own note: the real voice list can still be
+      // arriving when this fires (most likely on the very first line of a
+      // session), so re-scan once, cheaply, rather than let an early line
+      // lock in whatever poorer voice getVoices() had ready at construction.
+      if (this._pickVoice) this._pickVoice();
       const u = new SpeechSynthesisUtterance(line.text);
       u.rate = meta.rate * (state.settings.voiceRate || 1);
       u.pitch = meta.pitch;
