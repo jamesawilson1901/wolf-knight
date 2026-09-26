@@ -498,6 +498,7 @@ function frostBramble(world, id, x, z) {
   const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'cut', region: REGION, x, z });   // the map's register
   registerCuttable(world, { id, x, z, region: REGION, group, collider });
   return { id, collider };
 }

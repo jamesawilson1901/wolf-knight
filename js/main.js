@@ -37,6 +37,7 @@ import { TREASURES, addTreasure } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
+import { markVisited, reconcileRoom, noteMapGates } from './mapdata.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
@@ -1599,6 +1600,12 @@ function narrationTriggers(dt, t) {
     }
     if (p.done()) resolveMystery(p.id);
   }
+  // THE MAP'S MARKS (2026-09-26, js/mapdata.js): every promise gate a child
+  // walks near goes on the map, drawn with the face of the wolf that opens
+  // it — the "🗺️ Added to the map" the toasts above always promised. Covers
+  // every gate that registers itself (levelkit promiseGate, gates.js), not
+  // only the ones with a row in PROMISES.
+  noteMapGates(world, player.root.position.x, player.root.position.z, state.room);
   if (m.thornKnot && nearSpot(m.thornKnot, 5)) narration.say('thornknot_hint');
   if (WS.get('wild3', 'knotCut') && state.room === 'tc4') narration.say('woods_bloom');
 
@@ -2206,6 +2213,10 @@ async function loadRoom(rawId, entry, handoff = null) {
   world.player = player;     // watchers and mirrors ask it whether Kael is ghosted
   state.room = id;
   state.region = regionOf(id);
+  // THE MAP REMEMBERS (js/mapdata.js): this room is walked now, and any mark
+  // whose gate this room no longer builds has been opened.
+  markVisited(id);
+  reconcileRoom(world, id);
   applyRoomMood();
   const at = entry || world.spawn;
   let px = at.x, pz = at.z;
@@ -2452,6 +2463,9 @@ async function respawnAtCheckpoint() {
   world.harness = harness;
   world.player = player;
   state.region = regionOf(room);
+  // the map remembers a respawn's room too (it is also the dev harness's jump)
+  markVisited(resolveRoom(room));
+  reconcileRoom(world, resolveRoom(room));
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   player.healFull();
@@ -2707,6 +2721,10 @@ async function start() {
     onResumeGame: () => { menuPaused = false; },
     onTravel: (room) => {
       audio.play('form-switch', { volume: 0.7, rate: 0.8 }); // moonstone chime
+      // The map is also reached from the PAUSE menu, and a trip from there
+      // used to land the child in the new room with the pause menu still up
+      // over it and the world stopped. A journey is the answer to the pause.
+      setPaused(false);
       loadRoom(room);
     },
   });
@@ -3152,6 +3170,9 @@ async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
   world.harness = harness;
   world.player = player;
+  // ...and the room a session starts in (js/mapdata.js)
+  markVisited(resolveRoom(state.room));
+  reconcileRoom(world, resolveRoom(state.room));
   applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;

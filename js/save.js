@@ -177,6 +177,12 @@ export function persist() {
       keys: { ...(state.flags.keys || {}) },
       world: JSON.parse(JSON.stringify(state.flags.world || {})),
       mysteries: JSON.parse(JSON.stringify(state.flags.mysteries || {})),
+      // THE REAL MAP (2026-09-26, js/mapdata.js) — additive: where Kael has
+      // been, and every come-back-later gate he has seen. `visited` stays null
+      // (not {}) until the map has seeded it for a save written before it
+      // existed, so that seeding is never skipped by an early save.
+      visited: state.flags.visited ? { ...state.flags.visited } : null,
+      mapMarks: JSON.parse(JSON.stringify(state.flags.mapMarks || {})),
       bossProgress: state.flags.bossProgress || 0,
       bossHp: state.flags.bossHp || 0,        // v3.18: the duel remembers wounds
       e2bCleared: !!state.flags.e2bCleared,   // v3.18: the Old Quarry stays open
@@ -317,6 +323,14 @@ export function applySave(profileId, profileName, data) {
     state.flags.keys = data.flags.keys || {};
     state.flags.world = data.flags.world || {};
     state.flags.mysteries = data.flags.mysteries || {};
+    // THE REAL MAP — additive-forever. A save from before it has neither key:
+    // `visited` null tells js/mapdata.js to seed it from the progress the save
+    // already records (so an old profile opens onto the world it has walked,
+    // not onto fog), and no marks is exactly "nothing seen yet".
+    state.flags.visited = data.flags.visited && typeof data.flags.visited === 'object'
+      ? { ...data.flags.visited } : null;
+    state.flags.mapMarks = data.flags.mapMarks && typeof data.flags.mapMarks === 'object'
+      ? JSON.parse(JSON.stringify(data.flags.mapMarks)) : {};
     state.flags.bossHp = data.flags.bossHp || 0;
     state.flags.e2bCleared = !!data.flags.e2bCleared;
     state.flags.sylvaHp = data.flags.sylvaHp || 0;

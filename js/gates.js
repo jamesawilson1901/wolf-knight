@@ -58,6 +58,8 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
   const collider = { minX: x - 1.15, maxX: x + 1.15, minZ: z - 0.95, maxZ: z + 0.95 };
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
+  // the map's come-back-later register (js/mapdata.js)
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'cut', region, x, z });
 
   registerCuttable(world, { id, x, z, region, group, collider });
   return { id, collider };
@@ -124,6 +126,7 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
   const collider = { x, z, r: 1.0 };
   world.circleColliders.push(collider);
   world.markers.iceSpot = { x, z, id };
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'shatter', region, x, z });
 
   // register for the frost breath: world.shatterAt(x, z, r) breaks any ice
   // in reach — a burst of shards, a crack, the collider gone for good
@@ -175,6 +178,7 @@ export function meltGate(world, x, z, id = 'f_melt', region = 'frost') {
   const collider = { x, z, r: 1.0 };
   world.circleColliders.push(collider);
   world.markers.meltSpot = { x, z, id };
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'melt', region, x, z });
 
   world.meltables.push({
     id, x, z, melted: false, group,
@@ -270,6 +274,7 @@ export function boulderGate(world, prepareModel, rockGltf, id, x, z) {
   world.circleColliders.push(collider);
   // rides the crackables list so the Earth Wolf's stomp clears it later
   world.crackables.push({ id, x, z, group: rock, collider, cracked: false });
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'crack', region: null, x, z });
   return rock;
 }
 
