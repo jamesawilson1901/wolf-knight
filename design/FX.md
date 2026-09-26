@@ -59,6 +59,54 @@ REAL weakness-element hit in live combat (not a direct function call) fires
 the flare through the actual `js/enemies.js` code path. Lint, verify-boot
 and the `--quick` gate all green.
 
+## 2026-09-26 — the Blood Moon, rebuilt (SHIPPED)
+
+Dad: "The blood moon animation was meant to change because the current one
+is too low quality. The audio for it was meant to change as well." (An
+earlier pass had only moved the moon and lengthened the ceremony.) It was
+one flat-shaded red icosahedron, a pink hemisphere wash and a flat
+RingGeometry — at phone size, a red blob sliding sideways — and its only
+sound was the crescent shot's thump played slow.
+
+Presentation only: every gameplay beat (CONFIG.MOON.CEREMONY 3.6s, the dive
+damage/stun at 2.4/2.6u, the 4u shockwave stun, i-frames, gauge) is
+unchanged. `Effects.surgeCeremony` beat by beat:
+
+| beat | what a child sees |
+|---|---|
+| rise 0-2.2s | the room's light comes down (`effects.dim`, applied to the hemi/key rig in main.js) under a gentler red wash; a canvas-painted moon (craters, seas, dark limb, bright refracted rim) fades up out of the floor beside Kael inside a soft glow and two counter-rotating wisp coronas; red motes stream off the floor into it; at the howl (t=1.0) the corona flares |
+| hang 2.2-3.0s | a star-glint catches its limb; the last 0.3s it lifts, trembles and brightens — the wind-up |
+| dive 3.0-3.5s | it falls along an arc (higher the shorter the throw, so it always reads as a fall), tumbling, heating to orange, dragging a streak, three afterimages and sparks |
+| crash 3.5s | white flash, star-burst, a soft wisp shockwave on the ground whose edge stops at the true 2.6u reach, a glowing crater that cools, 64 rising embers, three smoke puffs, shake + hitstop as before |
+| after | the light returns over 0.9s; Kael's own 4u shockwave (now `Effects.softRing`, same texture, same true radius) rolls out at 3.6s; a scorch mark lingers ~2s and fades |
+
+New sprites (Kenney Particle Pack, CC0, 512px originals stored grey+alpha):
+
+| file | source sprite | size | use |
+|---|---|---|---|
+| `assets/fx/moon-ring.png` | `light_03.png` | 256 | impact + surge shockwave rings, the inner corona |
+| `assets/fx/moon-corona.png` | `light_02.png` | 256 | the outer corona |
+| `assets/fx/gleam.png` | `star_09.png` | 128 | the arrival glint, the impact star-burst |
+| `assets/fx/streak.png` | `trace_07.png` | 128 | the dive streak |
+| `assets/fx/smoke.png` | `smoke_07.png` | 128 | impact smoke |
+| `assets/fx/scorch.png` | `scorch_02.png` | 128 | glowing crater + scorch mark |
+
+Budget: ~10 draw calls at the peak, all transient (moon, glow, 2 coronas,
+glint, streak, 3 ghosts, one Points pool of 120); every material/geometry is
+freed when it ends. Textures are built/loaded once per session and put in
+`assets.SHARED`. No light is added beyond the two the ceremony always had —
+a new light recompiles every lit material in the room. If the room is torn
+down mid-ceremony (`crash.live()` false) it vanishes at once and never lands
+in the next room.
+
+Sound: `moon-rise.ogg` (a gong at the tap, then a drone/pad/rumble swell with
+a reversed chime peaking as the moon arrives at 2.2s), `moon-dive.ogg` (air
+roar climbing in pitch + a falling whistle), `moon-crash.ogg` (pitched-down
+explosion, sub drop, debris patter, a glitter tail). All three are authored
+by `tools/make-moon-sfx.py` from CC0 Superpowers clips plus synthesis; the
+crescent shot keeps `moon-impact.ogg` to itself. `audio.howl()` gained two
+formant filters ("oo" opening to "ah" and closing) and breath noise.
+
 ## Still to design
 
 Loose notes for whoever extends this next:

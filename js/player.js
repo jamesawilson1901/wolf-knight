@@ -1239,9 +1239,17 @@ export class Player {
           z: this.root.position.z + Math.cos(this.root.rotation.y) * 2.6,
         };
       },
+      // the moon starts to fall: the sky screams down (its own clip since
+      // 2026-09-26 — assets/audio/sfx/moon-dive.ogg, tools/make-moon-sfx.py)
+      onDive: () => audio.play('moon-dive', { volume: 0.9 }),
+      // a door or a respawn tore the room down mid-ceremony: the moon must
+      // not land in the next room (World.dispose() detaches world.root)
+      live: () => !!(world.root && world.root.parent),
       onImpact: (x, z) => {
-        audio.play('moon-impact', { volume: 0.95, rate: 0.8 });
-        audio.play('slam', { volume: 0.9, rate: 0.45 });
+        // boom + sub + debris + a glitter tail, all one authored clip; the
+        // old slowed slam is kept underneath, quieter, for the floor-shake
+        audio.play('moon-crash', { volume: 1 });
+        audio.play('slam', { volume: 0.5, rate: 0.45 });
         if (world.damageEnemiesAt) world.damageEnemiesAt(x, z, 2.4, 2, 'moon');
         for (const e of (world.enemies || [])) {
           if (e.dead || e.scenery || !e.takeStun) continue;
@@ -1249,7 +1257,10 @@ export class Player {
         }
       },
     });
-    audio.play('moon-impact', { volume: 0.55, rate: 0.55 }); // the sky answers
+    // the sky answers: a gong, then a swell that climbs with the moon and
+    // peaks as it arrives (2.2s). The Blood Moon used to borrow the crescent
+    // shot's thump here; moon-impact.ogg is now the crescent's alone.
+    audio.play('moon-rise', { volume: 0.95 });
     if (this.onSurgeStart) this.onSurgeStart('ceremony');
     return true;
   }
@@ -1275,7 +1286,9 @@ export class Player {
       // ceremony, not an attack: no hitbox to be honest about, so it keeps
       // the full-size ring. Boss death rings do the same, which is why those
       // are now visibly the biggest thing in the game.
-      c.effects.groundSlam(this.root.position.clone(), 0xff3a4a, 4.0);
+      // 2026-09-26: the soft textured ring the moon's own impact uses, not
+      // groundSlam's flat disc — same true 4.0 reach (C.SHOCK_RADIUS).
+      c.effects.softRing(this.root.position.clone(), 0xff2a18, C.SHOCK_RADIUS);
       c.effects.shake(0.4, 0.5);
       if (c.world && c.world.enemies) {
         for (const e of c.world.enemies) {
