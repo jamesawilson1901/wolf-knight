@@ -349,6 +349,21 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       }
       return null;
     };
+    // A LYING DRUM IS NEARLY FOUR UNITS LONG, tipped over from its base and
+    // spun at random, so the 0.6u it asks blocked() about is where it starts,
+    // not where it reaches. Next to a pit that difference is a column lying
+    // half across the hole — Stoneroot's Deep Lantern had one hanging 44% over
+    // its west gap, which is the "columns bridging the pit" dad photographed.
+    // So the drum is measured where it actually lies, and one that reaches over
+    // a drop is taken back out (and logged, like any other gap).
+    const bbDrum = new THREE.Box3();
+    const overDrop = (m) => {
+      if (!m || !(world.pitZones || []).length) return false;
+      bbDrum.setFromObject(m);                 // g is still at the origin here
+      const x0 = bbDrum.min.x + x, x1 = bbDrum.max.x + x, z0 = bbDrum.min.z + z, z1 = bbDrum.max.z + z;
+      return world.pitZones.some((p) => x1 > p.minX - 0.1 && x0 < p.maxX + 0.1
+        && z1 > p.minZ - 0.1 && z0 < p.maxZ + 0.1);
+    };
     const origin = clearSpot(0, 0, 0.7);
     if (origin) {
       place(world, g, K().column, 'fallCol', origin.px, 0, origin.pz, 1.0, 0, 0, D.propTint || D.wallTint);
@@ -358,9 +373,10 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       const t = i * (len / 3);
       const spot = clearSpot(dx * t, dz * t, 0.6);
       if (!spot) { logGap(dx * t, dz * t); continue; }
-      restOnFloor(place(world, g, K().column2, 'fallCol',
+      const drum = restOnFloor(place(world, g, K().column2, 'fallCol',
         spot.px + (r() - 0.5) * 0.5, 0, spot.pz + (r() - 0.5) * 0.5,
         0.9, r() * 6.28, Math.PI / 2, D.propTint || D.wallTint));
+      if (overDrop(drum)) { g.remove(drum); logGap(spot.px, spot.pz); continue; }
       world.addCircle(x + spot.px, z + spot.pz, 0.5, 'decor');
     }
     g.position.set(x, 0, z);
@@ -380,8 +396,11 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
       const pick = r();
       const gltf = pick < 0.55 ? K().brick
                  : pick < 0.8 ? K().rockSA : K().rockSB;
+      const s = 0.6 + r() * 0.6, ry = r() * 6.28;   // drawn first: the seed stays in step
+      // no rubble in a hole or teetering on its lip (world.clearPits' note)
+      if (world.nearPit && world.nearPit(x + Math.cos(a) * dd, z + Math.sin(a) * dd, 0.35)) continue;
       place(world, g, gltf, 'rubble', Math.cos(a) * dd, 0, Math.sin(a) * dd,
-        0.6 + r() * 0.6, r() * 6.28, 0, D.propTint || D.wallTint, false);
+        s, ry, 0, D.propTint || D.wallTint, false);
     }
     g.position.set(x, 0, z);
     world.add(g);

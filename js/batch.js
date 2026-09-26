@@ -61,6 +61,10 @@ export function flattenStatic(world, { shadowCullBelow = 1.4 } = {}) {
   // includes this pass. `window.__noSeparate` turns it off for measuring the
   // raw, unseparated room.
   if (world && typeof world.separateProps === 'function') world.separateProps();
+  // ...and nothing is left standing in a hole (World.clearPits). Before the
+  // merge for the same reason: afterwards a rock in a pit is welded into forty
+  // others and cannot be taken out on its own.
+  if (world && typeof world.clearPits === 'function') world.clearPits();
   // A WAY TO SEE THE ROOM BEFORE IT IS GLUED TOGETHER.
   //
   // Merging is what makes the draw-call budget possible, and it is also what

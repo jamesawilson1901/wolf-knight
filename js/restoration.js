@@ -306,6 +306,11 @@ function pickSpots(world, max, kinds, salt) {
     const x = (rnd() * 2 - 1) * (world.halfW - 1.6);
     const z = (rnd() * 2 - 1) * (world.halfD - 1.6);
     if (!freeAt(world, x, z, BLOOM_CLEAR)) continue;
+    // NOT IN A HOLE. A pit has no collider — it is a hole, not a wall — so
+    // freeAt waved a flower straight into the Night Road's washout, and dad
+    // photographed it growing out of the dark: "There can't be any objects in
+    // the pits or growing out of it like flowers."
+    if (world.nearPit && world.nearPit(x, z, BLOOM_CLEAR)) continue;
     if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.8)) continue;
     spots.push({ x, z, ry: rnd() * Math.PI * 2, k: Math.floor(rnd() * kinds.length) });
   }

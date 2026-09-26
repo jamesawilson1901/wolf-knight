@@ -124,6 +124,20 @@ than by the number whoever wrote the line happened to pick:
 
 `verify-bounds` and `verify-looks` hold all three, over the live registry.
 
+PITS ARE REAL HOLES (levelkit `pit(world, minX, maxX, minZ, maxZ, D)`, since
+dad's "make it look 3d" report). The call registers `world.pitZones` (the fall
+line — player.js drops the child and puts them at `world.pitReturn`) and
+rebuilds, for every pit in the room at once: the ground plane re-cut with the
+rectangles taken out (same one draw, same texture UVs); one vertex-coloured
+mesh of faceted stone walls in the room's `wallTint`, darkening to near-black
+at `PIT_DEPTH` 3.4; and one instanced lip of the kit's Brick. Only faces the
+camera can see are built (north walls face south). `pitPier()` gives a pad
+standing in a pit (the Broken Ascent's stair) real sides in the same mesh.
+Nothing stands in a pit: `world.blocked()` refuses the rectangle plus a 0.3u
+lip, blooms ask `world.nearPit()`, grounded enemies will not step onto one, and
+`world.clearPits()` (run from flattenStatic) sweeps anything left whose middle
+— or a third of whose footprint — is over open drop. Pads (safe zones) excepted.
+
 ## Frostpeak (js/level4.js) — region 4, rebuilt 2026-09-03
 The last region to leave rooms.js. Same seven rooms and ids as v3.21
 (`f1` Rime Gate, `f1b` Frozen Cairn, `f2` Icebound Hall, `f2b` Glacier

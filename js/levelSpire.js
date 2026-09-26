@@ -109,7 +109,7 @@ export const crownOpen = () => sigilStone() && sigilFlame();
 const { ruinedHome, fallenColumn, rubbleField, wayshrine, lowWall } =
   makeDressers({ kit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, wallRun, visibleReward, pit } =
+const { shell, sideDoor, wallRun, visibleReward, pit, pitPier } =
   makeBuilders({ kit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -163,9 +163,9 @@ function stairPad(world, minX, maxX, minZ, maxZ, D) {
   const w = maxX - minX, d = maxZ - minZ;
   // tile the pad with floor pieces so its EDGE is where the geometry ends —
   // a pad drawn smaller than its safe zone teaches the wrong landing spot.
-  // ABOVE THE VOID'S OWN COVER: pit() lays its hole at +0.05 and m1's depth
-  // gradient at +0.055, over the whole band, pads included. At +0.02 the
-  // tiles were underneath both and the pads vanished into the abyss.
+  // At 0.08, the height pitPier() below builds the slab's sides up to: the
+  // ground is cut away under the whole void, pads included, so these tiles ARE
+  // the pad's top — there is no floor under them any more.
   // Seated and sized from the tile's MEASURED box, not a guessed offset: the
   // kit's floor tile has its top ~0.05 below its own origin and is not 2u
   // across, so "y 0.07, scale 1.05" put its top at 0.018 and left gaps.
@@ -192,34 +192,15 @@ function stairPad(world, minX, maxX, minZ, maxZ, D) {
     b.rotation.y = a;
     g.add(b);
   }
-  // ITS SIDE, FALLING AWAY. The camera looks north and down, so the face of a
-  // slab standing over a drop that it can see is the SOUTH one. Painting that
-  // face just past the pad's south edge — stone at the rim darkening into the
-  // abyss — is what turns "a lighter rectangle" into "a thing you stand ON,
-  // with nothing under its edge". The ground plane covers the whole room, so
-  // real depth can't be cut; this is the same illusion the depth gradient uses.
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.8),
-    new THREE.MeshBasicMaterial({ map: padFaceTexture(), transparent: true, depthWrite: false }));
-  face.rotation.x = -Math.PI / 2;
-  face.position.set(cx, 0.065, maxZ + 0.4);
-  g.add(face);
   world.add(g);
-}
-
-// not cached: a room teardown frees its textures, and three 4x64 canvases
-// cost nothing to remake
-function padFaceTexture() {
-  const cv = document.createElement('canvas');
-  cv.width = 4; cv.height = 64;
-  const c = cv.getContext('2d');
-  const grad = c.createLinearGradient(0, 0, 0, 64);
-  grad.addColorStop(0, 'rgba(84,78,110,1)');     // the rim: stone, clearly lit
-  grad.addColorStop(0.18, 'rgba(58,53,82,1)');   // the face in its own shadow
-  grad.addColorStop(1, 'rgba(11,9,24,0)');       // gone into the dark
-  c.fillStyle = grad; c.fillRect(0, 0, 4, 64);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  // ITS SIDES, FALLING AWAY — real ones now. The pad used to carry a painted
+  // strip past its south edge (stone darkening into the abyss) because the
+  // ground plane covered the whole room and no real depth could be cut. The
+  // void is a real hole since dad's "make it look 3d" pass (levelkit pit()),
+  // so the slab gets real stone sides going down into it, built into the same
+  // single mesh as the pit's own walls: the thing a child lands on is a block
+  // of old stair standing over a drop, with the drop visible under its edge.
+  pitPier(world, minX, maxX, minZ, maxZ, D, 0.08);
 }
 
 // ---------------------------------------------------------------------------
@@ -267,58 +248,22 @@ export async function buildM1(scene) {
   //   PAD B           z = -2.6 .. -5.2   (2.6u)
   //   gap 3           z = -5.2 .. -6.8   (1.6u — the last one is the kindest)
   //   far shore from  z = -6.8
-  pit(world, -halfW, halfW, -6.8, 3.6);
+  pit(world, -halfW, halfW, -6.8, 3.6, D);
   world.pitReturn = { x: 0, z: 6.4 };     // the near shore, one run-up back
-  // THE VOID HAS TO READ AS DEPTH, NOT AS NOTHING RENDERED. The first shot of
-  // this room showed a flat black band with the pad rims apparently floating
-  // in space — exactly the "black nothing" dad once reported as a bug, here
-  // on purpose but indistinguishable from one. Two cheap cues fix the read:
-  // a gradient that FALLS AWAY from each shore (the floor visibly descends
-  // into dark, so the black is depth), and a thin drift of moonlit motes
-  // sinking slowly into it (things fall down there; it is a place, not a
-  // hole in the render). One textured quad + one Points cloud = 2 draws.
+  // THE VOID HAS TO READ AS DEPTH, NOT AS NOTHING RENDERED. It used to be
+  // faked: a gradient quad over the whole band, stone-lit at each shore and
+  // black in the middle, laid on top of pit()'s flat black decal (three
+  // re-shots to get the layering and the colour space right). pit() cuts a
+  // real hole now, with walls going down into the dark, so the gradient is
+  // gone — it would be a lid over the hole. What stays is the thin drift of
+  // moonlit motes sinking slowly into it: things fall down there; it is a
+  // place, not a hole in the render. One Points cloud, one draw.
   if (!GREY()) {
-    const cv = document.createElement('canvas');
-    cv.width = 16; cv.height = 128;
-    const cx = cv.getContext('2d');
-    const grad = cx.createLinearGradient(0, 0, 0, 128);
-    // Tuned by re-shot, twice. Brightened to '#4a4664/#120f24' the band reads
-    // as walkable floor — an invitation to step into a pit; the original
-    // '#060510' middle is indistinguishable from unrendered black. Between:
-    // shores clearly stone-lit, middle clearly an abyss, but purple enough
-    // to be somewhere.
-    grad.addColorStop(0, '#393552');    // near the north shore: still stone-lit
-    grad.addColorStop(0.22, '#17132a');
-    grad.addColorStop(0.5, '#0b0918');  // the middle: deep, but a place
-    grad.addColorStop(0.78, '#17132a');
-    grad.addColorStop(1, '#393552');    // near shore
-    cx.fillStyle = grad; cx.fillRect(0, 0, 16, 128);
-    const tex = new THREE.CanvasTexture(cv);
-    // THE COLOURS ABOVE ARE sRGB, SO SAY SO. Without this three.js read the
-    // canvas as linear and brightened it on output: the '#0b0918' abyss
-    // rendered as pale lavender, the same shade as the pads, and dad saw
-    // "just a massive pit but doesn't look like one". pitTexture() in
-    // levelkit.js has always set this; this gradient never did.
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const fade = new THREE.Mesh(
-      new THREE.PlaneGeometry(halfW * 2, 10.4),
-      new THREE.MeshBasicMaterial({ map: tex })
-    );
-    fade.rotation.x = -Math.PI / 2;
-    // ABOVE pit()'s own lid. levelkit's pit() paints a flat 0x05040a cover at
-    // deckY+0.05, and the first two cuts of this gradient sat at +0.02 —
-    // underneath it, invisible, while the lid kept reading as "black
-    // nothing". Two re-shots to find that. Under the rim (+0.06), over the
-    // lid (+0.05).
-    fade.position.set(0, 0.055, -1.6);       // spans the pit band z -6.8..3.6
-    world.add(fade);
-    world.keepLoose(fade);                    // under the pads, never batched over them
-
     const N = 42;
     const pos = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
       pos[i * 3] = (Math.random() * 2 - 1) * (halfW - 1);
-      pos[i * 3 + 1] = -Math.random() * 3.2;
+      pos[i * 3 + 1] = -Math.random() * 3.0;
       pos[i * 3 + 2] = -6.4 + Math.random() * 9.6;
     }
     const pgeo = new THREE.BufferGeometry();
@@ -333,7 +278,7 @@ export async function buildM1(scene) {
       const a = pgeo.attributes.position.array;
       for (let i = 0; i < N; i++) {
         a[i * 3 + 1] -= (dt || 0.016) * 0.35;
-        if (a[i * 3 + 1] < -3.4) a[i * 3 + 1] = 0.1;
+        if (a[i * 3 + 1] < -3.1) a[i * 3 + 1] = 0.1;   // the floor is at -3.4
       }
       pgeo.attributes.position.needsUpdate = true;
     });
@@ -355,7 +300,6 @@ export async function buildM1(scene) {
   fallenColumn(world, -9, -9.5, 0.9, D, 3.0);
   rubbleField(world, 0, 11.5, 4.5, D, 12);
   rubbleField(world, 0, -10.5, 4.0, D, 10);
-  rubbleField(world, -13, 0, 2.2, D, 8);
   rubbleField(world, 13, 6, 2.0, D, 7);
   wayshrine(world, -6.5, 9.5, 0.4, D);
   return finish(world, spec, D);

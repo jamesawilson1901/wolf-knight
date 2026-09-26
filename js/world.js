@@ -8,6 +8,10 @@ import { audio } from './audio.js';
 import { isShared } from './assets.js';
 import { isHealed } from './restoration.js';
 
+// A hand's width of lip round every pit that scenery may not stand on either:
+// a rock half over the edge of a hole reads as floating, not as fallen.
+const PIT_LIP = 0.3;
+
 const _rollAxis = new THREE.Vector3();
 
 // WHERE A DOOR SOMEWHERE ELSE PUTS A CHILD DOWN IN THIS ROOM.
@@ -188,6 +192,19 @@ export class World {
     (this._keepClear || (this._keepClear = [])).push({ x, z, r, tag });
   }
 
+  // Within `pad` of any pit's rectangle — pads standing in it included, since
+  // nothing but the pad's own dressing belongs on those. For placers whose
+  // thing is bigger than the radius they ask blocked() about: a lying column
+  // drum is checked at its centre but is nearly four units long.
+  nearPit(x, z, pad = 0) {
+    for (const p of this.pitZones) {
+      const cx = Math.max(p.minX, Math.min(x, p.maxX));
+      const cz = Math.max(p.minZ, Math.min(z, p.maxZ));
+      if ((x - cx) ** 2 + (z - cz) ** 2 <= pad * pad) return true;
+    }
+    return false;
+  }
+
   // WATER IS PAINT, NOT A COLLIDER — `blocked()` never sees it (ground.js's
   // `patches` only tint the floor texture; the separate js/water.js system
   // is what actually blocks a body, and only for `deep` zones, in a
@@ -227,6 +244,17 @@ export class World {
     for (const k of (this._keepClear || [])) {
       const dx = x - k.x, dz = z - k.z;
       if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return tally(k.tag || 'reserved');
+    }
+    // NOTHING IS PLACED IN A HOLE, OR ON ITS LIP. A pit is a rectangle, not a
+    // circle, so it is asked here as one rather than reserved as a ring of
+    // circles: the thing being placed must clear the rectangle by its own
+    // radius plus a hand's width, so a rock never overhangs the drop. Dad's
+    // photo had a flower growing out of the middle of the Night Road's washout.
+    for (const p of (this.pitZones || [])) {
+      const cx = Math.max(p.minX, Math.min(x, p.maxX));
+      const cz = Math.max(p.minZ, Math.min(z, p.maxZ));
+      const m = r + PIT_LIP;
+      if ((x - cx) ** 2 + (z - cz) ** 2 < m * m) return tally('pit');
     }
     const m = this.markers || {};
     // KEEP-CLEAR PROTECTS STANDING ROOM, NOTHING ELSE.
@@ -1043,6 +1071,88 @@ export class World {
       }
     }
     return given;
+  }
+
+  // NOTHING STANDS IN A HOLE — the last line behind blocked()'s refusal.
+  //
+  // blocked() stops every dresser that asks it, and most do. But a room also
+  // places things at hand-typed coordinates that ask nobody (a fallen column,
+  // a cart), and dad's two September photos were both of this: a column lying
+  // across a pit, and a plant growing in the middle of one. So after the room
+  // is built, anything whose middle is over open drop is taken out — safe
+  // zones excepted, because a pad standing in a pit is floor. Gameplay objects
+  // (gates, chests, braziers: anything a world list holds) are never removed
+  // here; they are reported, because a gate in a hole is a design bug a human
+  // must move, and deleting it would break the room instead.
+  //
+  // Instanced scenery (grass, flowers, rubble) is checked per instance and the
+  // offending instances collapsed to nothing, which keeps the draw call.
+  clearPits() {
+    if (!this.pitZones.length) return { removed: [], kept: [] };
+    const held = new Set(this._keepLoose || []);
+    for (const key of ['enemies', 'boulders', 'burnables', 'crackables', 'pups', 'plates',
+      'braziers', 'shatterables', 'cuttables', 'checkpoints', 'npcs']) {
+      for (const e of (this[key] || [])) {
+        if (!e || typeof e !== 'object') continue;
+        if (e.isObject3D) { held.add(e); continue; }
+        for (const v of Object.values(e)) if (v && v.isObject3D) held.add(v);
+      }
+    }
+    const isHeld = (o) => { for (let p = o; p; p = p.parent) if (held.has(p)) return true; return false; };
+    const removed = [], kept = [];
+    const bb = new THREE.Box3(), v = new THREE.Vector3(), mat = new THREE.Matrix4();
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const where = (x, z) => `(${x.toFixed(1)}, ${z.toFixed(1)})`;
+    const consider = (o) => {
+      if (o.userData && o.userData.pitArt) return;
+      if (o.isLight || o.isPoints || o.isSprite) return;
+      // light lying on the floor (the threshold glow, a veil) is not a thing
+      if (o.isMesh && !o.isInstancedMesh && o.material && o.material.transparent) return;
+      if (o.isInstancedMesh) {
+        o.updateWorldMatrix(true, false);
+        let hid = 0;
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, mat);
+          v.setFromMatrixPosition(mat).applyMatrix4(o.matrixWorld);
+          if (!this.pitAt(v.x, v.z)) continue;
+          o.setMatrixAt(i, zero);
+          hid++;
+          removed.push(`${o.name || 'instance'} ${where(v.x, v.z)}`);
+        }
+        if (hid) { o.instanceMatrix.needsUpdate = true; o.computeBoundingSphere && o.computeBoundingSphere(); }
+        return;
+      }
+      bb.setFromObject(o);
+      if (!isFinite(bb.min.x)) return;
+      const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2;
+      // its middle over the drop, or a third of its footprint hanging out
+      // over it (a column lying across the lip reads as bridging the hole)
+      if (!this.pitAt(x, z)) {
+        let n = 0, over = 0;
+        const sx = Math.max(0.1, (bb.max.x - bb.min.x) / 8), sz = Math.max(0.1, (bb.max.z - bb.min.z) / 8);
+        for (let px = bb.min.x; px <= bb.max.x + 1e-6; px += sx) {
+          for (let pz = bb.min.z; pz <= bb.max.z + 1e-6; pz += sz) { n++; if (this.pitAt(px, pz)) over++; }
+        }
+        if (!n || over / n < 0.3) return;
+      }
+      if (isHeld(o)) { kept.push(`${o.name || o.type} ${where(x, z)}`); return; }
+      if (o.parent) o.parent.remove(o);
+      removed.push(`${o.name || o.type} ${where(x, z)}`);
+    };
+    for (const child of [...this.root.children]) {
+      if (child.name === 'ground' || (child.userData && child.userData.pitArt)) continue;
+      const kids = child.children || [];
+      if (child.isMesh || !kids.length) consider(child);
+      // a group's children are the things: placed models, or an instanced
+      // group's parts (which consider() then checks instance by instance)
+      else for (const model of [...kids]) consider(model);
+    }
+    // colliders a swept prop left behind would be an invisible wall over a hole
+    this.circleColliders = this.circleColliders.filter((c) => c.tag !== 'decor' || !this.pitAt(c.x, c.z));
+    if (removed.length) console.warn(`[pits] took ${removed.length} thing(s) out of the pits: ${removed.join('; ')}`);
+    if (kept.length) console.warn(`[pits] GAMEPLAY OBJECT OVER A PIT, left in place: ${kept.join('; ')}`);
+    this._pitSweep = { removed, kept };
+    return this._pitSweep;
   }
 
   sweepKeepClear() {
