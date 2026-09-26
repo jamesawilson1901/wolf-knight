@@ -1651,9 +1651,9 @@ export async function buildVc3(scene) {
   // against the 0.34u body radius: every ledge is at least 1.6u wide, which is
   // walkable without precision — this is a SEEING puzzle, not a platforming
   // one, and a five-year-old must never fail it for being half a unit off.
-  pit(world, -9.0, -2.6, -1.2, 1.8);
-  pit(world, -1.0, 1.0, -4.4, 1.8);
-  pit(world, 2.6, 9.0, -1.2, 1.8);
+  pit(world, -9.0, -2.6, -1.2, 1.8, D);
+  pit(world, -1.0, 1.0, -4.4, 1.8, D);
+  pit(world, 2.6, 9.0, -1.2, 1.8, D);
 
   // THE WHOLE ROOM IS DARK. It went in as a rectangle over the broken half, so
   // the child could see from the doorway that the far end had gone wrong; then

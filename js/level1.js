@@ -261,7 +261,7 @@ export async function loadEmberKit() {
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, pit, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
@@ -1807,7 +1807,7 @@ export async function buildLk2(scene) {
     patches: [{ x: 0, z: 0, r: 5.0, kind: 'scorch' }, { x: -10, z: -5, r: 3.4, kind: 'rubble' },
               { x: 10, z: 5, r: 3.2, kind: 'ash' }],
     pathWidth: 2.6,
-    // the road bends NORTH around the span, because the span is the crossing
+    // the road bends NORTH around the charred choke in the middle of the room
     paths: [[[13, 0], [5, 5], [-5, 5], [-13, 0]]],
   });
   world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
@@ -1816,10 +1816,14 @@ export async function buildLk2(scene) {
   sideDoor(world, 'e', halfW, halfD, 'lk1', { x: -8.5, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'lk3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
 
-  // THE SPAN ITSELF — the floor is gone through the middle of the room, so the
-  // way on is the north path. The pit is the reason the route bends, not
-  // decoration: LEVEL-DESIGN-2's rule that a shape must be a REASON.
-  pit(world, -6, 6, -4.5, -1.0);
+  // NO HOLE IN THE FLOOR ANY MORE. The Span used to have a 12 x 3.5 pit
+  // through the south half of the room, with this column lying across it. Dad,
+  // on a screenshot of it: "Get rid of this pit." It asked nothing of a child —
+  // no pitReturn, no jump, the doors joined by open floor either side of it —
+  // so it was a black shape on the floor that only ever cost a walk back to the
+  // door. The room's reason to exist is the charred choke below, and it stands
+  // exactly where it did; the column that lay over the hole now lies on the
+  // floor it fell on (the SOUTH SIDE note at the bottom of this builder).
 
   // WHAT CLOSED THE ROAD. Three burnable chokes, and only the middle one is on
   // the route — the other two are alcoves with something in them, so burning is

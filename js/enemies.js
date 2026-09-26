@@ -574,9 +574,13 @@ class Enemy {
 
   // Grounded enemies obey lava exactly like Kael — they cannot walk in.
   // Flyers cross freely. Returns the resolved position (or "stay put").
+  // ...and they do not walk out over a hole either. A pit is a real opening
+  // in the floor now (levelkit pit()), and a skeleton strolling across thin
+  // air over it is the "objects in the pits" dad asked to be rid of.
   _moveSolved(nx, nz) {
     const s = this.world.resolveCircle(nx, nz, this.radius);
-    if (!this.flying && this.world.hazardAt(s.x, s.z)) return { x: this.x, z: this.z };
+    if (!this.flying && (this.world.hazardAt(s.x, s.z)
+        || (this.world.pitAt && this.world.pitAt(s.x, s.z)))) return { x: this.x, z: this.z };
     return s;
   }
 

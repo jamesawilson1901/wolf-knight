@@ -877,48 +877,293 @@ export function makeBuilders({ kit, isGrey }) {
     world.darkZones.push({ minX, maxX, minZ, maxZ });
   }
 
-  // A HOLE IN THE FLOOR. Registers the fall zone and drops a black quad into
-  // the floor so it READS as a hole rather than as a differently-coloured tile
-  // — in a dark room the child needs the shape of the gap, and the Dark Wolf's
-  // sight is what turns that shape from a guess into a route. The rim is a
-  // separate ring so the edge stays visible when the veil is at its darkest.
-  // A HOLE IN THE FLOOR, AND NOT A SHAPE DRAWN ON IT.
+  // A HOLE IN THE FLOOR, AND A REAL ONE.
   //
-  // Dad, from play: "keep the pitfalls but remove the grey geometric marks on
-  // them." He was looking at a four-segment RingGeometry rotated forty-five
-  // degrees — a grey diamond outline painted around every pit in the game. It
-  // was there for a real reason (the note it replaces: "a pale lip so the edge
-  // is findable: this is the thing the Dark Wolf sees") and it looked like a
-  // debug gizmo somebody forgot to take out.
+  // Two generations of this drew the hole ON the floor: a grey diamond ring
+  // (dad: "remove the grey geometric marks"), then one flat quad carrying a
+  // black centre and a crumbly painted lip. The second one is what dad
+  // photographed twice in September — "the pits look terrible like they don't
+  // belong. Replace with better assets. Make it look 3d like the rest of the
+  // game" — and he was right: every other thing in a room is modelled, and the
+  // one hole was a sticker with a wavy grey outline, with a flower growing out
+  // of the middle of it because nothing that placed flowers knew it was there.
   //
-  // The edge still has to be findable, so the cue moved INTO the hole: one
-  // plane carrying a soft radial falloff with a crumbled, uneven lip, so the
-  // washout fades from black at its centre to nothing at its rim the way a
-  // real hole does. It is also one draw call FEWER than the hole-plus-ring it
-  // replaces.
-  function pit(world, minX, maxX, minZ, maxZ) {
+  // So the floor really opens now (js/levelkit.js drawPits, below):
+  //   * the ground plane is rebuilt with the pit's rectangle CUT OUT of it;
+  //   * stone walls go down from the cut, in the room's own wall colour, and
+  //     darken with depth to a near-black floor PIT_DEPTH below — deeper than
+  //     the fall animation drops the child, so he goes into the dark and never
+  //     through a floor;
+  //   * a lip of the room's own kit Brick is laid along the rim, so the edge is
+  //     a thing you can see from across the room and not just a colour change.
+  //
+  // The FALL LINE IS THE CUT: world.pitZones is the same rectangle the ground
+  // is cut along, so anywhere it looks like a hole, it is one, and the whole
+  // lip is solid ground. Anything that stands on the pit's rectangle — a rock,
+  // a flower, a pot — is refused by world.blocked() and swept by
+  // world.clearPits(); see those for the rest of "nothing in the pits".
+  //
+  // `D` is the district (the room's colours). Optional only so an old call
+  // still builds; every caller in the game passes it.
+  function pit(world, minX, maxX, minZ, maxZ, D) {
     world.pitZones.push({ minX, maxX, minZ, maxZ });
     if (isGrey()) return;
-    const w = maxX - minX, d = maxZ - minZ;
-    const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-    const hole = new THREE.Mesh(
-      // 1.44 is 1/0.70 with a hair to spare: the texture's black ends at 0.70 of
-      // the quad, so the fall line lands just INSIDE the black. Anywhere it
-      // looks like a hole, it is one — the stone lip is all on solid ground.
-      new THREE.PlaneGeometry(w * 1.44, d * 1.44),
-      // LIT LIKE THE FLOOR IT IS PART OF. Basic material meant the rim ignored
-      // the light rig, which is how three holes became three clouds in a dark
-      // room. Black stays black under any light; the stone dims with the room.
-      new THREE.MeshStandardMaterial({ map: pitTexture(), transparent: true,
-        depthWrite: false, roughness: 1, metalness: 0, color: 0xffffff })
-    );
-    hole.rotation.x = -Math.PI / 2;
-    hole.position.set(cx, (world.deckY || 0) + 0.05, cz);
-    world.add(hole);
+    drawPits(world, K(), D);
+  }
+
+  // A PIECE OF FLOOR STILL STANDING IN A PIT — the Broken Ascent's stair pads.
+  // The caller registers the safe zone and dresses the top; this gives it the
+  // stone SIDES that go down into the dark, drawn into the same one mesh as
+  // the pit walls, so a pad reads as a slab over a drop and costs no draw call.
+  function pitPier(world, minX, maxX, minZ, maxZ, D, top = 0) {
+    (world._pitPiers || (world._pitPiers = [])).push({ minX, maxX, minZ, maxZ, top });
+    if (isGrey()) return;
+    drawPits(world, K(), D);
   }
 
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
-    promiseGate, onwardPlug, dungeonMouth, visibleReward, darkZone, pit, protoMaterial };
+    promiseGate, onwardPlug, dungeonMouth, visibleReward, darkZone, pit, pitPier, protoMaterial };
+}
+
+// ---------------------------------------------------------------------------
+// THE PIT, BUILT (see pit() above for why it is built and not painted).
+//
+// Everything is rebuilt from the room's full list each time a pit or a pier is
+// added, so the order a room declares them in never matters and a room with
+// three holes pays for one set of pieces, not three:
+//
+//   the ground   still ONE mesh and one draw — the plane is re-cut into the
+//                rectangles that are not hole, with the painted texture's UVs
+//                kept exactly where they were, so the path and patches do not
+//                move by a pixel;
+//   the walls    ONE mesh and one draw for every wall, pier side and pit floor
+//                in the room — faceted low-poly stone in the room's own wall
+//                colour, the value carried on the vertices so it can fall away
+//                into the dark with depth;
+//   the lip      ONE instanced draw of the room's kit Brick along the rims.
+//
+// THE CAMERA DECIDES WHICH WALLS EXIST. It sits south of the child looking
+// north and down, so the face of a hole it can see is the NORTH one (facing
+// south, towards the lens), and of a pad standing in a hole, its SOUTH face.
+// A face that looks north is never on screen from any spot in any room, so it
+// is not built — that is roughly a quarter of the geometry for nothing.
+// ---------------------------------------------------------------------------
+export const PIT_DEPTH = 3.4;   // player.js drops a falling child to airY -3.2
+
+function drawPits(world, kit0, D) {
+  const art = world._pitArt || (world._pitArt = { D: null, parts: [] });
+  if (D) art.D = D;
+  const d = art.D || {};
+  for (const o of art.parts) {
+    if (o.parent) o.parent.remove(o);
+    o.traverse((n) => {
+      if (n.geometry) n.geometry.dispose();
+      if (n.material && !SHARED.has(n.material)) n.material.dispose();
+    });
+  }
+  art.parts = [];
+  cutGround(world);
+  const keep = (o) => {
+    o.traverse((n) => { n.userData.pitArt = true; });
+    world.add(o);
+    world.keepLoose(o);
+    art.parts.push(o);
+  };
+  keep(pitWalls(world, d));
+  const lip = pitLip(world, kit0, d);
+  if (lip) keep(lip);
+}
+
+// The room's ground plane, re-cut with every pit rectangle taken out of it.
+function cutGround(world) {
+  const g = world.root.children.find((c) => c.name === 'ground');
+  if (!g) return;
+  const P = g.userData.plane || (g.userData.plane = {
+    w: g.geometry.parameters.width, h: g.geometry.parameters.height });
+  const W = P.w, H = P.h, ox = g.position.x, oz = g.position.z;
+  const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const holes = world.pitZones.map((p) => ({
+    x0: cl(p.minX - ox, -W / 2, W / 2), x1: cl(p.maxX - ox, -W / 2, W / 2),
+    z0: cl(p.minZ - oz, -H / 2, H / 2), z1: cl(p.maxZ - oz, -H / 2, H / 2),
+  })).filter((h) => h.x1 - h.x0 > 1e-4 && h.z1 - h.z0 > 1e-4);
+  const cuts = (lo, hi, vals) => [...new Set([lo, hi, ...vals].map((v) => +v.toFixed(5)))]
+    .sort((a, b) => a - b);
+  const xs = cuts(-W / 2, W / 2, holes.flatMap((h) => [h.x0, h.x1]));
+  const zs = cuts(-H / 2, H / 2, holes.flatMap((h) => [h.z0, h.z1]));
+  const pos = [], uv = [], nrm = [], idx = [];
+  let n = 0;
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let j = 0; j < zs.length - 1; j++) {
+      const x0 = xs[i], x1 = xs[i + 1], z0 = zs[j], z1 = zs[j + 1];
+      const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      if (holes.some((h) => mx > h.x0 && mx < h.x1 && mz > h.z0 && mz < h.z1)) continue;
+      // PlaneGeometry's own frame: local y is world -z, and uv = local/size + 0.5
+      const ya = -z1, yb = -z0;
+      for (const [x, y] of [[x0, ya], [x1, ya], [x1, yb], [x0, yb]]) {
+        pos.push(x, y, 0); nrm.push(0, 0, 1); uv.push(x / W + 0.5, y / H + 0.5);
+      }
+      idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+      n += 4;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.parameters = { width: W, height: H };   // what the tools read off the old plane
+  g.geometry.dispose();
+  g.geometry = geo;
+}
+
+// A tiny seeded generator, so a room's stonework is the same every visit.
+function pitRng(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h ^= h >>> 13; return ((h >>> 0) % 100000) / 100000; };
+}
+
+function pitWalls(world, D) {
+  const pos = [], col = [];
+  const base = new THREE.Color(D.wallTint !== undefined ? D.wallTint : 0x6a6470);
+  const rnd = pitRng(String(world.roomId || 'pit'));
+  const c = new THREE.Color();
+  // THE DARK IS PAINTED ON THE STONE. Full wall colour at the rim, falling to a
+  // tenth of it at the bottom: the eye reads "it goes down a long way" from the
+  // gradient, the way it reads distance from haze. Lighting alone cannot do it
+  // — the key light reaches the bottom of an open hole as easily as the top.
+  const fade = (y) => {
+    const t = Math.max(0, Math.min(1, -y / PIT_DEPTH));
+    return 1 - 0.9 * Math.pow(t, 0.75);
+  };
+  const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
+  // one quad, wound to face `nrm`, each corner shaded by its own height
+  const quad = (nrm, pts, shade) => {
+    va.fromArray(pts[0]); vb.fromArray(pts[1]).sub(va); vc.fromArray(pts[2]).sub(va);
+    const p = vb.cross(vc).dot(nrm) < 0 ? [pts[0], pts[3], pts[2], pts[1]] : pts;
+    for (const k of [0, 1, 2, 0, 2, 3]) {
+      const q = p[k];
+      pos.push(q[0], q[1], q[2]);
+      c.copy(base).multiplyScalar(shade * fade(q[1]));
+      col.push(c.r, c.g, c.b);
+    }
+  };
+  const UP = new THREE.Vector3(0, 1, 0);
+
+  // ONE FACE OF STONE: courses of blocks of uneven width, each standing a
+  // little proud of the mortar behind it so the light picks out its top and
+  // its ends. It starts at (ox, oz) on the rim, runs along (rx, rz) and looks
+  // along (nx, nz).
+  const wall = (ox, oz, rx, rz, nx, nz, len, top) => {
+    const at = (s, y, off) => [ox + rx * s + nx * off, y, oz + rz * s + nz * off];
+    const N = new THREE.Vector3(nx, 0, nz), R = new THREE.Vector3(rx, 0, rz);
+    const L = R.clone().negate();
+    const bottom = -PIT_DEPTH;
+    // the mortar: one quad behind everything, a step darker than the stone
+    quad(N, [at(0, bottom, 0), at(len, bottom, 0), at(len, top, 0), at(0, top, 0)], 0.5);
+    let y0 = top;
+    while (y0 > bottom + 0.05) {
+      const h = Math.min(y0 - bottom, 0.4 + rnd() * 0.22);
+      const y1 = y0 - h;
+      let s0 = -rnd() * 0.6;                     // stagger the joints row to row
+      while (s0 < len) {
+        const s1 = Math.min(len, s0 + 0.55 + rnd() * 0.8);
+        const a = Math.max(0, s0) + 0.035, b = s1 - 0.035;
+        if (b - a > 0.12) {
+          const off = 0.04 + rnd() * 0.1;
+          const shade = rnd() < 0.15 ? 0.7 : 0.85 + rnd() * 0.3;
+          const yt = y0 - (y0 === top ? 0 : 0.035), yb = y1 + 0.035;
+          quad(N, [at(a, yb, off), at(b, yb, off), at(b, yt, off), at(a, yt, off)], shade);
+          quad(UP, [at(a, yt, 0), at(b, yt, 0), at(b, yt, off), at(a, yt, off)], shade * 1.12);
+          quad(L, [at(a, yt, 0), at(a, yt, off), at(a, yb, off), at(a, yb, 0)], shade * 0.8);
+          quad(R, [at(b, yt, 0), at(b, yt, off), at(b, yb, off), at(b, yb, 0)], shade * 0.8);
+        }
+        s0 = s1;
+      }
+      y0 = y1;
+    }
+  };
+  for (const p of world.pitZones) {
+    // the north face looks south, the west face east, the east face west
+    wall(p.minX, p.minZ, 1, 0, 0, 1, p.maxX - p.minX, 0);
+    wall(p.minX, p.maxZ, 0, -1, 1, 0, p.maxZ - p.minZ, 0);
+    wall(p.maxX, p.minZ, 0, 1, -1, 0, p.maxZ - p.minZ, 0);
+    // and the bottom, nearly black: a place, not an unrendered hole
+    quad(UP, [[p.minX, -PIT_DEPTH, p.maxZ], [p.maxX, -PIT_DEPTH, p.maxZ],
+      [p.maxX, -PIT_DEPTH, p.minZ], [p.minX, -PIT_DEPTH, p.minZ]], 0.6);
+  }
+  for (const p of (world._pitPiers || [])) {
+    // a pier shows the camera its south face and its two ends
+    wall(p.minX, p.maxZ, 1, 0, 0, 1, p.maxX - p.minX, p.top);
+    // ...and a cap just under whatever its owner lays on top, so a top dressed
+    // in whole tiles that fall short of the edge never shows the hollow inside
+    const y = p.top - 0.012;
+    quad(UP, [[p.minX, y, p.maxZ], [p.maxX, y, p.maxZ], [p.maxX, y, p.minZ], [p.minX, y, p.minZ]], 0.8);
+    wall(p.maxX, p.maxZ, 0, -1, 1, 0, p.maxZ - p.minZ, p.top);
+    wall(p.minX, p.minZ, 0, 1, -1, 0, p.maxZ - p.minZ, p.top);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();   // non-indexed: one normal per face, faceted
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    vertexColors: true, flatShading: true, roughness: 1, metalness: 0 }));
+  mesh.receiveShadow = true;
+  mesh.name = 'pitWalls';
+  return mesh;
+}
+
+// THE LIP: the room's own kit Brick laid along each rim, set back so its inner
+// face is flush with the cut. Never on another pit, never on a pad, and never
+// along a stretch of rim that is really the room's own wall (the Broken
+// Ascent's void runs wall to wall, and bricks there would sit in the masonry).
+function pitLip(world, kit0, D) {
+  if (!kit0 || !kit0.brick || !kit0.brick.scene) return null;
+  const rnd = pitRng(String(world.roomId || 'pit') + ':lip');
+  const halfW = world.halfW || 99, halfD = world.halfD || 99;
+  const inAnyPit = (x, z) => world.pitZones.some((p) =>
+    x > p.minX - 0.05 && x < p.maxX + 0.05 && z > p.minZ - 0.05 && z < p.maxZ + 0.05)
+    || (world.safeZones || []).some((s) => x > s.minX && x < s.maxX && z > s.minZ && z < s.maxZ);
+  const places = [];
+  const run = (x0, z0, x1, z1, ox, oz, ry) => {
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    const count = Math.max(1, Math.round(len / 0.8));
+    for (let i = 0; i < count; i++) {
+      if (rnd() < 0.14) continue;               // a gap here and there: old stone
+      const f = (i + 0.5) / count;
+      const x = x0 + (x1 - x0) * f + ox, z = z0 + (z1 - z0) * f + oz;
+      if (Math.abs(x) > halfW - 0.55 || Math.abs(z) > halfD - 0.55) continue;
+      if (inAnyPit(x, z)) continue;
+      const k = 1.05 + rnd() * 0.2;
+      places.push({ x, y: 0, z, ry: ry + (rnd() - 0.5) * 0.24, sx: k, sy: 0.9 + rnd() * 0.5, sz: k });
+    }
+  };
+  const O = 0.19;   // half the brick's depth, less a hair of overhang
+  for (const p of world.pitZones) {
+    run(p.minX, p.minZ, p.maxX, p.minZ, 0, -O, 0);
+    run(p.minX, p.maxZ, p.maxX, p.maxZ, 0, O, 0);
+    run(p.minX, p.minZ, p.minX, p.maxZ, -O, 0, Math.PI / 2);
+    run(p.maxX, p.minZ, p.maxX, p.maxZ, O, 0, Math.PI / 2);
+  }
+  if (!places.length) return null;
+  const tint = new THREE.Color(D.wallTint !== undefined ? D.wallTint : 0x6a6470)
+    .multiplyScalar(1.25).getHex();
+  // no shadow pass: a brick is a hand high and the Night Road's edge frame sits
+  // at 120 of the 125-call budget — the shadow redraw is the one call to spare
+  const g = instancePlacements(kit0.brick.scene, places, {
+    castShadow: false, materialTints: { Grey_Floor: tint } });
+  // A WHISPER OF ITS OWN LIGHT, so in a blacked-out room (six percent of the
+  // rig for anyone but the Dark Wolf) the rim is a faint broken line rather
+  // than nothing. A whisper, not a glow: the unlit rim this replaces lit the
+  // Vault's three pits up as clouds, and dad called that out. In a lit room
+  // it is lost under the key light.
+  g.traverse((n) => {
+    if (!n.isMesh || !n.material || !n.material.emissive) return;
+    n.material.emissive.setHex(tint);
+    n.material.emissiveIntensity = 0.1;
+  });
+  g.name = 'pitLip';
+  return g;
 }
 
 // ---------------------------------------------------------------------------
@@ -944,65 +1189,6 @@ export function makeBuilders({ kit, isGrey }) {
 // than as paint. flattenStatic already skips transparent MeshBasicMaterial, so
 // it is left alone by the batcher without needing to be marked.
 // ---------------------------------------------------------------------------
-// THE WASHOUT'S OWN TEXTURE — one canvas, cached for the session, shared by
-// every pit in the game: black in the middle, a crumbled stone lip, and a hard
-// edge where the ground ends.
-//
-// THE EDGE IS HARD ON PURPOSE. It used to fade out over a fifth of the radius,
-// on the theory that a soft edge reads as depth. It does not. In a lit room the
-// fade made the hole a grubby SMEAR on the floor — dad tapped it in the Kiln
-// and said "get rid of this hole" — and in a dark room it was worse: the lip
-// was drawn unlit at three-quarters brightness so the Knight could find it in
-// the blackout, so while the room dimmed to six percent the pits stayed at full
-// and the Vault's three washouts became white clouds hanging over the ground.
-//
-// Ground ends at an edge. A black shape with a stone rim and a hard outline is
-// what a hole looks like from above, and it is what every top-down game in this
-// tradition draws. The lip is lit by the room now (MeshStandardMaterial, not
-// Basic) so it dims with everything else; the Dark Wolf is the answer to a dark
-// room, not a rim that ignores the dark.
-let pitTex = null;
-function pitTexture() {
-  if (pitTex) return pitTex;
-  const N = 128;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = N;
-  const g = cv.getContext('2d');
-  const img = g.createImageData(N, N);
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const nx = (x / (N - 1)) * 2 - 1, ny = (y / (N - 1)) * 2 - 1;
-      // a rounded-rectangle distance rather than a circle, so a long thin
-      // washout still reads as a hole and not as a lens
-      const r = Math.max(Math.abs(nx), Math.abs(ny)) * 0.55 + Math.hypot(nx, ny) * 0.45;
-      // crumble the edge: a cheap two-octave wobble keyed off the angle, so no
-      // two pits in a room show the same outline
-      const a = Math.atan2(ny, nx);
-      const wob = Math.sin(a * 7) * 0.035 + Math.sin(a * 13 + 1.7) * 0.022;
-      const e = r + wob;
-      let alpha, lum;
-      if (e < 0.70) { alpha = 1; lum = 4; }                      // the dark
-      else if (e < 0.88) {                                        // the lip
-        const f = (e - 0.70) / 0.18;
-        // stone, brightest right at the break and settling into the floor
-        alpha = 1; lum = 4 + Math.sin(f * Math.PI) * 96 + f * 34;
-      } else if (e < 0.90) {                                      // the break
-        // two texels of taper, no more: enough to stop the outline crawling,
-        // far too little to read as a cloud
-        alpha = 1 - (e - 0.88) / 0.02; lum = 38;
-      } else { alpha = 0; lum = 0; }
-      const i = (y * N + x) * 4;
-      img.data[i] = lum * 0.86; img.data[i + 1] = lum * 0.82; img.data[i + 2] = lum;
-      img.data[i + 3] = Math.round(alpha * 255);
-    }
-  }
-  g.putImageData(img, 0, 0);
-  pitTex = new THREE.CanvasTexture(cv);
-  pitTex.colorSpace = THREE.SRGBColorSpace;
-  SHARED.add(pitTex);   // session-shared: a room teardown must never free it
-  return pitTex;
-}
-
 let glowTex = null;
 function thresholdTexture() {
   if (glowTex) return glowTex;
