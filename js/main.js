@@ -1393,6 +1393,8 @@ function narrationTriggers(dt, t) {
     persist();
   }
   if (state.room === 'ld1' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+  if (state.room === 'ld' && m.gutterSpot && nearSpot(m.gutterSpot, 4.5)
+      && !state.flags.plates.l1_ld_gutter) narration.say('gutter_hint');
 
   // -------------------------------------------------------------------------
   // LEVEL 2 — THE VAULT CHANGES. Each spoke ends by doing something to the

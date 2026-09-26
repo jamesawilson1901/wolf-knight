@@ -5,6 +5,7 @@
 // is applied at build time.
 
 import * as THREE from 'three';
+import { makeLavaMaterial } from './lava.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
@@ -194,18 +195,12 @@ function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
     world.add(veins); // faint dying embers in the crust
     return basalt;
   }
-  const lava = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({
-      color: 0x000000,
-      emissive: 0xff5a2b,
-      emissiveIntensity: 1.8,
-      roughness: 1,
-    })
-  );
+  const molten = makeLavaMaterial();          // the shared shader (js/lava.js)
+  const lava = new THREE.Mesh(new THREE.PlaneGeometry(w, d), molten.material);
   lava.rotation.x = -Math.PI / 2;
   lava.position.set(x, 0.02, z);
   world.add(lava);
+  world.keepLoose(lava);                     // it animates; never batch it
   world.addLava(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
 
   let pointLight = null;
@@ -217,7 +212,7 @@ function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
   const phase = x * 1.7 + z * 0.9;
   world.onAnimate((t) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + phase) * Math.sin(t * 0.7 + phase);
-    lava.material.emissiveIntensity = 1.5 + pulse * 0.9;
+    molten.update(t, pulse);
     if (pointLight) pointLight.intensity = 9 + pulse * 6;
   });
   return lava;

@@ -27,8 +27,10 @@ const seeded = await wk.page.evaluate(() => {
   const w = window.__game.world;
   return { count: (w.nodes || []).length, kinds: (w.nodes || []).map((n) => n.kind) };
 });
-check('lc seeds exactly one rock and one tree node',
-  seeded.count === 2 && seeded.kinds.includes('rock') && seeded.kinds.includes('tree'), seeded);
+// (2026-09-26: lc lost its tree — "a random tree in the lava fields" — so the
+// tree half of the replay, checks 4-5, now runs on the Den's own tree below.)
+check('lc seeds exactly one rock node (and no tree in the lava fields)',
+  seeded.count === 1 && seeded.kinds[0] === 'rock', seeded);
 
 // 2. WITHOUT the tool, standing right on top of a rock does nothing at all —
 // no channel progress, no hp loss, no material — for many ticks.
@@ -76,6 +78,35 @@ check('the depleted rock paid out one ore, collected into materials', mined.afte
 check('channeling held the player in place via lockTime (the same field a real swing uses)',
   mined.lockTime > 0, mined);
 
+// 6. a depleted node is gone for the rest of THIS visit...
+const stillGone = await wk.page.evaluate(() => {
+  const w = window.__game.world;
+  const rock = w.nodes.find((n) => n.kind === 'rock');
+  return { depleted: rock.depleted, sceneHas: w.root.children.includes(rock.root) };
+});
+check('the depleted rock stays depleted and off-scene for the rest of this visit',
+  stillGone.depleted && !stillGone.sceneHas, stillGone);
+
+// ...but present again on the NEXT room build (the same "always there to
+// farm" law v3.170 already gave every enemy — no persisted depletion state).
+await wk.page.evaluate(() => window.__wkJump('lg2', ['knight']));
+await wk.page.waitForFunction(() => window.__wk.room === 'lg2' && !window.__wk.gates.transitioning,
+  null, { timeout: 60000 });
+await wk.page.evaluate(() => window.__wkJump('lc', ['knight']));
+await wk.page.waitForFunction(() => window.__wk.room === 'lc' && window.__wk.hearts > 1
+  && !window.__wk.gates.transitioning, null, { timeout: 60000 });
+const rebuilt = await wk.page.evaluate(() => {
+  const w = window.__game.world;
+  return { count: (w.nodes || []).length, kinds: (w.nodes || []).map((n) => n.kind),
+    anyDepleted: (w.nodes || []).some((n) => n.depleted) };
+});
+check('rebuilding the room (leaving and returning) restores its node fresh, not depleted',
+  rebuilt.count === 1 && !rebuilt.anyDepleted, rebuilt);
+
+// the tree half, on the Den's untinted tree (dr) — the same model lc's was
+await wk.page.evaluate(() => window.__wkJump('dr', ['knight']));
+await wk.page.waitForFunction(() => window.__wk.room === 'dr' && window.__wk.hearts > 1
+  && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 // 4. walking out of range mid-channel resets progress — proximity IS the cancel.
 // (owns axe_b already, granted here so this check exercises the distance
 // cancel in isolation rather than tripping the "no tool" branch instead.)
@@ -114,30 +145,7 @@ const chopped = await wk.page.evaluate(async () => {
 check('owning axe_b, the tree depletes the same way the rock did', chopped.depleted, chopped);
 check('the depleted tree paid out one wood', chopped.afterWood === chopped.beforeWood + 1, chopped);
 
-// 6. a depleted node is gone for the rest of THIS visit...
-const stillGone = await wk.page.evaluate(() => {
-  const w = window.__game.world;
-  const rock = w.nodes.find((n) => n.kind === 'rock');
-  return { depleted: rock.depleted, sceneHas: w.root.children.includes(rock.root) };
-});
-check('the depleted rock stays depleted and off-scene for the rest of this visit',
-  stillGone.depleted && !stillGone.sceneHas, stillGone);
 
-// ...but present again on the NEXT room build (the same "always there to
-// farm" law v3.170 already gave every enemy — no persisted depletion state).
-await wk.page.evaluate(() => window.__wkJump('lg2', ['knight']));
-await wk.page.waitForFunction(() => window.__wk.room === 'lg2' && !window.__wk.gates.transitioning,
-  null, { timeout: 60000 });
-await wk.page.evaluate(() => window.__wkJump('lc', ['knight']));
-await wk.page.waitForFunction(() => window.__wk.room === 'lc' && window.__wk.hearts > 1
-  && !window.__wk.gates.transitioning, null, { timeout: 60000 });
-const rebuilt = await wk.page.evaluate(() => {
-  const w = window.__game.world;
-  return { count: (w.nodes || []).length, kinds: (w.nodes || []).map((n) => n.kind),
-    anyDepleted: (w.nodes || []).some((n) => n.depleted) };
-});
-check('rebuilding the room (leaving and returning) restores both nodes fresh, none depleted',
-  rebuilt.count === 2 && !rebuilt.anyDepleted, rebuilt);
 
 // 7. THE ROLLOUT (design/MINING.md, 2026-09-16) — six more rooms each got
 // their own rock/tree, most of them tinted. The MECHANIC is already proven

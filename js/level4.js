@@ -351,21 +351,34 @@ function mountain(world, halfW, halfD, gaps, seed, keep = []) {
 // game persists at every milestone now), but Frostpeak's rest-before-the-boss
 // law is written into GAME-CONTRACT and its fires are what a child remembers
 // the mountain by, so they stay — same shape rooms.js's checkpoint() has.
+//
+// SEEN, NOT FOUND. Dad, 2026-09-26, with a photo: "I have told you before to
+// move the lantern from behind this object so the user can actually see it."
+// Every one of these fires sat in a south-west corner — 3-4u off the south
+// wall, which the fixed camera looks OVER, among firs, drift piles and the
+// hall's fallen columns — and the fire itself was a 16cm flame on a stand
+// scaled to 1.4. They now stand beside the arrival lane where the first frame
+// of the room shows them, a size up, with a warm pool on the snow.
 function campfire(world, id, x, z) {
-  world.reserve(x, z, 1.6, 'campfire:' + id);
+  world.reserve(x, z, 1.8, 'campfire:' + id);
   const fire = prepareModel(frostKit.campfire.scene.clone());
   fire.position.set(x, 0, z);
-  fire.scale.setScalar(1.4);
+  fire.scale.setScalar(1.9);
   world.add(fire);
   const flame = new THREE.Mesh(
-    new THREE.ConeGeometry(0.16, 0.5, 6),
-    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa03a, emissiveIntensity: 2.2, roughness: 1 })
+    new THREE.ConeGeometry(0.26, 0.8, 7),
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa03a, emissiveIntensity: 2.6, roughness: 1 })
   );
-  flame.position.set(x, 0.35, z);
+  flame.position.set(x, 0.55, z);
   world.add(flame);
   world.keepLoose(flame);
-  const light = new THREE.PointLight(0xffa03a, 5, 7, 1.9);
-  light.position.set(x, 1.0, z);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(1.5, 28),
+    new THREE.MeshBasicMaterial({ color: 0xffa03a, transparent: true, opacity: 0.22, depthWrite: false }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(x, (world.deckY || 0) + 0.03, z);
+  world.add(pool);
+  const light = new THREE.PointLight(0xffa03a, 6, 9, 1.8);
+  light.position.set(x, 1.3, z);
   world.add(light);
   const cp = { id, x, z, r: 1.3, flame, light, reached: false };
   world.checkpoints.push(cp);
@@ -552,7 +565,7 @@ export async function buildF1(scene) {
   // `scatter()` pass at the end so it can never land a rock on top.
   world.markers.rockSpots = [{ x: 1.5, z: 7, tint: 0x9be3ff }];
   world.reserve(1.5, 7, 1.3, 'node');
-  campfire(world, 'cp_f1', -8.5, 8.5);
+  campfire(world, 'cp_f1', -2.0, 5.6);
   potion(world, 8.5, 8.0);
   world.markers.chestDefs = [
     { id: 'c_f1_gate', tier: 'wood', x: -12.5, z: -7.5, ry: 1.1, loot: { shards: 14 } },
@@ -863,13 +876,13 @@ export async function buildF2(scene) {
   // one lone flyer, parked away from the braziers — flavour, not interference
   world.markers.mothSpots = [{ x: 9.0, z: 6.0, variant: 'frostmoth' }];
   world.markers.rimeMinionSpots = [{ x: -9.0, z: 6.5 }];
-  campfire(world, 'cp_f2', -9.5, 10.0);
+  campfire(world, 'cp_f2', -4.5, 6.0);
   potion(world, 9.5, 10.0);
   world.markers.chestDefs = [
     { id: 'c_f2_hall', tier: 'wood', x: -13.0, z: -10.5, ry: 1.3, loot: { shards: 16, potion: 1 } },
   ];
   world.markers.breakables = [
-    { x: 12.5, z: 2.0, kind: 'crate', shards: 3 }, { x: -4.5, z: 6.0, kind: 'jar', shards: 2 },
+    { x: 12.5, z: 2.0, kind: 'crate', shards: 3 }, { x: -1.8, z: 5.0, kind: 'jar', shards: 2 },
     { x: 4.0, z: 5.5, kind: 'crate', shards: 2 },
   ];
   drift(world, [
@@ -984,7 +997,7 @@ export async function buildF3(scene) {
 
   world.markers.slimeSpots = [{ x: -9.0, z: 8.0, variant: 'snowblob' }];
   world.markers.glacierWardenSpots = [{ x: 9.5, z: 8.5 }];
-  campfire(world, 'cp_f3', -13.0, 9.5);
+  campfire(world, 'cp_f3', -3.6, 7.2);
   world.markers.chestDefs = [
     { id: 'c_f3_lake', tier: 'wood', x: -13.5, z: -10.5, ry: 1.2, loot: { shards: 16 } },
   ];
@@ -1055,7 +1068,7 @@ export async function buildF4(scene) {
     { id: 'c_f4_scour', tier: 'gold', x: 13.5, z: -9.0, ry: -1.4, loot: { shards: 24, heartPiece: 1 } },
   ];
   // rest before the door (contract law): flame + potion side by side
-  campfire(world, 'cp_f4', -2.4, -7.0);
+  campfire(world, 'cp_f4', 2.4, -7.0);
   potion(world, 2.4, -7.0);
   world.markers.breakables = [
     { x: -10.58, z: 9.58, kind: 'crate', shards: 3 }, { x: 10.85, z: 9.03, kind: 'barrel', shards: 3 },
@@ -1187,7 +1200,7 @@ export async function buildF5(scene) {
       : []),
     { id: 'c_f5_ice', tier: 'gold', x: 10.5, z: -11.5, ry: -2.2, loot: { shards: 26, heartPiece: 1 } },
   ];
-  campfire(world, 'cp_f5', -9.5, 9.0);
+  campfire(world, 'cp_f5', -3.6, 6.8);
   world.markers.breakables = [{ x: 9.0, z: 9.0, kind: 'crate', shards: 2 }];
   firs(world, -11.0, 10.0, 1.4, 2, 81);
   firs(world, 11.5, 10.5, 1.4, 2, 82);

@@ -20,6 +20,7 @@
 // Everything snaps to the 1.0u grid. No existing space was rescaled.
 
 import * as THREE from 'three';
+import { makeLavaMaterial } from './lava.js';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
@@ -385,11 +386,11 @@ function lavaSurface(world, x, z, w, d) {
     });
     return crust;
   }
-  const lava = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0x000000,
-      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1.8, roughness: 1 })
-  );
+  // MOLTEN: the shared lava shader (js/lava.js) — crust plates, glowing
+  // seams, churning flow. The canvas `tex` above is only the COOLED crust's
+  // faint ember map now.
+  const molten = makeLavaMaterial();
+  const lava = new THREE.Mesh(new THREE.PlaneGeometry(w, d), molten.material);
   lava.rotation.x = -Math.PI / 2;
   lava.position.set(x, world.deckY + 0.02, z);
   world.add(lava);
@@ -399,9 +400,8 @@ function lavaSurface(world, x, z, w, d) {
   world.add(light);
   world.onAnimate((t) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + x) * Math.sin(t * 0.7 + z);
-    lava.material.emissiveIntensity = 1.5 + pulse * 0.9;
+    molten.update(t, pulse);
     light.intensity = 8 + pulse * 5;
-    tex.offset.x = t * 0.011;                // the crust drifts downstream
   });
   return lava;
 }
@@ -444,6 +444,73 @@ function slab(world, x, z, w, d, D) {
 function teachBraziers(world, spots, prefix, onLit, startLit = false) {
   if (GREY()) return;
   spots.forEach((sp, i) => brazier(world, prepareModel, emberKit.torch, `${prefix}${i + 1}`, sp.x, sp.z, onLit, startLit));
+}
+
+// A LIT LAMP HAS TO PAY. Dad, 2026-09-26, on the Kiln's Gutter Run: "lighting
+// these lanterns does nothing. If lanterns are lit, they need to do
+// something." And on the Order Hall: "Pip prompts to light the lanterns in
+// order for something special. There is no indication what the correct order
+// is." Both rooms were written as TEACH 2/3 in the level plan and built as
+// three and four plain braziers with nothing wired to them at all.
+//
+// So a puzzle brazier set now always has a PRIZE you can see from the moment
+// you walk in: a chest in a cage of bars (the same cage every plate vault
+// uses — bars down both sides, the front panel lifts), and the front panel
+// lifts when the fires are right. `face` is the side the mouth opens toward:
+// 'n' = toward -z, 'w' = toward -x. The chest's own save flag is the chest's;
+// the cage's is state.flags.plates[id], so a solved room rebuilds open.
+function rewardCage(world, cx, cz, id, chestId, loot, tier, face = 'n') {
+  const solved = () => !!state.flags.plates[id];
+  if (face === 'n') {
+    barWall(world, prepareModel, emberKit.bars, cx - 1.3, cz - 0.1, { span: 2.4, ry: Math.PI / 2 });
+    barWall(world, prepareModel, emberKit.bars, cx + 1.3, cz - 0.1, { span: 2.4, ry: Math.PI / 2 });
+  } else {
+    barWall(world, prepareModel, emberKit.bars, cx - 0.1, cz - 1.3, { span: 2.4 });
+    barWall(world, prepareModel, emberKit.bars, cx - 0.1, cz + 1.3, { span: 2.4 });
+  }
+  visibleReward(world, cx, cz, chestId, loot, tier);
+  const front = face === 'n'
+    ? plateBars(world, prepareModel, emberKit.bars, id, cx, cz - 1.35, { span: 2.6, solved })
+    : plateBars(world, prepareModel, emberKit.bars, id, cx - 1.35, cz, { span: 2.6, ry: Math.PI / 2, solved });
+  return {
+    solved,
+    open() {
+      if (solved()) return;
+      state.flags.plates[id] = true;
+      front.open();
+      if (juice.effects) juice.effects.shake(0.3, 0.4);
+    },
+  };
+}
+
+// PIP-COUNT DOTS — the ORDER, written in the only numerals a non-reader has.
+// A short row of glowing gold dots on the floor in front of a brazier: one
+// dot, two dots, three... MeshBasic, so they read in a dark hall without any
+// wolf's help (the old "only the Dark Wolf can read it" twist was the reason
+// Dad could not: the Fire Wolf he was playing saw four identical lamps).
+// Returns the dot meshes so the room can light them up as each one is done.
+function orderDots(world, x, z, n, towardX, towardZ) {
+  const dx = towardX - x, dz = towardZ - z, L = Math.hypot(dx, dz) || 1;
+  const fx = dx / L, fz = dz / L;           // toward the room's middle
+  const px = -fz, pz = fx;                  // across it
+  const dots = [];
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.95, depthWrite: false });
+  const plate = new THREE.MeshBasicMaterial({ color: 0x1a1210, transparent: true, opacity: 0.8, depthWrite: false });
+  const ox = x + fx * 1.15, oz = z + fz * 1.15;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * n + 0.34, 0.66), plate);
+  back.rotation.x = -Math.PI / 2;
+  back.rotation.z = Math.atan2(pz, px) * -1;
+  back.position.set(ox, world.deckY + 0.025, oz);
+  world.add(back);
+  for (let i = 0; i < n; i++) {
+    const f = (i - (n - 1) / 2) * 0.62;
+    const d = new THREE.Mesh(new THREE.CircleGeometry(0.22, 18), mat.clone());
+    d.rotation.x = -Math.PI / 2;
+    d.position.set(ox + px * f, world.deckY + 0.035, oz + pz * f);
+    world.add(d);
+    dots.push(d);
+  }
+  return dots;
 }
 
 // A hero prop: the district's memory anchor. Greybox form is a bold blocky
@@ -936,8 +1003,9 @@ export async function buildLb(scene) {
   sideDoor(world, 'e', halfW, halfD, 'lb1', { x: -7, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'lb2', { x: 7, z: 0, angle: -Math.PI / 2 });
 
-  heroProp(world, 10, -9, 'cone', D.tint, D);              // ▲ THE KILN, seen from here on
-  world.markers.heroSpot = { x: 10, z: -9 };
+  // (the Kiln's rock cone at (10,-9) is gone — Dad, 2026-09-26: "get rid of
+  // this rock structure". It read as a random heap blocking the view, not as
+  // a landmark.)
   // shaped, not a box — an L of rock splits the island into two reads
   wallRun(world, -14, -2, -4, -2, D);
   wallRun(world, -4, -2, -4, 6, D);
@@ -1224,8 +1292,10 @@ export async function buildLc(scene) {
   // z=-3 itself is lava, caught by an arrival-frame screenshot showing the
   // tree spot standing in the hazard), the two safe slabs, and every other
   // hand-placed marker in this room.
+  // (lc's tree node at (-9,-6) is gone — Dad, 2026-09-26: "get rid of this
+  // random tree in the lava fields". A green tree beside molten rock read as
+  // a mistake. Ember's wood comes from the Den's own tree; the rock stays.)
   world.markers.rockSpots = [{ x: 10, z: 7 }];
-  world.markers.treeSpots = [{ x: -9, z: -6 }];
   // WHERE THE JUMP IS TAUGHT. On the approach to the lava band (z -3..1),
   // south of it, where a child walking up from lg2 first sees molten rock and
   // stops. It moved here from lb's phantom geyser markers: a teach line has to
@@ -1421,6 +1491,50 @@ export async function buildLd(scene) {
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg3', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lg4', { x: 0, z: 3.2, angle: Math.PI }, { centre: -6 });
+  // THE KILN GATE. Dad, 2026-09-26, standing in this doorway: "The doorway
+  // needs to be a closed stone gate that looks special. At the moment it's
+  // nothing." It was a gap between two pillars — the road to the boss, and it
+  // looked like every other door in the level. Now it is the same great
+  // double gate that guards Cinder's cage in lg4, SHUT, with a hot keystone
+  // glowing over it, and it swings open as Kael walks up — the mountain
+  // letting you in. Never a lock: the Fire Wolf is Cinder's gift, so nothing
+  // on the road TO Cinder may ask for fire. Once opened it stays open.
+  if (!GREY()) {
+    const kilnOpen = !!state.flags.kilnGateOpen;
+    const nBox = world.boxColliders.length;
+    const gate = bossGate(world, -6, -halfD, 0, emberKit.archDoorB, D.wallTint,
+      { open: kilnOpen, portal: 0xff8a3a, height: 3.4 });
+    const key = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x2a0d05, emissive: 0xff7a22, emissiveIntensity: 1.6, roughness: 0.6 }));
+    key.position.set(0, 4.15, 0.6);
+    gate.add(key);
+    const glow = new THREE.PointLight(0xff8a3a, 3.5, 7, 1.8);
+    glow.position.set(-6, 3.2, -halfD + 1.4);
+    world.add(glow);
+    // NO BLOCKER. The leaves open 3.6u out, before a body can reach the wall
+    // line, so the shut gate's wall-collider only ever mattered to the static
+    // flood-fills (verify-reachable, the landings) that walk the spine — and
+    // to them a shut gate on the road to the boss reads as a sealed level.
+    world.boxColliders.splice(nBox);
+    const openDoor = world.openBossDoor;
+    world.openBossDoor = null;          // this gate is not the key-chest door
+    let shut = !kilnOpen;
+    world.onAnimate((t) => {
+      key.material.emissiveIntensity = 1.3 + 0.5 * Math.sin(t * 2.2);
+      glow.intensity = 3.0 + 0.8 * Math.sin(t * 2.2);
+      if (!shut) return;
+      const p = window.__game && window.__game.player;
+      if (!p) return;
+      const dx = p.root.position.x + 6, dz = p.root.position.z - (-halfD + 1);
+      if (dx * dx + dz * dz > 3.6 * 3.6) return;
+      shut = false;
+      state.flags.kilnGateOpen = true;
+      openDoor();
+      audio.play('stone-drag', { volume: 0.9, rate: 0.8 });
+      if (juice.effects) juice.effects.shake(0.35, 0.6);
+    });
+    world.markers.kilnGateSpot = { x: -6, z: -halfD + 1 };
+  }
   sideDoor(world, 'e', halfW, halfD, 'ld1', { x: -7, z: 0, angle: Math.PI / 2 });
   // DOWN INTO EMBER DEEP (design/LEVEL-DESIGN-BRANCHES.md). The Kiln is where
   // fire is taught, so the Kiln is where the branch that MASTERS it hangs off.
@@ -1447,9 +1561,35 @@ export async function buildLd(scene) {
   // TEACH 2 — DEVELOP: the Gutter Run. Three braziers in a channel, on a clock.
   wallRun(world, 6, 2, 6, 10, D);
   wallRun(world, 13, 2, 13, 10, D);
-  world.markers.gutterSpots = [{ x: 9.5, z: 8 }, { x: 9.5, z: 5 }, { x: 9.5, z: 2 }];
+  // THE GUTTER RUN PAYS NOW (Dad, 2026-09-26, photo of these three: "lighting
+  // these lanterns does nothing"). The channel's far end is a cage with a
+  // chest in it, lit and visible from the door you came in by; the three
+  // fires burn down after a while, and when all three are burning AT ONCE
+  // the front bars lift. Zig-zagged, 3.4u+ apart, so one slam (3.0u) cannot
+  // take all three — it is a run, not a stamp — but the burn time is long
+  // enough that a five-year-old walking, not dashing, makes it.
+  world.markers.gutterSpots = [{ x: 8.2, z: 8.4 }, { x: 10.8, z: 5.2 }, { x: 8.2, z: 2.0 }];
+  world.reserve(9.5, 11.3, 1.8, 'gutterCage');
+  world.reserve(9.5, 9.2, 1.0, 'gutterCageMouth');
+  const gutterCage = GREY() ? null : rewardCage(world, 9.5, 11.3, 'l1_ld_gutter', 'l1_ld_gutter_chest',
+    { shards: 20, potion: 1 }, 'silver', 'n');
+  const gutterDone = !!state.flags.plates.l1_ld_gutter;
   teachBraziers(world, [world.markers.teachBrazier], 'ld_teach');
-  teachBraziers(world, world.markers.gutterSpots, 'ld_gutter');
+  teachBraziers(world, world.markers.gutterSpots, 'ld_gutter', () => {
+    const run = (world.braziers || []).filter((b) => /^ld_gutter/.test(b.id));
+    if (!run.every((b) => b.lit) || !gutterCage || gutterCage.solved()) return;
+    for (const b of run) b.gutterAfter = 0;          // won: they burn for good
+    gutterCage.open();
+    bigToastSafe('All three burning — the bars lift!');
+    narrateSafe('gutter_done');
+  }, gutterDone);
+  if (!gutterDone) {
+    for (const b of (world.braziers || []).filter((q) => /^ld_gutter/.test(q.id))) {
+      b.gutterAfter = 12;
+      b.onGutter = () => { audio.play('puff', { volume: 0.5, rate: 0.8 }); };
+    }
+  }
+  world.markers.gutterSpot = { x: 9.5, z: 6 };
   // CINDER'S SHRINE — the place the whole region walks toward.
   //
   // Dad, on a screenshot of standing right at it: "remove the lantern in this
@@ -1513,7 +1653,50 @@ export async function buildLd1(scene) {
     { x: -5, z: -4 }, { x: 5, z: -4 }, { x: 5, z: 4 }, { x: -5, z: 4 },
   ];
   world.markers.orderSpot = { x: 0, z: 0 };
-  teachBraziers(world, world.markers.orderSpots, 'ld1_order');
+  // THE ORDER IS ON THE FLOOR NOW, and it pays. Dad, 2026-09-26: "Pip prompts
+  // to light the lanterns in order for something special. There is no
+  // indication what the correct order is." There was no order at all — four
+  // plain braziers, no check, no prize. Now: one to four glowing dots in front
+  // of each lamp, a wrong lamp snuffs every flame (never stuck — just start
+  // again), and four-in-order lifts the bars on a chest in the east wall.
+  const orderDone = !!state.flags.plates.l1_ld1_order;
+  world.reserve(8.3, 0, 1.8, 'orderCage');
+  world.reserve(6.4, 0, 1.0, 'orderCageMouth');
+  const orderCage = GREY() ? null : rewardCage(world, 8.3, 0, 'l1_ld1_order', 'l1_ld1_order_chest',
+    { shards: 30, potion: 1 }, 'silver', 'w');
+  const orderIds = world.markers.orderSpots.map((_, i) => `ld1_order${i + 1}`);
+  const dotsBy = {};
+  if (!GREY()) {
+    world.markers.orderSpots.forEach((sp, i) => {
+      dotsBy[orderIds[i]] = orderDots(world, sp.x, sp.z, i + 1, 0, 0);
+    });
+  }
+  const paint = (id, hex) => { for (const d of dotsBy[id] || []) d.material.color.setHex(hex); };
+  const done = [];
+  teachBraziers(world, world.markers.orderSpots, 'ld1_order', (br) => {
+    if (!orderCage || orderCage.solved()) return;
+    done.push(br.id);
+    if (br.id !== orderIds[done.length - 1]) {
+      // WRONG LAMP — everything goes out, the dots flash, try again.
+      done.length = 0;
+      for (const b of world.braziers.filter((q) => /^ld1_order/.test(q.id))) {
+        b.lit = false; b.flame.visible = false; b.light.intensity = 0;
+      }
+      for (const id of orderIds) paint(id, 0xff5a3a);
+      setTimeout(() => { for (const id of orderIds) paint(id, 0xffd76a); }, 700);
+      audio.play('puff', { volume: 0.8, rate: 0.7 });
+      narrateSafe('kiln_order_wrong');
+      return;
+    }
+    paint(br.id, 0xfff4d0);                        // this one is right
+    audio.play('pup-chime', { volume: 0.6, rate: 0.9 + done.length * 0.15 });
+    if (done.length === orderIds.length) {
+      orderCage.open();
+      bigToastSafe('One, two, three, four — the bars lift!');
+      narrateSafe('kiln_order_done');
+    }
+  }, orderDone);
+  if (orderDone) for (const id of orderIds) paint(id, 0xfff4d0);
   // perimeter only — see the note on the shell above
   world.markers.breakables = [{ x: -8.5, z: 2, kind: 'jar' }, { x: 8.5, z: -2, kind: 'vase' }];
   fallenColumn(world, -8.5, -6, 0.5, D, 2.6);
