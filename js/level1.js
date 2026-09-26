@@ -31,7 +31,7 @@ import { WS } from './worldstate.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
-import { brazier, pushableBoulder, plateSwitch, plateBars } from './gates.js';
+import { brazier, pushableBoulder, plateSwitch, plateBars, barWall } from './gates.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -261,7 +261,7 @@ export async function loadEmberKit() {
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, pit, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, pit, onwardPlug,
   darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
@@ -611,13 +611,15 @@ export async function buildLa(scene) {
   // doorway on their NEXT entry, not this one. That is the existing rule
   // for every gate that changes a room's own geometry (`den`'s own east
   // gap, v3.129, works the same way), not a new exception.
-  const vaultOpen = !!state.flags.cracked.l1_crack_gate;
+  // ALWAYS CUT NOW (levelkit dungeonMouth): rubble fills the gap until the
+  // crack breaks, then it puffs away and the door is live on the spot —
+  // "next visit" read to a child as "there is nothing behind this wall".
+  const vaultOpen = () => !!state.flags.cracked.l1_crack_gate;
   // THE FLOOR TELLS THE STORY FIRST. Scorch where each house burned, ash
   // drifted against the west wall, rubble under the fallen gate — and a worn
   // route from the Den door, past the gate, to the way onward. The path is the
   // honest replacement for the guide-orbs: a track people made with their feet.
-  const gaps = [gap('n'), gap('s'), gap('e')];
-  if (vaultOpen) gaps.push(gap('w', 1.8, -4));
+  const gaps = [gap('n'), gap('s'), gap('e'), gap('w', 1.8, -4)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [
       { x: -11, z: 7, r: 4.5, kind: 'scorch' },
@@ -641,8 +643,8 @@ export async function buildLa(scene) {
   // same ±8.5 correction buildLk1/buildLd already use for a pocket landing.
   // `centre: -4, half: 1.8` must match the gap pushed above or the visual
   // opening and the walkable door zone disagree (js/levelkit.js sideDoor).
-  if (vaultOpen) sideDoor(world, 'w', halfW, halfD, 'lv1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
-    { centre: -4, half: 1.8 });
+  dungeonMouth(world, 'w', halfW, halfD, 'lv1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    vaultOpen, D, { centre: -4, half: 1.8 });
 
   heroProp(world, 0, -6, 'gate', D.tint, D);               // ▲ THE FALLEN GATE
   world.markers.heroSpot = { x: 0, z: -6 };
@@ -870,8 +872,10 @@ export async function buildLg1(scene) {
   // chest lit up behind them. Visible from the moment you walk in, which is
   // the point — the child sees the prize first and works out the question
   // second (the Lolo contract, playbook §18.1).
-  wallRun(world, 3.2, 2.6, 3.2, 5, D);
-  wallRun(world, 5.8, 2.6, 5.8, 5, D);
+  // a CAGE, not a nook — bars down both sides as well as across the mouth
+  // (dad: "blocked in on all sides by gates"; see barWall in gates.js)
+  barWall(world, prepareModel, emberKit.bars, 3.2, 3.8, { span: 2.4, ry: Math.PI / 2 });
+  barWall(world, prepareModel, emberKit.bars, 5.8, 3.8, { span: 2.4, ry: Math.PI / 2 });
   visibleReward(world, 4.5, 4.0, 'l1_lg1_vault', { shards: 16, gear: 'shield_a' });
   const lg1VaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lg1_ki', 4.5, 2.6,
     { span: 2.6 });
@@ -957,10 +961,14 @@ export async function buildLb(scene) {
     { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }];
-  world.markers.emberWaspSpots = [{ x: 4, z: 2 }];
+  // THE CINDER DRAKE — lb's mini-boss (dad: "Swap out the wasp for a flying
+  // dragon type creature. Make it a mini boss fight"). Same spot the wasp
+  // hovered at; js/enemies.js DrakeGuardian. It hovers round this home point
+  // and dives across the open floor between the two push lanes and the vault.
+  world.markers.drakeSpot = { x: 4, z: 2 };
   // NO SPITTER — a design call and a budget call that agree. The room gained
   // a two-block push puzzle, and a ranged harasser sniping a child mid-push
-  // is frustration, not challenge; three signatures (moth, wasp,
+  // is frustration, not challenge; three signatures (moth, drake,
   // marauder) match la's density. It was also ~6 draw calls in the room that
   // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
@@ -1003,8 +1011,8 @@ export async function buildLb(scene) {
     { solved: () => !!state.flags.plates.l1_lb_sho_p2, restAt: { x: 11, z: 0 } });
   // THE VAULT, cut into the east wall between the Kiln road and the pup
   // pocket: a heart piece behind bars, in plain sight from both plates.
-  wallRun(world, 13.7, -6, 16, -6, D);
-  wallRun(world, 13.7, -3.4, 16, -3.4, D);
+  barWall(world, prepareModel, emberKit.bars, 14.85, -6, { span: 2.4 });
+  barWall(world, prepareModel, emberKit.bars, 14.85, -3.4, { span: 2.4 });
   visibleReward(world, 14.9, -4.7, 'l1_lb_vault', { shards: 24, heartPiece: 1 }, 'silver');
   const lbVaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb_sho', 13.2, -4.7,
     { span: 2.0, ry: Math.PI / 2, solved: lbSolved });
@@ -1116,7 +1124,7 @@ export async function buildLb2(scene) {
   // dead end that loops back to the Causeway), so this one gates treasure and
   // never the road: a child who cannot route the block loses a prize, not
   // their game.
-  wallRun(world, 7.0, 5.2, 7.0, 8, D);
+  barWall(world, prepareModel, emberKit.bars, 7.0, 6.4, { span: 2.4, ry: Math.PI / 2 });
   visibleReward(world, 8.7, 6.6, 'l1_lb2_vault', { shards: 20, gear: 'axe_ember' }, 'gold');
   const lb2Bars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb2_ten', 8.7, 5.2,
     { span: 2.6 });
@@ -1892,7 +1900,7 @@ export async function buildLk3(scene) {
   const ringLit = !!state.flags.lk3RingLit;
   const openVault = () => sideDoor(world, 'n', halfW, halfD, 'lk4', { x: 0, z: 7.5, angle: Math.PI });
   if (ringLit) openVault();
-  else onwardPlug(world, 0, -halfD + 0.3, 3.4, 0.5, 'rockLB', D.propTint, openVault);
+  else onwardPlug(world, 0, -halfD + 0.3, 3.4, 0.5, 'rockLB', D.propTint, openVault, 'lk4');
 
   // THE RING. Five lamps around the hearth, and the chamber only comes back
   // when every one of them is burning. No dark zone here, for the same reason
@@ -2094,7 +2102,7 @@ export async function buildLv2(scene) {
   // standing in a room with no way out.
   const openLv3 = () => sideDoor(world, 'w', halfW, halfD, 'lv3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
   if (WS.get('ember', 'dungeon')) openLv3();
-  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openLv3);
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openLv3, 'lv3');
 
   world.markers.breakables = [
     { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },

@@ -675,6 +675,38 @@ export function plateBars(world, prepareModel, barsGltf, id, x, z, opts = {}) {
   const { span = 2.6, ry = 0, tint = 0x4a4350 } = opts;
   const solved = opts.solved || (() => !!state.flags.plates[id]);
   if (solved()) return { open() {} };
+  const { g, collider } = barPanels(world, prepareModel, barsGltf, x, z, span, ry, tint);
+  world.reserve(x, z, span / 2 + 0.6, 'bars:' + id);
+  return {
+    open(silent = false) {
+      world.root.remove(g);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      if (!silent) {
+        audio.play('slam', { volume: 0.75, rate: 0.8 });   // the bars go up
+        audio.play('puff', { volume: 0.6, rate: 1.1 });
+      }
+    },
+  };
+}
+
+// THE REST OF THE CAGE — bars that never lift.
+//
+// Dad, twice, with a photo each time: "The chest needs to be blocked in on
+// all sides by gates. Not just the front." Every plate vault had bars across
+// its mouth and plain wall-runs down its sides, and from the chase camera
+// those wall-runs read as a couple of loose pillars with the chest sitting
+// open between them — it was sealed (a flood-fill from spawn never reaches
+// it), but it did not LOOK sealed, and to a five-year-old looking is the
+// whole rule. Bars on every side say "a cage, and something opens its door";
+// only the front panel (plateBars) ever lifts.
+export function barWall(world, prepareModel, barsGltf, x, z, opts = {}) {
+  const { span = 2.4, ry = 0, tint = 0x4a4350 } = opts;
+  barPanels(world, prepareModel, barsGltf, x, z, span, ry, tint);
+  world.reserve(x, z, span / 2 + 0.3, 'barWall');
+}
+
+function barPanels(world, prepareModel, barsGltf, x, z, span, ry, tint) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
   // Arch_bars measures 2.48 x 3.39 (tools/probe-modelsize.mjs), so one panel
@@ -713,16 +745,5 @@ export function plateBars(world, prepareModel, barsGltf, id, x, z, opts = {}) {
     ? { minX: x - halfThick, maxX: x + halfThick, minZ: z - halfSpan, maxZ: z + halfSpan }
     : { minX: x - halfSpan, maxX: x + halfSpan, minZ: z - halfThick, maxZ: z + halfThick };
   world.boxColliders.push(collider);
-  world.reserve(x, z, halfSpan + 0.6, 'bars:' + id);
-  return {
-    open(silent = false) {
-      world.root.remove(g);
-      const i = world.boxColliders.indexOf(collider);
-      if (i >= 0) world.boxColliders.splice(i, 1);
-      if (!silent) {
-        audio.play('slam', { volume: 0.75, rate: 0.8 });   // the bars go up
-        audio.play('puff', { volume: 0.6, rate: 1.1 });
-      }
-    },
-  };
+  return { g, collider };
 }

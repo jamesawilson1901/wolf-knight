@@ -81,7 +81,6 @@
 # item: find why jumping into `vz` (Stoneroot's crypt, the Bone Warden) after
 # `le` never resolves `window.__wk.room === 'vz'` within verify-onward.mjs
 # §5's 60s window.
-verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz` after `le` (tools/verify-onward.mjs:223) — proven pre-existing on v3.132 (e6785e0) via a detached worktree, unrelated to and outliving the §4 ddp/dlg fix | 2026-09-09
 # ---------------------------------------------------------------------------
 # 2026-09-18: triaged this as the standing P0 and spent a session trying to
 # root-cause it rather than just re-confirm it. Findings, for whoever picks
@@ -140,7 +139,6 @@ verify-onward.mjs | §5 hard-crashes on an uncaught 60s timeout jumping into `vz
 # files — never js/level3.js, which is the Frozen Spring's only builder.
 #
 # Neither is this slice's to fix; both get their own board item.
-verify-promises.mjs | "l1_crack resolves on the dungeon, not the gate" (v3.130 Ash Vault check) fails on the clean v3.133 commit with no v3.136 changes applied — a pre-existing narrationTriggers() timing flake, not a regression | 2026-09-10
 verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their arrival-frame item-count floor — zero overlap with any file v3.136 touches (js/level3.js, the Spring's only builder, is untouched) | 2026-09-10
 # ---------------------------------------------------------------------------
 # 2026-09-10, also found while verifying v3.147/v3.136: verify-grounded's
@@ -265,3 +263,4 @@ verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same 
 # about this room's foe placement or the sprint line; f1b's own encounter
 # was already too sparse/short for this check's floor before today.
 verify-gauntlet.mjs | f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line) takes 0 hits instead of a graze — proven pre-existing via byte-identical --raw comparison, unrelated to v3.186's separateProps() | 2026-09-18
+verify-interpenetration.mjs | the residual prop-overlap backlog: 98 pairs on v3.188 main (after this session's systemic passes cut it from 188), 93 on 2026-09-26 with v3.190-3.192 applied — the count went DOWN, and no remaining pair sits in a room those versions touched (the two it lists there, f1b's west side and lb2 at x -9..-6, are nowhere near f1b's new east plug or lb2's x 7 bar wall). A backlog being worked, not a regression; remove when it reaches 0 | 2026-09-26

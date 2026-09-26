@@ -520,6 +520,8 @@ function updateBossBar() {
     bar = { name: world.boss.name || 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / (world.boss.maxHp || 8) };
   } else if (world.warden && !world.warden.dead && world.warden.state !== 'sleep') {
     bar = { name: 'The Bone Warden', f: Math.max(0, world.warden.hp) / world.warden.maxHp };
+  } else if (world.miniBoss && !world.miniBoss.dead) {
+    bar = { name: world.miniBoss.name, f: Math.max(0, world.miniBoss.hp) / world.miniBoss.maxHp };
   }
   bossBarEl.style.display = bar ? 'block' : 'none';
   if (bar) {
@@ -901,6 +903,12 @@ const GATE_HINTS = [
   { marker: 'rootWallPromise',   form: 'verdant_wolf', line: 'rootwall_hint' },
   { marker: 'logPromise',        form: 'verdant_wolf', line: 'greatlog_hint' },
   { marker: 'icePromise',        form: 'frost_wolf',   line: 'shatter_prompt' },
+  // THREE DUNGEON GATES THAT NEVER SPOKE (2026-09-26): each publishes a
+  // marker and none had a hint, so a child standing at the Frostpeak hearth,
+  // the Vale's crypt ice or the Court's vault ice heard nothing at all.
+  { marker: 'meltPromise',       form: 'fire_wolf',    line: 'melt_prompt' },
+  { marker: 'cryptPromise',      form: 'frost_wolf',   line: 'shatter_prompt' },
+  { marker: 'vaultPromise',      form: 'frost_wolf',   line: 'shatter_prompt' },
   { marker: 'galePromise',       form: 'storm_wolf',   line: 'storm_gale_promise' },
   { marker: 'tidePromise',       form: 'tide_wolf',    line: 'tide_quench' },
   { marker: 'deepPromise',       form: 'tide_wolf',    line: 'tide_howto' },
@@ -1034,6 +1042,14 @@ function narrationTriggers(dt, t) {
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
+  // THE CINDER DRAKE teaches its own two answers, each the first time it
+  // matters: the shield when you first come near it, the red floor the first
+  // time it paints one (LAW 6: every attack has a taught answer).
+  const drake = world.miniBoss;
+  if (drake && !drake.dead) {
+    if (nearXZ(drake.x, drake.z, 9)) narration.say('drake_intro');
+    if (drake.state === 'flameTell') narration.say('drake_flame');
+  }
   if (m.jumpTeach && nearSpot(m.jumpTeach, 5)) narration.say('learn_jump');
   // "no encouragement to get different weapons or armour" — teaches the
   // concept once, the first time a child comes near ANY unopened chest that
@@ -1924,8 +1940,6 @@ function refreshControlReveal() {
     !!state.spoken.darkwolf_intro || !!state.spoken.dark_nook ||
       state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf');
   document.getElementById('form-badge').classList.toggle('revealed', formsRevealed);
-  // the moon gauge rides with the forms: once the wolf exists, the moon waits
-  document.getElementById('moon-gauge').classList.toggle('revealed', formsRevealed);
 }
 
 function showCompleteScreen() {
@@ -3056,8 +3070,20 @@ async function start() {
     const topSpeed = player.form ? player.form.def.speed : 5;
     const vf = Math.min(1, Math.hypot(player._vel.x, player._vel.z) / topSpeed);
     const leadK = 1 - Math.exp(-CONFIG.LOOKAHEAD_SMOOTH * dt);
-    camLead.x += ((player._vel.x / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.x) * leadK;
-    camLead.z += ((player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.z) * leadK;
+    let wantX = (player._vel.x / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf;
+    let wantZ = (player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf;
+    // FRAME THE FLYER (GAME-CONTRACT: a flying boss must stay in frame). The
+    // Cinder Drake is tall and hovers, and from some angles it sat behind the
+    // top HUD band; the frame now leans a third of the way toward it while it
+    // is close, so the child and the thing whose tell they must read share
+    // the screen. Grounded fights are untouched.
+    const fly = world.miniBoss;
+    if (fly && !fly.dead && fly.flying) {
+      const bx = fly.x - player.root.position.x, bz = fly.z - player.root.position.z;
+      if (bx * bx + bz * bz < 100) { wantX += bx * 0.35; wantZ += bz * 0.35; }
+    }
+    camLead.x += (wantX - camLead.x) * leadK;
+    camLead.z += (wantZ - camLead.z) * leadK;
     const k = 1 - Math.exp(-CONFIG.CAM_DAMPING * dt);
     camGoal.copy(player.root.position).add(camLead).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
 

@@ -3537,7 +3537,9 @@ export class Dragonling extends Enemy {
     this._floorT = 0;
     this.diveDir = { x: 0, z: 0 };
     this._seed = x * 2.3 + z;
-    this.root.position.y = 2.0;
+    this.hoverY = opts.hoverY ?? 2.0;   // a bigger body hovers lower to stay in frame
+    this.hoverGain = opts.hoverGain ?? 0.6;   // how hard it closes on its hover point
+    this.root.position.y = this.hoverY;
     this._syncEyes = body.syncEyes;
   }
 
@@ -3595,19 +3597,19 @@ export class Dragonling extends Enemy {
       // hovering/diving/returning dragonling stops flying straight through
       // rocks, columns and dressed structures.
       const hs = this._moveSolved(
-        this.x + (this.home.x + Math.sin(t * 0.7 + this._seed) * 1.3 - this.x) * dt * 0.6,
-        this.z + (this.home.z + Math.cos(t * 0.55 + this._seed) * 1.3 - this.z) * dt * 0.6);
+        this.x + (this.home.x + Math.sin(t * 0.7 + this._seed) * 1.3 - this.x) * dt * this.hoverGain,
+        this.z + (this.home.z + Math.cos(t * 0.55 + this._seed) * 1.3 - this.z) * dt * this.hoverGain);
       this.root.position.x = hs.x; this.root.position.z = hs.z;
-      this.root.position.y = 2.0 + Math.sin(t * 1.6 + this._seed) * 0.2;
+      this.root.position.y = this.hoverY + Math.sin(t * 1.6 + this._seed) * 0.2;
       this.root.rotation.y = Math.atan2(dx, dz);
       const pv = player._vel ? Math.hypot(player._vel.x, player._vel.z) : 0;
       const trig = pv > 3.4 ? 9.5 : 5.6;
       if (d < trig && this.stateT > 1.1 && this.engaged !== false) { this.state = 'telegraph'; this.stateT = 0; }
     } else if (this.state === 'telegraph') {
       if (this.actions.fly) this.actions.fly.timeScale = 2.4;
-      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + (this.stateT / A.dragonling_dive.windup) * 2.0;
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + (this.stateT / (this._diveClock || A.dragonling_dive).windup) * 2.0;
       this.root.rotation.y = Math.atan2(dx, dz);
-      if (this.stateT >= A.dragonling_dive.windup) {
+      if (this.stateT >= (this._diveClock || A.dragonling_dive).windup) {
         this.state = 'dive'; this.stateT = 0;
         const ip = this.interceptPoint(player, 8.0, 1.0);
         const ix = ip.x - this.root.position.x, iz = ip.z - this.root.position.z;
@@ -3622,14 +3624,14 @@ export class Dragonling extends Enemy {
       this.root.position.x = ds.x; this.root.position.z = ds.z;
       this.root.position.y = Math.max(0.6, this.root.position.y - dt * 3.0);
       this.contact(player, 1, { ground: false });
-      if (this.stateT > A.dragonling_dive.active) { this.state = 'return'; this.stateT = 0; }
+      if (this.stateT > (this._diveClock || A.dragonling_dive).active) { this.state = 'return'; this.stateT = 0; }
     } else { // return to hover height/home
       if (this.actions.fly) this.actions.fly.timeScale = 1;
       for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4;
       const hx = this.home.x - this.x, hz = this.home.z - this.z;
       const hd = Math.hypot(hx, hz);
-      this.root.position.y = Math.min(2.0, this.root.position.y + dt);
-      if (hd < 0.4 && this.root.position.y >= 1.9) { this.state = 'hover'; this.stateT = 0; }
+      this.root.position.y = Math.min(this.hoverY, this.root.position.y + dt);
+      if (hd < 0.4 && this.root.position.y >= this.hoverY - 0.1) { this.state = 'hover'; this.stateT = 0; }
       else if (hd > 0.01) {
         const rs = this._moveSolved(this.x + (hx / hd) * 3.0 * dt, this.z + (hz / hd) * 3.0 * dt);
         this.root.position.x = rs.x; this.root.position.z = rs.z;
@@ -3642,6 +3644,171 @@ export class Dragonling extends Enemy {
     this._syncEyes();
   }
 }
+
+// THE CINDER DRAKE — Ember Hollow's mini-boss (lb), 2026-09-26.
+//
+// Dad: "Swap out the wasp for a flying dragon type creature. Make it a mini
+// boss fight." The wasp had itself replaced a small dragonling (2026-09-03,
+// "get rid of the flying dragonling"), which was a shrunk copy of Boreal's old
+// body. This is not that: Boreal wears wyrm.glb now, so Dragon.glb is free to
+// be a creature of its own — at mini-boss size, ember-red, with a boss bar.
+//
+// LAW: bosses fight like their family. This IS the Dragonling — hover, a body
+// telegraph, the dive, and a raised shield crashing it out of the air — with a
+// longer tell (drake_dive, boss floor) and one boss-scale move: a red lane on
+// the floor, fire down it, then it lands winded. Both openings are the same
+// gold ring the Shadowgrip's collapse uses: act here.
+//
+// Banked wound and a permanent defeat, the MINI_ROSTER contract: dying
+// mid-fight does not heal it, and once beaten it stays beaten.
+export class DrakeGuardian extends Dragonling {
+  constructor(world, x, z, gltf, opts = {}) {
+    super(world, x, z, gltf, { ...opts, hp: opts.hp ?? 12 });
+    this.name = 'The Cinder Drake';
+    this.radius = 1.05;              // a big body is a big target
+    this.dropChance = 1;
+    this.puffTint = 0xff7a3a;
+    this._diveClock = A.drake_dive;
+    this._hpGet = opts.hpGet || (() => 0);
+    this._hpSet = opts.hpSet || (() => {});
+    this._onDefeated = opts.onDefeated || (() => {});
+    const savedHp = this._hpGet();
+    if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
+    this._attacks = 0;
+    this.laneDir = { x: 0, z: 1 };
+    // the gold act-here ring (floored) and the red danger lane (flame tell)
+    this._ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.65, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.7,
+        side: THREE.DoubleSide, depthWrite: false }));
+    this._ring.rotation.x = -Math.PI / 2;
+    this._ring.visible = false;
+    world.root.add(this._ring);
+    this._lane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, DRAKE_LANE),
+      new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0,
+        side: THREE.DoubleSide, depthWrite: false }));
+    this._lane.rotation.x = -Math.PI / 2;
+    this._lane.visible = false;
+    world.root.add(this._lane);
+    world.miniBoss = this;
+  }
+
+  onBlocked() {
+    if (this.state === 'dive') this._floor(3.0);
+  }
+
+  takeDamage(n, element, kind) {
+    super.takeDamage(n, element, kind);
+    if (!this.dead) this._hpSet(Math.max(0, this.hp));
+  }
+
+  die() {
+    this._hpSet(0);
+    this._ring.visible = false; this._lane.visible = false;
+    this.world.root.remove(this._ring); this.world.root.remove(this._lane);
+    if (this.world.miniBoss === this) this.world.miniBoss = null;
+    spawnMaterialDrop(this.world, this.x - 0.5, this.z, 'crystal');   // a guardian always pays
+    this._onDefeated(this);
+    super.die();
+  }
+
+  update(dt, t, player) {
+    if (this.dead) return;
+    // IT CIRCLES KAEL, NOT A SPOT — Boreal's rule (GAME-CONTRACT: a flying
+    // boss must stay in frame). Hovering at a fixed home, a child who walked
+    // under it put it straight above their head, behind the top HUD. The
+    // hover point sways east-west of the player and a little north of them,
+    // so it hangs mid-screen where its tell can be read.
+    if (this.state === 'hover' || this.state === 'return') {
+      const px = player.root.position.x, pz = player.root.position.z;
+      const tx = px + Math.sin(t * 0.45 + this._seed) * 3.6, tz = pz - 0.8;
+      const k = Math.min(1, dt * 1.1);
+      this.home.x += (tx - this.home.x) * k;
+      this.home.z += (tz - this.home.z) * k;
+    }
+    const flaming = this.state === 'flameTell' || this.state === 'flame';
+    if (flaming) this._updateFlame(dt, t, player);
+    else {
+      const was = this.state;
+      super.update(dt, t, player);
+      // EVERY THIRD ATTACK breathes instead of diving — decided at the same
+      // moment the dive would have started its tell, so the tell is the fork
+      if (was === 'hover' && this.state === 'telegraph' && ++this._attacks % 3 === 0) {
+        this.state = 'flameTell'; this.stateT = 0;
+        const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
+        const d = Math.hypot(dx, dz) || 1;
+        this.laneDir = { x: dx / d, z: dz / d };
+        audio.play('growl', { volume: 0.8, rate: 0.45 });
+      }
+    }
+    const floored = this.state === 'floored';
+    this._ring.visible = floored;
+    if (floored) {
+      this._ring.position.set(this.x, (this.world.deckY || 0) + 0.04, this.z);
+      const p = 1 + Math.sin(t * 5) * 0.06;
+      this._ring.scale.set(p, p, 1);
+    }
+  }
+
+  // THE FLAME LANE. It stops dead in the air and looks down a line at you;
+  // the line reddens on the floor for the whole tell (drake_flame.windup),
+  // then fire runs down it. The answer is to not be on it.
+  _updateFlame(dt, t, player) {
+    if (this.stunUpdate(dt)) { this._lane.visible = false; this.mixer.update(dt); this._syncEyes(); return; }
+    this.stateT += dt;
+    const C = A.drake_flame;
+    const lx = this.x + this.laneDir.x * (DRAKE_LANE / 2 + 0.6);
+    const lz = this.z + this.laneDir.z * (DRAKE_LANE / 2 + 0.6);
+    this._lane.visible = true;
+    this._lane.position.set(lx, (this.world.deckY || 0) + 0.05, lz);
+    this._lane.rotation.z = -Math.atan2(this.laneDir.x, this.laneDir.z);
+    this.root.rotation.y = Math.atan2(this.laneDir.x, this.laneDir.z);
+    this.root.position.y = this.hoverY + 0.2 + Math.sin(t * 1.6) * 0.1;
+    if (this.state === 'flameTell') {
+      if (this.actions.fly) this.actions.fly.timeScale = 2.0;
+      const f = Math.min(1, this.stateT / C.windup);
+      this._lane.material.opacity = 0.15 + f * 0.45 + Math.sin(t * 14) * 0.06 * f;
+      for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + f * 2.4;
+      if (this.stateT >= C.windup) {
+        this.state = 'flame'; this.stateT = 0; this._flameHit = false; this._flameAcc = 0;
+        this._play('bite');
+        audio.play('whoosh', { volume: 0.9, rate: 0.6 });
+        audio.play('burn', { volume: 0.8, rate: 0.9 });
+      }
+    } else {
+      this._lane.material.opacity = 0.65;
+      // fire runs down the lane over the active window
+      const reach = Math.min(1, this.stateT / (C.active * 0.6)) * DRAKE_LANE;
+      this._flameAcc += dt;
+      if (this._flameAcc > 0.04) {
+        this._flameAcc = 0;
+        const s = 0.6 + Math.random() * reach;
+        juice.burst(this.x + this.laneDir.x * s, 0.3 + Math.random() * 0.6, this.z + this.laneDir.z * s,
+          Math.random() < 0.5 ? 0xff7a2a : 0xffd24a, 4);
+      }
+      // one hit per flame — never a grinder
+      if (!this._flameHit) {
+        const px = player.root.position.x - this.x, pz = player.root.position.z - this.z;
+        const along = px * this.laneDir.x + pz * this.laneDir.z;
+        const across = Math.abs(-px * this.laneDir.z + pz * this.laneDir.x);
+        if (along > 0 && along < reach + 0.6 && across < 0.75 + 0.32) {
+          this._flameHit = true;
+          player.hurt(C.damage, { attacker: this, groundAttack: true });
+        }
+      }
+      if (this.stateT >= C.active) {
+        this._lane.visible = false;
+        // WINDED: it spent everything on the breath and comes down to the
+        // floor — the second opening, the same floored state the shield
+        // block uses, so it is one rule for a child to learn
+        this._floor(C.recover);
+      }
+    }
+    this.flashUpdate(dt);
+    this.mixer.update(dt);
+    this._syncEyes();
+  }
+}
+const DRAKE_LANE = 7.5;
 
 // ---------------------------------------------------------------------------
 // Ember drops: warm sparks fallen shadows sometimes leave behind.
@@ -4074,6 +4241,34 @@ export async function spawnEnemies(world) {
       world.enemies.push(world.warden);
     }
 
+    // THE CINDER DRAKE (lb's mini-boss, 2026-09-26 — replaces the Ember Wasp).
+    // Same banked-wound / beaten-stays-beaten contract as MINI_ROSTER below.
+    // WEAK TO MOON on purpose: a child meets it with the knight and the Dark
+    // Wolf only (the Fire Wolf is still ahead in the Kiln), and a weakness
+    // they cannot emit yet teaches nothing — the wasp's `frost` was exactly
+    // that mistake. RESISTS FIRE because it is made of it (and so pays in
+    // Ember Shards — js/materials.js materialForEnemy).
+    if (mk.drakeSpot && !WS.get('ember', 'mini_cinder_drake')) {
+      const drakeGltf = await loadGLB('./assets/chars/monsters/Dragon.glb');
+      const hpKey = 'mini_cinder_drake_hp';
+      world.enemies.push(new DrakeGuardian(world, mk.drakeSpot.x, mk.drakeSpot.z, drakeGltf, {
+        // SCALE, NOT fitHeight: Dragon.glb's skinned mesh reports its bind-pose
+        // box in raw exporter units (~400 tall), so measuring it gave 0.0058 —
+        // a drake one-hundredth the size of a dragonling, invisible in play.
+        // The roster has always used a flat 0.5 for this body; this is 1.5x,
+        // and it hovers low (1.0): measured by projecting its head to NDC from
+        // eight player positions (the GAME-CONTRACT flying-boss law), 1.7x at
+        // 1.3 put the head off the top of a phone screen from 3u south.
+        weakness: 'moon', resist: 'fire', scale: 0.75, hoverY: 1.0, hoverGain: 1.8, puffTint: 0xff7a3a,
+        tint: makeMonsterTint({ Main: 0x8e2a14, Belly: 0xffb25a, Claws: 0x2a1410,
+          Wings: 0xd8561e, Eyes: 0xffe14a }),
+        hpGet: () => (state.flags.world && state.flags.world.ember
+          && state.flags.world.ember[hpKey]) || 0,
+        hpSet: (n) => WS.set('ember', hpKey, n),
+        onDefeated: () => { WS.complete('ember', 'mini_cinder_drake'); },
+      }));
+    }
+
     // MINI_ROSTER (v3.136, §2.6): one named guardian at a pocket dungeon's
     // last door. `world.markers.miniSpot = {id, x, z}` beside `wardenSpot`,
     // the same idiom — but keyed to any MINI_ROSTER id, not a singleton.
@@ -4148,6 +4343,11 @@ export async function spawnEnemies(world) {
           hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint, ...bankedOpts,
         });
       }
+      // A NAME ON A BOSS BAR. The five guardians had neither, so each fought
+      // like one more skeleton and nothing said "this is the dungeon's boss"
+      // (dad: "mini bosses... none of them exist in the game"). The bar is
+      // main.js updateBossBar's world.miniBoss branch.
+      mini.name = cfg.name || ('The ' + key.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' '));
       world.miniBoss = mini;
       world.enemies.push(mini);
     }

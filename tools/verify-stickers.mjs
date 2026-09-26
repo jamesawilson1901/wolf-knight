@@ -39,7 +39,12 @@ const ROWS = starts.map((m, i) => {
   const fileM = row.match(/model:\s*\{\s*file:\s*'([^']+)'/);
   return { id: m[1], counter: counterM && counterM[1], hasModel: !!fileM, file: fileM && fileM[1] };
 });
-check(`STICKERS has 21 rows (17 original + 4 non-combat, v3.132)`, ROWS.length === 21, ROWS.map((r) => r.id));
+// 24 since v3.148: the dungeon and garden-bed features added `dungeon1`,
+// `garden1` and `garden5` after this count was written at 21 (v3.132). The
+// count stays exact on purpose — its job is to notice a row going MISSING —
+// so it moves when a feature legitimately adds one (updated 2026-09-26).
+check(`STICKERS has 24 rows (17 original + 4 non-combat v3.132 + dungeon/garden v3.148)`,
+  ROWS.length === 24, ROWS.map((r) => r.id));
 
 const withModel = ROWS.filter((r) => r.hasModel);
 const withoutModel = ROWS.filter((r) => !r.hasModel);

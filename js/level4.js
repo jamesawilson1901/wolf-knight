@@ -175,7 +175,7 @@ export async function loadFrostKit() {
   return frostKit;
 }
 
-const { shell, sideDoor, scatter, visibleReward, onwardPlug } =
+const { shell, sideDoor, dungeonMouth, scatter, visibleReward, onwardPlug } =
   makeBuilders({ kit: () => frostKit, isGrey: () => GREY() });
 
 const { fallenColumn, rubbleField, wayshrine, lowWall } =
@@ -602,8 +602,10 @@ export async function buildF1b(scene) {
   // child already owns on arrival (region 1) — unlike the other three
   // dungeons (each locked behind the NEXT region's form), this one asks for
   // nothing new: the door is open the day Frostpeak begins.
-  const hearthOpen = alreadyMelted(REGION, 'f1c_hearth');
-  if (hearthOpen) gaps.push(gap('e', 1.6, 1.0));
+  // always cut; rubble-plugged until the melt (the melt gate's own collider
+  // is a 1.0 circle and cannot seal a 3.2u mouth alone) — dungeonMouth
+  const hearthOpen = () => alreadyMelted(REGION, 'f1c_hearth');
+  gaps.push(gap('e', 1.6, 1.0));
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 2, z: 0, r: 4.5, kind: 'ice' }, { x: -5, z: 5, r: 2.6, kind: 'gravel' }],
     paths: [[[-9, 0], [-3, 0], [3, -1], [7, -3]]],
@@ -613,9 +615,8 @@ export async function buildF1b(scene) {
   sideDoor(world, 's', halfW, halfD, 'tf3', { x: 0, z: 6.3, angle: Math.PI });
   meltGate(world, 8.5, 1.0, 'f1c_hearth', REGION);
   world.markers.meltPromise = { x: 8.5, z: 1.0 };
-  if (hearthOpen) {
-    sideDoor(world, 'e', halfW, halfD, 'f1c', { x: -8.5, z: 0, angle: Math.PI / 2 }, { centre: 1.0, half: 1.6 });
-  }
+  dungeonMouth(world, 'e', halfW, halfD, 'f1c', { x: -8.5, z: 0, angle: Math.PI / 2 },
+    hearthOpen, D, { centre: 1.0, half: 1.6, inset: 0.3 });
 
   // THE CAIRN NOOK: a rock spur walls it, the ice seals the only way in. The
   // Frost Wolf is still up the mountain, so this is a PROMISE — come back.

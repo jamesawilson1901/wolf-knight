@@ -282,7 +282,7 @@ export async function loadWoodKit() {
   return woodKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -885,9 +885,9 @@ export async function buildT1b(scene) {
   // the same structural gap-in-the-shell trick `la`'s own crack uses — built
   // once, at build time, so a child who shatters it mid-visit sees the
   // doorway on their NEXT entry, not this one.
-  const springOpen = !!WS.get(REGION, 'ice_l3_spring_ice');
-  const gaps = [gap('s'), gap('n'), gap('e')];
-  if (springOpen) gaps.push(gap('e', 2.0, 4));
+  // (now always cut and rubble-plugged until the shatter — dungeonMouth)
+  const springOpen = () => !!WS.get(REGION, 'ice_l3_spring_ice');
+  const gaps = [gap('s'), gap('n'), gap('e'), gap('e', 2.0, 4)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
               { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.32 },
@@ -900,8 +900,8 @@ export async function buildT1b(scene) {
   sideDoor(world, 'e', halfW, halfD, 't1p', { x: -7.5, z: 0, angle: Math.PI / 2 });
   // Landing is tf1's OWN frame (a 20x16 pocket, halfW 10) — the same ±8.5
   // correction buildLv1's own landing (off `la`) uses.
-  if (springOpen) sideDoor(world, 'e', halfW, halfD, 'tf1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
-    { centre: 4, half: 2.0 });
+  dungeonMouth(world, 'e', halfW, halfD, 'tf1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    springOpen, D, { centre: 4, half: 2.0 });
 
   world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' },
     { x: 5, z: 6, variant: 'thorn' }];

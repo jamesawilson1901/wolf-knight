@@ -23,6 +23,7 @@ import { ground, pathsThroughDoors, roomSeed } from './ground.js';
 import { districtTint } from './districts.js';
 import { state } from './state.js';
 import { audio } from './audio.js';
+import { juice } from './juice.js';
 import { WS } from './worldstate.js';
 import { registerCuttable, alreadyCut } from './gates.js';
 import { healPatches } from './restoration.js';
@@ -722,7 +723,11 @@ export function makeBuilders({ kit, isGrey }) {
   // door-suites (openholes, gauntlet, reachable) see either "no door" or
   // "open door", never "a door that fires into a wall". A live-added door
   // misses finish()'s threshold-glow fan; the poof carries the announcement.
-  function onwardPlug(world, x, z, w, d, kindModel, tint, addTheDoor) {
+  function onwardPlug(world, x, z, w, d, kindModel, tint, addTheDoor, doorTo = null) {
+    // `doorTo` names where the hidden door will lead, so a suite asking "does
+    // this room offer that branch?" can see a plugged door — which by design
+    // has no door trigger until it opens — instead of calling it missing.
+    if (doorTo) (world.pluggedTo || (world.pluggedTo = [])).push(doorTo);
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     const span = Math.max(w, d);
@@ -769,6 +774,76 @@ export function makeBuilders({ kit, isGrey }) {
       world.openOnward = null;
       if (alsoOpen) alsoOpen();
     };
+  }
+
+  // A DUNGEON'S DOOR, OPENED WHERE YOU STAND.
+  //
+  // Dad: "There's meant to be a heap of added dungeons and mini bosses... None
+  // of them exist in the game." They all existed. Every dungeon mouth was
+  // rebuild-gated — the shell gap and the door were only built if the gate's
+  // flag was already set when the room loaded — so a child who stomped la's
+  // cracked wall watched it burst open onto an EMPTY alcove, and the Ash Vault
+  // was only there if they happened to leave and come back. The boss arenas
+  // learned this lesson first (onwardPlug, above); this is the same shape for
+  // the six dungeon mouths.
+  //
+  // The caller ALWAYS cuts the gap in the shell (shells are built once). While
+  // `isOpen()` is false a plug of region rubble fills it — visibly a blocked
+  // passage, which is itself the hint that something lies beyond — and the
+  // door exists but is gated (`when`), so the door suites read "gated", never
+  // "a door into a wall". The moment the gate's own save flag flips, whichever
+  // wolf flipped it, the plug puffs away and the door is live. Polling the
+  // same flag the builder reads means no gate system (crack, burn, cut, melt,
+  // shatter) needs a new hook.
+  function dungeonMouth(world, side, halfW, halfD, to, entry, isOpen, D, opts = {}) {
+    const centre = opts.centre || 0, half = opts.half || 1.8;
+    sideDoor(world, side, halfW, halfD, to, entry, { centre, half, when: isOpen });
+    // `noPlug`: the room's own promise gate already stands IN the mouth and
+    // seals it (d1a, x1) — a plug would only stand inside the gate.
+    if (isOpen() || opts.noPlug) return;
+    // the plug sits just inside the wall line, spanning the gap
+    const alongX = side === 'n' || side === 's';
+    const inset = opts.inset ?? 0.45;
+    const px = side === 'w' ? -halfW + inset : side === 'e' ? halfW - inset : centre;
+    const pz = side === 'n' ? -halfD + inset : side === 's' ? halfD - inset : centre;
+    const w = alongX ? half * 2 : 0.9, d = alongX ? 0.9 : half * 2;
+    const g = new THREE.Group();
+    g.position.set(px, 0, pz);
+    const kit0 = GREY() ? null : K();
+    const src = kit0 && (kit0.rockLB || kit0.rockL || kit0.rockSA);
+    if (!src) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d),
+        new THREE.MeshStandardMaterial({ color: D.wallTint || 0x6a5a4a, roughness: 0.9 }));
+      m.position.y = 0.75;
+      g.add(m);
+    } else {
+      const n = Math.max(3, Math.round((half * 2) / 1.2));
+      for (let i = 0; i < n; i++) {
+        const f = i / (n - 1) - 0.5;
+        const piece = tintedModel(src, 'mouth_rubble', D.wallTint);
+        piece.position.set(alongX ? f * w : 0, 0, alongX ? 0 : f * d);
+        piece.rotation.y = i * 1.31;
+        piece.scale.setScalar(1.1);
+        g.add(piece);
+      }
+    }
+    world.add(g);
+    world.keepLoose(g);    // removing the group must remove its picture too
+    const collider = { minX: px - w / 2, maxX: px + w / 2, minZ: pz - d / 2, maxZ: pz + d / 2 };
+    world.boxColliders.push(collider);
+    let plugged = true;
+    world.onAnimate(() => {
+      if (!plugged || !isOpen()) return;
+      plugged = false;
+      world.root.remove(g);
+      const i = world.boxColliders.indexOf(collider);
+      if (i >= 0) world.boxColliders.splice(i, 1);
+      for (let k = 0; k < 8; k++) {
+        juice.burst(px + (Math.random() * 2 - 1) * (w / 2), 0.4 + Math.random() * 1.3,
+          pz + (Math.random() * 2 - 1) * (d / 2), k % 2 ? 0xcfd6de : 0x9aa4b0, 6);
+      }
+      audio.play('puff', { volume: 0.9, rate: 0.6, vary: 0.1 });
+    });
   }
 
   // The reward you can SEE but not reach yet — the other half of a promise.
@@ -843,7 +918,7 @@ export function makeBuilders({ kit, isGrey }) {
   }
 
   return { protoShell, dressShell, shell, sideDoor, wallRun, scatter,
-    promiseGate, onwardPlug, visibleReward, darkZone, pit, protoMaterial };
+    promiseGate, onwardPlug, dungeonMouth, visibleReward, darkZone, pit, protoMaterial };
 }
 
 // ---------------------------------------------------------------------------

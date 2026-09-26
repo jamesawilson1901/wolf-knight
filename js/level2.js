@@ -242,7 +242,7 @@ export async function loadCaveKit() {
   return caveKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone, pit } = makeBuilders({ kit: () => caveKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -1414,9 +1414,9 @@ export async function buildVc2(scene) {
   // gate and its own alcove/chest above are unchanged. Gap+door are only
   // emitted once `l2_bramble_gate` is cut, same as `la`'s crack: the door
   // exists on the child's NEXT visit, not mid-session.
-  const rootCellarOpen = alreadyCut(REGION, 'l2_bramble_gate');
-  const gaps = [gap('s'), gap('n'), gap('e', undefined, 5)];
-  if (rootCellarOpen) gaps.push(gap('w', 1.8, -2));
+  // (now always cut and rubble-plugged until the cut — levelkit dungeonMouth)
+  const rootCellarOpen = () => alreadyCut(REGION, 'l2_bramble_gate');
+  const gaps = [gap('s'), gap('n'), gap('e', undefined, 5), gap('w', 1.8, -2)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -8, z: -7, r: 5.0, kind: 'water' }, { x: 10, z: 7, r: 4.2, kind: 'mud' },
               { x: -12, z: 6, r: 4.0, kind: 'moss' }, { x: 6, z: -10, r: 3.6, kind: 'water' }],
@@ -1426,9 +1426,8 @@ export async function buildVc2(scene) {
   sideDoor(world, 's', halfW, halfD, 'vc1', { x: 0, z: -10.5, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'vc3', { x: 0, z: 5.5, angle: Math.PI });
   sideDoor(world, 'e', halfW, halfD, 'vcp', { x: -7.5, z: 0, angle: Math.PI / 2 }, { centre: 5 });
-  if (rootCellarOpen) {
-    sideDoor(world, 'w', halfW, halfD, 'vr1', { x: 8.5, z: 0, angle: -Math.PI / 2 }, { centre: -2, half: 1.8 });
-  }
+  dungeonMouth(world, 'w', halfW, halfD, 'vr1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    rootCellarOpen, D, { centre: -2, half: 1.8 });
 
   heroProp(world, -8, -7, 'drownedDoor', D);     // ▲ THE DROWNED DOOR
   world.markers.heroSpot = { x: -8, z: -7 };

@@ -185,7 +185,7 @@ function compactFlags(flags, depth = 0) {
 // ("the LV overlaps the shards"). Rectangles make that provable.
 function hudRects() {
   const out = [];
-  document.querySelectorAll('#hud, #hud-top, #hud-top *, #hearts, #shards, #pups, #buffs, #level-badge, #form-badge, #special, #moon-gauge, #badge').forEach((el) => {
+  document.querySelectorAll('#hud, #hud-top, #hud-top *, #hearts, #shards, #pups, #buffs, #level-badge, #form-badge, #special, #badge').forEach((el) => {
     if (!el.id && !el.className) return;
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;                    // not on screen

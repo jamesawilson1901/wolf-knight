@@ -109,7 +109,7 @@ export const LINES = {
   // purpose, the same one line design/WIDER-WORLD.md §2.5 asks for.
   lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe at last. Welcome home, friend.', repeat: true },
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
-  moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon and Luna herself will crash down on your enemies!' },
+  moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Press your big glowing button and Luna herself will crash down on your enemies!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },
   boss_tired: { voice: 'pip', text: 'It FELL! Now, Kael — strike with everything you have!' },
   shield_foe: { voice: 'pip', text: 'A shield-bearer! Blows just bounce off its front. Wait for its swing — or slip around BEHIND it!' },
@@ -346,6 +346,9 @@ export const LINES = {
   village_complete: { voice: 'pip', text: 'Every shadow, gone! The Village is awake, Kael — go see what you woke up.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! HOLD the wolf button at the bottom to pick him. His frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
+  drake_intro: { voice: 'pip', text: 'A drake, Kael! When it dives at you, hold up your shield — it will crash right down. Then get it!' },
+  drake_flame: { voice: 'pip', text: 'Red on the floor means FIRE! Step off the red — quick!' },
+  melt_prompt: { voice: 'pip', text: 'That ice is blocking a doorway, Kael! Be the Fire Wolf and breathe fire on it — melt it away!' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },
   frost_complete: { voice: 'pip', text: 'Frostpeak is still and safe. Four lights found, Kael… three to go.' },
   all_pups_frost: { voice: 'pip', text: 'TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!' },

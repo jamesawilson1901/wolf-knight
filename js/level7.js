@@ -144,7 +144,7 @@ export async function loadCourtKit() {
   return courtKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug } =
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug } =
   makeBuilders({ kit: () => courtKit, isGrey: () => GREY() });
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
@@ -394,8 +394,9 @@ export async function buildX1(scene) {
   // as every other region's own dungeon gate: the Frost Wolf, old news by
   // region 4 and still opening new rooms in the last one.
   const vault = !!WS.get(REGION, 'ice_x1_vault');
+  const vaultOpen = () => !!WS.get(REGION, 'ice_x1_vault');
   const gaps = [gap('s'), gap('n')];
-  if (vault) gaps.push(gap('e', DOOR_HALF, -2));
+  gaps.push(gap('e', DOOR_HALF, -2));   // always cut: the ice gate fills it
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'corruption', alpha: 0.3 },
               { x: 12, z: -8, r: 4.2, kind: 'rubble' }],
@@ -422,8 +423,9 @@ export async function buildX1(scene) {
   watcher(world, -8.5, -3.8, D);
   visibleReward(world, -13, -3.8, 'x7_gate', { shards: 30 });
   world.markers.watcherPromise = { x: -8.5, z: -3.8 };
-  if (vault) sideDoor(world, 'e', halfW, halfD, 'xc1', { x: 4, z: 6, angle: Math.PI }, { centre: -2 });
-  else {
+  dungeonMouth(world, 'e', halfW, halfD, 'xc1', { x: 4, z: 6, angle: Math.PI }, vaultOpen, D,
+    { centre: -2, half: DOOR_HALF, noPlug: true });
+  if (!vault) {
     promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'DARK — later', 'rockLB',
       { system: 'shatter', id: 'x1_vault', region: REGION });
     world.markers.vaultPromise = { x: halfW - 1.5, z: -2 };

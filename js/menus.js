@@ -26,9 +26,16 @@ const $ = (id) => document.getElementById(id);
 // reads (js/level1.js buildLa's `vaultOpen`, js/level3.js buildT1b's
 // `springOpen`) — a card can never promise a door that is not actually
 // there yet.
+// All seven now (2026-09-26): five shipped dungeons never got a card, so even
+// a child who HAD opened one could not find it again on the map.
 const DUNGEON_MOUTHS = {
   la: { first: 'lv1', open: () => !!state.flags.cracked.l1_crack_gate },
+  vc2: { first: 'vr1', open: () => !!WS.get('vault', 'cut_l2_bramble_gate') },
   t1b: { first: 'tf1', open: () => !!WS.get('wild3', 'ice_l3_spring_ice') },
+  f1b: { first: 'f1c', open: () => !!WS.get('frost', 'melt_f1c_hearth') },
+  s1a: { first: 's1c', open: () => state.formsUnlocked.includes('tide_wolf') },
+  d1a: { first: 'd1c', open: () => !!WS.get('vale', 'ice_d1a_crypt') },
+  x1: { first: 'xc1', open: () => !!WS.get('court', 'ice_x1_vault') },
 };
 
 export class Menus {

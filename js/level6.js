@@ -230,7 +230,7 @@ export async function loadValeKit() {
   return valeKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, onwardPlug, visibleReward } =
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, onwardPlug, visibleReward } =
   makeBuilders({ kit: () => valeKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -617,9 +617,10 @@ export async function buildD1a(scene) {
   // wall. Same 'shatter' verb as c2_pass/l3_spring_ice: the Frost Wolf,
   // gained back in region 4 and still opening new rooms two regions on.
   const crypt = !!WS.get(REGION, 'ice_d1a_crypt');
+  const cryptOpen = () => !!WS.get(REGION, 'ice_d1a_crypt');
   const gaps = [gap('s'), gap('n')];
   if (wade) gaps.push(gap('w'));
-  if (crypt) gaps.push(gap('e', DOOR_HALF, -2));
+  gaps.push(gap('e', DOOR_HALF, -2));   // always cut: the ice gate fills it
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 5.0, kind: 'water' }, { x: 12, z: -8, r: 4.4, kind: 'sand' },
               { x: -11, z: -9, r: 3.6, kind: 'moss' }],
@@ -638,8 +639,11 @@ export async function buildD1a(scene) {
   sideDoor(world, 's', halfW, halfD, 'p2', { x: 0, z: 8, angle: Math.PI });
   sideDoor(world, 'n', halfW, halfD, 'd1b', { x: 0, z: 10, angle: Math.PI });
   if (wade) sideDoor(world, 'w', halfW, halfD, 'dlg', { x: 14, z: 0, angle: Math.PI / 2 });
-  if (crypt) sideDoor(world, 'e', halfW, halfD, 'd1c', { x: 4, z: 6, angle: Math.PI }, { centre: -2 });
-  else {
+  // live the instant the ice shatters (levelkit dungeonMouth); the gate
+  // itself stands in the mouth, so no rubble plug
+  dungeonMouth(world, 'e', halfW, halfD, 'd1c', { x: 4, z: 6, angle: Math.PI }, cryptOpen, D,
+    { centre: -2, half: DOOR_HALF, noPlug: true });
+  if (!crypt) {
     promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'rockLB',
       { system: 'shatter', id: 'd1a_crypt', region: REGION });
     world.markers.cryptPromise = { x: halfW - 1.5, z: -2 };
