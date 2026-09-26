@@ -39,6 +39,7 @@ export const state = {
     materials: {},               // crafting materials (design/CRAFTING.md), id -> count
     crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
     recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
+    draughts: {},                // crafted drinks HELD for later, id -> count (v3.194)
     // DRAGON EGGS (design/DRAGON-EGGS.md) — element -> true. Deliberately
     // three small flag bags rather than one shape, so "found" / "hatched" /
     // "currently worn" can each be answered with a single lookup.

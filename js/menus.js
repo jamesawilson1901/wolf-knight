@@ -13,7 +13,7 @@ import { persist } from './save.js';
 import { villageCleared } from './levelVillage.js';
 import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
-import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked } from './crafting.js';
+import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked, craftBlockedReason } from './crafting.js';
 import { MATERIALS, materialCount } from './materials.js';
 import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
 
@@ -383,18 +383,24 @@ export class Menus {
       if (visible) {
         const btn = document.createElement('div');
         btn.className = 'craft-btn ui';
-        btn.textContent = 'Craft';
+        const why = craftBlockedReason(id);
+        btn.textContent = why || 'Craft';
         const affordable = canCraft(id);
         if (!affordable) btn.setAttribute('disabled', '');
-        btn.addEventListener('pointerdown', (e) => {
+        btn.addEventListener('pointerdown', async (e) => {
           e.stopPropagation();
           if (!canCraft(id)) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
           const ok = craftItem(id, { player: this.player });
           if (!ok) return;
           audio.play('checkpoint', { volume: 0.7, rate: 1.1 });
+          // A FORGED PIECE GOES ON. A child who just spent a whole region's
+          // shards on the Wolf Fang should be holding it when the menu shuts,
+          // not hunting for it on another tab.
+          if (r.gear) await this._equip(r.kind, r.gear);
           persist();
           this._paintCraftTab();
           this._paintSlots();
+          if (this.onHudChanged) this.onHudChanged();   // the new flask shows now
         });
         row.appendChild(btn);
       }

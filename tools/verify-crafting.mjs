@@ -76,18 +76,48 @@ const refuseCraft = await wk.page.evaluate(async () => {
 });
 check('craftItem refuses when materials are short', !refuseCraft.ok, refuseCraft);
 
-// 5. the Might Draught actually buffs the live player's attack damage.
+// 5. the Might Draught is HELD (v3.194 — Dad: "you are able to craft potions
+// and stuff but unable to equip and use them"): crafting puts a flask in the
+// bag and changes nothing yet; tapping the flask on the HUD drinks it, and
+// THAT raises live attack damage.
 const mightCraft = await wk.page.evaluate(async () => {
   const c = await import('/js/crafting.js');
   const g = window.__game;
+  g.player._mightT = 0;
+  g.state.inventory.draughts = {};
   const before = g.player.attackConfig().dmg;
   g.state.inventory.materials = { shard_fire: 2, wisp: 1 };
   const ok = c.craftItem('might_draught', { player: g.player });
+  const held = g.state.inventory.draughts.might || 0;
+  const timerAfterCraft = g.player._mightT;
+  if (g.player.onPotionsChanged) g.player.onPotionsChanged(g.player.potions);   // HUD repaint
+  const slot = document.querySelector('#potions .might-slot');
+  const slotShown = !!slot;
+  if (slot) slot.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   const after = g.player.attackConfig().dmg;
-  return { ok, before, after, mightT: g.player._mightT };
+  return { ok, held, timerAfterCraft, slotShown, before, after, mightT: g.player._mightT,
+    left: g.state.inventory.draughts.might || 0,
+    slotGone: !document.querySelector('#potions .might-slot') };
 });
-check('craftItem(might_draught) sets a real timer and raises live attack damage',
-  mightCraft.ok && mightCraft.mightT > 0 && mightCraft.after > mightCraft.before, mightCraft);
+check('crafting a Might Draught puts one flask in the bag and does not drink it',
+  mightCraft.ok && mightCraft.held === 1 && mightCraft.timerAfterCraft === 0, mightCraft);
+check('the flask shows on the HUD beside the potions', mightCraft.slotShown, mightCraft);
+check('tapping the flask drinks it: a real timer and higher live attack damage',
+  mightCraft.mightT > 0 && mightCraft.after > mightCraft.before, mightCraft);
+check('...and the flask is used up, its slot gone', mightCraft.left === 0 && mightCraft.slotGone, mightCraft);
+
+// 5b. a full bag refuses rather than eating the materials for nothing.
+const fullBag = await wk.page.evaluate(async () => {
+  const c = await import('/js/crafting.js');
+  const g = window.__game;
+  g.state.potions = 3;
+  g.state.inventory.materials = { wisp: 2 };
+  const can = c.canCraft('healing_draught');
+  const ok = c.craftItem('healing_draught');
+  return { can, ok, wisp: g.state.inventory.materials.wisp || 0, why: c.craftBlockedReason('healing_draught') };
+});
+check('with three potions already, a Healing Draught cannot be crafted and no wisps are spent',
+  !fullBag.can && !fullBag.ok && fullBag.wisp === 2 && fullBag.why === 'Bag full', fullBag);
 
 // 6. a gear recipe actually grants the item (weapon -> gear[], armour -> armours[]).
 const gearCraft = await wk.page.evaluate(async () => {

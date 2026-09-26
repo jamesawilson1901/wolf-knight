@@ -436,7 +436,36 @@ function renderPotions(player) {
     }
     potionsEl.appendChild(slot);
   }
+  // THE MIGHT FLASK — a crafted Might Draught, held until a child chooses
+  // the fight worth it (js/crafting.js). One slot with a count, only while
+  // there is one to drink, so the HUD never grows a dead button.
+  const might = (state.inventory.draughts || {}).might || 0;
+  if (might > 0) {
+    const slot = document.createElement('div');
+    slot.className = 'potion-slot might-slot ui';
+    // the potion's own rendered art, recoloured forge-orange by CSS — real
+    // art on the HUD, the glyph only if the art never arrived (same rule as
+    // the potion slots above)
+    const art = hudArt.potion ? artHtml(hudArt.potion, 'potion') : '<span class="might-icon">\u{1F9EA}</span>';
+    slot.innerHTML = art + (might > 1 ? `<b class="might-n">${might}</b>` : '');
+    slot.addEventListener('pointerdown', (e) => { e.stopPropagation(); drinkMightDraught(player); });
+    potionsEl.appendChild(slot);
+  }
   ctxShow(potionsEl);
+}
+
+const MIGHT_SECONDS = 45;
+function drinkMightDraught(player) {
+  const d = state.inventory.draughts || {};
+  if (!(d.might > 0) || player.hearts <= 0) return false;
+  d.might--;
+  player.drinkMight(MIGHT_SECONDS);
+  audio.play('potion', { volume: 0.9, rate: 0.8 });
+  juice.flare(player.root.position.x, 1.0, player.root.position.z, 0xff7a2a);
+  bigToast('Might Draught! Hits hit harder for a while');
+  renderPotions(player);
+  persist();
+  return true;
 }
 
 // Three pups hide in every region, and the HUD only ever promises the ones a
@@ -2807,6 +2836,7 @@ async function start() {
         if (player.tryJump() && wasAirborne) bumpCounter('doubleJumps');
       }
       if (input.consumePotion()) player.tryPotion();
+      if (input.consumeMight()) drinkMightDraught(player);
 
       player.update(dt, input, world);
       world.updateBoulders(dt, player);

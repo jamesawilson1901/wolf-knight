@@ -81,6 +81,31 @@ const afterCraft = await page.evaluate(() => ({
 check('tapping a real Craft button in the live UI adds a potion, spends materials, and tracks it as crafted',
   afterCraft.potions === 2 && afterCraft.wisp === 0 && afterCraft.crafted.includes('healing_draught'), afterCraft);
 
+// A FORGED PIECE GOES ON (v3.194): tapping Craft on Alpha's Aegis, with the
+// tier open and the materials in the bag, leaves it EQUIPPED — not waiting on
+// another tab for a child to go and find it.
+await page.evaluate(() => {
+  const g = window.__game;
+  g.state.inventory.crafted = ['healing_draught', 'might_draught'];
+  g.state.inventory.gear = g.state.inventory.gear.filter((x) => x !== 'shield_ultimate');
+  g.state.inventory.materials = { shard_earth: 3, shard_storm: 3, crystal: 2, ingot: 2 };
+});
+for (const want of ['Gear', 'Craft']) {   // re-enter the tab so it repaints with the new bag
+  for (const t of await page.$$('.arm-tab')) { if ((await t.textContent()).includes(want)) { await t.dispatchEvent('pointerdown'); break; } }
+  await page.waitForTimeout(100);
+}
+let aegisBtn = null;
+for (const r of await page.$$('.rack-row')) {
+  const name = await r.$eval('.rack-name', (n) => n.textContent).catch(() => '');
+  if (name === "Alpha's Aegis") aegisBtn = await r.$('.craft-btn');
+}
+check("Alpha's Aegis shows a Craft button once its tier is open", !!aegisBtn);
+if (aegisBtn) await aegisBtn.dispatchEvent('pointerdown');
+await page.waitForFunction(() => window.__game.state.inventory.equipped.shield === 'shield_ultimate', null, { timeout: 10000 }).catch(() => {});
+const forged = await page.evaluate(() => ({ equipped: window.__game.state.inventory.equipped.shield,
+  owns: window.__game.state.inventory.gear.includes('shield_ultimate') }));
+check('crafting it equips it straight away', forged.owns && forged.equipped === 'shield_ultimate', forged);
+
 // switching back to Gear leaves the knight/slots panel untouched (still there).
 for (const t of tabs) { if ((await t.textContent()).includes('Gear')) { await t.dispatchEvent('pointerdown'); break; } }
 await page.waitForTimeout(50);

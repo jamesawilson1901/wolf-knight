@@ -618,6 +618,10 @@
       border: 2px solid rgba(255,160,140,.5); touch-action: none;
     }
     .potion-slot.empty { filter: grayscale(1) brightness(.5); border-style: dashed; }
+    .potion-slot.might-slot { position: relative; border-color: #ff9a4a; box-shadow: 0 0 10px rgba(255,122,42,.55); display:flex; align-items:center; justify-content:center; }
+    .might-slot > :first-child { filter: hue-rotate(28deg) saturate(1.6) brightness(1.1); }
+    .might-slot .might-icon { font-size: 26px; line-height: 1; }
+    .might-slot .might-n { position: absolute; right: 3px; bottom: 1px; font-size: 13px; color: #ffd76a; text-shadow: 0 1px 2px #000; }
     /* HUD item art (js/main.js preloadHudArt): real models, rendered once
        through the game's own renderer, standing in for the last emoji a child
        looks at every second of play. Sized to match the glyphs they replace so
