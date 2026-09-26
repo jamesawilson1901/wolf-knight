@@ -17,6 +17,11 @@ export const state = {
     rescued: {},  // grown-wolf id -> true (dungeon room one, no fight — §2.5)
     chests: {},   // chest id -> opened
     keys: {},     // key id -> owned (dungeon locks)
+    // THE MAP'S MEMORY (js/mapdata.js). `visited`: room id -> true, stamped on
+    // every arrival — the map's fog lifts from it. `mapMarks`: every promise
+    // gate the child has walked near, drawn on the map until it opens.
+    visited: {},
+    mapMarks: {},
   },
   formsUnlocked: ['knight', 'dark_wolf'],
   form: 'knight',

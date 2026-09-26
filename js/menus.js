@@ -2,34 +2,24 @@
 // region map, and the sticker book. All icon-first, big targets, and every
 // action gives audio + visual feedback.
 
-import { state, regionCleared, regionOf } from './state.js';
-import { registeredRooms, roomMeta, districtTint } from './districts.js';
-import { WS } from './worldstate.js';
+import { state, regionCleared } from './state.js';
 import { audio } from './audio.js';
 import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
 import { perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { TREASURES, ownsTreasure, treasureCount } from './treasures.js';
 import { persist } from './save.js';
-import { villageCleared } from './levelVillage.js';
 import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
 import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked } from './crafting.js';
 import { MATERIALS, materialCount } from './materials.js';
 import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
+import { mapModel } from './mapdata.js';
+import { renderMap } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 
-// DUNGEON MOUTHS the map can offer as a small offshoot card (design/
-// WIDER-WORLD.md §5.3), keyed by the entrance room a branch hangs off —
-// one entry per shipped dungeon, added as each one ships. `open()` is the
-// SAME flag the branch's own structural gap in the entrance room's shell
-// reads (js/level1.js buildLa's `vaultOpen`, js/level3.js buildT1b's
-// `springOpen`) — a card can never promise a door that is not actually
-// there yet.
-const DUNGEON_MOUTHS = {
-  la: { first: 'lv1', open: () => !!state.flags.cracked.l1_crack_gate },
-  t1b: { first: 'tf1', open: () => !!WS.get('wild3', 'ice_l3_spring_ice') },
-};
+// The map screen's data and drawing live in js/mapdata.js and js/mapview.js
+// (DUNGEON_MOUTHS and the walk-order AREAS moved there with the rebuild).
 
 export class Menus {
   constructor({ player, onPauseGame, onResumeGame, onTravel, renderer, narration }) {
@@ -555,200 +545,36 @@ export class Menus {
     this.onPauseGame();
   }
 
-  // ---- Map (also the moonstone's fast travel, v3.137 — the tappable ------
-  // cards below ARE the destination picker, so the moonstone opens this
-  // same screen rather than a second emoji list of its own: design/
-  // WIDER-WORLD.md §5.3.) ---------------------------------------------------
-  // THE MAP READS THE GAME, NOT A LIST. Every room comes from its level's own
-  // spec table via districts.js (`registeredRooms()`), grouped by the same
-  // `regionOf` the music and the doors use, in the order a child walks the
-  // world. The old map was a hand list two rebuilds stale: Ember's rows named
-  // r1/r2/k1/r3 — retired ids `resolveRoom` redirects — so "you are here" could
-  // never light in Level 1, and seven regions plus both roads were missing.
+  // ---- Map (also the moonstone's fast travel, v3.137) ---------------------
   //
-  // What it shows: the SPINE of each region (the rooms on the road), plus the
-  // room the child is actually standing in if that is a pocket off it. Every
-  // card wears its district colour — the game's own wayfinding — and no icons.
+  // A REAL MAP (2026-09-26). Dad: "The whole map is confusing to me as an
+  // adult. A child has no chance of understanding. It needs to be a real map
+  // and when things are marked to come back later, actually have to be marked
+  // on the map." The rows of text cards are gone: rooms are tiles laid out by
+  // their real doors (js/maplayout.js over js/mapgraph.js), the fog lifts as
+  // Kael walks (js/mapdata.js), every promise gate he has seen wears the face
+  // of the wolf that opens it, and his own face marks where he is standing
+  // (js/mapview.js draws it all).
+  //
+  // Travel keeps the card map's rule exactly (mapModel's `travel`): a spine
+  // room in an open region, the Den, or an open dungeon mouth — every one a
+  // trip she could already make on foot. A tap lifts a gold GO button over the
+  // place; the second tap goes.
   showMap() {
     const el = $('map-menu');
-    el.innerHTML = '';
-    const h = document.createElement('h2');
-    h.textContent = 'The Kingdom';
-    el.appendChild(h);
-
-    const F = state.flags;
-    const here = state.room;
-    const hereRegion = regionOf(here);
-    // The world in walk order. `open` is the thing that has to be true before
-    // a child can have set foot there — a region appears on the map once the
-    // one before it is beaten (or the child is standing in it), never before:
-    // a five-year-old should not see eleven rows of places they cannot go.
-    const AREAS = [
-      { key: 'den',         name: 'The Moonlit Den',   open: () => true },
-      { key: 'ember_hollow', name: 'Ember Hollow',     open: () => true,               done: () => F.bossDefeated },
-      { key: 'night_road',  name: 'The Night Road',    open: () => F.bossDefeated },
-      { key: 'stoneroot',   name: 'Stoneroot Caverns', open: () => F.bossDefeated,     done: () => F.wardenDefeated },
-      { key: 'greenway',    name: 'The Greenway',      open: () => F.wardenDefeated },
-      { key: 'wildwoods',   name: 'The Wild Woods',    open: () => F.wardenDefeated,   done: () => F.sylvaDefeated },
-      // THE LAST THREE ROADS (2026-09-08). They went in as real regions with
-      // their own music and their own kits, and the map never heard of them —
-      // verify-map: six spine rooms built and not drawn. Each opens on the
-      // boss whose arena hands onto it, exactly as the Night Road, the
-      // Greenway and the Drowned Market already do above and below.
-      { key: 'coldclimb',   name: 'The Cold Climb',    open: () => F.sylvaDefeated },
-      { key: 'frostpeak',   name: 'Frostpeak',         open: () => F.sylvaDefeated,    done: () => F.borealDefeated },
-      { key: 'market',      name: 'The Drowned Market', open: () => F.borealDefeated },
-      { key: 'stormreach',  name: 'Stormreach Cliffs', open: () => F.borealDefeated,   done: () => F.ariaDefeated },
-      { key: 'plunge',      name: 'The Plunge',        open: () => F.ariaDefeated },
-      { key: 'sunkenvale',  name: 'The Sunken Vale',   open: () => F.ariaDefeated,     done: () => F.meriDefeated },
-      { key: 'hollowroad',  name: 'The Hollow Road',   open: () => F.meriDefeated },
-      { key: 'shadowcourt', name: 'The Shadow Court',  open: () => F.meriDefeated,     done: () => F.grimmFreed },
-      { key: 'village',     name: 'The Village',       open: () => F.grimmFreed,       done: () => villageCleared() },
-      { key: 'spire',       name: 'The Moonlit Spire', open: () => villageCleared() },
-    ];
-
-    // The Den is a single room with no level table, so it is named here. (The
-    // Frostpeak block that used to sit beside it went with the rebuild —
-    // js/level4.js registers its rooms like every other level.)
-    const UNTABLED = {
-      den: [{ id: 'den', label: 'The Moonlit Den', spine: true, tint: 0x6f8a4e }],
-    };
-
-    const all = registeredRooms();
-    const roomsOf = (key) => (UNTABLED[key] || all.filter((r) => regionOf(r.id) === key));
-    // Labels are authored SHOUTING for the greybox signs, with the level's own
-    // spoke letter in front ("A1 · THE GLIMMERWAY"); the map speaks quietly and
-    // drops the letter — it is a building code, not a place name.
-    const title = (t) => t.replace(/^[A-Z0-9]{1,3} · /, '')
-      .replace(/\S+/g, (w) => /^[A-Z0-9'’]+$/.test(w) ? w[0] + w.slice(1).toLowerCase() : w)
-      .replace(/(?<=\S )(Of|The|And)\b/g, (m) => m.toLowerCase());
-    const hex = (t) => '#' + (t == null ? 0x888888 : t).toString(16).padStart(6, '0');
-
-    for (const A of AREAS) {
-      if (!A.open() && hereRegion !== A.key) continue;
-      // ONE CARD PER PLACE. Levels 3, 5 and 6 build each island as two halves
-      // with the same name ('1A · THORNEDGE', '1B · THORNEDGE'), which is
-      // right for the greybox signs and reads as a stutter on a map. Adjacent
-      // rooms with the same name fold into one card that answers to both ids.
-      const rooms = [];
-      for (const r of roomsOf(A.key).filter((r) => r.spine || r.id === here)) {
-        const prev = rooms[rooms.length - 1];
-        if (prev && title(prev.label) === title(r.label) && prev.tint === r.tint) prev.ids.push(r.id);
-        else rooms.push({ ...r, ids: [r.id] });
-      }
-      if (!rooms.length) continue;
-      const wrap = document.createElement('div');
-      wrap.className = 'map-region';
-      const t = document.createElement('div');
-      t.className = 'map-title';
-      t.textContent = A.name;
-      if (A.done && A.done()) {
-        const d = document.createElement('span');
-        d.className = 'done';
-        d.textContent = '✓ freed';
-        t.appendChild(d);
-      }
-      wrap.appendChild(t);
-      const row = document.createElement('div');
-      row.className = 'map-rooms';
-      rooms.forEach((r, i) => {
-        if (i > 0) {
-          const link = document.createElement('div');
-          link.className = 'map-link';
-          row.appendChild(link);
-        }
-        const d = document.createElement('div');
-        const isHere = r.ids.includes(here);
-        const dest = isHere ? here : r.ids[0];
-        d.className = 'map-room' + (r.spine ? '' : ' pocket') + (isHere ? ' here' : '');
-        d.dataset.room = dest;
-        d.dataset.rooms = r.ids.join(' ');
-        const sw = document.createElement('div');
-        sw.className = 'swatch';
-        sw.style.background = hex(r.tint);
-        d.appendChild(sw);
-        const nm = document.createElement('div');
-        nm.textContent = title(r.label);
-        d.appendChild(nm);
-        if (isHere) {
-          const you = document.createElement('div');
-          you.className = 'you';
-          you.textContent = 'YOU ARE HERE';
-          d.appendChild(you);
-        }
-        // TAPPABLE (§5.3): every card on this screen is already somewhere
-        // she can currently walk to on foot — that is what drew the row at
-        // all, `A.open()` above or the `hereRegion` exception — so a tap is
-        // never a new power, only the trip she could already make. A card
-        // for where she is already standing does nothing new, so it stays
-        // inert rather than replaying a load.
-        if (!isHere) {
-          d.style.cursor = 'pointer';
-          d.addEventListener('pointerdown', () => {
-            audio.play('ui-click', { volume: 0.8 });
-            this._close('map-menu');
-            if (this.onTravel) this.onTravel(dest);
-          });
-        }
-        row.appendChild(d);
-        // THE DUNGEON MOUTH, ONCE IT HAS ONE (§5.3): a small offshoot card,
-        // never shown before the branch's own gate is actually open — she
-        // must not see a row she cannot go to.
-        for (const id of r.ids) {
-          const mouth = DUNGEON_MOUTHS[id];
-          if (!mouth || !mouth.open()) continue;
-          const link = document.createElement('div');
-          link.className = 'map-link';
-          row.appendChild(link);
-          const dd = document.createElement('div');
-          dd.className = 'map-room dungeon';
-          dd.style.cursor = 'pointer';
-          dd.dataset.room = mouth.first;
-          dd.dataset.rooms = mouth.first;
-          const meta = roomMeta(mouth.first);
-          const sw2 = document.createElement('div');
-          sw2.className = 'swatch';
-          sw2.style.background = hex(districtTint(mouth.first));
-          dd.appendChild(sw2);
-          const nm2 = document.createElement('div');
-          nm2.textContent = meta ? title(meta.district) : mouth.first;
-          dd.appendChild(nm2);
-          dd.addEventListener('pointerdown', () => {
-            audio.play('ui-click', { volume: 0.8 });
-            this._close('map-menu');
-            if (this.onTravel) this.onTravel(mouth.first);
-          });
-          row.appendChild(dd);
-        }
-      });
-      wrap.appendChild(row);
-      el.appendChild(wrap);
-    }
-
-    // the mystery log: promises the world made ("we'll come back")
-    const mys = Object.entries(state.flags.mysteries || {}).filter(([, v]) => !v.found);
-    if (mys.length) {
-      const mt = document.createElement('div');
-      mt.className = 'map-title';
-      mt.textContent = 'Mysteries';
-      el.appendChild(mt);
-      const row = document.createElement('div');
-      row.className = 'map-rooms';
-      for (const [, v] of mys) {
-        const d = document.createElement('div');
-        d.className = 'map-room';
-        d.innerHTML = `<div style="font-size:24px">${v.icon}</div><div>???</div>`;
-        d.title = v.label;
-        row.appendChild(d);
-      }
-      el.appendChild(row);
-    }
-    const hint = document.createElement('div');
-    hint.className = 'map-hint';
-    hint.textContent = 'More of the kingdom appears as Kael frees it…';
-    el.appendChild(hint);
-    el.appendChild(this._closeBtn('map-menu'));
+    const done = this._closeBtn('map-menu');
+    done.classList.add('map-close');
+    done.innerHTML = '<svg class="ico"><use href="#ico-close"/></svg>';
+    const view = renderMap(el, mapModel(), {
+      closeBtn: done,
+      onTravel: (dest) => {
+        audio.play('ui-click', { volume: 0.8 });
+        this._close('map-menu');
+        if (this.onTravel) this.onTravel(dest);
+      },
+    });
     this._open('map-menu');
+    view.ready();
   }
 
   // ---- Sticker book ------------------------------------------------------

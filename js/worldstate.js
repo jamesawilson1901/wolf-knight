@@ -172,7 +172,9 @@ for (const key of ['ember', 'stone', 'wild', 'frost', 'storm', 'vale', 'court'])
 export function logMystery(id, icon, label) {
   if (!state.flags.mysteries) state.flags.mysteries = {};
   if (state.flags.mysteries[id]) return false;
-  state.flags.mysteries[id] = { icon, label, found: false };
+  // `room` (2026-09-26): where it was seen, so the map can draw it THERE
+  // (js/mapdata.js). Additive — older entries lack it and are placed by table.
+  state.flags.mysteries[id] = { icon, label, found: false, room: state.room || null };
   return true; // caller shows the "added to map" toast
 }
 

@@ -861,30 +861,98 @@
       transition: transform .3s cubic-bezier(.2, 1.6, .4, 1);
     }
     #big-toast.show { transform: translate(-50%, -50%) scale(1); }
-    /* THE MAP. One row per region, the rooms of its spine in walk order, each
-       card wearing its DISTRICT COLOUR — the game's own wayfinding ("the
-       orange bit"), so a non-reader can match the card to the place. No icons:
-       the colour is the icon. A row scrolls sideways on a phone rather than
-       wrapping, so it keeps reading as a road. */
-    .map-region { width: 92vw; max-width: 820px; }
-    .map-title { font-size: 15px; opacity: .85; margin: 6px 0 3px; display: flex; align-items: center; gap: 8px; }
-    .map-title .done { font-size: 12px; color: #8aff9a; opacity: .9; }
-    .map-rooms { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 4px 2px 6px; }
-    .map-room {
-      flex: 0 0 auto; width: 104px; min-height: 66px; border-radius: 12px; position: relative;
-      padding: 6px 4px 5px; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.22);
-      font-size: 11px; font-weight: 700; color: #ffe9c8; line-height: 1.15;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
+    /* THE MAP (2026-09-26, js/mapview.js). A real map, not rows of cards:
+       every room a tile in its DISTRICT COLOUR where its doors put it, paths
+       between them, Kael's own face on a gold pin where he stands, and every
+       come-back-later place wearing the face of the wolf that opens it. Gold
+       is still "act here": the pin, the GO button, and a mark whose wolf the
+       child now owns. It fills the screen and pans under a finger, so the
+       .panel's scroll and padding are switched off for it. */
+    #map-menu.map-screen {
+      padding: 0; overflow: hidden; justify-content: flex-start;
+      background: radial-gradient(ellipse at 50% 40%, #2a2036 0%, #17101f 75%);
     }
-    .map-room .swatch { width: 34px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
-    .map-room.pocket { opacity: .8; border-style: dashed; }
-    /* A dungeon's own offshoot card (v3.137, §5.3) — smaller and dashed, so
-       a branch reads as a detour off the road rather than another stop on it. */
-    .map-room.dungeon { width: 76px; min-height: 50px; opacity: .85; border-style: dashed; font-size: 10px; }
-    .map-room.here { border-color: #8aff9a; box-shadow: 0 0 14px rgba(120,255,150,.45); background: rgba(120,255,150,.10); }
-    .map-room .you { font-size: 10px; color: #8aff9a; letter-spacing: .04em; }
-    .map-link { flex: 0 0 auto; width: 18px; height: 4px; background: rgba(255,255,255,.28); border-radius: 2px; }
-    .map-hint { font-size: 14px; opacity: .8; }
+    .map-stage { position: absolute; inset: 0; touch-action: none; }
+    .map-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    .map-path { stroke: rgba(255,233,200,.22); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 2 11; }
+    .map-path.walked { stroke: rgba(255,233,200,.42); stroke-dasharray: none; }
+    .map-hit { fill: transparent; }
+    .map-floor { fill: #1b1526; }
+    .map-shape { stroke: rgba(255,233,200,.85); stroke-width: 2.5; }
+    .map-tile.known .map-shape { opacity: .34; stroke: rgba(255,233,200,.55); stroke-dasharray: 4 4; }
+    .map-tile.known .map-name { opacity: .45; }
+    .map-tile.here .map-shape { stroke: var(--gold); stroke-width: 3.5; }
+    .map-here-ring { fill: none; stroke: var(--gold); stroke-width: 3; opacity: .8; }
+    .map-name { fill: var(--cream); font-size: 9px; font-weight: 700; paint-order: stroke;
+      stroke: rgba(13,9,20,.85); stroke-width: 3px; pointer-events: none; }
+    .map-svg.far .map-name, .map-svg.far .map-region-name { display: none; }
+    .map-region-name { fill: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; opacity: .75; pointer-events: none; }
+    .map-region-name.done { fill: #8aff9a; }
+    .map-glyph { pointer-events: none; }
+    .map-arch { fill: rgba(13,9,20,.8); stroke: rgba(255,233,200,.6); stroke-width: 1.5; pointer-events: none; }
+    .map-mark { pointer-events: none; }
+    .map-mark-halo { fill: rgba(13,9,20,.55); stroke: none; }
+    .map-mark-rim { fill: none; stroke: #9a90a8; stroke-width: 2.5; }
+    .map-mark-shade { fill: rgba(27,21,38,.38); }
+    .map-mark.can .map-mark-rim { stroke: var(--gold); stroke-width: 3.5; }
+    .map-mark.can .map-mark-halo { fill: rgba(255,215,106,.35); }
+    .mv-badge { fill: var(--ink); stroke: rgba(255,233,200,.7); stroke-width: 1; }
+    .mv-badge-ic, .mv-face { pointer-events: none; }
+    .map-spark { pointer-events: none; }
+    .map-you { pointer-events: none; }
+    .map-you-disc { fill: var(--gold); stroke: #fff3c4; stroke-width: 2; }
+    .map-you-tail { fill: var(--gold); }
+    /* the gentle life on the marks: "not yet" breathes, "now!" bounces */
+    .mv-pulse, .mv-breathe, .mv-bounce, .mv-bob { transform-box: fill-box; transform-origin: center; }
+    .mv-pulse { animation: mv-pulse 1.5s ease-in-out infinite; }
+    .mv-breathe { animation: mv-breathe 2.6s ease-in-out infinite; }
+    .mv-bounce { animation: mv-bounce .9s ease-in-out infinite; }
+    .mv-bob { animation: mv-bob 1.6s ease-in-out infinite; }
+    @keyframes mv-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+    @keyframes mv-breathe { 0%, 100% { opacity: .7; } 50% { opacity: 1; } }
+    @keyframes mv-bounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.12); } }
+    @keyframes mv-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @media (prefers-reduced-motion: reduce) {
+      .mv-pulse, .mv-breathe, .mv-bounce, .mv-bob { animation: none; }
+    }
+    .map-tools {
+      position: absolute; z-index: 2; right: calc(14px + env(safe-area-inset-right)); top: calc(78px + env(safe-area-inset-top));
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .map-tool {
+      width: 52px; height: 52px; border-radius: 50%; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(var(--stone-a), var(--stone-b));
+      border: 2px solid var(--brass); color: var(--gold);
+      font-size: 30px; font-weight: 900; line-height: 1; touch-action: none;
+    }
+    .map-tool img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .map-tool.map-me { border-color: var(--gold); }
+    #map-menu .menu-btn.map-close {
+      position: absolute; z-index: 3; min-width: 0; padding: 0;
+      right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(#4a3a1c, #2e2413); border-color: var(--gold);
+    }
+    #map-menu .menu-btn.map-close .ico { width: 26px; height: 26px; }
+    .map-bubble {
+      position: absolute; z-index: 2; display: none; transform: translate(-50%, calc(-100% - 34px));
+      flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+    }
+    .map-bubble.below { transform: translate(-50%, 30px); flex-direction: column-reverse; }
+    .map-bubble .nm {
+      background: rgba(13,9,20,.88); border: 1px solid var(--brass); border-radius: 10px;
+      color: var(--cream); font-size: 12px; font-weight: 700; padding: 3px 9px; white-space: nowrap;
+    }
+    .map-go {
+      width: 60px; height: 60px; border-radius: 50%; pointer-events: auto; touch-action: none;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(#ffe08a, #e0a93a); border: 3px solid #fff3c4; color: #3a2a10;
+      box-shadow: 0 0 18px rgba(255,215,106,.7);
+      animation: mv-bounce .9s ease-in-out infinite;
+    }
+    .map-go .ico { width: 34px; height: 34px; fill: #3a2a10; }
     .sticker {
       width: 108px; padding: 10px 6px; border-radius: 14px; text-align: center;
       background: rgba(255,255,255,.07); border: 2px dashed rgba(255,255,255,.25); font-size: 12px;

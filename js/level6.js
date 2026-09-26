@@ -355,6 +355,7 @@ function valeBramble(world, id, x, z, region = REGION) {
   const collider = { minX: x - 1.0, maxX: x + 1.0, minZ: z - 0.85, maxZ: z + 0.85 };
   world.boxColliders.push(collider);
   world.markers.brambleSpot = { x, z, id };
+  (world.mapGates || (world.mapGates = [])).push({ id, system: 'cut', region, x, z });   // the map's register
   registerCuttable(world, { id, x, z, region, group, collider });
   return { id, collider };
 }

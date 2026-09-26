@@ -665,6 +665,9 @@ export function makeBuilders({ kit, isGrey }) {
     // A list that cannot be derived can still be CHECKED: this is the roll
     // call, so a gate that ships without a test says so out loud.
     (world.promiseGates || (world.promiseGates = [])).push({ id, system, x, z, w, d, label });
+    // ...and the MAP's register (js/mapdata.js): a gate the child walks near
+    // is drawn on the map, with the wolf that opens it, until it opens.
+    (world.mapGates || (world.mapGates = [])).push({ id, system, region, x, z });
     // A gate across a doorway blocks with a BOX, not the circle a rock clump
     // uses, so it hands its own collider-removal to whichever system takes it.
     const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
