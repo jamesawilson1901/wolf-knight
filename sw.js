@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.192.0';
+const CACHE_NAME = 'wolfknight-v3.193.0';
 
 const PRECACHE = [
   './',
@@ -397,7 +397,10 @@ const PRECACHE = [
   './assets/audio/sfx/geyser.ogg',
   './assets/audio/sfx/hit.ogg',
   './assets/audio/sfx/hurt.ogg',
+  './assets/audio/sfx/moon-crash.ogg',
+  './assets/audio/sfx/moon-dive.ogg',
   './assets/audio/sfx/moon-impact.ogg',
+  './assets/audio/sfx/moon-rise.ogg',
   './assets/audio/sfx/parry.ogg',
   './assets/audio/sfx/potion.ogg',
   './assets/audio/sfx/puff.ogg',
@@ -563,7 +566,13 @@ const PRECACHE = [
   './assets/env/village/props_atlas.png',
   './assets/fx/flare.png',
   './assets/fx/flash.png',
+  './assets/fx/gleam.png',
+  './assets/fx/moon-corona.png',
+  './assets/fx/moon-ring.png',
+  './assets/fx/scorch.png',
+  './assets/fx/smoke.png',
   './assets/fx/spark.png',
+  './assets/fx/streak.png',
   './assets/gear/axe_B.gltf',
   './assets/gear/axe_C.gltf',
   './assets/gear/bow_A_withString.gltf',
