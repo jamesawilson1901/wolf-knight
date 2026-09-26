@@ -1,11 +1,10 @@
 // CRAFTING MATERIALS (design/CRAFTING.md §1) — what enemies, pots, crates and
 // chests drop besides shards/potions/gear, so there is something to craft
-// FROM. Deliberately reuses the game's own seven-element vocabulary
-// (weakness/element, already on every enemy and every elemental weapon)
-// rather than inventing a parallel taxonomy: an ember-weak enemy already
-// reads as "the fire one" to a five-year-old, so its shard is too.
+// FROM. Deliberately reuses the game's own seven-element vocabulary rather
+// than inventing a parallel taxonomy; which shard an enemy pays is
+// materialForEnemy() below — what it is made of, never what beats it.
 import * as THREE from 'three';
-import { state } from './state.js';
+import { state, regionOf } from './state.js';
 import { bumpCounter } from './progress.js';
 
 export const MATERIALS = {
@@ -34,19 +33,35 @@ export const MATERIALS = {
   ingot:         { name: 'Ingot', icon: '🔩', color: 0xc9c9d4 },
 };
 
-// An enemy's own `weakness` names the shard it pays in; anything with no
-// weakness (or a weakness this table doesn't know) pays in a Wisp instead of
-// silently dropping nothing.
+// AN ENEMY DROPS WHAT IT IS MADE OF. Dad: "Fire enemies are dropping tide
+// shards when they should drop whatever element they are. Things that they
+// drop need to have some logic to them."
 //
-// SOME ENEMIES CARRY TWO WEAKNESSES (js/enemies.js, e.g. Spitter's
-// `['tide', 'frost']`) — string concatenation on an array joins it with a
-// comma ('shard_tide,frost'), which is never a real material id, so every
-// two-weakness enemy silently paid in a Wisp regardless of which element
-// actually beat it. The first listed weakness is what its own combat text
-// already calls out first, so it is what pays here too.
-export function materialForWeakness(weakness) {
-  const w = Array.isArray(weakness) ? weakness[0] : weakness;
-  const id = 'shard_' + w;
+// This used to pay in the enemy's `weakness` — what BEATS it, which is
+// almost never what it IS: the fire-spitter (`resist: 'fire'`, `weakness:
+// ['tide','frost']`) paid Tide Shards, a Frostpeak rime-hound (fears fire)
+// paid Ember Shards, a skeleton paid Ember Shards because fire is what
+// breaks bone. The rule now, in the order a child would reason it out:
+//   1. `element` — what it visibly is, tagged on regional variants whose
+//      theme is unambiguous (js/enemies.js VARIANTS / roster).
+//   2. `resist` — "shrugs off fire" because it is made of fire.
+//   3. the element of the PLACE it lives: bats in the Stoneroot caverns are
+//      stone-touched, soldiers in the Sunken Vale are waterlogged. Every one
+//      of the seven shards has a home region, so no recipe loses its source.
+//   4. a Shadow Wisp — the roads, the Village, the Spire: nowhere with an
+//      element of its own, so the one material that isn't one.
+const REGION_ELEMENT = {
+  ember_hollow: 'fire', stoneroot: 'earth', wildwoods: 'verdant', frostpeak: 'frost',
+  stormreach: 'storm', sunkenvale: 'tide', shadowcourt: 'moon',
+};
+
+export function materialForEnemy(e) {
+  // some enemies list two (`['tide','frost']`); the first is the one its
+  // own combat text leads with
+  const first = (v) => (Array.isArray(v) ? v[0] : v);
+  const room = e.world && e.world.roomId;
+  const own = first(e.element) || first(e.resist) || (room && REGION_ELEMENT[regionOf(room)]);
+  const id = 'shard_' + own;
   return MATERIALS[id] ? id : 'wisp';
 }
 

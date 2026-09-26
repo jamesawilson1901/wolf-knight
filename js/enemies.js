@@ -21,7 +21,7 @@ import { juice } from './juice.js';
 import { spawnGearDrop, lootEvents } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { WS } from './worldstate.js';
-import { materialForWeakness, addMaterial, spawnMaterialDrop } from './materials.js';
+import { materialForEnemy, addMaterial, spawnMaterialDrop } from './materials.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -165,7 +165,7 @@ export const VARIANTS = {
   // lesson, taught with the Fire Wolf the kids have owned since region 1.
   thorn: {
     label: 'Thorn Hound',
-    hp: 3.5, weakness: 'fire', puffTint: 0x39502c, dropChance: 0.45,
+    hp: 3.5, weakness: 'fire', element: 'verdant', puffTint: 0x39502c, dropChance: 0.45,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.5; }
       else if (m.name === 'Main') { m.color && m.color.setHex(0x3c5a2e); }
@@ -174,7 +174,7 @@ export const VARIANTS = {
   },
   elderthorn: {
     label: 'Elder Thorn Hound',
-    scale: 1.3, hp: 6, chargeSpeed: 11, weakness: 'fire', dropChance: 1, puffTint: 0x39502c,
+    scale: 1.3, hp: 6, chargeSpeed: 11, weakness: 'fire', element: 'verdant', dropChance: 1, puffTint: 0x39502c,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xffe14a); m.emissiveIntensity = 1.9; }
       else if (m.name === 'Main' || m.name === 'Main_Light') { m.color && m.color.setHex(0x2c4a22); }
@@ -182,7 +182,7 @@ export const VARIANTS = {
   },
   bramble: {
     label: 'Bramble Blob',
-    hp: 3, weakness: 'fire', puffTint: 0x39502c,
+    hp: 3, weakness: 'fire', element: 'verdant', puffTint: 0x39502c,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xcaff8a); m.emissiveIntensity = 1.6; }
       else if (m.color) { m.color.setHex(0x35521f); m.emissive && m.emissive.setHex(0x1d3312); m.emissiveIntensity = 0.35; }
@@ -192,7 +192,7 @@ export const VARIANTS = {
   // FIRE — the same lesson the region's puzzles teach with melting ice.
   rime: {
     label: 'Rime Hound',
-    hp: 4, weakness: 'fire', chargeSpeed: 10.2, puffTint: 0xcfeaff, dropChance: 0.5,
+    hp: 4, weakness: 'fire', element: 'frost', chargeSpeed: 10.2, puffTint: 0xcfeaff, dropChance: 0.5,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xeaffff); m.emissiveIntensity = 1.6; }
       else if (m.name === 'Main') { m.color && m.color.setHex(0x8fc4e8); }
@@ -201,7 +201,7 @@ export const VARIANTS = {
   },
   elderrime: {
     label: 'Elder Rime Hound',
-    scale: 1.3, hp: 6.5, weakness: 'fire', chargeSpeed: 11.4, dropChance: 1, puffTint: 0xcfeaff,
+    scale: 1.3, hp: 6.5, weakness: 'fire', element: 'frost', chargeSpeed: 11.4, dropChance: 1, puffTint: 0xcfeaff,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 2.0; }
       else if (m.name === 'Main') { m.color && m.color.setHex(0x6fa8d8); }
@@ -210,7 +210,7 @@ export const VARIANTS = {
   },
   snowblob: {
     label: 'Snow Blob',
-    hp: 3.5, weakness: 'fire', puffTint: 0xeaffff,
+    hp: 3.5, weakness: 'fire', element: 'frost', puffTint: 0xeaffff,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 1.5; }
       else if (m.color) { m.color.setHex(0xdff2ff); m.emissive && m.emissive.setHex(0x8fc4e8); m.emissiveIntensity = 0.3; }
@@ -218,7 +218,7 @@ export const VARIANTS = {
   },
   frostmoth: {
     label: 'Frost Moth',
-    hp: 1.5, weakness: 'fire', puffTint: 0xeaffff,
+    hp: 1.5, weakness: 'fire', element: 'frost', puffTint: 0xeaffff,
     tint: (m) => {
       if (m.color) { m.color.setHex(0xbfe8ff); m.emissive && m.emissive.setHex(0x9be3ff); m.emissiveIntensity = 0.8; }
     },
@@ -229,7 +229,7 @@ export const VARIANTS = {
   // them out of the air, and it is a tool the kids have owned since region 2.
   gale: {
     label: 'Gale Hound',
-    hp: 4.5, weakness: 'earth', chargeSpeed: 11.0, puffTint: 0xdfe9f2, dropChance: 0.5,
+    hp: 4.5, weakness: 'earth', element: 'storm', chargeSpeed: 11.0, puffTint: 0xdfe9f2, dropChance: 0.5,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 1.7; }
       else if (m.name === 'Main') { m.color && m.color.setHex(0x6f7a8c); }
@@ -238,7 +238,7 @@ export const VARIANTS = {
   },
   eldergale: {
     label: 'Storm Hound',
-    scale: 1.32, hp: 7, weakness: 'earth', chargeSpeed: 12.2, dropChance: 1, puffTint: 0xdfe9f2,
+    scale: 1.32, hp: 7, weakness: 'earth', element: 'storm', chargeSpeed: 12.2, dropChance: 1, puffTint: 0xdfe9f2,
     tint: (m) => {
       if (m.name === 'Eyes_Black') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 2.1; }
       else if (m.name === 'Main') { m.color && m.color.setHex(0x555f72); }
@@ -247,14 +247,14 @@ export const VARIANTS = {
   },
   stormbat: {
     label: 'Storm Bat',
-    hp: 2, weakness: 'earth', puffTint: 0xdfe9f2,
+    hp: 2, weakness: 'earth', element: 'storm', puffTint: 0xdfe9f2,
     tint: (m) => {
       if (m.color) { m.color.setHex(0xa8b4cc); m.emissive && m.emissive.setHex(0xc9d4ff); m.emissiveIntensity = 0.7; }
     },
   },
   sparkblob: {
     label: 'Spark Blob',
-    hp: 3.5, weakness: 'earth', puffTint: 0xfff4b0,
+    hp: 3.5, weakness: 'earth', element: 'storm', puffTint: 0xfff4b0,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0xfff4b0); m.emissiveIntensity = 1.8; }
       else if (m.color) { m.color.setHex(0xb9c4dc); m.emissive && m.emissive.setHex(0x8a9ad0); m.emissiveIntensity = 0.45; }
@@ -316,7 +316,7 @@ export const VARIANTS = {
   // otherwise) and, despite the water, still flammable enough to fear fire.
   tide: {
     label: 'Tide Slime',
-    hp: 4, weakness: 'fire', armored: true, puffTint: 0x1a3a3a,
+    hp: 4, weakness: 'fire', element: 'tide', armored: true, puffTint: 0x1a3a3a,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x6affea); m.emissiveIntensity = 1.4; }
       else if (m.color) { m.color.setHex(0x2a5a5a); m.emissive && m.emissive.setHex(0x123030); m.emissiveIntensity = 0.4; }
@@ -324,7 +324,7 @@ export const VARIANTS = {
   },
   deeptide: {
     label: 'Deep Tide',
-    scale: 1.3, hp: 6.5, weakness: 'fire', armored: true, dropChance: 1, puffTint: 0x0f2626,
+    scale: 1.3, hp: 6.5, weakness: 'fire', element: 'tide', armored: true, dropChance: 1, puffTint: 0x0f2626,
     tint: (m) => {
       if (m.name === 'Eyes') { m.emissive && m.emissive.setHex(0x9bfff0); m.emissiveIntensity = 2.0; }
       else if (m.color) { m.color.setHex(0x163838); m.emissive && m.emissive.setHex(0x0a1c1c); m.emissiveIntensity = 0.5; }
@@ -332,14 +332,14 @@ export const VARIANTS = {
   },
   gull: {
     label: 'Storm Gull',
-    hp: 2, weakness: 'fire', armored: true, puffTint: 0xd8e8e0,
+    hp: 2, weakness: 'fire', element: 'tide', armored: true, puffTint: 0xd8e8e0,
     tint: (m) => {
       if (m.color) { m.color.setHex(0x8fa8a0); m.emissive && m.emissive.setHex(0x6affea); m.emissiveIntensity = 0.9; }
     },
   },
   drowned: {
     label: 'Drowned Skeleton',
-    hp: 2.5, weakness: 'fire', armored: true, sharedMats: true, puffTint: 0x1a3a3a,
+    hp: 2.5, weakness: 'fire', element: 'tide', armored: true, sharedMats: true, puffTint: 0x1a3a3a,
     tint: (m) => {
       if (m.color) m.color.setHex(0x2f4a48); // old bone gone waterlogged-green
     },
@@ -381,6 +381,8 @@ function applyVariant(e, name) {
   if (v.contactDmg !== undefined) e.contactDmg = v.contactDmg;
   if (v.resist) e.resist = v.resist;
   if (v.weakness) e.weakness = v.weakness;
+  // what it IS, as opposed to what beats it — only read by materialForEnemy
+  if (v.element) e.element = v.element;
   // Pass 2 audit: no variant had ever asked for this before — every armored
   // enemy got it from its own class's base TRAITS. The Sunken Vale roster
   // (tide/deeptide/gull/drowned, below) is the first to hand it out through
@@ -3678,7 +3680,7 @@ function dropWeapon(e) {
 function dropMaterial(e) {
   const chance = e.dropChance !== undefined ? e.dropChance : 0.35;
   if (Math.random() < chance) {
-    spawnMaterialDrop(e.world, e.x, e.z, materialForWeakness(e.weakness));
+    spawnMaterialDrop(e.world, e.x, e.z, materialForEnemy(e));
   }
   if ((e.dropChance || 0) >= 1 && Math.random() < 0.15) {
     spawnMaterialDrop(e.world, e.x + 0.4, e.z, 'crystal');

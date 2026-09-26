@@ -1,6 +1,6 @@
 // CRAFTING MATERIALS (design/CRAFTING.md §1) — does a kill really pay in the
-// right shard (an enemy's own `weakness`, js/materials.js's
-// materialForWeakness), does a smashed breakable pay in a Wisp, does walking
+// right shard (what the enemy is made of, js/materials.js's
+// materialForEnemy), does a smashed breakable pay in a Wisp, does walking
 // onto the drop actually credit state.inventory.materials, do the
 // canAfford/spendMaterials helpers round-trip a recipe cost correctly, and
 // do materials/crafted survive a real save/load cycle (saves are additive
@@ -17,7 +17,7 @@ await wk.newGame('MATPROBE');
 await wk.page.evaluate(() => { window.__game.player.iframes = 999999; });
 
 // 1. force every enemy in a room to a guaranteed material drop, kill them,
-// walk over the drops, confirm materials accumulate correctly by weakness.
+// walk over the drops, confirm materials accumulate correctly.
 await wk.page.evaluate((f) => window.__wkJump('lc', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'lc' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
@@ -40,7 +40,7 @@ const materialDrops = info.drops.filter((k) => k !== 'heal');
 const shardDrops = info.drops.filter((k) => k !== 'heal' && k !== 'crystal');
 const healDrops = info.drops.filter((k) => k === 'heal');
 check('lc has real enemies to test on', info.n > 0, info);
-check('every forced kill spawned BOTH the ember heal AND its own weakness-shard drop (independent rolls)',
+check('every forced kill spawned BOTH the ember heal AND its own shard drop (independent rolls)',
   healDrops.length === info.n && shardDrops.length === info.n, info);
 
 // Stand on each drop and tick world.updateEnemies() ONCE, DIRECTLY, in the
@@ -69,6 +69,37 @@ let gained = 0;
 for (const k of new Set(materialDrops)) gained += (after[k] || 0) - (before[k] || 0);
 check('every dropped material landed in state.inventory.materials, one each',
   gained === materialDrops.length, { before, after, expect: materialDrops });
+
+// 1b. AN ENEMY DROPS WHAT IT IS MADE OF (js/materials.js materialForEnemy).
+// Dad: "Fire enemies are dropping tide shards when they should drop whatever
+// element they are." Each room below exercises one tier of the rule on real
+// spawned enemies: va2 = a fire-spitter in the Stoneroot caverns (its own
+// `resist: 'fire'` beats the region) beside plain bats (the region's Stone);
+// f1 = rime hounds (their variant's own `element`); n1 = the road out of
+// Ember, which belongs to no element (Wisp).
+const SHARD_CASES = [
+  { room: 'va2', expect: (e) => (e.cls === 'Spitter' ? 'shard_fire' : 'shard_earth') },
+  { room: 'f1', expect: () => 'shard_frost' },
+  { room: 'n1', expect: () => 'wisp' },
+];
+for (const c of SHARD_CASES) {
+  await wk.page.evaluate(({ r, f }) => { window.__game.player.iframes = 999999; window.__wkJump(r, f); }, { r: c.room, f: FORMS });
+  await wk.page.waitForFunction((r) => window.__wk.room === r && !window.__wk.gates.transitioning, c.room, { timeout: 60000 });
+  const kills = await wk.page.evaluate(() => {
+    const w = window.__game.world;
+    return (w.enemies || []).filter((x) => !x.scenery).map((e) => {
+      const before = (w.drops || []).length;
+      e.dropChance = 1; e.hp = 0; e.die();
+      const got = (w.drops || []).slice(before).map((d) => d.kind).find((k) => k !== 'heal' && k !== 'crystal');
+      return { cls: e.constructor.name, got };
+    });
+  });
+  const wrong = kills.filter((k) => k.got !== c.expect(k));
+  check(`${c.room}: every kill drops what it is made of`, kills.length > 0 && wrong.length === 0, { kills, wrong });
+  // the headline bug is only tested if a spitter was actually there to kill
+  if (c.room === 'va2') check('va2 still holds a fire-spitter to test the reported case on',
+    kills.some((k) => k.cls === 'Spitter'), kills);
+}
 
 // 2. a breakable drops a Wisp at its own configured rate — force it to 1 and
 // confirm the material appears in the SAME inventory bucket. The drop is
