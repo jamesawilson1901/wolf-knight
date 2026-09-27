@@ -101,7 +101,12 @@ jobs:
     # report as neither pass nor fail, so two nights of sweep results said
     # nothing at all. The shards are cost-balanced now (see `heavy_first` in
     # tools/verify-all.sh), and the limit has room to be wrong in.
-    timeout-minutes: 90
+    # 90 -> 120 on 2026-09-27: shard 2 was cancelled on three sweeps running
+    # (#309, #318, #321) as the whole-game suites grew with the room count
+    # (181 rooms; landings alone 2,186s, gauntlet 2,496s). A cancel hides
+    # every result after it, which is exactly what happened to loops, bounds
+    # and dragondens — the limit needs room to be wrong in again.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:

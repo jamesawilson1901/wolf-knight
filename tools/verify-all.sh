@@ -136,7 +136,12 @@ sorted_suite_files() {
 # two serial retries ran the shard into its 90-minute cancel. The two LIGHTEST
 # heavies go first now, so the doubled-up shards are the cheap ones and the
 # gauntlet has a shard of its own.
-HEAVY="verify-l1-doors.mjs verify-level2-hub.mjs verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2.mjs verify-level3.mjs verify-sequence.mjs verify-loops.mjs"
+# 2026-09-27, later: verify-landings (2,186s measured, a whole-game walk like
+# reachable) was never on this list, and dealt as "light" it stacked onto
+# shard 2 behind level2-hub, bounds and dragondens and ran the shard out. Now
+# eleven heavies: the three that double up (positions 1-3 meet 9-11) are the
+# lightest measured (l1-doors, level2-hub 1,180s, loops 369s).
+HEAVY="verify-l1-doors.mjs verify-level2-hub.mjs verify-loops.mjs verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-landings.mjs verify-density.mjs verify-level2.mjs verify-level3.mjs verify-sequence.mjs"
 # Frame-timing measurements flake under CPU contention — --par runs these
 # serial, last. (--shard is already one suite at a time on its own machine.)
 TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
