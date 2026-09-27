@@ -273,7 +273,11 @@ const emerged = await wk.page.evaluate(() => {
   const s = g.world.dragonShrines[0];
   return {
     visible: g.dragon ? g.dragon.root.visible : false,
-    x: g.dragon ? g.dragon.x : null, z: g.dragon ? g.dragon.z : null,
+    // where it CAME OUT (emergeAt records it): its live x/z may already have
+    // taken a step toward Kael by the time a loaded machine reads it (seen
+    // 2026-09-27: 2.1u along, visible, cover cleared — correct behaviour)
+    x: g.dragon && g.dragon.emergedFrom ? g.dragon.emergedFrom.x : null,
+    z: g.dragon && g.dragon.emergedFrom ? g.dragon.emergedFrom.z : null,
     shrineX: s.x, shrineZ: s.z,
     bigCover: document.getElementById('caption').classList.contains('big-cover'),
   };

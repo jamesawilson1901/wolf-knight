@@ -151,6 +151,7 @@ export class CompanionDragon {
   // immediately dash toward the player mid-reveal.
   emergeAt(x, z) {
     this.x = x; this.z = z;
+    this.emergedFrom = { x, z };   // where it came out — it follows Kael a moment later
     this.root.position.set(x, 0.9, z);
     this.root.visible = true;
     this.root.scale.setScalar(0.05);
