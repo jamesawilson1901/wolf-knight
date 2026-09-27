@@ -1261,6 +1261,9 @@ export async function buildD4a(scene) {
   world.markers.slimeSpots = [{ x: -5.6, z: 4.4, variant: 'deeptide' }];
   world.markers.batSpots = [{ x: 7, z: -5, variant: 'gull' }];
   world.markers.rotcasterSpots = [{ x: 5, z: 5 }];
+  // the caster's spot is claimed BEFORE the scatter: verify-spawn-clear found
+  // it standing inside a scattered rock (nightly #298, pre-existing)
+  world.reserve(5, 5, 1.2, 'rotcaster');
   scatter(world, halfW, halfD, D, 631, 6, { spin: 1, kinds: ['rockLC', 'rockSA', 'skull'] });
   dressShore(world, halfW, halfD, D, 6311, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
