@@ -666,7 +666,7 @@ export async function buildD1a(scene) {
   dungeonMouth(world, 'e', halfW, halfD, 'd1c', { x: 4, z: 6, angle: Math.PI }, cryptOpen, D,
     { centre: -2, half: DOOR_HALF, noPlug: true });
   if (!crypt) {
-    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'rockLB',
+    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'FROZEN — later', 'ice',
       { system: 'shatter', id: 'd1a_crypt', region: REGION });
     world.markers.cryptPromise = { x: halfW - 1.5, z: -2 };
   }
@@ -1592,7 +1592,7 @@ export async function buildDn1(scene) {
   // THE GATE: bars across the north door, a fire either side. Both out and
   // the bars go up; the room's own WS flag keeps it solved on a return.
   const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, valeKit.archBars, 'dn1_gate',
-    DN1_DOOR_X, -halfD + 0.9, { span: DN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+    DN1_DOOR_X, -halfD + 0.5, { span: DN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
   let out = 0;
   DN1_FIRES.forEach((f, i) => poolBrazier(world, f.x, f.z, 'dn1_fire' + i, D, () => {
     out++;

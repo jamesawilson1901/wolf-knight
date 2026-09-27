@@ -2479,8 +2479,11 @@ export async function buildLn1(scene) {
   // THE GATE: bars across the north door, a cold lamp either side of it.
   // Solved state is the room's own WS flag, so a child who lit them on an
   // earlier visit comes back to open bars and two burning lamps.
+  // IN THE DOORWAY, not in front of it: at 0.9 in, the bars' 0.45-thick collider
+  // stopped short of the wall plane and left a 2.4u pocket that neither blocked
+  // nor fired (verify-openholes, 2026-09-27). At 0.5 it meets the wall.
   const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, emberKit.bars, 'ln1_gate',
-    LN1_DOOR_X, -halfD + 0.9, { span: LN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+    LN1_DOOR_X, -halfD + 0.5, { span: LN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
   let lit = 0;
   teachBraziers(world, LN1_LAMPS, 'ln1_lamp', () => {
     lit++;

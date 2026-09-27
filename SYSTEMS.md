@@ -83,6 +83,12 @@ waterGate (Tide, region 6), brambleGate (Verdant vine-lash, region 3 —
 thorny tangle + green glint), brazier (Fire slam ignites; optional
 gutterAfter for timed puzzles — the Kiln's whole puzzle language).
 One call + a hint marker adds a gate to any room.
+**What a thorn or ice gate is MADE of lives in js/gateprops.js** (v3.196):
+`thornWall(w, d)` (dad's Meshy thorns, every cut gate — promiseGate 'cut',
+brambleGate, Level 3's brambles) and `iceWall(w, d)` (blocks of pale ice,
+every frozen shatter gate — promiseGate kind 'ice', iceGate). Both fill the
+whole collider, stand over a child's head, and merge to one draw per gate.
+rooms.js `buildRoom` preloads them.
 
 ## WorldState & mysteries (js/worldstate.js)
 WS.get/set per-region flags persisted in the save; rooms read them at

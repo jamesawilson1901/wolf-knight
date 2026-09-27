@@ -13,6 +13,7 @@ import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { canWade } from './water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { thornWall, iceWall, gatePropsReady } from './gateprops.js';
 
 export const GATE_TYPES = {
   boulder: { ability: 'earth_wolf', icon: '🪨', label: 'A huge boulder blocks the way' },
@@ -32,7 +33,14 @@ export const GATE_TYPES = {
 export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 'stone') {
   if (WS.get(region, 'cut_' + id)) return null;
   const group = new THREE.Group();
-  for (const [ox, oz, s, ry] of [[-0.55, 0, 1.2, 0.4], [0.5, -0.12, 1.35, 2.1], [0, 0.42, 1.05, 4.0]]) {
+  group.name = 'bramble-gate-' + id;
+  // the real thorn tangle (js/gateprops.js) across the whole collider; the
+  // tinted bushes below only if the prop could not load
+  if (gatePropsReady()) {
+    const wall = thornWall(2.3, 1.9);
+    wall.position.set(x, 0, z);
+    group.add(wall);
+  } else for (const [ox, oz, s, ry] of [[-0.55, 0, 1.2, 0.4], [0.5, -0.12, 1.35, 2.1], [0, 0.42, 1.05, 4.0]]) {
     const b = prepareModel(bushGltf.scene.clone());
     b.position.set(x + ox, 0, z + oz);
     b.rotation.y = ry;
@@ -48,11 +56,11 @@ export function brambleGate(world, prepareModel, bushGltf, id, x, z, region = 's
     new THREE.OctahedronGeometry(0.06, 0),
     new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.7, roughness: 1 })
   );
-  glint.position.set(x, 0.95, z);
+  glint.position.set(x, 2.15, z);   // over the thorns, not buried in them
   group.add(glint);
   world.add(group);
   world.onAnimate((t) => {
-    glint.position.y = 0.95 + Math.sin(t * 2.1) * 0.1;
+    glint.position.y = 2.15 + Math.sin(t * 2.1) * 0.1;
     glint.rotation.y = t * 1.4;
   });
   const collider = { minX: x - 1.15, maxX: x + 1.15, minZ: z - 0.95, maxZ: z + 0.95 };
@@ -111,14 +119,23 @@ export function iceGate(world, x, z, id = 'w_ice', region = 'wild') {
     color: 0xbfe8ff, emissive: 0x7ab8e8, emissiveIntensity: 0.35,
     transparent: true, opacity: 0.85, roughness: 0.25,
   });
-  const ice = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), mat);
-  ice.position.set(x, 0.5, z);
-  ice.scale.y = 0.75;
-  group.add(ice);
-  const shard = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 5), mat);
-  shard.position.set(x - 0.5, 0.4, z + 0.4);
-  shard.rotation.z = 0.4;
-  group.add(shard);
+  group.name = 'ice-gate-' + id;
+  if (gatePropsReady()) {
+    // a real frozen rockfall (js/gateprops.js), as wide as the collider and
+    // over a child's head — the old glass mound was a knee-high pebble
+    const wall = iceWall(2.0, 2.0, { height: 2.1 });
+    wall.position.set(x, 0, z);
+    group.add(wall);
+  } else {
+    const ice = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), mat);
+    ice.position.set(x, 0.5, z);
+    ice.scale.y = 0.75;
+    group.add(ice);
+    const shard = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 5), mat);
+    shard.position.set(x - 0.5, 0.4, z + 0.4);
+    shard.rotation.z = 0.4;
+    group.add(shard);
+  }
   world.add(group);
   world.onAnimate((t) => {
     mat.emissiveIntensity = 0.3 + 0.12 * Math.sin(t * 1.6 + x);

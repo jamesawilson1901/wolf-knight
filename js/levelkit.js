@@ -26,6 +26,7 @@ import { audio } from './audio.js';
 import { juice } from './juice.js';
 import { WS } from './worldstate.js';
 import { registerCuttable, alreadyCut } from './gates.js';
+import { thornWall, iceWall, gatePropsReady } from './gateprops.js';
 import { healPatches } from './restoration.js';
 
 // METRICS.md — locked, inherited unchanged by every level built on this kit.
@@ -627,6 +628,22 @@ export function makeBuilders({ kit, isGrey }) {
       m.position.set(0, 0.75, 0);
       g.add(m);
       protoLabel(world, x, z, label, { color: '#ffd54a', y: 2.4, size: 1.2 });
+    } else if (gatePropsReady() && (system === 'cut' || kindModel === 'ice')) {
+      // THORNS and ICE are real walls now (js/gateprops.js): one model laid
+      // shoulder to shoulder across the whole collider and over a child's
+      // head, not three tinted rocks with daylight between them. Dad,
+      // 2026-09-27: "replace green rocks with the thorn glb", "replace the
+      // hedges with thorn", and of the frozen ones, "a better locking asset
+      // that actually visually blocks the path".
+      g.add(system === 'cut' ? thornWall(w, d) : iceWall(w, d));
+      const hint = new THREE.Mesh(
+        new THREE.RingGeometry(span * 0.42, span * 0.55, 20),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32,
+          side: THREE.DoubleSide, depthWrite: false })
+      );
+      hint.rotation.x = -Math.PI / 2;
+      hint.position.set(0, world.deckY + 0.04, 0);
+      g.add(hint);
     } else {
       const kit0 = K();
       const src = kit0[kindModel] || kit0.rockLB;

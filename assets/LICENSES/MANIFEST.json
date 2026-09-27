@@ -507,6 +507,20 @@
    "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the FIX line in meshy-dragon-egg-attestation.txt is still what would clear it."
   },
   {
+   "pack": "Meshy AI — Tangled Thorns, Low Poly Loyal Guardian",
+   "licence": null,
+   "evidence": "meshy-thorns-guardian-attestation.txt",
+   "states": "UNVERIFIED beyond the uploader's own word — dad supplied both Meshy AI generations by chat upload (2026-09-27) with instructions to use them; same footing as the dragon egg.",
+   "source": null,
+   "covers": [
+    "assets/env/thorns.glb",
+    "assets/env/guardian-statue.glb"
+   ],
+   "note": "js/gateprops.js (every thorn gate) and js/level3.js (the t1a shrine statue). Originals NOT vendored: normal/MR maps dropped, colour map 2048->512 JPEG, meshes simplified (5,026->2,530 and 4,046->2,022 tris), materials renamed off Meshy's shared 'Material_0'. ~8.4MB -> ~150KB each.",
+   "accepted": "private-family-use 2026-09-27",
+   "acceptedNote": "Shipping under the private-family-use decision recorded above (`distribution`). Nothing about the licence itself has changed or been verified — the WHAT WOULD CLEAR IT line in the attestation is still what would clear it."
+  },
+  {
    "pack": "Den Town Models (Tripo AI)",
    "licence": null,
    "evidence": "den-town-tripo-attestation.txt",

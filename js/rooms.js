@@ -20,6 +20,7 @@ import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate,
   pushableBoulder, plateSwitch } from './gates.js';
+import { loadGateProps } from './gateprops.js';
 import { spawnDenNpcs, staticCharacterNpc } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
@@ -3544,6 +3545,8 @@ export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
+  // every region's thorn and ice gates are built from js/gateprops.js
+  if (state.settings.greybox === false) await loadGateProps();
   // Greybox spaces are plain geometry by definition — loading a 40-piece art
   // kit for them would both waste the load and hide the real cost of the box.
   if (id === 'zoo') {

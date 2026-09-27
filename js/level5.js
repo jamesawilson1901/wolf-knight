@@ -1570,7 +1570,7 @@ export async function buildSn1(scene) {
   // vane's lane is a private one — it pushes nothing and is never drawn; the
   // vane only needs something to turn, and turning is the whole puzzle.
   const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, skyKit.archBars, 'sn1_gate',
-    SN1_DOOR_X, -halfD + 0.9, { span: SN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+    SN1_DOOR_X, -halfD + 0.5, { span: SN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
   const lane = { dir: gateOpen() ? 's' : 'e', strength: 'breeze', px: 0, pz: 0 };
   const v = vane(world, SN1_VANE.x, SN1_VANE.z, lane, D);
   const spinTo = v.onTurn;

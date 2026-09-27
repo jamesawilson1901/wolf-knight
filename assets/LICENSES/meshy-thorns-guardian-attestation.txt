@@ -1,0 +1,32 @@
+UPLOADER ATTESTATION — MESHY AI "TANGLED THORNS" AND "LOW POLY LOYAL GUARDIAN"
+===============================================================================
+Recorded: 2026-09-27
+
+The repository owner supplied two Meshy AI generations via chat upload, with
+instructions to use them in the game ("Replace green rocks with the thorn
+glb", "Replace circled statue with the statue upload of a loyal_guardian"):
+
+  Meshy_AI_Tangled_Thorns_0927084843_texture.glb      (8.4 MB, 5,026 tris)
+  Meshy_AI_Low_Poly_Loyal_Guardi_0927084858_texture.glb (8.5 MB, 4,046 tris)
+
+Both are the owner's own Meshy generations, on the same footing as the
+Cracked Dinosaur Egg (meshy-dragon-egg-attestation.txt): the owner's own
+word, not a formal licence grant. Meshy AI's terms of service were not
+independently checked here.
+
+WHAT WOULD CLEAR IT
+Meshy AI's own published terms, read and confirmed to grant the rights this
+use needs, copied into this directory and replacing this attestation in
+MANIFEST.json.
+
+WHAT IS SHIPPING FROM THESE FILES
+  assets/env/thorns.glb          — every Verdant-Wolf thorn gate (js/gateprops.js)
+  assets/env/guardian-statue.glb — the t1a shrine statue (js/level3.js)
+Neither original is vendored as-is. Each was cut to this game's budget with
+@gltf-transform + meshoptimizer: normal and metallic-roughness maps dropped
+(nothing else in the game uses them), the colour map resized 2048 -> 512 and
+re-encoded as JPEG, the mesh simplified (thorns 5,026 -> 2,530 tris,
+guardian 4,046 -> 2,022), and the material renamed from Meshy's generic
+"Material_0" — js/assets.js caches prepared materials BY NAME, so two
+Meshy files sharing that name would have drawn the statue in the thorns'
+texture. ~8.4 MB each -> ~150 KB each.
