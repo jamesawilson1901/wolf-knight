@@ -19,7 +19,7 @@ await wk.page.evaluate((f) => window.__wkJump('t1b', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 't1b' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let t1bDoors = await wk.wk('doors');
-check('t1b has NO door to tf1 before the spring shatters', !t1bDoors.some((d) => d.to === 'tf1'),
+check('t1b has NO open door to tf1 before the spring shatters (the dungeon mouth stays shut)', !t1bDoors.some((d) => d.to === 'tf1' && d.open),
   t1bDoors.map((d) => d.to));
 
 // shatter it directly — the shatter mechanic itself is covered elsewhere
@@ -28,7 +28,7 @@ await wk.page.evaluate((f) => window.__wkJump('t1b', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 't1b' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 t1bDoors = await wk.wk('doors');
-check('t1b HAS a door to tf1 once shattered (open on rebuild)', t1bDoors.some((d) => d.to === 'tf1'),
+check('t1b HAS an open door to tf1 once shattered (open on rebuild)', t1bDoors.some((d) => d.to === 'tf1' && d.open),
   t1bDoors.map((d) => d.to));
 
 // 1. tf1/tf2/tf3 all build, calls under the general dungeon ceiling

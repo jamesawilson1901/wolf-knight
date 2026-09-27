@@ -131,17 +131,15 @@ for (let i = 0; i < 12; i++) {
 const pk = await wk.page.evaluate(async () => (await import('/js/state.js')).packForms());
 check('the form button cycles at most five forms (Knight, Dark Wolf, three wolves)',
   seen.size <= 5 && pk.length === 5 && [...seen].every((f) => pk.includes(f)), { seen: [...seen], pk });
-// the ring: hold the button
-const ring = await wk.page.evaluate(() => {
-  const g = window.__game; const b = document.getElementById('form-badge').getBoundingClientRect();
-  g.ui = g.ui || null;
-  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-});
-await wk.page.mouse.move(ring.x, ring.y);
-await wk.page.mouse.down();
-await wk.page.waitForTimeout(700);
+// the ring: hold the button. Dispatched on the badge itself (as tapBadge
+// does) rather than a mouse press at its coordinates: on CI a toast or the
+// narration strip can sit over that point and take the press, which read as
+// a ring of zero faces.
+await wk.page.evaluate(() => { const n = window.__game.narration; for (let i = 0; i < 6 && n.speaking; i++) n.skip(); });
+await wk.page.locator('#form-badge').dispatchEvent('pointerdown');
+await wk.page.waitForFunction(() => document.querySelectorAll('#picker .pick-option').length > 0, null, { timeout: 5000 }).catch(() => {});
 const faces = await wk.page.evaluate(() => document.querySelectorAll('#picker .pick-option').length);
-await wk.page.mouse.up();
+await wk.page.locator('#form-badge').dispatchEvent('pointerup');
 check('holding the button shows a ring of five faces, not ten', faces === 5, { faces });
 // a new wolf joins the pack the moment it is earned
 const fresh = await wk.page.evaluate(async () => {

@@ -146,13 +146,21 @@ for (const room of L1) {
     const foes = (w.enemies || []).filter((e) => !e.dead && !e.scenery && e.takeStun).length;
     const doors = (w.doors || []).map((d) => {
       const cx = (d.minX + d.maxX) / 2, cz = (d.minZ + d.maxZ) / 2;
-      return { to: d.to, fires: !!w.doorAt(cx, cz) };
+      // a dungeon mouth (levelkit dungeonMouth, v3.192) is always registered
+      // but only opens when its puzzle is solved; a shut one is a sealed
+      // wall, not a door locked behind a fight, so it is judged by `when`.
+      return { to: d.to, fires: !!w.doorAt(cx, cz), shut: !!d.when && !d.when() };
     });
     return { foes, doors };
   });
   const s = state[room];
-  check(`${room}: all ${s.doors.length} doors fire with ${s.foes} foes alive`,
-    s.doors.every((d) => d.fires), { room, ...s });
+  const live = s.doors.filter((d) => !d.shut);
+  check(`${room}: all ${live.length} open doors fire with ${s.foes} foes alive`,
+    live.every((d) => d.fires), { room, ...s });
+  if (live.length < s.doors.length) {
+    check(`${room}: a shut dungeon mouth does not fire until solved`,
+      s.doors.filter((d) => d.shut).every((d) => !d.fires), { room, ...s });
+  }
 }
 
 console.log('\n── 2. and every door can be WALKED through ──────────');
@@ -161,6 +169,7 @@ for (const room of L1) {
   const s = state[room];
   if (!s) continue;
   for (let i = 0; i < s.doors.length; i++) {
+    if (s.doors[i].shut) continue;
     if (!(await go(room))) break;
     // clear the room first: this section asks whether the DOOR works, not
     // whether the walker can win a fight on the way to it.
