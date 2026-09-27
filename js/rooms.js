@@ -14,6 +14,7 @@ import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
 import { setRoomSeed } from './ground.js';
 import { spawnEnemies } from './enemies.js';
+import { applyShells } from './shells.js';
 import { Shadowgrip, Boreal, SKINS as BOSS_SKINS } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
@@ -3617,6 +3618,7 @@ export async function buildRoom(rawId, scene) {
   // every room regardless of which builder made it, is the fix.
   world.roomId = id;
   await spawnEnemies(world);
+  applyShells(world);   // v3.195: a few enemies wear their weakness as a crust (js/shells.js)
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
     if (bs.kind === 'boreal') {

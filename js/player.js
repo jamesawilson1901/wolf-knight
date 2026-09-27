@@ -24,6 +24,9 @@ const SPIN_TIMESCALE = 1.7;     // clip playback speed — a whip-fast blur (pla
 const SLAM_COOLDOWN = 7;        // Fire Wolf ground-slam
 const MIGHT_DRAUGHT_MULT = 1.5; // design/CRAFTING.md §2 — a crafted potion's bite
 const SLAM_RADIUS = 3.0;
+// armour's chance to GUARD a hit outright, per point of soak (0.5 -> 17%,
+// 1.0 -> 35%, 1.5 -> 52%; capped at 60% with a wolf-form shield bonus)
+const GUARD_PER_SOAK = 0.35;
 const STOMP_COOLDOWN = 8;       // Earth Wolf stone-stomp
 const STOMP_RADIUS = 3.2;
 const STOMP_STUN = 2.5;
@@ -224,7 +227,7 @@ const FORM_DEFS = {
 };
 // What ELEMENT each form's strikes carry (enemy weaknesses key off this;
 // 'steel' is the only non-magical element — armored bone shrugs it off)
-const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide', ghost_wolf: 'moon', elemental_wolf: 'moon' };
+export const FORM_ELEMENT = { knight: 'steel', dark_wolf: 'moon', fire_wolf: 'fire', earth_wolf: 'earth', verdant_wolf: 'verdant', frost_wolf: 'frost', storm_wolf: 'storm', tide_wolf: 'tide', ghost_wolf: 'moon', elemental_wolf: 'moon' };
 const BOLT_ELEMENT = { spark: 'spark', pierce: 'moon', ember: 'fire', rock: 'earth', breath: 'fire', thorn: 'verdant', shard: 'frost' };
 
 const ATTACK_ARC_COS = Math.cos(THREE.MathUtils.degToRad(70)); // ±70° swing
@@ -1013,7 +1016,16 @@ export class Player {
         element: w.element,
       };
     } else {
-      cfg = { ...base };
+      // YOUR GEAR IS YOUR STRENGTH, IN EVERY FORM (v3.195). A wolf's bite used
+      // to be its own flat 1-1.5 and ignore the weapon entirely, so a Moon
+      // Sword (2) out-hit every wolf and good gear made the pack pointless in
+      // a fight — Dad: "it completely negates using the wolves in combat if you
+      // get good weapons." The bite is now the WEAPON'S power times the wolf's
+      // own multiplier (FORM_DEFS attack.dmg: 1 for most, 1.2 frost/tide, 1.5
+      // earth, 2.4 the Elemental Wolf), in the wolf's own element. Reach,
+      // speed and the element stay the wolf's; the swing width, daze and
+      // weapon element stay the Knight's.
+      cfg = { ...base, dmg: base.dmg * (weaponDef().dmg || 1) };
     }
     cfg.dmg += (state.perks.sword || 0) * 0.25;
     if (this._surge) cfg.dmg *= CONFIG.MOON.SURGE_DMG; // blood-moon bites
@@ -1746,10 +1758,30 @@ export class Player {
     // speed. Applied BEFORE the kid-difficulty softening so Gentle still
     // protects exactly as much.
     n *= this.form.def.hurtMult || 1;
-    // ARMOUR SOAKS A FLAT AMOUNT, and only in knight form — a wolf is not
-    // wearing the plate. Floored at half a heart so a hit always costs
-    // something: armour you cannot be hurt through is armour that ends the game.
-    if (state.form === 'knight') n = Math.max(0.5, n - (armourDef().soak || 0));
+    // GUARD! — ARMOUR THAT DOES SOMETHING (v3.195, contract amendment).
+    //
+    // Dad: "the stats in the menu... don't actually correlate to anything...
+    // this goes for armour and shields as well." They didn't: Cozy softens a
+    // 1-heart hit to ½ and nothing goes below ½, so a flat soak on an
+    // ordinary hit had NOTHING left to take. Armour now also gives a chance
+    // to shrug a hit off entirely — a clank and a GUARD! a child can see —
+    // and it works in EVERY form (the pack runs in its gear now). In a wolf
+    // form the shield can't be raised, so its quality adds to the guard
+    // chance instead. Hazards (lava, falls) never come through here.
+    const raw = n;
+    if (!source.pierceDefend && !(this.defending && this.form.def.shield)) {
+      const shieldBonus = state.form === 'knight' ? 0 : Math.max(0, 0.5 - (shieldDef().blunt ?? 0.5)) * 0.6;
+      const chance = Math.min(0.6, (armourDef().soak || 0) * GUARD_PER_SOAK + shieldBonus);
+      if (chance > 0 && Math.random() < chance) {
+        audio.play('parry', { volume: 0.55, rate: 1.35 });
+        this.iframes = IFRAME_TIME * 0.6;
+        if (this.onGuard) this.onGuard();
+        return;
+      }
+    }
+    // ...and the flat soak still takes the edge off the HEAVY hits it can
+    // reach, in every form, floored at half a heart.
+    n = Math.max(0.5, n - (armourDef().soak || 0));
     // Cozy mode (default) halves incoming hits; the rubber-band does the
     // same after repeated defeats at one checkpoint. Both round to halves.
     let soften = 1;
@@ -1768,7 +1800,14 @@ export class Player {
         return;
       }
       audio.play('parry', { volume: 0.45, rate: 0.7 }); // dull block clank
-      this.damage(shieldDef().blunt);
+      // A RAISED SHIELD STOPS AN ORDINARY HIT (v3.195, contract amendment).
+      // It used to cost `blunt` (½ heart on most shields) — exactly what the
+      // same hit costs UNblocked in Cozy — so blocking bought nothing. Now an
+      // ordinary hit (one heart or less) is BLOCKED outright, and only a
+      // heavy one (a boss slam, a charge) pushes `blunt` through: that is
+      // where a better shield's lower number shows.
+      if (raw > 1) this.damage(shieldDef().blunt);
+      else if (this.onBlocked) this.onBlocked();
       this.iframes = IFRAME_TIME;
       // A PLAIN BLOCK tells the attacker too (dad: "have the flying dragon
       // fall to the ground and become vulnerable if you block as it flies at
@@ -2496,7 +2535,7 @@ export class Player {
     // ARMOUR WEIGHS SOMETHING, so heavy plate is a trade and not a free upgrade
     // — and Greenweave's negative weight makes it genuinely quicker. Knight
     // only: a wolf is not wearing it.
-    if (state.form === 'knight') speedMult *= 1 - (armourDef().weight || 0);
+    speedMult *= 1 - (armourDef().weight || 0);   // the plate goes with every form now
     const top = f.def.speed * speedMult * lockMove;
 
     // accelerate ~CONFIG.ACCEL_TIME to full, brake ~CONFIG.DECEL_TIME to stop

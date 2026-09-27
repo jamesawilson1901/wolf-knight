@@ -164,6 +164,8 @@ export function persist() {
     // on a common leaderboard, and will stop playing.
     minigames: JSON.parse(JSON.stringify(state.minigames || {})),
     formsUnlocked: [...state.formsUnlocked],
+    pack: [...(state.pack || [])],
+    packKnown: [...(state.packKnown || [])],
     pups: { [state.region]: pupList },
     settings: { ...state.settings },
     flags: {
@@ -306,6 +308,10 @@ export function applySave(profileId, profileName, data) {
   // save DID earn survives untouched.
   const saved = Array.isArray(data.formsUnlocked) ? data.formsUnlocked : [];
   state.formsUnlocked = ['knight', 'dark_wolf', ...saved.filter((f) => f !== 'knight' && f !== 'dark_wolf')];
+  state.pack = Array.isArray(data.pack) ? data.pack.filter((f) => typeof f === 'string') : [];
+  // an old save has no packKnown: treat everything it owns as already seen,
+  // so loading one never shuffles a pack it never had
+  state.packKnown = Array.isArray(data.packKnown) ? data.packKnown : state.formsUnlocked.filter((f) => f !== 'knight' && f !== 'dark_wolf');
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';
   // pups may be keyed under whichever region was current at save time —
   // flatten every list so travelling between regions never loses them

@@ -2,7 +2,7 @@
 // button with cooldown ring, active-form badge. Big targets, icon-first —
 // built for small thumbs.
 
-import { state, formsAvailable } from './state.js';
+import { state, formsAvailable, packForms } from './state.js';
 import { PORTRAITS } from './titlescene.js';
 
 export const FORM_META = {
@@ -89,14 +89,18 @@ export class UI {
     const cx = Math.max(PICK_RADIUS + 50, Math.min(window.innerWidth - PICK_RADIUS - 50, x));
     const cy = Math.max(PICK_RADIUS + 50, Math.min(window.innerHeight - PICK_RADIUS - 30, y));
 
-    FORM_ORDER.forEach((id, i) => {
+    // THE RING SHOWS THE PACK, not all ten forms (v3.195): the Knight, the
+    // Dark Wolf and the three wolves brought along — never more than five.
+    const ring = FORM_ORDER.filter((id) => packForms().includes(id)
+      || (state.formLock && id === state.formLock));
+    ring.forEach((id, i) => {
       const meta = FORM_META[id];
       // A Trial lock greys out every form but the one you spent at this arch,
       // so the ring SHOWS the constraint rather than silently refusing taps.
       const locked = !formsAvailable().includes(id);
       // five forms fan a little tighter so the ring stays on-screen
-      const spread = FORM_ORDER.length >= 6 ? 0.62 : FORM_ORDER.length >= 5 ? 0.74 : 0.92;
-      const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * spread;
+      const spread = ring.length >= 6 ? 0.62 : ring.length >= 5 ? 0.74 : 0.92;
+      const angle = -Math.PI / 2 + (i - (ring.length - 1) / 2) * spread;
       const ox = cx + Math.cos(angle) * PICK_RADIUS;
       const oy = cy + Math.sin(angle) * PICK_RADIUS;
       const el = document.createElement('div');

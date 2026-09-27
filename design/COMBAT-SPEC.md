@@ -58,6 +58,25 @@ identity dials in CONFIG.FORMS):
   ends. Every ordinary switch is a small spectacle (CONFIG.SWITCH_FX):
   120ms self-hitstop, form-colored burst, adjacent enemies nudged (no
   damage), 4% camera punch, per-form audio sting, 400ms morph i-frames.
+- **v3.195 (2026-09-27) — the combat package.** Dad: wolves were puzzle
+  keys, not fighters ("it completely negates using the wolves in combat if
+  you get good weapons"), gear and level-ups "do nothing", and the ten-face
+  wheel was "very messy". Now:
+  - **Gear is every form's.** A bite = the equipped weapon's dmg × the
+    wolf's own multiplier, in the wolf's element. Armour soak, GUARD chance
+    and weight apply in every form; in a wolf form (no raised shield) the
+    shield's quality adds to the GUARD chance instead.
+  - **A raised shield BLOCKS an ordinary hit** (≤1 heart) outright; only a
+    heavy hit pushes the shield's `blunt` through.
+  - **Weakness is ×2 plus a short stagger.** **Elemental shells** (js/shells.js)
+    make some enemies need the matching wolf: steel CLANGS for 0.3×, the
+    right element CRACKS it (2 hits, or 1 special / swap-in strike).
+  - **Swap-in strike:** a mid-fight switch lands the new form with a free
+    burst in its element (weapon power, r2.4, 0.5s daze, 4s cooldown) — on
+    top of the spectacle above, so the switch is the fun move.
+  - **The pack of three:** the form button cycles the Knight, the Dark Wolf
+    and three chosen wolves (Pack tab, at the Den / a campfire / a rest
+    flame). Never more than five faces on the ring.
 
 ## The Moon Gauge & Blood Moon Surge (CONFIG.MOON)
 

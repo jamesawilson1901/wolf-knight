@@ -87,14 +87,17 @@ Bosses: Shadowgrip (giant Shadow Hound, 20hp, 3-dmg-per-hit cap, 1.0s charge tel
 Multipliers apply in this exact order — order matters when auditing balance math:
 1. Frozen-shatter: hitting a frozen enemy → ×2 and breaks the freeze (setup-not-kill lesson).
 2. Armored: steel ×0.5 / magic (any non-steel element) ×1.35 — armor teaches "switch off steel," not "hit harder."
-3. Weakness match → ×1.5 (SUPER!).
-4. Resist match → ×0.4 (RESIST — the counterpart lesson).
-5. Stunned (incl. parry stun) → ×2.
-6. Result rounds to the nearest 0.5, with a floor of 0.5 — no hit is ever fully nullified.
+3. **Elemental shell (v3.195, js/shells.js):** wrong element ×0.3 (CLANG); right element ×0.5 on the cracking hit, ×1 on the breaking one (special/'aoe' counts two). Broken → 1.4s stun, applied AFTER the hit.
+4. Weakness match → **×2** (SUPER!, v3.195 — was ×1.5) plus a 0.35s stagger, max one per 2s per enemy, applied AFTER the hit (else the hit doubles itself on step 6).
+5. Resist match → ×0.4 (RESIST — the counterpart lesson).
+6. Stunned (incl. parry stun) → ×2.
+7. Result rounds to the nearest **0.25** (v3.195 — was 0.5; the 0.75 dagger read as 1), floor 0.25 — no hit is ever fully nullified.
+
+**v3.195 combat package (2026-09-27, dad: "the stats in the menu... don't actually correlate to anything", "it completely negates using the wolves in combat if you get good weapons"):** wolf bites = weapon dmg × FORM_DEFS attack.dmg; enemy hp scales by REGION tier (`progress.js REGION_TIER`, 1+0.24×tier, cap 2.2), not player level; armour GUARD chance soak×0.35 (+shield quality in wolf forms, cap 60%) in every form; a raised shield BLOCKS ≤1-heart hits; swap-in strike on a mid-fight form switch (CONFIG.SWITCH_FX.STRIKE_*); the pack of three (state.js `packForms`). Suite: tools/verify-combat-package.mjs.
 Audit implications: any new multiplier must slot into this order explicitly; a weakness+stun+shatter stack on a new enemy can spike (×6 before rounding), so check burst math on low-HP additions; the 0.5 floor means RESIST can never become immunity.
 
 ### 1.6 Difficulty machinery
-- `enemyScale() = min(2.2, 1 + (level-1) × 0.08)` — HP only, capped. Gentle skips `ENEMY_HP_BONUS` (currently 1) entirely.
+- `enemyScale(room) = min(2.2, 1 + 0.24 × REGION_TIER[regionOf(room)])` (v3.195 — was by player level, which cancelled every level-up) — HP only, capped. Gentle skips `ENEMY_HP_BONUS` (currently 1) entirely.
 - Cozy (default): damage taken ×0.6, floor ½ heart. Gentle: ×0.4 AND enemies run at 80% timescale (`GENTLE_ENEMY_TIME`) — moves and telegraphs slow down. Brave: full.
 - Attack tokens (`CONFIG.ENGAGE`): max simultaneous pressers 2 Gentle / 3 Cozy / 4 Brave; the rest prowl a 3.0u ring at 0.95 u/s. An attack in motion always finishes.
 - Rubber-band after 3 deaths at one checkpoint; boss wounds persist across deaths (`flags.bossHp`).

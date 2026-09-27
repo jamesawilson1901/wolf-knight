@@ -63,6 +63,17 @@ export const LINES = {
   lantern_lit: { voice: 'petra', text: 'Light… after so long. Feel the roots wake, little knight. My doors are open to you.' },
   brazier_hint: { voice: 'pip', text: 'A cold brazier! Your fiery slam can light it. Try it!' },
   kiln_order: { voice: 'pip', text: 'See the glowing dots by each fire? Light the fire with ONE dot first… then two, then three, then four!' },
+  // ELEMENTAL SHELLS (js/shells.js, v3.195) — taught once each, the first
+  // time a shelled enemy comes close; the wolf's picture floats over it too.
+  shell_fire: { voice: 'pip', text: 'See that glowing shell? Only fire cracks it — the Fire Wolf can break it!' },
+  shell_earth: { voice: 'pip', text: 'A stone skin! The Earth Wolf can crack it wide open!' },
+  shell_frost: { voice: 'pip', text: 'That shell only breaks with ice — the Frost Wolf can crack it!' },
+  shell_verdant: { voice: 'pip', text: 'A thorny coat! The Verdant Wolf can tear right through it!' },
+  shell_storm: { voice: 'pip', text: 'That shell crackles — the Storm Wolf can break it!' },
+  shell_tide: { voice: 'pip', text: 'A hard shell! The Tide Wolf can crack it open!' },
+  shell_moon: { voice: 'pip', text: 'A shadow cloak! The Dark Wolf can bite right through it!' },
+  pack_missing: { voice: 'pip', text: 'We need a wolf we left behind! Change your pack at a campfire — the map shows which wolf.' },
+  pack_campfire: { voice: 'pip', text: 'We can change our pack at a campfire — or back home at the Den!' },
   node_need_pickaxe: { voice: 'pip', text: 'Ooh, a sparkly rock! With a pickaxe you could dig ore out of it. The shop sells pickaxes!' },
   node_need_axe: { voice: 'pip', text: 'A good strong tree! With an axe you could chop wood from it. The shop sells axes!' },
   node_work: { voice: 'pip', text: 'You have the right tool! Stand close to it and keep still — you will dig it all by yourself!' },

@@ -15,6 +15,9 @@ import { MATERIALS, materialCount } from './materials.js';
 import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
 import { mapModel } from './mapdata.js';
 import { renderMap } from './mapview.js';
+import { PORTRAITS } from './titlescene.js';
+import { packWolves, PACK_SIZE } from './state.js';
+import { FORM_META } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -156,6 +159,11 @@ export class Menus {
     // third tab" to every save that has never found one.
     const tabDefs = [['gear', '⚔️ Gear'], ['craft', '🔨 Craft']];
     if (hatchedDragons().length) tabDefs.push(['dragons', '🐉 Dragons']);
+    // THE PACK TAB (v3.195) — only once there is a choice to make (more than
+    // three wolves besides the Dark Wolf); before that the pack is everyone.
+    if (state.formsUnlocked.filter((f) => f !== 'knight' && f !== 'dark_wolf').length > PACK_SIZE) {
+      tabDefs.push(['pack', '🐺 Pack']);
+    }
     for (const [id, label] of tabDefs) {
       const t = document.createElement('div');
       t.className = 'arm-tab ui' + (this._armTab === id ? ' on' : '');
@@ -267,7 +275,8 @@ export class Menus {
   }
 
   _paintRight() {
-    if (this._armTab === 'craft') this._paintCraftTab();
+    if (this._armTab === 'pack') this._paintPackTab();
+    else if (this._armTab === 'craft') this._paintCraftTab();
     else if (this._armTab === 'dragons') this._paintDragonsTab();
     else this._paintRacks();
   }
@@ -279,6 +288,72 @@ export class Menus {
   // "???" row for the ones not found yet, which is what keeps this quest
   // "quiet, unflagged" even inside its own menu. A "None" row lets a child
   // send the dragon home without hatching a different one.
+  // ---- THE PACK TAB (v3.195) -----------------------------------------------
+  // Tap a wolf to bring it or leave it. Three at most; tapping a fourth swaps
+  // out the one that has been in longest. The Knight and the Dark Wolf always
+  // come and are not shown. Changed only at the Den or by a rest flame /
+  // campfire — `canEditPack` is main.js's answer — so choosing is a small bit
+  // of planning ("Frostpeak's hounds wear ice, bring the Fire Wolf").
+  _paintPackTab() {
+    if (!this._racks) return;
+    this._racks.innerHTML = '';
+    const canEdit = this.canEditPack ? this.canEditPack() : true;
+    const head = document.createElement('div');
+    head.className = 'rack-head';
+    head.textContent = 'Your Pack';
+    this._racks.appendChild(head);
+    if (!canEdit) {
+      const note = document.createElement('div');
+      note.className = 'rack-blurb pack-note';
+      note.textContent = 'Change your pack at a campfire or the Den.';
+      this._racks.appendChild(note);
+    }
+    const owned = state.formsUnlocked.filter((f) => f !== 'knight' && f !== 'dark_wolf');
+    const pack = packWolves();
+    for (const id of owned) {
+      const meta = FORM_META[id] || { label: id };
+      const inPack = pack.includes(id);
+      const row = document.createElement('div');
+      row.className = 'rack-row ui pack-row' + (inPack ? ' on' : '') + (canEdit ? '' : ' fixed');
+      row.dataset.form = id;
+      const art = document.createElement('div');
+      art.className = 'rack-art';
+      if (PORTRAITS[id]) art.style.backgroundImage = `url(${PORTRAITS[id]})`;
+      art.style.backgroundSize = 'contain';
+      const body = document.createElement('div');
+      body.className = 'rack-body';
+      body.innerHTML = `<div class="rack-name">${meta.label}</div>`;
+      const mark = document.createElement('div');
+      mark.className = 'rack-mark';
+      mark.textContent = inPack ? 'IN PACK' : '';
+      row.appendChild(art); row.appendChild(body); row.appendChild(mark);
+      row.addEventListener('pointerdown', () => {
+        if (!(this.canEditPack ? this.canEditPack() : true)) {
+          audio.play('parry', { volume: 0.3, rate: 0.5 });
+          if (this.narration) this.narration.say('pack_campfire');
+          return;
+        }
+        let next = packWolves();
+        if (next.includes(id)) {
+          if (next.length <= 1) return;               // never an empty pack
+          next = next.filter((f) => f !== id);
+        } else {
+          next = [...next, id];
+          if (next.length > PACK_SIZE) next = next.slice(next.length - PACK_SIZE);
+        }
+        state.pack = next;
+        audio.play('form-switch', { volume: 0.6 });
+        // wearing a wolf just left behind? back to the Knight
+        if (!['knight', 'dark_wolf', ...next].includes(state.form) && this.player && this.player.setForm('knight')) {
+          if (this.onHudChanged) this.onHudChanged();
+        }
+        persist();
+        this._paintPackTab();
+      });
+      this._racks.appendChild(row);
+    }
+  }
+
   _paintDragonsTab() {
     if (!this._racks) return;
     this._racks.innerHTML = '';

@@ -15,6 +15,7 @@ const P_LUNGE = phase('minion_lunge');
 const P_SWING = phase('shield_swing');
 import { audio } from './audio.js';
 import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
+import { shellHit } from './shells.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 import { juice } from './juice.js';
@@ -632,11 +633,28 @@ class Enemy {
         mult *= 1.35; // ...but magic bites deep
       }
     }
+    // ELEMENTAL SHELL (js/shells.js, v3.195): the wrong element clangs off
+    // for a third; the right one cracks it and, once broken, lands in full.
+    if (this.shell) mult *= shellHit(this, element, kind);
     // weakness is an element OR a list of them — the fire-spitter fears both
     // water and ice, and one field should not force a designer to pick.
     const weak = this.weakness && (Array.isArray(this.weakness)
       ? this.weakness.includes(element) : element === this.weakness);
-    if (weak) mult *= 1.5;
+    // x2 AND A STAGGER (v3.195, was x1.5). The weakness bonus was the only
+    // fighting edge a wolf had, and half again on a 1-damage bite was too
+    // small for a child to notice. Double, plus a short reel — rate-limited
+    // so a fast wolf cannot bite an enemy into a permanent stun.
+    // (the stagger lands AFTER this hit's damage, below — applied here, the
+    // hit would stun first and then double itself on "stunned takes double")
+    let stagger = false;
+    if (weak) {
+      mult *= 2;
+      const now = performance.now();
+      if (this.takeStun && !this.flying && (!this._weakStagAt || now - this._weakStagAt > 2000)) {
+        this._weakStagAt = now;
+        stagger = true;
+      }
+    }
     // variant RESISTANCE: the wrong element fizzles (0.4x + grey callout) —
     // the counterpart lesson to SUPER!: "this one shrugs that off, switch!"
     if (this.resist && (Array.isArray(this.resist)
@@ -645,8 +663,11 @@ class Enemy {
       audio.play('puff', { volume: 0.4, rate: 1.7 });
       if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'RESIST');
     }
-    n = Math.round(n * mult * 2) / 2;
-    if (n <= 0) n = 0.5;
+    // QUARTERS, not halves (v3.195): at half-heart rounding the Swift Fang's
+    // 0.75 came out at 1 — the starter sword's number — so the dagger's
+    // whole trade (weaker, much faster) was invisible.
+    n = Math.round(n * mult * 4) / 4;
+    if (n <= 0) n = 0.25;
     if (this.stunned > 0) n *= 2; // parry payoff: dizzy enemies take double
     this.hp -= n;
     this._flash = 0.14;
@@ -660,7 +681,9 @@ class Enemy {
       bumpCounter('weakHits');
     }
     if (this.world.onDmgNum) this.world.onDmgNum(this.x, 0.9, this.z, n);
-    if (this.hp <= 0) this.die();
+    if (this.hp <= 0) { this.die(); return; }
+    if (stagger) this.takeStun(0.35);
+    if (this._shellBroke) { this._shellBroke = false; if (this.takeStun && !this.flying) this.takeStun(1.4); }
   }
 
   die() {

@@ -13,8 +13,8 @@ import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import {  } from './mg-fetch.js';
-import { Player } from './player.js';
-import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
+import { Player, FORM_ELEMENT } from './player.js';
+import { state, resolveRoom, regionCleared, regionOf, packForms } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 // DEV MODE (js/devmode.js) — the play-test report loop. Inert without ?dev=1:
@@ -32,7 +32,7 @@ import { spawnDragonShrines, spawnEggNests, addEgg, DRAGON_ELEMENTS, equippedDra
 import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
-import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
+import { addGear, WEAPONS, SHIELDS, ARMOURS, weaponDef } from './items.js';
 import { TREASURES, addTreasure } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
@@ -955,9 +955,19 @@ const stuckHints = GATE_HINTS.map((g) => ({
     const spot = world.markers && world.markers[g.marker];
     if (!spot) return false;
     if (g.form && !state.formsUnlocked.includes(g.form)) return false;
+    if (g.form && !packForms().includes(g.form)) return false;   // not brought: see below
     return nearSpot(spot, 4);
   },
-})).concat([
+})).concat(GATE_HINTS.filter((g) => g.form).map((g) => ({
+  // THE PACK (v3.195): the wolf this gate wants is owned but was left behind
+  // — Pip says so, and where to change the pack, instead of "be the X wolf"
+  // for a wolf the button cannot reach. The map's coin shows which one.
+  line: 'pack_missing', timer: 0, cond: () => {
+    const spot = world.markers && world.markers[g.marker];
+    return !!spot && state.formsUnlocked.includes(g.form) && !packForms().includes(g.form)
+      && nearSpot(spot, 4);
+  },
+}))).concat([
   { line: 'boss_duel', timer: 0, cond: () =>
       !!world.boss && !world.boss.defeated },
 ]);
@@ -1432,6 +1442,21 @@ function narrationTriggers(dt, t) {
     persist();
   }
   if (state.room === 'ld1' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+  // a gate wanting a wolf that was left out of the pack (the stuck-hint loop
+  // repeats it every ~22s after this first time)
+  for (const g of GATE_HINTS) {
+    if (!g.form || !state.formsUnlocked.includes(g.form) || packForms().includes(g.form)) continue;
+    const spot = m && m[g.marker];
+    if (spot && nearSpot(spot, 4)) { narration.say('pack_missing'); break; }
+  }
+  // a shelled enemy close by: Pip names the wolf that breaks it, once each
+  for (const e of world.enemies || []) {
+    if (!e.shell || e.dead) continue;
+    if (Math.hypot(e.x - player.root.position.x, e.z - player.root.position.z) < 8) {
+      narration.say('shell_' + e.shell.element);
+      break;
+    }
+  }
   if (state.room === 'ld' && m.gutterSpot && nearSpot(m.gutterSpot, 4.5)
       && !state.flags.plates.l1_ld_gutter) narration.say('gutter_hint');
 
@@ -2648,6 +2673,11 @@ async function start() {
       .catch((e) => console.error('[respawn] room rebuild failed — world wedged:', e));
   };
   player.onPotionsChanged = () => renderPotions(player);
+  // GUARD! / BLOCKED (v3.195): armour that shrugs a hit off, and a raised
+  // shield that stops an ordinary one, both SAY so — the contract's "every
+  // hit shows a damage number or BLOCKED", applied to Kael's side too.
+  player.onGuard = () => { const P = player.root.position; spawnDmgNum(P.x, 1.6, P.z, 'GUARD!'); };
+  player.onBlocked = () => { const P = player.root.position; spawnDmgNum(P.x, 1.6, P.z, 'BLOCKED'); };
   player.onParry = (attacker) => {
     juice.onHit('heavy', {
       x: attacker ? attacker.x : player.root.position.x,
@@ -2696,6 +2726,34 @@ async function start() {
         juice.burst(P.x + Math.cos(a) * 1.1, 0.7, P.z + Math.sin(a) * 1.1, c, 5);
       });
     }
+    // THE SWAP-IN STRIKE (v3.195). Switching form mid-fight lands the new
+    // form with a free hit in its own element — the move a child learns is
+    // sword, switch, the wolf ARRIVES hitting, then its special. It counts as
+    // a special for a shell ('aoe' = two right hits), so swapping to the
+    // right wolf beside a shelled enemy cracks it on arrival. Only when a real
+    // foe is close (a switch in an empty room is just a switch), and on a
+    // cooldown so switching is a choice, not a machine gun.
+    const nowS = performance.now() / 1000;
+    const foeNear = world && world.enemies && world.enemies.some((e) => !e.dead && !e.scenery
+      && Math.hypot(e.x - P.x, e.z - P.z) < CONFIG.SWITCH_FX.STRIKE_NEAR);
+    if (foeNear && nowS - (player._swapStrikeAt || -99) >= CONFIG.SWITCH_FX.STRIKE_COOLDOWN) {
+      player._swapStrikeAt = nowS;
+      const el = FORM_ELEMENT[name] || 'steel';
+      const col = FORM_BURST[name] || 0xffffff;
+      effects.groundSlam(P.clone(), col, CONFIG.SWITCH_FX.STRIKE_RADIUS);
+      audio.play('slam', { volume: 0.7, rate: 1.25 });
+      const dmg = CONFIG.SWITCH_FX.STRIKE_DMG * (weaponDef().dmg || 1);
+      for (const e of world.enemies) {
+        if (e.dead || e.scenery) continue;
+        if (Math.hypot(e.x - P.x, e.z - P.z) > CONFIG.SWITCH_FX.STRIKE_RADIUS + (e.radius || 0.3)) continue;
+        e.takeDamage(dmg, el, 'aoe');
+        if (!e.dead && e.takeStun && !e.flying) e.takeStun(CONFIG.SWITCH_FX.STRIKE_STUN);
+      }
+      if (world.boss && !world.boss.defeated && world.boss.takeDamage
+        && Math.hypot((world.boss.x || 0) - P.x, (world.boss.z || 0) - P.z) < CONFIG.SWITCH_FX.STRIKE_RADIUS + 1.2) {
+        world.boss.takeDamage(dmg, el);
+      }
+    }
     if (world && world.enemies) {
       for (const e of world.enemies) {
         if (e.dead || !e.takeStun || e.scenery || !e.root) continue; // real foes only
@@ -2738,7 +2796,15 @@ async function start() {
       loadRoom(room);
     },
   });
-  menus.onHudChanged = () => { renderShards(); renderPotions(player); };
+  menus.onHudChanged = () => { renderShards(); renderPotions(player); ui.refreshBadge(); };
+  // THE PACK changes at the Den, at a campfire, or by a room's rest flame —
+  // every choke carries one by contract, so there is always one close.
+  menus.canEditPack = () => {
+    if (state.room === 'den' || state.room === 'dr') return true;
+    const m = world && world.markers;
+    if (m && m.restSpot && nearSpot(m.restSpot, 3.5)) return true;
+    return !!(world && (world.checkpoints || []).some((cp) => nearXZ(cp.x, cp.z, 3.5)));
+  };
   // Testing hook, same spirit as window.__game: the armoury's live preview is
   // a thing a suite has to be able to look at (does the knight actually change
   // when you tap an axe?) and it hangs off the menus instance.
@@ -2787,7 +2853,7 @@ async function start() {
     if (transitioning) return;
     // Under a Trial lock formsAvailable() is a single form, so the cycle has
     // nowhere to go and the tap is a no-op rather than a silent refusal.
-    const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+    const usable = FORM_CYCLE.filter((f) => packForms().includes(f));   // the pack (v3.195)
     const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
     if (player.setForm(next)) ui.refreshBadge();
   };
@@ -2852,7 +2918,7 @@ async function start() {
     if (!transitioning) {
       // Keyboard shortcuts: Tab cycles forms, K fires the special
       if (input.consumeFormCycle()) {
-        const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+        const usable = FORM_CYCLE.filter((f) => packForms().includes(f));   // the pack (v3.195)
         const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
         if (player.setForm(next)) ui.refreshBadge();
       }
