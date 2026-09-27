@@ -5961,3 +5961,15 @@ wall plane. And **the sweep's stale dungeon checks** (six dungeon suites +
 l1-doors) now ask whether a dungeon door is OPEN, not whether it exists —
 `dungeonMouth` has always registered the door and gated it with `when()`
 since v3.192.
+
+**Later the same day — the Ash Wing had no way in.** With the six dungeon
+mouths proved rather than excused (verify-reachable BARRED), one door stayed
+red with its gate opened: xa1 → xa2, 0 reachable cells even with the bar
+burned, and identical on 1656dc1. A 1u flood of the room showed why:
+dressCourt's ruined homes stood across both ends of the wing's x = 6 wall,
+sealing the arrival pocket — a child could only go back to xh. `wingEntry`
+now reserves the four passages round its walls' ends, so the prop makers
+(which all ask `world.blocked()`) leave them floor. Worth a look separately:
+the wing's bar sits between those walls rather than across a way through, so
+walking round a wall end reaches xa2 without fire — the same as xr1 already
+does. That is how both wings were built; this fix does not change it.

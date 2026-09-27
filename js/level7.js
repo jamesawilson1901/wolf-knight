@@ -719,6 +719,13 @@ function wingEntry(world, halfW, halfD, D, cfg) {
   // the barred door, in whatever material the wing's verb answers
   wallRun(world, -6, -4, -6, 4, D);
   wallRun(world, 6, -4, 6, 4, D);
+  // THE WAY ROUND EACH WALL END STAYS FLOOR. The walls stop at z = ±4.5 and
+  // the room goes on to ±10; dressCourt placed its ruined homes across both
+  // ends of the x = 6 wall in xa1, sealing the arrival pocket so that not even
+  // a burned bar let a child out of it (verify-reachable, 2026-09-27: xa1 → xa2
+  // 0 reachable cells with x_ash_bar burned). The prop makers all ask
+  // world.blocked(), so reserving the four passages keeps them open.
+  for (const sx of [-6, 6]) for (const sz of [-6.4, 6.4]) world.reserve(sx, sz, 2.0, 'wing passage');
   promiseGate(world, 0, -1.5, 4.2, 3.4, cfg.colour, cfg.label, cfg.prop,
     { system: cfg.system, id: cfg.id, region: REGION });
   world.markers.wingLock = { x: 0, z: -1.5, needs: cfg.needs };
