@@ -140,12 +140,12 @@ for (const room of ROOMS) {
       // corrected version.
       const isFireFX = !!(o.material && o.material.emissive && o.material.emissiveIntensity > 0.15);
       if (!rec) tops.set(top, rec = { minY: Infinity, minX: Infinity, maxX: -Infinity,
-        minZ: Infinity, maxZ: -Infinity, maxY: -Infinity, name: name.trim().slice(0, 50), isFireFX: false });
+        minZ: Infinity, maxZ: -Infinity, maxY: -Infinity, name: name.trim().slice(0, 50), isFireFX: false, topObj: top });
       if (isFireFX) rec.isFireFX = true;
       rec.minY = Math.min(rec.minY, bb.min.y); rec.maxY = Math.max(rec.maxY, bb.max.y);
       rec.minX = Math.min(rec.minX, bb.min.x); rec.maxX = Math.max(rec.maxX, bb.max.x);
       rec.minZ = Math.min(rec.minZ, bb.min.z); rec.maxZ = Math.max(rec.maxZ, bb.max.z);
-      parts.push({ bb, name: name.trim().slice(0, 50), isFireFX });
+      parts.push({ bb, name: name.trim().slice(0, 50), isFireFX, top });
     });
     const outside = [], floating = [];
     const MARGIN = 1.2;   // scatter() legitimately touches the wall band
@@ -166,7 +166,17 @@ for (const room of ROOMS) {
       // meshes: this is one room-scale effect, not one misplaced object.
       const isRoomSpanning = footprintX > hw * 1.2 || footprintZ > hd * 1.2;
       if (gap > 0.45 && h < 3.5 && rec.minY < 4 && !isRoomSpanning && !rec.isFireFX
-        && Math.abs(cx) <= hw && Math.abs(cz) <= hd) {
+        && Math.abs(cx) <= hw && Math.abs(cz) <= hd
+        // RESTING ON SOMETHING IS NOT FLOATING — the per-part rule below
+        // ("nothing under it") applied to the whole prop. A dragon egg on its
+        // nest altar is kept out of the static batch because it flies to Kael,
+        // so it is measured alone, 1.2u up, and read as adrift while it sat on
+        // the altar's top (ln2/sn2/dn2, identical on 1656dc1). Held means some
+        // OTHER prop's mesh overlaps its footprint and reaches up to meet it.
+        && !parts.some((q) => q.top !== rec.topObj
+          && q.bb.max.x >= rec.minX && q.bb.min.x <= rec.maxX
+          && q.bb.max.z >= rec.minZ && q.bb.min.z <= rec.maxZ
+          && q.bb.max.y >= rec.minY - 0.35 && q.bb.min.y < rec.minY - 0.02)) {
         floating.push({ name: rec.name, gap: +gap.toFixed(2), at: [+cx.toFixed(1), +cz.toFixed(1)] });
       }
     }
