@@ -87,6 +87,10 @@ report_verdict() {
     printf 'PASS  %ss\n' "$s"; PASS=$((PASS+1)); record "$t" PASS "$s" final
   else
     printf 'FAIL  (/tmp/vall-%s.log)\n' "$t"; FAIL=$((FAIL+1)); FAILED="$FAILED $t"; record "$t" FAIL "$s" final
+    # THE WHY, IN THE JOB LOG. The full log is only in the uploaded evidence
+    # zip, which not every reader can fetch; the failing check lines are what
+    # a diagnosis needs first, so they print right under the verdict.
+    grep -E '✗|wedge|Error|PAGEERROR' "/tmp/vall-$t.log" 2>/dev/null | head -8 | sed 's/^/      | /'
   fi
 }
 
