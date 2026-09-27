@@ -376,15 +376,25 @@ export const LINES = {
   // `blocking` getter freezes play for any non-repeat line) — "approaching
   // a shrine while holding the matching egg pauses and has Pip read a
   // confirm-before-throw line aloud", the brief's own words.
-  dragon_hint_fire: { voice: 'pip', text: 'A fire shrine… I can feel it waiting for something. Ember-warm, and empty.', repeat: true },
+  dragon_hint_fire: { voice: 'pip', text: 'A fire portal, Kael! It’s waiting for a dragon egg. Light both lamps by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_fire: { voice: 'pip', text: 'The egg in your bag — it’s WARM, Kael! This shrine wants it. See the glowing button? Tap it to let the egg hatch here!' },
   dragon_hatch_fire: { voice: 'pip', text: 'An Ember Dragon! Kael, you have a DRAGON now! Pick him from your backpack and he’ll fly right beside you.' },
-  dragon_hint_tide: { voice: 'pip', text: 'A tide shrine… still and cool, like it’s holding its breath for something.', repeat: true },
+  dragon_hint_tide: { voice: 'pip', text: 'A tide portal, Kael! It’s waiting for a dragon egg. Splash out the fires by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_tide: { voice: 'pip', text: 'That egg feels COLD and wet, Kael — this is its shrine! Tap the glowing button to hatch it!' },
   dragon_hatch_tide: { voice: 'pip', text: 'A Tide Dragon! He’ll swim right alongside you now — check your backpack!' },
-  dragon_hint_storm: { voice: 'pip', text: 'A storm shrine… the air crackles here, like it’s waiting for lightning.', repeat: true },
+  dragon_hint_storm: { voice: 'pip', text: 'A storm portal, Kael! It’s waiting for a dragon egg. Dash into the golden vane by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_storm: { voice: 'pip', text: 'That egg is CRACKLING, Kael! This is the one — tap the glowing button to hatch it!' },
   dragon_hatch_storm: { voice: 'pip', text: 'A Storm Dragon! Pick him from your backpack, Kael — he won’t leave your side now.' },
+  // v3 (2026-09-26): the eggs are FOUND on altars at the end of their own
+  // small dungeons now, not in chests, and the bones lie beside each
+  // dungeon's door. The three hint lines above were rewritten to say what the
+  // portal wants and how to get it (a non-reader hears the whole puzzle); the
+  // found lines say where to take the egg. `dragon_bones` repeats (it is a
+  // nudge, not a story beat, so it must never freeze the room).
+  dragon_found_fire: { voice: 'pip', text: 'A DRAGON EGG! It’s so warm, Kael! Carry it back to the fire portal — that’s where it hatches!' },
+  dragon_found_tide: { voice: 'pip', text: 'A DRAGON EGG! It’s cool as the sea, Kael! Carry it back to the tide portal — that’s where it hatches!' },
+  dragon_found_storm: { voice: 'pip', text: 'A DRAGON EGG! It’s crackling, Kael! Carry it back to the storm portal — that’s where it hatches!' },
+  dragon_bones: { voice: 'pip', text: 'Dragon bones, Kael! A real dragon lived here once… I wonder what’s through that door?', repeat: true },
 };
 
 export class Narration {

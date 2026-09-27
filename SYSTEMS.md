@@ -265,6 +265,23 @@ shape as openTheWayOn, so a perk card or a story line holds him at the door
 exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
 off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
 
+## Dragon eggs, dens & portals (js/dragonEggs.js, design/DRAGON-EGGS.md)
+A quiet side quest, no map card or counter. After each of three guardians
+falls (le, scr, ddp) the arena's east wall opens (always-cut gap, a `when`-
+gated door, a rock plug from `eggDoorPlug` that clears with the arena's other
+doors) onto a two-room DEN; a dragon skeleton (`spawnDragonSkeletonHint`,
+sets `markers.dragonBones` for Pip's `dragon_bones` line) lies beside that
+door. Den room 1 (ln1/sn1/dn1) holds the PORTAL (`DragonShrine`: portal.glb +
+moat, solid stone, hint/confirm events, #btn-dragon confirm, cover-and-emerge
+hatch) and a barred gate opened by the region's own wolf verb (lamps for the
+Fire Wolf's slam, a vane for the Storm Wolf's dash, fires for the Tide Wolf's
+splash; WS `<region>.egg_gate`). Room 2 (ln2/sn2/dn2) holds the egg on an
+altar (`EggNest`, dragon-egg.glb; walking up takes it). The portal never
+shares a room with Tam — v3's fix for "the portal talks like Tam", when the
+fire portal stood one step from Tam's post and hid him. State:
+state.inventory.dragonEggs/dragonsHatched/dragonEquipped. Proven by
+tools/verify-dragoneggs.mjs (ticked) and tools/verify-dragondens.mjs (real keys).
+
 ## The healing (js/restoration.js)
 What a region looks like once its guardian is free. main.js has set
 WS.set(<region>,'restored') on every boss defeat since it was written, and

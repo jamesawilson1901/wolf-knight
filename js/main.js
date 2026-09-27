@@ -28,7 +28,7 @@ import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes } from './nodes.js';
 import { MATERIALS } from './materials.js';
-import { spawnDragonShrines, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
+import { spawnDragonShrines, spawnEggNests, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
 import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
@@ -1095,6 +1095,15 @@ function narrationTriggers(dt, t) {
   if (m.wayfarerSpot && nearSpot(m.wayfarerSpot, 2.6)) {
     if (!narration.say('tam_intro')) sayThrottled('tam_offer', t, 40);
   }
+  // THE DRAGON'S BONES beside each egg dungeon's door (design/DRAGON-EGGS.md
+  // v3): one spoken nudge toward the door, contextual chatter so it never
+  // freezes the room, and not on a loop. 6u, not a hug: the bones lie a few
+  // steps off the door they point at, and a child heading for that door
+  // passes 4-6u from them. Never while the guardian still fights — the door
+  // is a rock pile then, and a line about it would talk over the boss.
+  if (m.dragonBones && nearSpot(m.dragonBones, 6) && !(world.boss && !world.boss.defeated)) {
+    sayThrottled('dragon_bones', t, 60);
+  }
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
   if (state.form === 'dark_wolf' && state.moonGauge >= 1 &&
@@ -2094,6 +2103,7 @@ async function setupRoomExtras() {
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnResourceNodes(world, world.markers.rockSpots || [], world.markers.treeSpots || []);
   await spawnDragonShrines(world, world.markers.dragonShrineSpots || []); // design/DRAGON-EGGS.md
+  await spawnEggNests(world, world.markers.eggNestSpots || []);           // ...and the eggs' own altars (v3)
   await spawnPups(world, onPupCollected);
   // THE HEARTH, if this room is one and its region has grown enough to have
   // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
@@ -2880,6 +2890,16 @@ async function start() {
         // cover-and-wait delay after confirming, so the reveal never shows
         // Kael still holding an egg with no dragon and no throw to explain it.
         document.getElementById('caption').classList.toggle('big-cover', !!world.dragonPromptElement || dragonEmerging);
+      }
+      if (world.updateEggNests) { // design/DRAGON-EGGS.md v3 — an egg found on its altar
+        world.updateEggNests(dt, t, player);
+        const ev = world.eggNestEvent;
+        if (ev) {
+          const dd = DRAGON_ELEMENTS[ev.element];
+          bigToast(dd.eggName);
+          narration.say(dd.foundLine);
+          persist();
+        }
       }
       updateCompanionDragon(dt, t, player, world);
       // ...and the pack grazing where the shadows used to stand
