@@ -2310,6 +2310,10 @@ export async function buildLv1(scene) {
     world.add(ped); world.addCircle(6, 5.2, 0.85);
     const skull = tinted(emberKit.skull, 'lv1Skull', 0xcfc3ab);
     skull.position.set(6, 1.86, 5.2); skull.scale.setScalar(1.4); skull.rotation.y = 0.6;
+    // ON the pedestal (its top is 1.86), not hovering: named so
+    // verify-grounded, which measures from the floor, knows it is a relic on
+    // a plinth — the same claim-by-name the potion's cork makes.
+    skull.name = 'lv1-relic-skull';
     world.add(skull);
     for (const [cx, cz] of [[5.3, 4.6], [6.7, 4.7], [6.1, 6.0]]) {
       const coin = tinted(emberKit.coins, 'lv1Coins', 0xd8b84a);
