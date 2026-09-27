@@ -139,8 +139,12 @@ export function spawnShards(world, x, z, n) {
     // different native size, so the span is hit per-model rather than by a
     // shared factor — the lesson the chests, the crate and the vase each had
     // to learn separately.
+    // BOTH PATHS ARE MEASURED. The fallback disc used to take a fixed
+    // SHARD_SCALE and came out twice COIN_SPAN — so a coin thrown before the
+    // kit finished loading was double-sized, and verify-hud's one-eighth check
+    // failed whenever it won that race (2026-09-27, 2 of 5 CI runs).
     let rest = SHARD_REST;
-    if (coinKit) {
+    if (coinKit || coinGltf) {
       const bb = new THREE.Box3().setFromObject(coin);
       const sz = bb.getSize(new THREE.Vector3());
       const span = Math.max(sz.x, sz.y, sz.z) || 1;
