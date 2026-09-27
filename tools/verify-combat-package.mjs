@@ -2,9 +2,9 @@
 // weapons don't actually correlate to anything... when you level up and click
 // to increase your attack, it does nothing... armour and shields as well", and
 // "it completely negates using the wolves in combat if you get good weapons",
-// and the ten-face form wheel was "very messy". Each check here was written
-// fail-first against the pre-package build (docs/wolf-knight-combat-context.md
-// §6.5): every one of them failed on v3.194.
+// and the ten-face form wheel was "very messy". Each check states a rule the
+// v3.194 build did not have (region-scaled hp, gear in every form, GUARD,
+// full shield blocks, shells, the swap-in strike, the pack).
 import { launch } from './wk-drive.mjs';
 const errs = [];
 const check = (name, ok, info) => {

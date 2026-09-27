@@ -84,7 +84,7 @@ export function applyShells(world) {
         if (!e.shell || !e.shell.aura) continue;
         const s = e.shell.auraBase * (1 + 0.06 * Math.sin(t * 3 + e.x));
         e.shell.aura.scale.set(s, s, 1);
-        e.shell.aura.material.opacity = 0.55 + 0.2 * Math.sin(t * 3 + e.x);
+        e.shell.aura.material.opacity = 0.8 + 0.2 * Math.sin(t * 3 + e.x);
         if (e.shell.badge) e.shell.badge.position.y = e.shell.badgeY + 0.08 * Math.sin(t * 2.2 + e.z);
       }
     });
@@ -93,11 +93,14 @@ export function applyShells(world) {
 
 export function giveShell(e, element) {
   const color = SHELL_COLOR[element];
-  const bb = new THREE.Box3().setFromObject(e.root);
+  // SIZED FROM THE BODY'S COLLISION RADIUS, not a Box3 of the model: skinned
+  // bodies report their BIND-POSE bounds (the same trap Dragon.glb's
+  // fitHeight fell into), and a slime measured 21u tall — the glow and the
+  // portrait sat ten and twenty metres up in the sky.
   const inv = 1 / (e.root.scale.x || 1);
-  const h = Math.max(0.8, (bb.max.y - bb.min.y)) * inv;
+  const h = Math.max(0.9, (e.radius || 0.4) * 3.2) * inv;
   const aura = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texture('./assets/fx/moon-ring.png'), color, transparent: true, opacity: 0.65,
+    map: texture('./assets/fx/moon-ring.png'), color, transparent: true, opacity: 0.9,
     depthWrite: false, blending: THREE.AdditiveBlending,
   }));
   const auraBase = Math.max(1.4, h * 1.25);
@@ -110,7 +113,7 @@ export function giveShell(e, element) {
   const badgeY = h + 0.55 * inv;
   if (portrait) {
     badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture(portrait), transparent: true, depthWrite: false }));
-    badge.scale.set(0.8 * inv, 0.8 * inv, 1);
+    badge.scale.set(1.05 * inv, 1.05 * inv, 1);
     badge.position.set(0, badgeY, 0);
     badge.renderOrder = 7;
     e.root.add(badge);
