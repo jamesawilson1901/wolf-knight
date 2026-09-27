@@ -130,7 +130,13 @@ sorted_suite_files() {
 # The suites measured to take the longest. Named once, used twice: --par starts
 # them first so a seventeen-minute giant never begins last, and --shard deals
 # them out first so they land on DIFFERENT machines.
-HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs verify-sequence.mjs verify-loops.mjs"
+# ORDER IS PLACEMENT. Ten heavies over eight shards means the 9th and 10th
+# share shards 1 and 2 with whatever is dealt 1st and 2nd — and that was
+# gauntlet (2,496s on CI, 2026-09-27) sharing shard 2 with loops, which with
+# two serial retries ran the shard into its 90-minute cancel. The two LIGHTEST
+# heavies go first now, so the doubled-up shards are the cheap ones and the
+# gauntlet has a shard of its own.
+HEAVY="verify-l1-doors.mjs verify-level2-hub.mjs verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2.mjs verify-level3.mjs verify-sequence.mjs verify-loops.mjs"
 # Frame-timing measurements flake under CPU contention — --par runs these
 # serial, last. (--shard is already one suite at a time on its own machine.)
 TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"
