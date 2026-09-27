@@ -54,6 +54,18 @@ async function go(x, z, opts = {}) {
   return r;
 }
 async function form(want) {
+  // PACK IT FIRST. Since v3.195 Tab cycles Knight, Dark Wolf and a pack of
+  // three, and with every wolf owned the default pack is the three most
+  // recently earned (tide, storm, frost) — so the fire and earth wolves this
+  // suite needs were never in the cycle and Tab could not reach them. A child
+  // packs the wolf a den needs at a campfire; so does the suite.
+  await wk.page.evaluate(async (w) => {
+    const st = window.__game.state;
+    if (w === 'knight' || w === 'dark_wolf') return;
+    const S = await import('/js/state.js');
+    const pack = S.packWolves();
+    if (!pack.includes(w)) st.pack = [w, ...pack.filter((f) => f !== w)].slice(0, S.PACK_SIZE);
+  }, want);
   for (let i = 0; i < 12; i++) {
     const cur = await wk.wk('form');
     if (cur === want) return true;
