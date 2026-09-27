@@ -32,11 +32,11 @@ import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { galeLane, buildWindField, turnVane, WIND } from './wind.js';
 import { canWade } from './water.js';
-import { iceGate, boulderGate } from './gates.js';
+import { iceGate, boulderGate, plateBars } from './gates.js';
 import { spawnLostWolf } from './pip.js';
 import { COAT } from './restoration.js';
 import { installFishHost } from './mg-fish.js';
-import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 
 let skyKit = null;
 const GREY = () => !skyKit || state.settings.greybox !== false;
@@ -67,6 +67,11 @@ export const DISTRICTS = {
   // style) darkened and tealed toward the water the cave is actually full of.
   seacave:   { tint: 0x33505c, floorTint: 0x2a4048, wallTint: 0x16242a, propTint: 0x3a5460,
                ground: 'landing',   name: 'THE DROWNED HOLD', hero: 'THE SUNKEN ARCH' },
+  // THE STORM DRAGON'S EYRIE (design/DRAGON-EGGS.md v3) — the storm egg's own
+  // dungeon, behind Aria's Crown's east wall. The Thunderhead's own floor
+  // style, pulled toward the periwinkle of the Storm Wolf himself.
+  dragonstorm: { tint: 0x8a90c8, floorTint: 0x5e6378, wallTint: 0x2a2c40, propTint: 0x8288a6,
+               ground: 'thunder',   name: "THE STORM DRAGON'S EYRIE", hero: 'THE STORM PORTAL' },
 };
 
 // The one new module.
@@ -132,6 +137,15 @@ export const L5 = {
   // ---- ARIA'S CROWN -------------------------------------------------------
   scr: { ...M.arena, kind: 'arena', district: 'crown', spine: true,
          label: "ARIA'S CROWN", beat: 'ARIA, THE GALEBOUND' },
+
+  // THE STORM DRAGON'S EYRIE (design/DRAGON-EGGS.md v3) — the storm egg's own
+  // dungeon, off scr's east wall once Aria falls, the dragon's bones beside
+  // its door. sn1 holds the Storm Portal and a barred door a dash-turned
+  // vane opens; sn2 holds the egg on its altar. Quiet: no map card.
+  sn1: { ...M.pocket, kind: 'pocket', district: 'dragonstorm', loopsTo: 'scr',
+         label: 'THE STORM PORTAL', beat: 'optional · the shrine · dash the vane' },
+  sn2: { ...M.pocket, kind: 'pocket', district: 'dragonstorm', loopsTo: 'sn1',
+         label: "THE STORM DRAGON'S NEST", beat: 'optional · the Storm Dragon egg' },
 
   // ---- THE SHORTCUT -------------------------------------------------------
   // A real walked space, not a door, for the reason Level 3's chords are:
@@ -610,16 +624,9 @@ export async function buildS1a(scene) {
   // `scatter()` pass right below so it can never land a rock on top.
   world.markers.rockSpots = [{ x: 9, z: -2, tint: 0xc9d4ff }];
   world.reserve(9, -2, 1.3, 'node');
-  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the SECOND of three, deep in
-  // the room's own south floor, clear of the hound/rock/fallenColumn
-  // cluster. Wordless, the same idiom as la's own (js/level1.js): a child
-  // remembers it once the hidden Storm Dragon egg turns up later, not
-  // before. Reserved before `scatter()` right below.
-  if (!GREY()) {
-    await preloadDragonSkeleton();
-    spawnDragonSkeletonHint(world, 2, -9.5, 1.0);
-  }
-  world.reserve(2, -9.5, 2.4, 'dragonSkeleton');
+  // (The dragon's bones lay here, v2.2 — moved 2026-09-26 to beside the Storm
+  // Dragon's Eyrie door in `scr`, where they point at something. See buildScr
+  // and design/DRAGON-EGGS.md v3.)
   scatter(world, halfW, halfD, D, 501, 7, { spin: 1, kinds: ['rockLA', 'rockSA', 'rockSB', 'stump'] });
   ruinedHome(world, -10, 7.5, 0.4, D, { w: 7, d: 5.5, keep: 0.45 });
   coldHearth(world, -8.5, 4.6, D);
@@ -1408,7 +1415,9 @@ export async function buildScr(scene) {
   // The north gap is ALWAYS cut now — plugged with rocks while Aria holds
   // the crown, opened live (smoke poof, main.js) the moment she falls, so
   // the way on appears where the child is standing instead of on re-entry.
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  // ...and the EAST gap, the door to the Storm Dragon's Eyrie
+  // (design/DRAGON-EGGS.md v3), cut always and plugged the same way.
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n'), gap('e', SN_DOOR_HALF, SCR_EGG_DOOR_Z)], D, {
       patches: [{ x: 0, z: 0, r: 7.0, kind: 'sand' }, { x: -9, z: -8, r: 3.2, kind: 'gravel' }],
     });
   // THE WAY ON. Once the gale drops off the crown, the north side opens: the
@@ -1416,6 +1425,21 @@ export async function buildScr(scene) {
   const onward = !!state.flags.ariaDefeated;
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'sc4', { x: 0, z: -5, angle: 0 });
+  // THE STORM DRAGON'S EYRIE. Plugged until Aria falls, the door added when
+  // the plug goes; registered BEFORE the north plug so the arena's smoke
+  // still lands on the way on.
+  eggDoorPlug(world, { x: halfW - 0.7, z: SCR_EGG_DOOR_Z, w: 1.5, d: SN_DOOR_HALF * 2 + 0.2,
+    piece: GREY() ? null : () => tinted(skyKit.rockLB, 'eggPlug', D.propTint), tint: D.propTint,
+    isOpen: () => onward, doorTo: 'sn1',
+    addTheDoor: () => sideDoor(world, 'e', halfW, halfD, 'sn1', { x: SN1_DOOR_X, z: 6, angle: Math.PI },
+      { centre: SCR_EGG_DOOR_Z, half: SN_DOOR_HALF }) });
+  // THE DRAGON'S BONES beside it — north of the door, in the gap between
+  // two crownstones, clear of both and of the door's own reserve.
+  world.reserve(SCR_BONES.x, SCR_BONES.z, 2.0, 'dragonSkeleton');
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, SCR_BONES.x, SCR_BONES.z, SCR_BONES.ry, SCR_BONES.d);
+  }
   // THE ROAD, NOT THE REGION (2026-09-08). The crown used to open straight onto
   // the Vale's first shore — a gale calmed on a cliff top, then sea level, with
   // nothing in between to say you had come DOWN. The Plunge is that drop
@@ -1445,16 +1469,11 @@ export async function buildScr(scene) {
       { id: 'c_scr_crown', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 40 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
-    // THE GRAND STORM SHRINE (design/DRAGON-EGGS.md) — the same "quiet gets
-    // in once the story earned it" gate as the memorial above, tucked into
-    // the arena's own far corners well clear of the crownstones, the
-    // memorial and its chest, and the gravel patch — confirmed clear by a
-    // real arrival screenshot before ship, per CLAUDE.md's room-contents rule.
-    world.reserve(9, 9, 3.4, 'dragonShrine');
-    world.markers.dragonShrineSpots = [{ x: 9, z: 9, element: 'storm' }];
-    world.markers.chestDefs.push(
-      { id: 'scr_dragon_egg', tier: 'gold', x: -9, z: 9, ry: 0.2, loot: { dragonEgg: 'storm' } });
-    world.reserve(-9, 9, 2.6, 'chest');
+    // (THE STORM SHRINE AND ITS EGG CHEST stood here until v3 — the shrine
+    // at (9, 9), three steps from Tam's post at (6, 8), close enough that
+    // walking to the portal also walked into his travel offer. The shrine is
+    // in sn1 now and the egg on sn2's altar; `scr_dragon_egg` stays in any
+    // save that opened it, never read again. design/DRAGON-EGGS.md v3.)
   }
   scatter(world, halfW, halfD, D, 541, 4, { spin: 1, kinds: ['rockSA', 'flowerB'] });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1498,6 +1517,122 @@ export async function buildSsA(scene) {
   return finish(world, spec, D);
 }
 
+// ---------------------------------------------------------------------------
+// THE STORM DRAGON'S EYRIE (design/DRAGON-EGGS.md v3) — the storm egg's own
+// dungeon. Two rooms off scr's east wall, opened by Aria's fall.
+//
+// sn1 THE STORM PORTAL: the shrine the egg hatches in, and a barred door with
+// a golden weathervane beside it. The Storm Wolf's thunder-dash turns a vane
+// (svn taught exactly that: "the dash does not only carry Kael, it PUSHES"),
+// and turning this one lifts the bars. No gale here on purpose — every gale
+// in Stormreach calms to a breeze once Aria is free (js/restoration.js
+// calmedStrength), and this room only exists after she is, so a gale would
+// never have been a lock at all.
+// sn2 THE NEST: the egg on its altar.
+//
+// Entered from the south, like the Ember Dragon's Den, so the arrival frame
+// holds the whole room. The portal lives here, a room away from Tam's post in
+// scr (dad: "the portal talks and acts as if it's Tam").
+// ---------------------------------------------------------------------------
+const SN_DOOR_HALF = 1.5;
+const SCR_EGG_DOOR_Z = -3.4;   // between the crownstones at 0° (10.4, 0) and -40° (8.0, -6.7)
+const SCR_BONES = { x: 10.9, z: -7.6, ry: -0.5, d: 3.2 };
+const SN1_DOOR_X = -3;
+const SN1_SHRINE = { x: 4.5, z: -0.5 };
+const SN1_VANE = { x: 0.8, z: -5.0 };
+const SN2_ALTAR = { x: 0, z: 0.2 };
+
+export async function buildSn1(scene) {
+  const { world, spec, D } = base(scene, 'sn1');
+  const gateOpen = () => !!WS.get(REGION, 'egg_gate');
+  const { halfW, halfD } = shell(world, spec,
+    [gap('s', SN_DOOR_HALF, SN1_DOOR_X), gap('n', SN_DOOR_HALF, SN1_DOOR_X)], D, {
+      patches: [{ x: SN1_SHRINE.x, z: SN1_SHRINE.z, r: 3.6, kind: 'gravel' },
+                { x: -7, z: 3, r: 2.6, kind: 'sand' }, { x: 7, z: -5.5, r: 2.2, kind: 'rubble' }],
+      pathWidth: 2.4,
+      paths: [[[SN1_DOOR_X, 8], [SN1_DOOR_X, -8]], [[SN1_DOOR_X, 2], [SN1_SHRINE.x - 2.8, SN1_SHRINE.z]]],
+    });
+  world.spawn = { x: SN1_DOOR_X, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'scr', { x: 10.3, z: SCR_EGG_DOOR_Z, angle: -Math.PI / 2 },
+    { centre: SN1_DOOR_X, half: SN_DOOR_HALF });
+  // The way on is only a door once the bars are up (onwardPlug's contract:
+  // never a door with something standing in it); `pluggedTo` names it.
+  const openNest = () => sideDoor(world, 'n', halfW, halfD, 'sn2', { x: 0, z: 6, angle: Math.PI },
+    { centre: SN1_DOOR_X, half: SN_DOOR_HALF });
+  if (gateOpen()) openNest();
+  else (world.pluggedTo || (world.pluggedTo = [])).push('sn2');
+
+  // THE STORM PORTAL — js/dragonEggs.js's DragonShrine, built by main.js.
+  world.reserve(SN1_SHRINE.x, SN1_SHRINE.z, 3.4, 'dragonShrine');
+  world.markers.dragonShrineSpots = [{ ...SN1_SHRINE, element: 'storm' }];
+
+  // THE GATE: bars across the north door, and the vane that lifts them. The
+  // vane's lane is a private one — it pushes nothing and is never drawn; the
+  // vane only needs something to turn, and turning is the whole puzzle.
+  const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, skyKit.archBars, 'sn1_gate',
+    SN1_DOOR_X, -halfD + 0.9, { span: SN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+  const lane = { dir: gateOpen() ? 's' : 'e', strength: 'breeze', px: 0, pz: 0 };
+  const v = vane(world, SN1_VANE.x, SN1_VANE.z, lane, D);
+  const spinTo = v.onTurn;
+  v.onTurn = (d) => {
+    spinTo(d);
+    if (gateOpen()) return;
+    WS.set(REGION, 'egg_gate');
+    bars.open();
+    openNest();
+  };
+  world.markers.eggGateVane = { ...SN1_VANE };
+
+  rubbleField(world, -7.2, -5.4, 2.0, D, 10);
+  fallenColumn(world, 8.2, 5.4, -0.5, D, 2.6);
+  rubbleField(world, 7.2, -5.6, 1.8, D, 9);
+  aftermath(world, -7.4, 3.4, 1.8, D, 32);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 571, 4, { spin: 1, kinds: ['rockSA', 'rockSB', 'snowRockS'] });
+  return finish(world, spec, D);
+}
+
+export async function buildSn2(scene) {
+  const { world, spec, D } = base(scene, 'sn2');
+  const { halfW, halfD } = shell(world, spec, [gap('s', SN_DOOR_HALF)], D, {
+    patches: [{ x: SN2_ALTAR.x, z: SN2_ALTAR.z, r: 3.4, kind: 'gravel' },
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'sand' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0, SN2_ALTAR.z + 1.6]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'sn1', { x: SN1_DOOR_X, z: -5.4, angle: 0 },
+    { half: SN_DOOR_HALF });
+
+  // THE ALTAR — the kit's own pedestal, the egg on its measured top
+  // (js/dragonEggs.js EggNest).
+  world.reserve(SN2_ALTAR.x, SN2_ALTAR.z, 2.4, 'eggNest');
+  let top = 1.2;
+  if (!GREY()) {
+    const ped = tinted(skyKit.pedestal, 'snPedestal', D.propTint);
+    ped.position.set(SN2_ALTAR.x, 0, SN2_ALTAR.z); ped.scale.setScalar(0.55);
+    world.add(ped);
+    ped.updateMatrixWorld(true);
+    top = new THREE.Box3().setFromObject(ped).max.y;
+    for (const [dx, dz, s] of [[-1.2, -1.1, 3.4], [1.3, -0.9, 3.0], [0.4, -1.5, 2.6], [-1.0, 0.9, 2.8]]) {
+      const coin = tinted(skyKit.coins, 'snCoins', 0xd8b84a);
+      coin.position.set(SN2_ALTAR.x + dx, 0, SN2_ALTAR.z + dz);
+      coin.scale.setScalar(s); coin.rotation.y = dx * 2.1;
+      world.add(coin);
+    }
+  }
+  world.addCircle(SN2_ALTAR.x, SN2_ALTAR.z, 0.7, 'altar');
+  world.markers.eggNestSpots = [{ ...SN2_ALTAR, y: top, element: 'storm' }];
+
+  fallenColumn(world, -7.4, -4.6, 0.5, D, 2.6);
+  fallenColumn(world, 7.4, -4.6, -0.5, D, 2.6);
+  rubbleField(world, -6.8, 3.4, 1.8, D, 8);
+  rubbleField(world, 6.8, 3.4, 1.8, D, 8);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 572, 4, { spin: 1, kinds: ['rockSA', 'rockSB', 'snowRockS'] });
+  return finish(world, spec, D);
+}
+
 export const LEVEL5_ROOMS = {
   s1a: buildS1a, s1b: buildS1b, s1p: buildS1p, sc1: buildSc1,
   s1c: buildS1c, s1d: buildS1d, s1e: buildS1e,
@@ -1505,6 +1640,7 @@ export const LEVEL5_ROOMS = {
   s3a: buildS3a, s3b: buildS3b, s3p: buildS3p, svn: buildSvn, sc3: buildSc3,
   s4a: buildS4a, s4b: buildS4b, s4p: buildS4p, sc4: buildSc4,
   scr: buildScr,
+  sn1: buildSn1, sn2: buildSn2,   // THE STORM DRAGON'S EYRIE
   ssA: buildSsA,
 };
 

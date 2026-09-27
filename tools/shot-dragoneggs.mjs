@@ -64,21 +64,17 @@ async function gotoRoom(room, flag, at) {
   await wk.page.waitForTimeout(150);
 }
 
-// FIRE — le, standing close to the shrine (6,9) so its light column is
-// actually in frame (the fixed-angle camera does not follow a facing turn).
-await gotoRoom('le', 'bossDefeated', { x: 6, z: 6.5 });
-await wk.shot('fire-shrine-le');
+// THE THREE PORTALS (v3, 2026-09-26) — each in the first room of its own
+// egg dungeon now, a room away from Tam: ln1, sn1, dn1, all at (4.5, -0.5).
+// Standing just south-west of the moat so the portal is in frame.
+await gotoRoom('ln1', 'bossDefeated', { x: 2.5, z: 1.5 });
+await wk.shot('fire-shrine-ln1');
 
-// TIDE — ddp, right up against the shrine (8.5,-2) — the tide colour reads
-// low-contrast against this room's own icy-blue palette from any distance
-// (true of the room's own pre-existing memorial shrine too), so standing
-// close is what actually shows it is there.
-await gotoRoom('ddp', 'meriDefeated', { x: 8.5, z: -3.2 });
-await wk.shot('tide-shrine-ddp');
+await gotoRoom('dn1', 'meriDefeated', { x: 2.5, z: 1.5 });
+await wk.shot('tide-shrine-dn1');
 
-// STORM — scr, standing close to (9,9).
-await gotoRoom('scr', 'ariaDefeated', { x: 9, z: 6.5 });
-await wk.shot('storm-shrine-scr');
+await gotoRoom('sn1', 'ariaDefeated', { x: 2.5, z: 1.5 });
+await wk.shot('storm-shrine-sn1');
 
 // COMPANION DRAGON — hatch one, equip it, jump to an open room, and let it
 // catch up to Kael in view.

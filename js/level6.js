@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoLabel } from './proto.js';
-import { loadGLB } from './assets.js';
+import { loadGLB, prepareModel } from './assets.js';
 import { makeBuilders, tintedModel, gap, MODULES, thresholdGlow, potSpotsOrFewer,
   reserveLandings, DOOR_HALF, spiritShrine } from './levelkit.js';
 import { flattenStatic } from './batch.js';
@@ -26,11 +26,11 @@ import { WS } from './worldstate.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { waterZone, buildWaterField, quenchable, canWade } from './water.js';
-import { registerCuttable } from './gates.js';
+import { registerCuttable, plateBars } from './gates.js';
 import { installFishHost } from './mg-fish.js';
 import { spawnLostWolf } from './pip.js';
 import { COAT } from './restoration.js';
-import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 
 let valeKit = null;
 const GREY = () => !valeKit || state.settings.greybox !== false;
@@ -62,6 +62,11 @@ export const DISTRICTS = {
   // seacave reuses 'landing').
   crypt:    { tint: 0x3a4a52, floorTint: 0x2c383e, wallTint: 0x161f24, propTint: 0x44545c,
               ground: 'shallows', name: 'THE BONE CRYPT',    hero: 'THE DROWNED ALTAR' },
+  // THE TIDE DRAGON'S GROTTO (design/DRAGON-EGGS.md v3) — the tide egg's own
+  // dungeon, behind Meri's Deep's east wall. The Deep's own floor style,
+  // lifted toward the sea-green of the Tide Wolf himself.
+  dragontide: { tint: 0x3fa0b0, floorTint: 0x2e5c64, wallTint: 0x12282e, propTint: 0x4a8490,
+              ground: 'deepvale', name: "THE TIDE DRAGON'S GROTTO", hero: 'THE TIDE PORTAL' },
 };
 
 // Two new modules. The RIM is a shore path — shorter than a Stormreach stair
@@ -136,6 +141,15 @@ export const L6 = {
   // ---- MERI'S DEEP --------------------------------------------------------
   ddp: { ...M.arena, kind: 'arena', district: 'deep', spine: true,
          label: "MERI'S DEEP", beat: 'MERI, THE DROWNED' },
+
+  // THE TIDE DRAGON'S GROTTO (design/DRAGON-EGGS.md v3) — the tide egg's own
+  // dungeon, off ddp's east wall once Meri falls, the dragon's bones beside
+  // its door. dn1 holds the Tide Portal and a barred door between two fires
+  // the Tide Wolf's splash puts out; dn2 holds the egg. Quiet: no map card.
+  dn1: { ...M.pocket, kind: 'pocket', district: 'dragontide', loopsTo: 'ddp',
+         label: 'THE TIDE PORTAL', beat: 'optional · the shrine · splash two fires' },
+  dn2: { ...M.pocket, kind: 'pocket', district: 'dragontide', loopsTo: 'dn1',
+         label: "THE TIDE DRAGON'S NEST", beat: 'optional · the Tide Dragon egg' },
 };
 
 registerDistrictTints(L6, DISTRICTS);
@@ -433,7 +447,9 @@ function heroProp(world, x, z, kind, D) {
 }
 
 // A brazier standing in the tide pools — lit, blocking, and put out by a splash.
-function poolBrazier(world, x, z, id, D, onOut) {
+// `startOut` (2026-09-26, the Tide Dragon's Grotto): a brazier a save already put out
+// builds cold, so a solved room looks solved (the pushableBoulder `solved` law).
+function poolBrazier(world, x, z, id, D, onOut, startOut = false) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
   if (GREY()) {
@@ -463,7 +479,7 @@ function poolBrazier(world, x, z, id, D, onOut) {
     flame.scale.setScalar(0.9 + Math.sin(t * 9 + x) * 0.12);
     light.intensity = 2.8 + Math.abs(Math.sin(t * 7 + z)) * 0.9;
   });
-  quenchable(world, {
+  const q = quenchable(world, {
     x, z, id,
     onQuench: () => {
       flame.visible = false;
@@ -472,6 +488,11 @@ function poolBrazier(world, x, z, id, D, onOut) {
       if (onOut) onOut();
     },
   });
+  if (startOut) {
+    flame.visible = false;
+    light.intensity = 0;
+    q.out = true;
+  }
   return g;
 }
 
@@ -690,16 +711,9 @@ export async function buildD1a(scene) {
   // `scatter()` pass right below so it can never land a tree on top.
   world.markers.treeSpots = [{ x: 3, z: 3, tint: 0x3fb0c4 }];
   world.reserve(3, 3, 1.6, 'node');
-  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the THIRD of three, on the
-  // dry east floor clear of the lagoon's water zones, the tree, the slime
-  // and restSpot. Wordless, the same idiom as la's and s1a's own: a child
-  // remembers it once the hidden Tide Dragon egg turns up later, not
-  // before. Reserved before `scatter()` right below.
-  if (!GREY()) {
-    await preloadDragonSkeleton();
-    spawnDragonSkeletonHint(world, 11, 1, -0.5);
-  }
-  world.reserve(11, 1, 2.4, 'dragonSkeleton');
+  // (The dragon's bones lay here, v2.2 — moved 2026-09-26 to beside the Tide
+  // Dragon's Grotto door in `ddp`, where they point at something. See buildDdp
+  // and design/DRAGON-EGGS.md v3.)
   scatter(world, halfW, halfD, D, 601, 6, { spin: 1, kinds: ['rockLA', 'rockSA', 'stump'] });
   dressShore(world, halfW, halfD, D, 6011, { homes: 2 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
@@ -1421,12 +1435,29 @@ export async function buildDdp(scene) {
   // she fights, opened live the instant `onwardPlug`'s chained callback
   // fires — verify-onward.mjs §4's "opens to the same doors live as on a
   // rebuild" is what this answers.
-  const gaps = [gap('s'), gap('n'), gap('w')];
+  // ...and the EAST gap, the door to the Tide Dragon's Grotto
+  // (design/DRAGON-EGGS.md v3), cut always and plugged the same way.
+  const gaps = [gap('s'), gap('n'), gap('w'), gap('e', DN_DOOR_HALF, DDP_EGG_DOOR_Z)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: 0, z: 0, r: 8.0, kind: 'water' }],
   });
   world.spawn = { x: 0, z: 10, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'dg4', { x: 0, z: -5, angle: 0 });
+  // THE TIDE DRAGON'S GROTTO. Plugged until Meri falls, the door added when
+  // the plug goes; registered FIRST of the three plugs so the arena's smoke
+  // still lands on the way on.
+  eggDoorPlug(world, { x: halfW - 0.7, z: DDP_EGG_DOOR_Z, w: 1.5, d: DN_DOOR_HALF * 2 + 0.2,
+    piece: GREY() ? null : () => tinted(valeKit.rockLB, 'eggPlug', D.propTint), tint: D.propTint,
+    isOpen: () => onward, doorTo: 'dn1',
+    addTheDoor: () => sideDoor(world, 'e', halfW, halfD, 'dn1', { x: DN1_DOOR_X, z: 6, angle: Math.PI },
+      { centre: DDP_EGG_DOOR_Z, half: DN_DOOR_HALF }) });
+  // THE DRAGON'S BONES beside it, north of the door on the hall's own east
+  // rim (where a rubble heap used to lie; the rim loop below now skips it).
+  world.reserve(DDP_BONES.x, DDP_BONES.z, 2.0, 'dragonSkeleton');
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, DDP_BONES.x, DDP_BONES.z, DDP_BONES.ry, DDP_BONES.d);
+  }
   // lands beside dlg's own new east door (centre 8, above), facing in — the
   // same "land beside the door you came through" law dlg's own comment
   // already keeps for its other three.
@@ -1482,17 +1513,10 @@ export async function buildDdp(scene) {
       { id: 'c_ddp', tier: 'gold', x: -4.5, z: -5.5, ry: 0.6, loot: { shards: 42 } },
     ];
     world.reserve(-4.5, -5.5, 2.6, 'chest');
-    // THE GRAND TIDE SHRINE (design/DRAGON-EGGS.md) — the same "quiet gets
-    // in once the story earned it" gate as the memorial above, sitting in
-    // the shallow water either side of the hall, clear of the memorial, its
-    // chest and the fallenColumn/rubbleField dressing placed below —
-    // confirmed clear by a real arrival screenshot before ship, per
-    // CLAUDE.md's room-contents rule.
-    world.reserve(8.5, -2, 3.4, 'dragonShrine');
-    world.markers.dragonShrineSpots = [{ x: 8.5, z: -2, element: 'tide' }];
-    world.markers.chestDefs.push(
-      { id: 'ddp_dragon_egg', tier: 'gold', x: -8.5, z: -2, ry: 0.6, loot: { dragonEgg: 'tide' } });
-    world.reserve(-8.5, -2, 2.6, 'chest');
+    // (THE TIDE SHRINE AND ITS EGG CHEST stood here until v3. The shrine is
+    // in dn1 now, a room away from Tam's post, and the egg on dn2's altar;
+    // `ddp_dragon_egg` stays in any save that opened it, never read again.
+    // design/DRAGON-EGGS.md v3.)
   }
   scatter(world, halfW, halfD, D, 641, 4, { spin: 1, kinds: ['rockSA', 'brick'] });
   // THE RIM ONLY. An arena's middle stays clear — a boss that lands on a
@@ -1509,6 +1533,118 @@ export async function buildDdp(scene) {
   return finish(world, spec, D);
 }
 
+// ---------------------------------------------------------------------------
+// THE TIDE DRAGON'S GROTTO (design/DRAGON-EGGS.md v3) — the tide egg's own
+// dungeon. Two rooms off ddp's east wall, opened by Meri's fall.
+//
+// dn1 THE TIDE PORTAL: the shrine the egg hatches in, and a barred door with
+// a fire burning either side of it. The Tide Wolf's splash puts fires out —
+// the Tide Pools' own piece (poolBrazier, above), the first gift that undoes
+// another's — and when both are out the bars go up. Deep water was the other
+// candidate and was rejected: the Tide Wolf is Meri's gift, this room only
+// exists after she falls, and deep water simply carries a child who owns him
+// (js/water.js canWade), so it would never have been a lock.
+// dn2 THE NEST: the egg on its altar.
+//
+// Entered from the south, like the other two dens, so the arrival frame holds
+// the whole room; the portal is a room away from Tam's post in ddp.
+// ---------------------------------------------------------------------------
+const DN_DOOR_HALF = 1.5;
+const DDP_EGG_DOOR_Z = -2.5;
+const DDP_BONES = { x: 10.6, z: -6.9, ry: -0.4, d: 3.2 };
+const DN1_DOOR_X = -3;
+const DN1_SHRINE = { x: 4.5, z: -0.5 };
+const DN1_FIRES = [{ x: DN1_DOOR_X - 2.6, z: -5.6 }, { x: DN1_DOOR_X + 2.6, z: -5.6 }];
+const DN2_ALTAR = { x: 0, z: 0.2 };
+
+export async function buildDn1(scene) {
+  const { world, spec, D } = base(scene, 'dn1');
+  const gateOpen = () => !!WS.get(REGION, 'egg_gate');
+  const { halfW, halfD } = shell(world, spec,
+    [gap('s', DN_DOOR_HALF, DN1_DOOR_X), gap('n', DN_DOOR_HALF, DN1_DOOR_X)], D, {
+      patches: [{ x: DN1_SHRINE.x, z: DN1_SHRINE.z, r: 3.6, kind: 'water' },
+                { x: -7, z: 3, r: 2.6, kind: 'sand' }, { x: 7, z: -5.5, r: 2.2, kind: 'rubble' }],
+      pathWidth: 2.4,
+      paths: [[[DN1_DOOR_X, 8], [DN1_DOOR_X, -8]], [[DN1_DOOR_X, 2], [DN1_SHRINE.x - 2.8, DN1_SHRINE.z]]],
+    });
+  world.spawn = { x: DN1_DOOR_X, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'ddp', { x: 10.3, z: DDP_EGG_DOOR_Z, angle: -Math.PI / 2 },
+    { centre: DN1_DOOR_X, half: DN_DOOR_HALF });
+  // The way on is only a door once the bars are up (onwardPlug's contract:
+  // never a door with something standing in it); `pluggedTo` names it.
+  const openNest = () => sideDoor(world, 'n', halfW, halfD, 'dn2', { x: 0, z: 6, angle: Math.PI },
+    { centre: DN1_DOOR_X, half: DN_DOOR_HALF });
+  if (gateOpen()) openNest();
+  else (world.pluggedTo || (world.pluggedTo = [])).push('dn2');
+
+  // THE TIDE PORTAL — js/dragonEggs.js's DragonShrine, built by main.js.
+  world.reserve(DN1_SHRINE.x, DN1_SHRINE.z, 3.4, 'dragonShrine');
+  world.markers.dragonShrineSpots = [{ ...DN1_SHRINE, element: 'tide' }];
+
+  // THE GATE: bars across the north door, a fire either side. Both out and
+  // the bars go up; the room's own WS flag keeps it solved on a return.
+  const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, valeKit.archBars, 'dn1_gate',
+    DN1_DOOR_X, -halfD + 0.9, { span: DN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+  let out = 0;
+  DN1_FIRES.forEach((f, i) => poolBrazier(world, f.x, f.z, 'dn1_fire' + i, D, () => {
+    out++;
+    if (out < DN1_FIRES.length || gateOpen()) return;
+    WS.set(REGION, 'egg_gate');
+    bars.open();
+    openNest();
+  }, gateOpen()));
+  world.markers.eggGateFires = DN1_FIRES.map((p) => ({ ...p }));
+
+  rubbleField(world, -7.2, -5.4, 2.0, D, 10);
+  fallenColumn(world, 8.2, 5.4, -0.5, washed(D, 0.7), 2.6);
+  rubbleField(world, 7.2, -5.6, 1.8, D, 9);
+  aftermath(world, -7.4, 3.4, 1.8, D, 33);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 651, 4, { spin: 1, kinds: ['rockSA', 'rockSB', 'brick'] });
+  return finish(world, spec, D);
+}
+
+export async function buildDn2(scene) {
+  const { world, spec, D } = base(scene, 'dn2');
+  const { halfW, halfD } = shell(world, spec, [gap('s', DN_DOOR_HALF)], D, {
+    patches: [{ x: DN2_ALTAR.x, z: DN2_ALTAR.z, r: 3.4, kind: 'sand' },
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'water' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'water' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0, DN2_ALTAR.z + 1.6]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'dn1', { x: DN1_DOOR_X, z: -5.4, angle: 0 },
+    { half: DN_DOOR_HALF });
+
+  // THE ALTAR — the kit's own pedestal, the egg on its measured top
+  // (js/dragonEggs.js EggNest).
+  world.reserve(DN2_ALTAR.x, DN2_ALTAR.z, 2.4, 'eggNest');
+  let top = 1.2;
+  if (!GREY()) {
+    const ped = tinted(valeKit.pedestal, 'dnPedestal', D.propTint);
+    ped.position.set(DN2_ALTAR.x, 0, DN2_ALTAR.z); ped.scale.setScalar(0.55);
+    world.add(ped);
+    ped.updateMatrixWorld(true);
+    top = new THREE.Box3().setFromObject(ped).max.y;
+    for (const [dx, dz, s] of [[-1.2, -1.1, 3.4], [1.3, -0.9, 3.0], [0.4, -1.5, 2.6], [-1.0, 0.9, 2.8]]) {
+      const coin = tinted(valeKit.coins, 'dnCoins', 0xd8b84a);
+      coin.position.set(DN2_ALTAR.x + dx, 0, DN2_ALTAR.z + dz);
+      coin.scale.setScalar(s); coin.rotation.y = dx * 2.1;
+      world.add(coin);
+    }
+  }
+  world.addCircle(DN2_ALTAR.x, DN2_ALTAR.z, 0.7, 'altar');
+  world.markers.eggNestSpots = [{ ...DN2_ALTAR, y: top, element: 'tide' }];
+
+  fallenColumn(world, -7.4, -4.6, 0.5, washed(D, 0.4), 2.6);
+  fallenColumn(world, 7.4, -4.6, -0.5, washed(D, 0.7), 2.6);
+  rubbleField(world, -6.8, 3.4, 1.8, D, 8);
+  rubbleField(world, 6.8, 3.4, 1.8, D, 8);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 652, 4, { spin: 1, kinds: ['rockSA', 'rockSB', 'brick'] });
+  return finish(world, spec, D);
+}
+
 export const LEVEL6_ROOMS = {
   d1a: buildD1a, d1b: buildD1b, d1p: buildD1p, dg1: buildDg1,
   d1c: buildD1c, d1d: buildD1d, d1e: buildD1e,
@@ -1516,4 +1652,5 @@ export const LEVEL6_ROOMS = {
   d3a: buildD3a, d3b: buildD3b, d3p: buildD3p, dtp: buildDtp, dg3: buildDg3,
   d4a: buildD4a, d4b: buildD4b, d4p: buildD4p, dg4: buildDg4,
   dlg: buildDlg, ddp: buildDdp,
+  dn1: buildDn1, dn2: buildDn2,   // THE TIDE DRAGON'S GROTTO
 };

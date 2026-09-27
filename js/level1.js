@@ -40,7 +40,7 @@ import { carryItem, socket } from './carry.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
 import { isHealed, COAT } from './restoration.js';
-import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 import { bumpCounter } from './progress.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
@@ -103,6 +103,13 @@ export const DISTRICTS = {
   // colour under the same light every other room sits under.
   ashvault: { tint: 0x504c46, floorTint: 0x433f3a, wallTint: 0x2b241a, propTint: 0x5c4e3e, ground: 'ashfall',
               name: 'THE ASH VAULT', hero: 'THE UNDERSTAIR CELLAR' },
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+  // dungeon, behind the Heart of the Hollow's east wall. The Heart's own
+  // flagstone floor (it is the same hall, one door on), pulled from its
+  // purple toward banked coals, so a child who walks through reads "this is
+  // somewhere warmer" before a word is said.
+  dragonfire: { tint: 0x8a4a3a, floorTint: 0x6a4038, wallTint: 0x2c1814, propTint: 0x7a5044, ground: 'heart',
+              name: "THE EMBER DRAGON'S DEN", hero: 'THE FIRE PORTAL' },
 };
 
 // ---------------------------------------------------------------------------
@@ -165,6 +172,15 @@ export const L1 = {
          label: 'THE CHARRED GALLERY', beat: 'optional · 2 wretch + 1 marauder' },
   lv3: { kind: 'pocket', w: 20, d: 16, district: 'ashvault', loopsTo: 'lv2',
          label: 'THE BANKED VAULT', beat: 'optional · gold + heart piece' },
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+  // dungeon, off le's east wall once the Shadowgrip falls, the dragon's bones
+  // lying beside its door. ln1 holds the Fire Portal and the lamp-lit gate;
+  // ln2, past it, holds the egg on its altar. A quiet secret, so no
+  // `dungeon: true` (no map card) — the bones are the only sign.
+  ln1: { kind: 'pocket', w: 20, d: 16, district: 'dragonfire', loopsTo: 'le',
+         label: 'THE FIRE PORTAL', beat: 'optional · the shrine · light two lamps' },
+  ln2: { kind: 'pocket', w: 20, d: 16, district: 'dragonfire', loopsTo: 'ln1',
+         label: "THE EMBER DRAGON'S NEST", beat: 'optional · the Ember Dragon egg' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -719,18 +735,9 @@ export async function buildLa(scene) {
   // gone, 2026-08-30. The l1_ash_nook save flag stays honoured if already
   // collected — saves are additive-forever — the spawn is simply not built.)
 
-  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the FIRST of three, half-
-  // buried in the room's own ash patch (x 6 z 10, r 4.5), clear of the
-  // cartWreck/stump cluster around it. Wordless: a child who notices it has
-  // no way yet to know it marks the start of the path to a hidden Ember
-  // Dragon egg — the point is remembering it once the egg turns up later.
-  // Reserved before `scatter()` right below so its own seeded clutter can
-  // never land on top of it.
-  if (!GREY()) {
-    await preloadDragonSkeleton();
-    spawnDragonSkeletonHint(world, 9, 11, 0.4);
-  }
-  world.reserve(9, 11, 2.4, 'dragonSkeleton');
+  // (The dragon's bones lay here, v2.2 — moved 2026-09-26 to beside the egg
+  // dungeon's own door in `le`, where they point at something. See buildLe
+  // and design/DRAGON-EGGS.md v3.)
   scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
   // The two wall runs are the point: without them the "gate" sat alone in the
@@ -1549,6 +1556,15 @@ export async function buildLg4(scene) {
 }
 
 // --- ISLAND E — HEART OF THE HOLLOW (boss; TEACH 4 — conclude) ---------------
+// THE EMBER DRAGON'S DEN's door in le's east wall, and the bones beside it
+// (design/DRAGON-EGGS.md v3). Measured against le's own top-down collider
+// map: the door sits in the clear stretch between the NE column heap
+// (z <= -6.3) and the SE one (z >= 7.5); the bones lie NORTH of it, clear of
+// the door's own reserve and a whole arena-width from Tam's post at (6, 8)
+// — first placed south of the door, they read on screen as Tam's own prop.
+const EGG_DOOR_Z = 1.0, EGG_DOOR_HALF = 1.5;
+const EGG_BONES = { x: 10.3, z: -3.5, ry: 0.35, d: 3.6 };
+
 export async function buildLe(scene) {
   const { world, spec, D } = base(scene, 'le');
   const onward = !!state.flags.bossDefeated;
@@ -1556,7 +1572,9 @@ export async function buildLe(scene) {
   // plugged with cage rubble rather than never existing. See openTheWayOn()
   // in main.js: a door that only arrives on a rebuild leaves the child who
   // just WON standing in a room with no way out.
-  const gaps = [gap('s'), gap('w'), gap('n')];
+  // ...and a FOURTH, east: the door to the Ember Dragon's Den
+  // (design/DRAGON-EGGS.md v3), cut always and plugged the same way.
+  const gaps = [gap('s'), gap('w'), gap('n'), gap('e', EGG_DOOR_HALF, EGG_DOOR_Z)];
   // A BOSS ARENA IS DRESSED AT THE EDGES ONLY. The Shadowgrip's charge runs
   // about eight units and needs somewhere to run; anything a child can snag on
   // mid-arena turns a readable dodge into an unfair hit. So the floor carries
@@ -1568,6 +1586,16 @@ export async function buildLe(scene) {
   });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg4', { x: 0, z: -3.2, angle: 0 });
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3). Registered FIRST of
+  // the three plugs so `world.onwardSpot` still ends on the road on (the
+  // smoke lands on the door that matters); the plug makes its own puff.
+  // The door is added when the plug goes (onwardPlug's own contract).
+  eggDoorPlug(world, { x: halfW - 0.7, z: EGG_DOOR_Z, w: 1.5, d: EGG_DOOR_HALF * 2 + 0.2,
+    piece: GREY() ? null : () => tinted(emberKit.rockLB, 'eggPlug', D.propTint), tint: D.propTint,
+    isOpen: () => onward, doorTo: 'ln1',
+    addTheDoor: () => sideDoor(world, 'e', halfW, halfD, 'ln1', { x: LN1_DOOR_X, z: 6, angle: Math.PI },
+      { centre: EGG_DOOR_Z, half: EGG_DOOR_HALF }) });
+  world.reserve(EGG_BONES.x, EGG_BONES.z, 2.3, 'dragonSkeleton');   // before scatter, below
   // THE LOOP-BACK: a one-way walked door home, opened by the boss (rule 4).
   const loopHome = () => sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
   if (onward) loopHome();
@@ -1614,24 +1642,27 @@ export async function buildLe(scene) {
     fallenColumn(world, cx, cz, cr, D, 3.0);
   }
   rubbleField(world, -11.5, 0, 2.6, D, 11);
-  rubbleField(world, 11.5, 0, 2.6, D, 11);
+  // (the east rubble field that lay here now lies under the dragon's bones,
+  // below — the east wall is the egg dungeon's door)
   rubbleField(world, 0, -11.5, 2.8, D, 12);
   aftermath(world, -9, -10, 2.0, D, 18);
   aftermath(world, 9, -10, 2.0, D, 19);
-  // THE GRAND EMBER SHRINE (design/DRAGON-EGGS.md) — placed once the
-  // Shadowgrip falls, the same "the story has reached far enough for this"
-  // gate js/level5.js buildScr / js/level6.js buildDdp already use for their
-  // own post-boss memorials, in the far NE corner of the arena's own
-  // perimeter (clear of the cage, its braziers, the reward chest and every
-  // fallenColumn/rubbleField/aftermath placed above — this exact spot was
-  // confirmed clear by a real arrival screenshot, not by reading coordinates
-  // alone, per CLAUDE.md's room-contents rule).
-  if (onward) {
-    world.reserve(6, 9, 3.4, 'dragonShrine');
-    world.markers.dragonShrineSpots = [{ x: 6, z: 9, element: 'fire' }];
-    world.markers.chestDefs = (world.markers.chestDefs || []).concat(
-      { id: 'le_dragon_egg', tier: 'gold', x: -6, z: 9, ry: -0.4, loot: { dragonEgg: 'fire' } });
-    world.reserve(-6, 9, 2.6, 'chest');
+  // THE DRAGON'S BONES, beside the Den's door (design/DRAGON-EGGS.md v3 —
+  // dad: "there is also meant to be a dragon skeleton outside that dungeon
+  // as a hint"). North of the door, well away from Tam's post (6, 8), on the
+  // arena's own east edge where nothing is fought over. There from the
+  // start — during the fight they are just old bones by a rock pile; after
+  // it, they lie beside the door that opened. No collider (a ruin a child
+  // walks over), reserved so nothing seeded lands on them.
+  //
+  // THE FIRE SHRINE AND THE EGG CHEST THAT STOOD HERE ARE GONE (v3). The
+  // shrine was at (6, 9) — one step from Tam's post at (6, 8), so Tam stood
+  // hidden inside the portal and walking up to the portal played his voice
+  // and opened his map. The shrine is in ln1 now and the egg on ln2's altar;
+  // `le_dragon_egg` stays in any save that opened it, never read again.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, EGG_BONES.x, EGG_BONES.z, EGG_BONES.ry, EGG_BONES.d);
   }
   return finish(world, spec, D);
 }
@@ -2165,6 +2196,123 @@ export async function buildLv3(scene) {
   return finish(world, spec, D);
 }
 
+// ---------------------------------------------------------------------------
+// THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+// dungeon. Two rooms off le's east wall, opened by the Shadowgrip's fall.
+//
+// ln1 THE FIRE PORTAL: the shrine the egg is hatched in, and — past it — a
+// barred door with a cold lamp either side. The Fire Wolf's slam lights them
+// (the Kiln's own brazier language, the verb this whole region taught), and
+// when both burn the bars go up. Pip, at the portal, says all of that aloud.
+// ln2 THE NEST: the egg on its altar. Walk to it and it is yours; carry it
+// back through one door to the portal it has been waiting for.
+//
+// The portal lives HERE, a room away from Tam's post in le, so the two can
+// never again be mistaken for one another (dad: "the portal talks and acts
+// as if it's Tam").
+// ---------------------------------------------------------------------------
+// Both rooms are entered from the SOUTH on purpose, although le's door is in
+// its east wall: the camera always looks north, so a child walking in at the
+// south wall sees the whole room at once — the portal and the barred door in
+// ln1, the egg on its altar in ln2 — instead of half a screen of the void
+// past a west wall (the lv1 arrival frame's own trade-off).
+const LN_DOOR_HALF = 1.5;
+const LN1_DOOR_X = -3;                     // south door (from le) and north gate share a line
+const LN1_SHRINE = { x: 4.5, z: -0.5 };
+const LN1_LAMPS = [{ x: LN1_DOOR_X - 2.4, z: -5.8 }, { x: LN1_DOOR_X + 2.4, z: -5.8 }];
+const LN2_ALTAR = { x: 0, z: 0.2 };       // straight ahead of the door: the first thing a child sees
+
+export async function buildLn1(scene) {
+  const { world, spec, D } = base(scene, 'ln1');
+  const gateOpen = () => !!WS.get('ember', 'egg_gate');
+  const { halfW, halfD } = shell(world, spec,
+    [gap('s', LN_DOOR_HALF, LN1_DOOR_X), gap('n', LN_DOOR_HALF, LN1_DOOR_X)], D, {
+      patches: [{ x: LN1_SHRINE.x, z: LN1_SHRINE.z, r: 3.6, kind: 'scorch' },
+                { x: -7, z: 3, r: 2.6, kind: 'ash' }, { x: 7, z: -5.5, r: 2.2, kind: 'rubble' }],
+      pathWidth: 2.4,
+      paths: [[[LN1_DOOR_X, 8], [LN1_DOOR_X, -8]], [[LN1_DOOR_X, 2], [LN1_SHRINE.x - 2.8, LN1_SHRINE.z]]],
+    });
+  world.spawn = { x: LN1_DOOR_X, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'le', { x: 10.3, z: EGG_DOOR_Z, angle: -Math.PI / 2 },
+    { centre: LN1_DOOR_X, half: LN_DOOR_HALF });
+  // The way on is only a door once the bars are up (onwardPlug's contract:
+  // never a door with something standing in it); `pluggedTo` names it.
+  const openNest = () => sideDoor(world, 'n', halfW, halfD, 'ln2', { x: 0, z: 6, angle: Math.PI },
+    { centre: LN1_DOOR_X, half: LN_DOOR_HALF });
+  if (gateOpen()) openNest();
+  else (world.pluggedTo || (world.pluggedTo = [])).push('ln2');
+
+  // THE FIRE PORTAL — js/dragonEggs.js's DragonShrine, built by main.js off
+  // this marker. Reserved generously so nothing seeded lands in its moat.
+  world.reserve(LN1_SHRINE.x, LN1_SHRINE.z, 3.4, 'dragonShrine');
+  world.markers.dragonShrineSpots = [{ ...LN1_SHRINE, element: 'fire' }];
+
+  // THE GATE: bars across the north door, a cold lamp either side of it.
+  // Solved state is the room's own WS flag, so a child who lit them on an
+  // earlier visit comes back to open bars and two burning lamps.
+  const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, emberKit.bars, 'ln1_gate',
+    LN1_DOOR_X, -halfD + 0.9, { span: LN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+  let lit = 0;
+  teachBraziers(world, LN1_LAMPS, 'ln1_lamp', () => {
+    lit++;
+    if (lit < LN1_LAMPS.length || gateOpen()) return;
+    WS.set('ember', 'egg_gate');
+    bars.open();
+    openNest();
+  }, gateOpen());
+  world.markers.eggGateLamps = LN1_LAMPS.map((p) => ({ ...p }));
+
+  rubbleField(world, -7.2, -5.4, 2.0, D, 10);
+  fallenColumn(world, 8.2, 5.4, -0.5, D, 2.6);
+  rubbleField(world, 7.2, -5.6, 1.8, D, 9);
+  aftermath(world, -7.4, 3.4, 1.8, D, 31);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 81, 4);
+  return finish(world, spec, D);
+}
+
+export async function buildLn2(scene) {
+  const { world, spec, D } = base(scene, 'ln2');
+  const { halfW, halfD } = shell(world, spec, [gap('s', LN_DOOR_HALF)], D, {
+    patches: [{ x: LN2_ALTAR.x, z: LN2_ALTAR.z, r: 3.4, kind: 'scorch' },
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'ash' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'gravel' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0, LN2_ALTAR.z + 1.6]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'ln1', { x: LN1_DOOR_X, z: -5.4, angle: 0 },
+    { half: LN_DOOR_HALF });
+
+  // THE ALTAR. The kit's own pedestal (the one lv1's cellar already uses),
+  // cut down to a child's reach; the egg itself is js/dragonEggs.js's
+  // EggNest, which rests it on the pedestal's measured top.
+  world.reserve(LN2_ALTAR.x, LN2_ALTAR.z, 2.4, 'eggNest');
+  let top = 1.2;
+  if (!GREY()) {
+    const ped = tinted(emberKit.pedestal, 'lnPedestal', D.propTint);
+    ped.position.set(LN2_ALTAR.x, 0, LN2_ALTAR.z); ped.scale.setScalar(0.55);
+    world.add(ped);
+    ped.updateMatrixWorld(true);
+    top = new THREE.Box3().setFromObject(ped).max.y;
+    // the hoard a dragon sleeps on
+    for (const [dx, dz, s] of [[-1.2, -1.1, 3.4], [1.3, -0.9, 3.0], [0.4, -1.5, 2.6], [-1.0, 0.9, 2.8]]) {
+      const coin = tinted(emberKit.coins, 'lnCoins', 0xd8b84a);
+      coin.position.set(LN2_ALTAR.x + dx, 0, LN2_ALTAR.z + dz);
+      coin.scale.setScalar(s); coin.rotation.y = dx * 2.1;
+      world.add(coin);
+    }
+  }
+  world.addCircle(LN2_ALTAR.x, LN2_ALTAR.z, 0.7, 'altar');
+  world.markers.eggNestSpots = [{ ...LN2_ALTAR, y: top, element: 'fire' }];
+  fallenColumn(world, -7.4, -4.6, 0.5, D, 2.6);
+  fallenColumn(world, 7.4, -4.6, -0.5, D, 2.6);
+  rubbleField(world, -6.8, 3.4, 1.8, D, 8);
+  rubbleField(world, 6.8, 3.4, 1.8, D, 8);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 82, 4);
+  return finish(world, spec, D);
+}
+
 export const LEVEL1_ROOMS = {
   la: buildLa, la1: buildLa1, lg1: buildLg1,
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
@@ -2172,6 +2320,7 @@ export const LEVEL1_ROOMS = {
   ld: buildLd, ld1: buildLd1, lg4: buildLg4,
   lk1: buildLk1, lk2: buildLk2, lk3: buildLk3, lk4: buildLk4,   // EMBER DEEP
   lv1: buildLv1, lv2: buildLv2, lv3: buildLv3,   // THE ASH VAULT
+  ln1: buildLn1, ln2: buildLn2,                  // THE EMBER DRAGON'S DEN
   le: buildLe,
   zoo: buildZoo,
 };

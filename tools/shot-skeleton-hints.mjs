@@ -1,5 +1,6 @@
 // One-off close-up pass for the dragon-skeleton hints (design/DRAGON-EGGS.md)
-// in la/s1a/d1a — NOT a verify suite, not part of any gate.
+// beside each egg dungeon's door in le/scr/ddp (v3, 2026-09-26; they lay in
+// la/s1a/d1a until then) — NOT a verify suite, not part of any gate.
 import { launch } from './wk-drive.mjs';
 
 const wk = await launch({ timescale: 1, evidenceDir: '/tmp/skeleton-hint-shots' });
@@ -40,9 +41,10 @@ async function look(room, x, z, lookX, lookZ, label) {
   await wk.shot(label);
 }
 
-await look('la', 9, 14, 9, 11, 'la-skeleton-close');
-await look('s1a', 2, -6, 2, -9.5, 's1a-skeleton-close');
-await look('d1a', 11, 5, 11, 1, 'd1a-skeleton-close');
+await wk.page.evaluate(() => Object.assign(window.__game.state.flags, { bossDefeated: true, ariaDefeated: true, meriDefeated: true }));
+await look('le', 8, 0.5, 10.3, -3.5, 'le-skeleton-by-den-door');
+await look('scr', 8.5, -3.4, 10.9, -7.6, 'scr-skeleton-by-den-door');
+await look('ddp', 8.5, -2.5, 10.6, -6.9, 'ddp-skeleton-by-den-door');
 
 console.log('screenshots saved under /tmp/skeleton-hint-shots');
 await wk.b.close();

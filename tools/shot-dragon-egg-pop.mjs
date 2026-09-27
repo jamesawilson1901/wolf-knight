@@ -1,3 +1,8 @@
+// RETIRED BY v3 (2026-09-26): the egg chests are gone — eggs rest on altars
+// in their own dens now (design/DRAGON-EGGS.md v3; tools/verify-dragondens.mjs
+// walks them). Kept only as the record of how the v2 pop was checked; it will
+// not find a chest in `le` any more.
+//
 // One-off screenshot for the new dragon-egg pickup model (design/DRAGON-EGGS.md
 // v2 asset swap) — NOT a verify suite. Walks up to the real 'le' fire-egg
 // chest (js/level1.js: le_dragon_egg at -6,9) and captures the real pop.
