@@ -317,11 +317,11 @@ thing through:
    temperature survives. Added after the first healed contact sheet showed a
    Wild Woods full of flowers and grazing wolves that a child still could not
    see: everything else the healing does is a thing IN the room.
- · ANIMALS — spawnEnemies() harvests every enemy marker it would have read
-   (takeEnemySpots) and graze() stands a wolf where each shadow stood.
-   wolf.gltf is the game's own animal and ships Eating/Idle_2_HeadLow/Idle/
-   Walk. No colliders, Biscuit's rule: a safe room must not be one a child can
-   be shoved around in. world.updateGrazers(dt,t,player) from main's loop.
+ · ENEMIES STAY — by decision (dad, 2026-09-27): a healed region is one to
+   come back to for its secrets, dungeon and crafting materials, so healing
+   never removes its enemies. The old enemy->grazing-wolf swap (graze(),
+   takeEnemySpots) is deleted; the herd machinery lives on only in the Den's
+   pup pen. verify-loops no longer asserts a combat-free healed region.
 healLive(world) is the WITNESSED version, called from the wild/frost/storm/
 vale/court defeat branches — the five that used to change a background colour
 on the next rebuild and nothing else. It grows the instance matrices, so the

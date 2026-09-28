@@ -213,6 +213,10 @@ const BARRED = {
   // wing's lock, and the door to xa2 is past it by design.
   'xa1→xa2': { why: 'the Ash Wing\'s burning bar — burned with Fire',
     open: () => { window.__game.state.flags.burned.x_ash_bar = true; } },
+  // Since 2026-09-27 the wing locks are real: one wall across the room with
+  // the gate its only gap (level7 wingEntry). The Root Wing opens to Verdant.
+  'xr1→xr2': { why: 'the Root Wing\'s thorn tangle — cut with Verdant',
+    open: () => { window.__game.WS.set('court', 'cut_x_root_tangle', true); } },
 };
 
 console.log('\n── every door has floor in front of it that the player can reach ──');

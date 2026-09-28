@@ -5973,3 +5973,33 @@ now reserves the four passages round its walls' ends, so the prop makers
 the wing's bar sits between those walls rather than across a way through, so
 walking round a wall end reaches xa2 without fire — the same as xr1 already
 does. That is how both wings were built; this fix does not change it.
+
+## Dad's calls: enemies stay, locks lock, fire burns wood (2026-09-28, v3.196.0)
+
+Three answers, one of them a delegation:
+
+1. **The gate review is approved** (thorns, ice, the Loyal Guardian, the
+   barred doors).
+2. **Healed regions keep their enemies.** "We want the player to go back and
+   explore regions for secrets and dungeons and to get crafting materials.
+   That doesn't work if the enemies end up replaced." restoration.js's
+   enemy→grazing-wolf swap (`graze()`) had never been wired; it is deleted,
+   not left as a promise. The herd machinery stays for the Den's pup pen,
+   and `COAT` stays for the lost wolves. verify-loops no longer demands la be
+   combat-free after the boss (vh, Stoneroot's camp, still must be); its
+   known-fail line goes.
+3. **The Court's wing locks were decorative** — two short walls at x = ±6 with
+   the gate between them across nothing, so a child walked round a wall end
+   to the next room. "Your choice, use your best knowledge in game design":
+   a promise gate only teaches if it is the only way. `wingEntry` is now one
+   wall across the whole room at x = −6 with the gate its only gap, laid along
+   it. Flood-fill from the arrival: 0 cells west of the wall while shut, the
+   whole west side and the door on once burned (Ash) or cut (Root).
+   verify-reachable proves both. xr1's hound moved to the arrival side.
+
+And, found making (3): the Ash Wing's `'brick'` gate rendered as a few tiny
+chunks, so a sealed gap looked open. Every burn gate in the game was the
+same kind of thing — tinted rocks, "does not look like it blocks", and not a
+thing fire opens. `gateprops.timberWall()` builds them now: charred log
+stacks two high across the gap, a low ember glow in the wood. Ash Wing, lb2,
+lk1, lk2 and n1.

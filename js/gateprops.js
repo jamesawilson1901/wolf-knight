@@ -27,14 +27,15 @@ import { loadGLB, prepareModel } from './assets.js';
 
 const THORNS_URL = './assets/env/thorns.glb';
 const ICE_URL = './assets/env/cliff-block.glb';
-let thornsGltf = null, iceGltf = null;
+const TIMBER_URL = './assets/env/log-stack.glb';
+let thornsGltf = null, iceGltf = null, timberGltf = null;
 let iceMats = null;
 
 export async function loadGateProps() {
-  if (thornsGltf && iceGltf) return;
-  [thornsGltf, iceGltf] = await Promise.all([loadGLB(THORNS_URL), loadGLB(ICE_URL)]);
+  if (thornsGltf && iceGltf && timberGltf) return;
+  [thornsGltf, iceGltf, timberGltf] = await Promise.all([loadGLB(THORNS_URL), loadGLB(ICE_URL), loadGLB(TIMBER_URL)]);
 }
-export const gatePropsReady = () => !!(thornsGltf && iceGltf);
+export const gatePropsReady = () => !!(thornsGltf && iceGltf && timberGltf);
 
 // A model normalised to sit on the floor, centred, with its footprint's
 // longer side 1 unit — so a caller scales in plain metres.
@@ -165,4 +166,42 @@ export function iceWall(w, d, { height = 2.3 } = {}) {
     pieces.push(p);
   }
   return merge(pieces, 'ice-gate', matFor);
+}
+
+// TIMBER across a w×d gap — the Fire Wolf's gate (2026-09-27). Every burn
+// gate used to be orange-tinted rocks, the same "does not look like it
+// blocks anything" the thorns and the ice were; and a rock is not a thing
+// fire opens. A barricade of charred log stacks is: stacked two high,
+// shoulder to shoulder across the gap, with a low ember glow in the wood so
+// it reads as "this burns" before the child has the wolf that burns it.
+let timberMats = null;
+export function timberWall(w, d, { height = 1.9 } = {}) {
+  const { wrap, height: h1 } = unit(timberGltf);
+  if (!timberMats) timberMats = new Map();
+  const matFor = (m) => {
+    if (!timberMats.has(m)) {
+      const c = m.clone();
+      c.name = 'timber-gate_' + m.name;
+      c.color = new THREE.Color(0x4a3222);
+      c.emissive = new THREE.Color(0xff6a2a);
+      c.emissiveIntensity = 0.12;
+      timberMats.set(m, c);
+    }
+    return timberMats.get(m);
+  };
+  // two courses: the stack's own height is low, so the wall is built UP
+  const course = height / 2;
+  const { sxz } = fit(w, d, course, h1);
+  const sy = course / h1;
+  const pieces = [];
+  for (let row = 0; row < 2; row++) {
+    for (const s of layout(w, d, sxz * 0.8)) {
+      const p = wrap.clone();
+      p.scale.set(sxz * wrap.scale.x, sy * wrap.scale.x, sxz * wrap.scale.x);
+      p.position.set(s.x, row * course * 0.92, s.z);
+      p.rotation.y = (w >= d ? 0 : Math.PI / 2) + ((s.i + row) % 2 ? 0.08 : -0.06);
+      pieces.push(p);
+    }
+  }
+  return merge(pieces, 'timber-gate', matFor);
 }

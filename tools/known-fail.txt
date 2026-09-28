@@ -255,17 +255,3 @@ verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same 
 # about this room's foe placement or the sprint line; f1b's own encounter
 # was already too sparse/short for this check's floor before today.
 verify-interpenetration.mjs | the residual prop-overlap backlog: 98 pairs on v3.188 main (after this session's systemic passes cut it from 188), 93 on 2026-09-26 with v3.190-3.192 applied — the count went DOWN, and no remaining pair sits in a room those versions touched (the two it lists there, f1b's west side and lb2 at x -9..-6, are nowhere near f1b's new east plug or lb2's x 7 bar wall). A backlog being worked, not a regression; remove when it reaches 0 | 2026-09-26
-# ---------------------------------------------------------------------------
-# 2026-09-27, proven pre-existing on 1656dc1 (v3.195, before any of v3.196):
-# verify-loops' "...and combat-free {la:false}". The Den -> la loop is
-# asserted combat-free on the premise that a healed Ember swaps its enemies
-# for grazing wolves (js/restoration.js §5, "Where an enemy stood, a wolf
-# grazes"). That half of restoration NEVER SHIPPED: `graze()` is exported and
-# called by nothing, and no room consults isHealed() for its spawns — la keeps
-# its Shade, Spitter and SkeletonMinion with bossDefeated AND
-# WS.set('ember','restored') both set (probed live). Whether a healed region
-# should be enemy-free at all is a design call against v3.170's "enemies are
-# always there next time you build the room" law — dad's to make, not this
-# manifest's. Remove this line the day either the grazers ship or the suite's
-# premise is changed by decision.
-verify-loops.mjs | la is not combat-free after the boss — restoration's enemy->grazer swap (restoration.js graze()) was never wired; identical on 1656dc1 | 2026-09-27

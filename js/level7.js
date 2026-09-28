@@ -716,19 +716,26 @@ export async function buildXh(scene) {
 // who cannot open it yet knows exactly what they are missing and why.
 // ---------------------------------------------------------------------------
 function wingEntry(world, halfW, halfD, D, cfg) {
-  // the barred door, in whatever material the wing's verb answers
-  wallRun(world, -6, -4, -6, 4, D);
-  wallRun(world, 6, -4, 6, 4, D);
-  // THE WAY ROUND EACH WALL END STAYS FLOOR. The walls stop at z = ±4.5 and
-  // the room goes on to ±10; dressCourt placed its ruined homes across both
-  // ends of the x = 6 wall in xa1, sealing the arrival pocket so that not even
-  // a burned bar let a child out of it (verify-reachable, 2026-09-27: xa1 → xa2
-  // 0 reachable cells with x_ash_bar burned). The prop makers all ask
-  // world.blocked(), so reserving the four passages keeps them open.
-  for (const sx of [-6, 6]) for (const sz of [-6.4, 6.4]) world.reserve(sx, sz, 2.0, 'wing passage');
-  promiseGate(world, 0, -1.5, 4.2, 3.4, cfg.colour, cfg.label, cfg.prop,
+  // A LOCK THAT LOCKS (2026-09-27). This used to be two short walls at
+  // x = +/-6 (z -4..4) with the gate standing BETWEEN them, across nothing:
+  // the room runs to z +/-10, so a child walked round either wall end and on
+  // to the next room without the verb the wing is about. Dad, asked whether
+  // to seal it: "your choice, use your best knowledge in game design." A
+  // promise gate only teaches if it is the ONLY way — the wing's relic is
+  // visible past it, the wolf that opens it is on its face, and there is no
+  // walking round. So: one wall across the whole room at x = -6, between the
+  // east arrival and the west door on, with the gate as its only gap. The old
+  // x = +6 wall is gone (it sealed nothing, and it was what dressCourt's homes
+  // closed the arrival pocket against).
+  const GX = -6, GAP = 1.7;
+  wallRun(world, GX, -halfD, GX, -GAP, D);
+  wallRun(world, GX, GAP, GX, halfD, D);
+  // the gate IN the wall's gap, laid along it (pieces run north-south)
+  promiseGate(world, GX, 0, 1.6, GAP * 2, cfg.colour, cfg.label, cfg.prop,
     { system: cfg.system, id: cfg.id, region: REGION });
-  world.markers.wingLock = { x: 0, z: -1.5, needs: cfg.needs };
+  // the ground a child stands on to use the verb stays floor
+  world.reserve(GX + 2.2, 0, 1.8, 'wing lock approach');
+  world.markers.wingLock = { x: GX, z: 0, needs: cfg.needs };
 }
 
 export async function buildXa1(scene) {
@@ -803,7 +810,8 @@ export async function buildXa1(scene) {
   // Court stands on one by design. Two rulers, two questions (world.js).
   // THE ARCHER WAS SHOOTING INTO THE WALL IT STOOD BESIDE.
   //
-  // wingEntry() runs a wall up x = 6 from z = -4 to z = 4, and this spot was
+  // (history: wingEntry() once ran a wall up x = 6 from z = -4 to z = 4 — gone
+  // since 2026-09-27, the lock is one wall at x = -6 now.) This spot was
   // (7, 4) — hard against its north corner. RangedKiter kills its own bolt on
   // the first collider it grazes (`_updateBolts`, resolveCircle at r 0.1), so
   // every shot down the road died in the stonework a metre from the bow. A
@@ -868,7 +876,8 @@ export async function buildXr1(scene) {
     colour: 0x8fdc6a, label: 'TANGLED', prop: 'bush', system: 'cut',
     id: 'x_root_tangle', needs: 'verdant_wolf',
   });
-  world.markers.houndSpots = [{ x: -8, z: 5, variant: 'shadewalker' }];
+  // on the ARRIVAL side of the lock (x > -6): behind it, it guarded nothing
+  world.markers.houndSpots = [{ x: -2, z: 5, variant: 'shadewalker' }];
   world.markers.twinbladeHuskSpots = [{ x: 7, z: -4 }];
   scatter(world, halfW, halfD, D, 721, 5, { spin: 1, kinds: ['stump', 'treeA', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7211, { homes: 2, loose: 14 });

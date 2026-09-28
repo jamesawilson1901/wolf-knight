@@ -30,10 +30,13 @@
 //      thing Pip has been promising since `lava_cooled` was written.
 //   4. FLOWERS AND GRASS come up, on ground measured clear at build time so
 //      nothing blooms inside a rock, instanced so a roomful costs two draws.
-//   5. THE ANIMALS come back. Where an enemy stood, a wolf grazes. Not a new
-//      creature — wolf.gltf is the game's own animal, the one the pups are
-//      made of, and it ships with Eating, Idle_2_HeadLow, Idle and Walk: a
-//      grazing vocabulary, already rigged (CLAUDE.md's standing rule).
+//   5. THE ENEMIES STAY. A healed region is a region to come BACK to — for
+//      its secrets, its dungeon, its crafting materials — and that only works
+//      if there is still something to meet there. Dad, 2026-09-27: "We want
+//      the player to go back and explore regions for secrets and dungeons and
+//      to get crafting materials. That doesn't work if the enemies end up
+//      replaced." An earlier draft swapped every enemy for a grazing wolf; it
+//      was never wired, and it is deleted rather than left as a promise.
 //
 // WHAT IS DELIBERATELY NOT HEALED: the Village and the Spire. The Village's
 // wards are "kill everything in this square" gates (js/levelVillage.js checks
@@ -417,24 +420,11 @@ export async function healLive(world) {
 }
 
 // ---------------------------------------------------------------------------
-// 5 · THE ANIMALS
+// 5 · THE COATS AND THE HEARTH LIGHTS
 // ---------------------------------------------------------------------------
-// Where an enemy stood, a wolf grazes. wolf.gltf is the game's OWN animal —
-// the pups are made of it, Kael turns into one — and it ships Eating, Idle,
-// Idle_2_HeadLow and Walk, which is a whole grazing life without a single new
-// asset or a line of procedural geometry (CLAUDE.md).
-//
-// They have NO COLLIDER, exactly like Biscuit in the Den. A healed room must
-// not be a room a child can be shoved around in, and a wandering body with a
-// collider is a wandering obstacle: the one thing worse than an enemy in a
-// place that is supposed to be safe.
-// THICKENS WITH STAGE, same law as `bloomMaxFor` above.
-function herdMaxFor(stage) {
-  if (stage <= 1) return 2;
-  if (stage === 2) return 3;
-  return 4; // stage 3 and beyond
-}
-
+// Healing never removes a region's enemies (item 5 above). What survives of
+// the old grazing-herd section is what other code still uses: each region's
+// wolf coat (the lost wolves, the pup pen) and its hearth light.
 // A pack takes its coat from the country it lives in — the same tint-delta
 // idiom VARIANTS uses for enemies, applied to the one Main material.
 export const COAT = {
@@ -451,45 +441,6 @@ const HEARTH_LIGHT = {
   ember: 0xffb25a, stone: 0xd8b06a, wild: 0x7ee787, frost: 0x9be3ff,
   storm: 0xfff4b0, vale: 0x8fe4ff, court: 0xd8cfff,
 };
-
-export async function graze(world, spots) {
-  if (!spots || !spots.length) return 0;
-  const key = healKeyOf(world.roomId);
-  const gltf = await loadGLB('./assets/chars/wolf.gltf');
-  const herd = [];
-  const rnd = seeded(world.roomId + ':graze');
-  for (const s of spots.slice(0, herdMaxFor(growthStage(key)))) {
-    const model = prepareCharacter(SkeletonUtils.clone(gltf.scene));
-    // Pups are wolves at 0.42; these are the grown pack, a little bigger, and
-    // a little different from each other so a herd does not read as a stamp.
-    model.scale.setScalar(0.52 + rnd() * 0.12);
-    model.position.set(s.x, 0, s.z);
-    model.rotation.y = rnd() * Math.PI * 2;
-    if (COAT[key]) {
-      model.traverse((n) => {
-        if (!n.isMesh || n.material.name !== 'Main') return;
-        n.material = n.material.clone();
-        n.material.color.setHex(COAT[key]);
-      });
-    }
-    world.add(model);
-    world.keepLoose(model);          // it walks; flattenStatic must not fold it
-    const mixer = new THREE.AnimationMixer(model);
-    const clips = {};
-    for (const name of ['Idle', 'Idle_2_HeadLow', 'Eating', 'Walk']) {
-      const c = gltf.animations.find((a) => a.name === name);
-      if (c) clips[name] = mixer.clipAction(c);
-    }
-    herd.push({
-      model, mixer, clips, current: null,
-      home: { x: s.x, z: s.z }, target: null,
-      state: 'graze', waitT: 0.5 + rnd() * 3, rnd,
-    });
-  }
-  world.grazers = herd;
-  world.updateGrazers = (dt, t, player) => updateHerd(world, dt, player);
-  return herd.length;
-}
 
 function playClip(a, name, fade = 0.3) {
   const next = a.clips[name];
@@ -1052,7 +1003,7 @@ export async function spawnPupPen(world, onRowFilled) {
       // cost, one draw — a handful of polygons at 0.16 scale from the
       // game's fixed camera is not where this room's budget belongs.
       // Hidden HERE ONLY: the field's own uncaught pups and a healed
-      // region's herd (never more than four, `herdMaxFor`) render at full
+      // region's herd (never more than four) render at full
       // detail, where the cost was already priced in.
       if (m.material.name !== 'Main') { m.visible = false; return; }
       m.material = m.material.clone();
