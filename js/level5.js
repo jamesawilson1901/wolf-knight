@@ -1403,6 +1403,11 @@ export async function buildSc4(scene) {
   scatter(world, halfW, halfD, D, 534, 40, { spin: 1, kinds: ['rockSB', 'snowRockS'] });
   stairSides(world, halfW, halfD, D, 5341);
   lowWall(world, 0, -5, 0, D, 6.0);
+  // IN THE ARRIVAL VIEW, ON PURPOSE. The spawn faces the east wall, so only
+  // its last few metres are ever in the first frame, and this room sat one
+  // piece over verify-density's floor on scatter luck alone — the 2026-09-28
+  // tidy-up removing one overlapping rock was enough to drop it under.
+  lowWall(world, 8.5, 4.5, 0.2, D, 2.2);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }

@@ -610,16 +610,13 @@ function rimSides(world, halfW, halfD, D, seed) {
   const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
   const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'bush'];
   // Not only the keep-clear register: a DEEP channel is a box collider, not a
-  // reservation, and dg2's two barrels stood a hand apart in the middle of its
-  // deep water (2026-09-28) — so a slot must also be clear of every collider,
-  // and of the slot before it.
-  const placed = [];
-  const bad = (x, z) => {
-    if (world.blocked(x, z, 0.6)) return true;
-    const c = world.resolveCircle(x, z, 0.5);
-    if (Math.hypot(c.x - x, c.z - z) > 0.02) return true;
-    return placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.3);
-  };
+  // reservation, and dg2's two barrels stood in the middle of its deep water
+  // (2026-09-28). Deep water only — a wider "clear of every collider" test
+  // also turned away slots other rooms' arrival frames were measured with
+  // (verify-density dg4 fell from 21+ to 8).
+  const deep = (x, z) => (world.waterZones || []).some((w) => w.deep
+    && x > w.minX - 0.6 && x < w.maxX + 0.6 && z > w.minZ - 0.6 && z < w.maxZ + 0.6);
+  const bad = (x, z) => world.blocked(x, z, 0.6) || deep(x, z);
   for (let i = 0; i < 34; i++) {
     const side = i % 2 ? 1 : -1;
     const x = -halfW + 1.2 + (i / 34) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.3;
@@ -627,7 +624,6 @@ function rimSides(world, halfW, halfD, D, seed) {
     if (bad(x, z)) z = -z;
     if (bad(x, z)) z = side * (halfD - 2.6);
     if (bad(x, z)) continue;
-    placed.push({ x, z });
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
     const big = kind.startsWith('rock');
     const g = new THREE.Group();
@@ -846,6 +842,12 @@ export async function buildD1e(scene) {
   rubbleField(world, -8, -4.5, 1.8, D, 8);
   rubbleField(world, 8, -4.5, 1.8, D, 8);
   rubbleField(world, 5, 1.5, 1.6, D, 7);
+  // the altar room was four rubble heaps and a scatter — one scattered rock
+  // fewer (scatter no longer lands on the pots, 2026-09-28) and it fell under
+  // verify-bonecrypt's content floor. A column that came down across the
+  // approach and the stub of a wall say "crypt" where the rubble alone did not.
+  fallenColumn(world, -4.5, 1.5, 2.3, D, 2.6);
+  lowWall(world, 6.2, -2.2, 0.3, D, 2.4);
   scatter(world, halfW, halfD, D, 653, 5);
   return finish(world, spec, D);
 }
@@ -1353,6 +1355,9 @@ export async function buildDg4(scene) {
   // bumped well past 1-for-1 replacement to reliably clear the density floor.
   scatter(world, halfW, halfD, D, 634, 55, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
+  // one deliberate piece in the arrival view (see sc4's note in level5.js —
+  // the same east-facing spawn, the same one-over-the-floor margin)
+  lowWall(world, 8.5, -4.5, 0.2, D, 2.2);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }

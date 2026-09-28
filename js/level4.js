@@ -789,6 +789,9 @@ export async function buildF1d(scene) {
   firs(world, -10, 8, 1.6, 3, 53);
   firs(world, 10, -8, 1.6, 3, 54);
   firs(world, 9, 4.5, 1.3, 3, 55);
+  // (a fourth stand, in the arrival view: firs no longer grow inside each
+  // other, and one fewer fir left this island one under its density floor)
+  firs(world, 4, 6.5, 1.2, 2, 56);
   rubbleField(world, 11, 1, 2.0, D, 9);
   rubbleField(world, -11, -1, 1.8, D, 8);
   rubbleField(world, 6, 0, 1.6, D, 8);
