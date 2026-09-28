@@ -73,7 +73,7 @@ await page.evaluate(async () => {
   // its own, and this only ever fires at the top of the range.
   if (LATE >= 5) g.state.flags.grimmFreed = true;
   // hide the HUD: this sheet is about the ROOM
-  for (const el of document.querySelectorAll('.ui, #joy-base, #joy-knob, #joy-hint, #hearts, #shards, #level-badge, #xp-bar, #potions, #pause-btn, #inv-btn, #form-badge, #moon-gauge, #btn-attack, #special-btn, #btn-ranged, #btn-defend, #btn-jump, #caption, #toast')) {
+  for (const el of document.querySelectorAll('.ui, #joy-base, #joy-knob, #joy-hint, #hearts, #shards, #level-badge, #xp-bar, #potions, #pause-btn, #inv-btn, #form-badge, #btn-attack, #special-btn, #btn-ranged, #btn-defend, #btn-jump, #caption, #toast')) {
     el.style.display = 'none';
   }
 });

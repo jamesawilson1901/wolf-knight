@@ -61,7 +61,23 @@ const coin = await wk.page.evaluate(async () => {
   const f = g.player.forms.knight;
   const vis = f.model.visible; f.model.visible = true;
   f.model.updateWorldMatrix(true, true);
-  const kb = new THREE.Box3().setFromObject(f.model);
+  // REST POSE, NOT THE SKINNED BOX. Box3.setFromObject on the merged
+  // SkinnedMesh poses every vertex through the bone matrices, and between
+  // sessions those were sometimes read before the skeleton had updated — the
+  // same Kael measured 1.265 in one launch and 0.636 in the next, with his
+  // on-screen size identical in both (screenshots, 2026-09-27). That made this
+  // check fail 2 runs in 5 on CI. The geometry's own bind-pose box times the
+  // model's world scale is the height the game draws, every time.
+  const ws = new THREE.Vector3(); f.model.getWorldScale(ws);
+  const kb = new THREE.Box3();
+  f.model.traverse((n) => {
+    // the BODY only: held gear hangs off a hand bone in its own local
+    // space, so its raw box says nothing about Kael's height
+    if (!n.isSkinnedMesh || !n.geometry) return;
+    if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+    kb.union(n.geometry.boundingBox);
+  });
+  kb.min.multiply(ws); kb.max.multiply(ws);
   f.model.visible = vis;
   const { spawnShards } = await import('/js/loot.js');
   const before = (g.world.shards || []).length;

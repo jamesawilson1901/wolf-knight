@@ -158,7 +158,12 @@ for (const [p, host] of Object.entries(POCKETS)) {
 }
 const dead = SPACES.filter((id) => S[id] && S[id].doors.length === 0);
 check('no space is a dead end', dead.length === 0, { dead });
-const ALL = new Set([...SPACES, 'den']);
+// every room the level REGISTERS, not only the spine/pocket list above: the
+// Root Cellar (vr1-vr3, v3.136) hangs off vc2, and since v3.192 its door is
+// always registered (shut until the bramble is cut), so a hand list that
+// predates the dungeon called a real room "a room that does not exist".
+const REGISTERED = await page.evaluate(async () => Object.keys((await import('/js/level2.js')).LEVEL2_ROOMS));
+const ALL = new Set([...SPACES, ...REGISTERED, 'den']);
 const dangling = [];
 for (const id of SPACES) for (const d of (S[id] ? S[id].doors : [])) if (!ALL.has(d.to)) dangling.push(`${id}→${d.to}`);
 check('no door leads to a room that does not exist', dangling.length === 0, { dangling });

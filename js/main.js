@@ -13,8 +13,8 @@ import { onwardSpot, nextRoom } from './route.js';
 import { sameDistrict } from './districts.js';
 import { makeHarness } from './minigame.js';
 import {  } from './mg-fetch.js';
-import { Player } from './player.js';
-import { state, resolveRoom, regionCleared, formsAvailable, regionOf } from './state.js';
+import { Player, FORM_ELEMENT } from './player.js';
+import { state, resolveRoom, regionCleared, regionOf, packForms } from './state.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 // DEV MODE (js/devmode.js) — the play-test report loop. Inert without ?dev=1:
@@ -28,15 +28,16 @@ import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes } from './nodes.js';
 import { MATERIALS } from './materials.js';
-import { spawnDragonShrines, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
+import { spawnDragonShrines, spawnEggNests, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
 import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
 import { progressEvents, xpForLevel, bumpCounter, checkStickers, grantXp } from './progress.js';
-import { addGear, WEAPONS, SHIELDS, ARMOURS } from './items.js';
+import { addGear, WEAPONS, SHIELDS, ARMOURS, weaponDef } from './items.js';
 import { TREASURES, addTreasure } from './treasures.js';
 import { Menus, bigToast } from './menus.js';
 import { CONFIG } from './config.js';
 import { WS, logMystery, resolveMystery } from './worldstate.js';
+import { markVisited, reconcileRoom, noteMapGates } from './mapdata.js';
 import { perf } from './perf.js';
 import { juice } from './juice.js';
 import { wayfarerPost, spawnWayfarer } from './npcs.js';
@@ -436,7 +437,36 @@ function renderPotions(player) {
     }
     potionsEl.appendChild(slot);
   }
+  // THE MIGHT FLASK — a crafted Might Draught, held until a child chooses
+  // the fight worth it (js/crafting.js). One slot with a count, only while
+  // there is one to drink, so the HUD never grows a dead button.
+  const might = (state.inventory.draughts || {}).might || 0;
+  if (might > 0) {
+    const slot = document.createElement('div');
+    slot.className = 'potion-slot might-slot ui';
+    // the potion's own rendered art, recoloured forge-orange by CSS — real
+    // art on the HUD, the glyph only if the art never arrived (same rule as
+    // the potion slots above)
+    const art = hudArt.potion ? artHtml(hudArt.potion, 'potion') : '<span class="might-icon">\u{1F9EA}</span>';
+    slot.innerHTML = art + (might > 1 ? `<b class="might-n">${might}</b>` : '');
+    slot.addEventListener('pointerdown', (e) => { e.stopPropagation(); drinkMightDraught(player); });
+    potionsEl.appendChild(slot);
+  }
   ctxShow(potionsEl);
+}
+
+const MIGHT_SECONDS = 45;
+function drinkMightDraught(player) {
+  const d = state.inventory.draughts || {};
+  if (!(d.might > 0) || player.hearts <= 0) return false;
+  d.might--;
+  player.drinkMight(MIGHT_SECONDS);
+  audio.play('potion', { volume: 0.9, rate: 0.8 });
+  juice.flare(player.root.position.x, 1.0, player.root.position.z, 0xff7a2a);
+  bigToast('Might Draught! Hits hit harder for a while');
+  renderPotions(player);
+  persist();
+  return true;
 }
 
 // Three pups hide in every region, and the HUD only ever promises the ones a
@@ -520,6 +550,8 @@ function updateBossBar() {
     bar = { name: world.boss.name || 'The Shadowgrip', f: Math.max(0, world.boss.coreHp) / (world.boss.maxHp || 8) };
   } else if (world.warden && !world.warden.dead && world.warden.state !== 'sleep') {
     bar = { name: 'The Bone Warden', f: Math.max(0, world.warden.hp) / world.warden.maxHp };
+  } else if (world.miniBoss && !world.miniBoss.dead) {
+    bar = { name: world.miniBoss.name, f: Math.max(0, world.miniBoss.hp) / world.miniBoss.maxHp };
   }
   bossBarEl.style.display = bar ? 'block' : 'none';
   if (bar) {
@@ -901,6 +933,12 @@ const GATE_HINTS = [
   { marker: 'rootWallPromise',   form: 'verdant_wolf', line: 'rootwall_hint' },
   { marker: 'logPromise',        form: 'verdant_wolf', line: 'greatlog_hint' },
   { marker: 'icePromise',        form: 'frost_wolf',   line: 'shatter_prompt' },
+  // THREE DUNGEON GATES THAT NEVER SPOKE (2026-09-26): each publishes a
+  // marker and none had a hint, so a child standing at the Frostpeak hearth,
+  // the Vale's crypt ice or the Court's vault ice heard nothing at all.
+  { marker: 'meltPromise',       form: 'fire_wolf',    line: 'melt_prompt' },
+  { marker: 'cryptPromise',      form: 'frost_wolf',   line: 'shatter_prompt' },
+  { marker: 'vaultPromise',      form: 'frost_wolf',   line: 'shatter_prompt' },
   { marker: 'galePromise',       form: 'storm_wolf',   line: 'storm_gale_promise' },
   { marker: 'tidePromise',       form: 'tide_wolf',    line: 'tide_quench' },
   { marker: 'deepPromise',       form: 'tide_wolf',    line: 'tide_howto' },
@@ -917,9 +955,19 @@ const stuckHints = GATE_HINTS.map((g) => ({
     const spot = world.markers && world.markers[g.marker];
     if (!spot) return false;
     if (g.form && !state.formsUnlocked.includes(g.form)) return false;
+    if (g.form && !packForms().includes(g.form)) return false;   // not brought: see below
     return nearSpot(spot, 4);
   },
-})).concat([
+})).concat(GATE_HINTS.filter((g) => g.form).map((g) => ({
+  // THE PACK (v3.195): the wolf this gate wants is owned but was left behind
+  // — Pip says so, and where to change the pack, instead of "be the X wolf"
+  // for a wolf the button cannot reach. The map's coin shows which one.
+  line: 'pack_missing', timer: 0, cond: () => {
+    const spot = world.markers && world.markers[g.marker];
+    return !!spot && state.formsUnlocked.includes(g.form) && !packForms().includes(g.form)
+      && nearSpot(spot, 4);
+  },
+}))).concat([
   { line: 'boss_duel', timer: 0, cond: () =>
       !!world.boss && !world.boss.defeated },
 ]);
@@ -1034,6 +1082,14 @@ function narrationTriggers(dt, t) {
   if (anyShade && nearXZ(anyShade.x, anyShade.z, 3.5)) narration.say('learn_shield');
   const anyMoth = (world.enemies || []).find((e) => e.constructor.name === 'Moth' && !e.dead);
   if (anyMoth && nearXZ(anyMoth.x, anyMoth.z, 6.5)) narration.say('learn_bolt');
+  // THE CINDER DRAKE teaches its own two answers, each the first time it
+  // matters: the shield when you first come near it, the red floor the first
+  // time it paints one (LAW 6: every attack has a taught answer).
+  const drake = world.miniBoss;
+  if (drake && !drake.dead) {
+    if (nearXZ(drake.x, drake.z, 9)) narration.say('drake_intro');
+    if (drake.state === 'flameTell') narration.say('drake_flame');
+  }
   if (m.jumpTeach && nearSpot(m.jumpTeach, 5)) narration.say('learn_jump');
   // "no encouragement to get different weapons or armour" — teaches the
   // concept once, the first time a child comes near ANY unopened chest that
@@ -1048,6 +1104,15 @@ function narrationTriggers(dt, t) {
   // is that he is the same offer wherever you find him.
   if (m.wayfarerSpot && nearSpot(m.wayfarerSpot, 2.6)) {
     if (!narration.say('tam_intro')) sayThrottled('tam_offer', t, 40);
+  }
+  // THE DRAGON'S BONES beside each egg dungeon's door (design/DRAGON-EGGS.md
+  // v3): one spoken nudge toward the door, contextual chatter so it never
+  // freezes the room, and not on a loop. 6u, not a hug: the bones lie a few
+  // steps off the door they point at, and a child heading for that door
+  // passes 4-6u from them. Never while the guardian still fights — the door
+  // is a rock pile then, and a line about it would talk over the boss.
+  if (m.dragonBones && nearSpot(m.dragonBones, 6) && !(world.boss && !world.boss.defeated)) {
+    sayThrottled('dragon_bones', t, 60);
   }
   // the FIRST full moon: Pip teaches the surge — but the Blood Moon is the
   // DARK WOLF's power, so the teach (and the ready-nag) only speak to the wolf
@@ -1377,6 +1442,23 @@ function narrationTriggers(dt, t) {
     persist();
   }
   if (state.room === 'ld1' && m.orderSpot && nearSpot(m.orderSpot, 4)) narration.say('kiln_order');
+  // a gate wanting a wolf that was left out of the pack (the stuck-hint loop
+  // repeats it every ~22s after this first time)
+  for (const g of GATE_HINTS) {
+    if (!g.form || !state.formsUnlocked.includes(g.form) || packForms().includes(g.form)) continue;
+    const spot = m && m[g.marker];
+    if (spot && nearSpot(spot, 4)) { narration.say('pack_missing'); break; }
+  }
+  // a shelled enemy close by: Pip names the wolf that breaks it, once each
+  for (const e of world.enemies || []) {
+    if (!e.shell || e.dead) continue;
+    if (Math.hypot(e.x - player.root.position.x, e.z - player.root.position.z) < 8) {
+      narration.say('shell_' + e.shell.element);
+      break;
+    }
+  }
+  if (state.room === 'ld' && m.gutterSpot && nearSpot(m.gutterSpot, 4.5)
+      && !state.flags.plates.l1_ld_gutter) narration.say('gutter_hint');
 
   // -------------------------------------------------------------------------
   // LEVEL 2 — THE VAULT CHANGES. Each spoke ends by doing something to the
@@ -1552,6 +1634,12 @@ function narrationTriggers(dt, t) {
     }
     if (p.done()) resolveMystery(p.id);
   }
+  // THE MAP'S MARKS (2026-09-26, js/mapdata.js): every promise gate a child
+  // walks near goes on the map, drawn with the face of the wolf that opens
+  // it — the "🗺️ Added to the map" the toasts above always promised. Covers
+  // every gate that registers itself (levelkit promiseGate, gates.js), not
+  // only the ones with a row in PROMISES.
+  noteMapGates(world, player.root.position.x, player.root.position.z, state.room);
   if (m.thornKnot && nearSpot(m.thornKnot, 5)) narration.say('thornknot_hint');
   if (WS.get('wild3', 'knotCut') && state.room === 'tc4') narration.say('woods_bloom');
 
@@ -1924,8 +2012,6 @@ function refreshControlReveal() {
     !!state.spoken.darkwolf_intro || !!state.spoken.dark_nook ||
       state.form !== 'knight' || state.formsUnlocked.includes('fire_wolf');
   document.getElementById('form-badge').classList.toggle('revealed', formsRevealed);
-  // the moon gauge rides with the forms: once the wolf exists, the moon waits
-  document.getElementById('moon-gauge').classList.toggle('revealed', formsRevealed);
 }
 
 function showCompleteScreen() {
@@ -2042,6 +2128,7 @@ async function setupRoomExtras() {
   await spawnChests(world, world.markers.chestDefs || []);
   await spawnResourceNodes(world, world.markers.rockSpots || [], world.markers.treeSpots || []);
   await spawnDragonShrines(world, world.markers.dragonShrineSpots || []); // design/DRAGON-EGGS.md
+  await spawnEggNests(world, world.markers.eggNestSpots || []);           // ...and the eggs' own altars (v3)
   await spawnPups(world, onPupCollected);
   // THE HEARTH, if this room is one and its region has grown enough to have
   // one (design/WIDER-WORLD.md §1.5). BEFORE bloom(): a bloom picking its own
@@ -2161,6 +2248,10 @@ async function loadRoom(rawId, entry, handoff = null) {
   world.player = player;     // watchers and mirrors ask it whether Kael is ghosted
   state.room = id;
   state.region = regionOf(id);
+  // THE MAP REMEMBERS (js/mapdata.js): this room is walked now, and any mark
+  // whose gate this room no longer builds has been opened.
+  markVisited(id);
+  reconcileRoom(world, id);
   applyRoomMood();
   const at = entry || world.spawn;
   let px = at.x, pz = at.z;
@@ -2407,6 +2498,9 @@ async function respawnAtCheckpoint() {
   world.harness = harness;
   world.player = player;
   state.region = regionOf(room);
+  // the map remembers a respawn's room too (it is also the dev harness's jump)
+  markVisited(resolveRoom(room));
+  reconcileRoom(world, resolveRoom(room));
   applyRoomMood();
   player.place(world.spawn.x, world.spawn.z, world.spawn.angle);
   player.healFull();
@@ -2579,6 +2673,11 @@ async function start() {
       .catch((e) => console.error('[respawn] room rebuild failed — world wedged:', e));
   };
   player.onPotionsChanged = () => renderPotions(player);
+  // GUARD! / BLOCKED (v3.195): armour that shrugs a hit off, and a raised
+  // shield that stops an ordinary one, both SAY so — the contract's "every
+  // hit shows a damage number or BLOCKED", applied to Kael's side too.
+  player.onGuard = () => { const P = player.root.position; spawnDmgNum(P.x, 1.6, P.z, 'GUARD!'); };
+  player.onBlocked = () => { const P = player.root.position; spawnDmgNum(P.x, 1.6, P.z, 'BLOCKED'); };
   player.onParry = (attacker) => {
     juice.onHit('heavy', {
       x: attacker ? attacker.x : player.root.position.x,
@@ -2627,6 +2726,34 @@ async function start() {
         juice.burst(P.x + Math.cos(a) * 1.1, 0.7, P.z + Math.sin(a) * 1.1, c, 5);
       });
     }
+    // THE SWAP-IN STRIKE (v3.195). Switching form mid-fight lands the new
+    // form with a free hit in its own element — the move a child learns is
+    // sword, switch, the wolf ARRIVES hitting, then its special. It counts as
+    // a special for a shell ('aoe' = two right hits), so swapping to the
+    // right wolf beside a shelled enemy cracks it on arrival. Only when a real
+    // foe is close (a switch in an empty room is just a switch), and on a
+    // cooldown so switching is a choice, not a machine gun.
+    const nowS = performance.now() / 1000;
+    const foeNear = world && world.enemies && world.enemies.some((e) => !e.dead && !e.scenery
+      && Math.hypot(e.x - P.x, e.z - P.z) < CONFIG.SWITCH_FX.STRIKE_NEAR);
+    if (foeNear && nowS - (player._swapStrikeAt || -99) >= CONFIG.SWITCH_FX.STRIKE_COOLDOWN) {
+      player._swapStrikeAt = nowS;
+      const el = FORM_ELEMENT[name] || 'steel';
+      const col = FORM_BURST[name] || 0xffffff;
+      effects.groundSlam(P.clone(), col, CONFIG.SWITCH_FX.STRIKE_RADIUS);
+      audio.play('slam', { volume: 0.7, rate: 1.25 });
+      const dmg = CONFIG.SWITCH_FX.STRIKE_DMG * (weaponDef().dmg || 1);
+      for (const e of world.enemies) {
+        if (e.dead || e.scenery) continue;
+        if (Math.hypot(e.x - P.x, e.z - P.z) > CONFIG.SWITCH_FX.STRIKE_RADIUS + (e.radius || 0.3)) continue;
+        e.takeDamage(dmg, el, 'aoe');
+        if (!e.dead && e.takeStun && !e.flying) e.takeStun(CONFIG.SWITCH_FX.STRIKE_STUN);
+      }
+      if (world.boss && !world.boss.defeated && world.boss.takeDamage
+        && Math.hypot((world.boss.x || 0) - P.x, (world.boss.z || 0) - P.z) < CONFIG.SWITCH_FX.STRIKE_RADIUS + 1.2) {
+        world.boss.takeDamage(dmg, el);
+      }
+    }
     if (world && world.enemies) {
       for (const e of world.enemies) {
         if (e.dead || !e.takeStun || e.scenery || !e.root) continue; // real foes only
@@ -2662,10 +2789,22 @@ async function start() {
     onResumeGame: () => { menuPaused = false; },
     onTravel: (room) => {
       audio.play('form-switch', { volume: 0.7, rate: 0.8 }); // moonstone chime
+      // The map is also reached from the PAUSE menu, and a trip from there
+      // used to land the child in the new room with the pause menu still up
+      // over it and the world stopped. A journey is the answer to the pause.
+      setPaused(false);
       loadRoom(room);
     },
   });
-  menus.onHudChanged = () => { renderShards(); renderPotions(player); };
+  menus.onHudChanged = () => { renderShards(); renderPotions(player); ui.refreshBadge(); };
+  // THE PACK changes at the Den, at a campfire, or by a room's rest flame —
+  // every choke carries one by contract, so there is always one close.
+  menus.canEditPack = () => {
+    if (state.room === 'den' || state.room === 'dr') return true;
+    const m = world && world.markers;
+    if (m && m.restSpot && nearSpot(m.restSpot, 3.5)) return true;
+    return !!(world && (world.checkpoints || []).some((cp) => nearXZ(cp.x, cp.z, 3.5)));
+  };
   // Testing hook, same spirit as window.__game: the armoury's live preview is
   // a thing a suite has to be able to look at (does the knight actually change
   // when you tap an axe?) and it hangs off the menus instance.
@@ -2714,7 +2853,7 @@ async function start() {
     if (transitioning) return;
     // Under a Trial lock formsAvailable() is a single form, so the cycle has
     // nowhere to go and the tap is a no-op rather than a silent refusal.
-    const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+    const usable = FORM_CYCLE.filter((f) => packForms().includes(f));   // the pack (v3.195)
     const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
     if (player.setForm(next)) ui.refreshBadge();
   };
@@ -2779,7 +2918,7 @@ async function start() {
     if (!transitioning) {
       // Keyboard shortcuts: Tab cycles forms, K fires the special
       if (input.consumeFormCycle()) {
-        const usable = FORM_CYCLE.filter((f) => formsAvailable().includes(f));
+        const usable = FORM_CYCLE.filter((f) => packForms().includes(f));   // the pack (v3.195)
         const next = usable[(usable.indexOf(state.form) + 1) % usable.length];
         if (player.setForm(next)) ui.refreshBadge();
       }
@@ -2791,6 +2930,7 @@ async function start() {
         if (player.tryJump() && wasAirborne) bumpCounter('doubleJumps');
       }
       if (input.consumePotion()) player.tryPotion();
+      if (input.consumeMight()) drinkMightDraught(player);
 
       player.update(dt, input, world);
       world.updateBoulders(dt, player);
@@ -2816,6 +2956,16 @@ async function start() {
         // cover-and-wait delay after confirming, so the reveal never shows
         // Kael still holding an egg with no dragon and no throw to explain it.
         document.getElementById('caption').classList.toggle('big-cover', !!world.dragonPromptElement || dragonEmerging);
+      }
+      if (world.updateEggNests) { // design/DRAGON-EGGS.md v3 — an egg found on its altar
+        world.updateEggNests(dt, t, player);
+        const ev = world.eggNestEvent;
+        if (ev) {
+          const dd = DRAGON_ELEMENTS[ev.element];
+          bigToast(dd.eggName);
+          narration.say(dd.foundLine);
+          persist();
+        }
       }
       updateCompanionDragon(dt, t, player, world);
       // ...and the pack grazing where the shadows used to stand
@@ -3038,6 +3188,13 @@ async function start() {
     const rig = world.lightScale !== undefined ? world.lightScale : 1;
     hemi.intensity = HEMI_BASE * rig * (1 - 0.94 * darkness);
     key.intensity = KEY_BASE * rig * (1 - 0.97 * darkness);
+    // THE BLOOD MOON'S NIGHT (js/effects.js surgeCeremony): the room's own
+    // light comes down while the moon rises, so the moon and its red light are
+    // the brightest things in the world for those few seconds. 0 otherwise.
+    if (effects.dim > 0) {
+      hemi.intensity *= 1 - effects.dim;
+      key.intensity *= 1 - effects.dim;
+    }
 
     effects.update(dt, t);
     juice.update(dt);
@@ -3056,8 +3213,20 @@ async function start() {
     const topSpeed = player.form ? player.form.def.speed : 5;
     const vf = Math.min(1, Math.hypot(player._vel.x, player._vel.z) / topSpeed);
     const leadK = 1 - Math.exp(-CONFIG.LOOKAHEAD_SMOOTH * dt);
-    camLead.x += ((player._vel.x / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.x) * leadK;
-    camLead.z += ((player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf - camLead.z) * leadK;
+    let wantX = (player._vel.x / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf;
+    let wantZ = (player._vel.z / topSpeed) * CONFIG.LOOKAHEAD_DIST * vf;
+    // FRAME THE FLYER (GAME-CONTRACT: a flying boss must stay in frame). The
+    // Cinder Drake is tall and hovers, and from some angles it sat behind the
+    // top HUD band; the frame now leans a third of the way toward it while it
+    // is close, so the child and the thing whose tell they must read share
+    // the screen. Grounded fights are untouched.
+    const fly = world.miniBoss;
+    if (fly && !fly.dead && fly.flying) {
+      const bx = fly.x - player.root.position.x, bz = fly.z - player.root.position.z;
+      if (bx * bx + bz * bz < 100) { wantX += bx * 0.35; wantZ += bz * 0.35; }
+    }
+    camLead.x += (wantX - camLead.x) * leadK;
+    camLead.z += (wantZ - camLead.z) * leadK;
     const k = 1 - Math.exp(-CONFIG.CAM_DAMPING * dt);
     camGoal.copy(player.root.position).add(camLead).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
 
@@ -3087,6 +3256,9 @@ async function buildRoomInitial() {
   world = await buildRoom(state.room, scene);
   world.harness = harness;
   world.player = player;
+  // ...and the room a session starts in (js/mapdata.js)
+  markVisited(resolveRoom(state.room));
+  reconcileRoom(world, resolveRoom(state.room));
   applyRoomMood();
   // Continue resumes at the saved checkpoint; a fresh game uses the spawn.
   const cp = state.checkpoint;

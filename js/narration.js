@@ -43,7 +43,7 @@ export const LINES = {
   night_road_dark: { voice: 'pip', text: 'I can’t see a thing out there! Be the Dark Wolf — hold the wolf button and pick him. He can see in the dark.', repeat: true },
   // THE GREENWAY (js/levelGreen.js): one line, because the road explains
   // itself — the vine from the crypt wall runs up it, and a child follows it.
-  green_road_enter: { voice: 'pip', text: 'The vine goes UP, Kael — out of the stone! I can smell trees. Follow it.' },
+  green_road_enter: { voice: 'pip', text: 'The road goes UP, Kael — out of the stone! I can smell trees. Follow it.' },
   obstacle_first: { voice: 'pip', text: 'Burnt vines block the way. We’ll need fire for these. Let’s remember this spot.' },
   r2_enter: { voice: 'pip', text: 'Watch your step — lava ahead. Stay on the stone.' },
   moth_intro: { voice: 'pip', text: 'Shadow moths! Wait for them to dive, then move.' },
@@ -62,7 +62,25 @@ export const LINES = {
   kiln_shrine: { voice: 'pip', text: 'A fire shrine… cold. The shadow holds Cinder’s spark. Free the fire spirit, Kael — then this fire is YOURS!' },
   lantern_lit: { voice: 'petra', text: 'Light… after so long. Feel the roots wake, little knight. My doors are open to you.' },
   brazier_hint: { voice: 'pip', text: 'A cold brazier! Your fiery slam can light it. Try it!' },
-  kiln_order: { voice: 'pip', text: 'Look — these braziers wear little rings. One, two, three… light them in that order!' },
+  kiln_order: { voice: 'pip', text: 'See the glowing dots by each fire? Light the fire with ONE dot first… then two, then three, then four!' },
+  // ELEMENTAL SHELLS (js/shells.js, v3.195) — taught once each, the first
+  // time a shelled enemy comes close; the wolf's picture floats over it too.
+  shell_fire: { voice: 'pip', text: 'See that glowing shell? Only fire cracks it — the Fire Wolf can break it!' },
+  shell_earth: { voice: 'pip', text: 'A stone skin! The Earth Wolf can crack it wide open!' },
+  shell_frost: { voice: 'pip', text: 'That shell only breaks with ice — the Frost Wolf can crack it!' },
+  shell_verdant: { voice: 'pip', text: 'A thorny coat! The Verdant Wolf can tear right through it!' },
+  shell_storm: { voice: 'pip', text: 'That shell crackles — the Storm Wolf can break it!' },
+  shell_tide: { voice: 'pip', text: 'A hard shell! The Tide Wolf can crack it open!' },
+  shell_moon: { voice: 'pip', text: 'A shadow cloak! The Dark Wolf can bite right through it!' },
+  pack_missing: { voice: 'pip', text: 'We need a wolf we left behind! Change your pack at a campfire — the map shows which wolf.' },
+  pack_campfire: { voice: 'pip', text: 'We can change our pack at a campfire — or back home at the Den!' },
+  node_need_pickaxe: { voice: 'pip', text: 'Ooh, a sparkly rock! With a pickaxe you could dig ore out of it. The shop sells pickaxes!' },
+  node_need_axe: { voice: 'pip', text: 'A good strong tree! With an axe you could chop wood from it. The shop sells axes!' },
+  node_work: { voice: 'pip', text: 'You have the right tool! Stand close to it and keep still — you will dig it all by yourself!' },
+  kiln_order_wrong: { voice: 'pip', text: 'Whoops — they all went out! Start again with the fire that has ONE dot.', repeat: true },
+  kiln_order_done: { voice: 'pip', text: 'One, two, three, four — you did it! The bars are open. Go get the chest!' },
+  gutter_hint: { voice: 'pip', text: 'These fires burn out fast! Light all THREE before they go dark — and the bars on that chest will open!' },
+  gutter_done: { voice: 'pip', text: 'All three burning at once! Look — the bars are up. That chest is yours!' },
   gate_promise: { voice: 'pip', text: 'We can’t open this yet… but let’s remember it. We WILL come back.', repeat: true },
   gear_hint: { voice: 'pip', text: 'I sense something special in there — not just coins. A weapon, maybe! Let’s look — you can equip whatever we find.' },
   dodo_secret: { voice: 'pip', text: 'Wait… is that a DODO?! I thought they were make-believe! Don’t tell anyone we saw this, Kael — it’s our secret.' },
@@ -109,7 +127,7 @@ export const LINES = {
   // purpose, the same one line design/WIDER-WORLD.md §2.5 asks for.
   lost_wolf_found: { voice: 'pip', text: 'A grown wolf, safe at last. Welcome home, friend.', repeat: true },
   enemy_group: { voice: 'pip', text: 'Lots of shadows! The moon is full — let the Blood Moon loose!', repeat: true },
-  moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Tap the glowing moon and Luna herself will crash down on your enemies!' },
+  moon_full: { voice: 'pip', text: 'The moon is FULL, Kael! Press your big glowing button and Luna herself will crash down on your enemies!' },
   element_teach: { voice: 'pip', text: 'GOLD sparks — that one FEARS this attack! Every creature fears something. Try all your forms and find it!' },
   boss_tired: { voice: 'pip', text: 'It FELL! Now, Kael — strike with everything you have!' },
   shield_foe: { voice: 'pip', text: 'A shield-bearer! Blows just bounce off its front. Wait for its swing — or slip around BEHIND it!' },
@@ -346,6 +364,9 @@ export const LINES = {
   village_complete: { voice: 'pip', text: 'Every shadow, gone! The Village is awake, Kael — go see what you woke up.' },
   frost_howto: { voice: 'pip', text: 'You can be the Frost Wolf now! HOLD the wolf button at the bottom to pick him. His frost breath SHATTERS ice — there’s a block right over there, go on!' },
   shatter_prompt: { voice: 'pip', text: 'Ice! Be the Frost Wolf and breathe on it — it’ll shatter like a window.' },
+  drake_intro: { voice: 'pip', text: 'A drake, Kael! When it dives at you, hold up your shield — it will crash right down. Then get it!' },
+  drake_flame: { voice: 'pip', text: 'Red on the floor means FIRE! Step off the red — quick!' },
+  melt_prompt: { voice: 'pip', text: 'That ice is blocking a doorway, Kael! Be the Fire Wolf and breathe fire on it — melt it away!' },
   frost_restore_1: { voice: 'pip', text: 'The storm is lifting! Look — you can see the whole world from up here.' },
   frost_complete: { voice: 'pip', text: 'Frostpeak is still and safe. Four lights found, Kael… three to go.' },
   all_pups_frost: { voice: 'pip', text: 'TWELVE pups home! Luna will never get them all to sleep. Your heart grows stronger!' },
@@ -366,15 +387,25 @@ export const LINES = {
   // `blocking` getter freezes play for any non-repeat line) — "approaching
   // a shrine while holding the matching egg pauses and has Pip read a
   // confirm-before-throw line aloud", the brief's own words.
-  dragon_hint_fire: { voice: 'pip', text: 'A fire shrine… I can feel it waiting for something. Ember-warm, and empty.', repeat: true },
+  dragon_hint_fire: { voice: 'pip', text: 'A fire portal, Kael! It’s waiting for a dragon egg. Light both lamps by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_fire: { voice: 'pip', text: 'The egg in your bag — it’s WARM, Kael! This shrine wants it. See the glowing button? Tap it to let the egg hatch here!' },
   dragon_hatch_fire: { voice: 'pip', text: 'An Ember Dragon! Kael, you have a DRAGON now! Pick him from your backpack and he’ll fly right beside you.' },
-  dragon_hint_tide: { voice: 'pip', text: 'A tide shrine… still and cool, like it’s holding its breath for something.', repeat: true },
+  dragon_hint_tide: { voice: 'pip', text: 'A tide portal, Kael! It’s waiting for a dragon egg. Splash out the fires by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_tide: { voice: 'pip', text: 'That egg feels COLD and wet, Kael — this is its shrine! Tap the glowing button to hatch it!' },
   dragon_hatch_tide: { voice: 'pip', text: 'A Tide Dragon! He’ll swim right alongside you now — check your backpack!' },
-  dragon_hint_storm: { voice: 'pip', text: 'A storm shrine… the air crackles here, like it’s waiting for lightning.', repeat: true },
+  dragon_hint_storm: { voice: 'pip', text: 'A storm portal, Kael! It’s waiting for a dragon egg. Dash into the golden vane by the gate — the egg must be past it!', repeat: true },
   dragon_confirm_storm: { voice: 'pip', text: 'That egg is CRACKLING, Kael! This is the one — tap the glowing button to hatch it!' },
   dragon_hatch_storm: { voice: 'pip', text: 'A Storm Dragon! Pick him from your backpack, Kael — he won’t leave your side now.' },
+  // v3 (2026-09-26): the eggs are FOUND on altars at the end of their own
+  // small dungeons now, not in chests, and the bones lie beside each
+  // dungeon's door. The three hint lines above were rewritten to say what the
+  // portal wants and how to get it (a non-reader hears the whole puzzle); the
+  // found lines say where to take the egg. `dragon_bones` repeats (it is a
+  // nudge, not a story beat, so it must never freeze the room).
+  dragon_found_fire: { voice: 'pip', text: 'A DRAGON EGG! It’s so warm, Kael! Carry it back to the fire portal — that’s where it hatches!' },
+  dragon_found_tide: { voice: 'pip', text: 'A DRAGON EGG! It’s cool as the sea, Kael! Carry it back to the tide portal — that’s where it hatches!' },
+  dragon_found_storm: { voice: 'pip', text: 'A DRAGON EGG! It’s crackling, Kael! Carry it back to the storm portal — that’s where it hatches!' },
+  dragon_bones: { voice: 'pip', text: 'Dragon bones, Kael! A real dragon lived here once… I wonder what’s through that door?', repeat: true },
 };
 
 export class Narration {

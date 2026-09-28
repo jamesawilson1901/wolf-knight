@@ -88,6 +88,19 @@ export async function launch({ dev = true, timescale = 1, evidenceDir } = {}) {
             const fading = await page.evaluate(() => window.__wk.gates.transitioning).catch(() => false);
             if (fading) { stuck = 0; await page.waitForTimeout(400); continue; }
           }
+          // LET GO BEFORE YOU THINK. Every diagnosis below waits in real time —
+          // up to 20s for a narration line, 0.9s for the dead-world check,
+          // 0.6s for the stuck report — and until now the walk keys stayed
+          // DOWN through all of it. A player held still by a lockTime (the
+          // stomp's own recovery) counts as "stuck" here; the moment the lock
+          // released he walked on, unsteered, past the target: g1's stomp
+          // walk ran from z -6 to the north door at -13 and into g2, and
+          // verify-greenway stomped g2's twin nook instead (2026-09-27). The
+          // next pass re-presses exactly what it wants.
+          if (stuck === 5 || stuck === 10) {
+            for (const k of held) await page.keyboard.up(k);
+            held.clear();
+          }
           if (stuck === 5) {
             // Patience is only for NARRATION and dead worlds. A blocking story
             // line stalls the world on purpose — wait it out and absolve the

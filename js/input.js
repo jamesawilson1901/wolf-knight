@@ -94,6 +94,7 @@ export class Input {
       if (e.code === 'Space') this._jumpQueued = true;
       if (e.code === 'KeyL') this._rangedQueued = true;
       if (e.code === 'KeyH') this._potionQueued = true;
+      if (e.code === 'KeyG') this._mightQueued = true;   // a held Might Draught
       if (e.code === 'ShiftLeft' || e.code === 'KeyI') this.defending = true;
     });
     window.addEventListener('keyup', (e) => {
@@ -212,6 +213,7 @@ export class Input {
     if (edge(1)) this._jumpQueued = true;          // circle
     if (edge(4)) this._rangedQueued = true;        // L1
     if (edge(12)) this._potionQueued = true;       // d-pad up
+    if (edge(13)) this._mightQueued = true;        // d-pad down: Might Draught
     if (edge(9)) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' })); // options
     const shield = now[5] || now[7];               // R1 or R2, held
     if (shield !== !!this._padShield) { this.defending = shield; this._padShield = shield; }
@@ -265,6 +267,12 @@ export class Input {
   consumePotion() {
     const v = this._potionQueued;
     this._potionQueued = false;
+    return v;
+  }
+
+  consumeMight() {
+    const v = this._mightQueued;
+    this._mightQueued = false;
     return v;
   }
 }

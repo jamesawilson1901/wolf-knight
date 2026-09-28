@@ -17,8 +17,17 @@ export const state = {
     rescued: {},  // grown-wolf id -> true (dungeon room one, no fight — §2.5)
     chests: {},   // chest id -> opened
     keys: {},     // key id -> owned (dungeon locks)
+    // THE MAP'S MEMORY (js/mapdata.js). `visited`: room id -> true, stamped on
+    // every arrival — the map's fog lifts from it. `mapMarks`: every promise
+    // gate the child has walked near, drawn on the map until it opens.
+    visited: {},
+    mapMarks: {},
   },
   formsUnlocked: ['knight', 'dark_wolf'],
+  // THE PACK (v3.195): the three wolves a child has chosen to bring. Empty
+  // until there are more than three to choose from (packForms fills it).
+  pack: [],
+  packKnown: [],                 // the wolves packWolves() has already seen
   form: 'knight',
   // THE TRIAL LOCKS YOU INTO ONE FORM (design/LEVEL-DESIGN-TRIAL.md). null
   // everywhere else in the game. Persisted rather than transient because a
@@ -39,6 +48,7 @@ export const state = {
     materials: {},               // crafting materials (design/CRAFTING.md), id -> count
     crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
     recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
+    draughts: {},                // crafted drinks HELD for later, id -> count (v3.194)
     // DRAGON EGGS (design/DRAGON-EGGS.md) — element -> true. Deliberately
     // three small flag bags rather than one shape, so "found" / "hatched" /
     // "currently worn" can each be answered with a single lookup.
@@ -110,6 +120,43 @@ export const RETIRED_ROOMS = {
 export function formsAvailable() {
   if (state.formLock && state.formsUnlocked.includes(state.formLock)) return [state.formLock];
   return state.formsUnlocked;
+}
+
+// THE PACK OF THREE (v3.195). Dad: "It's very messy by the end of it with the
+// selection wheel." Ten faces in one fan. The form button now cycles only the
+// Knight, the Dark Wolf (the story's own wolf — it takes no pack slot and gets
+// no extra button) and the THREE wolves in the pack; the pack is chosen at
+// the Den or by any rest flame / campfire (js/menus.js Pack tab).
+//
+// While a child owns three or fewer other wolves there is nothing to choose,
+// so the pack is simply all of them. Past that, it is state.pack, topped up
+// with the most recently earned wolves if it is short (a new wolf joins the
+// pack the moment it is earned, so the gift is in hand, never in a menu).
+// formsAvailable() is left alone: puzzles and gates still ask what is OWNED.
+export const PACK_SIZE = 3;
+export function packWolves() {
+  const owned = state.formsUnlocked.filter((f) => f !== 'knight' && f !== 'dark_wolf');
+  // a wolf earned since the pack was last looked at goes straight IN (the
+  // ten or so unlock sites across boss.js/main.js need not know packs exist)
+  const known = state.packKnown || [];
+  const fresh = owned.filter((f) => !known.includes(f));
+  if (fresh.length) {
+    if (owned.length > PACK_SIZE && (state.pack || []).length) {
+      state.pack = [...fresh, ...state.pack.filter((f) => !fresh.includes(f))].slice(0, PACK_SIZE);
+    }
+    state.packKnown = [...owned];
+  }
+  if (owned.length <= PACK_SIZE) return owned;
+  const pack = (state.pack || []).filter((f) => owned.includes(f)).slice(0, PACK_SIZE);
+  for (let i = owned.length - 1; i >= 0 && pack.length < PACK_SIZE; i--) {
+    if (!pack.includes(owned[i])) pack.push(owned[i]);
+  }
+  return pack;
+}
+export function packForms() {
+  const avail = formsAvailable();
+  if (state.formLock && avail.length === 1) return avail;      // a Trial lock
+  return ['knight', 'dark_wolf', ...packWolves()].filter((f) => avail.includes(f));
 }
 
 export function resolveRoom(id) {

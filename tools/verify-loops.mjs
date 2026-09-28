@@ -199,8 +199,14 @@ console.log(`  (door-graph BFS from 'den' reaches ${full.size} of ${ROOMS.length
 // left for whichever later slice does that, not asserted blind here.
 check('la and vh (this slice’s own loop) are reachable from the Den',
   full.has('la') && full.has('vh'), { la: full.has('la'), vh: full.has('vh') });
-check('...and combat-free', combatFree.has('la') && combatFree.has('vh'),
-  { la: combatFree.has('la'), vh: combatFree.has('vh') });
+// COMBAT-FREE IS vh's PROMISE, NOT la's. la is Ember's arrival room and its
+// Shades are there every visit, healed or not — by decision (dad,
+// 2026-09-27): a region worth coming back to for secrets, dungeons and
+// materials still has something to meet. The check used to demand la be
+// empty after the boss, on the premise of an enemy->grazer swap that never
+// shipped and is now deleted (js/restoration.js §5). vh is Stoneroot's camp.
+check('...and the Stoneroot loop (vh) is combat-free', combatFree.has('vh'),
+  { vh: combatFree.has('vh') });
 
 console.log(wk.errors.length ? '\nPAGE ERRORS:\n' + wk.errors.join('\n') : '');
 for (const e of wk.errors) errors.push('PAGEERROR: ' + e);

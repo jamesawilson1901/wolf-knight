@@ -164,6 +164,13 @@ const rows = await page.evaluate(async (ids) => {
     }
 
     const ray = new THREE.Raycaster();
+    // Sprite.raycast reads raycaster.camera.matrixWorld and throws without
+    // one. v3.195's elemental shells hang a ring and a wolf badge (Sprites)
+    // on shelled foes, and the suite died on the first room with a shell —
+    // silently, for the nightly. Sprites are dropped by the isMesh filter
+    // below either way; they only need a camera not to crash the ray.
+    ray.camera = new THREE.PerspectiveCamera();
+    ray.camera.updateMatrixWorld();
     const hidden = [];
     for (const dr of (w.doors || [])) {
       const cx = (dr.minX + dr.maxX) / 2, cz = (dr.minZ + dr.maxZ) / 2;

@@ -63,10 +63,16 @@
   windows, keyholes, chests, plates). Never mix.
 - Every attack telegraphs ≥0.8s (bosses ≥0.9s). Every hit shows a damage
   number or BLOCKED. Bosses show a health bar.
-- Shields blunt; perfect parry (0.3s+bonus) negates + stuns 2.2s; stunned
-  takes double. Jumps dodge groundAttack sources. Fire/hazards pierce
+- Shields BLOCK an ordinary hit (≤1 heart) outright and blunt a heavy one
+  to the shield's `blunt` (amended v3.195, 2026-09-27 — dad: shields "don't
+  actually correlate to anything"; a ½-heart block cost what the same hit
+  costs unblocked in Cozy). Perfect parry (0.3s+bonus) negates + stuns 2.2s;
+  stunned takes double. Jumps dodge groundAttack sources. Fire/hazards pierce
   shields. Flyers die to bolts (full) / melee (fine), bolts chip walkers.
-- Cozy (default) softens damage to 60%, min ½ heart; Brave full. Rubber-band
+- Cozy (default) softens damage to 60%, min ½ heart on any hit that lands;
+  armour may GUARD a hit outright (amended v3.195: chance = soak × 0.35, +
+  the shield's quality in a wolf form, cap 60%, shows GUARD!; never lava,
+  falls or other hazards). Brave full. Rubber-band
   after 3 deaths in one room (respawn = that room's entrance). Never more
   than 3 simultaneous aggro enemies near a kid (spawn spacing must respect
   this).
@@ -178,7 +184,8 @@
 - Every strike carries an ELEMENT by source: knight sword = steel ·
   spark bolt = spark · dark wolf = moon · fire wolf = fire · earth wolf =
   earth. Steel is the only non-magical element.
-- Every enemy family has a WEAKNESS (1.5x + gold flare): Grimm's
+- Every enemy family has a WEAKNESS (2x + a 0.35s stagger, at most one per
+  2s per enemy, + gold flare — amended v3.195 from 1.5x): Grimm's
   shadow-things (Shade/Moth/Hound) fear MOON; slimes/bats and all BONE
   fear FIRE.
 - ARMORED bone (skeletons, Warden) takes 0.5x from steel (clank teach)
@@ -302,6 +309,24 @@
   Next session: ask both kids again and record here. -->
 - Cozy (default) softens damage to 60% (was half), min ½ heart; Brave full.
 - Expected level entering region N: ~1+3(N-1). XP curve stays 20+15(lvl-1).
+- Enemy hp scales with the REGION, not the player's level (amended v3.195:
+  1 + 0.24 x region tier, roads half a tier, cap 2.2 — the same curve an
+  on-level child met before, so a level-up and a Sharper Sword are power a
+  child keeps instead of being cancelled by the next room).
+- GEAR IS EVERY FORM'S (v3.195): a wolf's bite = weapon dmg x the wolf's own
+  multiplier (FORM_DEFS attack.dmg), in the wolf's element; armour soak,
+  guard and weight apply in every form. Damage rounds to quarters (was
+  halves: the 0.75 dagger read as 1).
+- ELEMENTAL SHELLS (v3.195, js/shells.js): region tier ≥1, at most 2 per room,
+  only when the breaking wolf is owned. The shell is the enemy's weakness
+  element; the right element cracks it in 2 hits (a special or the swap-in
+  strike: 1), wrong elements do 0.3x — slowed, never stuck. Broken: stagger
+  1.4s. Read by body glow + the breaking wolf's portrait overhead.
+- SWAP-IN STRIKE (v3.195): switching form with a foe within 4.5u lands weapon
+  power x1.0 in the new form's element, r2.4, 0.5s daze, once per 4s.
+- THE PACK (v3.195): the form button cycles Knight, Dark Wolf and at most 3
+  more wolves (the pack), chosen at the Den / a campfire / a rest flame.
+  Owning ≤3 other wolves: all of them. A newly earned wolf joins at once.
 - Perk pick every 3rd level; perk pool must stay ≥3 unmaxed choices to
   level 21 (add tiers when a pool would run dry).
 - Hearts: start 5; +1 per region's pup set; +1 heart-piece set (4) per

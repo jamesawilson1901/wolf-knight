@@ -674,6 +674,114 @@ one extra mesh in one room each), `node tools/verify-dragoneggs.mjs`
 nothing the shrine/hatch/save-round-trip checks exercise), `sh tools/
 verify-all.sh --quick` (12/12).
 
+## v3 — the portal is not Tam, the eggs live in dens, the bones mark the door (2026-09-26, SHIPPED)
+
+Dad, on a screenshot of Ember's healed arena (purple flagstones, moss, the
+orange-disced portal, a chest nearby, Kael as the Fire Wolf): "The portal
+talks and acts as if it's Tam. Make it Tam. The portal is meant to be for the
+dragon eggs. Also dragon eggs are meant to be found in special dungeons, not
+in chests. There is also meant to be a dragon skeleton outside that dungeon as
+a hint. All this was part of a build you had confirmed had been built."
+
+**Root cause of "the portal acts like Tam", measured, not guessed.** The fire
+shrine stood at `le (6, 9)`; Tam's post (`js/npcs.js` `WAYFARER_POSTS.le`) is
+`(6, 8)`. Tam — a 1.2u figure — stood one unit from the centre of a 2.6u
+portal whose stone base alone is ~1.6u across, so he was hidden inside it
+(the arrival render showed the portal and no Tam at all). His two proximity
+triggers — `tam_intro`/`tam_offer` at 2.6u of `wayfarerSpot`, and the travel
+map at 1.5u of `travelSpot` — therefore fired exactly when a child walked up
+to the portal: Tam's voice and Tam's map, coming out of the portal. `scr`'s
+shrine at `(9, 9)` sat three steps from its own Tam post at `(6, 8)` with the
+same overlap at the moat's edge. v2's own notes had *seen* this — both
+`tools/shot-dragoneggs.mjs` and `tools/verify-dragoneggs.mjs` stripped
+`travelSpot` by hand "because teleporting to the shrine pops the map" — and
+worked around it in the tests instead of moving the shrine.
+
+**What is real now.**
+
+| | Ember (fire) | Stormreach (storm) | Sunken Vale (tide) |
+|---|---|---|---|
+| arena door (east wall, opens when the guardian falls) | `le`, z 1.0 | `scr`, z -3.4 | `ddp`, z -2.5 |
+| the bones, beside that door | `le (10.3, -3.5)` | `scr (10.9, -7.6)` | `ddp (10.6, -6.9)` |
+| portal room (the shrine) | `ln1` THE FIRE PORTAL | `sn1` THE STORM PORTAL | `dn1` THE TIDE PORTAL |
+| the gate, and the verb | two cold lamps — Fire Wolf's slam | a golden weathervane — Storm Wolf's dash | two fires — Tide Wolf's splash |
+| nest room (the egg on its altar) | `ln2` | `sn2` | `dn2` |
+| solved flag (WS) | `ember.egg_gate` | `storm.egg_gate` | `vale.egg_gate` |
+
+- **Tam is Tam.** No shrine stands in any arena any more; each arena holds
+  Tam (his real commissioned mesh, `assets/chars/wayfarer.glb`, untouched) and
+  nothing that can be mistaken for him. Travel is only ever opened by
+  walking up to Tam. The shrine rooms carry no wayfarer and no travel spot at
+  all, and both suites now ASSERT that rather than stripping it.
+- **The portal is for the eggs.** The same v2 portal + moat + cover-the-player
+  confirm + jump-out hatch, unchanged, now in each den's first room. Its only
+  voice is Pip's: the hint lines were rewritten so a non-reader hears what the
+  portal wants and how to get it ("A fire portal, Kael! It's waiting for a
+  dragon egg. Light both lamps by the gate — the egg must be past it!"). The
+  portal's stone is now solid (`PORTAL_SOLID_R` 1.25 — v2 had no collider and
+  a child could stand inside the frame); the moat stays the touch radius.
+- **Eggs are found in dens, not chests.** Each den is two 20x16 pockets. The
+  egg rests on the kit's own pedestal (the one lv1's cellar uses) at the far
+  room's centre, in the arrival frame, glowing in its element's colour with a
+  gold act-here ring — `EggNest` in `js/dragonEggs.js`, using the existing
+  `assets/loot/treasure/dragon-egg.glb`. Walking up to it takes it: it lifts
+  to Kael and is in the bag, a reward toast names it, and Pip says where to
+  take it (`dragon_found_<el>`). The three egg chests are gone.
+- **Why these gates.** Each den opens only after its guardian falls, so the
+  lock is the wolf the child has just earned (or, for fire, earned one room
+  before the boss). Stormreach's gales and the Vale's deep water were both
+  rejected on measurement: every gale in Stormreach calms to a breeze once
+  Aria is free (`calmedStrength`), and deep water simply carries anyone who
+  owns the Tide Wolf (`canWade`) — neither would have locked anything in a
+  room that only exists after those bosses. The vane (the svn twist: "the
+  dash does not only carry Kael, it pushes") and the splash-out fires (the
+  Tide Pools' own `poolBrazier`) are the region verbs that still mean
+  something after the healing. Solved state is a WS flag, so a return trip
+  finds open bars and lit lamps / a turned vane / cold fires.
+- **The bones mark the door.** The v2.2 skeletons in `la`, `s1a` and `d1a`
+  are moved (not duplicated) to beside each den's door in its arena, clear of
+  the door's reserve, of every collider, and 9+ units from Tam's post (the
+  first placement in `le`, south of the door, read on screen as Tam's own
+  prop and was moved north). They are there from the start — during the boss
+  fight they are just old bones by a rock pile — and Pip now says one short
+  spoken line near them (`dragon_bones`, repeat, never pauses the room).
+- **The door.** Always cut, added with a `when` predicate on the guardian's
+  flag (the suites see a gated door, never a door into a wall — the dev
+  branch's `dungeonMouth()` contract), plugged with region rock by
+  `eggDoorPlug()` (`js/dragonEggs.js`), which chains onto `world.openOnward`
+  like `onwardPlug` so the plug puffs away on the same beat as the arena's
+  other doors, live, where the child is standing. Registered first so the
+  arena's smoke still lands on the way on.
+- **Quiet, as asked in v1.** No map card (`dungeon: true` deliberately not
+  set), no pin, no counter. The guide (`js/route.js`) only ever points a
+  child in a den back out to its arena.
+
+**Save compatibility (additive-forever).** No field was removed or renamed.
+A save that opened `le_dragon_egg`/`scr_dragon_egg`/`ddp_dragon_egg` keeps
+that chest flag (never read again) and its `dragonEggs[el]`; the matching
+altar builds EMPTY, and the portal in the den arms for the egg it already
+holds. A save that already hatched a dragon keeps it equipped; its altar is
+empty and its portal says nothing. The v2 `giveLoot` `L.dragonEgg` branch is
+kept, harmless, so nothing that could still carry that loot breaks. Three new
+WS flags only (`egg_gate` per region).
+
+**Narration.** Changed: `dragon_hint_fire/_tide/_storm`. New:
+`dragon_found_fire/_tide/_storm`, `dragon_bones`. All seven re-rendered with
+the Piper pipeline (`tools/tts-narration.py`) into `assets/audio/vo/`.
+
+**Verified.** `tools/verify-dragoneggs.mjs` grew a v3 section (arenas carry
+no shrine and no egg chest; Tam stands in each; each den door exists, shut
+before the guardian falls and open after; the bones lie 8u+ from Tam; each
+portal room has one shrine and no Tam/travel; each gate starts shut; each
+altar holds its egg, taking it works, a rebuild shows an empty altar; the
+old-chest save sees an empty altar and an armed portal). New
+`tools/verify-dragondens.mjs` walks all three dens with real keys end to end
+— arena door, the portal's own hint (and never Tam's map or lines), the
+region wolf's real verb opening the gate, the egg taken by walking up to it,
+the real `#btn-dragon` tap hatching and equipping the dragon — and then walks
+up to Tam in the arena to prove travel still opens from him. Results, the
+contact sheet and what is still unverified are in this session's report.
+
 ## Still to design
 
 - **A fourth or later dragon.** The system supports any number of elements

@@ -180,16 +180,17 @@ export async function buildN1(scene) {
 
   // THE WASHOUT. The road went into the ravine years ago and the middle of the
   // room is a hole. It costs the walk and never a heart (player.js, "A HOLE IN
-  // THE FLOOR COSTS THE WALK, NOT A HEART"), and its pale rim is drawn with an
-  // unlit material on purpose — so even in the Knight's blackout the EDGE is
-  // findable and the fall is never a gotcha. As the Dark Wolf it is simply a
-  // hole with a road round it.
+  // THE FLOOR COSTS THE WALK, NOT A HEART"). It is a real opening now, stone
+  // walls going down into the dark with a lip of brick along the rim (levelkit
+  // pit()), lit by the room like everything else — so in the Knight's blackout
+  // it is a darker shape with a broken edge, and as the Dark Wolf it is simply
+  // a hole with a road round it.
   // ...and Pip says so, once, at the edge of it (main.js, `night_road_dark`).
   // The marker sits ON the road where the path crosses the dark line, so the
   // hint arrives at the moment the lights go out and not before.
   world.markers.darkMouth = { x: -4.5, z: 2.5 };
 
-  pit(world, -5.5, 7.5, -7.0, -3.0);
+  pit(world, -5.5, 7.5, -7.0, -3.0, D);
   world.pitReturn = { x: 0, z: 0.5 };          // the near lip, one run-up back
 
   // WHAT THE SENSES ARE FOR, ONE. A nook in the east heather, its mouth closed

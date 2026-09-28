@@ -42,9 +42,12 @@ world-verb at once (quench/crack/cut/burn).
 state.moonGauge (0..1, persisted) fills from hits landed/taken +
 in-combat time (pots excluded via Breakable.scenery); Quicker Moon perk
 boosts fills, Moon Shard fills instantly. Full = gold act-here pulse on
-the HUD crescent; tap → 2.5s ceremony (red vignette #surge-vignette,
-rising blood moon, time-slow via effects.timeScale, forced morph, howl +
-bass + haptics, no-damage shockwave stun) → 10s surge (locked 1.25x Dark
+the HUD crescent; tap → 3.6s ceremony (red vignette #surge-vignette,
+the room darkens while a textured blood moon rises, time-slow via
+effects.timeScale, forced morph, howl + bass + haptics, the moon dives
+onto the nearest enemy (damage + stun at 2.6u), no-damage shockwave stun;
+own sfx moon-rise/moon-dive/moon-crash, authored by
+tools/make-moon-sfx.py) → 10s surge (locked 1.25x Dark
 Wolf, juice.weightBoost 1, x2 staggering bites, free lunge, regen,
 gauge-as-timer, 2s warning flicker, exhale revert). main.triggerSurge
 guards scripted beats/transitions.
@@ -52,9 +55,11 @@ guards scripted beats/transitions.
 ## Effects & juice (js/effects.js)
 Self-contained updaters: screen shake, hitstop, camera zoom punch
 (punch), time-slow (slow/timeScale — main scales enemy+boss dt),
-ground-slam ring, warm flood, surge ceremony (rising blood moon + red
-wash). main.js applies shakeOffset/zoom to the camera and freezes world
-updates during hitstop. js/juice.js is the ONE hit pipeline (tiers in
+ground-slam ring, soft textured ring (softRing), warm flood, surge
+ceremony (canvas-painted moon sprite + Kenney-sprite corona/streak/
+shockwave/smoke/scorch, one pooled Points; see design/FX.md). main.js
+applies shakeOffset/zoom to the camera, effects.dim to the light rig, and
+freezes world updates during hitstop. js/juice.js is the ONE hit pipeline (tiers in
 CONFIG.JUICE, weightBoost = surge tier promotion, pooled particles,
 haptics).
 
@@ -78,12 +83,19 @@ waterGate (Tide, region 6), brambleGate (Verdant vine-lash, region 3 —
 thorny tangle + green glint), brazier (Fire slam ignites; optional
 gutterAfter for timed puzzles — the Kiln's whole puzzle language).
 One call + a hint marker adds a gate to any room.
+**What a thorn or ice gate is MADE of lives in js/gateprops.js** (v3.196):
+`thornWall(w, d)` (dad's Meshy thorns, every cut gate — promiseGate 'cut',
+brambleGate, Level 3's brambles) and `iceWall(w, d)` (blocks of pale ice,
+every frozen shatter gate — promiseGate kind 'ice', iceGate). Both fill the
+whole collider, stand over a child's head, and merge to one draw per gate.
+rooms.js `buildRoom` preloads them.
 
 ## WorldState & mysteries (js/worldstate.js)
 WS.get/set per-region flags persisted in the save; rooms read them at
 build time, so a flag flip = a visibly changed world (rooms rebuild on
-entry). logMystery/resolveMystery drive the map screen's ??? cards — the
-"reasons to come back" memory. The hint rule: every secret has ≥2 organic
+entry). logMystery/resolveMystery keep the "reasons to come back" memory
+(each entry now stamps the room it was logged in, so the map draws it THERE —
+see "The map" below). The hint rule: every secret has ≥2 organic
 pointers (stumble + Pip sparkle/NPC line/visual cue); never quest markers.
 
 ## Dungeon pattern (the Kiln is the template)
@@ -117,6 +129,20 @@ than by the number whoever wrote the line happened to pick:
   hint, and at head height it read as a grey square hanging in mid-air.
 
 `verify-bounds` and `verify-looks` hold all three, over the live registry.
+
+PITS ARE REAL HOLES (levelkit `pit(world, minX, maxX, minZ, maxZ, D)`, since
+dad's "make it look 3d" report). The call registers `world.pitZones` (the fall
+line — player.js drops the child and puts them at `world.pitReturn`) and
+rebuilds, for every pit in the room at once: the ground plane re-cut with the
+rectangles taken out (same one draw, same texture UVs); one vertex-coloured
+mesh of faceted stone walls in the room's `wallTint`, darkening to near-black
+at `PIT_DEPTH` 3.4; and one instanced lip of the kit's Brick. Only faces the
+camera can see are built (north walls face south). `pitPier()` gives a pad
+standing in a pit (the Broken Ascent's stair) real sides in the same mesh.
+Nothing stands in a pit: `world.blocked()` refuses the rectangle plus a 0.3u
+lip, blooms ask `world.nearPit()`, grounded enemies will not step onto one, and
+`world.clearPits()` (run from flattenStatic) sweeps anything left whose middle
+— or a third of whose footprint — is over open drop. Pads (safe zones) excepted.
 
 ## Frostpeak (js/level4.js) — region 4, rebuilt 2026-09-03
 The last region to leave rooms.js. Same seven rooms and ids as v3.21
@@ -245,6 +271,23 @@ shape as openTheWayOn, so a perk card or a story line holds him at the door
 exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
 off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
 
+## Dragon eggs, dens & portals (js/dragonEggs.js, design/DRAGON-EGGS.md)
+A quiet side quest, no map card or counter. After each of three guardians
+falls (le, scr, ddp) the arena's east wall opens (always-cut gap, a `when`-
+gated door, a rock plug from `eggDoorPlug` that clears with the arena's other
+doors) onto a two-room DEN; a dragon skeleton (`spawnDragonSkeletonHint`,
+sets `markers.dragonBones` for Pip's `dragon_bones` line) lies beside that
+door. Den room 1 (ln1/sn1/dn1) holds the PORTAL (`DragonShrine`: portal.glb +
+moat, solid stone, hint/confirm events, #btn-dragon confirm, cover-and-emerge
+hatch) and a barred gate opened by the region's own wolf verb (lamps for the
+Fire Wolf's slam, a vane for the Storm Wolf's dash, fires for the Tide Wolf's
+splash; WS `<region>.egg_gate`). Room 2 (ln2/sn2/dn2) holds the egg on an
+altar (`EggNest`, dragon-egg.glb; walking up takes it). The portal never
+shares a room with Tam — v3's fix for "the portal talks like Tam", when the
+fire portal stood one step from Tam's post and hid him. State:
+state.inventory.dragonEggs/dragonsHatched/dragonEquipped. Proven by
+tools/verify-dragoneggs.mjs (ticked) and tools/verify-dragondens.mjs (real keys).
+
 ## The healing (js/restoration.js)
 What a region looks like once its guardian is free. main.js has set
 WS.set(<region>,'restored') on every boss defeat since it was written, and
@@ -274,11 +317,11 @@ thing through:
    temperature survives. Added after the first healed contact sheet showed a
    Wild Woods full of flowers and grazing wolves that a child still could not
    see: everything else the healing does is a thing IN the room.
- · ANIMALS — spawnEnemies() harvests every enemy marker it would have read
-   (takeEnemySpots) and graze() stands a wolf where each shadow stood.
-   wolf.gltf is the game's own animal and ships Eating/Idle_2_HeadLow/Idle/
-   Walk. No colliders, Biscuit's rule: a safe room must not be one a child can
-   be shoved around in. world.updateGrazers(dt,t,player) from main's loop.
+ · ENEMIES STAY — by decision (dad, 2026-09-27): a healed region is one to
+   come back to for its secrets, dungeon and crafting materials, so healing
+   never removes its enemies. The old enemy->grazing-wolf swap (graze(),
+   takeEnemySpots) is deleted; the herd machinery lives on only in the Den's
+   pup pen. verify-loops no longer asserts a combat-free healed region.
 healLive(world) is the WITNESSED version, called from the wild/frost/storm/
 vale/court defeat branches — the five that used to change a background colour
 on the next rebuild and nothing else. It grows the instance matrices, so the
@@ -396,8 +439,42 @@ round-trips the whole set now, so region eight cannot repeat it.
 
 ## Progression & menus (js/progress.js, js/menus.js, js/loot.js)
 XP/levels (GAME-CONTRACT curve), perk picks every 3rd level, shards +
-shop, stickers, map screen (regions + mysteries), fast travel via Luna's
-moonstone, pause/settings.
+shop, stickers, the map screen (below), fast travel via Luna's moonstone,
+pause/settings.
+
+## The map (js/mapview.js, js/mapdata.js, js/maplayout.js, js/mapgraph.js)
+A REAL MAP since 2026-09-26 (dad: "a child has no chance of understanding…
+when things are marked to come back later, actually have to be marked on the
+map"). Pause → Map, or walk up to the moonstone.
+* **Layout is derived, never typed.** `js/mapgraph.js` is GENERATED by
+  `node tools/gen-mapgraph.mjs --write` from every builder's literal
+  `sideDoor(world, 'n', …, 'room')` / `world.addDoor(…)` call (a door built
+  only under a condition carries a trailing `1`). `js/maplayout.js` lays each
+  region out by BFS over its own doors (north door ⇒ room above), then sets the
+  region blocks down in walk order, each one step past the door it is entered
+  by, slid to the nearest free spot. Pure — node can run it. **Adding or moving
+  a door: rerun the generator**; verify-map fails until you do, and a room the
+  graph has never heard of is still placed (beside its region) rather than lost.
+* **Fog.** `state.flags.visited` (room → true, stamped by loadRoom, respawn and
+  first boot) is solid; the spine of every open region, rooms through an
+  always-there door of a visited room, and an open dungeon mouth are faint;
+  everything else is not drawn. A save from before it (`visited: null`) is
+  seeded once from its own progress.
+* **Come-back-later marks.** Every gate builder signs `world.mapGates`
+  (levelkit `promiseGate`, gates.js bramble/ice/melt/boulder, the L4/L6 own
+  brambles). Walking within 6.5u of one records `state.flags.mapMarks
+  ['room:id']`; the map draws it on that room as a coin with the face of the
+  wolf that opens it (by SYSTEM: crack→earth, burn/melt→fire, cut→verdant,
+  shatter→frost — every shatter gate, "DARK" and "FLOODED" too — none→tide).
+  Dim with a grey rim while that wolf is not owned; gold rim, bounce and
+  sparkle once it is; gone the moment the gate's own flag says open (never
+  stored — asked of the same flag the gate is built from). Unfound mysteries
+  are drawn too, unless a gate mark for the same wolf already covers that room.
+* **Travel** keeps the card map's rule (spine room of an open region, the Den,
+  an open DUNGEON_MOUTH). One tap lifts a gold GO button; the second travels.
+  Travel from the pause menu also unpauses.
+* **Stars** on the arena of every freed guardian; a house on the Den.
+tools/verify-map.mjs holds all of it through the real pause → Map path.
 
 ## The form badge shows the animal (js/ui.js formIcon, js/titlescene.js)
 The badge and the radial picker are the controls a child touches most, and
@@ -409,6 +486,8 @@ first three forms, so all ten have one and a future wolf gets a portrait the
 day it gets a colour. The emoji stays as the FALLBACK: portraits render in the
 background after boot, and `portraits-ready` refreshes the badge the moment
 there is something better to show.
+(The map screen now shows these portraits too — on the come-back-later marks
+and the you-are-here coin, with the element emoji as a small badge.)
 NOT converted, and the board item asking for it was working from a wrong
 premise — it said the Kenney Game Icons were "already vendored and cleared"
 and only their LICENCE FILES are on disk; the pack is not in the repo and

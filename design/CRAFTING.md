@@ -59,8 +59,8 @@ parallel taxonomy, since a fire-weak enemy already reads as "the fire one":
 
 | id | name | source |
 |---|---|---|
-| `shard_fire`/`shard_earth`/`shard_verdant`/`shard_frost`/`shard_storm`/`shard_tide`/`shard_moon` | Ember/Stone/Thorn/Rime/Storm/Tide/Moon Shard | any enemy with that weakness |
-| `wisp` | Shadow Wisp | any enemy with no weakness; every breakable |
+| `shard_fire`/`shard_earth`/`shard_verdant`/`shard_frost`/`shard_storm`/`shard_tide`/`shard_moon` | Ember/Stone/Thorn/Rime/Storm/Tide/Moon Shard | any enemy MADE OF that element — see the 2026-09-26 amendment below |
+| `wisp` | Shadow Wisp | enemies on the roads/Village/Spire (no element of their own); every breakable |
 | `crystal` | Wolf's Crystal | rare — elites/guardians, gold chests |
 
 **Enemy kills** (`js/enemies.js` `Enemy.die()`, `dropMaterial()`): its own
@@ -73,6 +73,21 @@ chest / 80% gold chest, and a gold chest further rolls 35% for a Crystal.
 Both are drops ON TOP of the existing shard/potion/ember rolls, never a
 replacement or a shared roll — `design/GAME-CONTRACT.md`'s ~120-160
 shards/region number is untouched, and the amendment there says so.
+
+**AMENDED 2026-09-26 (v3.190) — an enemy drops what it is MADE OF, never
+what beats it.** Dad: "Fire enemies are dropping tide shards when they
+should drop whatever element they are. Things that they drop need to have
+some logic to them." Paying in `weakness` was backwards for almost every
+family: the fire-spitter (`resist: 'fire'`, weak to tide/frost) paid Tide
+Shards, rime hounds (fear fire) paid Ember Shards, skeletons paid Ember
+because fire breaks bone. `materialForEnemy()` now reads, in order: the
+enemy's own `element` (tagged on the thorn/rime/gale/tide VARIANTS
+families), then `resist` (a thing that shrugs off fire is made of it), then
+the element of the REGION it lives in (Ember→fire, Stoneroot→earth, Wild
+Woods→verdant, Frostpeak→frost, Stormreach→storm, Sunken Vale→tide, Shadow
+Court→moon), else a Wisp. Every shard keeps a home region, so no recipe
+lost its source. `tools/verify-materials.mjs` §1b kills real enemies in va2
+(spitter→Ember, bats→Stone), f1 (→Rime) and n1 (→Wisp).
 
 The pickup itself (`spawnMaterialDrop`, `js/materials.js`) reuses the ember
 heal's own floating-gem-that-fizzles-after-12s shape (now generalized in

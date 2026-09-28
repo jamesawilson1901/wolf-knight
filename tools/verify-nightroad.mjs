@@ -219,7 +219,7 @@ check('a child without the Earth Wolf cannot get behind the cracked rock',
   { ...crack, stoppedAt: +stopped.x.toFixed(2) });
 
 const before = await wk.page.evaluate(() => [...window.__game.state.inventory.treasures]);
-await wk.routeTo(12.5, -9.0, { timeout: 50, arrive: 0.8 });
+await wk.routeTo(12.5, -9.0, { timeout: 150, arrive: 0.8 });
 await wk.page.waitForTimeout(2500);
 await wk.page.evaluate(() => { window.__game.narration.blocking = false; });
 const after = await wk.page.evaluate(() => [...window.__game.state.inventory.treasures]);

@@ -20,6 +20,7 @@
 // Everything snaps to the 1.0u grid. No existing space was rescaled.
 
 import * as THREE from 'three';
+import { makeLavaMaterial } from './lava.js';
 import { World } from './world.js';
 import { state } from './state.js';
 import { protoFloor, protoWall, protoDecal, protoLabel, protoMaterial } from './proto.js';
@@ -31,7 +32,7 @@ import { WS } from './worldstate.js';
 import { zooHubModule } from './level2.js';
 import { zooRingModule } from './level3.js';
 import { flattenStatic } from './batch.js';
-import { brazier, pushableBoulder, plateSwitch, plateBars } from './gates.js';
+import { brazier, pushableBoulder, plateSwitch, plateBars, barWall } from './gates.js';
 import { makeDressers } from './dressing.js';
 import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
@@ -40,7 +41,7 @@ import { carryItem, socket } from './carry.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
 import { isHealed, COAT } from './restoration.js';
-import { preloadDragonSkeleton, spawnDragonSkeletonHint } from './dragonEggs.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 import { bumpCounter } from './progress.js';
 
 // Greybox is the default until dressed — and is FORCED in two cases that are
@@ -103,6 +104,13 @@ export const DISTRICTS = {
   // colour under the same light every other room sits under.
   ashvault: { tint: 0x504c46, floorTint: 0x433f3a, wallTint: 0x2b241a, propTint: 0x5c4e3e, ground: 'ashfall',
               name: 'THE ASH VAULT', hero: 'THE UNDERSTAIR CELLAR' },
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+  // dungeon, behind the Heart of the Hollow's east wall. The Heart's own
+  // flagstone floor (it is the same hall, one door on), pulled from its
+  // purple toward banked coals, so a child who walks through reads "this is
+  // somewhere warmer" before a word is said.
+  dragonfire: { tint: 0x8a4a3a, floorTint: 0x6a4038, wallTint: 0x2c1814, propTint: 0x7a5044, ground: 'heart',
+              name: "THE EMBER DRAGON'S DEN", hero: 'THE FIRE PORTAL' },
 };
 
 // ---------------------------------------------------------------------------
@@ -165,6 +173,15 @@ export const L1 = {
          label: 'THE CHARRED GALLERY', beat: 'optional · 2 wretch + 1 marauder' },
   lv3: { kind: 'pocket', w: 20, d: 16, district: 'ashvault', loopsTo: 'lv2',
          label: 'THE BANKED VAULT', beat: 'optional · gold + heart piece' },
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+  // dungeon, off le's east wall once the Shadowgrip falls, the dragon's bones
+  // lying beside its door. ln1 holds the Fire Portal and the lamp-lit gate;
+  // ln2, past it, holds the egg on its altar. A quiet secret, so no
+  // `dungeon: true` (no map card) — the bones are the only sign.
+  ln1: { kind: 'pocket', w: 20, d: 16, district: 'dragonfire', loopsTo: 'le',
+         label: 'THE FIRE PORTAL', beat: 'optional · the shrine · light two lamps' },
+  ln2: { kind: 'pocket', w: 20, d: 16, district: 'dragonfire', loopsTo: 'ln1',
+         label: "THE EMBER DRAGON'S NEST", beat: 'optional · the Ember Dragon egg' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -261,7 +278,7 @@ export async function loadEmberKit() {
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
   cartWreck, lowWall } = makeDressers({ kit: () => emberKit, tint: (...a) => tinted(...a), isGrey: () => GREY() });
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, pit, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone: protoDarkZone } = makeBuilders({
     kit: () => emberKit,
     isGrey: () => GREY(),
@@ -385,11 +402,11 @@ function lavaSurface(world, x, z, w, d) {
     });
     return crust;
   }
-  const lava = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0x000000,
-      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1.8, roughness: 1 })
-  );
+  // MOLTEN: the shared lava shader (js/lava.js) — crust plates, glowing
+  // seams, churning flow. The canvas `tex` above is only the COOLED crust's
+  // faint ember map now.
+  const molten = makeLavaMaterial();
+  const lava = new THREE.Mesh(new THREE.PlaneGeometry(w, d), molten.material);
   lava.rotation.x = -Math.PI / 2;
   lava.position.set(x, world.deckY + 0.02, z);
   world.add(lava);
@@ -399,9 +416,8 @@ function lavaSurface(world, x, z, w, d) {
   world.add(light);
   world.onAnimate((t) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + x) * Math.sin(t * 0.7 + z);
-    lava.material.emissiveIntensity = 1.5 + pulse * 0.9;
+    molten.update(t, pulse);
     light.intensity = 8 + pulse * 5;
-    tex.offset.x = t * 0.011;                // the crust drifts downstream
   });
   return lava;
 }
@@ -444,6 +460,73 @@ function slab(world, x, z, w, d, D) {
 function teachBraziers(world, spots, prefix, onLit, startLit = false) {
   if (GREY()) return;
   spots.forEach((sp, i) => brazier(world, prepareModel, emberKit.torch, `${prefix}${i + 1}`, sp.x, sp.z, onLit, startLit));
+}
+
+// A LIT LAMP HAS TO PAY. Dad, 2026-09-26, on the Kiln's Gutter Run: "lighting
+// these lanterns does nothing. If lanterns are lit, they need to do
+// something." And on the Order Hall: "Pip prompts to light the lanterns in
+// order for something special. There is no indication what the correct order
+// is." Both rooms were written as TEACH 2/3 in the level plan and built as
+// three and four plain braziers with nothing wired to them at all.
+//
+// So a puzzle brazier set now always has a PRIZE you can see from the moment
+// you walk in: a chest in a cage of bars (the same cage every plate vault
+// uses — bars down both sides, the front panel lifts), and the front panel
+// lifts when the fires are right. `face` is the side the mouth opens toward:
+// 'n' = toward -z, 'w' = toward -x. The chest's own save flag is the chest's;
+// the cage's is state.flags.plates[id], so a solved room rebuilds open.
+function rewardCage(world, cx, cz, id, chestId, loot, tier, face = 'n') {
+  const solved = () => !!state.flags.plates[id];
+  if (face === 'n') {
+    barWall(world, prepareModel, emberKit.bars, cx - 1.3, cz - 0.1, { span: 2.4, ry: Math.PI / 2 });
+    barWall(world, prepareModel, emberKit.bars, cx + 1.3, cz - 0.1, { span: 2.4, ry: Math.PI / 2 });
+  } else {
+    barWall(world, prepareModel, emberKit.bars, cx - 0.1, cz - 1.3, { span: 2.4 });
+    barWall(world, prepareModel, emberKit.bars, cx - 0.1, cz + 1.3, { span: 2.4 });
+  }
+  visibleReward(world, cx, cz, chestId, loot, tier);
+  const front = face === 'n'
+    ? plateBars(world, prepareModel, emberKit.bars, id, cx, cz - 1.35, { span: 2.6, solved })
+    : plateBars(world, prepareModel, emberKit.bars, id, cx - 1.35, cz, { span: 2.6, ry: Math.PI / 2, solved });
+  return {
+    solved,
+    open() {
+      if (solved()) return;
+      state.flags.plates[id] = true;
+      front.open();
+      if (juice.effects) juice.effects.shake(0.3, 0.4);
+    },
+  };
+}
+
+// PIP-COUNT DOTS — the ORDER, written in the only numerals a non-reader has.
+// A short row of glowing gold dots on the floor in front of a brazier: one
+// dot, two dots, three... MeshBasic, so they read in a dark hall without any
+// wolf's help (the old "only the Dark Wolf can read it" twist was the reason
+// Dad could not: the Fire Wolf he was playing saw four identical lamps).
+// Returns the dot meshes so the room can light them up as each one is done.
+function orderDots(world, x, z, n, towardX, towardZ) {
+  const dx = towardX - x, dz = towardZ - z, L = Math.hypot(dx, dz) || 1;
+  const fx = dx / L, fz = dz / L;           // toward the room's middle
+  const px = -fz, pz = fx;                  // across it
+  const dots = [];
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.95, depthWrite: false });
+  const plate = new THREE.MeshBasicMaterial({ color: 0x1a1210, transparent: true, opacity: 0.8, depthWrite: false });
+  const ox = x + fx * 1.15, oz = z + fz * 1.15;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * n + 0.34, 0.66), plate);
+  back.rotation.x = -Math.PI / 2;
+  back.rotation.z = Math.atan2(pz, px) * -1;
+  back.position.set(ox, world.deckY + 0.025, oz);
+  world.add(back);
+  for (let i = 0; i < n; i++) {
+    const f = (i - (n - 1) / 2) * 0.62;
+    const d = new THREE.Mesh(new THREE.CircleGeometry(0.22, 18), mat.clone());
+    d.rotation.x = -Math.PI / 2;
+    d.position.set(ox + px * f, world.deckY + 0.035, oz + pz * f);
+    world.add(d);
+    dots.push(d);
+  }
+  return dots;
 }
 
 // A hero prop: the district's memory anchor. Greybox form is a bold blocky
@@ -611,13 +694,15 @@ export async function buildLa(scene) {
   // doorway on their NEXT entry, not this one. That is the existing rule
   // for every gate that changes a room's own geometry (`den`'s own east
   // gap, v3.129, works the same way), not a new exception.
-  const vaultOpen = !!state.flags.cracked.l1_crack_gate;
+  // ALWAYS CUT NOW (levelkit dungeonMouth): rubble fills the gap until the
+  // crack breaks, then it puffs away and the door is live on the spot —
+  // "next visit" read to a child as "there is nothing behind this wall".
+  const vaultOpen = () => !!state.flags.cracked.l1_crack_gate;
   // THE FLOOR TELLS THE STORY FIRST. Scorch where each house burned, ash
   // drifted against the west wall, rubble under the fallen gate — and a worn
   // route from the Den door, past the gate, to the way onward. The path is the
   // honest replacement for the guide-orbs: a track people made with their feet.
-  const gaps = [gap('n'), gap('s'), gap('e')];
-  if (vaultOpen) gaps.push(gap('w', 1.8, -4));
+  const gaps = [gap('n'), gap('s'), gap('e'), gap('w', 1.8, -4)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [
       { x: -11, z: 7, r: 4.5, kind: 'scorch' },
@@ -641,8 +726,8 @@ export async function buildLa(scene) {
   // same ±8.5 correction buildLk1/buildLd already use for a pocket landing.
   // `centre: -4, half: 1.8` must match the gap pushed above or the visual
   // opening and the walkable door zone disagree (js/levelkit.js sideDoor).
-  if (vaultOpen) sideDoor(world, 'w', halfW, halfD, 'lv1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
-    { centre: -4, half: 1.8 });
+  dungeonMouth(world, 'w', halfW, halfD, 'lv1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    vaultOpen, D, { centre: -4, half: 1.8 });
 
   heroProp(world, 0, -6, 'gate', D.tint, D);               // ▲ THE FALLEN GATE
   world.markers.heroSpot = { x: 0, z: -6 };
@@ -719,18 +804,9 @@ export async function buildLa(scene) {
   // gone, 2026-08-30. The l1_ash_nook save flag stays honoured if already
   // collected — saves are additive-forever — the spawn is simply not built.)
 
-  // A DRAGON'S BONES (design/DRAGON-EGGS.md) — the FIRST of three, half-
-  // buried in the room's own ash patch (x 6 z 10, r 4.5), clear of the
-  // cartWreck/stump cluster around it. Wordless: a child who notices it has
-  // no way yet to know it marks the start of the path to a hidden Ember
-  // Dragon egg — the point is remembering it once the egg turns up later.
-  // Reserved before `scatter()` right below so its own seeded clutter can
-  // never land on top of it.
-  if (!GREY()) {
-    await preloadDragonSkeleton();
-    spawnDragonSkeletonHint(world, 9, 11, 0.4);
-  }
-  world.reserve(9, 11, 2.4, 'dragonSkeleton');
+  // (The dragon's bones lay here, v2.2 — moved 2026-09-26 to beside the egg
+  // dungeon's own door in `le`, where they point at something. See buildLe
+  // and design/DRAGON-EGGS.md v3.)
   scatter(world, halfW, halfD, D, 11, 7);   // the clusters do the filling now
   // FORESHADOWED GATE — Level 2's tool, seeded a whole level early.
   // The two wall runs are the point: without them the "gate" sat alone in the
@@ -870,8 +946,10 @@ export async function buildLg1(scene) {
   // chest lit up behind them. Visible from the moment you walk in, which is
   // the point — the child sees the prize first and works out the question
   // second (the Lolo contract, playbook §18.1).
-  wallRun(world, 3.2, 2.6, 3.2, 5, D);
-  wallRun(world, 5.8, 2.6, 5.8, 5, D);
+  // a CAGE, not a nook — bars down both sides as well as across the mouth
+  // (dad: "blocked in on all sides by gates"; see barWall in gates.js)
+  barWall(world, prepareModel, emberKit.bars, 3.2, 3.8, { span: 2.4, ry: Math.PI / 2 });
+  barWall(world, prepareModel, emberKit.bars, 5.8, 3.8, { span: 2.4, ry: Math.PI / 2 });
   visibleReward(world, 4.5, 4.0, 'l1_lg1_vault', { shards: 16, gear: 'shield_a' });
   const lg1VaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lg1_ki', 4.5, 2.6,
     { span: 2.6 });
@@ -932,8 +1010,9 @@ export async function buildLb(scene) {
   sideDoor(world, 'e', halfW, halfD, 'lb1', { x: -7, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'lb2', { x: 7, z: 0, angle: -Math.PI / 2 });
 
-  heroProp(world, 10, -9, 'cone', D.tint, D);              // ▲ THE KILN, seen from here on
-  world.markers.heroSpot = { x: 10, z: -9 };
+  // (the Kiln's rock cone at (10,-9) is gone — Dad, 2026-09-26: "get rid of
+  // this rock structure". It read as a random heap blocking the view, not as
+  // a landmark.)
   // shaped, not a box — an L of rock splits the island into two reads
   wallRun(world, -14, -2, -4, -2, D);
   wallRun(world, -4, -2, -4, 6, D);
@@ -957,10 +1036,14 @@ export async function buildLb(scene) {
     { x: -10.5, z: -6, kind: 'vase' }, { x: 6, z: 7, kind: 'box' },
   ];
   world.markers.mothSpots = [{ x: -8, z: 4 }];
-  world.markers.emberWaspSpots = [{ x: 4, z: 2 }];
+  // THE CINDER DRAKE — lb's mini-boss (dad: "Swap out the wasp for a flying
+  // dragon type creature. Make it a mini boss fight"). Same spot the wasp
+  // hovered at; js/enemies.js DrakeGuardian. It hovers round this home point
+  // and dives across the open floor between the two push lanes and the vault.
+  world.markers.drakeSpot = { x: 4, z: 2 };
   // NO SPITTER — a design call and a budget call that agree. The room gained
   // a two-block push puzzle, and a ranged harasser sniping a child mid-push
-  // is frustration, not challenge; three signatures (moth, wasp,
+  // is frustration, not challenge; three signatures (moth, drake,
   // marauder) match la's density. It was also ~6 draw calls in the room that
   // measures worst in the game (134 at peak against the 125 mobile ceiling).
   world.markers.moltenMarauderSpots = [{ x: 5, z: 3.6 }];
@@ -1003,8 +1086,8 @@ export async function buildLb(scene) {
     { solved: () => !!state.flags.plates.l1_lb_sho_p2, restAt: { x: 11, z: 0 } });
   // THE VAULT, cut into the east wall between the Kiln road and the pup
   // pocket: a heart piece behind bars, in plain sight from both plates.
-  wallRun(world, 13.7, -6, 16, -6, D);
-  wallRun(world, 13.7, -3.4, 16, -3.4, D);
+  barWall(world, prepareModel, emberKit.bars, 14.85, -6, { span: 2.4 });
+  barWall(world, prepareModel, emberKit.bars, 14.85, -3.4, { span: 2.4 });
   visibleReward(world, 14.9, -4.7, 'l1_lb_vault', { shards: 24, heartPiece: 1 }, 'silver');
   const lbVaultBars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb_sho', 13.2, -4.7,
     { span: 2.0, ry: Math.PI / 2, solved: lbSolved });
@@ -1116,7 +1199,7 @@ export async function buildLb2(scene) {
   // dead end that loops back to the Causeway), so this one gates treasure and
   // never the road: a child who cannot route the block loses a prize, not
   // their game.
-  wallRun(world, 7.0, 5.2, 7.0, 8, D);
+  barWall(world, prepareModel, emberKit.bars, 7.0, 6.4, { span: 2.4, ry: Math.PI / 2 });
   visibleReward(world, 8.7, 6.6, 'l1_lb2_vault', { shards: 20, gear: 'axe_ember' }, 'gold');
   const lb2Bars = plateBars(world, prepareModel, emberKit.bars, 'l1_lb2_ten', 8.7, 5.2,
     { span: 2.6 });
@@ -1216,8 +1299,10 @@ export async function buildLc(scene) {
   // z=-3 itself is lava, caught by an arrival-frame screenshot showing the
   // tree spot standing in the hazard), the two safe slabs, and every other
   // hand-placed marker in this room.
+  // (lc's tree node at (-9,-6) is gone — Dad, 2026-09-26: "get rid of this
+  // random tree in the lava fields". A green tree beside molten rock read as
+  // a mistake. Ember's wood comes from the Den's own tree; the rock stays.)
   world.markers.rockSpots = [{ x: 10, z: 7 }];
-  world.markers.treeSpots = [{ x: -9, z: -6 }];
   // WHERE THE JUMP IS TAUGHT. On the approach to the lava band (z -3..1),
   // south of it, where a child walking up from lg2 first sees molten rock and
   // stops. It moved here from lb's phantom geyser markers: a teach line has to
@@ -1413,6 +1498,84 @@ export async function buildLd(scene) {
   world.spawn = { x: 0, z: 9, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg3', { x: 0, z: -3.2, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 'lg4', { x: 0, z: 3.2, angle: Math.PI }, { centre: -6 });
+  // THE KILN GATE. Dad, 2026-09-26, standing in this doorway: "The doorway
+  // needs to be a closed stone gate that looks special. At the moment it's
+  // nothing." It was a gap between two pillars — the road to the boss, and it
+  // looked like every other door in the level. Now it is the same great
+  // double gate that guards Cinder's cage in lg4, SHUT, with a hot keystone
+  // glowing over it, and it swings open as Kael walks up — the mountain
+  // letting you in. Never a lock: the Fire Wolf is Cinder's gift, so nothing
+  // on the road TO Cinder may ask for fire. Once opened it stays open.
+  if (!GREY()) {
+    const kilnOpen = !!state.flags.kilnGateOpen;
+    const nBox = world.boxColliders.length;
+    const gate = bossGate(world, -6, -halfD, 0, emberKit.archDoorB, D.wallTint,
+      { open: kilnOpen, portal: 0xff8a3a, height: 3.4 });
+    // THE LEAVES HAVE TO READ AS A GATE. bossGate tints its leaves the room's
+    // wall colour, which in lg4 is fine (it stands open); shut, the same dark
+    // brown against a dark wall read as a dark doorway — "at the moment it's
+    // nothing" all over again. Warm dressed stone, two iron bands across each
+    // leaf, a hot seam where they meet and an ember seal over the join: a door
+    // somebody built to keep the mountain in.
+    const seals = [];
+    for (const hinge of gate.children.filter((c) => c.isGroup && Math.abs(Math.abs(c.position.x) - 1.3) < 0.01)) {
+      const side = Math.sign(hinge.position.x);            // -1 left, +1 right
+      hinge.traverse((m) => {
+        if (!m.isMesh || !m.material) return;
+        m.material = m.material.clone();
+        if (m.material.color) m.material.color.setHex(0xb0875a);
+      });
+      const iron = new THREE.MeshStandardMaterial({ color: 0x2b2522, roughness: 0.6, metalness: 0.5 });
+      for (const y of [0.9, 2.5]) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.16, 0.08), iron);
+        band.position.set(-side * 0.65, y, 0.2);
+        hinge.add(band);
+      }
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.1, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x2a0d05, emissive: 0xff7a22, emissiveIntensity: 1.8 }));
+      seam.position.set(-side * 1.26, 1.6, 0.2);
+      hinge.add(seam);
+      seals.push(seam);
+    }
+    const seal = new THREE.Mesh(new THREE.CircleGeometry(0.42, 20),
+      new THREE.MeshStandardMaterial({ color: 0x3a1206, emissive: 0xff8a2a, emissiveIntensity: 1.6,
+        transparent: true, opacity: kilnOpen ? 0 : 1 }));
+    seal.position.set(0, 1.9, 0.26);
+    gate.add(seal);
+    const key = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x2a0d05, emissive: 0xff7a22, emissiveIntensity: 1.6, roughness: 0.6 }));
+    key.position.set(0, 4.15, 0.6);
+    gate.add(key);
+    const glow = new THREE.PointLight(0xff8a3a, 3.5, 7, 1.8);
+    glow.position.set(-6, 3.2, -halfD + 1.4);
+    world.add(glow);
+    // NO BLOCKER. The leaves open 3.6u out, before a body can reach the wall
+    // line, so the shut gate's wall-collider only ever mattered to the static
+    // flood-fills (verify-reachable, the landings) that walk the spine — and
+    // to them a shut gate on the road to the boss reads as a sealed level.
+    world.boxColliders.splice(nBox);
+    const openDoor = world.openBossDoor;
+    world.openBossDoor = null;          // this gate is not the key-chest door
+    let shut = !kilnOpen;
+    world.onAnimate((t) => {
+      key.material.emissiveIntensity = 1.3 + 0.5 * Math.sin(t * 2.2);
+      for (const sm of seals) sm.material.emissiveIntensity = 1.4 + 0.6 * Math.sin(t * 2.2 + 1);
+      if (!shut && seal.material.opacity > 0) seal.material.opacity = Math.max(0, seal.material.opacity - 0.03);
+      else if (shut) seal.material.emissiveIntensity = 1.3 + 0.5 * Math.sin(t * 2.2);
+      glow.intensity = 3.0 + 0.8 * Math.sin(t * 2.2);
+      if (!shut) return;
+      const p = window.__game && window.__game.player;
+      if (!p) return;
+      const dx = p.root.position.x + 6, dz = p.root.position.z - (-halfD + 1);
+      if (dx * dx + dz * dz > 3.6 * 3.6) return;
+      shut = false;
+      state.flags.kilnGateOpen = true;
+      openDoor();
+      audio.play('stone-drag', { volume: 0.9, rate: 0.8 });
+      if (juice.effects) juice.effects.shake(0.35, 0.6);
+    });
+    world.markers.kilnGateSpot = { x: -6, z: -halfD + 1 };
+  }
   sideDoor(world, 'e', halfW, halfD, 'ld1', { x: -7, z: 0, angle: Math.PI / 2 });
   // DOWN INTO EMBER DEEP (design/LEVEL-DESIGN-BRANCHES.md). The Kiln is where
   // fire is taught, so the Kiln is where the branch that MASTERS it hangs off.
@@ -1439,9 +1602,35 @@ export async function buildLd(scene) {
   // TEACH 2 — DEVELOP: the Gutter Run. Three braziers in a channel, on a clock.
   wallRun(world, 6, 2, 6, 10, D);
   wallRun(world, 13, 2, 13, 10, D);
-  world.markers.gutterSpots = [{ x: 9.5, z: 8 }, { x: 9.5, z: 5 }, { x: 9.5, z: 2 }];
+  // THE GUTTER RUN PAYS NOW (Dad, 2026-09-26, photo of these three: "lighting
+  // these lanterns does nothing"). The channel's far end is a cage with a
+  // chest in it, lit and visible from the door you came in by; the three
+  // fires burn down after a while, and when all three are burning AT ONCE
+  // the front bars lift. Zig-zagged, 3.4u+ apart, so one slam (3.0u) cannot
+  // take all three — it is a run, not a stamp — but the burn time is long
+  // enough that a five-year-old walking, not dashing, makes it.
+  world.markers.gutterSpots = [{ x: 8.2, z: 8.4 }, { x: 10.8, z: 5.2 }, { x: 8.2, z: 2.0 }];
+  world.reserve(9.5, 11.3, 1.8, 'gutterCage');
+  world.reserve(9.5, 9.2, 1.0, 'gutterCageMouth');
+  const gutterCage = GREY() ? null : rewardCage(world, 9.5, 11.3, 'l1_ld_gutter', 'l1_ld_gutter_chest',
+    { shards: 20, potion: 1 }, 'silver', 'n');
+  const gutterDone = !!state.flags.plates.l1_ld_gutter;
   teachBraziers(world, [world.markers.teachBrazier], 'ld_teach');
-  teachBraziers(world, world.markers.gutterSpots, 'ld_gutter');
+  teachBraziers(world, world.markers.gutterSpots, 'ld_gutter', () => {
+    const run = (world.braziers || []).filter((b) => /^ld_gutter/.test(b.id));
+    if (!run.every((b) => b.lit) || !gutterCage || gutterCage.solved()) return;
+    for (const b of run) b.gutterAfter = 0;          // won: they burn for good
+    gutterCage.open();
+    bigToastSafe('All three burning — the bars lift!');
+    narrateSafe('gutter_done');
+  }, gutterDone);
+  if (!gutterDone) {
+    for (const b of (world.braziers || []).filter((q) => /^ld_gutter/.test(q.id))) {
+      b.gutterAfter = 12;
+      b.onGutter = () => { audio.play('puff', { volume: 0.5, rate: 0.8 }); };
+    }
+  }
+  world.markers.gutterSpot = { x: 9.5, z: 6 };
   // CINDER'S SHRINE — the place the whole region walks toward.
   //
   // Dad, on a screenshot of standing right at it: "remove the lantern in this
@@ -1505,7 +1694,50 @@ export async function buildLd1(scene) {
     { x: -5, z: -4 }, { x: 5, z: -4 }, { x: 5, z: 4 }, { x: -5, z: 4 },
   ];
   world.markers.orderSpot = { x: 0, z: 0 };
-  teachBraziers(world, world.markers.orderSpots, 'ld1_order');
+  // THE ORDER IS ON THE FLOOR NOW, and it pays. Dad, 2026-09-26: "Pip prompts
+  // to light the lanterns in order for something special. There is no
+  // indication what the correct order is." There was no order at all — four
+  // plain braziers, no check, no prize. Now: one to four glowing dots in front
+  // of each lamp, a wrong lamp snuffs every flame (never stuck — just start
+  // again), and four-in-order lifts the bars on a chest in the east wall.
+  const orderDone = !!state.flags.plates.l1_ld1_order;
+  world.reserve(8.3, 0, 1.8, 'orderCage');
+  world.reserve(6.4, 0, 1.0, 'orderCageMouth');
+  const orderCage = GREY() ? null : rewardCage(world, 8.3, 0, 'l1_ld1_order', 'l1_ld1_order_chest',
+    { shards: 30, potion: 1 }, 'silver', 'w');
+  const orderIds = world.markers.orderSpots.map((_, i) => `ld1_order${i + 1}`);
+  const dotsBy = {};
+  if (!GREY()) {
+    world.markers.orderSpots.forEach((sp, i) => {
+      dotsBy[orderIds[i]] = orderDots(world, sp.x, sp.z, i + 1, 0, 0);
+    });
+  }
+  const paint = (id, hex) => { for (const d of dotsBy[id] || []) d.material.color.setHex(hex); };
+  const done = [];
+  teachBraziers(world, world.markers.orderSpots, 'ld1_order', (br) => {
+    if (!orderCage || orderCage.solved()) return;
+    done.push(br.id);
+    if (br.id !== orderIds[done.length - 1]) {
+      // WRONG LAMP — everything goes out, the dots flash, try again.
+      done.length = 0;
+      for (const b of world.braziers.filter((q) => /^ld1_order/.test(q.id))) {
+        b.lit = false; b.flame.visible = false; b.light.intensity = 0;
+      }
+      for (const id of orderIds) paint(id, 0xff5a3a);
+      setTimeout(() => { for (const id of orderIds) paint(id, 0xffd76a); }, 700);
+      audio.play('puff', { volume: 0.8, rate: 0.7 });
+      narrateSafe('kiln_order_wrong');
+      return;
+    }
+    paint(br.id, 0xfff4d0);                        // this one is right
+    audio.play('pup-chime', { volume: 0.6, rate: 0.9 + done.length * 0.15 });
+    if (done.length === orderIds.length) {
+      orderCage.open();
+      bigToastSafe('One, two, three, four — the bars lift!');
+      narrateSafe('kiln_order_done');
+    }
+  }, orderDone);
+  if (orderDone) for (const id of orderIds) paint(id, 0xfff4d0);
   // perimeter only — see the note on the shell above
   world.markers.breakables = [{ x: -8.5, z: 2, kind: 'jar' }, { x: 8.5, z: -2, kind: 'vase' }];
   fallenColumn(world, -8.5, -6, 0.5, D, 2.6);
@@ -1549,6 +1781,15 @@ export async function buildLg4(scene) {
 }
 
 // --- ISLAND E — HEART OF THE HOLLOW (boss; TEACH 4 — conclude) ---------------
+// THE EMBER DRAGON'S DEN's door in le's east wall, and the bones beside it
+// (design/DRAGON-EGGS.md v3). Measured against le's own top-down collider
+// map: the door sits in the clear stretch between the NE column heap
+// (z <= -6.3) and the SE one (z >= 7.5); the bones lie NORTH of it, clear of
+// the door's own reserve and a whole arena-width from Tam's post at (6, 8)
+// — first placed south of the door, they read on screen as Tam's own prop.
+const EGG_DOOR_Z = 1.0, EGG_DOOR_HALF = 1.5;
+const EGG_BONES = { x: 10.3, z: -3.5, ry: 0.35, d: 3.6 };
+
 export async function buildLe(scene) {
   const { world, spec, D } = base(scene, 'le');
   const onward = !!state.flags.bossDefeated;
@@ -1556,7 +1797,9 @@ export async function buildLe(scene) {
   // plugged with cage rubble rather than never existing. See openTheWayOn()
   // in main.js: a door that only arrives on a rebuild leaves the child who
   // just WON standing in a room with no way out.
-  const gaps = [gap('s'), gap('w'), gap('n')];
+  // ...and a FOURTH, east: the door to the Ember Dragon's Den
+  // (design/DRAGON-EGGS.md v3), cut always and plugged the same way.
+  const gaps = [gap('s'), gap('w'), gap('n'), gap('e', EGG_DOOR_HALF, EGG_DOOR_Z)];
   // A BOSS ARENA IS DRESSED AT THE EDGES ONLY. The Shadowgrip's charge runs
   // about eight units and needs somewhere to run; anything a child can snag on
   // mid-arena turns a readable dodge into an unfair hit. So the floor carries
@@ -1568,6 +1811,16 @@ export async function buildLe(scene) {
   });
   world.spawn = { x: 0, z: 9.5, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'lg4', { x: 0, z: -3.2, angle: 0 });
+  // THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3). Registered FIRST of
+  // the three plugs so `world.onwardSpot` still ends on the road on (the
+  // smoke lands on the door that matters); the plug makes its own puff.
+  // The door is added when the plug goes (onwardPlug's own contract).
+  eggDoorPlug(world, { x: halfW - 0.7, z: EGG_DOOR_Z, w: 1.5, d: EGG_DOOR_HALF * 2 + 0.2,
+    piece: GREY() ? null : () => tinted(emberKit.rockLB, 'eggPlug', D.propTint), tint: D.propTint,
+    isOpen: () => onward, doorTo: 'ln1',
+    addTheDoor: () => sideDoor(world, 'e', halfW, halfD, 'ln1', { x: LN1_DOOR_X, z: 6, angle: Math.PI },
+      { centre: EGG_DOOR_Z, half: EGG_DOOR_HALF }) });
+  world.reserve(EGG_BONES.x, EGG_BONES.z, 2.3, 'dragonSkeleton');   // before scatter, below
   // THE LOOP-BACK: a one-way walked door home, opened by the boss (rule 4).
   const loopHome = () => sideDoor(world, 'w', halfW, halfD, 'la', { x: 0, z: 10, angle: Math.PI });
   if (onward) loopHome();
@@ -1614,24 +1867,27 @@ export async function buildLe(scene) {
     fallenColumn(world, cx, cz, cr, D, 3.0);
   }
   rubbleField(world, -11.5, 0, 2.6, D, 11);
-  rubbleField(world, 11.5, 0, 2.6, D, 11);
+  // (the east rubble field that lay here now lies under the dragon's bones,
+  // below — the east wall is the egg dungeon's door)
   rubbleField(world, 0, -11.5, 2.8, D, 12);
   aftermath(world, -9, -10, 2.0, D, 18);
   aftermath(world, 9, -10, 2.0, D, 19);
-  // THE GRAND EMBER SHRINE (design/DRAGON-EGGS.md) — placed once the
-  // Shadowgrip falls, the same "the story has reached far enough for this"
-  // gate js/level5.js buildScr / js/level6.js buildDdp already use for their
-  // own post-boss memorials, in the far NE corner of the arena's own
-  // perimeter (clear of the cage, its braziers, the reward chest and every
-  // fallenColumn/rubbleField/aftermath placed above — this exact spot was
-  // confirmed clear by a real arrival screenshot, not by reading coordinates
-  // alone, per CLAUDE.md's room-contents rule).
-  if (onward) {
-    world.reserve(6, 9, 3.4, 'dragonShrine');
-    world.markers.dragonShrineSpots = [{ x: 6, z: 9, element: 'fire' }];
-    world.markers.chestDefs = (world.markers.chestDefs || []).concat(
-      { id: 'le_dragon_egg', tier: 'gold', x: -6, z: 9, ry: -0.4, loot: { dragonEgg: 'fire' } });
-    world.reserve(-6, 9, 2.6, 'chest');
+  // THE DRAGON'S BONES, beside the Den's door (design/DRAGON-EGGS.md v3 —
+  // dad: "there is also meant to be a dragon skeleton outside that dungeon
+  // as a hint"). North of the door, well away from Tam's post (6, 8), on the
+  // arena's own east edge where nothing is fought over. There from the
+  // start — during the fight they are just old bones by a rock pile; after
+  // it, they lie beside the door that opened. No collider (a ruin a child
+  // walks over), reserved so nothing seeded lands on them.
+  //
+  // THE FIRE SHRINE AND THE EGG CHEST THAT STOOD HERE ARE GONE (v3). The
+  // shrine was at (6, 9) — one step from Tam's post at (6, 8), so Tam stood
+  // hidden inside the portal and walking up to the portal played his voice
+  // and opened his map. The shrine is in ln1 now and the egg on ln2's altar;
+  // `le_dragon_egg` stays in any save that opened it, never read again.
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, EGG_BONES.x, EGG_BONES.z, EGG_BONES.ry, EGG_BONES.d);
   }
   return finish(world, spec, D);
 }
@@ -1799,7 +2055,7 @@ export async function buildLk2(scene) {
     patches: [{ x: 0, z: 0, r: 5.0, kind: 'scorch' }, { x: -10, z: -5, r: 3.4, kind: 'rubble' },
               { x: 10, z: 5, r: 3.2, kind: 'ash' }],
     pathWidth: 2.6,
-    // the road bends NORTH around the span, because the span is the crossing
+    // the road bends NORTH around the charred choke in the middle of the room
     paths: [[[13, 0], [5, 5], [-5, 5], [-13, 0]]],
   });
   world.spawn = { x: 12.5, z: 0, angle: -Math.PI / 2 };
@@ -1808,10 +2064,14 @@ export async function buildLk2(scene) {
   sideDoor(world, 'e', halfW, halfD, 'lk1', { x: -8.5, z: 0, angle: Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'lk3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
 
-  // THE SPAN ITSELF — the floor is gone through the middle of the room, so the
-  // way on is the north path. The pit is the reason the route bends, not
-  // decoration: LEVEL-DESIGN-2's rule that a shape must be a REASON.
-  pit(world, -6, 6, -4.5, -1.0);
+  // NO HOLE IN THE FLOOR ANY MORE. The Span used to have a 12 x 3.5 pit
+  // through the south half of the room, with this column lying across it. Dad,
+  // on a screenshot of it: "Get rid of this pit." It asked nothing of a child —
+  // no pitReturn, no jump, the doors joined by open floor either side of it —
+  // so it was a black shape on the floor that only ever cost a walk back to the
+  // door. The room's reason to exist is the charred choke below, and it stands
+  // exactly where it did; the column that lay over the hole now lies on the
+  // floor it fell on (the SOUTH SIDE note at the bottom of this builder).
 
   // WHAT CLOSED THE ROAD. Three burnable chokes, and only the middle one is on
   // the route — the other two are alcoves with something in them, so burning is
@@ -1892,7 +2152,7 @@ export async function buildLk3(scene) {
   const ringLit = !!state.flags.lk3RingLit;
   const openVault = () => sideDoor(world, 'n', halfW, halfD, 'lk4', { x: 0, z: 7.5, angle: Math.PI });
   if (ringLit) openVault();
-  else onwardPlug(world, 0, -halfD + 0.3, 3.4, 0.5, 'rockLB', D.propTint, openVault);
+  else onwardPlug(world, 0, -halfD + 0.3, 3.4, 0.5, 'rockLB', D.propTint, openVault, 'lk4');
 
   // THE RING. Five lamps around the hearth, and the chamber only comes back
   // when every one of them is burning. No dark zone here, for the same reason
@@ -2050,6 +2310,10 @@ export async function buildLv1(scene) {
     world.add(ped); world.addCircle(6, 5.2, 0.85);
     const skull = tinted(emberKit.skull, 'lv1Skull', 0xcfc3ab);
     skull.position.set(6, 1.86, 5.2); skull.scale.setScalar(1.4); skull.rotation.y = 0.6;
+    // ON the pedestal (its top is 1.86), not hovering: named so
+    // verify-grounded, which measures from the floor, knows it is a relic on
+    // a plinth — the same claim-by-name the potion's cork makes.
+    skull.name = 'lv1-relic-skull';
     world.add(skull);
     for (const [cx, cz] of [[5.3, 4.6], [6.7, 4.7], [6.1, 6.0]]) {
       const coin = tinted(emberKit.coins, 'lv1Coins', 0xd8b84a);
@@ -2094,7 +2358,7 @@ export async function buildLv2(scene) {
   // standing in a room with no way out.
   const openLv3 = () => sideDoor(world, 'w', halfW, halfD, 'lv3', { x: 8.5, z: 0, angle: -Math.PI / 2 });
   if (WS.get('ember', 'dungeon')) openLv3();
-  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openLv3);
+  else onwardPlug(world, -halfW + 0.7, 0, 1.5, 3.4, 'rockLB', D.propTint, openLv3, 'lv3');
 
   world.markers.breakables = [
     { x: 9, z: 8, kind: 'box' }, { x: -8, z: -8, kind: 'vase' },
@@ -2165,6 +2429,126 @@ export async function buildLv3(scene) {
   return finish(world, spec, D);
 }
 
+// ---------------------------------------------------------------------------
+// THE EMBER DRAGON'S DEN (design/DRAGON-EGGS.md v3) — the fire egg's own
+// dungeon. Two rooms off le's east wall, opened by the Shadowgrip's fall.
+//
+// ln1 THE FIRE PORTAL: the shrine the egg is hatched in, and — past it — a
+// barred door with a cold lamp either side. The Fire Wolf's slam lights them
+// (the Kiln's own brazier language, the verb this whole region taught), and
+// when both burn the bars go up. Pip, at the portal, says all of that aloud.
+// ln2 THE NEST: the egg on its altar. Walk to it and it is yours; carry it
+// back through one door to the portal it has been waiting for.
+//
+// The portal lives HERE, a room away from Tam's post in le, so the two can
+// never again be mistaken for one another (dad: "the portal talks and acts
+// as if it's Tam").
+// ---------------------------------------------------------------------------
+// Both rooms are entered from the SOUTH on purpose, although le's door is in
+// its east wall: the camera always looks north, so a child walking in at the
+// south wall sees the whole room at once — the portal and the barred door in
+// ln1, the egg on its altar in ln2 — instead of half a screen of the void
+// past a west wall (the lv1 arrival frame's own trade-off).
+const LN_DOOR_HALF = 1.5;
+const LN1_DOOR_X = -3;                     // south door (from le) and north gate share a line
+const LN1_SHRINE = { x: 4.5, z: -0.5 };
+const LN1_LAMPS = [{ x: LN1_DOOR_X - 2.4, z: -5.8 }, { x: LN1_DOOR_X + 2.4, z: -5.8 }];
+const LN2_ALTAR = { x: 0, z: 0.2 };       // straight ahead of the door: the first thing a child sees
+
+export async function buildLn1(scene) {
+  const { world, spec, D } = base(scene, 'ln1');
+  const gateOpen = () => !!WS.get('ember', 'egg_gate');
+  const { halfW, halfD } = shell(world, spec,
+    [gap('s', LN_DOOR_HALF, LN1_DOOR_X), gap('n', LN_DOOR_HALF, LN1_DOOR_X)], D, {
+      patches: [{ x: LN1_SHRINE.x, z: LN1_SHRINE.z, r: 3.6, kind: 'scorch' },
+                { x: -7, z: 3, r: 2.6, kind: 'ash' }, { x: 7, z: -5.5, r: 2.2, kind: 'rubble' }],
+      pathWidth: 2.4,
+      paths: [[[LN1_DOOR_X, 8], [LN1_DOOR_X, -8]], [[LN1_DOOR_X, 2], [LN1_SHRINE.x - 2.8, LN1_SHRINE.z]]],
+    });
+  world.spawn = { x: LN1_DOOR_X, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'le', { x: 10.3, z: EGG_DOOR_Z, angle: -Math.PI / 2 },
+    { centre: LN1_DOOR_X, half: LN_DOOR_HALF });
+  // The way on is only a door once the bars are up (onwardPlug's contract:
+  // never a door with something standing in it); `pluggedTo` names it.
+  const openNest = () => sideDoor(world, 'n', halfW, halfD, 'ln2', { x: 0, z: 6, angle: Math.PI },
+    { centre: LN1_DOOR_X, half: LN_DOOR_HALF });
+  if (gateOpen()) openNest();
+  else (world.pluggedTo || (world.pluggedTo = [])).push('ln2');
+
+  // THE FIRE PORTAL — js/dragonEggs.js's DragonShrine, built by main.js off
+  // this marker. Reserved generously so nothing seeded lands in its moat.
+  world.reserve(LN1_SHRINE.x, LN1_SHRINE.z, 3.4, 'dragonShrine');
+  world.markers.dragonShrineSpots = [{ ...LN1_SHRINE, element: 'fire' }];
+
+  // THE GATE: bars across the north door, a cold lamp either side of it.
+  // Solved state is the room's own WS flag, so a child who lit them on an
+  // earlier visit comes back to open bars and two burning lamps.
+  // IN THE DOORWAY, not in front of it: at 0.9 in, the bars' 0.45-thick collider
+  // stopped short of the wall plane and left a 2.4u pocket that neither blocked
+  // nor fired (verify-openholes, 2026-09-27). At 0.5 it meets the wall.
+  const bars = GREY() ? { open() {} } : plateBars(world, prepareModel, emberKit.bars, 'ln1_gate',
+    LN1_DOOR_X, -halfD + 0.5, { span: LN_DOOR_HALF * 2 + 0.4, tint: D.wallTint, solved: gateOpen });
+  let lit = 0;
+  teachBraziers(world, LN1_LAMPS, 'ln1_lamp', () => {
+    lit++;
+    if (lit < LN1_LAMPS.length || gateOpen()) return;
+    WS.set('ember', 'egg_gate');
+    bars.open();
+    openNest();
+  }, gateOpen());
+  world.markers.eggGateLamps = LN1_LAMPS.map((p) => ({ ...p }));
+
+  rubbleField(world, -7.2, -5.4, 2.0, D, 10);
+  fallenColumn(world, 8.2, 5.4, -0.5, D, 2.6);
+  rubbleField(world, 7.2, -5.6, 1.8, D, 9);
+  aftermath(world, -7.4, 3.4, 1.8, D, 31);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 81, 4);
+  return finish(world, spec, D);
+}
+
+export async function buildLn2(scene) {
+  const { world, spec, D } = base(scene, 'ln2');
+  const { halfW, halfD } = shell(world, spec, [gap('s', LN_DOOR_HALF)], D, {
+    patches: [{ x: LN2_ALTAR.x, z: LN2_ALTAR.z, r: 3.4, kind: 'scorch' },
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'ash' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'gravel' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0, LN2_ALTAR.z + 1.6]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'ln1', { x: LN1_DOOR_X, z: -5.4, angle: 0 },
+    { half: LN_DOOR_HALF });
+
+  // THE ALTAR. The kit's own pedestal (the one lv1's cellar already uses),
+  // cut down to a child's reach; the egg itself is js/dragonEggs.js's
+  // EggNest, which rests it on the pedestal's measured top.
+  world.reserve(LN2_ALTAR.x, LN2_ALTAR.z, 2.4, 'eggNest');
+  let top = 1.2;
+  if (!GREY()) {
+    const ped = tinted(emberKit.pedestal, 'lnPedestal', D.propTint);
+    ped.position.set(LN2_ALTAR.x, 0, LN2_ALTAR.z); ped.scale.setScalar(0.55);
+    world.add(ped);
+    ped.updateMatrixWorld(true);
+    top = new THREE.Box3().setFromObject(ped).max.y;
+    // the hoard a dragon sleeps on
+    for (const [dx, dz, s] of [[-1.2, -1.1, 3.4], [1.3, -0.9, 3.0], [0.4, -1.5, 2.6], [-1.0, 0.9, 2.8]]) {
+      const coin = tinted(emberKit.coins, 'lnCoins', 0xd8b84a);
+      coin.position.set(LN2_ALTAR.x + dx, 0, LN2_ALTAR.z + dz);
+      coin.scale.setScalar(s); coin.rotation.y = dx * 2.1;
+      world.add(coin);
+    }
+  }
+  world.addCircle(LN2_ALTAR.x, LN2_ALTAR.z, 0.7, 'altar');
+  world.markers.eggNestSpots = [{ ...LN2_ALTAR, y: top, element: 'fire' }];
+  fallenColumn(world, -7.4, -4.6, 0.5, D, 2.6);
+  fallenColumn(world, 7.4, -4.6, -0.5, D, 2.6);
+  rubbleField(world, -6.8, 3.4, 1.8, D, 8);
+  rubbleField(world, 6.8, 3.4, 1.8, D, 8);
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 82, 4);
+  return finish(world, spec, D);
+}
+
 export const LEVEL1_ROOMS = {
   la: buildLa, la1: buildLa1, lg1: buildLg1,
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
@@ -2172,6 +2556,7 @@ export const LEVEL1_ROOMS = {
   ld: buildLd, ld1: buildLd1, lg4: buildLg4,
   lk1: buildLk1, lk2: buildLk2, lk3: buildLk3, lk4: buildLk4,   // EMBER DEEP
   lv1: buildLv1, lv2: buildLv2, lv3: buildLv3,   // THE ASH VAULT
+  ln1: buildLn1, ln2: buildLn2,                  // THE EMBER DRAGON'S DEN
   le: buildLe,
   zoo: buildZoo,
 };

@@ -87,6 +87,10 @@ report_verdict() {
     printf 'PASS  %ss\n' "$s"; PASS=$((PASS+1)); record "$t" PASS "$s" final
   else
     printf 'FAIL  (/tmp/vall-%s.log)\n' "$t"; FAIL=$((FAIL+1)); FAILED="$FAILED $t"; record "$t" FAIL "$s" final
+    # THE WHY, IN THE JOB LOG. The full log is only in the uploaded evidence
+    # zip, which not every reader can fetch; the failing check lines are what
+    # a diagnosis needs first, so they print right under the verdict.
+    grep -E '✗|wedge|Error|PAGEERROR' "/tmp/vall-$t.log" 2>/dev/null | head -8 | sed 's/^/      | /'
   fi
 }
 
@@ -130,7 +134,18 @@ sorted_suite_files() {
 # The suites measured to take the longest. Named once, used twice: --par starts
 # them first so a seventeen-minute giant never begins last, and --shard deals
 # them out first so they land on DIFFERENT machines.
-HEAVY="verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-density.mjs verify-level2-hub.mjs verify-level2.mjs verify-level3.mjs verify-l1-doors.mjs verify-sequence.mjs verify-loops.mjs"
+# ORDER IS PLACEMENT. Ten heavies over eight shards means the 9th and 10th
+# share shards 1 and 2 with whatever is dealt 1st and 2nd — and that was
+# gauntlet (2,496s on CI, 2026-09-27) sharing shard 2 with loops, which with
+# two serial retries ran the shard into its 90-minute cancel. The two LIGHTEST
+# heavies go first now, so the doubled-up shards are the cheap ones and the
+# gauntlet has a shard of its own.
+# 2026-09-27, later: verify-landings (2,186s measured, a whole-game walk like
+# reachable) was never on this list, and dealt as "light" it stacked onto
+# shard 2 behind level2-hub, bounds and dragondens and ran the shard out. Now
+# eleven heavies: the three that double up (positions 1-3 meet 9-11) are the
+# lightest measured (l1-doors, level2-hub 1,180s, loops 369s).
+HEAVY="verify-l1-doors.mjs verify-level2-hub.mjs verify-loops.mjs verify-playthrough.mjs verify-gauntlet.mjs verify-reachable.mjs verify-landings.mjs verify-density.mjs verify-level2.mjs verify-level3.mjs verify-sequence.mjs"
 # Frame-timing measurements flake under CPU contention — --par runs these
 # serial, last. (--shard is already one suite at a time on its own machine.)
 TAIL="verify-timing.mjs verify-telegraphs.mjs verify-touch.mjs"

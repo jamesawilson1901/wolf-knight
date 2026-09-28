@@ -2,7 +2,7 @@
 // button with cooldown ring, active-form badge. Big targets, icon-first —
 // built for small thumbs.
 
-import { state, formsAvailable } from './state.js';
+import { state, formsAvailable, packForms } from './state.js';
 import { PORTRAITS } from './titlescene.js';
 
 export const FORM_META = {
@@ -59,16 +59,10 @@ export class UI {
     this.specialRing = document.getElementById('special-ring');
     this.specialIcon = document.getElementById('special-icon');
     this.badge = document.getElementById('form-badge');
-    // The MOON GAUGE: a crescent that fills toward the Blood Moon Surge.
-    // Display-only. It's only ever revealed while state.form === 'dark_wolf'
-    // (see refreshBadge below), and #special-btn's onSpecial already fires
-    // the surge in that form (trySpecial has no dark_wolf branch, so it
-    // falls through to triggerSurge()). A second live pointerdown handler
-    // here used to fire the exact same surge from the exact same tap
-    // target's neighbor, i.e. a second button players didn't need.
-    this.moonGauge = document.getElementById('moon-gauge');
-    this.moonRing = document.getElementById('moon-ring');
-    this.moonIcon = document.getElementById('moon-icon');
+    // No separate moon gauge any more: for the Dark Wolf, #special-btn's own
+    // ring shows the Blood Moon charge (update() below), and the same tap
+    // every other wolf uses fires it (trySpecial has no dark_wolf branch, so
+    // onSpecial falls through to triggerSurge()).
 
     this.specialBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -95,14 +89,18 @@ export class UI {
     const cx = Math.max(PICK_RADIUS + 50, Math.min(window.innerWidth - PICK_RADIUS - 50, x));
     const cy = Math.max(PICK_RADIUS + 50, Math.min(window.innerHeight - PICK_RADIUS - 30, y));
 
-    FORM_ORDER.forEach((id, i) => {
+    // THE RING SHOWS THE PACK, not all ten forms (v3.195): the Knight, the
+    // Dark Wolf and the three wolves brought along — never more than five.
+    const ring = FORM_ORDER.filter((id) => packForms().includes(id)
+      || (state.formLock && id === state.formLock));
+    ring.forEach((id, i) => {
       const meta = FORM_META[id];
       // A Trial lock greys out every form but the one you spent at this arch,
       // so the ring SHOWS the constraint rather than silently refusing taps.
       const locked = !formsAvailable().includes(id);
       // five forms fan a little tighter so the ring stays on-screen
-      const spread = FORM_ORDER.length >= 6 ? 0.62 : FORM_ORDER.length >= 5 ? 0.74 : 0.92;
-      const angle = -Math.PI / 2 + (i - (FORM_ORDER.length - 1) / 2) * spread;
+      const spread = ring.length >= 6 ? 0.62 : ring.length >= 5 ? 0.74 : 0.92;
+      const angle = -Math.PI / 2 + (i - (ring.length - 1) / 2) * spread;
       const ox = cx + Math.cos(angle) * PICK_RADIUS;
       const oy = cy + Math.sin(angle) * PICK_RADIUS;
       const el = document.createElement('div');
@@ -171,12 +169,11 @@ export class UI {
     this.badge.classList.remove('switched');
     void this.badge.offsetWidth;
     this.badge.classList.add('switched');
-    // Cooldown specials: knight (whirlwind), fire (slam), earth (stomp).
-    // The Dark Wolf's Blood Moon is the EARNED gauge — its button dims.
+    // Every form's special is on this one button, the Dark Wolf's Blood Moon
+    // included — its charge rides the ring instead of a cooldown (update()).
     // The button NEVER moves or vanishes — stable layout for small thumbs.
-    const hasSpecial = state.form !== 'dark_wolf'; // every form but the moon-powered wolf
     this.specialBtn.style.display = 'flex';
-    this.specialBtn.classList.toggle('disabled', !hasSpecial);
+    this.specialBtn.classList.remove('disabled');
     // THE SPECIAL BUTTON SAYS "POWER", AND ITS COLOUR SAYS WHICH.
     //
     // This used to swap between nine element emoji — a flame, a leaf, a
@@ -195,25 +192,25 @@ export class UI {
       this.specialIcon.style.backgroundColor = '#f0e8ff';
       this.specialBtn.style.borderColor = sm.color;
     }
-    // The moon gauge is the DARK WOLF's power — no other form shows the
-    // button (v3.18 playtest law; the gauge still fills quietly underneath)
-    this.moonGauge.classList.toggle('wolf', state.form === 'dark_wolf');
   }
 
   update(player) {
-    // moon gauge: crescent fill; FULL pulses and waits for the tap; while
-    // surging it becomes the drain timer (red)
-    const g = Math.max(0, Math.min(1, state.moonGauge || 0));
-    const gdeg = Math.round(g * 360);
+    // THE DARK WOLF'S RING IS THE MOON. It fills lavender as the gauge
+    // charges, goes gold and pulses when FULL (tap now), and drains red while
+    // the surge runs — the same ring every other form uses for its cooldown.
+    const moon = state.form === 'dark_wolf';
     const surging = player.surging || player.ceremonyActive;
-    // charging = moon-lavender · FULL = gold act-here · surging = red power
-    const fillCol = surging ? 'rgba(255,60,60,.85)' : g >= 1 ? 'rgba(255,215,106,.9)' : 'rgba(180,150,255,.85)';
-    this.moonRing.style.background =
-      `conic-gradient(${fillCol} 0deg ${gdeg}deg, rgba(20,14,28,.8) ${gdeg}deg 360deg)`;
-    const full = g >= 1 && !surging;
-    this.moonGauge.classList.toggle('full', full);
-    this.moonGauge.classList.toggle('surging', surging);
-    this.moonIcon.textContent = surging ? '🔴' : full ? '🌕' : '🌙';
+    this.specialBtn.classList.toggle('moon-full', moon && !surging && (state.moonGauge || 0) >= 1);
+    this.specialBtn.classList.toggle('surging', moon && surging);
+    if (moon) {
+      const g = Math.max(0, Math.min(1, state.moonGauge || 0));
+      const gdeg = Math.round(g * 360);
+      const fillCol = surging ? 'rgba(255,60,60,.85)' : g >= 1 ? 'rgba(255,215,106,.9)' : 'rgba(180,150,255,.85)';
+      this.specialRing.style.background =
+        `conic-gradient(${fillCol} 0deg ${gdeg}deg, rgba(20,14,28,.85) ${gdeg}deg 360deg)`;
+      this.specialBtn.classList.toggle('ready', g >= 1 && !surging);
+      return;
+    }
 
     if (this.specialBtn.classList.contains('disabled')) return;
     const frac = Math.max(0, player.specialCooldown) / player.specialMax;

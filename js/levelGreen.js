@@ -197,40 +197,11 @@ function crackedPile(world, id, x, z, big = false) {
   return g;
 }
 
-// THE VINE. Stoneroot's restoration grew "a living vine through the NE wall"
-// of the crypt; this is the rest of it, running the length of the road — a
-// green line on brown stone a child follows without being told. Geometry,
-// not a kit prop: a chain of leaning stones with a green glint on each, so it
-// reads in greybox and dressed alike and never asks the kit for a vine model
-// it does not have.
-function vine(world, points) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x3f7a2e, roughness: 0.85 });
-  const glow = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x8fdc6a, emissiveIntensity: 1.3, roughness: 1 });
-  for (let i = 0; i < points.length - 1; i++) {
-    const [x0, z0] = points[i], [x1, z1] = points[i + 1];
-    const len = Math.hypot(x1 - x0, z1 - z0);
-    const n = Math.max(1, Math.round(len / 1.1));
-    for (let k = 0; k < n; k++) {
-      const t = (k + 0.5) / n;
-      const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
-      const seg = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.9, 3, 6), mat);
-      seg.position.set(x, 0.12, z);
-      seg.rotation.z = Math.PI / 2;
-      seg.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
-      g.add(seg);
-      if (k % 2 === 0) {
-        const leaf = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), glow);
-        leaf.position.set(x, 0.3, z);
-        g.add(leaf);
-      }
-    }
-  }
-  // NOT kept loose: the vine is forty small meshes and static, and left out of
-  // the batch it cost g1 its whole draw budget (132 calls against 125). It
-  // merges into two batches by material, and the leaves' glow is a constant.
-  world.add(g);
-}
+// THE VINE IS GONE (2026-09-27). A chain of capsules with glowing diamonds
+// ran the length of g1 as a line to follow; Dad: "get rid of any vine that
+// looks like this in the game." It was drawn in code, not a kit prop, and read
+// as a pipe on the floor rather than as anything growing. The road's own
+// path strip already leads north.
 
 // --- G1 — THE ROOTWAY --------------------------------------------------------
 export async function buildG1(scene) {
@@ -290,9 +261,6 @@ export async function buildG1(scene) {
   wallRun(world, 14.6, -7.0, 16, -7.0, D);
   crackedPile(world, 'g1_east', 13.4, -7.0);
   visibleReward(world, 13.5, -10.0, 'g1_keepsake', { shards: 30, treasure: 'rootstone' }, 'gold');
-
-  // THE VINE runs the road, and past the rockfall it is the only green thing
-  vine(world, [[1.4, 13], [1.6, 5], [1.5, -2.5], [1.6, -6], [1.2, -13]]);
 
   world.markers.slimeSpots = [{ x: -5, z: 5 }, { x: 4, z: 1 }];
   world.markers.batSpots = [{ x: -8, z: -9 }, { x: 7, z: -8 }];

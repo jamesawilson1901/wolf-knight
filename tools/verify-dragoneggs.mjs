@@ -1,4 +1,4 @@
-// DRAGON EGGS & GRAND ELEMENTAL SHRINES (design/DRAGON-EGGS.md) — a hidden
+// DRAGON EGGS & GRAND ELEMENTAL SHRINES (design/DRAGON-EGGS.md, v3 layout) — a hidden
 // pickup finds its way into state.inventory.dragonEggs, a shrine gives only
 // the generic Pip hint while the wrong egg (or no egg) is held, arms a
 // visual confirm button (never auto-throwing) once the MATCHING egg is
@@ -53,24 +53,26 @@ const wk = await launch({ timescale: 1 });
 await wk.newGame('DRAGONPROBE');
 await wk.page.evaluate(() => { window.__game.player.iframes = 999999; });
 
-// Reach the fire shrine (js/level1.js buildLe, "Heart of the Hollow") —
-// gated on the region's own boss flag, the same "the story earned it" law
-// js/level5.js buildScr / js/level6.js buildDdp already use for their own
-// post-boss memorials, so it is set directly here rather than fought for.
+// Reach the fire shrine. v3 (2026-09-26): it lives in `ln1`, the first room
+// of the Ember Dragon's Den off le's east wall — NOT in `le` any more, where
+// it stood one step from Tam's post and Tam's voice and travel map answered
+// for it (dad: "the portal talks and acts as if it's Tam"). The den only
+// opens once the Shadowgrip falls, so that flag is set directly here.
 await wk.page.evaluate(() => { window.__game.state.flags.bossDefeated = true; });
-await wk.page.evaluate(() => window.__wkJump('le', ['knight']));
-await wk.page.waitForFunction(() => window.__wk.room === 'le' && window.__wk.hearts > 1
+await wk.page.evaluate(() => window.__wkJump('ln1', ['knight']));
+await wk.page.waitForFunction(() => window.__wk.room === 'ln1' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
-// `le`'s own fast-travel spot sits close enough to the shrine's own (6,9)
-// that teleporting the player there for these checks also satisfies the
-// travel spot's own proximity trigger (js/main.js), which pops the map
-// menu open (menuPaused=true) and freezes the very per-frame code — real
-// input never causes this collision (walking in normally never lands
-// exactly on both at once), but a test that teleports straight to (6,9)
-// does. The exact same hazard `tools/shot-dragoneggs.mjs`'s own screenshot
-// pass already found and stripped for this identical reason.
-await wk.page.evaluate(() => { delete window.__game.world.markers.travelSpot; delete window.__game.world.markers.shopSpot; });
-// `le`'s own room-arrival narration is already "speaking" the instant it
+// THE PORTAL IS NOT TAM. The shrine's room carries no wayfarer and no travel
+// spot at all — this used to be stripped by hand here because in `le` the
+// two sat on top of each other; now it is asserted instead.
+const noTam = await wk.page.evaluate(() => {
+  const m = window.__game.world.markers;
+  return { wayfarerSpot: m.wayfarerSpot || null, travelSpot: m.travelSpot || null,
+    wayfarer: !!window.__game.world.wayfarer };
+});
+check("the fire shrine's room has no Tam, no wayfarer spot and no travel spot",
+  !noTam.wayfarerSpot && !noTam.travelSpot && !noTam.wayfarer, noTam);
+// The room's own arrival narration is already "speaking" the instant it
 // loads, and headless Chromium has no real TTS to ever finish a line on its
 // own — it would sit narration.blocking=true forever otherwise, freezing
 // the very world.updateDragonShrines()/#btn-dragon.revealed/
@@ -92,7 +94,7 @@ const seeded = await wk.page.evaluate(() => {
   return { count: (w.dragonShrines || []).length,
     elements: (w.dragonShrines || []).map((s) => s.element) };
 });
-check('le seeds exactly one fire dragon shrine', seeded.count === 1 && seeded.elements[0] === 'fire', seeded);
+check('ln1 seeds exactly one fire dragon shrine', seeded.count === 1 && seeded.elements[0] === 'fire', seeded);
 
 // 1b. THE SHRINE VISUAL (v2 revision) — a real portal model, not the old
 // light-only spiritShrine(), with its own disk material recoloured to the
@@ -255,12 +257,27 @@ await wk.page.waitForTimeout(4000); // EMERGE_DELAY_MS (2200) + EMERGE_RISE_TIME
 // deterministically rather than depending on whether this run's confirm
 // line happened to be short enough to have already finished on its own.
 await waitQuiet();
+// ...and then let the real per-frame loop actually TICK at least once with
+// narration quiet: `.big-cover` is only ever re-applied by that loop, and
+// draining the queue in the same breath as reading the class can leave zero
+// frames between the two (seen once in `ln1`, whose portal hint queues one
+// more line than `le`'s arrival did). Polled, never a bare fixed sleep.
+for (let i = 0; i < 20; i++) {
+  const covered = await wk.page.evaluate(() => document.getElementById('caption').classList.contains('big-cover'));
+  if (!covered) break;
+  await waitQuiet(400);
+  await wk.page.waitForTimeout(75);
+}
 const emerged = await wk.page.evaluate(() => {
   const g = window.__game;
   const s = g.world.dragonShrines[0];
   return {
     visible: g.dragon ? g.dragon.root.visible : false,
-    x: g.dragon ? g.dragon.x : null, z: g.dragon ? g.dragon.z : null,
+    // where it CAME OUT (emergeAt records it): its live x/z may already have
+    // taken a step toward Kael by the time a loaded machine reads it (seen
+    // 2026-09-27: 2.1u along, visible, cover cleared — correct behaviour)
+    x: g.dragon && g.dragon.emergedFrom ? g.dragon.emergedFrom.x : null,
+    z: g.dragon && g.dragon.emergedFrom ? g.dragon.emergedFrom.z : null,
     shrineX: s.x, shrineZ: s.z,
     bigCover: document.getElementById('caption').classList.contains('big-cover'),
   };
@@ -375,6 +392,106 @@ check('a forced-into-range enemy takes real damage from the dragon\'s bite (Enem
   companion.foeDamaged, companion);
 check('once its target is gone, the dragon resumes following and closes distance again',
   companion.distAfterReturn < companion.distDuringChase, companion);
+
+// 8b. THE v3 LAYOUT (design/DRAGON-EGGS.md v3, 2026-09-26) — dad: "The
+// portal talks and acts as if it's Tam. Make it Tam. The portal is meant to
+// be for the dragon eggs. Also dragon eggs are meant to be found in special
+// dungeons, not in chests. There is also meant to be a dragon skeleton
+// outside that dungeon as a hint."
+async function visit(room, flags = {}) {
+  await wk.page.evaluate((f) => { Object.assign(window.__game.state.flags, f); }, flags);
+  await wk.page.evaluate((r) => window.__wkJump(r), room);
+  await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
+    && !window.__wk.gates.transitioning, room, { timeout: 60000 });
+  await waitQuiet();
+  return wk.page.evaluate(() => {
+    const w = window.__game.world, m = w.markers;
+    return {
+      shrines: (m.dragonShrineSpots || []).map((s) => s.element),
+      eggChests: (m.chestDefs || []).filter((c) => c.loot && c.loot.dragonEgg).map((c) => c.id),
+      nests: (m.eggNestSpots || []).map((s) => s.element),
+      nestHasEgg: (w.eggNests || []).map((n) => !!n.egg),
+      wayfarer: m.wayfarerSpot || null, travel: m.travelSpot || null, bones: m.dragonBones || null,
+      doors: w.doors.map((d) => ({ to: d.to, open: !d.when || !!d.when() })),
+      plugged: [...(w.pluggedTo || [])],
+    };
+  });
+}
+const DENS = [
+  { arena: 'le', flag: 'bossDefeated', hall: 'ln1', nest: 'ln2', el: 'fire' },
+  { arena: 'scr', flag: 'ariaDefeated', hall: 'sn1', nest: 'sn2', el: 'storm' },
+  { arena: 'ddp', flag: 'meriDefeated', hall: 'dn1', nest: 'dn2', el: 'tide' },
+];
+// a clean slate for the finding half: nothing found, nothing hatched
+await wk.page.evaluate(() => {
+  const inv = window.__game.state.inventory;
+  inv.dragonEggs = {}; inv.dragonsHatched = {}; inv.dragonEquipped = null;
+});
+for (const d of DENS) {
+  const before = await visit(d.arena, { [d.flag]: false });
+  const denDoorBefore = before.doors.find((x) => x.to === d.hall);
+  check(`${d.arena} before its guardian falls: the way to ${d.hall} is a rock plug, no door yet`,
+    !denDoorBefore && before.plugged.includes(d.hall), { doors: before.doors, plugged: before.plugged });
+  const a = await visit(d.arena, { [d.flag]: true });
+  check(`${d.arena} carries NO dragon shrine and NO egg chest any more`,
+    a.shrines.length === 0 && a.eggChests.length === 0, a);
+  check(`${d.arena}: Tam stands here (wayfarer + travel spot) — Tam is Tam`, !!a.wayfarer && !!a.travel, a);
+  const denDoor = a.doors.find((x) => x.to === d.hall);
+  check(`${d.arena} opens a door to the egg dungeon ${d.hall} once its guardian falls`,
+    !!denDoor && denDoor.open, a.doors);
+  check(`${d.arena}: the dragon's bones lie by that door, well away from Tam`,
+    !!a.bones && !!a.wayfarer && Math.hypot(a.bones.x - a.wayfarer.x, a.bones.z - a.wayfarer.z) > 8,
+    { bones: a.bones, tam: a.wayfarer });
+  const h = await visit(d.hall);
+  check(`${d.hall} holds exactly one ${d.el} shrine and no Tam, no travel spot`,
+    h.shrines.length === 1 && h.shrines[0] === d.el && !h.wayfarer && !h.travel, h);
+  const nestDoor = h.doors.find((x) => x.to === d.nest);
+  check(`${d.hall}: the way on to ${d.nest} is barred (no door) until its puzzle is solved`,
+    !nestDoor && h.plugged.includes(d.nest), { doors: h.doors, plugged: h.plugged });
+  const n = await visit(d.nest);
+  check(`${d.nest} holds the ${d.el} egg on its altar (not in a chest)`,
+    n.nests.length === 1 && n.nests[0] === d.el && n.nestHasEgg[0] === true && n.eggChests.length === 0, n);
+  // walking onto the altar picks the egg up — ticked directly, the same
+  // idiom as the shrine checks above (tools/verify-dragondens.mjs walks it
+  // with real keys)
+  const picked = await wk.page.evaluate(async () => {
+    const eggs = await import('/js/dragonEggs.js');
+    const g = window.__game, w = g.world, nest = w.eggNests[0];
+    g.player.root.position.x = nest.x + 5; g.player.root.position.z = nest.z;
+    w.updateEggNests(0.016, 0, g.player);
+    const farEvent = w.eggNestEvent;
+    g.player.root.position.x = nest.x; g.player.root.position.z = nest.z + 1.2;
+    w.updateEggNests(0.016, 0.1, g.player);
+    const event = w.eggNestEvent;
+    for (let i = 0; i < 40; i++) w.updateEggNests(0.05, 0.2 + i * 0.05, g.player);
+    return { farEvent, event, held: eggs.hasEgg(nest.element), eggGone: !nest.egg };
+  });
+  check(`${d.nest}: standing away does nothing; stepping up to the altar picks the egg up`,
+    !picked.farEvent && !!picked.event && picked.event.type === 'found' && picked.held && picked.eggGone, picked);
+  const again = await visit(d.nest);
+  check(`${d.nest} rebuilt after the egg is taken: an EMPTY altar, never a second egg`,
+    again.nests.length === 1 && again.nestHasEgg[0] === false, again);
+}
+// ADDITIVE-FOREVER: a save that found the fire egg in the OLD le chest (and
+// never hatched it) still has a shrine to take it to, and ln2 builds empty.
+await wk.page.evaluate(() => {
+  const inv = window.__game.state.inventory;
+  inv.dragonEggs = { fire: true }; inv.dragonsHatched = {}; inv.dragonEquipped = null;
+});
+const oldSaveNest = await visit('ln2');
+check('an old save that took the fire egg from the retired le chest sees an empty ln2 altar',
+  oldSaveNest.nestHasEgg[0] === false, oldSaveNest);
+const oldSaveHall = await visit('ln1');
+const oldSaveArmed = await wk.page.evaluate(() => {
+  const g = window.__game, w = g.world, s = w.dragonShrines[0];
+  g.player.root.position.x = s.x + 20; w.updateDragonShrines(0.016, 0, g.player);
+  g.player.root.position.x = s.x; g.player.root.position.z = s.z + 2.0;
+  w.updateDragonShrines(0.016, 0, g.player);
+  return { event: w.dragonShrineEvent, armed: w.dragonPromptElement };
+});
+check('...and the ln1 portal arms for that old egg (confirm, not hint)',
+  oldSaveHall.shrines[0] === 'fire' && oldSaveArmed.armed === 'fire' && !!oldSaveArmed.event
+    && oldSaveArmed.event.type === 'confirm', oldSaveArmed);
 
 // 9. SAVE/LOAD — a real persist -> loadSave -> applySave round trip carries
 // found eggs, hatched dragons and the equipped choice through, the same

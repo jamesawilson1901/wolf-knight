@@ -226,7 +226,17 @@ if (await go('la')) {
     const spot = g.world.markers.crackPromise;
     g.player.root.position.set(spot.x, g.player.root.position.y, spot.z);
   });
-  await page.waitForTimeout(300);   // narrationTriggers() logs the ??? card
+  // narrationTriggers() logs the ??? card — but it runs inside the world
+  // loop, and since v3.195 Pip's arrival line in la BLOCKS that loop while
+  // it speaks, so a fixed 300ms could pass with the loop frozen. Silence
+  // Pip and poll for the card (up to 5s) instead.
+  for (let i = 0; i < 25; i++) {
+    const done = await page.evaluate(() => { const g = window.__game;
+      if (g.narration.speaking) g.narration.skip();
+      return !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack); });
+    if (done) break;
+    await page.waitForTimeout(200);
+  }
   const afterGate = await page.evaluate(() => {
     const g = window.__game;
     return { logged: !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack),
@@ -237,7 +247,13 @@ if (await go('la')) {
   check('...but NOT resolved by the gate alone', afterGate.found === false, afterGate);
 
   await page.evaluate(() => { window.__game.WS.complete('ember', 'dungeon'); });
-  await page.waitForTimeout(300);
+  for (let i = 0; i < 25; i++) {
+    const done = await page.evaluate(() => { const g = window.__game;
+      if (g.narration.speaking) g.narration.skip();
+      return !!(g.state.flags.mysteries.l1_crack && g.state.flags.mysteries.l1_crack.found); });
+    if (done) break;
+    await page.waitForTimeout(200);
+  }
   const afterDungeon = await page.evaluate(() => {
     const g = window.__game;
     return !!(g.state.flags.mysteries && g.state.flags.mysteries.l1_crack

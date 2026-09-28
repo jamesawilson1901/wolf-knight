@@ -193,6 +193,30 @@ const BARRED = {
     open: () => { window.__game.state.flags.plates.l3_knot_p1 = true; } },
   'tc4→tgl': { why: 'the great thorn-knot across the glade door — cut in t3b',
     open: () => { window.__game.WS.set('wild3', 'knotCut', true); } },
+  // THE SIX DUNGEON MOUTHS (2026-09-27). Since v3.192 levelkit's dungeonMouth
+  // registers the side door ALWAYS, gated by when(), and the region's own
+  // obstacle (rubble plug, thorn, ice) stands in it — before that the door did
+  // not exist until solved, so this suite never saw it. Proven on 1656dc1,
+  // before any of v3.196: all six failed there identically. Not excused: each
+  // is opened the way its own dungeon suite opens it, and must then reach.
+  'la→lv1': { why: 'the Ash Vault crack — stomped with Earth',
+    open: () => { window.__game.state.flags.cracked.l1_crack_gate = true; } },
+  'vc2→vr1': { why: 'the Root Cellar bramble — cut with Verdant',
+    open: () => { window.__game.WS.set('vault', 'cut_l2_bramble_gate', true); } },
+  't1b→tf1': { why: 'the Frozen Spring ice — shattered with Frost',
+    open: () => { window.__game.WS.set('wild3', 'ice_l3_spring_ice', true); } },
+  'd1a→d1c': { why: 'the Bone Crypt ice — shattered with Frost',
+    open: () => { window.__game.WS.set('vale', 'ice_d1a_crypt', true); } },
+  'x1→xc1': { why: 'the Veiled Vault ice — shattered with Frost',
+    open: () => { window.__game.WS.set('court', 'ice_x1_vault', true); } },
+  // The Ash Wing is OPENED BY FIRE (level7 wingEntry): the burning bar is the
+  // wing's lock, and the door to xa2 is past it by design.
+  'xa1→xa2': { why: 'the Ash Wing\'s burning bar — burned with Fire',
+    open: () => { window.__game.state.flags.burned.x_ash_bar = true; } },
+  // Since 2026-09-27 the wing locks are real: one wall across the room with
+  // the gate its only gap (level7 wingEntry). The Root Wing opens to Verdant.
+  'xr1→xr2': { why: 'the Root Wing\'s thorn tangle — cut with Verdant',
+    open: () => { window.__game.WS.set('court', 'cut_x_root_tangle', true); } },
 };
 
 console.log('\n── every door has floor in front of it that the player can reach ──');

@@ -32,6 +32,7 @@ import { registerDistrictTints } from './districts.js';
 import { thresholdGlow } from './levelkit.js';
 import { audio } from './audio.js';
 import { registerCuttable, alreadyCut, pushableBoulder, plateSwitch } from './gates.js';
+import { thornWall } from './gateprops.js';
 import { COAT } from './restoration.js';
 import { spawnLostWolf } from './pip.js';
 import { bumpCounter } from './progress.js';
@@ -274,7 +275,7 @@ export async function loadWoodKit() {
     column2: './assets/env/dungeon/Column2.glb',
     // the two hero props that are BEINGS get real character models, never code
     // geometry (no-code-built-creatures law)
-    statue:  './assets/chars/knight.glb',          // the toppled wolf-knight shrine
+    statue:  './assets/env/guardian-statue.glb',   // the Loyal Guardian (dad's Meshy upload)
     sylva:   './assets/chars/wolf.gltf',           // Sylva herself, thornbound
   };
   const entries = await Promise.all(Object.entries(names).map(async ([k, u]) => [k, await loadGLB(u)]));
@@ -282,7 +283,7 @@ export async function loadWoodKit() {
   return woodKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug,
   darkZone } = makeBuilders({ kit: () => woodKit, isGrey: () => GREY() });
 
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
@@ -334,49 +335,15 @@ function bramble(world, id, x, z, w = 2.4, d = 1.2, regrows = false, onCut = nul
     m.position.set(x, 0.8, z);
     g.add(m);
   } else {
-    // A REAL TANGLE, NOT A ROW OF PEBBLES. This used to clone bush-large.glb
-    // (measured 0.37 x 0.24 x 0.34u) at scale 1.1 -> a 0.27u-tall row of ankle-
-    // high blobs standing in for a doorway-sized collider. Dad: "the vines
-    // look nothing like vines... so tiny you can't see them and just think the
-    // game is glitching." The Quaternius forest kit vendors real bushes and
-    // bare-branch trees (loadWoodKit above) that had been loaded and used
-    // ZERO times. Bush_2_C (1.32u) and Bush_4_B (0.99 x 0.74u) give body that
-    // actually fills the footprint; Tree_Bare pieces (2.6-3.8u, floor-pivot)
-    // laid low as thorny canes read at a glance as "this is not a tree, it is
-    // thorns across the door". Every piece measured against its own pivot
-    // first (the stairs lesson) — no guessing.
-    const along = w >= d;
-    const span = Math.max(w, d);
-    const n = Math.max(2, Math.round(span / 1.3));
-    for (let i = 0; i < n; i++) {
-      const f = n === 1 ? 0 : (i / (n - 1) - 0.5);
-      const bushKey = i % 2 === 0 ? 'bushQ1' : 'bushQ2';   // Bush_2_C / Bush_4_B alternate
-      const bushScale = (bushKey === 'bushQ1' ? 1.35 : 1.75) * (0.85 + (i % 3) * 0.12);
-      const piece = tinted(woodKit[bushKey], 'bramble', colour, 0.85 + (i % 3) * 0.1);
-      piece.position.set(x + (along ? f * w : (i % 2 - 0.5) * 0.5),
-        0, z + (along ? (i % 2 - 0.5) * 0.5 : f * d));
-      piece.rotation.y = i * 1.9;
-      piece.scale.setScalar(bushScale);
-      g.add(piece);
-    }
-    // one or two bare-branch canes standing THROUGH the bushes, tinted
-    // thorn-dark — the silhouette that says "thorns", not "hedge", visible
-    // over the bush tops rather than buried in them. Kept upright (a small
-    // random lean, not laid flat) so the same code is correct whichever way
-    // the gate is long — no risk of a lay-down rotation being right for one
-    // orientation and wrong for the other.
-    const caneCount = span > 3.5 ? 2 : 1;
-    for (let i = 0; i < caneCount; i++) {
-      const f = caneCount === 1 ? 0 : (i - 0.5) * 0.6;
-      const caneKey = i % 2 === 0 ? 'bareQ1' : 'bareQ2';
-      const raw = caneKey === 'bareQ1' ? 2.86 : 3.84;
-      const cane = tinted(woodKit[caneKey], 'thornCane', 0x2f4a1e, 0.8);
-      cane.position.set(x + (along ? f * w : (i - 0.5) * 0.4),
-        0, z + (along ? (i - 0.5) * 0.4 : f * d));
-      cane.rotation.set(0.12 * (i ? -1 : 1), i * 2.1, 0.08 * (i ? 1 : -1));
-      cane.scale.setScalar(1.7 / raw);    // ~1.7u — over the bushes, under the canopy
-      g.add(cane);
-    }
+    // THE THORN MODEL (js/gateprops.js), 2026-09-27. Before this it was
+    // Quaternius bushes with bare-branch canes through them (which had in
+    // turn replaced a row of ankle-high bush-large blobs); Dad's photo of the
+    // result called them "hedges" and asked for his own Tangled Thorns model
+    // instead. One tangle laid shoulder to shoulder across the collider, over
+    // a child's head, merged into a single draw.
+    const wall = thornWall(w, d);
+    wall.position.set(x, 0, z);
+    g.add(wall);
   }
   world.add(g);
   const collider = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
@@ -436,14 +403,13 @@ function logBridge(world, id, x, z) {
     return null;
   }
 
-  // upright, off to the side, obviously not yet a bridge — and HELD UP by the
-  // rope below it, so it is meant to be off the ground until that rope burns.
-  // Named so the grounding check knows the difference between hanging and
-  // hovering.
-  log.name = 'hangingLog';
-  log.position.set(x + GAP_W / 2 - 2, 1.4, z - 2.4);
-  log.rotation.set(0, 0.3, 0.5);
-  world.add(log);
+  // NOT HUNG IN THE AIR. The log used to wait upright beside the gap, 1.4u
+  // off the ground and "held up by the rope" — but the rope reads as a
+  // charred post, not a rope, so what a child saw was a log floating next to
+  // it (Dad, 2026-09-27: "remove the hovering logs"). Now nothing stands in
+  // the air: the burnable post is the only thing there, and the log only
+  // appears when the post burns, falling out of it into place as the bridge.
+  // It starts where the post stands and is added to the world on the burn.
 
   // the rope: a scorched hemp-and-branch tie, burnable, standing where the
   // slam can reach it from the safe side. Real timber (logStack), charred
@@ -483,13 +449,17 @@ function logBridge(world, id, x, z) {
       const i = world.boxColliders.indexOf(collider);
       if (i >= 0) world.boxColliders.splice(i, 1);
       // the log SWINGS — a second of movement, then it is the road
+      log.position.set(x + GAP_W / 2 - 2, 1.4, z - GAP_D / 2 - 1.6);
+      log.rotation.set(0, 0.3, 0.5);
+      world.add(log);
       const from = { y: log.position.y, rz: log.rotation.z, ry: log.rotation.y };
+      const fromZ = log.position.z;
       let k = 0;
       world.onAnimate((t, dt) => {
         if (k >= 1) return;
         k = Math.min(1, k + dt * 1.4);
         const e = 1 - Math.pow(1 - k, 3);
-        log.position.set(x + (GAP_W / 2 - 2) * (1 - e), from.y * (1 - e) + 0.1 * e, z - 2.4 * (1 - e));
+        log.position.set(x + (GAP_W / 2 - 2) * (1 - e), from.y * (1 - e) + 0.1 * e, fromZ + (z - fromZ) * e);
         log.rotation.set(0, from.ry + (Math.PI / 2 - from.ry) * e, from.rz * (1 - e));
         if (k >= 1) {
           if (!GREY()) log.scale.set(2.2, 1.4, 5.2);
@@ -566,12 +536,17 @@ function heroProp(world, x, z, kind, D, scale = 1) {
 
   if (kind === 'leaningShrine') {
     if (scale === 1) {
-      // a real knight model, stone grey, toppled and sinking — the wolf-knight
-      // who came before, which is the whole reason Thornedge feels like a warning
-      const st = tinted(woodKit.statue, 'shrineStatue', 0x8f9186);
-      st.scale.setScalar(2.6);
-      st.rotation.set(0, 0.6, 0.5);
-      st.position.set(0, 1.2, 0);
+      // THE LOYAL GUARDIAN (2026-09-27): dad's own Meshy statue of a seated
+      // wolf on its plinth, replacing a red-tinted knight RIG that stood here
+      // leaning — a character model pressed into service as a statue, which
+      // read as a stray red figure rather than as stone. This is a real
+      // statue asset, upright on the old base, facing the room.
+      const st = tinted(woodKit.statue, 'shrineStatue', 0xb9b6a8);
+      const bb = new THREE.Box3().setFromObject(st);
+      const s = 3.2 / Math.max(0.01, bb.max.y - bb.min.y);    // ~3.2u tall
+      st.scale.setScalar(s);
+      st.rotation.set(0, 0.6, 0);
+      st.position.set(-(bb.min.x + bb.max.x) / 2 * s, 0.55 - bb.min.y * s, -(bb.min.z + bb.max.z) / 2 * s);
       g.add(st);
     } else {
       // ...and the gate markers are NOT more knights. That model is a character
@@ -885,9 +860,9 @@ export async function buildT1b(scene) {
   // the same structural gap-in-the-shell trick `la`'s own crack uses — built
   // once, at build time, so a child who shatters it mid-visit sees the
   // doorway on their NEXT entry, not this one.
-  const springOpen = !!WS.get(REGION, 'ice_l3_spring_ice');
-  const gaps = [gap('s'), gap('n'), gap('e')];
-  if (springOpen) gaps.push(gap('e', 2.0, 4));
+  // (now always cut and rubble-plugged until the shatter — dungeonMouth)
+  const springOpen = () => !!WS.get(REGION, 'ice_l3_spring_ice');
+  const gaps = [gap('s'), gap('n'), gap('e'), gap('e', 2.0, 4)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'moss' },
               { x: 12, z: -8, r: 4.5, kind: 'corruption', alpha: 0.32 },
@@ -900,8 +875,8 @@ export async function buildT1b(scene) {
   sideDoor(world, 'e', halfW, halfD, 't1p', { x: -7.5, z: 0, angle: Math.PI / 2 });
   // Landing is tf1's OWN frame (a 20x16 pocket, halfW 10) — the same ±8.5
   // correction buildLv1's own landing (off `la`) uses.
-  if (springOpen) sideDoor(world, 'e', halfW, halfD, 'tf1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
-    { centre: 4, half: 2.0 });
+  dungeonMouth(world, 'e', halfW, halfD, 'tf1', { x: 8.5, z: 0, angle: -Math.PI / 2 },
+    springOpen, D, { centre: 4, half: 2.0 });
 
   world.markers.houndSpots = [{ x: -6, z: 2, variant: 'thorn' }, { x: 7, z: -5, variant: 'thorn' },
     { x: 5, z: 6, variant: 'thorn' }];
@@ -915,7 +890,7 @@ export async function buildT1b(scene) {
   // GATE — the ICE-SEALED SPRING. Level 4's tool, a whole level early.
   wallRun(world, 11, 2, 16, 2, D);
   wallRun(world, 11, 6, 16, 6, D);
-  promiseGate(world, 11, 4, 3.0, 4.0, 0x9be3ff, 'FROZEN — later', 'rockLB',
+  promiseGate(world, 11, 4, 3.0, 4.0, 0x9be3ff, 'FROZEN — later', 'ice',
               { system: 'shatter', id: 'l3_spring_ice', region: REGION });
   visibleReward(world, 13.5, 4, 'l3_t1b_ice', { shards: 22 });
   world.markers.icePromise = { x: 11, z: 4 };

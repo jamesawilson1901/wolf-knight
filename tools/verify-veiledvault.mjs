@@ -21,14 +21,14 @@ await wk.page.evaluate((f) => window.__wkJump('x1', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'x1' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let x1Doors = await wk.wk('doors');
-check('x1 has NO door to xc1 before the vault ice shatters', !x1Doors.some((d) => d.to === 'xc1'), x1Doors.map((d) => d.to));
+check('x1 has NO open door to xc1 before the vault ice shatters (the dungeon mouth stays shut)', !x1Doors.some((d) => d.to === 'xc1' && d.open), x1Doors.map((d) => d.to));
 
 await wk.page.evaluate(() => { window.__game.WS.set('court', 'ice_x1_vault', true); });
 await wk.page.evaluate((f) => window.__wkJump('x1', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'x1' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 x1Doors = await wk.wk('doors');
-check('x1 HAS a door to xc1 once the ice is shattered', x1Doors.some((d) => d.to === 'xc1'), x1Doors.map((d) => d.to));
+check('x1 HAS an open door to xc1 once the ice is shattered', x1Doors.some((d) => d.to === 'xc1' && d.open), x1Doors.map((d) => d.to));
 
 // 1. xc1/xc2/xc3 build, calls under budget.
 for (const room of ['xc1', 'xc2', 'xc3']) {

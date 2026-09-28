@@ -162,7 +162,7 @@ const zones = await page.evaluate(() => {
   };
   const readables = [];
   for (const sel of ['#hearts', '#shards', '#level-badge', '#xp-bar', '#boss-bar',
-    '#boss-name', '#caption', '#toast', '#moon-gauge', '#potion-count', '#pip-count']) {
+    '#boss-name', '#caption', '#toast', '#potion-count', '#pip-count']) {
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);

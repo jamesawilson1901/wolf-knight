@@ -21,7 +21,7 @@ await wk.page.evaluate((f) => window.__wkJump('f1b', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'f1b' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let f1bDoors = await wk.wk('doors');
-check('f1b has NO door to f1c before the arch melts', !f1bDoors.some((d) => d.to === 'f1c'), f1bDoors.map((d) => d.to));
+check('f1b has NO open door to f1c before the arch melts (the dungeon mouth stays shut)', !f1bDoors.some((d) => d.to === 'f1c' && d.open), f1bDoors.map((d) => d.to));
 // the cairn nook's own promise ice is untouched by this dungeon
 const cairnIceUntouched = await wk.page.evaluate(() => {
   const w = window.__game.state.flags.world;
@@ -36,7 +36,7 @@ await wk.page.evaluate((f) => window.__wkJump('f1b', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'f1b' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 f1bDoors = await wk.wk('doors');
-check('f1b HAS a door to f1c once melted (open on rebuild)', f1bDoors.some((d) => d.to === 'f1c'), f1bDoors.map((d) => d.to));
+check('f1b HAS an open door to f1c once melted (open on rebuild)', f1bDoors.some((d) => d.to === 'f1c' && d.open), f1bDoors.map((d) => d.to));
 
 // 1. f1c/f1d/f1e all build, calls under budget.
 for (const room of ['f1c', 'f1d', 'f1e']) {

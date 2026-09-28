@@ -48,7 +48,7 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 | ✓ Modular Dungeon Pack | Quaternius | Stoneroot Caverns interiors — walls, floors, torches, traps, statues (converted OBJ→GLB) | https://quaternius.itch.io/lowpoly-modular-dungeon-pack |
 | ✓ **Sea-Dragon** — **CC-BY, credit required** | **Jenosuke** | **Aria, the Galebound** (`assets/chars/monsters/sea-dragon.glb`), the Stormreach boss. Used under **Creative Commons Attribution 4.0**, which requires this credit: *"Sea-Dragon" (https://skfb.ly/oO9OV) by Jenosuke is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."* The mesh, skeleton and skinning are unaltered; the game adds two animation clips (`js/seaclips.js`) and a baked texture (`tools/paint-sea-dragon.mjs`), both of which are this repository's work, not the author's. | https://skfb.ly/oO9OV |
 | ⚠ **Uploader-supplied creature batch (2026-09-03)** | various (see note) | **The Ember Wasp** (`assets/chars/monsters/wasp.glb`) — Ember Hollow's flyer — and **Sylva, Thornbound** (`assets/chars/monsters/minotaur.glb`), the Wild Woods boss. Licences held by the repository owner on Google Drive; not copied into the repo, so no author can be named here yet. Several look like Sketchfab free downloads, and many of those are CC-BY — if any of these is, its author needs a row of their own. | supplied by the repository owner |
-| Particle Pack | Kenney | FX sprites — later phases | https://kenney.nl/assets/particle-pack |
+| ✓ Particle Pack | Kenney | FX sprites: hit sparks, weakness flare, heavy-hit flash (v3.174); the Blood Moon's corona, shockwave rings, glint, dive streak, smoke and scorch (2026-09-26) | https://kenney.nl/assets/particle-pack |
 | UI Pack | Kenney | HUD graphics — later phases | https://kenney.nl/assets/ui-pack |
 
 ## Audio
@@ -71,7 +71,8 @@ website alone. See `assets/LICENSES/README.md` for how to clear each one.
 | ⚠ Victory Fanfare Short (`victory`) | cynicmusic | Victory sting | https://opengameart.org/content/victory-fanfare-short |
 | ✓ RPG Audio | Kenney | Sword swings (`knifeSlice*`), hits + growls (`chop`), dust puffs and air-whooshes (`cloth3`/`cloth1`) | https://kenney.nl/assets/rpg-audio |
 | ✓ UI Audio | Kenney | UI clicks, checkpoint tick (`click*`) | https://kenney.nl/assets/ui-audio |
-| ✓ Impact Sounds | Kenney | Hurt, Blood Moon / ground-slam / tendril thumps (`impact*`), and the wolf's bite (`impactSoft_medium`) | https://kenney.nl/assets/impact-sounds |
+| ✓ Impact Sounds | Kenney | Hurt, crescent-shot / ground-slam / tendril thumps and the slam under the Blood Moon (`impact*`), and the wolf's bite (`impactSoft_medium`) | https://kenney.nl/assets/impact-sounds |
+| ✓ **Superpowers asset packs (sound effects)** | Pixel-boy (for Superpowers) | **The Blood Moon's own three clips** (2026-09-26): `moon-rise`, `moon-dive`, `moon-crash`, authored by `tools/make-moon-sfx.py` from `western-fps-2d` explosion/impact/woosh and `ninja-adventure` magic sounds (CC0) layered with synthesis | https://github.com/sparklinlabs/superpowers-asset-packs |
 
 ## Other
 

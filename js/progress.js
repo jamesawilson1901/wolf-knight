@@ -1,8 +1,8 @@
 // Progression: XP → levels → perk picks, plus the sticker book tallies.
 // Numbers stay small and readable — this is for kids. Enemies also scale
-// gently with level (see enemyScale) so fights stay interesting.
+// gently with the REGION (see enemyScale) so fights stay interesting.
 
-import { state } from './state.js';
+import { state, regionOf } from './state.js';
 import { audio } from './audio.js';
 
 // A9: SkeletonShield was missing, so Level 2's four shield-bearers — the
@@ -36,11 +36,25 @@ export function grantXp(n) {
   }
 }
 
-// Gentle difficulty curve: enemy hp/damage multiplier by player level.
-// +8% hp per level, capped ×2.2 — behaviors (not numbers) carry the real
-// difficulty, this just keeps early enemies from becoming trivial.
-export function enemyScale() {
-  return Math.min(2.2, 1 + (state.level - 1) * 0.08);
+// Gentle difficulty curve: enemy hp multiplier BY WHERE YOU ARE, not by
+// who you are (v3.195, Dad: "when you level up and click to increase your
+// attack, it does nothing in the game"). It used to be +8% per PLAYER level,
+// which cancelled the level-up almost exactly: the +¼ Sharper Sword every
+// third level (+25%) met +24% enemy hp in the same three levels. Now the
+// region sets the number, and levelling up is power a child can feel.
+//
+// The curve is the SAME one a child on the expected level curve met before
+// (GAME-CONTRACT: level ~1+3(N-1) entering region N, so +0.08 x 3 = +0.24 a
+// region), capped x2.2 as ever — behaviour, not numbers, carries difficulty.
+// The roads between regions sit half a step between their two ends.
+export const REGION_TIER = {
+  ember_hollow: 0, night_road: 0.5, stoneroot: 1, greenway: 1.5, wildwoods: 2,
+  coldclimb: 2.5, frostpeak: 3, market: 3.5, stormreach: 4, plunge: 4.5,
+  sunkenvale: 5, hollowroad: 5.5, shadowcourt: 6, village: 6, spire: 6.5,
+};
+export function enemyScale(room = state.room) {
+  const tier = REGION_TIER[regionOf(room || 'la')] ?? 0;
+  return Math.min(2.2, 1 + tier * 0.24);
 }
 
 // Perk cards: every 3rd level offers a pick-one-of-two.

@@ -164,6 +164,8 @@ export function persist() {
     // on a common leaderboard, and will stop playing.
     minigames: JSON.parse(JSON.stringify(state.minigames || {})),
     formsUnlocked: [...state.formsUnlocked],
+    pack: [...(state.pack || [])],
+    packKnown: [...(state.packKnown || [])],
     pups: { [state.region]: pupList },
     settings: { ...state.settings },
     flags: {
@@ -177,6 +179,12 @@ export function persist() {
       keys: { ...(state.flags.keys || {}) },
       world: JSON.parse(JSON.stringify(state.flags.world || {})),
       mysteries: JSON.parse(JSON.stringify(state.flags.mysteries || {})),
+      // THE REAL MAP (2026-09-26, js/mapdata.js) — additive: where Kael has
+      // been, and every come-back-later gate he has seen. `visited` stays null
+      // (not {}) until the map has seeded it for a save written before it
+      // existed, so that seeding is never skipped by an early save.
+      visited: state.flags.visited ? { ...state.flags.visited } : null,
+      mapMarks: JSON.parse(JSON.stringify(state.flags.mapMarks || {})),
       bossProgress: state.flags.bossProgress || 0,
       bossHp: state.flags.bossHp || 0,        // v3.18: the duel remembers wounds
       e2bCleared: !!state.flags.e2bCleared,   // v3.18: the Old Quarry stays open
@@ -275,6 +283,7 @@ export function applySave(profileId, profileName, data) {
     if (!state.inventory.materials) state.inventory.materials = {};
     if (!state.inventory.crafted) state.inventory.crafted = [];
     if (!state.inventory.recipesKnown) state.inventory.recipesKnown = [];
+    if (!state.inventory.draughts) state.inventory.draughts = {};
     // SAME REASON AGAIN (design/DRAGON-EGGS.md): a save from before the
     // dragon-egg side quest existed has none of these three fields.
     if (!state.inventory.dragonEggs) state.inventory.dragonEggs = {};
@@ -299,6 +308,10 @@ export function applySave(profileId, profileName, data) {
   // save DID earn survives untouched.
   const saved = Array.isArray(data.formsUnlocked) ? data.formsUnlocked : [];
   state.formsUnlocked = ['knight', 'dark_wolf', ...saved.filter((f) => f !== 'knight' && f !== 'dark_wolf')];
+  state.pack = Array.isArray(data.pack) ? data.pack.filter((f) => typeof f === 'string') : [];
+  // an old save has no packKnown: treat everything it owns as already seen,
+  // so loading one never shuffles a pack it never had
+  state.packKnown = Array.isArray(data.packKnown) ? data.packKnown : state.formsUnlocked.filter((f) => f !== 'knight' && f !== 'dark_wolf');
   state.form = data.form && state.formsUnlocked.includes(data.form) ? data.form : 'knight';
   // pups may be keyed under whichever region was current at save time —
   // flatten every list so travelling between regions never loses them
@@ -316,6 +329,14 @@ export function applySave(profileId, profileName, data) {
     state.flags.keys = data.flags.keys || {};
     state.flags.world = data.flags.world || {};
     state.flags.mysteries = data.flags.mysteries || {};
+    // THE REAL MAP — additive-forever. A save from before it has neither key:
+    // `visited` null tells js/mapdata.js to seed it from the progress the save
+    // already records (so an old profile opens onto the world it has walked,
+    // not onto fog), and no marks is exactly "nothing seen yet".
+    state.flags.visited = data.flags.visited && typeof data.flags.visited === 'object'
+      ? { ...data.flags.visited } : null;
+    state.flags.mapMarks = data.flags.mapMarks && typeof data.flags.mapMarks === 'object'
+      ? JSON.parse(JSON.stringify(data.flags.mapMarks)) : {};
     state.flags.bossHp = data.flags.bossHp || 0;
     state.flags.e2bCleared = !!data.flags.e2bCleared;
     state.flags.sylvaHp = data.flags.sylvaHp || 0;

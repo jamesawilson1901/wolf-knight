@@ -19,6 +19,13 @@ const SFX_FILES = {
   burn: './assets/audio/sfx/burn.ogg',
   'tendril-slam': './assets/audio/sfx/tendril-slam.ogg',
   'moon-impact': './assets/audio/sfx/moon-impact.ogg',
+  // THE BLOOD MOON'S OWN THREE (2026-09-26). Until then the whole ceremony was
+  // moon-impact.ogg — which is also the Dark Wolf's everyday crescent-shot
+  // shimmer — played slow. Authored offline by tools/make-moon-sfx.py from
+  // CC0 Superpowers clips + synthesis; timed to effects.surgeCeremony's clock.
+  'moon-rise': './assets/audio/sfx/moon-rise.ogg',   // gong + climbing swell, at the tap
+  'moon-dive': './assets/audio/sfx/moon-dive.ogg',   // air roar + falling whistle, at the dive
+  'moon-crash': './assets/audio/sfx/moon-crash.ogg', // boom + sub + debris + glitter, on impact
   throw: './assets/audio/sfx/throw.ogg',
   parry: './assets/audio/sfx/parry.ogg',
   potion: './assets/audio/sfx/potion.ogg',
@@ -426,39 +433,85 @@ class AudioSystem {
   }
 
   // A stylized wolf HOWL, synthesized (no CC0 howl exists in our packs):
-  // two detuned voices glide up, hold with vibrato, and fall away through a
-  // low-pass — reads as a low-poly howl, matches the art. rate < 1 = bigger
-  // wolf (the boss), rate > 1 = Kael's wolves.
+  // two detuned voices glide up, hold with vibrato, and fall away — reads as a
+  // low-poly howl, matches the art. rate < 1 = bigger wolf (the boss), rate > 1
+  // = Kael's wolves.
+  //
+  // 2026-09-26 (the Blood Moon's audio pass): it used to be the two saws through
+  // one low-pass, which is a buzz with a pitch contour. A howl is a VOWEL — a
+  // wolf's mouth opens "oo" into "ah" as the note climbs and closes again as
+  // it falls — so the same voices now also run through two resonant formant
+  // filters that make exactly that shape, plus a thread of breath noise. Same
+  // pitch contour, same envelope, same length, same call sites; it just
+  // sounds like a throat instead of an oscillator.
   howl({ volume = 0.8, rate = 1 } = {}) {
     if (!this.ctx || state.settings.sfxVol <= 0) return;
-    const t0 = this.ctx.currentTime;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
     const dur = 2.2 / rate;
-    const g = this.ctx.createGain();
+    const tUp = t0 + 0.5 / rate, tHold = t0 + dur * 0.6;
+    const g = ctx.createGain();
     g.gain.setValueAtTime(0, t0);
     g.gain.linearRampToValueAtTime(volume * 0.5, t0 + 0.25 / rate);
     g.gain.setValueAtTime(volume * 0.5, t0 + dur * 0.62);
     g.gain.linearRampToValueAtTime(0, t0 + dur);
     g.connect(this.sfxGain);
-    const lp = this.ctx.createBiquadFilter();
+    const voice = ctx.createGain();                  // the throat: both saws in
+    const lp = ctx.createBiquadFilter();             // the body, as it always was
     lp.type = 'lowpass';
     lp.frequency.value = 1100 * rate;
-    lp.connect(g);
+    const body = ctx.createGain();
+    body.gain.value = 0.55;
+    voice.connect(lp); lp.connect(body); body.connect(g);
+    // the mouth: F1/F2 open "oo" -> "ah" with the climb, close on the fall.
+    // Formants scale with the SIZE of the animal, gentler than pitch does.
+    const size = Math.sqrt(rate);
+    for (const [closed, open, q, amt] of [[380, 740, 5, 0.9], [880, 1220, 7, 0.45]]) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = q;
+      bp.frequency.setValueAtTime(closed * size, t0);
+      bp.frequency.linearRampToValueAtTime(open * size, tUp);
+      bp.frequency.setValueAtTime(open * size, tHold);
+      bp.frequency.linearRampToValueAtTime(closed * 0.9 * size, t0 + dur);
+      const fg = ctx.createGain();
+      fg.gain.value = amt;
+      voice.connect(bp); bp.connect(fg); fg.connect(g);
+    }
+    // breath: a whisper of noise through the open mouth (one buffer, reused)
+    if (!this._breath) {
+      const n = Math.floor(ctx.sampleRate);
+      this._breath = ctx.createBuffer(1, n, ctx.sampleRate);
+      const d = this._breath.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const br = ctx.createBufferSource();
+    br.buffer = this._breath;
+    br.loop = true;
+    const bbp = ctx.createBiquadFilter();
+    bbp.type = 'bandpass';
+    bbp.frequency.value = 1500 * size;
+    bbp.Q.value = 0.8;
+    const bg = ctx.createGain();
+    bg.gain.value = 0.07;
+    br.connect(bbp); bbp.connect(bg); bg.connect(g);
+    br.start(t0); br.stop(t0 + dur);
     for (const det of [0, 5]) {
-      const o = this.ctx.createOscillator();
-      o.type = 'sawtooth'; // breathy through the low-pass
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
       const f0 = 210 * rate + det;
       o.frequency.setValueAtTime(f0, t0);
-      o.frequency.linearRampToValueAtTime(f0 * 2.1, t0 + 0.5 / rate);
-      o.frequency.setValueAtTime(f0 * 2.1, t0 + dur * 0.6);
+      o.frequency.linearRampToValueAtTime(f0 * 2.1, tUp);
+      o.frequency.setValueAtTime(f0 * 2.1, tHold);
       o.frequency.linearRampToValueAtTime(f0 * 1.2, t0 + dur);
-      const v = this.ctx.createOscillator();
+      const v = ctx.createOscillator();
       v.frequency.value = 5.5;
-      const vg = this.ctx.createGain();
+      const vg = ctx.createGain();
       vg.gain.value = 7;
       v.connect(vg);
       vg.connect(o.frequency);
       v.start(t0); v.stop(t0 + dur);
-      o.connect(lp);
+      o.connect(voice);
       o.start(t0); o.stop(t0 + dur);
     }
   }

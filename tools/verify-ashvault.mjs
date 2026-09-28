@@ -18,7 +18,7 @@ await wk.page.evaluate((f) => window.__wkJump('la', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'la' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let laDoors = await wk.wk('doors');
-check('la has NO door to lv1 before the crack', !laDoors.some((d) => d.to === 'lv1'), laDoors.map((d) => d.to));
+check('la has NO open door to lv1 before the crack (the dungeon mouth stays shut)', !laDoors.some((d) => d.to === 'lv1' && d.open), laDoors.map((d) => d.to));
 
 // crack it directly — the crack mechanic itself is covered elsewhere
 await wk.page.evaluate(() => { window.__game.state.flags.cracked.l1_crack_gate = true; });
@@ -26,7 +26,7 @@ await wk.page.evaluate((f) => window.__wkJump('la', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'la' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 laDoors = await wk.wk('doors');
-check('la HAS a door to lv1 once cracked (open on rebuild)', laDoors.some((d) => d.to === 'lv1'), laDoors.map((d) => d.to));
+check('la HAS an open door to lv1 once cracked (open on rebuild)', laDoors.some((d) => d.to === 'lv1' && d.open), laDoors.map((d) => d.to));
 
 // 1. lv1 — no fight, the moved chest, the lost wolf.
 for (const room of ['lv1', 'lv2', 'lv3']) {

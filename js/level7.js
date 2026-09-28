@@ -144,7 +144,7 @@ export async function loadCourtKit() {
   return courtKit;
 }
 
-const { shell, sideDoor, wallRun, scatter, promiseGate, visibleReward, onwardPlug } =
+const { shell, sideDoor, dungeonMouth, wallRun, scatter, promiseGate, visibleReward, onwardPlug } =
   makeBuilders({ kit: () => courtKit, isGrey: () => GREY() });
 const tinted = (gltf, key, tint, darken = 1) => tintedModel(gltf, key, tint, darken);
 const { ruinedHome, coldHearth, fallenColumn, rubbleField, wayshrine, aftermath,
@@ -394,8 +394,9 @@ export async function buildX1(scene) {
   // as every other region's own dungeon gate: the Frost Wolf, old news by
   // region 4 and still opening new rooms in the last one.
   const vault = !!WS.get(REGION, 'ice_x1_vault');
+  const vaultOpen = () => !!WS.get(REGION, 'ice_x1_vault');
   const gaps = [gap('s'), gap('n')];
-  if (vault) gaps.push(gap('e', DOOR_HALF, -2));
+  gaps.push(gap('e', DOOR_HALF, -2));   // always cut: the ice gate fills it
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -12, z: 8, r: 4.8, kind: 'corruption', alpha: 0.3 },
               { x: 12, z: -8, r: 4.2, kind: 'rubble' }],
@@ -422,9 +423,10 @@ export async function buildX1(scene) {
   watcher(world, -8.5, -3.8, D);
   visibleReward(world, -13, -3.8, 'x7_gate', { shards: 30 });
   world.markers.watcherPromise = { x: -8.5, z: -3.8 };
-  if (vault) sideDoor(world, 'e', halfW, halfD, 'xc1', { x: 4, z: 6, angle: Math.PI }, { centre: -2 });
-  else {
-    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'DARK — later', 'rockLB',
+  dungeonMouth(world, 'e', halfW, halfD, 'xc1', { x: 4, z: 6, angle: Math.PI }, vaultOpen, D,
+    { centre: -2, half: DOOR_HALF, noPlug: true });
+  if (!vault) {
+    promiseGate(world, halfW - 1.5, -2, 3.0, 3.0, 0x9be3ff, 'DARK — later', 'ice',
       { system: 'shatter', id: 'x1_vault', region: REGION });
     world.markers.vaultPromise = { x: halfW - 1.5, z: -2 };
   }
@@ -714,12 +716,26 @@ export async function buildXh(scene) {
 // who cannot open it yet knows exactly what they are missing and why.
 // ---------------------------------------------------------------------------
 function wingEntry(world, halfW, halfD, D, cfg) {
-  // the barred door, in whatever material the wing's verb answers
-  wallRun(world, -6, -4, -6, 4, D);
-  wallRun(world, 6, -4, 6, 4, D);
-  promiseGate(world, 0, -1.5, 4.2, 3.4, cfg.colour, cfg.label, cfg.prop,
+  // A LOCK THAT LOCKS (2026-09-27). This used to be two short walls at
+  // x = +/-6 (z -4..4) with the gate standing BETWEEN them, across nothing:
+  // the room runs to z +/-10, so a child walked round either wall end and on
+  // to the next room without the verb the wing is about. Dad, asked whether
+  // to seal it: "your choice, use your best knowledge in game design." A
+  // promise gate only teaches if it is the ONLY way — the wing's relic is
+  // visible past it, the wolf that opens it is on its face, and there is no
+  // walking round. So: one wall across the whole room at x = -6, between the
+  // east arrival and the west door on, with the gate as its only gap. The old
+  // x = +6 wall is gone (it sealed nothing, and it was what dressCourt's homes
+  // closed the arrival pocket against).
+  const GX = -6, GAP = 1.7;
+  wallRun(world, GX, -halfD, GX, -GAP, D);
+  wallRun(world, GX, GAP, GX, halfD, D);
+  // the gate IN the wall's gap, laid along it (pieces run north-south)
+  promiseGate(world, GX, 0, 1.6, GAP * 2, cfg.colour, cfg.label, cfg.prop,
     { system: cfg.system, id: cfg.id, region: REGION });
-  world.markers.wingLock = { x: 0, z: -1.5, needs: cfg.needs };
+  // the ground a child stands on to use the verb stays floor
+  world.reserve(GX + 2.2, 0, 1.8, 'wing lock approach');
+  world.markers.wingLock = { x: GX, z: 0, needs: cfg.needs };
 }
 
 export async function buildXa1(scene) {
@@ -794,7 +810,8 @@ export async function buildXa1(scene) {
   // Court stands on one by design. Two rulers, two questions (world.js).
   // THE ARCHER WAS SHOOTING INTO THE WALL IT STOOD BESIDE.
   //
-  // wingEntry() runs a wall up x = 6 from z = -4 to z = 4, and this spot was
+  // (history: wingEntry() once ran a wall up x = 6 from z = -4 to z = 4 — gone
+  // since 2026-09-27, the lock is one wall at x = -6 now.) This spot was
   // (7, 4) — hard against its north corner. RangedKiter kills its own bolt on
   // the first collider it grazes (`_updateBolts`, resolveCircle at r 0.1), so
   // every shot down the road died in the stonework a metre from the bow. A
@@ -859,7 +876,8 @@ export async function buildXr1(scene) {
     colour: 0x8fdc6a, label: 'TANGLED', prop: 'bush', system: 'cut',
     id: 'x_root_tangle', needs: 'verdant_wolf',
   });
-  world.markers.houndSpots = [{ x: -8, z: 5, variant: 'shadewalker' }];
+  // on the ARRIVAL side of the lock (x > -6): behind it, it guarded nothing
+  world.markers.houndSpots = [{ x: -2, z: 5, variant: 'shadewalker' }];
   world.markers.twinbladeHuskSpots = [{ x: 7, z: -4 }];
   scatter(world, halfW, halfD, D, 721, 5, { spin: 1, kinds: ['stump', 'treeA', 'rockSA'] });
   dressCourt(world, halfW, halfD, D, 7211, { homes: 2, loose: 14 });
@@ -876,7 +894,7 @@ export async function buildXr2(scene) {
   sideDoor(world, 'e', halfW, halfD, 'xr1', { x: -11, z: 0, angle: -Math.PI / 2 });
   sideDoor(world, 'w', halfW, halfD, 'xr3', { x: 11, z: 0, angle: Math.PI / 2 });
   wallRun(world, -9, -4, -9, 4, D);
-  promiseGate(world, -6.5, 0, 3.4, 4.6, 0x9be3ff, 'FROZEN', 'rockLB',
+  promiseGate(world, -6.5, 0, 3.4, 4.6, 0x9be3ff, 'FROZEN', 'ice',
     { system: 'shatter', id: 'x_root_ice', region: REGION });
   world.markers.wingSolve = { x: -6.5, z: 0, needs: 'frost_wolf' };
   world.markers.slimeSpots = [{ x: 3, z: 4, variant: 'gloomblob' }];

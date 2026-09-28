@@ -5,6 +5,7 @@
 // is applied at build time.
 
 import * as THREE from 'three';
+import { makeLavaMaterial } from './lava.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareModel, prepareCharacter, instancePlacements } from './assets.js';
 import { World } from './world.js';
@@ -13,11 +14,13 @@ import { ground } from './ground.js';
 import { state, resolveRoom } from './state.js';
 import { setRoomSeed } from './ground.js';
 import { spawnEnemies } from './enemies.js';
+import { applyShells } from './shells.js';
 import { Shadowgrip, Boreal, SKINS as BOSS_SKINS } from './boss.js';
 import { audio } from './audio.js';
 import { WS } from './worldstate.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate,
   pushableBoulder, plateSwitch } from './gates.js';
+import { loadGateProps } from './gateprops.js';
 import { spawnDenNpcs, staticCharacterNpc } from './npcs.js';
 import { setupDenGames } from './minigames.js';
 import { LEVEL1_ROOMS, loadEmberKit } from './level1.js';
@@ -194,18 +197,12 @@ function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
     world.add(veins); // faint dying embers in the crust
     return basalt;
   }
-  const lava = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({
-      color: 0x000000,
-      emissive: 0xff5a2b,
-      emissiveIntensity: 1.8,
-      roughness: 1,
-    })
-  );
+  const molten = makeLavaMaterial();          // the shared shader (js/lava.js)
+  const lava = new THREE.Mesh(new THREE.PlaneGeometry(w, d), molten.material);
   lava.rotation.x = -Math.PI / 2;
   lava.position.set(x, 0.02, z);
   world.add(lava);
+  world.keepLoose(lava);                     // it animates; never batch it
   world.addLava(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
 
   let pointLight = null;
@@ -217,7 +214,7 @@ function lavaPool(world, x, z, w, d, { light = true, coolable = false } = {}) {
   const phase = x * 1.7 + z * 0.9;
   world.onAnimate((t) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + phase) * Math.sin(t * 0.7 + phase);
-    lava.material.emissiveIntensity = 1.5 + pulse * 0.9;
+    molten.update(t, pulse);
     if (pointLight) pointLight.intensity = 9 + pulse * 6;
   });
   return lava;
@@ -3548,6 +3545,8 @@ export const ROOMS = { ...LEVELMARKET_ROOMS, ...LEVELNIGHT_ROOMS, ...LEVELGREEN_
 
 export async function buildRoom(rawId, scene) {
   const id = resolveRoom(rawId);
+  // every region's thorn and ice gates are built from js/gateprops.js
+  if (state.settings.greybox === false) await loadGateProps();
   // Greybox spaces are plain geometry by definition — loading a 40-piece art
   // kit for them would both waste the load and hide the real cost of the box.
   if (id === 'zoo') {
@@ -3622,6 +3621,7 @@ export async function buildRoom(rawId, scene) {
   // every room regardless of which builder made it, is the fix.
   world.roomId = id;
   await spawnEnemies(world);
+  applyShells(world);   // v3.195: a few enemies wear their weakness as a crust (js/shells.js)
   if (world.markers.bossSpot) {
     const bs = world.markers.bossSpot;
     if (bs.kind === 'boreal') {

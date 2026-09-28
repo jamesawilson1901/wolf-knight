@@ -22,7 +22,7 @@ await wk.page.evaluate((f) => window.__wkJump('vc2', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'vc2' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let vc2Doors = await wk.wk('doors');
-check('vc2 has NO door to vr1 before the bramble is cut', !vc2Doors.some((d) => d.to === 'vr1'), vc2Doors.map((d) => d.to));
+check('vc2 has NO open door to vr1 before the bramble is cut (the dungeon mouth stays shut)', !vc2Doors.some((d) => d.to === 'vr1' && d.open), vc2Doors.map((d) => d.to));
 // the gate's own alcove chest is untouched by this dungeon
 const brambleChestBefore = await wk.page.evaluate(() => {
   const g = window.__game;
@@ -37,7 +37,7 @@ await wk.page.evaluate((f) => window.__wkJump('vc2', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'vc2' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 vc2Doors = await wk.wk('doors');
-check('vc2 HAS a door to vr1 once cut (open on rebuild)', vc2Doors.some((d) => d.to === 'vr1'), vc2Doors.map((d) => d.to));
+check('vc2 HAS an open door to vr1 once cut (open on rebuild)', vc2Doors.some((d) => d.to === 'vr1' && d.open), vc2Doors.map((d) => d.to));
 
 // 1. vr1 — no fight, the lost wolf.
 for (const room of ['vr1', 'vr2', 'vr3']) {

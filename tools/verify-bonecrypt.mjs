@@ -21,14 +21,14 @@ await wk.page.evaluate((f) => window.__wkJump('d1a', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'd1a' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 let d1aDoors = await wk.wk('doors');
-check('d1a has NO door to d1c before the crypt ice shatters', !d1aDoors.some((d) => d.to === 'd1c'), d1aDoors.map((d) => d.to));
+check('d1a has NO open door to d1c before the crypt ice shatters (the dungeon mouth stays shut)', !d1aDoors.some((d) => d.to === 'd1c' && d.open), d1aDoors.map((d) => d.to));
 
 await wk.page.evaluate(() => { window.__game.WS.set('vale', 'ice_d1a_crypt', true); });
 await wk.page.evaluate((f) => window.__wkJump('d1a', f), FORMS);
 await wk.page.waitForFunction(() => window.__wk.room === 'd1a' && window.__wk.hearts > 1
   && !window.__wk.gates.transitioning, null, { timeout: 60000 });
 d1aDoors = await wk.wk('doors');
-check('d1a HAS a door to d1c once the ice is shattered (open on rebuild)', d1aDoors.some((d) => d.to === 'd1c'), d1aDoors.map((d) => d.to));
+check('d1a HAS an open door to d1c once the ice is shattered (open on rebuild)', d1aDoors.some((d) => d.to === 'd1c' && d.open), d1aDoors.map((d) => d.to));
 
 // 1. d1c/d1d/d1e all build, calls under budget.
 for (const room of ['d1c', 'd1d', 'd1e']) {

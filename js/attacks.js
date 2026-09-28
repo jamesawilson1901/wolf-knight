@@ -251,6 +251,25 @@ export const ATTACK = {
     damage: 'contact', element: 'fire',
     counterplay: ['move', 'bolt_it_down'],
   },
+  // THE CINDER DRAKE (lb, 2026-09-26) — the Dragonling family at mini-boss
+  // scale, so the BOSS floor applies. Its dive is the same grammar with a
+  // longer tell; a raised shield still crashes it (3.0s floored, gold ring).
+  // `recover` is the low climb back to hover — hittable — when it is NOT met.
+  drake_dive: {
+    owner: 'DrakeGuardian', tier: 'boss', source: 'js/enemies.js',
+    windup: 1.10, active: 0.75, recover: 1.40, gap: 1.6,
+    damage: 'contact', element: 'fire',
+    counterplay: ['shield', 'move', 'bolt_it_down'],
+  },
+  // Every third attack: a red lane on the floor (the boss-lane exception to
+  // LAW 4), fire down it, then it lands winded — floored, gold ring, the
+  // second shape of opening in the fight.
+  drake_flame: {
+    owner: 'DrakeGuardian', tier: 'boss', source: 'js/enemies.js',
+    windup: 1.20, active: 0.60, recover: 1.80, gap: 1.6,
+    damage: 1, element: 'fire',
+    counterplay: ['move', 'shield'],
+  },
 };
 
 // Absolute state thresholds, so a state machine never re-adds the numbers by

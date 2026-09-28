@@ -5916,3 +5916,90 @@ them:
   a good gap "nowhere clear" and deleting the prop. Lifting the prop's own
   circle for the search, and handing it back wherever the prop lands, turned
   122 deletions back into moves.
+
+## Thorns, ice, a guardian, and nothing left hanging (2026-09-27, v3.196.0)
+
+Dad's seven screenshots from v3.189, and what each one was:
+
+1. **"Replace green rocks with the thorn glb"** and **5. "Replace hedges
+   with thorn"** were one thing: every Verdant-Wolf cut gate. levelkit's
+   `promiseGate` built them from three tinted rocks (or `'bush'` cubes in
+   levelClimb/level7), Level 3 grew its own from Quaternius bushes and
+   canes, and `gates.js brambleGate` cloned three bushes. All three now come
+   from `js/gateprops.js thornWall()`: dad's Meshy "Tangled Thorns" laid
+   shoulder to shoulder across the whole collider, 1.9-2.05u tall, merged
+   into one mesh per gate.
+2. **"Remove the vine"** / **7. "get rid of any vine that looks like this"**
+   — `levelGreen.js vine()`, g1's code-built chain of capsules with glowing
+   diamonds. It was the only one; it is gone, and Pip's g1 line ("The vine
+   goes UP… Follow it") now says "The road goes UP", re-voiced.
+3. **"Remove the hovering logs"** — Level 3's log bridge (tc2) hung its log
+   1.4u in the air "held up by the rope", but the rope is a charred post, so
+   a child saw a floating log. The log no longer exists until the post burns;
+   it falls out of the post into place as the bridge. The spine still works.
+4. **"Replace blue rocks with a better locking asset that actually visually
+   blocks the path"** — the frozen shatter gates (promiseGate colour
+   0x9be3ff, now kind `'ice'`, and `gates.js iceGate`). `iceWall()` stands
+   blocks of pale glowing ice across the gap at uneven heights, 1.8-2.7u.
+   The first try, the Frostpeak snow-rock cluster, came out as a heap of dark
+   blue rocks, which is the complaint again.
+6. **"Replace circled statue with the loyal guardian"** — t1a's hero prop
+   was the knight RIG, tinted and leaning. Now dad's Meshy "Low Poly Loyal
+   Guardian" (a seated stone wolf), upright on the old base.
+
+Both Meshy uploads were 8.4 MB each; shipped at ~150 KB (normal/MR maps
+dropped, colour map 2048→512 JPEG, meshes 5k→2.5k and 4k→2k tris). Their
+materials are renamed off Meshy's shared `Material_0`, because
+`assets.js prepareModel` caches prepared materials by NAME, and the second
+Meshy file loaded would have worn the first one's texture. Attestation:
+`assets/LICENSES/meshy-thorns-guardian-attestation.txt`.
+
+Also here: **ln1/sn1/dn1's north bars moved into the doorway** (0.9 → 0.5
+in). verify-openholes found a 2.4u span on each north wall that neither
+blocked nor fired: the bars' 0.45-thick collider stopped 0.03u short of the
+wall plane. And **the sweep's stale dungeon checks** (six dungeon suites +
+l1-doors) now ask whether a dungeon door is OPEN, not whether it exists —
+`dungeonMouth` has always registered the door and gated it with `when()`
+since v3.192.
+
+**Later the same day — the Ash Wing had no way in.** With the six dungeon
+mouths proved rather than excused (verify-reachable BARRED), one door stayed
+red with its gate opened: xa1 → xa2, 0 reachable cells even with the bar
+burned, and identical on 1656dc1. A 1u flood of the room showed why:
+dressCourt's ruined homes stood across both ends of the wing's x = 6 wall,
+sealing the arrival pocket — a child could only go back to xh. `wingEntry`
+now reserves the four passages round its walls' ends, so the prop makers
+(which all ask `world.blocked()`) leave them floor. Worth a look separately:
+the wing's bar sits between those walls rather than across a way through, so
+walking round a wall end reaches xa2 without fire — the same as xr1 already
+does. That is how both wings were built; this fix does not change it.
+
+## Dad's calls: enemies stay, locks lock, fire burns wood (2026-09-28, v3.196.0)
+
+Three answers, one of them a delegation:
+
+1. **The gate review is approved** (thorns, ice, the Loyal Guardian, the
+   barred doors).
+2. **Healed regions keep their enemies.** "We want the player to go back and
+   explore regions for secrets and dungeons and to get crafting materials.
+   That doesn't work if the enemies end up replaced." restoration.js's
+   enemy→grazing-wolf swap (`graze()`) had never been wired; it is deleted,
+   not left as a promise. The herd machinery stays for the Den's pup pen,
+   and `COAT` stays for the lost wolves. verify-loops no longer demands la be
+   combat-free after the boss (vh, Stoneroot's camp, still must be); its
+   known-fail line goes.
+3. **The Court's wing locks were decorative** — two short walls at x = ±6 with
+   the gate between them across nothing, so a child walked round a wall end
+   to the next room. "Your choice, use your best knowledge in game design":
+   a promise gate only teaches if it is the only way. `wingEntry` is now one
+   wall across the whole room at x = −6 with the gate its only gap, laid along
+   it. Flood-fill from the arrival: 0 cells west of the wall while shut, the
+   whole west side and the door on once burned (Ash) or cut (Root).
+   verify-reachable proves both. xr1's hound moved to the arrival side.
+
+And, found making (3): the Ash Wing's `'brick'` gate rendered as a few tiny
+chunks, so a sealed gap looked open. Every burn gate in the game was the
+same kind of thing — tinted rocks, "does not look like it blocks", and not a
+thing fire opens. `gateprops.timberWall()` builds them now: charred log
+stacks two high across the gap, a low ember glow in the wood. Ash Wing, lb2,
+lk1, lk2 and n1.

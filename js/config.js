@@ -152,6 +152,14 @@ export const CONFIG = {
     PUNCH_T: 0.25,         // s the punch releases over
     IFRAMES: 0.4,          // s of morph i-frames (no hurt flash)
     PUSH_RADIUS: 1.6,      // u, adjacent enemies get nudged (no damage)
+    // THE SWAP-IN STRIKE (v3.195): a switch with a foe within STRIKE_NEAR
+    // lands a free element burst — weapon power x STRIKE_DMG in the new
+    // form's element, a short daze, once per STRIKE_COOLDOWN seconds
+    STRIKE_NEAR: 4.5,
+    STRIKE_RADIUS: 2.4,
+    STRIKE_DMG: 1.0,
+    STRIKE_STUN: 0.5,
+    STRIKE_COOLDOWN: 4.0,
   },
 
   // ---- DIFFICULTY (first family playtest verdict 2026-07-31: "too easy") ----

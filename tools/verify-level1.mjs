@@ -70,6 +70,9 @@ const snap = () => page.evaluate(() => {
   }
   return {
     doors: w.doors.map((d) => ({ to: d.to, minX: d.minX, maxX: d.maxX, minZ: d.minZ, maxZ: d.maxZ })),
+    // a door still behind its rubble (levelkit onwardPlug) has no trigger yet
+    // by design — the room still offers the branch, it is just not open
+    pluggedTo: w.pluggedTo || [],
     spawn: { ...w.spawn },
     markers: Object.keys(w.markers),
     interactive,
@@ -139,7 +142,8 @@ for (const [pocket, host] of Object.entries(POCKETS)) {
   const s = S[pocket];
   check(`${pocket} loops back onto ${host}`, !!s && s.doors.some((d) => d.to === host),
     s ? { doors: s.doors.map((d) => d.to) } : undefined);
-  const hostHasIt = S[host] && S[host].doors.some((d) => d.to === pocket);
+  const hostHasIt = S[host] && (S[host].doors.some((d) => d.to === pocket)
+    || S[host].pluggedTo.includes(pocket));
   check(`${host} actually offers the ${pocket} branch`, !!hostHasIt);
 }
 

@@ -180,7 +180,22 @@ console.log('\n── 4. ...and walking into one really opens it ─────
 // child walks at a chest and it opens. Two of them, one wood and one gold, on
 // real keys — because "opens on touch" is the fix for dad's screenshots and a
 // fix nobody has walked is a fix nobody has.
-for (const [room, x, z, kind] of [['tsh', 2.68, -0.1, 'chest'], ['t3b', -1.4, -1.8, 'goldchest']]) {
+// THE GOLD ONE IS FOUND, NOT NAMED (2026-09-26). This named t3b's goldchest at
+// (-1.4, -1.8) — but which pot in a room becomes a chest is a SEEDED roll
+// (levelkit's pot placer: "roughly every third room hides a chest"), and the
+// prop-separation work shifted t3b's rolls so it has no touch-open chest at
+// all now, on unmodified main too. The check then walked to empty floor and
+// reported a broken chest. It now takes the first ungated, reachable gold
+// chest this same run's sweep (§3) found — the promise is "a gold chest opens
+// when walked into", not "t3b has one".
+const goldPick = (() => {
+  for (const r of audit) for (const p of r.pots || []) {
+    if (p.kind === 'goldchest' && !p.gated && p.reach) return [r.id, p.x, p.z, 'goldchest'];
+  }
+  return null;
+})();
+check('the sweep found an ungated gold chest to walk into', !!goldPick);
+for (const [room, x, z, kind] of [['tsh', 2.68, -0.1, 'chest'], ...(goldPick ? [goldPick] : [])]) {
   await wk.page.evaluate((r) => window.__wkJump(r, ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf']), room);
   await wk.page.waitForFunction((r) => window.__wk.room === r && window.__wk.hearts > 1
     && !window.__wk.gates.transitioning, room, { timeout: 60000 });

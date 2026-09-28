@@ -87,7 +87,16 @@ check('falling in puts you back at the door', Math.abs(fall.z - 5.5) < 0.6, fall
 const sight = await page.evaluate(async () => {
   const g = window.__game;
   const read = () => g.lights.hemi.intensity / g.lights.HEMI_BASE;
-  const settle = async () => { for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r)); };
+  // SILENCE PIP FIRST. Since v3.195 a non-repeat line BLOCKS the world while
+  // it speaks, and the darkness lerp lives after that early return in the
+  // loop — entering the cave queues Pip's cave line, so forty frames could
+  // pass with the light rig frozen part-way (asKnight 0.265 on CI, 2026-09-27).
+  const settle = async () => {
+    for (let i = 0; i < 40; i++) {
+      if (g.narration.speaking) g.narration.skip();
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  };
   g.player.setForm('knight', { silent: true });
   await settle();
   const asKnight = read();

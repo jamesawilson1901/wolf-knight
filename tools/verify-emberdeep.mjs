@@ -24,7 +24,9 @@ for (const room of ['lk1', 'lk2', 'lk3']) {
   const m = await wk.page.evaluate(() => {
     const g = window.__game;
     let meshes = 0;
-    g.world.root.traverse((n) => { if (n.isMesh) meshes++; });
+    // a gate wall (js/gateprops.js) is merged into one draw on purpose, and
+    // says how many props it is made of — count it as what it looks like
+    g.world.root.traverse((n) => { if (n.isMesh) meshes += (n.userData && n.userData.pieces) || 1; });
     return { meshes, calls: g.renderer.info.render.calls,
       burnables: (g.world.burnables || []).length,
       braziers: (g.world.braziers || []).length,

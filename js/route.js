@@ -91,6 +91,13 @@ const ONWARD = {
   // answers as a function below (which sigil is still dark decides the way on).
   m1: 'm2',
   ma: 'm2', mb: 'm2',
+
+  // --- The three dragon dens (design/DRAGON-EGGS.md v3): a quiet side path
+  // off each arena's east wall, so the way on from inside one is always the
+  // way back out to the arena it hangs off.
+  ln1: 'le', ln2: 'ln1',
+  sn1: 'scr', sn2: 'sn1',
+  dn1: 'ddp', dn2: 'dn1',
 };
 
 // The two hubs answer differently depending on what the child has already done.
