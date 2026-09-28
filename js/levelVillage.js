@@ -751,7 +751,7 @@ export async function buildYlw(scene) {
     // suite was finally pointed at the Village at all; the middle is left open
     // because five of these rooms hold a guardian fight, so the goods line the
     // edges the way a real street's do.
-    clutter(world, D, [['cart', 5.0, 9.0, 1.0, 0.4], ['cart', 9.0, -9.5, 1.0, -0.6], ['trough', 12.0, 7.5, 1.0, 0.2], ['trough2', 3.0, -8.0, 1.0, 0.7], ['sack', 15.0, 4.0, 1.0, 0], ['bucket', 14.0, -4.5, 1.0, 0.3], ['coil', 7.0, 6.0, 1.0, -0.4], ['stool', 6.0, -5.0, 1.0, 1.2], ['firewood', 16.5, 8.0, 1.0, 0.5], ['cartwheel', 2.0, 6.5, 1.0, -0.2], ['laundry', 11.0, -7.0, 1.0, 0.8], ['grinder', 16.0, -8.0, 1.0, 0.1]]);
+    clutter(world, D, [['cart', 5.0, 9.0, 1.0, 0.4], ['cart', 13.0, -10.5, 1.0, -0.6], ['trough', 12.0, 7.5, 1.0, 0.2], ['trough2', 3.0, -8.0, 1.0, 0.7], ['sack', 15.0, 4.0, 1.0, 0], ['bucket', 14.0, -4.5, 1.0, 0.3], ['coil', 7.0, 6.0, 1.0, -0.4], ['stool', 6.0, -5.0, 1.0, 1.2], ['firewood', 16.5, 8.0, 1.0, 0.5], ['cartwheel', 2.0, 6.5, 1.0, -0.2], ['laundry', 12.5, -5.5, 1.0, 0.8], ['grinder', 16.0, -8.0, 1.0, 0.1]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
@@ -914,7 +914,7 @@ export async function buildYg4(scene) {
     // suite was finally pointed at the Village at all; the middle is left open
     // because five of these rooms hold a guardian fight, so the goods line the
     // edges the way a real street's do.
-    clutter(world, D, [['cart', -8.5, 6.5, 1.0, 0.4], ['trough', -7.0, -6.5, 1.0, -0.3], ['sack', -2.0, 8.0, 1.0, 0.8], ['bucket', -1.5, -8.0, 1.0, 0], ['coil', 3.0, 7.5, 1.0, 0.2], ['stool', 2.5, -7.5, 1.0, 1.1], ['firewood', -9.5, 1.5, 1.0, 0.6], ['cartwheel', 5.5, 5.5, 1.0, -0.5], ['basin', 5.0, -5.0, 1.0, 0.3], ['laundry', -4.5, 9.5, 1.0, 0.7]]);
+    clutter(world, D, [['cart', -8.5, 6.5, 1.0, 0.4], ['trough', -7.0, -6.5, 1.0, -0.3], ['sack', -2.0, 8.0, 1.0, 0.8], ['bucket', -1.5, -8.0, 1.0, 0], ['coil', 3.0, 7.5, 1.0, 0.2], ['stool', 2.5, -7.5, 1.0, 1.1], ['firewood', -9.5, 1.5, 1.0, 0.6], ['cartwheel', 5.5, 5.5, 1.0, -0.5], ['basin', 6.0, -5.5, 1.0, 0.3], ['laundry', -4.5, 9.5, 1.0, 0.7]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g4') || !world.enemies) return;
@@ -948,7 +948,10 @@ export async function buildYg5(scene) {
     townhouse(world, 7, 2.5, -6.2, -0.15, D.propTint, 0.55);
     placeOne(world, villageKit.wall2, 'wall2', 3, 3, WALL_S, Math.PI / 2, D.propTint);
     // THE WATERSIDE END — the boat frame nobody finished, rods, fish drying.
-    clutter(world, D, [['boat', -6.5, -4.5, 1.0, 0.5], ['rod', -4.0, -5.4, 1.0, 1.2],
+    // The boat is a size down and west of the townhouse: full size at
+    // (-6.5, -4.5) its hull ran 1.4u through the house's front wall, and
+    // the street cart below stood inside the same house (2026-09-28).
+    clutter(world, D, [['boat', -8.2, -5.0, 0.55, 0.5], ['rod', -4.0, -5.4, 1.0, 1.2],
       ['fish', -8.0, -3.0, 1.0, 0.2], ['basin', -3.2, -3.6, 1.0, 0.6]]);
     world.addBox(-0.4, 6.4, 2.4, 3.6);
   }
@@ -958,7 +961,7 @@ export async function buildYg5(scene) {
     // suite was finally pointed at the Village at all; the middle is left open
     // because five of these rooms hold a guardian fight, so the goods line the
     // edges the way a real street's do.
-    clutter(world, D, [['trough2', -8.0, 6.0, 1.0, -0.4], ['cart', -6.5, -7.0, 1.0, 0.5], ['bucket', -1.5, 8.5, 1.0, 0], ['sack', -2.5, -8.0, 1.0, 0.9], ['broom', 3.5, 7.0, 1.0, 1.0], ['stool', 2.0, -7.0, 1.0, -0.8], ['coil', -9.5, 2.0, 1.0, 0.2], ['grinder', 5.0, 5.0, 1.0, 0.4], ['firewood', 4.5, -5.5, 1.0, 0.6], ['cartwheel', -4.0, 9.5, 1.0, -0.2]]);
+    clutter(world, D, [['trough2', -8.0, 6.0, 1.0, -0.4], ['bucket', -1.5, 8.5, 1.0, 0], ['sack', -2.5, -8.0, 1.0, 0.9], ['broom', 3.5, 7.0, 1.0, 1.0], ['stool', 2.0, -7.0, 1.0, -0.8], ['coil', -9.5, 2.0, 1.0, 0.2], ['grinder', 5.0, 5.0, 1.0, 0.4], ['firewood', 4.5, -5.5, 1.0, 0.6], ['cartwheel', -4.0, 9.5, 1.0, -0.2]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g5') || !world.enemies) return;
@@ -994,7 +997,7 @@ export async function buildYg6(scene) {
     // suite was finally pointed at the Village at all; the middle is left open
     // because five of these rooms hold a guardian fight, so the goods line the
     // edges the way a real street's do.
-    clutter(world, D, [['cart', 8.5, 6.5, 1.0, -0.4], ['trough', 7.0, -6.5, 1.0, 0.3], ['sack', 2.0, 8.0, 1.0, -0.8], ['bucket', 1.5, -8.0, 1.0, 0], ['coil', -3.0, 7.5, 1.0, -0.2], ['stool', -2.5, -7.5, 1.0, 1.1], ['firewood', 9.5, 1.5, 1.0, 0.6], ['cartwheel', -5.5, 5.5, 1.0, 0.5], ['basin', -5.0, -5.0, 1.0, 0.3], ['laundry', 4.5, 9.5, 1.0, -0.7]]);
+    clutter(world, D, [['cart', 8.5, 6.5, 1.0, -0.4], ['trough', 7.0, -6.5, 1.0, 0.3], ['sack', 2.0, 8.0, 1.0, -0.8], ['bucket', 1.5, -8.0, 1.0, 0], ['coil', -3.0, 7.5, 1.0, -0.2], ['stool', -2.5, -7.5, 1.0, 1.1], ['firewood', 9.5, 1.5, 1.0, 0.6], ['cartwheel', -5.5, 5.5, 1.0, 0.5], ['basin', -6.0, -5.5, 1.0, 0.3], ['laundry', 4.5, 9.5, 1.0, -0.7]]);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   world.onAnimate(() => {
     if (WS.get(REGION, 'guardian_g6') || !world.enemies) return;

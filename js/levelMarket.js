@@ -218,7 +218,8 @@ export async function buildQ1(scene) {
   ruinedHome(world, 14, 10.5, -0.6, D, { w: 5.5, d: 4.5, keep: 0.55 });
 
   world.markers.restSpot = { x: -6, z: 9 };
-  world.markers.rimeMinionSpots = [{ x: -5, z: -4 }, { x: 2, z: 6 }];
+  // (0.8, 6): the second minion used to wake at (2, 6), inside the near cart
+  world.markers.rimeMinionSpots = [{ x: -5, z: -4 }, { x: 0.8, z: 6 }];
   world.markers.breakables = [
     { x: -9, z: -2, kind: 'crate' }, { x: 3, z: -8, kind: 'barrel' },
     { x: -3, z: 3, kind: 'jar' },
@@ -244,7 +245,10 @@ export async function buildQ1(scene) {
     ['trough2', -9.0, 3.0, 1.0, 0.6], ['stool', -10.5, 7.5, 1.0, -0.9],
     // the quayside proper, west, where the boats were pulled up
     ['boat', -10.5, 0.5, 1.0, 0.4], ['boat', -13, -4, 1.0, -0.8],
-    ['boat', -11.5, 4.0, 1.0, 1.1],
+    // smaller and a step east: full size at (-11.5, 4) its bow ran a metre
+    // into the ice-sealed stall at (-12, 5.5), the one thing on this quay a
+    // child is meant to look at
+    ['boat', -10.0, 4.2, 0.75, 1.1],
     ['cart', -6.5, -8, 1.0, 0.9], ['coil', -8.5, 6.5, 1.0, 0.2],
     ['bucket', -4.5, -1.5, 1.0, 0], ['basin', -2, -6.5, 1.0, 0.6],
     ['stool', -7, 2.5, 1.0, 1.1], ['trough', -9.5, -6.5, 1.0, -0.3],

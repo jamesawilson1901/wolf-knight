@@ -609,13 +609,25 @@ function rimSides(world, halfW, halfD, D, seed) {
   let s0 = seed;
   const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
   const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'bush'];
+  // Not only the keep-clear register: a DEEP channel is a box collider, not a
+  // reservation, and dg2's two barrels stood a hand apart in the middle of its
+  // deep water (2026-09-28) — so a slot must also be clear of every collider,
+  // and of the slot before it.
+  const placed = [];
+  const bad = (x, z) => {
+    if (world.blocked(x, z, 0.6)) return true;
+    const c = world.resolveCircle(x, z, 0.5);
+    if (Math.hypot(c.x - x, c.z - z) > 0.02) return true;
+    return placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.3);
+  };
   for (let i = 0; i < 34; i++) {
     const side = i % 2 ? 1 : -1;
     const x = -halfW + 1.2 + (i / 34) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.3;
     let z = side * (halfD - 1.4 - r() * 1.5);
-    if (world.blocked(x, z, 0.6)) z = -z;
-    if (world.blocked(x, z, 0.6)) z = side * (halfD - 2.6);
-    if (world.blocked(x, z, 0.6)) continue;
+    if (bad(x, z)) z = -z;
+    if (bad(x, z)) z = side * (halfD - 2.6);
+    if (bad(x, z)) continue;
+    placed.push({ x, z });
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
     const big = kind.startsWith('rock');
     const g = new THREE.Group();
@@ -1397,10 +1409,15 @@ export async function buildDlg(scene) {
   if (!GREY()) {
     let s0 = 6401;
     const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
+    const tops = [];
     for (let i = 0; i < 30; i++) {
       const x = (r() - 0.5) * 28, z = (r() - 0.5) * 24;
       if (world.blocked(x, z, 1.0)) continue;
       const kind = ['column', 'column2', 'pillar', 'arch', 'brick'][Math.floor(r() * 5) % 5];
+      // two roofs of one drowned town do not share a footprint: a standing
+      // column came up through a pillar at (2.7, 10.4) before this (2026-09-28)
+      if (tops.some((t) => Math.hypot(t.x - x, t.z - z) < 2.2)) continue;
+      tops.push({ x, z });
       const g = new THREE.Group();
       // Half of them break the surface. Entirely submerged, they were invisible
       // under an opaque deep-water sheet — a drowned town nobody can see is a
@@ -1503,7 +1520,9 @@ export async function buildDdp(scene) {
     // standing in front of it. The throne stops being an obstruction and
     // becomes what it always should have been — the backdrop that says whose
     // hall this is.
-    world.markers.bossSpot = { x: 0, z: 2.5, kind: 'meri' };
+    // z 4, not 2.5: her body reaches 1.4u behind its own origin, and at 2.5
+    // that put her tail inside the throne's plinth (verify-interpenetration)
+    world.markers.bossSpot = { x: 0, z: 4.0, kind: 'meri' };
   } else {
     world.bgColor = 0x2a5f74;
     // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a

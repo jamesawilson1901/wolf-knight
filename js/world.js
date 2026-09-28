@@ -465,11 +465,35 @@ export class World {
 
   separateProps() {
     if (typeof window !== 'undefined' && window.__noSeparate) return null;
-    const MOVABLE_HALF = 1.2;   // a barrel, a crate, a scattered fir — not a
+    const MOVABLE_HALF = 1.4;   // a barrel, a crate, a scattered fir — not a
     const MOVABLE_H = 3.2;      // shrine, a gate or a landmark tree
     const PEN = 0.12;           // a whisker of contact is contact, not a merge
     const REACH = 2.0;          // nothing is ever teleported across a room
     const props = this.propFootprints();
+    // WHERE A BODY WILL STAND. A sleeping skeleton, a hound on its post, a
+    // slime in its puddle — the enemies are spawned after the room is built,
+    // so at this point their spots are only coordinates in `markers`, and six
+    // of the pairs left in 2026-09 were a minion waking up inside a fallen
+    // drum, a barrel or a ruin wall. Each spawn spot joins the list as a body
+    // that never moves itself, so clutter is pushed off it and nothing is
+    // pushed onto it.
+    // Every roster enemy's key is its id + 'Spots' (enemies.js rosterKey), so
+    // the list is the plural `...Spots` keys MINUS the ones that name things:
+    // a mining rock, a lantern, a mirror, a plate, a shrine.
+    const NOT_BODY = /^(rock|tree|dragonShrine|order|eggNest|stalactite|relic|mirror|gutter|bloom|vane|plate|lantern|brazier|geyser|boulder)Spots$/;
+    // A POT is a body too: breakables are spawned from `markers.breakables`
+    // after the build (main.js spawnBreakables), and a crate whose spot sits
+    // inside a scattered rock is the same bug as a minion inside a drum
+    // (verify-decor-overlap, xc3, 2026-09-18).
+    const isBodyKey = (k) => (/Spots$/.test(k) && !NOT_BODY.test(k)) || k === 'breakables';
+    for (const [key, v] of Object.entries(this.markers || {})) {
+      if (!isBodyKey(key) || !v) continue;
+      for (const e of Array.isArray(v) ? v : [v]) {
+        if (!e || typeof e.x !== 'number' || typeof e.z !== 'number') continue;
+        props.push({ body: true, x: e.x, z: e.z, r: 0.45, hx: 0.45, hz: 0.45, h: 1,
+          area: 0.8, comp: {} });
+      }
+    }
     // THE ROOM AS IT WAS, BEFORE ANY OF THIS RUNS. Every individual move below
     // only ever asks "is the spot I am about to stand on clear" — never "does
     // standing on it seal off somewhere else". Caught live in xa1: sixteen
@@ -501,7 +525,9 @@ export class World {
       if (Array.isArray(v)) { for (const e of v) collect(e); return; }
       if (typeof v.x === 'number' && typeof v.z === 'number') markerSpots.push(v);
     };
-    for (const v of Object.values(this.markers || {})) collect(v);
+    // ...except where a BODY will stand: a prop on a minion's spot is not the
+    // thing that spot refers to, it is in the minion's way (isBodyKey above)
+    for (const [k, v] of Object.entries(this.markers || {})) if (!isBodyKey(k)) collect(v);
     for (const c of this.checkpoints || []) collect(c);
     collect(this.spawn);                          // not in `markers` — its own field
     collect(KNOWN_ENTRIES[this.roomId] || []);    // doors elsewhere land HERE
@@ -529,7 +555,16 @@ export class World {
     // called every fir a landmark and left 131 of f1's 138 halves untouchable,
     // which is most of the residue it was written to clear. A scattered tree is
     // clutter here, and a tree inside a rock is the bug, not the furniture.
-    const movable = (p) => p.hx <= MOVABLE_HALF && p.hz <= MOVABLE_HALF
+    //
+    // LOW THINGS MAY BE WIDER. A column drum lying on its side is 3.8 long and
+    // 1.2 tall; a snow-rock heap 3.3 across and knee high. Neither is a
+    // landmark — they are the rubble of one — and together they were the
+    // biggest single family left in the backlog (2026-09-28): fallen drums
+    // rolled into wayshrines and arches, heaps under firs. Anything under
+    // LOW_H may be up to LOW_HALF across and still count as clutter.
+    const LOW_H = 1.3, LOW_HALF = 2.0;
+    const movable = (p) => !p.body && ((p.hx <= MOVABLE_HALF && p.hz <= MOVABLE_HALF)
+        || (p.h <= LOW_H && p.hx <= LOW_HALF && p.hz <= LOW_HALF))
       && p.h <= MOVABLE_H
       && !gameplayGroups.has(p.owner) && !gameplayGroups.has(p.model)
       && !isHero(p) && !onMarker(p) && !inWall(p);
@@ -649,12 +684,72 @@ export class World {
         const d = Math.hypot(a.x - b.x, a.z - b.z);
         const pen = (a.r + b.r) - d;
         if (pen <= PEN) continue;
+        // A PIECE OF WALL GIVES WAY. The shell is built from instanced cliff
+        // blocks, one per metre along the edge, and every one of them measures
+        // as a 1x1 prop standing inside the wall's own collider. A ruin wall,
+        // an arch or a tree dressed against the edge then reads as "inside a
+        // block" — two dozen of the pairs left in 2026-09 were exactly that,
+        // and neither side was allowed to move (both sit in a wall). The block
+        // is scenery with no collider of its own (the wall box stops the
+        // child, not the mesh), so it steps BACK, out of the room, far enough
+        // to clear: the prop now stands in a notch of the wall instead of
+        // through it. Nothing a child can reach changes.
+        const wallPiece = (q) => q.inst !== undefined && q.inst !== false && inWall(q);
+        if (wallPiece(a) || wallPiece(b)) {
+          const w = wallPiece(a) ? a : b, o = w === a ? b : a;
+          // clear of everything drawn, not just the prop it was inside: a wall
+          // two blocks thick has another row right behind this one
+          const clearAt = (x, z) => !props.some((q) => q !== w && !q.gone
+            && Math.hypot(q.x - x, q.z - z) < q.r + w.r - PEN);
+          let done = false;
+          // every wall box it stands in offers one outward direction (a corner
+          // block stands in two); the smallest step that is clear wins
+          for (const box of this.boxColliders) {
+            if (done) break;
+            if (!(w.x > box.minX && w.x < box.maxX && w.z > box.minZ && w.z < box.maxZ)) continue;
+            const alongX = (box.maxX - box.minX) < (box.maxZ - box.minZ);
+            const c = alongX ? (box.minX + box.maxX) / 2 : (box.minZ + box.maxZ) / 2;
+            const away = Math.abs(c) > 0.5 ? Math.sign(c)
+              : Math.sign(alongX ? (w.x - o.x) : (w.z - o.z)) || 1;
+            for (let st = pen + 0.04; st <= 1.45 && !done; st += 0.1) {
+              const nx = w.x + (alongX ? away * st : 0), nz = w.z + (alongX ? 0 : away * st);
+              if (!clearAt(nx, nz)) continue;
+              const dx = nx - w.x, dz = nz - w.z;
+              shiftGeometry(w, dx, dz);
+              moved.push({ from: [+w.x.toFixed(1), +w.z.toFixed(1)],
+                to: [+nx.toFixed(1), +nz.toFixed(1)], pen: +pen.toFixed(2), wall: true });
+              w.x = nx; w.z = nz;
+              done = true;
+            }
+          }
+          if (!done) {
+            // no clear step back: the wall behind it is already there, so this
+            // block is the one covered — hidden the way one instance is hidden
+            w.owner.traverse((n) => {
+              if (!n.isInstancedMesh || w.inst >= n.count) return;
+              n.setMatrixAt(w.inst, new THREE.Matrix4().makeScale(0, 0, 0));
+              n.instanceMatrix.needsUpdate = true;
+              n.computeBoundingSphere();
+            });
+            w.gone = true;
+            dropped.push({ x: +w.x.toFixed(1), z: +w.z.toFixed(1), pen: +pen.toFixed(2), wall: true });
+            if (w === a) break;
+          }
+          continue;
+        }
         // move the smaller of the two, and only if it is clutter
         const [big, small] = a.area >= b.area ? [a, b] : [b, a];
         const p = movable(small) ? small : (movable(big) ? big : null);
         if (!p) {
+          // WHY neither may move, per prop — so a pair that is left standing
+          // says which rule held it (size, marker, wall, hero, gameplay)
+          const why = (q) => [q.hx > MOVABLE_HALF || q.hz > MOVABLE_HALF ? 'wide' : '',
+            q.h > MOVABLE_H ? 'tall' : '',
+            gameplayGroups.has(q.owner) || gameplayGroups.has(q.model) ? 'gameplay' : '',
+            isHero(q) ? 'hero' : '', onMarker(q) ? 'marker' : '', inWall(q) ? 'wall' : '']
+            .filter(Boolean).join('+');
           kept.push({ x: +((a.x + b.x) / 2).toFixed(1), z: +((a.z + b.z) / 2).toFixed(1),
-            pen: +pen.toFixed(2) });
+            pen: +pen.toFixed(2), why: [why(a), why(b)] });
           continue;
         }
         const other = p === small ? big : small;

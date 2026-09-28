@@ -565,6 +565,12 @@ export function makeBuilders({ kit, isGrey }) {
       const big = /rockL|Column|Brick/.test(kind);
       const myR = (big ? 0.75 : 0.45) * scale;
       if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + myR)) continue;
+      // ...nor on a pot the room already named. Hand-placed breakables are
+      // only coordinates until main.js spawns them, so blocked() cannot see
+      // them; xc3's vault crate stood 0.64u inside a scattered rock's collider
+      // (verify-decor-overlap, 2026-09-18) because of exactly that.
+      if (((world.markers && world.markers.breakables) || [])
+        .some((p) => Math.hypot(p.x - x, p.z - z) < myR + 0.6)) continue;
       // SHADE IN THREE STEPS, NOT CONTINUOUSLY. A per-prop random float gave
       // every rock its own material and so its own draw call — twenty props
       // meant forty calls with shadows. Three discrete shades read the same to

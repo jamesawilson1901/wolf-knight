@@ -877,7 +877,11 @@ async function buildDen(scene) {
   for (const [gltf, x, z, s, ry] of [
     // WEST — where people sleep. Two tents facing the fire, mouths onto the
     // worn patch the ground painter puts there.
-    [tentGltf, -7.5, -4.6, 1.6, 0.6], [tentGltf, -8.6, 0.4, 1.5, 2.2],
+    // The second stood at (-8.6, 0.4) — which became the mouth of the west
+    // door when the Outer Camp (dr) was cut, so a child coming home from the
+    // camp landed 0.5u inside it (verify-landings, 2026-09-18). North of
+    // the door now, still facing the fire.
+    [tentGltf, -7.5, -4.6, 1.6, 0.6], [tentGltf, -7.6, 3.9, 1.5, 2.6],
     // the trees that make the glade a glade, pushed out to the corners so the
     // middle stays the plaza
     [treeA, 9.8, -6.4, 1.7, 0.4], [treeB, -4.8, 7.6, 1.6, 2.0],

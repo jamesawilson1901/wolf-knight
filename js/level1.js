@@ -614,7 +614,11 @@ function heroProp(world, x, z, kind, tint, D = null) {
     }
   } else if (kind === 'bowl') {
     // THE FORGE HEART — a ring of dungeon columns around a sunken fire bowl.
+    // Seven, not eight: the south column (i = 2, +z) stood 0.6u from the
+    // spirit shrine and its brazier at (0, -3), the one thing the ring is
+    // FOR — a torch sunk into a pillar. The ring now opens toward the shrine.
     for (let i = 0; i < 8; i++) {
+      if (i === 2) continue;
       const a = (i / 8) * Math.PI * 2;
       put(emberKit.column, 'heroBowl', Math.cos(a) * 4.4, 0, Math.sin(a) * 4.4, 1.5, a);
     }

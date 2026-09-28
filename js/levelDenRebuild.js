@@ -175,7 +175,11 @@ export async function buildDr(scene) {
   const world = base(scene);
   const spec = M.pocket;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
-  world.spawn = { x: halfW - 3, z: 0, angle: Math.PI / 2 };
+  // FACING INTO THE CAMP, -x — the way the Den's own door lands a child
+  // (rooms.js: `{ x: 8, z: 0, angle: -Math.PI / 2 }`). At +π/2 the spawn
+  // looked straight back at the door it came through, three metres of room
+  // ahead (verify-density measured five things in frame, 2026-09-28).
+  world.spawn = { x: halfW - 3, z: 0, angle: -Math.PI / 2 };
   // THE WAY BACK. entry lands just inside den's own west gap (js/rooms.js
   // buildDen, the mirror of this door) — the same "every landing is the
   // other room's business" law every sideDoor() call already keeps.
@@ -207,9 +211,21 @@ export async function buildDr(scene) {
     // ONE PROP PER TRADE, where one fits naturally and cheaply — the same
     // Small Props Pack the Village and the Den's own armoury corner already
     // share an atlas with, so this costs nothing extra to download.
-    placeOne(world, kit.hearth, 'hearth', -4.0, -3.2, 1.0, 0.4, D.propTint);
-    placeOne(world, kit.grinder, 'grinder', -4.0, 3.0, 1.0, -0.3, D.propTint);
-    placeOne(world, kit.cartwheel, 'cartwheel', -3.4, 3.7, 1.0, 0.7, D.propTint);
+    // BESIDE each building, never in it: at (-4, -3.2) and (-4, 3) the hearth
+    // and the grinder stood 1.6u inside the tavern's and the forge's own walls
+    // (verify-interpenetration, 2026-09-28). They sit out by the door now.
+    placeOne(world, kit.hearth, 'hearth', -2.2, -6.0, 1.0, 0.4, D.propTint);
+    placeOne(world, kit.grinder, 'grinder', -2.4, 5.2, 1.0, -0.3, D.propTint);
+    placeOne(world, kit.cartwheel, 'cartwheel', -2.0, 3.6, 1.0, 0.7, D.propTint);
+    // A CAMP THAT IS WORKED IN. With the spawn turned to face the camp it
+    // showed seventeen things against a pocket's twenty: the three buildings,
+    // their props and the nodes. The stores a working camp keeps to hand —
+    // wood by the forge, a trough and a stool out in the yard.
+    placeOne(world, kit.firewood, 'firewood', -0.6, 6.6, 1.0, 0.3, D.propTint);
+    placeOne(world, kit.coil, 'coil', 2.6, 6.4, 1.0, -0.4, D.propTint);
+    placeOne(world, kit.stool, 'stool', 4.2, 5.6, 1.0, 1.1, D.propTint);
+    placeOne(world, kit.trough, 'trough', 4.6, -6.2, 1.0, 0.2, D.propTint);
+    placeOne(world, kit.sack, 'sack', -0.4, -6.6, 1.0, 0.6, D.propTint);
     // THE MONUMENT — appears once, with its own kept-as-supplied material
     // (see the header note above), the moment the three working buildings
     // are all restored. No tint argument: placeOne's TINT() pipeline still

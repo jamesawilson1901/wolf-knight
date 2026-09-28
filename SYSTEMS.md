@@ -124,6 +124,15 @@ than by the number whoever wrote the line happened to pick:
   clamps every spot to the room's own half-extents — with the exception that a
   prop carrying a COLLIDER is dropped rather than clamped if it would land in a
   doorway, because a cart across the Spire stair is worse than a missing cart.
+* **Nothing stands inside anything else** (World.separateProps, js/world.js,
+  run from flattenStatic; gate: tools/verify-interpenetration.mjs, 0 pairs
+  in 199 rooms since 2026-09-28). Clutter is nudged clear of what it stands
+  in; low wide rubble (a lying drum, a snow heap) counts as clutter; a shell
+  WALL block (instanced cliff piece inside the wall collider) steps back out
+  of the room or hides behind the row behind it rather than a prop being
+  shoved into the room; and every enemy spawn spot (`...Spots` minus the
+  prop-naming ones) and every `markers.breakables` pot is a BODY — clutter
+  is pushed off it, nothing is pushed onto it.
 * **A dark zone's veil lies ON the ground.** The darkness itself is the light
   rig (main.js dims it when the child stands in the zone); the quad is only the
   hint, and at head height it read as a grey square hanging in mid-air.
@@ -287,6 +296,11 @@ shares a room with Tam — v3's fix for "the portal talks like Tam", when the
 fire portal stood one step from Tam's post and hid him. State:
 state.inventory.dragonEggs/dragonsHatched/dragonEquipped. Proven by
 tools/verify-dragoneggs.mjs (ticked) and tools/verify-dragondens.mjs (real keys).
+The hatched companion (js/companionDragon.js) follows and bites, and each
+dragon has ONE move of its own on its own clock (`SPECIAL`): Ember breathes a
+cone (1.25/foe, 6s), Tide mends half a heart while Kael is hurt (12s), Storm's
+bite chains to two more foes (0.75/link, 3s). Pots (`scenery`) are never
+targets. Proven by tools/verify-dragon-specials.mjs.
 
 ## The healing (js/restoration.js)
 What a region looks like once its guardian is free. main.js has set
