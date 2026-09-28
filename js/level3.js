@@ -1748,7 +1748,7 @@ export async function buildTf1(scene) {
   // (kept off the diagonal a child walks from the door to the wolf at
   // (-6.5, 5) — a first cut stood a grove on it and verify-frozenspring's
   // walker wedged in the trees)
-  grove(world, 2.6, 6.6, 1.5, D, { sick: 0.3 });
+  grove(world, 2.4, 4.4, 1.2, D, { sick: 0.3 });   // north of the camera's blind strip (z > 5.5)
   grove(world, 1.5, -5.2, 2.2, D, { sick: 0.5 });
   thicket(world, -1.5, 6.6, 1.4, D, { sick: 0.3 });
   mossyRuin(world, 5.5, -4.8, 0.3, D, { w: 3.6, d: 2.8, keep: 0.45, door: false });
@@ -1851,8 +1851,10 @@ export async function buildTf3(scene) {
   aftermath(world, 0, 6.8, 2.0, D, 14);
   // THE SPRING HEART's own wood (see buildTf1's note): eight things on
   // arrival against a pocket's twenty — a gold chest in an empty box.
-  grove(world, -5, 4.6, 2.3, D, { sick: 0.3 });
-  grove(world, 4.5, 4.9, 2.1, D, { sick: 0.3 });
+  // both groves kept north of z 4.6: the camera looks over the south strip,
+  // and a first cut put a trunk in the bottom of the arrival frame
+  grove(world, -6, 2.4, 1.8, D, { sick: 0.3 });
+  grove(world, 4.6, 2.9, 1.6, D, { sick: 0.3 });
   thicket(world, -5.5, -4.6, 1.9, D, { sick: 0.2 });
   thicket(world, 5.2, -4.6, 1.9, D, { sick: 0.2 });
   mossyRuin(world, -2.8, 3.2, 0.2, D, { w: 3.0, d: 2.4, keep: 0.4, door: false });
