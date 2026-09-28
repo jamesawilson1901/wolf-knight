@@ -124,7 +124,7 @@ pot or a scatter rock spawned on top of it after the fact.
 | region | room | kind | x, z | tint | why here |
 |---|---|---|---|---|---|
 | Ember Hollow (v3.175; tree removed v3.194) | `lc` | rock | (10,7) | none | the original proof-of-concept pair; the tree went on 2026-09-26 (Dad: "a random tree in the lava fields") and the suite's tree replay moved to `dr` |
-| Wild Woods | `t1a` (Thornedge) | tree | (10, -1) | `0x6fae4a` (`WOLF_TINTS.verdant_wolf`) | the room's own open east flank, clear of the thicket at (5,-4), the shrine keep-clear at (0,0) and every scatter/grove collider a real dump confirmed; nearest other collider 2.19u away |
+| Wild Woods | `t1a` (Thornedge) | tree | (10, -3.5) — moved from (10, -1) 2026-09-28, it stood in the tsA door's landing | `0x6fae4a` (`WOLF_TINTS.verdant_wolf`) | the room's own open east flank, clear of the thicket at (5,-4), the shrine keep-clear at (0,0) and every scatter/grove collider a real dump confirmed; nearest other collider 2.19u away |
 | Frostpeak | `f1` (The Rime Gate) | rock | (1.5, 7) | `0x9be3ff` (`WOLF_TINTS.frost_wolf`) | on the walking spine `mountain()` itself keeps clear of its own rockfall dressing (x -2.5..2.5), between the hound gauntlet and the drift/firs either side; nearest other collider 2.57u away |
 | Stormreach | `s1a` (The Landing) | rock | (9, -2) | `0xc9d4ff` (`WOLF_TINTS.storm_wolf`) | sits in the room's own 'gravel' ground patch (SE corner), clear of the gale hound and the rubbleField at (11,-9); nearest other collider 5.02u away |
 | Sunken Vale | `d1a` (The Shallows) | tree | (3, 3) | `0x3fb0c4` (`WOLF_TINTS.tide_wolf`) | 9u+ clear of the room's own deep/shallow water zones (x -17..-6.25), the visored wight and the tide slime; nearest other collider 1.97u away |

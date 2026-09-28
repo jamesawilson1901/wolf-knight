@@ -834,8 +834,11 @@ export async function buildT1a(scene) {
   // reserved BEFORE the procedural breakables pass below so a pot can never
   // land on top of it (v3.175's own lc pair had no such reservation and
   // relied on luck; this rollout does not repeat that).
-  world.markers.treeSpots = [{ x: 10, z: -1, tint: 0x6fae4a }];
-  world.reserve(10, -1, 1.6, 'node');
+  // (10, -3.5), not (10, -1): the log bridge's door from tsA lands a child
+  // at (10, 0), and the trunk's collider stood 0.09u into that landing
+  // (verify-landings, carried as a known failure since 2026-09-18).
+  world.markers.treeSpots = [{ x: 10, z: -3.5, tint: 0x6fae4a }];
+  world.reserve(10, -3.5, 1.6, 'node');
   // NO ENEMIES, deliberately. The beat chart's first row is "the woods are
   // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
   // labelled "first Thorn Hounds" — a hound here contradicted both, and made
