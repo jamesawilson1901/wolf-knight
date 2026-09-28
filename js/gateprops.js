@@ -72,6 +72,9 @@ function merge(pieces, name, matFor = (m) => m) {
   for (const [mat, geos] of byMat) {
     const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
     mesh.name = name;
+    // how many props this one draw stands for — a suite counting meshes as a
+    // measure of how dressed a room is counts these as what they look like
+    mesh.userData.pieces = pieces.length;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     out.add(mesh);
