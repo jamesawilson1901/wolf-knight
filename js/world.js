@@ -880,6 +880,28 @@ export class World {
           const mi = moved.indexOf(rec.entry);
           if (mi >= 0) moved.splice(mi, 1);
           reverted++;
+          // BACK WHERE IT WAS IS BACK INSIDE WHAT IT WAS IN — the move was
+          // the fix, and undoing it undoes the fix (vh's crate, 2026-09-28).
+          // Nowhere it can go without sealing a path, so it goes: a drop only
+          // ever opens space, it can never be what broke the room.
+          const p = rec.p;
+          if (props.some((q) => q !== p && !q.gone && q.comp !== p.comp
+              && (q.r + p.r) - Math.hypot(q.x - p.x, q.z - p.z) > PEN)) {
+            for (const c of decorNear(p.x, p.z, Math.max(0.6, p.r))) {
+              const k = this.circleColliders.indexOf(c);
+              if (k >= 0) this.circleColliders.splice(k, 1);
+            }
+            if (p.inst !== undefined && p.inst !== false) {
+              p.owner.traverse((n) => {
+                if (!n.isInstancedMesh || p.inst >= n.count) return;
+                n.setMatrixAt(p.inst, new THREE.Matrix4().makeScale(0, 0, 0));
+                n.instanceMatrix.needsUpdate = true;
+                n.computeBoundingSphere();
+              });
+            } else if (p.model.parent) p.model.parent.remove(p.model);
+            p.gone = true;
+            dropped.push({ x: +p.x.toFixed(1), z: +p.z.toFixed(1), undone: true });
+          }
           after = this._floodReachable();
         }
       }

@@ -139,7 +139,7 @@
 # files — never js/level3.js, which is the Frozen Spring's only builder.
 #
 # Neither is this slice's to fix; both get their own board item.
-verify-density.mjs | tf1/tf2/tf3 (Wild Woods' Frozen Spring, v3.134) fail their arrival-frame item-count floor — zero overlap with any file v3.136 touches (js/level3.js, the Spring's only builder, is untouched) | 2026-09-10
+# CLOSED 2026-09-28 (verify-density): the Frozen Spring dressed (tf1 44, tf2 52, tf3 33 in frame); the dens and dr joined the list.
 # ---------------------------------------------------------------------------
 # 2026-09-27: the lv1 skull entry that stood here is REMOVED. Measured in the
 # room, Pedestal.glb at 0.85 scale tops out at exactly 1.86 — the skull's
@@ -231,12 +231,12 @@ verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own co
 # KNOWN_ENTRIES). Fixing the two doors themselves (move the tent; find what
 # sits at tsA's landing) is a level-design nudge for whoever picks this up,
 # not a systemic question.
-verify-landings.mjs | dr -> den: the Den's own west tent stands 0.51u inside the landing point of dr's door back to the Den. tsA -> t1a: something stands 0.09u inside that door's own landing | 2026-09-18
+# CLOSED 2026-09-28 (verify-landings): the Den tent moved north of the west door; t1a's woodcutting tree moved off the tsA landing.
 # 2026-09-18, found by the same sweep, also not caused by it: xc3's own
 # crate at (-6.5, -5.5) and barrel at (6.5, -5.5) each stand ~0.65u inside
 # whatever else is already there. Proven pre-existing the same way as the
 # entry above — byte-identical with v3.186's separateProps() fully disabled.
-verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each stand ~0.65u inside something already there | 2026-09-18
+# CLOSED 2026-09-28 (verify-decor-overlap): scatter() no longer lands a rock on a named pot; pots are bodies to separateProps.
 # 2026-09-18: the same two bugs verify-landings.mjs already names above,
 # caught again here under a different suite's name — verify-reachable.mjs
 # asks the identical "does a door drop you inside a prop" question, of the
@@ -246,7 +246,7 @@ verify-decor-overlap.mjs | xc3: a crate@-6.5,-5.5 and a barrel@6.5,-5.5 each sta
 # first proven — "xa1: the way to xa2 is reachable" — is gone: that one WAS
 # v3.186's own bug (the global reachability fix two commits up), confirmed
 # fixed across every room in the game, not just xa1.
-verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same two pre-existing landings verify-landings.mjs already names, proven the same way | 2026-09-18
+# CLOSED 2026-09-28 (verify-reachable): the same two landings as verify-landings, both fixed.
 # 2026-09-18, same sweep: verify-gauntlet.mjs's only failure, both through
 # the nightly gate (two serial runs, same result) and earlier via a direct
 # --raw comparison — f1b: a blind sprint from f1 to tf3 (2 foes, 13.6u line)
@@ -254,4 +254,4 @@ verify-reachable.mjs | dr -> den and tsA -> t1a land inside a prop — the same 
 # window.__noSeparate=true, so v3.186's separateProps() pass changed nothing
 # about this room's foe placement or the sprint line; f1b's own encounter
 # was already too sparse/short for this check's floor before today.
-verify-interpenetration.mjs | the residual prop-overlap backlog: 98 pairs on v3.188 main (after this session's systemic passes cut it from 188), 93 on 2026-09-26 with v3.190-3.192 applied — the count went DOWN, and no remaining pair sits in a room those versions touched (the two it lists there, f1b's west side and lb2 at x -9..-6, are nowhere near f1b's new east plug or lb2's x 7 bar wall). A backlog being worked, not a regression; remove when it reaches 0 | 2026-09-26
+# CLOSED 2026-09-28 (verify-interpenetration): 94 pairs -> 0 in 199 rooms (BUILDLOG "Nothing inside anything").

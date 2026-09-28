@@ -6003,3 +6003,61 @@ same kind of thing — tinted rocks, "does not look like it blocks", and not a
 thing fire opens. `gateprops.timberWall()` builds them now: charred log
 stacks two high across the gap, a low ember glow in the wood. Ash Wing, lb2,
 lk1, lk2 and n1.
+
+## Nothing inside anything, and three dragons that are not the same pet (2026-09-28, v3.197.0)
+
+Dad, shown what was left: "Do the prop tidy-up first, then the dragon moves."
+
+**The prop tidy-up — verify-interpenetration 94 pairs → 0 across 199 rooms.**
+Most of the backlog was four families, fixed where they come from:
+
+1. **A room's own wall.** The shell is instanced cliff blocks, one per metre,
+   and each one measured as a prop standing inside the wall's collider — so a
+   ruin wall, an arch or a tree dressed against the edge read as "inside a
+   block", and neither side was allowed to move. separateProps now has a
+   wall block step BACK out of the room far enough to clear (or hide behind
+   the row already behind it). The wall box, not the mesh, stops a child, so
+   nothing reachable changes.
+2. **Rubble.** A column drum lying down is 3.8 long and 1.2 tall; it counted
+   as a landmark and could not move. Low things (< 1.3 tall) may be up to 4u
+   across and still be clutter.
+3. **Bodies.** Enemies and pots are spawned after the build, so their spots
+   were only coordinates — and a minion woke inside a drum in mb, a barrel in
+   la1, a ruin wall in la. Every roster `...Spots` key and every
+   `markers.breakables` pot is now a body to the pass: clutter is pushed off
+   it, nothing onto it. Scatter also skips named pots (xc3's vault crate).
+4. **Hand placement**, one room at a time: vb3's stalactites reached through
+   the floor (a pillar with a minion inside) and now hang; the Forge Heart's
+   ring of columns had one standing on the spirit shrine's brazier and opens
+   toward it now; frost firs avoid other firs and drift rocks; dg2's rim
+   dressing no longer stands in deep water, dlg's drowned roofs no longer
+   share footprints; q1's boat was in the ice stall and a minion in a cart;
+   f1b's wayshrine was in the cairn stone; g1 and vc1's columns fell into an
+   arch and a wall; Meri stood with her tail in her throne; the Den's tent was
+   in the Outer Camp door's landing, and the Camp's hearth and grinder inside
+   their own buildings; the Village had carts, a boat and basins inside
+   houses. And when the "never seal a path" guard has to undo a move, a prop
+   that would land back inside something is removed instead (vh's crate).
+
+**The rest of the known-fail list that was about rooms:** the Frozen Spring
+finally has a frozen wood (13/18/8 → 44/52/33 things on arrival); the Outer
+Camp's spawn faced the door it came through and now faces the camp, with a
+few stores added; the three dragon dens and dr were never in verify-density's
+list at all and are now; t1a's woodcutting tree stood in the tsA door's
+landing and moved. density, landings, decor-overlap, reachable and
+interpenetration all come off tools/known-fail.txt — the only lines left are
+the two minigame draw-call entries.
+
+**The dragon moves (design/DRAGON-EGGS.md v4).** Ember breathes a cone (1.25
+fire per foe, every foe inside once, every 6s); Tide mends half a heart while
+Kael is hurt (every 12s, never over the top, never on a knocked-out Kael);
+Storm's bite chains to two more foes (0.75 a link, every 3s). All through
+Enemy#takeDamage, so weakness, resist and shells apply as they do to the
+child's own hits; every number stays under the player's own. The companion
+also stops hunting pots. Three more Kenney Particle Pack sprites for the
+visuals. New suite: tools/verify-dragon-specials.mjs.
+
+Two false alarms worth writing down: verify-frozenspring and verify-market
+both failed once with the walker crawling at a tenth of its speed — they had
+been run alongside other browsers. Serially, both pass. The rule in
+CLAUDE.md about `--par` failures applies to hand-run batches too.
