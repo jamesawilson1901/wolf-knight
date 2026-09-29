@@ -59,7 +59,19 @@ const M = MODULES;
 const D = { tint: 0x4f7a3c, floorTint: 0x4f7a3c, wallTint: 0x3a4f2c,
   propTint: 0x6a5a3c, ground: 'den' };
 
-const RUIN_TINT = 0x716c5e;    // not yet restored — plain, unpainted timber
+const RUIN_TINT = 0x716c5e;    // not yet restored — plain, unpainted timber (greybox)
+// THE REAL BUILDINGS CARRY THEIR OWN PAINT (2026-09-29). Dad: "where's the
+// textures gone for the buildings such as the tavern?" — v1.1 stripped each
+// model's painted texture to one flat colour so the tints below could say
+// ruined/restored, and the Tavern, Forge and Mill have been plain green-grey
+// boxes ever since. The textures are back, and a tint MULTIPLIES a texture,
+// so the per-building colours (made for a blank shell) would only muddy the
+// paint. A restored building now shows its paint as made (white = untouched);
+// an unrestored one is the same paint dimmed and greyed, weathered and
+// neglected — still plainly the same building, visibly waiting. The named
+// tints below stay for greybox, where there is no paint to show.
+const RUIN_PAINT = 0x8c877c;   // dimmed, greyed: the paint, unkept
+const RESTORED_PAINT = 0xffffff;
 const TAVERN_TINT = 0xd88a4a;  // warm hearth wood, once restored
 const FORGE_TINT = 0x565a62;   // iron/dark steel, once restored
 const MILL_TINT = 0xd9c48a;    // pale wheat/cream, once restored — visibly
@@ -73,9 +85,9 @@ const GREY = () => !kit || state.settings.greybox !== false;
 
 const { shell, sideDoor } = makeBuilders({ kit: () => kit, isGrey: () => GREY() });
 
-// THE COMMISSIONED TOWN MODELS. Each file is a single mesh, one flat
-// `.color`-bearing material, no baked texture (design/DEN-REBUILD.md's
-// "v1.1" section) — so `w`/`h`/`d` below are RAW model-space sizes, measured
+// THE COMMISSIONED TOWN MODELS. Each file is a single mesh with ONE painted
+// material (its own baked texture, restored 2026-09-29 after v1.1 had
+// stripped it — see RUIN_PAINT above) — so `w`/`h`/`d` below are RAW model-space sizes, measured
 // once at load time, exactly like js/levelVillage.js's own splitBuildings()
 // returns for a houses-pack chunk. `s` is this specific model's own natural
 // scale-to-world-units factor (targetDiameter / its own raw footprint) —
@@ -205,7 +217,7 @@ export async function buildDr(scene) {
   } else {
     const town = await loadTownAssets();
     for (const s of SPOTS) {
-      const tint = isRestored(s.id) ? s.tint : RUIN_TINT;
+      const tint = isRestored(s.id) ? RESTORED_PAINT : RUIN_PAINT;
       placeBuilding(world, town[s.id], `denhouse_${s.id}`, s.bx, s.bz, s.ry, tint);
     }
     // ONE PROP PER TRADE, where one fits naturally and cheaply — the same

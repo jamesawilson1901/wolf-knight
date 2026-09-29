@@ -6061,3 +6061,14 @@ Two false alarms worth writing down: verify-frozenspring and verify-market
 both failed once with the walker crawling at a tenth of its speed — they had
 been run alongside other browsers. Serially, both pass. The rule in
 CLAUDE.md about `--par` failures applies to hand-run batches too.
+
+## The Outer Camp's buildings get their paint back (2026-09-29, v3.197.0)
+
+Dad: "Where's the textures gone for the buildings such as the tavern etc?"
+Not today's doing — v3.182 (2026-09-17) stripped the Tavern, Forge and Mill's
+painted textures on import so one flat tint per building could mark
+ruined/restored, and they have been plain green-grey shells since. Re-converted
+from dad's original Tripo uploads keeping the colour map (1024px JPEG,
+geometry unchanged). A tint multiplies a texture, so the signal now works with
+the paint: restored shows it as made, unrestored is the same paint dimmed and
+greyed. design/DEN-REBUILD.md v1.2. verify-denrebuild and verify-boot pass.
