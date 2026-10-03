@@ -2,7 +2,7 @@
 // button with cooldown ring, active-form badge. Big targets, icon-first —
 // built for small thumbs.
 
-import { state, formsAvailable, packForms } from './state.js';
+import { state, formsAvailable, packForms, packWolves } from './state.js';
 import { PORTRAITS } from './titlescene.js';
 
 export const FORM_META = {
@@ -91,7 +91,10 @@ export class UI {
 
     // THE RING SHOWS THE PACK, not all ten forms (v3.195): the Knight, the
     // Dark Wolf and the three wolves brought along — never more than five.
-    const ring = FORM_ORDER.filter((id) => packForms().includes(id)
+    // Under the Binding the whole pack still shows, every face greyed but the
+    // one he is held in — the lock is SEEN, not just felt as dead taps.
+    const shown = state.curseLock ? ['knight', 'dark_wolf', ...packWolves(), state.curseLock] : packForms();
+    const ring = FORM_ORDER.filter((id) => shown.includes(id)
       || (state.formLock && id === state.formLock));
     ring.forEach((id, i) => {
       const meta = FORM_META[id];

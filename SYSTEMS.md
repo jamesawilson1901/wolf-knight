@@ -250,6 +250,36 @@ sooner. Guard rises and the gap falls with `tier`; **no telegraph ever
 goes under 0.9s and no punish window under 1.0s** (combat context LAW 1
 and LAW 6). `tools/probe-masher.mjs` measures the result by mashing.
 
+BOSS MAGIC (v3.198, js/bossmagic.js). Each boss and mini-boss carries one
+`new BossMagic(world, owner)`, ticks it from its own update, and calls
+`clear()` when it falls. The full table is in design/COMBAT-SPEC.md "Boss
+magic"; `tools/verify-boss-magic.mjs` checks every row in its arena.
+- **Pieces:**
+  - orb volleys: a shield pops them, or with `reflect` bats them home;
+  - floor circles: `hands` (jumpable), `shards` (not) and `snare` (holds
+    Kael until he jumps);
+  - knock rings: jump them, or `player.shove()` throws him outward;
+  - the vine: jump to snap it, or it pulls him in;
+  - the fire band;
+  - the bubble: its `breaks` is an element, `'crash'` or `'reflect'`;
+  - the Binding.
+- **Who carries what:**
+  - Duel skins name their spells in `moves` (`CAST` in boss.js lists their
+    tells). Grimm's `echoes` swap his set per third of his health
+    (`_movesNow`).
+  - Bone Wardens take `opts.magic` (`WARDEN_MAGIC`), and MINI_ROSTER
+    entries pass theirs through.
+- **The Binding** is `state.curseLock`, the same one-form lock as the Trial,
+  but never saved.
+  - `freeBossMagic()` in main.js clears it at every room build: a door, a
+    respawn or a session start.
+  - The form badge goes grey and chained (`#form-badge.cursed`), and the
+    picker greys the pack.
+  - When it breaks, the first switch skips the swap-in cooldown and hits
+    twice as hard (`player._curseBonus`).
+- **Shove safety:** `player.shove()` stops on the last safe footing rather
+  than enter a pit, lava or deep water.
+
 ## Den villagers (js/npcs.js)
 spawnDenNpcs(world) populates the Den from VILLAGERS data (id, model,
 spot, arrival condition): Wren (Rogue_Hooded, always) · Rook (Ranger,

@@ -6072,3 +6072,71 @@ from dad's original Tripo uploads keeping the colour map (1024px JPEG,
 geometry unchanged). A tint multiplies a texture, so the signal now works with
 the paint: restored shows it as made, unrestored is the same paint dimmed and
 greyed. design/DEN-REBUILD.md v1.2. verify-denrebuild and verify-boot pass.
+
+## Every boss its own magic (2026-10-03, v3.198.0)
+
+Dad: "Boss fights all feel too similar. Give me options to make each boss
+fight unique. Add magic attacks to some, magic shield bubbles, fire magic,
+knock back magic, magic that makes you get stuck in the weakest wolf form."
+He was shown an options page with every boss's portrait and said "implement
+all": each main boss gets the recommended pick and each mini-boss gets its
+listed idea. The Village guardians were not picked and are unchanged.
+
+**The kit, js/bossmagic.js.** One instance per boss, ticked by its owner and
+cleared when it falls:
+- orb volleys: a shield pops them, or with `reflect` bats them home;
+- red floor circles: grave hands (a jump clears them), falling ice (only
+  stepping off does) and root snares (no damage, held until a jump);
+- knock rings: jump them, or be thrown outward;
+- the vine: jump to snap it, or it pulls;
+- a burning fire band;
+- glass bubbles that only one thing bursts;
+- the Binding.
+
+`player.shove()` checks each step against pits, lava and deep water and
+stops short; `player.snare()` is freed by `tryJump()`. Every move is a row in
+js/attacks.js with a tell of 1.0s or more, a tenth over the boss floor,
+because these are new reads.
+
+**Who got what:**
+- **Shadowgrip:** orbs. A shielded orb counts as a block, so it fells him at
+  range.
+- **Bone Warden:** grave hands, cast with his shield down, plus a
+  fire-cracked bubble.
+- **Sylva:** the vine.
+- **Boreal:** ice rain between dives.
+- **Aria:** the thunderclap.
+- **Meri:** a water bubble that fire bursts, for a ×1.3 window.
+- **Shadow-Grimm:** each third of his health borrows another boss's magic.
+  From half health he also throws the Binding, which holds Kael in the wolf
+  he resists for 6s (3s Gentle) and greys the badge.
+  - The bound wolf still lands at ×0.4 inside a window.
+  - When the Binding breaks, the first switch skips the swap-in cooldown and
+    hits double.
+- **Cinder Drake:** a flame bubble that only a shield-crash bursts.
+- **Rootbound Wight:** snares.
+- **Rime Warden:** an ice bubble that fire melts.
+- **Ash Warden:** her spin leaves a fire band.
+- **Bone Sage:** reflectable volleys, plus a bubble only its own orb bursts.
+- **Court Chancellor:** a coin shockwave.
+
+The Binding is `state.curseLock`, the Trial's one-form lock, but never saved.
+`freeBossMagic()` clears it at all three room-build sites. Writing the suite
+showed the respawn path builds rooms without `loadRoom`, so the first cut
+would have kept a child bound through their own death.
+
+**Fixed along the way:**
+- Boreal's enraged second dive told at 0.55s, under the 0.9s floor. It is
+  0.9s now.
+- The Bone Sage's ordinary bolt told at the mook's 0.8s. Every one of its
+  casts is 1.0s now.
+- The Court Chancellor's swing squashed him to the gilded-husk mook's 0.5
+  height and left him there (he stands at 0.75). The squash is relative to
+  his own scale now.
+- Orbs first spawned inside the arena's colliders and died on frame one.
+  They now leave from the caster's chest, with a breath of grace.
+
+New suite: tools/verify-boss-magic.mjs. It covers every piece of the kit
+plus every boss and mini-boss in its own arena. It was proven red against
+v3.197 first. design/COMBAT-SPEC.md "Boss magic" holds the table, and the
+combat context pack is re-cached.

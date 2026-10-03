@@ -366,6 +366,8 @@ export class Player {
     this.rangedCooldown = 0;
     this.lungeCooldown = 0;      // Dark Wolf dash-bite (free while surging)
     this._dash = null;           // {t, dur, dx, dz, speed} — lunge/step-in drive
+    this._shove = null;          // boss magic: a knock-back or a vine's pull
+    this._snareT = 0;            // boss magic: roots round the ankles (a jump frees)
     this._queuedForm = null;     // switch requested mid-attack lands at its end
     this._ceremony = null;       // Blood Moon Surge transformation in progress
     this._surge = null;          // {t} — the surge itself
@@ -1689,6 +1691,14 @@ export class Player {
   // higher double jump. While airborne, ground attacks miss.
   tryJump() {
     if (this.lockTime > 0 || this.defending) return false;
+    // A JUMP IS THE ANSWER TO A SNARE (js/bossmagic.js): the roots let go the
+    // moment he jumps, and the jump itself goes ahead — the child pressed the
+    // button that the fight taught, so it does what they saw it do.
+    if (this._snareT > 0) {
+      this._snareT = 0;
+      juice.burst(this.root.position.x, 0.3, this.root.position.z, 0x6fcf4a, 14);
+      audio.play('parry', { volume: 0.6, rate: 1.5 });
+    }
     const maxJumps = 2;
     if (this.airY <= 0 && this.jumpsUsed === 0) {
       this.airV = JUMP_V;
@@ -1703,6 +1713,31 @@ export class Player {
       return true;
     }
     return false;
+  }
+
+  // BOSS MAGIC MOVES HIM (js/bossmagic.js): a knock ring throws him away from
+  // the caster, a vine drags him in. Either way it is a short straight drive
+  // that overrides the stick, collision-solved like the dash — and every step
+  // of it is checked against lava, pits and deep water, stopping short rather
+  // than ever putting him in one. A hazard the child did not walk into is a
+  // punishment they cannot learn from.
+  shove(dx, dz, dist, dur = 0.3) {
+    if (!(dist > 0) || this._pitFall || this._lavaBounce) return false;
+    const n = Math.hypot(dx, dz) || 1;
+    this._shove = { dx: dx / n, dz: dz / n, speed: dist / dur, t: 0, dur };
+    this._roll = null; this._dash = null;
+    this.lockTime = Math.max(this.lockTime, dur);
+    this._softLock = false;
+    this._holdPose('hurt', dur);
+    return true;
+  }
+
+  // Held where he stands until `secs` run out or he jumps (tryJump above).
+  snare(secs) {
+    if (this.airborne) return false;
+    this._snareT = Math.max(this._snareT, secs);
+    this._vel.x = 0; this._vel.z = 0;
+    return true;
   }
 
   // C4 — A JUMP DODGES FOR AS LONG AS THE CHILD CAN SEE KAEL OFF THE GROUND.
@@ -2361,6 +2396,7 @@ export class Player {
     this._updateAura(dt); // before the lock-time early return — auras never freeze
 
     if (this._airGrace > 0) this._airGrace -= dt;
+    if (this._snareT > 0) this._snareT = Math.max(0, this._snareT - dt);
     // jump physics (Y is visual-only; collisions stay on the XZ plane)
     if (this.airY > 0 || this.airV > 0) {
       this.airY += this.airV * dt;
@@ -2460,6 +2496,26 @@ export class Player {
       }
     }
 
+    if (this._shove) {
+      const sh = this._shove;
+      sh.t += dt;
+      const nx = this.root.position.x + sh.dx * sh.speed * dt;
+      const nz = this.root.position.z + sh.dz * sh.speed * dt;
+      const s = world.resolveCircle(nx, nz, BODY_RADIUS);
+      const unsafe = (world.pitAt && world.pitAt(s.x, s.z))
+        || (world.hazardAt && world.hazardAt(s.x, s.z))
+        || (world.waterAt && world.waterAt(s.x, s.z) === 'deep'
+            && !(world.waterAt(this.root.position.x, this.root.position.z) === 'deep'));
+      if (unsafe) {
+        this._shove = null;          // stop on the last safe footing
+        this.lockTime = Math.min(this.lockTime, 0.05);
+      } else {
+        this.root.position.x = s.x;
+        this.root.position.z = s.z;
+        if (sh.t >= sh.dur) this._shove = null;
+      }
+    }
+
     // DODGE ROLL: tapping the shield WHILE MOVING tumbles Kael in the stick
     // direction with brief i-frames. Holding it while standing still raises
     // the shield exactly as before (Knight only — wolves dodge, never hide).
@@ -2467,7 +2523,7 @@ export class Player {
     this._defendWasHeld = input.defending;
     const mvMag = Math.hypot(input.move.x, input.move.z);
     if (defendPressed && mvMag > 0.35 && this.lockTime <= 0 && !this._roll &&
-        !this._lavaBounce && this.airY <= 0) {
+        !this._lavaBounce && this.airY <= 0 && !(this._snareT > 0)) {
       const inv = 1 / mvMag;
       this._roll = { t: 0, dx: input.move.x * inv, dz: input.move.z * inv };
       this.iframes = Math.max(this.iframes, CONFIG.ROLL_IFRAMES);
@@ -2580,7 +2636,8 @@ export class Player {
         }
       }
     } else if (this.bubble) { this.bubble.visible = false; }
-    if (vmag > 0.02 || wx || wz) {
+    if (this._snareT > 0) { this._vel.x = 0; this._vel.z = 0; wx = 0; wz = 0; }   // rooted
+    else if (vmag > 0.02 || wx || wz) {
       const solved = world.resolveCircle(
         this.root.position.x + (this._vel.x + wx) * dt,
         this.root.position.z + (this._vel.z + wz) * dt, BODY_RADIUS);
