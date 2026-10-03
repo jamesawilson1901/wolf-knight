@@ -6140,3 +6140,11 @@ New suite: tools/verify-boss-magic.mjs. It covers every piece of the kit
 plus every boss and mini-boss in its own arena. It was proven red against
 v3.197 first. design/COMBAT-SPEC.md "Boss magic" holds the table, and the
 combat context pack is re-cached.
+
+**v3.198.1, the same day: the review shots caught two things the suites could
+not.** On a dark arena floor the orbs were a few purple pixels, because the
+flare sprite alone is mostly transparent at that size. Every orb is now a
+solid pale core inside a soft purple glow. The green vine also vanished into
+Sylva's grass, so it is now a dark thorny root over a stronger red glow,
+lifted clear of the floor. Both pass verify-boss-magic unchanged. A suite
+can prove an orb hits; only a look proves it can be seen coming.

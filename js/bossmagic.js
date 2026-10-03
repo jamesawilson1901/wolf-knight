@@ -115,8 +115,10 @@ export class BossMagic {
   _drop(obj) {
     if (!obj) return;
     if (obj.parent) obj.parent.remove(obj);
-    if (obj.geometry) obj.geometry.dispose();
-    if (obj.material) obj.material.dispose();
+    obj.traverse((n) => {
+      if (n.geometry) n.geometry.dispose();
+      if (n.material) n.material.dispose();
+    });
   }
 
   _num(x, y, z, text) { if (this.world.onDmgNum) this.world.onDmgNum(x, y, z, text); }
@@ -135,8 +137,21 @@ export class BossMagic {
     const sx = x + Math.cos(base) * 1.0, sz = z + Math.sin(base) * 1.0;
     for (let i = 0; i < count; i++) {
       const a = base + (i - (count - 1) / 2) * spread;
-      const sp = this._sprite('flare', sx, 1.0, sz, o.color ?? 0xa070ff, o.size ?? 0.8);
-      this.orbs.push({ sp, x: sx, z: sz, vx: Math.cos(a) * speed, vz: Math.sin(a) * speed, life: o.life ?? 4.2,
+      // A SOLID BALL IN A HALO. The first cut was the flare sprite alone, and
+      // on the review shots it was a few purple pixels on a dark arena floor —
+      // a ball a child cannot see is a ball they cannot dodge.
+      const size = o.size ?? 0.8;
+      const sp = this._sprite('flare', sx, 1.0, sz, o.color ?? 0xa070ff, size * 2.2);
+      const k = size / 0.8;
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.27 * k, 14, 10),
+        new THREE.MeshBasicMaterial({ color: o.core ?? 0xe6d4ff }));
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.55 * k, 16, 12),
+        new THREE.MeshBasicMaterial({ color: o.color ?? 0xa070ff, transparent: true, opacity: 0.42,
+          depthWrite: false, blending: THREE.AdditiveBlending }));
+      ball.add(glow);
+      ball.frustumCulled = false; glow.frustumCulled = false;
+      this.world.add(ball);
+      this.orbs.push({ sp, ball, x: sx, z: sz, vx: Math.cos(a) * speed, vz: Math.sin(a) * speed, life: o.life ?? 4.2,
         o, reflected: false, trail: 0, grace: 0.35 });
     }
     audio.play('whoosh', { volume: 0.7, rate: 1.5 });
@@ -149,6 +164,7 @@ export class BossMagic {
       b.life -= dt;
       b.x += b.vx * dt; b.z += b.vz * dt;
       b.sp.position.set(b.x, 1.0 + Math.sin(b.life * 7) * 0.08, b.z);
+      b.ball.position.copy(b.sp.position);
       b.sp.material.rotation += dt * 3;
       b.trail += dt;
       if (b.trail > 0.08) { b.trail = 0; juice.burst(b.x, 1.0, b.z, b.reflected ? 0xfff0c0 : (b.o.color ?? 0xa070ff), 1); }
@@ -180,6 +196,7 @@ export class BossMagic {
             b.vx = (t.x - b.x) / d * sp2; b.vz = (t.z - b.z) / d * sp2;
             b.reflected = true; b.life = 3; b.grace = 0.35; gone = false;
             b.sp.material.color.setHex(0xfff0c0);
+            b.ball.material.color.setHex(0xffffff);
             this.stats.orbsReflected++;
             this._num(P.x, 2.0, P.z, 'BACK AT YOU!');
           } else {
@@ -197,7 +214,7 @@ export class BossMagic {
           player.hurt(b.o.dmg ?? 1, {});
         }
       }
-      if (gone) { this._drop(b.sp); this.orbs.splice(i, 1); }
+      if (gone) { this._drop(b.sp); this._drop(b.ball); this.orbs.splice(i, 1); }
     }
   }
 
@@ -318,8 +335,10 @@ export class BossMagic {
   // In the air when it arrives, it snaps; on the ground, it drags him in.
   vine(from, player, o = {}) {
     const tell = Math.max(1.0, o.tell ?? 1.0);
-    const under = this._flat(new THREE.PlaneGeometry(1, 0.6), RED, 0.25);
-    const vine = this._flat(new THREE.PlaneGeometry(1, 0.28), 0x4f9f2a, 0.95);
+    // a dark thorny root over a red glow: a green vine vanished into Sylva's
+    // own grass on the review shots
+    const under = this._flat(new THREE.PlaneGeometry(1, 0.8), RED, 0.45);
+    const vine = this._flat(new THREE.PlaneGeometry(1, 0.34), 0x3b2a12, 1);
     under.rotation.order = 'YXZ'; vine.rotation.order = 'YXZ';
     this.vines.push({ from, tell, t: 0, under, vine, o, done: false, end: 0 });
     audio.play('growl', { volume: 0.5, rate: 0.7 });
@@ -335,7 +354,7 @@ export class BossMagic {
       const tx = f0.x + (P.x - f0.x) * k, tz = f0.z + (P.z - f0.z) * k;
       const len = Math.max(0.05, Math.hypot(tx - f0.x, tz - f0.z));
       const ang = -Math.atan2(tz - f0.z, tx - f0.x);
-      for (const [m, y] of [[v.under, 0.04], [v.vine, 0.07]]) {
+      for (const [m, y] of [[v.under, 0.12], [v.vine, 0.16]]) {
         m.scale.set(len, 1, 1);
         m.rotation.set(-Math.PI / 2, ang, 0);
         m.position.set((f0.x + tx) / 2, this.deck + y, (f0.z + tz) / 2);
@@ -359,7 +378,7 @@ export class BossMagic {
       if (v.done) {
         v.end += dt;
         v.vine.material.opacity = 0.95 * (1 - v.end / 0.4);
-        v.under.material.opacity = 0.25 * (1 - v.end / 0.4);
+        v.under.material.opacity = 0.45 * (1 - v.end / 0.4);
         if (v.end >= 0.4) { this._drop(v.vine); this._drop(v.under); this.vines.splice(i, 1); }
       }
     }
@@ -588,7 +607,7 @@ export class BossMagic {
 
   // The fight is over: everything goes, the curse lets go, the snare is cut.
   clear(player) {
-    for (const b of this.orbs) this._drop(b.sp);
+    for (const b of this.orbs) { this._drop(b.sp); this._drop(b.ball); }
     for (const c of this.circles) { this._drop(c.fill); this._drop(c.rim); this._drop(c.shard); }
     for (const g of this.rings) { this._drop(g.mark); this._drop(g.wave); }
     for (const v of this.vines) { this._drop(v.vine); this._drop(v.under); }
