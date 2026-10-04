@@ -274,7 +274,7 @@ export async function buildG1(scene) {
   // the caverns' last room: cut stone gone to ruin, and the roof open somewhere
   // above so the first grass has found the floor
   fallenColumn(world, -6.5, 8.5, 0.5, D, 3.0);
-  fallenColumn(world, 8.0, 9.5, -0.9, D, 3.2);
+  fallenColumn(world, 8.0, 9.5, 2.2, D, 3.2);    // falls AWAY from the wayshrine at (6.5, 12), not into its arch
   fallenColumn(world, -9.5, -7.5, 0.3, D, 2.8);
   ruinedHome(world, -12.5, 12.0, 0.4, D, { w: 5.5, d: 4.5, keep: 0.45 });
   ruinedHome(world, 12.5, 11.5, -0.5, D, { w: 5.5, d: 4.5, keep: 0.4 });

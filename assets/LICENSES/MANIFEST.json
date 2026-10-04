@@ -476,9 +476,12 @@
     "assets/fx/gleam.png",
     "assets/fx/streak.png",
     "assets/fx/smoke.png",
-    "assets/fx/scorch.png"
+    "assets/fx/scorch.png",
+    "assets/fx/fire.png",
+    "assets/fx/twirl.png",
+    "assets/fx/bolt.png"
    ],
-   "note": "design/FX.md, v3.174 — billboarded THREE.Sprite hit-feedback (js/juice.js), extending the pooled hit-spark burst that already existed with real texture instead of a flat coloured square, plus two new one-off flourishes (a weakness-hit flare, a heavy-hit flash). Resized from the pack's own 512x512 source to 128x128 — plenty for a particle a few pixels across on screen, a fraction of the precache weight. SIX MORE 2026-09-26 for the rebuilt Blood Moon ceremony (js/effects.js surgeCeremony/softRing): light_03 -> moon-ring.png and light_02 -> moon-corona.png (256x256: the moon's corona wisps and the textured ground shockwaves), star_09 -> gleam.png, trace_07 -> streak.png, smoke_07 -> smoke.png, scorch_02 -> scorch.png (128x128). Same pack, same License.txt; stored grey+alpha since the art is white, tinted per use."
+   "note": "design/FX.md, v3.174 — billboarded THREE.Sprite hit-feedback (js/juice.js), extending the pooled hit-spark burst that already existed with real texture instead of a flat coloured square, plus two new one-off flourishes (a weakness-hit flare, a heavy-hit flash). Resized from the pack's own 512x512 source to 128x128 — plenty for a particle a few pixels across on screen, a fraction of the precache weight. SIX MORE 2026-09-26 for the rebuilt Blood Moon ceremony (js/effects.js surgeCeremony/softRing): light_03 -> moon-ring.png and light_02 -> moon-corona.png (256x256: the moon's corona wisps and the textured ground shockwaves), star_09 -> gleam.png, trace_07 -> streak.png, smoke_07 -> smoke.png, scorch_02 -> scorch.png (128x128). Same pack, same License.txt; stored grey+alpha since the art is white, tinted per use. THREE MORE 2026-09-28 for the companion dragons' element moves (js/companionDragon.js, design/DRAGON-EGGS.md): fire_01 -> fire.png (the Ember Dragon's breath), twirl_01 -> twirl.png (the Tide Dragon's mending swirl), spark_07 -> bolt.png (256x64, cropped to its band: the Storm Dragon's chain arc)."
   },
   {
    "pack": "Fantasy Portal 3D LowPoly Model",

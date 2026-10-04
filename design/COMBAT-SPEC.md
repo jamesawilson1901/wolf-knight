@@ -180,7 +180,56 @@ never a grinder, exactly like the charge. Her wounds persist across deaths
 
 Shield-wall mini-boss: unhittable from the front (clank/BLOCKED feedback),
 punish by flanking, jumping behind, or parry-stunning his swing. Teaches
-positioning as Stoneroot's combat lesson.
+positioning as Stoneroot's combat lesson. Since v3.198 he also casts grave
+hands and raises a fire-cracked bubble from half health (see "Boss magic").
+The same class carries the Rootbound Wight, Rime Warden and Ash Warden,
+each with its own magic (`opts.magic`, `WARDEN_MAGIC` in js/enemies.js).
+
+## Boss magic (v3.198, 2026-10-03)
+
+Dad: "Boss fights all feel too similar." They did. Every duel boss drew from
+the same swipe, charge and pounce with the same answers, so a child who
+learned the first one had learned all seven. Each fight now carries magic
+of its own, chosen by dad from an options page. The shared kit is
+`js/bossmagic.js`. Every move is a row in `js/attacks.js`, and
+`tools/verify-boss-magic.mjs` holds each one to the rules below in its own
+arena.
+
+**The rules every piece keeps.**
+- **Tells.** Every tell is at least 1.0s: the caster's pose *and* a floor
+  mark. Floor marks are allowed under the boss-lane exception to LAW 4.
+- **Colours.** Danger is red or purple, never gold (LAW 5).
+- **Answers.** Every move has a visible answer.
+- **Shoves.** A shove never puts Kael in lava, a pit or deep water. Each
+  step is checked and it stops short.
+- **The Binding.**
+  - It lands only if its orb touches Kael.
+  - It lasts 6s, or 3s in Gentle.
+  - The bound wolf still lands its blows at ×0.4 inside an open window,
+    never zero.
+  - It is never saved: `state.curseLock` is not in `js/save.js`, and every
+  room build clears it.
+
+| Boss | Its magic | The answer |
+|---|---|---|
+| The Shadowgrip (le) | **Shadow orbs**: three slow purple orbs in a fan, from range | Step off the line, or **shield** them. A shielded orb counts as a block, so it fells him (`open.by: block`). |
+| Bone Warden (vz) | **Grave hands**: he taunts with his shield *down*, and three red circles fill round Kael before bone bursts up. **Cracked bubble** from half health. | Step off the circles or jump. **Fire** shatters the bubble and leaves him winded. |
+| Sylva (tgl) | **The vine**: a tether creeps to Kael for the whole tell | **Jump**: in the air it snaps. On the ground it drags him in. |
+| Boreal (f5) | **Ice-shard rain**: three red circles while she wheels, ice seen falling for the last half second. Never in the last 1.5s before a dive. | Step off. A jump does not help with falling ice. |
+| Aria (scr) | **Thunderclap**: a purple knock ring rolls out from her | **Jump** it, or be thrown back toward the gales. |
+| Meri (ddp) | **Water bubble**: up when her half-health flinch ends, back 12s after it bursts | Every blow bounces except **fire**. Fire bursts it and downs her for ×1.3 her usual window. |
+| Shadow-Grimm (xth) | **Echoes**: the Shadowgrip's orbs, then Boreal's ice and the Warden's hands, then Aria's thunder, one set per third of his health. **The Binding** from half health: one slow curse orb. | Step off or shield the orb. If it lands he holds Kael in the wolf he is armoured against (steel or moon, or below a third the last element), the wolf buttons lock and the badge goes grey and chained. When it breaks, the **first switch** skips the swap-in cooldown and hits twice as hard. |
+
+| Mini-boss | Its magic | The answer |
+|---|---|---|
+| Cinder Drake (lb) | **Flame bubble** from half health | A **shield-crash** out of its dive. Nothing else gets through. |
+| Rootbound Wight (vr2) | **Root snare**: three red circles | Step off. If caught, Kael is held, with no damage, until he **jumps**. |
+| Rime Warden (f1d) | **Ice bubble** from half health | **Fire** melts it and leaves her winded. |
+| Ash Warden (s1d) | Her **spin leaves fire**: a red band, then 3s of flame round where she stood | Stay out, get **inside** the band beside her, or jump across. |
+| Bone Sage (d1d) | **Orb volley** every third cast (every cast while bubbled). **Bubble** from half health. | **Shield** an orb and it flies home. Its own orb is the only thing that bursts the bubble and stuns it. Every one of its casts now tells at 1.0s, the boss floor. |
+| Court Chancellor (xc2) | **Coin shockwave**: a purple knock ring | **Jump** it. |
+
+The Village guardians were left as they were; none were picked.
 
 ## Forgiveness specifics
 

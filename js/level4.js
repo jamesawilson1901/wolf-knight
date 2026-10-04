@@ -225,6 +225,13 @@ function narrateSafe(id) {
 
 // Snow rocks / drifts with colliders. Each is its own model, so each is one
 // THING to look at (and one thing to verify-density).
+// HOW MUCH GROUND EACH PIECE COVERS, AS DRAWN, per unit of scale — measured
+// (verify-interpenetration's own ruler: the short half-axis, inset 0.78). The
+// colliders are deliberately smaller than this (a child brushes past the edge
+// of a drift), so they cannot answer "is a fir standing inside this rock".
+const DRAWN_R = { rockL: 1.55, rockM: 0.96, rockS: 0.95, pile: 0.8, treeA: 0.7, treeB: 0.7, treeC: 0.7 };
+const standing = (world) => world._frostStanding || (world._frostStanding = []);
+
 function drift(world, spots) {
   if (GREY()) return;
   for (const [kind, x, z, s, ry, cr] of spots) {
@@ -235,6 +242,7 @@ function drift(world, spots) {
     m.scale.setScalar(s || 1.2);
     world.add(m);
     if (cr) world.addCircle(x, z, cr);
+    standing(world).push({ x, z, r: (DRAWN_R[kind] || 0.8) * (s || 1.2) });
   }
 }
 
@@ -247,15 +255,28 @@ function firs(world, x, z, rad, n, seed = 1) {
   const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
   const keys = ['treeA', 'treeB', 'treeC'];
   for (let i = 0; i < n; i++) {
-    const a = rnd() * Math.PI * 2, dd = Math.sqrt(rnd()) * rad;
-    const px = x + Math.cos(a) * dd, pz = z + Math.sin(a) * dd;
-    if (world.blocked(px, pz, 0.8)) continue;
+    // A FIR DOES NOT GROW INSIDE ANOTHER FIR, OR INSIDE A ROCK. A stand is
+    // three trees dropped in a 1.3u circle, and nothing stopped two landing a
+    // hand apart — or one landing in a drift laid down before it (f3, f5:
+    // 2026-09-28). A few fresh throws inside the same stand first; a stand of
+    // two reads as well as a stand of three.
+    const scale = 1.1 + rnd() * 0.4, ry = rnd() * 6.28;
+    const r0 = DRAWN_R[keys[i % 3]] * scale;
+    let px = 0, pz = 0, ok = false;
+    for (let t = 0; t < 6 && !ok; t++) {
+      const a = rnd() * Math.PI * 2, dd = Math.sqrt(rnd()) * rad;
+      px = x + Math.cos(a) * dd; pz = z + Math.sin(a) * dd;
+      ok = !world.blocked(px, pz, 0.8)
+        && !standing(world).some((q) => Math.hypot(q.x - px, q.z - pz) < q.r + r0 - 0.1);
+    }
+    if (!ok) continue;
     const m = prepareModel(frostKit[keys[i % 3]].scene.clone());
     m.position.set(px, 0, pz);
-    m.rotation.y = rnd() * 6.28;
-    m.scale.setScalar(1.1 + rnd() * 0.4);
+    m.rotation.y = ry;
+    m.scale.setScalar(scale);
     world.add(m);
     world.addCircle(px, pz, 0.45);
+    standing(world).push({ x: px, z: pz, r: r0 });
   }
 }
 
@@ -663,7 +684,9 @@ export async function buildF1b(scene) {
     ['rockS', -5.5, 3.0, 1.1, 0.4, 0.4], ['rockS', 8.5, 1.5, 1.1, 2.0, 0.4],
     ['pile', -8.0, 5.5, 1.4, 0.3, 0],
   ]);
-  wayshrine(world, -3.5, -2.5, 0.6, D);
+  // (-1.5, -1.6), not (-3.5, -2.5): there its pedestal stood 1.3u inside the
+  // cairn's own big stone
+  wayshrine(world, -1.5, -1.6, 0.6, D);
   firs(world, 8.0, 5.5, 1.6, 3, 21);
   firs(world, -7.5, -3.0, 1.4, 3, 22);
   rubbleField(world, 4.0, 3.0, 1.6, D, 7);
@@ -766,6 +789,9 @@ export async function buildF1d(scene) {
   firs(world, -10, 8, 1.6, 3, 53);
   firs(world, 10, -8, 1.6, 3, 54);
   firs(world, 9, 4.5, 1.3, 3, 55);
+  // (a fourth stand, in the arrival view: firs no longer grow inside each
+  // other, and one fewer fir left this island one under its density floor)
+  firs(world, 4, 6.5, 1.2, 2, 56);
   rubbleField(world, 11, 1, 2.0, D, 9);
   rubbleField(world, -11, -1, 1.8, D, 8);
   rubbleField(world, 6, 0, 1.6, D, 8);

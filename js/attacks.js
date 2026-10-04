@@ -270,6 +270,107 @@ export const ATTACK = {
     damage: 1, element: 'fire',
     counterplay: ['move', 'shield'],
   },
+
+  // --- BOSS MAGIC (2026-10-03, js/bossmagic.js; design/COMBAT-SPEC.md "Boss
+  // magic"). Dad: "boss fights all feel too similar". Each boss gets a move no
+  // other fight has, each with its own visible answer. The tells are the
+  // caster's pose AND a floor mark (the boss-lane exception to LAW 4), never
+  // under 1.0s — a tenth over the boss floor, because these are NEW reads.
+  shadow_orbs: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // three slow purple orbs in a fan; a raised shield pops them, and for the
+    // Shadowgrip a popped orb counts as a block — it falls over (open.by)
+    windup: 1.1, active: 0.0, recover: 1.2, gap: 1.6,
+    damage: 'bolt', element: 'moon',
+    counterplay: ['shield', 'step_off_the_line'],
+  },
+  sylva_vine: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // a vine creeps to Kael for the whole tell; in the air it snaps, on the
+    // ground it drags him in (no damage — the swipe that follows is the cost)
+    windup: 1.0, active: 0.4, recover: 1.2, gap: 2.2,
+    damage: 'pull', element: 'verdant',
+    counterplay: ['jump'],
+  },
+  aria_thunder: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // a thunderclap ring rolls out from her; jump it or be thrown back toward
+    // the gales (never into a hazard — js/player.js shove())
+    windup: 1.0, active: 1.2, recover: 1.2, gap: 2.2,
+    damage: 'aoe', element: 'storm',
+    counterplay: ['jump'],
+  },
+  grave_hands: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // Shadow-Grimm's borrowed copy of the Bone Warden's grave hands
+    windup: 1.2, active: 0.3, recover: 1.2, gap: 1.6,
+    damage: 'aoe', element: 'earth',
+    counterplay: ['move_off_the_circle', 'jump'],
+  },
+  ice_shards: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // Shadow-Grimm's borrowed copy of Boreal's ice rain (hers: boreal_shards)
+    windup: 1.2, active: 0.3, recover: 1.2, gap: 1.6,
+    damage: 'aoe', element: 'frost',
+    counterplay: ['move_off_the_circle'],
+  },
+  grimm_binding: {
+    owner: 'Shadowgrip', tier: 'boss', source: 'js/boss.js',
+    // one slow curse orb; if it touches Kael he is held in the wolf Grimm is
+    // armoured against for 6s (3s Gentle). Step off its line or shield it.
+    windup: 1.2, active: 0.0, recover: 1.2, gap: 2.0,
+    damage: 'curse', element: 'moon',
+    counterplay: ['step_off_the_line', 'shield'],
+  },
+  boreal_shards: {
+    owner: 'Boreal', tier: 'boss', source: 'js/boss.js',
+    // three red circles round Kael while she wheels; ice falls into them —
+    // seen falling for the last half second. Only stepping off answers it.
+    windup: 1.2, active: 0.3, recover: 0.0, gap: 4.6,
+    damage: 'aoe', element: 'frost',
+    counterplay: ['move_off_the_circle'],
+  },
+  warden_hands: {
+    owner: 'BoneWarden', tier: 'boss', source: 'js/enemies.js',
+    // he taunts, the shield comes DOWN, and red circles fill where hands will
+    // burst from the grave floor — jump them or step off. His lowered shield
+    // is the punish.
+    windup: 1.2, active: 0.3, recover: 0.9, gap: 1.5,
+    damage: 'aoe', element: 'earth',
+    counterplay: ['move_off_the_circle', 'jump'],
+  },
+  wight_snare: {
+    owner: 'BoneWarden', tier: 'boss', source: 'js/enemies.js',
+    // the Rootbound Wight's version: roots, not hands — no damage, but held
+    // where you stand until you jump
+    windup: 1.2, active: 0.3, recover: 0.9, gap: 1.5,
+    damage: 'snare', element: 'verdant',
+    counterplay: ['move_off_the_circle', 'jump'],
+  },
+  ash_firering: {
+    owner: 'BoneWarden', tier: 'boss', source: 'js/enemies.js',
+    // the Ash Warden's spin leaves a band of fire round where he stood: red
+    // for a second, then burning for three. Inside the band is safe; so is a
+    // jump across it.
+    windup: 1.0, active: 3.0, recover: 0.0, gap: 1.7,
+    damage: 'aoe', element: 'fire',
+    counterplay: ['stay_out', 'get_inside', 'jump'],
+  },
+  sage_orbs: {
+    owner: 'RangedBolter', tier: 'boss', source: 'js/enemies.js',
+    // the Bone Sage's volley: bat an orb back with the shield and it flies
+    // home — the only thing that pops its bubble
+    windup: 1.0, active: 0.0, recover: 0.6, gap: 2.4,
+    damage: 'bolt', element: 'tide',
+    counterplay: ['shield', 'step_off_the_line'],
+  },
+  chancellor_coins: {
+    owner: 'Duellist', tier: 'boss', source: 'js/enemies.js',
+    // the Court Chancellor slams his coin-purse: a shockwave rolls out. Jump.
+    windup: 1.0, active: 1.0, recover: 1.0, gap: 2.6,
+    damage: 'aoe', element: 'steel',
+    counterplay: ['jump'],
+  },
 };
 
 // Absolute state thresholds, so a state machine never re-adds the numbers by

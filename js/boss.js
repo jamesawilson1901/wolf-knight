@@ -18,6 +18,7 @@ import { fitSeaDragon, SEA_DRAGON_CLIPS } from './seaclips.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 import { bumpCounter } from './progress.js';
+import { BossMagic, formForElement } from './bossmagic.js';
 
 const MAX_HP = 20;        // "a lot more health" — the little hounds have 3
 const HIT_CAP = 3;        // any single strike caps at 3 (surges stay strong, never trivial)
@@ -107,7 +108,10 @@ export const BODY_FITS = { seaDragon: fitSeaDragon };
 export const SKINS = {
   shadowgrip: {
     tier: 1, gap: 3.2, tellMult: 1.15,
-    moves: ['swipe', 'charge'],
+    // SHADOW ORBS (boss magic, 2026-10-03): three slow purple balls from
+    // across the arena. The shield pops them — and a popped orb IS a block, so
+    // the lesson this fight was built on works at range too.
+    moves: ['swipe', 'charge', 'orbs'],
     // Dad's own design, and the first shield lesson in the game.
     open: { by: 'block', secs: 2.8, hint: 'RAISE YOUR SHIELD WHEN IT LUNGES' },
     name: 'The Shadowgrip',
@@ -146,7 +150,8 @@ export const SKINS = {
   // four entries and a model in one is the shape of a bug waiting to happen.
   sylva: {
     tier: 3, gap: 2.8, tellMult: 1.08,
-    moves: ['swipe', 'charge', 'pounce', 'root'],
+    // THE VINE (boss magic): a tether creeps to Kael; jump and it snaps.
+    moves: ['swipe', 'charge', 'pounce', 'root', 'vine'],
     // She anchors to gore-charge; the roots are the thing to hit, not her.
     open: { by: 'cut', secs: 2.6, hint: 'CUT THE ROOTS SHE STANDS ON' },
     name: 'Sylva, Thornbound',
@@ -221,7 +226,9 @@ export const SKINS = {
   // same block and a half-filled skin is harder to read than a whole one.
   aria: {
     tier: 5, gap: 2.4, tellMult: 1.02,
-    moves: ['swipe', 'charge', 'pounce'],
+    // THE THUNDERCLAP (boss magic): a knock ring rolls out from her. Jump it,
+    // or be thrown back toward her gales.
+    moves: ['swipe', 'charge', 'pounce', 'thunder'],
     // Her gale turns blades aside, but not a shock through the floor.
     open: { by: 'stomp', secs: 2.4, hint: 'STOMP - THE SHOCK GOES THROUGH THE GALE' },
     name: 'Aria, the Galebound',
@@ -263,6 +270,10 @@ export const SKINS = {
     // brought a fourth animation. That is the P7 law satisfied by the asset
     // rather than by a number: a move no other fight in the game has.
     moves: ['swipe', 'charge', 'pounce', 'skill'],
+    // THE WATER BUBBLE (boss magic): from half health she sits in a bubble
+    // that every blow bounces off — except fire, which bursts it and puts her
+    // down for longer than a plain fire hit does. It comes back 12s later.
+    bubble: { breaks: 'fire', color: 0x4fd0e0, radius: 1.9, y: 1.3, again: 12 },
     // Water armour, and the region has been teaching its counter all along.
     open: { by: 'element', secs: 2.4, hint: 'HIT HER WITH WHAT SHE FEARS' },
     name: 'Meri, the Drowned',
@@ -340,6 +351,12 @@ export const SKINS = {
   grimm: {
     tier: 7, gap: 1.9, tellMult: 1.0,
     moves: ['swipe', 'charge', 'pounce'],
+    // ECHOES AND THE BINDING (boss magic). He was the first guardian and every
+    // other boss was a piece of him, so he fights with THEIR magic, a third at
+    // a time: the Shadowgrip's orbs; then Boreal's ice and the Warden's grave
+    // hands; then Aria's thunder. From half health he also throws the Binding
+    // (_movesNow, js/bossmagic.js bind()).
+    echoes: true,
     // SHE HAS NO WEAKNESS — SHE HAS A MEMORY, and that is her whole fight.
     // `adapts` means she resists steel and moon below half, and below a third
     // she resists whatever landed LAST. Wiring her opener to `weakness` was
@@ -359,6 +376,18 @@ export const SKINS = {
     speedMult: 1.1,
     adapts: true,
   },
+};
+
+// THE SPELLS the duel family can cast (js/bossmagic.js) — tell seconds are the
+// js/attacks.js rows (shadow_orbs, sylva_vine, aria_thunder, ice_shards,
+// grave_hands, grimm_binding), stretched by the skin's tellMult like any move.
+const CAST = {
+  orbs: { tell: 1.1, color: 0xa070ff, rate: 0.7 },
+  vine: { tell: 1.0, color: 0x6fcf4a, rate: 0.5 },
+  thunder: { tell: 1.0, color: 0xb04aff, rate: 0.55 },
+  shards: { tell: 1.2, color: 0xcfefff, rate: 0.8 },
+  hands: { tell: 1.2, color: 0xeee6d0, rate: 0.45 },
+  bind: { tell: 1.2, color: 0x6a2aa8, rate: 0.35 },
 };
 
 class Hittable {
@@ -612,6 +641,12 @@ export class Shadowgrip {
     this._hurtFlash = 0;
     this.openT = 0;      // seconds of real vulnerability left
 
+    // BOSS MAGIC (js/bossmagic.js) — orbs, vines, rings, circles, the bubble
+    // and the Binding all live in one owned kit, cleared with the fight.
+    this.magic = new BossMagic(world, this);
+    this._bindCd = 0;
+    this._bubbleCd = 0;
+
     world.boss = this;
   }
 
@@ -645,7 +680,24 @@ export class Shadowgrip {
 
   _hitCore(n, element = 'steel') {
     if (this.defeated) return;
-    if (this._resists(element)) {
+    // THE BUBBLE comes before everything: while it is up nothing reaches her
+    // but the one element that bursts it, and bursting it is the opening.
+    if (this.magic.bubbleUp) {
+      const r = this.magic.bubbleTest(element, null);
+      if (r === 'blocked') return;
+      if (r === 'popped') {
+        this._bubbleCd = (this.skin.bubble && this.skin.bubble.again) || 12;
+        this.topple('bubble', 1.3);
+        return;
+      }
+    }
+    // BOUND, HE STILL TAKES SOMETHING. The Binding holds Kael in the wolf
+    // Grimm is armoured against; inside an open window that wolf's blows land
+    // at 0.4 rather than ringing off — a curse is never a wall (COMBAT-SPEC
+    // "Boss magic": resist x0.4, never immune).
+    if (this._resists(element) && state.curseLock && this.openT > 0) {
+      n *= 0.4;
+    } else if (this._resists(element)) {
       const bx = this.x + this.core.position.x, bz = this.z + this.core.position.z;
       if (this.world.onDmgNum) this.world.onDmgNum(bx, 2.2, bz, 'BLOCKED');
       audio.play('parry', { volume: 0.5, rate: 0.7 });
@@ -924,12 +976,14 @@ export class Shadowgrip {
       if (!state.formsUnlocked.includes('tide_wolf')) state.formsUnlocked.push('tide_wolf');
       this._drain();       // the water goes out — that IS the restoration
     }
+    this.magic.clear(this.world.player);
     if (this.onDefeated) this.onDefeated();
   }
 
   // ------------------------------------------------------------------
 
   update(dt, t, player) {
+    this.magic.update(dt, player);
     if (this.defeated) {
       // dissolve with a long exhale: shrink, fade, free the light
       if (this._dissolveT > 0) {
@@ -973,6 +1027,12 @@ export class Shadowgrip {
     this.dragon.position.y = this._bodyY || 0;
 
     if (this.openT > 0) this.openT = Math.max(0, this.openT - dt);
+    if (this._bindCd > 0) this._bindCd -= dt;
+    // the bubble comes back while she is still below half and up on her feet
+    if (this.skin.bubble && this._halfHowled && !this.magic.bubbleUp && this.action === 'prowl') {
+      this._bubbleCd -= dt;
+      if (this._bubbleCd <= 0) this._raiseBubble();
+    }
 
     if (this._hurtFlash > 0) {
       this._hurtFlash -= dt;
@@ -1093,7 +1153,9 @@ export class Shadowgrip {
       if (this.attackIn <= 0) {
         if (Math.random() < 0.35) this.orbitSign *= -1; // keep the circling fresh
         const move = this._pickMove(d);
-        if (move === 'root') {
+        if (CAST[move]) {
+          this._startCast(move, player, px, pz, wx, wz);
+        } else if (move === 'root') {
           // HER UNIQUE MOVE (P7 tell): thorns erupt where she stands.
           this.action = 'root';
           this.actionT = this._tell(1.0); // js/attacks.js sylva_thornburst.windup
@@ -1389,6 +1451,27 @@ export class Shadowgrip {
         this.actionT = 1.5;
         this.eyeMat.emissiveIntensity = 0.5;
       }
+    } else if (A === 'cast') {
+      // THE CASTING POSE (LAW 4: the tell is on the body as well as the floor)
+      // — it rises and glows and sheds its own colour, the same shape for every
+      // spell so a child learns "it's doing magic" once, then reads the floor.
+      facePlayer();
+      const f = 1 - Math.max(0, this.actionT) / this._castT0;
+      this.core.scale.y = 1 + 0.12 * f;
+      this.eyeMat.emissiveIntensity = 1.4 + f * 3.4;
+      this._scrapeAcc += dt;
+      if (this._scrapeAcc > 0.12) {
+        this._scrapeAcc = 0;
+        const a = Math.random() * Math.PI * 2;
+        juice.burst(wx + Math.cos(a) * 0.9, 1.0 + Math.random() * 1.4, wz + Math.sin(a) * 0.9,
+          CAST[this._castMove].color || this.skin.burst, 2);
+      }
+      if (this.actionT <= 0) {
+        this.core.scale.y = 1;
+        this._releaseCast(player, px, pz, wx, wz);
+        this.action = 'recover';
+        this.actionT = 1.2;   // every cast's registered recover (js/attacks.js)
+      }
     } else if (A === 'flinch') {
       // HALF HEALTH: she is hurt, and for a moment nothing can touch her.
       // Dad's spec. It is the one time in the fight the child is told to
@@ -1398,6 +1481,7 @@ export class Shadowgrip {
       if (this.actionT <= 0) {
         this._setAnim('idle');
         this._backToProwl();
+        if (this.skin.bubble) this._raiseBubble();
       }
     } else if (A === 'downed') {
       // KNOCKED OFF HER FEET by a child who kept swinging in the window.
@@ -1476,7 +1560,7 @@ export class Shadowgrip {
   // `secs` is per boss and never below the 1.0s punish floor (LAW 6); Gentle
   // mode stretches it rather than weakening the boss, so the fight a struggling
   // child plays is the same fight with more room to answer it in.
-  topple(reason = 'open') {
+  topple(reason = 'open', mult = 1) {
     if (this.defeated || this.openT > 0) return false;
     // NOT DURING THE FLINCH, AND NOT WHILE SHE IS GETTING UP. Both are
     // immunity beats by design — the half-health flinch because dad asked for
@@ -1486,7 +1570,7 @@ export class Shadowgrip {
     // interrupt the fight could itself be interrupted.
     if (this.action === 'flinch' || this.action === 'rising') return false;
     const secs = ((this.skin.open && this.skin.open.secs) || 2.4)
-      * (state.settings.easy ? 1.5 : 1);
+      * (state.settings.easy ? 1.5 : 1) * mult;
     this.openT = secs;
     this._pingedOff = 0;
     this._openHits = 0;         // three inside THIS window, not three ever
@@ -1564,9 +1648,24 @@ export class Shadowgrip {
   // fight in one cycle. This picks from the moves the SKIN carries, drops
   // whatever it just did, and drops anything the current distance makes
   // nonsense — a lunge from across the arena, a swipe from six metres away.
+  // The moves this fight has RIGHT NOW. Every skin but Grimm's is a fixed
+  // list; his borrows a different boss's magic each third of his health.
+  _movesNow() {
+    const base = this.skin.moves || ['swipe', 'charge'];
+    if (!this.skin.echoes) return base;
+    const f = this.coreHp / this.maxHp;
+    if (f > 2 / 3) return [...base, 'orbs'];
+    if (f > 1 / 3) return [...base, 'shards', 'hands', 'bind'];
+    return [...base, 'thunder', 'bind'];
+  }
+
   _pickMove(d) {
-    const all = this.skin.moves || ['swipe', 'charge'];
+    const all = this._movesNow();
     let legal = all.filter((m) => {
+      if (m === 'orbs') return d > 3.0;            // a ranged spell, from range
+      if (m === 'vine') return d > 3.5 && d < 10;
+      if (m === 'thunder') return d < 7.5;
+      if (m === 'bind') return this.coreHp <= this.maxHp / 2 && !this.magic.curse && this._bindCd <= 0;
       if (m === 'swipe') return d < 3.4;          // close work only
       if (m === 'pounce') return d > 2.2 && d < 8.5;
       if (m === 'root') return !!(this.skin.snares && this._halfHowled);
@@ -1579,6 +1678,70 @@ export class Shadowgrip {
     const pick = legal[Math.floor(Math.random() * legal.length)];
     this._lastMove = pick;
     return pick;
+  }
+
+  // ---- BOSS MAGIC (js/bossmagic.js) ----------------------------------------
+  // Floor marks start WITH the pose, so the circle filling in and the boss
+  // glowing are one tell; projectiles leave at the END of it, so their flight
+  // is reading time on top.
+  _startCast(move, player, px, pz, wx, wz) {
+    const c = CAST[move];
+    this.action = 'cast';
+    this._castMove = move;
+    this.actionT = this._castT0 = this._tell(c.tell);
+    this._scrapeAcc = 0;
+    this._setAnim('idle');
+    this.core.rotation.y = Math.atan2(px - wx, pz - wz);
+    audio.play('growl', { volume: 0.8, rate: c.rate || 0.6, vary: 0.05 });
+    const T = this.actionT;
+    if (move === 'vine') {
+      this.magic.vine(() => ({ x: this.x + this.core.position.x, z: this.z + this.core.position.z }),
+        player, { tell: T, stop: 2.2, maxPull: 4.5 });
+    } else if (move === 'thunder') {
+      this.magic.knockRing(wx, wz, { tell: T, maxR: 7.5, speed: 6, push: 3.5, dmg: 0.5, color: c.color });
+    } else if (move === 'shards' || move === 'hands') {
+      const a = Math.random() * Math.PI * 2;
+      const spots = [{ x: px, z: pz }];
+      for (const k of [0, 1]) {
+        const b = a + k * Math.PI * (2 / 3) + Math.PI / 3;
+        spots.push({ x: px + Math.cos(b) * 1.9, z: pz + Math.sin(b) * 1.9 });
+      }
+      this.magic.floorCircles(spots, { tell: T, radius: 1.0, kind: move, dmg: 1 });
+    }
+  }
+
+  _releaseCast(player, px, pz, wx, wz) {
+    const move = this._castMove;
+    if (move === 'orbs') {
+      const openBy = (this.skin.open && this.skin.open.by) || null;
+      this.magic.orbVolley(wx, wz, px, pz, {
+        count: 3, spread: 0.42, speed: 4.5, color: CAST.orbs.color, dmg: 1,
+        // a popped orb is a BLOCK, and blocking is what fells the Shadowgrip
+        onBlocked: () => { if (openBy === 'block') this.topple('block'); },
+      });
+    } else if (move === 'bind') {
+      this._bindCd = 14;
+      this.magic.orbVolley(wx, wz, px, pz, {
+        count: 1, speed: 3.8, size: 1.3, color: CAST.bind.color, life: 5,
+        onTouch: () => this.magic.bind(player, this._bindForm()),
+      });
+    }
+  }
+
+  // THE WOLF HE SHRUGS OFF. Below a third that is whatever hit him last;
+  // between a half and a third it is steel or moon — the knight, or the dark
+  // wolf if moon was the last blow.
+  _bindForm() {
+    if (this.coreHp <= this.maxHp / 3 && this._lastElement) return formForElement(this._lastElement) || 'knight';
+    if (this._lastElement === 'moon') return formForElement('moon') || 'knight';
+    return 'knight';
+  }
+
+  _raiseBubble() {
+    const b = this.skin.bubble;
+    if (!b || this.magic.bubbleUp || this.defeated) return;
+    this.magic.raiseBubble(() => ({ x: this.x + this.core.position.x, y: b.y, z: this.z + this.core.position.z }),
+      { breaks: b.breaks, color: b.color, radius: b.radius });
   }
 
   // A TELL IS NEVER SHORTER THAN THE LAW. 0.9s is the boss floor (combat
@@ -1754,6 +1917,10 @@ export class Boreal {
     this.diveDir = { x: 0, z: 1 };
     this._enraged = this.coreHp <= BOREAL_HP / 2;
     this._dives = 0;
+    // ICE-SHARD RAIN (boss magic, js/attacks.js boreal_shards): while she
+    // wheels, three red circles fill round Kael and ice falls into them.
+    this.magic = new BossMagic(world, this);
+    this._shardIn = 4.5;
     world.boss = this;
   }
 
@@ -1817,6 +1984,7 @@ export class Boreal {
   _defeat() {
     this.defeated = true;
     state.flags.borealHp = 0;
+    this.magic.clear(this.world.player);
     if (juice.effects) {
       juice.effects.shake(0.65, 1.3);
       juice.effects.hitStop(0.14);
@@ -1855,6 +2023,7 @@ export class Boreal {
 
   update(dt, t, player) {
     this.mixer.update(dt);
+    this.magic.update(dt, player);
     if (this.defeated) {
       if (this._dissolveT > 0) {
         this._dissolveT -= dt;
@@ -1905,6 +2074,21 @@ export class Boreal {
       this.off.z = this.cz + Math.sin(this.orbitA) * ORBIT_R;
       this.core.position.set(this.off.x, HOVER_Y + Math.sin(t * 1.6) * 0.25, this.off.z);
       this.attackIn -= dt;
+      // THE RAIN, between dives — never in the last 1.5s before one, so a
+      // child is never reading a circle and a lane at the same moment
+      this._shardIn -= dt;
+      if (this._shardIn <= 0 && this.attackIn > 1.5) {
+        this._shardIn = this._enraged ? 5.0 : 6.5;
+        const a = Math.random() * Math.PI * 2;
+        const spots = [{ x: px, z: pz }];
+        for (const k of [0, 1]) {
+          const b = a + k * Math.PI * (2 / 3) + Math.PI / 3;
+          spots.push({ x: px + Math.cos(b) * 1.9, z: pz + Math.sin(b) * 1.9 });
+        }
+        this.magic.floorCircles(spots, { tell: 1.2, radius: 1.0, kind: 'shards', dmg: 1 });
+        juice.burst(wx, HOVER_Y + 0.4, wz, 0xcfefff, 12);       // she throws it: on the body too
+        audio.play('whoosh', { volume: 0.7, rate: 1.4 });
+      }
       if (this.attackIn <= 0) {
         this.action = 'windup';
         this.actionT = 0.9;                       // the ≥0.9s boss telegraph
@@ -1965,8 +2149,12 @@ export class Boreal {
         // enraged, it strings TWO dives before it has to land (but a dive cut
         // short by the arena edge always crashes — that IS the punish window)
         if (!edge && this._enraged && this._dives % 2 === 1) {
+          // THE SECOND TELL IS A WHOLE TELL. It was 0.55s — "shorter second
+          // tell" — which is under the 0.9s boss floor (LAW 1); the boss-magic
+          // audit (2026-10-03) caught it. Pressure comes from the second dive
+          // itself, never from less time to read it.
           this.action = 'windup';
-          this.actionT = 0.55;                    // shorter second tell
+          this.actionT = 0.9;
           this.diveDir = { x: dx / d, z: dz / d };
         } else {
           this._ground(2.6);                      // THE CRASH — the punish window

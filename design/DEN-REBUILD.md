@@ -181,6 +181,19 @@ shipping the tint fix above — the same human-eye-on-the-room law this
 project holds every room-contents change to, though the human pass proper
 is still owed before this merges to `main`.
 
+## v1.2 — the buildings get their paint back (2026-09-29, SHIPPED)
+
+Dad: "Where's the textures gone for the buildings such as the tavern etc?"
+v1.1 (below) stripped each commissioned model's painted texture so a flat
+per-building tint could say ruined/restored — which left the Tavern, Forge
+and Mill as plain green-grey boxes beside a Village of painted houses. The
+originals (dad's Tripo uploads) are re-converted keeping their colour map
+(1024px JPEG; normal/metal-roughness maps dropped, geometry unchanged at
+5,041 / 4,648 / 4,567 triangles), and the ruined/restored signal now works
+WITH the paint instead of over it: restored = the paint as made (white
+tint), unrestored = the same paint dimmed and greyed (`RUIN_PAINT`,
+0x8c877c). The named per-building tints remain only for greybox.
+
 ## v1.1 — commissioned models replace the houses-pack reskin, plus a Monument (2026-09-17, SHIPPED)
 
 v1's Tavern/Forge/Mill were a split, retinted `houses-pack.glb` chunk — a

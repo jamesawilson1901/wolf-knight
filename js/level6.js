@@ -609,13 +609,21 @@ function rimSides(world, halfW, halfD, D, seed) {
   let s0 = seed;
   const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
   const KINDS = ['barrel', 'crate', 'vase', 'brick', 'skull', 'rockSA', 'rockSB', 'bush'];
+  // Not only the keep-clear register: a DEEP channel is a box collider, not a
+  // reservation, and dg2's two barrels stood in the middle of its deep water
+  // (2026-09-28). Deep water only — a wider "clear of every collider" test
+  // also turned away slots other rooms' arrival frames were measured with
+  // (verify-density dg4 fell from 21+ to 8).
+  const deep = (x, z) => (world.waterZones || []).some((w) => w.deep
+    && x > w.minX - 0.6 && x < w.maxX + 0.6 && z > w.minZ - 0.6 && z < w.maxZ + 0.6);
+  const bad = (x, z) => world.blocked(x, z, 0.6) || deep(x, z);
   for (let i = 0; i < 34; i++) {
     const side = i % 2 ? 1 : -1;
     const x = -halfW + 1.2 + (i / 34) * (halfW * 2 - 2.4) + (r() - 0.5) * 1.3;
     let z = side * (halfD - 1.4 - r() * 1.5);
-    if (world.blocked(x, z, 0.6)) z = -z;
-    if (world.blocked(x, z, 0.6)) z = side * (halfD - 2.6);
-    if (world.blocked(x, z, 0.6)) continue;
+    if (bad(x, z)) z = -z;
+    if (bad(x, z)) z = side * (halfD - 2.6);
+    if (bad(x, z)) continue;
     const kind = KINDS[Math.floor(r() * KINDS.length) % KINDS.length];
     const big = kind.startsWith('rock');
     const g = new THREE.Group();
@@ -834,6 +842,12 @@ export async function buildD1e(scene) {
   rubbleField(world, -8, -4.5, 1.8, D, 8);
   rubbleField(world, 8, -4.5, 1.8, D, 8);
   rubbleField(world, 5, 1.5, 1.6, D, 7);
+  // the altar room was four rubble heaps and a scatter — one scattered rock
+  // fewer (scatter no longer lands on the pots, 2026-09-28) and it fell under
+  // verify-bonecrypt's content floor. A column that came down across the
+  // approach and the stub of a wall say "crypt" where the rubble alone did not.
+  fallenColumn(world, -4.5, 1.5, 2.3, D, 2.6);
+  lowWall(world, 6.2, -2.2, 0.3, D, 2.4);
   scatter(world, halfW, halfD, D, 653, 5);
   return finish(world, spec, D);
 }
@@ -1341,6 +1355,9 @@ export async function buildDg4(scene) {
   // bumped well past 1-for-1 replacement to reliably clear the density floor.
   scatter(world, halfW, halfD, D, 634, 55, { spin: 1, kinds: ['rockSB', 'skull'] });
   rimSides(world, halfW, halfD, D, 6341);
+  // one deliberate piece in the arrival view (see sc4's note in level5.js —
+  // the same east-facing spawn, the same one-over-the-floor margin)
+  lowWall(world, 8.5, -4.5, 0.2, D, 2.2);
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   return finish(world, spec, D);
 }
@@ -1397,10 +1414,15 @@ export async function buildDlg(scene) {
   if (!GREY()) {
     let s0 = 6401;
     const r = () => ((s0 = (s0 * 9301 + 49297) % 233280) / 233280);
+    const tops = [];
     for (let i = 0; i < 30; i++) {
       const x = (r() - 0.5) * 28, z = (r() - 0.5) * 24;
       if (world.blocked(x, z, 1.0)) continue;
       const kind = ['column', 'column2', 'pillar', 'arch', 'brick'][Math.floor(r() * 5) % 5];
+      // two roofs of one drowned town do not share a footprint: a standing
+      // column came up through a pillar at (2.7, 10.4) before this (2026-09-28)
+      if (tops.some((t) => Math.hypot(t.x - x, t.z - z) < 2.2)) continue;
+      tops.push({ x, z });
       const g = new THREE.Group();
       // Half of them break the surface. Entirely submerged, they were invisible
       // under an opaque deep-water sheet — a drowned town nobody can see is a
@@ -1503,7 +1525,9 @@ export async function buildDdp(scene) {
     // standing in front of it. The throne stops being an obstruction and
     // becomes what it always should have been — the backdrop that says whose
     // hall this is.
-    world.markers.bossSpot = { x: 0, z: 2.5, kind: 'meri' };
+    // z 4, not 2.5: her body reaches 1.4u behind its own origin, and at 2.5
+    // that put her tail inside the throne's plinth (verify-interpenetration)
+    world.markers.bossSpot = { x: 0, z: 4.0, kind: 'meri' };
   } else {
     world.bgColor = 0x2a5f74;
     // HER LIGHT RESTS ON THE STONES — so it needs stones to rest on. This was a

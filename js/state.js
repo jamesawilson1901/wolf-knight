@@ -34,6 +34,11 @@ export const state = {
   // child who quits mid-fight must come back still locked — the wolf they
   // spent at that arch has been spent.
   formLock: null,
+  // SHADOW-GRIMM'S BINDING (js/bossmagic.js) — the same "one wolf only" lock,
+  // but for six seconds in a fight, and NEVER SAVED: js/save.js lists its
+  // fields by name and this is not one of them, and every room load clears it.
+  // A child who quits while bound comes back free.
+  curseLock: null,
   maxHearts: 5,
   potions: 2,
   shards: 0,                    // ember shards (currency)
@@ -118,6 +123,7 @@ export const RETIRED_ROOMS = {
 // the locked form, so the picker greys out everything else, the cycle has
 // nowhere to go, and setForm() refuses.
 export function formsAvailable() {
+  if (state.curseLock && state.formsUnlocked.includes(state.curseLock)) return [state.curseLock];
   if (state.formLock && state.formsUnlocked.includes(state.formLock)) return [state.formLock];
   return state.formsUnlocked;
 }
@@ -155,7 +161,7 @@ export function packWolves() {
 }
 export function packForms() {
   const avail = formsAvailable();
-  if (state.formLock && avail.length === 1) return avail;      // a Trial lock
+  if ((state.formLock || state.curseLock) && avail.length === 1) return avail;   // a Trial lock, the Binding
   return ['knight', 'dark_wolf', ...packWolves()].filter((f) => avail.includes(f));
 }
 

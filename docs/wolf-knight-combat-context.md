@@ -24,7 +24,18 @@ Rules of engagement:
 ## 1. Verified system inventory (as-built)
 
 ### 1.1 Modules
-`main.js` (loop, dev harness), `player.js` (all player combat), `enemies.js` (Enemy base class, per-family classes, VARIANTS registry, TRAITS), `rooms.js` (~160KB; room builds, spawns, encounter placement, bosses), `config.js` (every tuning number), `progress.js` (XP, levels, `enemyScale()`, perks), `state.js`, `items.js` (weapon/shield defs incl. per-weapon `lock/range/dmg/arc/stun/element`), `juice.js` (single hit-feedback pipeline), `audio.js`.
+`main.js` (loop, dev harness), `player.js` (all player combat), `enemies.js` (Enemy base class, per-family classes, VARIANTS registry, TRAITS), `rooms.js` (~160KB; room builds, spawns, encounter placement, bosses), `config.js` (every tuning number), `progress.js` (XP, levels, `enemyScale()`, perks), `state.js`, `items.js` (weapon/shield defs incl. per-weapon `lock/range/dmg/arc/stun/element`), `juice.js` (single hit-feedback pipeline), `audio.js`, `bossmagic.js` (v3.198, the boss-magic kit, one instance per boss, ticked by its owner).
+
+**Boss magic (re-cached 2026-10-03, v3.198).** design/COMBAT-SPEC.md "Boss magic" is canonical.
+- **Pieces.** Orbs (shield pops; `reflect` bats them home), floor circles (`hands`: jumpable; `shards`: not; `snare`: held until a jump), knock ring (jump it; otherwise `player.shove()` outward), vine (jump snaps it; otherwise it pulls), fire band, bubble (`breaks`: an element, `'crash'` or `'reflect'`), and the Binding (`state.curseLock`, transient, cleared by `freeBossMagic()` at all three room-build sites in main.js).
+- **Law fit.**
+  - Every move has an `attacks.js` row with a tell of at least 1.0s.
+  - Floor marks fall under the LAW 4 boss-lane exception.
+  - Danger marks are red or purple (LAW 5).
+  - `player.shove()` checks pit, lava and deep water every step (W-law: no unlearnable punishment).
+- **Audit finding fixed.** Boreal's enraged second dive told at 0.55s, under the LAW 1 floor. It is now 0.9s.
+- **Positive pattern to preserve.** A bubble's breaker is always a verb the fight already teaches: fire for the fire-weak bosses, the shield-crash for the drake, the shield for the sage.
+- **Suite.** `tools/verify-boss-magic.mjs`.
 
 Dev harness: `CONFIG.DEV_HARNESS: true` + `?dev=1` URL flag → read-only `window.__wk` state view, level jump, timescale. Use it for runtime state inspection instead of inferring state from source.
 

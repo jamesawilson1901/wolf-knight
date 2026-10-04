@@ -989,6 +989,11 @@
        stays reachable on a phone. */
     .panel .grid.tre-grid { max-height: none; overflow: visible; }
     #form-badge.denied { animation: deny .4s ease; }
+    /* THE BINDING (js/bossmagic.js): held in one wolf — the badge goes grey
+       inside a purple chain-dashed rim until the curse lets go. */
+    #form-badge.cursed { filter: grayscale(.85) brightness(.8);
+      outline: 3px dashed #8a4ad8; outline-offset: 2px; animation: bound-pulse 1s ease-in-out infinite; }
+    @keyframes bound-pulse { 50% { outline-color: #c9a8ff; } }
     @keyframes deny {
       0%, 100% { transform: translateX(0); }
       25% { transform: translateX(-6px); }
@@ -1431,7 +1436,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.196.0</div>
+  <div id="badge">Wolf Knight &middot; v3.198.1</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

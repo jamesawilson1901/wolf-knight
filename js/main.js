@@ -2235,12 +2235,25 @@ function seamMs(from, to) {
 // places and a mismatch would silently disable those checks"); loadRoom was the
 // hole in that invariant, and the same physical arena behaved differently
 // depending on which door a child came through.
+// A boss's Binding and snare end with its room (js/bossmagic.js) — never
+// carried through a door, a fall, a respawn or a fresh session. All three
+// places that build a room call this; the Binding is never saved, so a
+// session start only has the badge class to worry about, but it is one rule.
+function freeBossMagic() {
+  state.curseLock = null;
+  player._snareT = 0;
+  player._shove = null;
+  const badge = document.getElementById('form-badge');
+  if (badge) badge.classList.remove('cursed');
+}
+
 async function loadRoom(rawId, entry, handoff = null) {
   const id = resolveRoom(rawId);
   transitioning = true;
   const ms = seamMs(state.room, id);
   await fadeTo(1, ms);
   player.clearProjectiles();
+  freeBossMagic();
   document.getElementById('mg-chip').style.display = 'none'; // room chips never linger
   if (world) world.dispose();
   world = await buildRoom(id, scene);
@@ -2493,6 +2506,7 @@ async function respawnAtCheckpoint() {
   player.softenDamage = deathStreak >= 3; // quietly go easier after 3 falls
   await fadeTo(1, 500);
   player.clearProjectiles();
+  freeBossMagic();
   if (world) world.dispose();
   world = await buildRoom(room, scene);
   world.harness = harness;
@@ -2736,13 +2750,18 @@ async function start() {
     const nowS = performance.now() / 1000;
     const foeNear = world && world.enemies && world.enemies.some((e) => !e.dead && !e.scenery
       && Math.hypot(e.x - P.x, e.z - P.z) < CONFIG.SWITCH_FX.STRIKE_NEAR);
-    if (foeNear && nowS - (player._swapStrikeAt || -99) >= CONFIG.SWITCH_FX.STRIKE_COOLDOWN) {
+    // BROKEN FREE (js/bossmagic.js, the Binding): the first switch after the
+    // curse lets go skips the cooldown and lands twice as hard — six seconds
+    // held in the wrong wolf, paid back in one blow.
+    const unbound = !!player._curseBonus && !state.curseLock;
+    if (foeNear && (unbound || nowS - (player._swapStrikeAt || -99) >= CONFIG.SWITCH_FX.STRIKE_COOLDOWN)) {
       player._swapStrikeAt = nowS;
+      if (unbound) player._curseBonus = false;
       const el = FORM_ELEMENT[name] || 'steel';
       const col = FORM_BURST[name] || 0xffffff;
-      effects.groundSlam(P.clone(), col, CONFIG.SWITCH_FX.STRIKE_RADIUS);
-      audio.play('slam', { volume: 0.7, rate: 1.25 });
-      const dmg = CONFIG.SWITCH_FX.STRIKE_DMG * (weaponDef().dmg || 1);
+      effects.groundSlam(P.clone(), col, CONFIG.SWITCH_FX.STRIKE_RADIUS * (unbound ? 1.4 : 1));
+      audio.play('slam', { volume: unbound ? 1 : 0.7, rate: unbound ? 0.9 : 1.25 });
+      const dmg = CONFIG.SWITCH_FX.STRIKE_DMG * (weaponDef().dmg || 1) * (unbound ? 2 : 1);
       for (const e of world.enemies) {
         if (e.dead || e.scenery) continue;
         if (Math.hypot(e.x - P.x, e.z - P.z) > CONFIG.SWITCH_FX.STRIKE_RADIUS + (e.radius || 0.3)) continue;
@@ -3253,6 +3272,7 @@ async function start() {
 }
 
 async function buildRoomInitial() {
+  freeBossMagic();
   world = await buildRoom(state.room, scene);
   world.harness = harness;
   world.player = player;

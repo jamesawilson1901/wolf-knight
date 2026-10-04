@@ -6003,3 +6003,148 @@ same kind of thing — tinted rocks, "does not look like it blocks", and not a
 thing fire opens. `gateprops.timberWall()` builds them now: charred log
 stacks two high across the gap, a low ember glow in the wood. Ash Wing, lb2,
 lk1, lk2 and n1.
+
+## Nothing inside anything, and three dragons that are not the same pet (2026-09-28, v3.197.0)
+
+Dad, shown what was left: "Do the prop tidy-up first, then the dragon moves."
+
+**The prop tidy-up — verify-interpenetration 94 pairs → 0 across 199 rooms.**
+Most of the backlog was four families, fixed where they come from:
+
+1. **A room's own wall.** The shell is instanced cliff blocks, one per metre,
+   and each one measured as a prop standing inside the wall's collider — so a
+   ruin wall, an arch or a tree dressed against the edge read as "inside a
+   block", and neither side was allowed to move. separateProps now has a
+   wall block step BACK out of the room far enough to clear (or hide behind
+   the row already behind it). The wall box, not the mesh, stops a child, so
+   nothing reachable changes.
+2. **Rubble.** A column drum lying down is 3.8 long and 1.2 tall; it counted
+   as a landmark and could not move. Low things (< 1.3 tall) may be up to 4u
+   across and still be clutter.
+3. **Bodies.** Enemies and pots are spawned after the build, so their spots
+   were only coordinates — and a minion woke inside a drum in mb, a barrel in
+   la1, a ruin wall in la. Every roster `...Spots` key and every
+   `markers.breakables` pot is now a body to the pass: clutter is pushed off
+   it, nothing onto it. Scatter also skips named pots (xc3's vault crate).
+4. **Hand placement**, one room at a time: vb3's stalactites reached through
+   the floor (a pillar with a minion inside) and now hang; the Forge Heart's
+   ring of columns had one standing on the spirit shrine's brazier and opens
+   toward it now; frost firs avoid other firs and drift rocks; dg2's rim
+   dressing no longer stands in deep water, dlg's drowned roofs no longer
+   share footprints; q1's boat was in the ice stall and a minion in a cart;
+   f1b's wayshrine was in the cairn stone; g1 and vc1's columns fell into an
+   arch and a wall; Meri stood with her tail in her throne; the Den's tent was
+   in the Outer Camp door's landing, and the Camp's hearth and grinder inside
+   their own buildings; the Village had carts, a boat and basins inside
+   houses. And when the "never seal a path" guard has to undo a move, a prop
+   that would land back inside something is removed instead (vh's crate).
+
+**The rest of the known-fail list that was about rooms:** the Frozen Spring
+finally has a frozen wood (13/18/8 → 44/52/33 things on arrival); the Outer
+Camp's spawn faced the door it came through and now faces the camp, with a
+few stores added; the three dragon dens and dr were never in verify-density's
+list at all and are now; t1a's woodcutting tree stood in the tsA door's
+landing and moved. density, landings, decor-overlap, reachable and
+interpenetration all come off tools/known-fail.txt — the only lines left are
+the two minigame draw-call entries.
+
+**The dragon moves (design/DRAGON-EGGS.md v4).** Ember breathes a cone (1.25
+fire per foe, every foe inside once, every 6s); Tide mends half a heart while
+Kael is hurt (every 12s, never over the top, never on a knocked-out Kael);
+Storm's bite chains to two more foes (0.75 a link, every 3s). All through
+Enemy#takeDamage, so weakness, resist and shells apply as they do to the
+child's own hits; every number stays under the player's own. The companion
+also stops hunting pots. Three more Kenney Particle Pack sprites for the
+visuals. New suite: tools/verify-dragon-specials.mjs.
+
+Two false alarms worth writing down: verify-frozenspring and verify-market
+both failed once with the walker crawling at a tenth of its speed — they had
+been run alongside other browsers. Serially, both pass. The rule in
+CLAUDE.md about `--par` failures applies to hand-run batches too.
+
+## The Outer Camp's buildings get their paint back (2026-09-29, v3.197.0)
+
+Dad: "Where's the textures gone for the buildings such as the tavern etc?"
+Not today's doing — v3.182 (2026-09-17) stripped the Tavern, Forge and Mill's
+painted textures on import so one flat tint per building could mark
+ruined/restored, and they have been plain green-grey shells since. Re-converted
+from dad's original Tripo uploads keeping the colour map (1024px JPEG,
+geometry unchanged). A tint multiplies a texture, so the signal now works with
+the paint: restored shows it as made, unrestored is the same paint dimmed and
+greyed. design/DEN-REBUILD.md v1.2. verify-denrebuild and verify-boot pass.
+
+## Every boss its own magic (2026-10-03, v3.198.0)
+
+Dad: "Boss fights all feel too similar. Give me options to make each boss
+fight unique. Add magic attacks to some, magic shield bubbles, fire magic,
+knock back magic, magic that makes you get stuck in the weakest wolf form."
+He was shown an options page with every boss's portrait and said "implement
+all": each main boss gets the recommended pick and each mini-boss gets its
+listed idea. The Village guardians were not picked and are unchanged.
+
+**The kit, js/bossmagic.js.** One instance per boss, ticked by its owner and
+cleared when it falls:
+- orb volleys: a shield pops them, or with `reflect` bats them home;
+- red floor circles: grave hands (a jump clears them), falling ice (only
+  stepping off does) and root snares (no damage, held until a jump);
+- knock rings: jump them, or be thrown outward;
+- the vine: jump to snap it, or it pulls;
+- a burning fire band;
+- glass bubbles that only one thing bursts;
+- the Binding.
+
+`player.shove()` checks each step against pits, lava and deep water and
+stops short; `player.snare()` is freed by `tryJump()`. Every move is a row in
+js/attacks.js with a tell of 1.0s or more, a tenth over the boss floor,
+because these are new reads.
+
+**Who got what:**
+- **Shadowgrip:** orbs. A shielded orb counts as a block, so it fells him at
+  range.
+- **Bone Warden:** grave hands, cast with his shield down, plus a
+  fire-cracked bubble.
+- **Sylva:** the vine.
+- **Boreal:** ice rain between dives.
+- **Aria:** the thunderclap.
+- **Meri:** a water bubble that fire bursts, for a ×1.3 window.
+- **Shadow-Grimm:** each third of his health borrows another boss's magic.
+  From half health he also throws the Binding, which holds Kael in the wolf
+  he resists for 6s (3s Gentle) and greys the badge.
+  - The bound wolf still lands at ×0.4 inside a window.
+  - When the Binding breaks, the first switch skips the swap-in cooldown and
+    hits double.
+- **Cinder Drake:** a flame bubble that only a shield-crash bursts.
+- **Rootbound Wight:** snares.
+- **Rime Warden:** an ice bubble that fire melts.
+- **Ash Warden:** her spin leaves a fire band.
+- **Bone Sage:** reflectable volleys, plus a bubble only its own orb bursts.
+- **Court Chancellor:** a coin shockwave.
+
+The Binding is `state.curseLock`, the Trial's one-form lock, but never saved.
+`freeBossMagic()` clears it at all three room-build sites. Writing the suite
+showed the respawn path builds rooms without `loadRoom`, so the first cut
+would have kept a child bound through their own death.
+
+**Fixed along the way:**
+- Boreal's enraged second dive told at 0.55s, under the 0.9s floor. It is
+  0.9s now.
+- The Bone Sage's ordinary bolt told at the mook's 0.8s. Every one of its
+  casts is 1.0s now.
+- The Court Chancellor's swing squashed him to the gilded-husk mook's 0.5
+  height and left him there (he stands at 0.75). The squash is relative to
+  his own scale now.
+- Orbs first spawned inside the arena's colliders and died on frame one.
+  They now leave from the caster's chest, with a breath of grace.
+
+New suite: tools/verify-boss-magic.mjs. It covers every piece of the kit
+plus every boss and mini-boss in its own arena. It was proven red against
+v3.197 first. design/COMBAT-SPEC.md "Boss magic" holds the table, and the
+combat context pack is re-cached.
+
+**v3.198.1, the same day: the review shots caught two things the suites could
+not.** On a dark arena floor the orbs were a few purple pixels, because the
+flare sprite alone is mostly transparent at that size. Every orb is now a
+solid pale core inside a soft purple glow. The green vine also vanished into
+Sylva's grass, so it is now a dark thorny root over a stronger red glow,
+lifted clear of the floor. Both pass verify-boss-magic unchanged. A suite
+can prove an orb hits; only a look proves it can be seen coming.

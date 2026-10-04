@@ -834,8 +834,11 @@ export async function buildT1a(scene) {
   // reserved BEFORE the procedural breakables pass below so a pot can never
   // land on top of it (v3.175's own lc pair had no such reservation and
   // relied on luck; this rollout does not repeat that).
-  world.markers.treeSpots = [{ x: 10, z: -1, tint: 0x6fae4a }];
-  world.reserve(10, -1, 1.6, 'node');
+  // (10, -3.5), not (10, -1): the log bridge's door from tsA lands a child
+  // at (10, 0), and the trunk's collider stood 0.09u into that landing
+  // (verify-landings, carried as a known failure since 2026-09-18).
+  world.markers.treeSpots = [{ x: 10, z: -3.5, tint: 0x6fae4a }];
+  world.reserve(10, -3.5, 1.6, 'node');
   // NO ENEMIES, deliberately. The beat chart's first row is "the woods are
   // wrong (quiet dread, NO FIGHT)" at intensity 1, and t1b next door is
   // labelled "first Thorn Hounds" — a hound here contradicted both, and made
@@ -1737,6 +1740,19 @@ export async function buildTf1(scene) {
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
   thicket(world, 4, 5, 2.6, D);
   aftermath(world, -3, -6, 2.0, D, 15);
+  // THE ARRIVAL VIEW. The Spring shipped (v3.134) with a thicket, a scatter
+  // and nothing else, and verify-density has carried it as a known failure
+  // since: thirteen things in the first frame against a pocket's twenty. The
+  // frozen wood the name promises, either side of the path in: a whole grove
+  // north, a half-dead one south, the wall of an old pump-house.
+  // (kept off the diagonal a child walks from the door to the wolf at
+  // (-6.5, 5) — a first cut stood a grove on it and verify-frozenspring's
+  // walker wedged in the trees)
+  grove(world, 2.4, 4.4, 1.2, D, { sick: 0.3 });   // north of the camera's blind strip (z > 5.5)
+  grove(world, 1.5, -5.2, 2.2, D, { sick: 0.5 });
+  thicket(world, -1.5, 6.6, 1.4, D, { sick: 0.3 });
+  mossyRuin(world, 5.5, -4.8, 0.3, D, { w: 3.6, d: 2.8, keep: 0.45, door: false });
+  lowWall(world, -2.5, -2.8, 0.2, D, 2.4);
   scatter(world, halfW, halfD, D, 174, 5);
   return finish(world, spec, D);
 }
@@ -1774,6 +1790,17 @@ export async function buildTf2(scene) {
   aftermath(world, -10, 8, 2.2, D, 13);
   aftermath(world, 8.5, -8.5, 2.0, D, 9);
   lowWall(world, -9, 2.5, 0.2, D, 3.2);
+  // THE HOLLOW'S EDGES (see buildTf1's note): eighteen things on arrival
+  // against an island's thirty-two. The fight keeps the middle; the frozen
+  // wood closes in round it.
+  grove(world, 6.5, 7.8, 2.6, D, { sick: 0.4 });
+  grove(world, 1.5, -8.6, 2.4, D, { sick: 0.55 });
+  grove(world, -7.5, -5.5, 2.4, D, { sick: 0.6 });
+  thicket(world, 10.5, -5.5, 2.0, D, { sick: 0.3 });
+  thicket(world, -2.5, 8.8, 2.0, D, { sick: 0.3 });
+  blight(world, -11, 6, 2.2, D);
+  mossyRuin(world, 11.5, 7.5, -0.4, D, { w: 3.4, d: 2.8, keep: 0.4, door: false });
+  lowWall(world, 3, -4.8, 0.3, D, 2.6);
   scatter(world, halfW, halfD, D, 175, 6);
 
   // THE MOMENT THE ROOM CLEARS — the villageUnshadowLive poll pattern
@@ -1822,6 +1849,16 @@ export async function buildTf3(scene) {
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },
   ];
   aftermath(world, 0, 6.8, 2.0, D, 14);
+  // THE SPRING HEART's own wood (see buildTf1's note): eight things on
+  // arrival against a pocket's twenty — a gold chest in an empty box.
+  // both groves kept north of z 4.6: the camera looks over the south strip,
+  // and a first cut put a trunk in the bottom of the arrival frame
+  grove(world, -6, 2.4, 1.8, D, { sick: 0.3 });
+  grove(world, 4.6, 2.9, 1.6, D, { sick: 0.3 });
+  thicket(world, -5.5, -4.6, 1.9, D, { sick: 0.2 });
+  thicket(world, 5.2, -4.6, 1.9, D, { sick: 0.2 });
+  mossyRuin(world, -2.8, 3.2, 0.2, D, { w: 3.0, d: 2.4, keep: 0.4, door: false });
+  lowWall(world, 3.2, -2.6, 1.3, D, 2.2);
   scatter(world, halfW, halfD, D, 176, 5);
   return finish(world, spec, D);
 }

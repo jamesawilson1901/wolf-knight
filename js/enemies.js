@@ -23,6 +23,7 @@ import { spawnGearDrop, lootEvents } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { WS } from './worldstate.js';
 import { materialForEnemy, addMaterial, spawnMaterialDrop } from './materials.js';
+import { BossMagic } from './bossmagic.js';
 
 // AWARENESS, the middle state. Two numbers, both about a child rather than a
 // simulation: how close you have to be before a shadow half-notices, and how
@@ -2096,6 +2097,16 @@ export class SkeletonShield extends SkeletonBase {
   }
 }
 
+// Which magic each Bone Warden carries (opts.magic). `cast` is a floor-circle
+// spell timed by its js/attacks.js row (`clock`); `bubble` goes up at half
+// health and again 12s after it bursts; `ring` is the Ash Warden's fire band.
+const WARDEN_MAGIC = {
+  grave: { cast: 'hands', clock: 'warden_hands', bubble: { breaks: 'fire', color: 0xe8d8a8 } },
+  snare: { cast: 'snare', clock: 'wight_snare' },
+  rime: { bubble: { breaks: 'fire', color: 0x9fdcff } },
+  ashring: { ring: true },
+};
+
 export class BoneWarden extends SkeletonBase {
   // `opts` (v3.136, design/WIDER-WORLD.md §2.6): the crypt's warden and a
   // MINI_ROSTER guardian are the SAME class and machine — only a body, a
@@ -2163,6 +2174,15 @@ export class BoneWarden extends SkeletonBase {
     }
     this.swings = 0;
     this.attackTimer = 1.4;
+    // BOSS MAGIC (2026-10-03, js/bossmagic.js) — one per guardian, named by
+    // `opts.magic` (WARDEN_MAGIC below): the crypt warden's grave hands and
+    // fire-cracked bubble, the Rootbound Wight's snare, the Rime Warden's ice
+    // bubble, the Ash Warden's ring of fire. No opts.magic, no magic.
+    this.magicKind = WARDEN_MAGIC[opts.magic] ? opts.magic : null;
+    this.magic = this.magicKind ? new BossMagic(world, this) : null;
+    this._magicIn = 4.0;
+    this._bubbleCd = 0;
+    this._bubbled = false;
     // v3.19.1: the Warden had NO guard pose at all — he front-blocked
     // everything while strolling with the tower shield at his hip. Now the
     // shield rides UP the whole advance and drops for every swing.
@@ -2189,6 +2209,7 @@ export class BoneWarden extends SkeletonBase {
   }
 
   die() {
+    if (this.magic) this.magic.clear(this.world.player);
     this.world.root.remove(this.dangerRing);
     this.world.root.remove(this.spinRing);
     this._hpSet(0);   // the duel is over — no stale wound to restore
@@ -2200,6 +2221,13 @@ export class BoneWarden extends SkeletonBase {
   // flank him, or parry the chop and punish the stun. Punish windows
   // (tired / stunned / mid-swing) take full damage.
   takeDamage(n, element, kind) {
+    // THE BUBBLE encloses shield and all: only what it is weak to gets in, and
+    // bursting it leaves him winded — the long 'tired' punish, earned.
+    if (!this.dead && this.magic && this.magic.bubbleUp) {
+      const r = this.magic.bubbleTest(element, kind);
+      if (r === 'blocked') return;
+      if (r === 'popped') { this._bubbleCd = 12; this._winded(); return; }
+    }
     if (!this.dead && this.shieldUp && this._pp) {
       const dx = this._pp.x - this.x, dz = this._pp.z - this.z;
       const dd = Math.hypot(dx, dz);
@@ -2220,6 +2248,28 @@ export class BoneWarden extends SkeletonBase {
     // ...and the wound is remembered (see constructor). Written after super so
     // it reflects the blow that actually landed, exactly as boss.js does.
     if (!this.dead) this._hpSet(Math.max(0, this.hp));
+    // half health: the bubble goes up for the first time
+    if (!this.dead && this.magic && !this._bubbled && this.hp <= this.maxHp / 2) {
+      this._bubbled = true;
+      this._raiseBubble();
+    }
+  }
+
+  _raiseBubble() {
+    const b = this.magicKind && WARDEN_MAGIC[this.magicKind].bubble;
+    if (!b || this.dead || this.magic.bubbleUp) return;
+    this.magic.raiseBubble(() => ({ x: this.x, y: 1.4, z: this.z }),
+      { breaks: b.breaks, color: b.color, radius: 1.9 });
+  }
+
+  // out of breath: the same 'tired' punish the third swing earns
+  _winded() {
+    this.state = 'tired';
+    this.stateT = 0;
+    this.swings = 0;
+    this.dangerRing.material.opacity = 0;
+    this.spinRing.material.opacity = 0;
+    this._play('tired', 0.3);
   }
 
   // his front-block law (takeDamage) in one place — the pose reads from the
@@ -2231,6 +2281,7 @@ export class BoneWarden extends SkeletonBase {
 
   update(dt, t, player) {
     if (this.dead) return;
+    if (this.magic) this.magic.update(dt, player);
     this._guard(this.shieldUp, dt);
     // a stunned giant is not about to hit anyone: BOTH marks go out
     if (this.stunUpdate(dt)) {
@@ -2271,7 +2322,30 @@ export class BoneWarden extends SkeletonBase {
         this.root.position.z = s.z;
       }
       this.attackTimer -= dt;
-      if (this.attackTimer <= 0 && d < 3.0) { // giant reach
+      const M = this.magicKind && WARDEN_MAGIC[this.magicKind];
+      if (M && M.bubble && this._bubbled && !this.magic.bubbleUp) {
+        this._bubbleCd -= dt;
+        if (this._bubbleCd <= 0) this._raiseBubble();
+      }
+      if (M && M.cast) this._magicIn -= dt;
+      if (M && M.cast && this._magicIn <= 0 && d > 2.4 && d < 9) {
+        // THE CAST. He stops, the shield comes down (shieldUp does not list
+        // this state) and he taunts — the pose is the tell, and the circles
+        // filling round Kael are the same tell on the floor.
+        this.state = 'cast_tele';
+        this.stateT = 0;
+        this._play('taunt', 0.1, { once: true });
+        const C = A[M.clock];
+        const a = Math.random() * Math.PI * 2;
+        const px0 = player.root.position.x, pz0 = player.root.position.z;
+        const spots = [{ x: px0, z: pz0 }];
+        for (const k of [0, 1]) {
+          const b = a + k * Math.PI * (2 / 3) + Math.PI / 3;
+          spots.push({ x: px0 + Math.cos(b) * 1.9, z: pz0 + Math.sin(b) * 1.9 });
+        }
+        this.magic.floorCircles(spots, { tell: C.windup, radius: M.cast === 'snare' ? 1.2 : 1.0, kind: M.cast, dmg: 1 });
+        audio.play('growl', { volume: 0.7, rate: 0.45 });
+      } else if (this.attackTimer <= 0 && d < 3.0) { // giant reach
         if (this.swings >= 3) {
           this.state = 'tired';
           this.stateT = 0;
@@ -2341,10 +2415,23 @@ export class BoneWarden extends SkeletonBase {
       if (this.stateT > 0.45 && !this._spinHit) {
         this._spinHit = true;
         this._swingDamage(player, 360, 2.6, 1.5); // giant's full-circle sweep
+        // THE ASH WARDEN'S SPIN LEAVES FIRE: a band round where he stood, red
+        // for its tell, burning for three seconds. Inside it, by him, is safe.
+        if (this.magicKind === 'ashring') {
+          this.magic.fireRing(this.x, this.z, { tell: A.ash_firering.windup, life: A.ash_firering.active,
+            r0: 1.4, r1: 2.7, dmg: 1 });
+        }
       }
       if (this.stateT > 1.45) {
         this.state = 'chase'; this._spinHit = false; this.spinRing.material.opacity = 0;
         this.swings++; this.attackTimer = 1.7;
+      }
+    } else if (this.state === 'cast_tele') {
+      const C = A[WARDEN_MAGIC[this.magicKind].clock];
+      if (this.stateT >= C.windup + C.active + C.recover) {
+        this.state = 'chase';
+        this.attackTimer = C.gap;
+        this._magicIn = this.hp <= this.maxHp / 2 ? 6.0 : 7.5;
       }
     } else if (this.state === 'tired') {
       // ~3.4s wheeze — the punish window (double damage would need a stun;
@@ -2753,17 +2840,59 @@ export class RangedBolter extends SkeletonBase {
     // shoots". Two ranged classes that a child could not tell apart now differ
     // at a glance, before either has fired. wand_A, same KayKit pack.
     if (opts.wandGltf) this.mount('r', opts.wandGltf, 0.9);
+    // THE BONE SAGE'S MAGIC (opts.magic 'sage', js/bossmagic.js): every third
+    // cast is a volley of orbs a raised shield bats straight back at it, and
+    // from half health it sits in a bubble only its own orb can burst. A
+    // mini-boss tells at the boss floor, so every one of its casts takes the
+    // volley's 1.0s tell (the stormcaller mook keeps its own 0.8s).
+    this.magic = opts.magic === 'sage' ? new BossMagic(world, this) : null;
+    this._casts = 0;
+    this._bubbled = false;
+    this._bubbleCd = 0;
   }
 
   die() {
+    if (this.magic) this.magic.clear(this.world.player);
     this._hpSet(0);   // the duel is over — no stale wound to restore
     this._onDefeated(this);
     super.die();
   }
 
   takeDamage(n, element, kind) {
+    if (!this.dead && this.magic && this.magic.bubbleUp && this.magic.bubbleTest(element, kind) === 'blocked') return;
     super.takeDamage(n, element, kind);
     if (!this.dead) this._hpSet(Math.max(0, this.hp));
+    if (!this.dead && this.magic && !this._bubbled && this.hp <= this.maxHp / 2) {
+      this._bubbled = true;
+      this._raiseBubble();
+    }
+  }
+
+  _raiseBubble() {
+    if (this.dead || this.magic.bubbleUp) return;
+    this.magic.raiseBubble(() => ({ x: this.x, y: 0.8, z: this.z }),
+      { breaks: 'reflect', color: 0x5ce8d8, radius: 1.1 });
+  }
+
+  // its own orb, batted home: bursts the bubble and knocks it reeling, or —
+  // with no bubble up — simply hurts
+  _reflectHit() {
+    if (this.dead) return;
+    if (this.magic.bubbleUp) {
+      this.magic.bubbleTest(null, 'reflect');
+      this._bubbleCd = 12;
+      this.takeStun(2.5);
+    } else {
+      this.takeDamage(1.5, 'tide', 'reflect');
+    }
+  }
+
+  _volley(player) {
+    this.magic.orbVolley(this.x, this.z, player.root.position.x, player.root.position.z, {
+      count: 3, spread: 0.5, speed: 4.8, color: 0x5ce8d8, dmg: 1, reflect: true,
+      target: () => ({ x: this.x, z: this.z, r: 0.9 }),
+      onReflectHit: () => this._reflectHit(),
+    });
   }
 
   _fire(player) {
@@ -2800,19 +2929,35 @@ export class RangedBolter extends SkeletonBase {
 
   update(dt, t, player) {
     if (this.dead) { this._updateBolts(dt, player); return; }
+    if (this.magic) {
+      this.magic.update(dt, player);
+      if (this._bubbled && !this.magic.bubbleUp) {
+        this._bubbleCd -= dt;
+        if (this._bubbleCd <= 0) this._raiseBubble();
+      }
+    }
     if (this.stunUpdate(dt)) { this._updateBolts(dt, player); this.mixer.update(dt); return; }
     const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
     this.root.rotation.y = Math.atan2(dx, dz);
+    const tell = this.magic ? A.sage_orbs.windup : A.ranged_bolt_shot.windup;
 
     if (this._windup > 0) {
       this._play('cast', 0.05);
       this._windup -= dt;
-      const f = 1 - Math.max(0, this._windup) / A.ranged_bolt_shot.windup;
+      const f = 1 - Math.max(0, this._windup) / tell;
       for (const m of this._flashMats) if (m.emissive) m.emissiveIntensity = 0.4 + f * 2.0;
+      if (this.magic && Math.random() < 0.3) juice.burst(this.x, 1.1, this.z, 0x5ce8d8, 1);   // on the body
       if (this._windup <= 0) {
-        this._fire(player);
-        this._shotT = state.settings.easy ? 2.4 : A.ranged_bolt_shot.gap;
+        // a volley every third cast — and every cast while the bubble is up,
+        // because a bubble you cannot answer is a wall
+        if (this.magic && (++this._casts % 3 === 0 || this.magic.bubbleUp)) {
+          this._volley(player);
+          this._shotT = A.sage_orbs.gap;
+        } else {
+          this._fire(player);
+          this._shotT = state.settings.easy ? 2.4 : A.ranged_bolt_shot.gap;
+        }
       }
     } else if (d < this.senseRange(player, this.aggroRange) && d > 0.01) {
       this._shotT -= dt;
@@ -2823,7 +2968,7 @@ export class RangedBolter extends SkeletonBase {
       } else {
         this._play('idle');
       }
-      if (this._shotT <= 0 && d > 2 && this.engaged !== false) this._windup = A.ranged_bolt_shot.windup;
+      if (this._shotT <= 0 && d > 2 && this.engaged !== false) this._windup = tell;
     } else {
       this._play('idle');
     }
@@ -2919,9 +3064,14 @@ export class Duellist extends SkeletonBase {
     this._onDefeated = opts.onDefeated || (() => {});
     const savedHp = this._hpGet();
     if (savedHp > 0) this.hp = Math.min(savedHp, this.maxHp);
+    // THE COIN SHOCKWAVE (opts.magic 'coins', js/bossmagic.js): the Court
+    // Chancellor slams down and a ring rolls out across the floor — jump it.
+    this.magic = opts.magic === 'coins' ? new BossMagic(world, this) : null;
+    this._coinIn = 5.0;
   }
 
   die() {
+    if (this.magic) this.magic.clear(this.world.player);
     this._hpSet(0);
     this._onDefeated(this);
     super.die();
@@ -2932,13 +3082,38 @@ export class Duellist extends SkeletonBase {
     if (!this.dead) this._hpSet(Math.max(0, this.hp));
   }
 
+  // the body's own standing scale (0.5 for the mook; a MINI_ROSTER guardian
+  // passes its own) — the telegraph squash is relative to it
+  _baseScaleY() { return this._scaleY0 || (this._scaleY0 = this.model.scale.y || 0.5); }
+
   update(dt, t, player) {
     if (this.dead) return;
+    if (this.magic) this.magic.update(dt, player);
     if (this.stunUpdate(dt)) { this.mixer.update(dt); return; }
     const dx = player.root.position.x - this.x, dz = player.root.position.z - this.z;
     const d = Math.hypot(dx, dz);
 
-    if (this.state === 'chase') {
+    if (this.state === 'chase' && this.magic) {
+      this._coinIn -= dt;
+      if (this._coinIn <= 0 && d > 1.2 && d < 6) {
+        this.state = 'coin_tele'; this.stateT = 0; this._play('idle', 0.1);
+        this.magic.knockRing(this.x, this.z, { tell: A.chancellor_coins.windup, maxR: 6.5, speed: 6,
+          push: 3.0, dmg: 0.5, color: 0xb04aff });
+        audio.play('growl', { volume: 0.6, rate: 0.7 });
+      }
+    }
+    if (this.state === 'coin_tele') {
+      // the tell is the crouch AND the ring on the floor; the ring rolls on
+      // its own, he stands winded while it does
+      this.stateT += dt;
+      const C = A.chancellor_coins;
+      this.model.scale.y = this._baseScaleY() * (1 - 0.16 * Math.min(1, this.stateT / C.windup));
+      if (this.stateT < C.windup && Math.random() < 0.4) juice.burst(this.x, 0.9, this.z, 0xb04aff, 1);
+      if (this.stateT >= C.windup) this.model.scale.y = this._baseScaleY();
+      if (this.stateT >= C.windup + C.active) {
+        this.state = 'recover'; this.stateT = 0; this._coinIn = 6.5;
+      }
+    } else if (this.state === 'chase') {
       this._play('walk');
       if (this.engaged === false && d < CONFIG.ENGAGE.HOLD_DIST + 1.4) {
         this.holdOrbit(dt, dx, dz, d);
@@ -2953,9 +3128,9 @@ export class Duellist extends SkeletonBase {
       }
     } else if (this.state === 'telegraph') {
       this.stateT += dt;
-      this.model.scale.y = 0.5 * (1 - 0.14 * Math.min(1, this.stateT * 2));
+      this.model.scale.y = this._baseScaleY() * (1 - 0.14 * Math.min(1, this.stateT * 2));
       if (this.stateT >= A.duellist_swing.windup) {
-        this.state = 'swing'; this.stateT = 0; this.model.scale.y = 0.5;
+        this.state = 'swing'; this.stateT = 0; this.model.scale.y = this._baseScaleY();
         this._play('swing', 0.06, { once: true });
         audio.play('sword-swing', { volume: 0.6, rate: 1.0 });
         this._swingHit = false;
@@ -3716,19 +3891,41 @@ export class DrakeGuardian extends Dragonling {
     this._lane.rotation.x = -Math.PI / 2;
     this._lane.visible = false;
     world.root.add(this._lane);
+    // THE FLAME BUBBLE (boss magic, js/bossmagic.js): from half health it
+    // flies inside a bubble of fire that nothing gets through — except
+    // crashing it on a raised shield, the one lesson this fight already
+    // teaches. The bubble bursts with the crash and it is back 10s later.
+    this.magic = new BossMagic(world, this);
+    this._bubbled = false;
+    this._bubbleCd = 0;
     world.miniBoss = this;
   }
 
   onBlocked() {
-    if (this.state === 'dive') this._floor(3.0);
+    if (this.state === 'dive') {
+      if (this.magic.bubbleUp) { this.magic.bubbleTest(null, 'crash'); this._bubbleCd = 10; }
+      this._floor(3.0);
+    }
   }
 
   takeDamage(n, element, kind) {
+    if (!this.dead && this.magic.bubbleUp && this.magic.bubbleTest(element, kind) === 'blocked') return;
     super.takeDamage(n, element, kind);
     if (!this.dead) this._hpSet(Math.max(0, this.hp));
+    if (!this.dead && !this._bubbled && this.hp <= this.maxHp / 2) {
+      this._bubbled = true;
+      this._raiseBubble();
+    }
+  }
+
+  _raiseBubble() {
+    if (this.dead || this.magic.bubbleUp) return;
+    this.magic.raiseBubble(() => ({ x: this.x, y: this.root.position.y + 0.2, z: this.z }),
+      { breaks: 'crash', color: 0xff8a3a, radius: 1.5 });
   }
 
   die() {
+    this.magic.clear(this.world.player);
     this._hpSet(0);
     this._ring.visible = false; this._lane.visible = false;
     this.world.root.remove(this._ring); this.world.root.remove(this._lane);
@@ -3740,6 +3937,11 @@ export class DrakeGuardian extends Dragonling {
 
   update(dt, t, player) {
     if (this.dead) return;
+    this.magic.update(dt, player);
+    if (this._bubbled && !this.magic.bubbleUp && this.state === 'hover') {
+      this._bubbleCd -= dt;
+      if (this._bubbleCd <= 0) this._raiseBubble();
+    }
     // IT CIRCLES KAEL, NOT A SPOT — Boreal's rule (GAME-CONTRACT: a flying
     // boss must stay in frame). Hovering at a fixed home, a child who walked
     // under it put it straight above their head, behind the top HUD. The
@@ -4041,7 +4243,7 @@ const KAYKIT_ROSTER = {
 const MINI_ROSTER = {
   rootbound_wight: {
     cls: BoneWarden, body: 'tower-wight.glb', scale: 1.3, hp: 14,
-    mounts: { r: 'axe', l: 'shield' }, weakness: 'verdant', region: 'vault', key: 'rootbound_wight',
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'verdant', region: 'vault', key: 'rootbound_wight', magic: 'snare',
     tint: (m) => { if (m.color) m.color.setHex(0x5a6b3f); }, // moss over old bone
   },
   // v3.148, design/WIDER-WORLD.md §2.3: Frostpeak's own guardian, holding the
@@ -4050,7 +4252,7 @@ const MINI_ROSTER = {
   // pairing is proven in the exact region it now also carries a boss in.
   rime_warden: {
     cls: BoneWarden, body: 'glacier-warden.glb', scale: 1.3, hp: 14,
-    mounts: { r: 'axe', l: 'shield' }, weakness: 'fire', region: 'frost', key: 'rime_warden',
+    mounts: { r: 'axe', l: 'shield' }, weakness: 'fire', region: 'frost', key: 'rime_warden', magic: 'rime',
     tint: (m) => { if (m.color) m.color.setHex(0xbcd8ea); }, // rime over old bone
   },
   // design/WIDER-WORLD.md §2.3: Stormreach's own guardian, off s1a's flooded
@@ -4064,7 +4266,7 @@ const MINI_ROSTER = {
   ash_warden: {
     cls: BoneWarden, body: 'molten-marauder.glb', scale: 1.3, hp: 14,
     mounts: { r: 'axe', l: 'shield' }, weakness: 'earth', resist: 'fire',
-    region: 'storm', key: 'ash_warden',
+    region: 'storm', key: 'ash_warden', magic: 'ashring',
     tint: (m) => { if (m.color) m.color.setHex(0x5a5450); }, // ash over old iron
   },
   // v3.168, design/WIDER-WORLD.md §2.3 vale row: the Sunken Vale's own
@@ -4076,7 +4278,7 @@ const MINI_ROSTER = {
   // matches the Vale's own mook weakness (boss.js's Meri entry).
   bone_sage: {
     cls: RangedBolter, body: 'Skeleton_Mage.glb', scale: 0.8, hp: 14,
-    weakness: 'fire', region: 'vale', key: 'bone_sage',
+    weakness: 'fire', region: 'vale', key: 'bone_sage', magic: 'sage',
     tint: (m) => {
       if (m.name === 'skeleton' && m.color) m.color.setHex(0x4a6b6a); // waterlogged bone
       if (m.name === 'Glow') {
@@ -4095,7 +4297,7 @@ const MINI_ROSTER = {
   // KAYKIT_ROSTER id this region has.
   court_chancellor: {
     cls: Duellist, body: 'gilded-husk.glb', scale: 0.75, hp: 14,
-    weakness: 'moon', region: 'court', key: 'court_chancellor',
+    weakness: 'moon', region: 'court', key: 'court_chancellor', magic: 'coins',
     tint: (m) => { if (m.color) m.color.setHex(0x120c1c); }, // black over the old gilt
   },
 };
@@ -4264,7 +4466,8 @@ export async function spawnEnemies(world) {
         loadGLB('./assets/chars/skeletons/Skeleton_Axe.gltf'),
         loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf'),
       ]);
-      world.warden = new BoneWarden(world, mk.wardenSpot.x, mk.wardenSpot.z, warriorGltf, anims, axeGltf, shieldGltf);
+      world.warden = new BoneWarden(world, mk.wardenSpot.x, mk.wardenSpot.z, warriorGltf, anims, axeGltf, shieldGltf,
+        { magic: 'grave' });
       world.enemies.push(world.warden);
     }
 
@@ -4334,7 +4537,7 @@ export async function spawnEnemies(world) {
           loadGLB('./assets/gear/wand_A.gltf'),
         ]);
         mini = new RangedBolter(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
-          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, wandGltf, ...bankedOpts,
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, wandGltf, magic: cfg.magic, ...bankedOpts,
         });
         if (cfg.tint) {
           mini.model.traverse((n) => {
@@ -4352,7 +4555,7 @@ export async function spawnEnemies(world) {
           loadGLB('./assets/chars/skeletons/Skeleton_Blade.gltf'),
         ]);
         mini = new Duellist(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, {
-          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, bladeGltf: miniBladeGltf, ...bankedOpts,
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, bladeGltf: miniBladeGltf, magic: cfg.magic, ...bankedOpts,
         });
         if (cfg.tint) {
           mini.model.traverse((n) => {
@@ -4367,7 +4570,7 @@ export async function spawnEnemies(world) {
           cfg.mounts && cfg.mounts.l === 'shield' ? loadGLB('./assets/chars/skeletons/Skeleton_Shield_Large_A.gltf') : null,
         ]);
         mini = new BoneWarden(world, mk.miniSpot.x, mk.miniSpot.z, miniBodyGltf, anims, miniAxeGltf, miniShieldGltf, {
-          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint, ...bankedOpts,
+          hp: cfg.hp, scale: cfg.scale, weakness: cfg.weakness, resist: cfg.resist, tint: cfg.tint, magic: cfg.magic, ...bankedOpts,
         });
       }
       // A NAME ON A BOSS BAR. The five guardians had neither, so each fought

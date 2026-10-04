@@ -1298,10 +1298,14 @@ export async function buildVb3(scene) {
     // INTO the stone that answers.
     stompSigil(world, 0, 0, 2.0);
     for (const s of world.markers.stalactiteSpots) {
+      // HANGING, not standing: at 1.6 from y 5.4 the flipped column ran 6.5u
+      // down and 1.1u into the floor — a pillar from the ground up, with the
+      // minion sleeping under it standing inside it (verify-interpenetration).
+      // Its tip now stops 2.4u up, over the minion's head, where a stalactite is.
       const c = tinted(caveKit.column, 'stal', 0xc8bda0);
-      c.position.set(s.x, 5.4, s.z);
+      c.position.set(s.x, world.deckY + 2.4 + 4.06 * 0.9, s.z);
       c.rotation.z = Math.PI;
-      c.scale.setScalar(1.6);
+      c.scale.set(1.4, 0.9, 1.4);
       world.add(c);
     }
     const bell = tinted(caveKit.rockLA, 'bell', 0xb9a880);
@@ -1386,7 +1390,7 @@ export async function buildVc1(scene) {
   // pushed everything to the walls. Nothing here sits ON a terrace edge, which
   // is what makes the three levels readable from a fixed camera.
   cartWreck(world, -6, 9.5, 0.6, D);
-  fallenColumn(world, 6.5, 10.5, -0.8, D, 3.0);
+  fallenColumn(world, 6.5, 10.5, -2.2, D, 3.0);   // rolls into the room, not into the north wall's crates
   rubbleField(world, -3, 7.5, 2.4, D, 10);
   rubbleField(world, 4, 11.5, 2.4, D, 10);
   aftermath(world, -7, 6, 1.8, D, 40);

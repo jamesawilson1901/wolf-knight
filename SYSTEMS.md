@@ -124,6 +124,15 @@ than by the number whoever wrote the line happened to pick:
   clamps every spot to the room's own half-extents — with the exception that a
   prop carrying a COLLIDER is dropped rather than clamped if it would land in a
   doorway, because a cart across the Spire stair is worse than a missing cart.
+* **Nothing stands inside anything else** (World.separateProps, js/world.js,
+  run from flattenStatic; gate: tools/verify-interpenetration.mjs, 0 pairs
+  in 199 rooms since 2026-09-28). Clutter is nudged clear of what it stands
+  in; low wide rubble (a lying drum, a snow heap) counts as clutter; a shell
+  WALL block (instanced cliff piece inside the wall collider) steps back out
+  of the room or hides behind the row behind it rather than a prop being
+  shoved into the room; and every enemy spawn spot (`...Spots` minus the
+  prop-naming ones) and every `markers.breakables` pot is a BODY — clutter
+  is pushed off it, nothing is pushed onto it.
 * **A dark zone's veil lies ON the ground.** The darkness itself is the light
   rig (main.js dims it when the child stands in the zone); the quad is only the
   hint, and at head height it read as a grey square hanging in mid-air.
@@ -241,6 +250,36 @@ sooner. Guard rises and the gap falls with `tier`; **no telegraph ever
 goes under 0.9s and no punish window under 1.0s** (combat context LAW 1
 and LAW 6). `tools/probe-masher.mjs` measures the result by mashing.
 
+BOSS MAGIC (v3.198, js/bossmagic.js). Each boss and mini-boss carries one
+`new BossMagic(world, owner)`, ticks it from its own update, and calls
+`clear()` when it falls. The full table is in design/COMBAT-SPEC.md "Boss
+magic"; `tools/verify-boss-magic.mjs` checks every row in its arena.
+- **Pieces:**
+  - orb volleys: a shield pops them, or with `reflect` bats them home;
+  - floor circles: `hands` (jumpable), `shards` (not) and `snare` (holds
+    Kael until he jumps);
+  - knock rings: jump them, or `player.shove()` throws him outward;
+  - the vine: jump to snap it, or it pulls him in;
+  - the fire band;
+  - the bubble: its `breaks` is an element, `'crash'` or `'reflect'`;
+  - the Binding.
+- **Who carries what:**
+  - Duel skins name their spells in `moves` (`CAST` in boss.js lists their
+    tells). Grimm's `echoes` swap his set per third of his health
+    (`_movesNow`).
+  - Bone Wardens take `opts.magic` (`WARDEN_MAGIC`), and MINI_ROSTER
+    entries pass theirs through.
+- **The Binding** is `state.curseLock`, the same one-form lock as the Trial,
+  but never saved.
+  - `freeBossMagic()` in main.js clears it at every room build: a door, a
+    respawn or a session start.
+  - The form badge goes grey and chained (`#form-badge.cursed`), and the
+    picker greys the pack.
+  - When it breaks, the first switch skips the swap-in cooldown and hits
+    twice as hard (`player._curseBonus`).
+- **Shove safety:** `player.shove()` stops on the last safe footing rather
+  than enter a pit, lava or deep water.
+
 ## Den villagers (js/npcs.js)
 spawnDenNpcs(world) populates the Den from VILLAGERS data (id, model,
 spot, arrival condition): Wren (Rogue_Hooded, always) · Rook (Ranger,
@@ -287,6 +326,11 @@ shares a room with Tam — v3's fix for "the portal talks like Tam", when the
 fire portal stood one step from Tam's post and hid him. State:
 state.inventory.dragonEggs/dragonsHatched/dragonEquipped. Proven by
 tools/verify-dragoneggs.mjs (ticked) and tools/verify-dragondens.mjs (real keys).
+The hatched companion (js/companionDragon.js) follows and bites, and each
+dragon has ONE move of its own on its own clock (`SPECIAL`): Ember breathes a
+cone (1.25/foe, 6s), Tide mends half a heart while Kael is hurt (12s), Storm's
+bite chains to two more foes (0.75/link, 3s). Pots (`scenery`) are never
+targets. Proven by tools/verify-dragon-specials.mjs.
 
 ## The healing (js/restoration.js)
 What a region looks like once its guardian is free. main.js has set

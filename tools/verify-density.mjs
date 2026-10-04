@@ -163,6 +163,13 @@ const ROOMS = [
   { id: 't4b', kind: 'island' }, { id: 't4p', kind: 'pocket' }, { id: 'tc4', kind: 'choke' },
   { id: 'tgl', kind: 'arena' },  { id: 'tsA', kind: 'pocket' }, { id: 'tsB', kind: 'pocket' },
   { id: 'tf1', kind: 'pocket' }, { id: 'tf2', kind: 'island' }, { id: 'tf3', kind: 'pocket' },
+  // the three dragon dens (v3.19x, design/DRAGON-EGGS.md) and the Den's Outer
+  // Camp (design/DEN-REBUILD.md) — built after this list was last walked, and
+  // caught by its own "every live room is in this list" check
+  { id: 'ln1', kind: 'pocket' }, { id: 'ln2', kind: 'pocket' },
+  { id: 'sn1', kind: 'pocket' }, { id: 'sn2', kind: 'pocket' },
+  { id: 'dn1', kind: 'pocket' }, { id: 'dn2', kind: 'pocket' },
+  { id: 'dr', kind: 'pocket' },
   // Stormreach Cliffs. The STAIR is a new module and gets measured as a choke:
   // it is the same job — compression and rest between islands — in a longer,
   // narrower box, and holding it to the island bar would only push clutter into

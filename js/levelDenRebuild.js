@@ -59,7 +59,19 @@ const M = MODULES;
 const D = { tint: 0x4f7a3c, floorTint: 0x4f7a3c, wallTint: 0x3a4f2c,
   propTint: 0x6a5a3c, ground: 'den' };
 
-const RUIN_TINT = 0x716c5e;    // not yet restored — plain, unpainted timber
+const RUIN_TINT = 0x716c5e;    // not yet restored — plain, unpainted timber (greybox)
+// THE REAL BUILDINGS CARRY THEIR OWN PAINT (2026-09-29). Dad: "where's the
+// textures gone for the buildings such as the tavern?" — v1.1 stripped each
+// model's painted texture to one flat colour so the tints below could say
+// ruined/restored, and the Tavern, Forge and Mill have been plain green-grey
+// boxes ever since. The textures are back, and a tint MULTIPLIES a texture,
+// so the per-building colours (made for a blank shell) would only muddy the
+// paint. A restored building now shows its paint as made (white = untouched);
+// an unrestored one is the same paint dimmed and greyed, weathered and
+// neglected — still plainly the same building, visibly waiting. The named
+// tints below stay for greybox, where there is no paint to show.
+const RUIN_PAINT = 0x8c877c;   // dimmed, greyed: the paint, unkept
+const RESTORED_PAINT = 0xffffff;
 const TAVERN_TINT = 0xd88a4a;  // warm hearth wood, once restored
 const FORGE_TINT = 0x565a62;   // iron/dark steel, once restored
 const MILL_TINT = 0xd9c48a;    // pale wheat/cream, once restored — visibly
@@ -73,9 +85,9 @@ const GREY = () => !kit || state.settings.greybox !== false;
 
 const { shell, sideDoor } = makeBuilders({ kit: () => kit, isGrey: () => GREY() });
 
-// THE COMMISSIONED TOWN MODELS. Each file is a single mesh, one flat
-// `.color`-bearing material, no baked texture (design/DEN-REBUILD.md's
-// "v1.1" section) — so `w`/`h`/`d` below are RAW model-space sizes, measured
+// THE COMMISSIONED TOWN MODELS. Each file is a single mesh with ONE painted
+// material (its own baked texture, restored 2026-09-29 after v1.1 had
+// stripped it — see RUIN_PAINT above) — so `w`/`h`/`d` below are RAW model-space sizes, measured
 // once at load time, exactly like js/levelVillage.js's own splitBuildings()
 // returns for a houses-pack chunk. `s` is this specific model's own natural
 // scale-to-world-units factor (targetDiameter / its own raw footprint) —
@@ -175,7 +187,11 @@ export async function buildDr(scene) {
   const world = base(scene);
   const spec = M.pocket;
   const { halfW, halfD } = shell(world, spec, [gap('e')], D, {});
-  world.spawn = { x: halfW - 3, z: 0, angle: Math.PI / 2 };
+  // FACING INTO THE CAMP, -x — the way the Den's own door lands a child
+  // (rooms.js: `{ x: 8, z: 0, angle: -Math.PI / 2 }`). At +π/2 the spawn
+  // looked straight back at the door it came through, three metres of room
+  // ahead (verify-density measured five things in frame, 2026-09-28).
+  world.spawn = { x: halfW - 3, z: 0, angle: -Math.PI / 2 };
   // THE WAY BACK. entry lands just inside den's own west gap (js/rooms.js
   // buildDen, the mirror of this door) — the same "every landing is the
   // other room's business" law every sideDoor() call already keeps.
@@ -201,15 +217,27 @@ export async function buildDr(scene) {
   } else {
     const town = await loadTownAssets();
     for (const s of SPOTS) {
-      const tint = isRestored(s.id) ? s.tint : RUIN_TINT;
+      const tint = isRestored(s.id) ? RESTORED_PAINT : RUIN_PAINT;
       placeBuilding(world, town[s.id], `denhouse_${s.id}`, s.bx, s.bz, s.ry, tint);
     }
     // ONE PROP PER TRADE, where one fits naturally and cheaply — the same
     // Small Props Pack the Village and the Den's own armoury corner already
     // share an atlas with, so this costs nothing extra to download.
-    placeOne(world, kit.hearth, 'hearth', -4.0, -3.2, 1.0, 0.4, D.propTint);
-    placeOne(world, kit.grinder, 'grinder', -4.0, 3.0, 1.0, -0.3, D.propTint);
-    placeOne(world, kit.cartwheel, 'cartwheel', -3.4, 3.7, 1.0, 0.7, D.propTint);
+    // BESIDE each building, never in it: at (-4, -3.2) and (-4, 3) the hearth
+    // and the grinder stood 1.6u inside the tavern's and the forge's own walls
+    // (verify-interpenetration, 2026-09-28). They sit out by the door now.
+    placeOne(world, kit.hearth, 'hearth', -2.2, -6.0, 1.0, 0.4, D.propTint);
+    placeOne(world, kit.grinder, 'grinder', -2.4, 5.2, 1.0, -0.3, D.propTint);
+    placeOne(world, kit.cartwheel, 'cartwheel', -2.0, 3.6, 1.0, 0.7, D.propTint);
+    // A CAMP THAT IS WORKED IN. With the spawn turned to face the camp it
+    // showed seventeen things against a pocket's twenty: the three buildings,
+    // their props and the nodes. The stores a working camp keeps to hand —
+    // wood by the forge, a trough and a stool out in the yard.
+    placeOne(world, kit.firewood, 'firewood', -0.6, 6.6, 1.0, 0.3, D.propTint);
+    placeOne(world, kit.coil, 'coil', 2.6, 6.4, 1.0, -0.4, D.propTint);
+    placeOne(world, kit.stool, 'stool', 4.2, 5.6, 1.0, 1.1, D.propTint);
+    placeOne(world, kit.trough, 'trough', 4.6, -6.2, 1.0, 0.2, D.propTint);
+    placeOne(world, kit.sack, 'sack', -0.4, -6.6, 1.0, 0.6, D.propTint);
     // THE MONUMENT — appears once, with its own kept-as-supplied material
     // (see the header note above), the moment the three working buildings
     // are all restored. No tint argument: placeOne's TINT() pipeline still

@@ -782,6 +782,58 @@ the real `#btn-dragon` tap hatching and equipping the dragon — and then walks
 up to Tam in the arena to prove travel still opens from him. Results, the
 contact sheet and what is still unverified are in this session's report.
 
+## v4 — each dragon does the one thing its element is for (2026-09-28, SHIPPED)
+
+Dad, asked what was left to build and shown this doc's own "still to
+design" list: "do the prop tidy-up first, then the dragon moves." The three
+moves are the three the list already named. Until now all three dragons were
+one pet in three colours — follow, bite, repeat — so hatching a second egg
+changed nothing but the paint.
+
+**The rule every number is drawn on:** a companion helps, it never plays the
+game for the child — the same line `BITE_DMG = 1.5` was drawn on in v3.177.
+Nothing is pressed; the dragon acts on its own clock. Every number is kept
+under the player's own equivalent, and every one reuses a quantity the game
+already tuned rather than inventing a new one.
+
+| dragon | move | clock | number | why that number |
+|---|---|---|---|---|
+| Ember | **breath** — a cone in front of it, 3.4u deep, ±35°; every foe inside singed ONCE per breath (a `Set`, so standing in it longer is no worse than the edge) | 6s, only once a foe is in reach | 1.25 fire per foe | under one sword swing per foe; the bite is one enemy, the breath is the crowd |
+| Tide | **mend** — half a heart back while Kael is hurt, fight or no fight; never over the top, never on a knocked-out Kael (a mend is not a revive) | 12s | +0.5 heart | exactly the enemy ember drop's half heart — a potion (3 hearts, carried, one tap) stays far the better answer mid-fight |
+| Storm | **chain** — a bite that jumps on to the nearest other foe inside 3.6u, then on again from that one; never the same foe twice | 3s | 0.75 storm per link, 2 links | half a bite per link |
+
+Each move is the dragon's OWN: a fire dragon never mends, a tide dragon's
+bite never chains (the suite checks both directions). All three resolve
+through the same `Enemy#takeDamage(n, element, 'melee')` path the bite
+already used, so weakness (×2 + stagger), resist, shells and the quarter
+rounding apply exactly as they do to the child's own hits — a fire breath
+on a frost slime says SUPER! the same way the Fire Wolf's bite does.
+
+**Pots are not foes.** `world.enemies` also holds every breakable
+(`js/loot.js` `Breakable`, `scenery = true`) so a sword can smash it, and the
+companion's target pick never skipped them — a dragon could fly off mid-fight
+to bite a jar. It skips `scenery` now, and so does every move.
+
+**The visuals** are three more Kenney Particle Pack sprites (the same CC0
+pack as `design/FX.md`; licence manifest updated): `fire.png` (fire_01) puffs
+thrown down the cone and swelling as they go, `twirl.png` (twirl_01) teal
+swirls rising round Kael on a mend, and `bolt.png` (spark_07, cropped to its
+band) laid FLAT between two foes a metre up — a sprite always faces the
+camera and cannot point from one enemy to another, a plane can, and the 3/4
+camera looks down onto it. Every one is owned by the dragon, ticked in its
+own `update()`, and removed and disposed when its life is spent: a companion
+fights all game long and must not leak a sprite per breath.
+
+**Verified:** `tools/verify-dragon-specials.mjs` (new) — real
+`CompanionDragon` instances ticked synchronously against real enemies in a
+real room (g1): three foes in the cone singed and the one behind untouched,
+no second breath inside the clock, fire sprites really in the scene during
+the breath and none left after; the mend lands exactly half a heart, not
+again until its clock, never over the top, never on a knocked-out Kael; the
+chain jumps A→B→C in order, never to the far foe, not again inside its
+clock, with a bolt really laid between foes; and each dragon's move is
+absent from the other two.
+
 ## Still to design
 
 - **A fourth or later dragon.** The system supports any number of elements
@@ -789,11 +841,9 @@ contact sheet and what is still unverified are in this session's report.
   exist in the world right now, matching dad's own "three dragon eggs"
   ask exactly. A future region (or an existing one not yet used this way)
   could carry a fourth.
-- **Dragon-specific specials.** The companion currently has one behaviour
-  regardless of element (follow + bite for `BITE_DMG` of its own element) —
-  a fire dragon breathing a cone, a tide dragon healing, a storm dragon
-  chaining lightning between foes, are all plausible future differentiators
-  once the base loop has been played against real children.
+- ~~**Dragon-specific specials.**~~ Closed in v4 above — breath, mend,
+  chain. Still open: whether the kids can SEE which one they have mid-fight
+  well enough to choose between them, which only a real play session answers.
 - **Un-hatching / releasing a dragon.** There is no way to un-find an egg or
   un-hatch a dragon once thrown — matching the brief's own "no wasting a
   second throw, no picking it back up" instruction exactly, but also

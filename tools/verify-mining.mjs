@@ -165,7 +165,7 @@ async function gotoRoom(room) {
 
 // Expected seeding per room, exactly matching design/MINING.md's table.
 const EXPECTED = [
-  { room: 't1a', kind: 'tree', x: 10, z: -1, tint: 0x6fae4a },
+  { room: 't1a', kind: 'tree', x: 10, z: -3.5, tint: 0x6fae4a },
   { room: 'f1', kind: 'rock', x: 1.5, z: 7, tint: 0x9be3ff },
   { room: 's1a', kind: 'rock', x: 9, z: -2, tint: 0xc9d4ff },
   { room: 'd1a', kind: 'tree', x: 3, z: 3, tint: 0x3fb0c4 },
