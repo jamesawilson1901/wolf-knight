@@ -169,7 +169,7 @@ export const EXTRA_NODES = {
   vh: [R(-15, -4), R(-14, 6)], vc1: [R(-12.3, 4)],
   tf2: [T(-13, 6, WOODS), T(-12, -8, WOODS)], t4b: [T(-12, 9, WOODS), R(-11, -5, WOODS)],
   f4: [T(-13, 9, FROST), R(-13, -3, FROST)], f1c: [T(-6, 3, FROST)],
-  s3b: [R(-11, 7, STORM), T(-10, -3, STORM)], svn: [T(-13, 1, STORM), R(-12, 6, STORM)],
+  s1b: [R(-12, 5, STORM), T(-13, -5, STORM)], svn: [T(-13, 1, STORM), R(-12, 6, STORM)],
   d1b: [T(-5, -7, VALE), R(-4, 5, VALE)], d3a: [T(-10, 6, VALE), R(-12, -3, VALE)],
   xh: [R(-15, -4, COURT), R(-14, 11, COURT)], xa3: [R(-10, 5, COURT)],
 };
