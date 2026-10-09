@@ -117,12 +117,20 @@ export class ResourceNode {
       const n = typeof window !== 'undefined' && window.__game && window.__game.narration;
       if (n) n.say(owned ? 'node_work' : (this.kind === 'tree' ? 'node_need_axe' : 'node_need_pickaxe'));
     }
-    if (!owned) { this.channelT = 0; return; }
-    if (dx * dx + dz * dz > RANGE * RANGE) { this.channelT = 0; return; }
+    if (!owned || dx * dx + dz * dz > RANGE * RANGE) {
+      this.channelT = 0;
+      if (this._working) { this._working = false; if (player.releaseTool) player.releaseTool(); }
+      return;
+    }
     // held in place while it works, the same law an attack's own lockTime
     // already gives a swing — a child cannot wander off mid-strike either.
     player.lockTime = Math.max(player.lockTime, 0.15);
+    // ...with the right tool in hand, swung at it (Player.holdTool, v3.201)
+    this._working = true;
+    if (player.holdTool) player.holdTool(cfg.tool);   // a no-op once it is in hand
+    const before = this.channelT;
     this.channelT += dt;
+    if (before < 0.12 && this.channelT >= 0.12 && player.toolSwing) player.toolSwing(this.x, this.z);
     // a little life in the node each tick, so "something is happening" reads
     // even before the first hit lands
     const settle = 1 - Math.min(1, this.channelT / SWING_EVERY) * 0.08;
@@ -132,7 +140,11 @@ export class ResourceNode {
       this._model.scale.setScalar(1);
       this.hp--;
       audio.play('hit', { volume: 0.6, rate: 0.85 });
-      if (this.hp <= 0) this._deplete(world);
+      if (this.hp <= 0) {
+        this._deplete(world);
+        this._working = false;
+        if (player.releaseTool) player.releaseTool();
+      }
     }
   }
 

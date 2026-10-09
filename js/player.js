@@ -7,7 +7,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state, formsAvailable } from './state.js';
 import { audio } from './audio.js';
-import { weaponDef, shieldDef, armourDef, forgeLevel } from './items.js';
+import { weaponDef, shieldDef, armourDef, forgeLevel, WEAPONS } from './items.js';
 import { forgeGlow } from './forge.js';
 import { CONFIG } from './config.js';
 import { WATER } from './water.js';
@@ -816,6 +816,7 @@ export class Player {
 
   async equipGear() {
     if (!this._handR) return;
+    this._toolHeld = null;   // the hand is being rebuilt round the real weapon
     const [w, s] = await Promise.all([loadGLB(weaponDef().file), loadGLB(shieldDef().file)]);
     this._handR.clear();
     this._handL.clear();
@@ -867,6 +868,44 @@ export class Player {
       n.material = Array.isArray(n.material) ? cloned : cloned[0];
     });
     this._handL.add(shield);
+  }
+
+  // THE TOOL IN HAND (v3.201, design/MINING.md). A rock gave up its ore to a
+  // knight standing next to it with a sword in his hand: the pick was "owned"
+  // and nothing more. Dad's own words were "it auto equips", so it does now —
+  // while Kael works a rock or a tree the pick or the axe is in his hand and
+  // he swings it at the thing, and the moment he stops his own weapon comes
+  // back. The saved loadout is never touched: this is the hand, not the bag.
+  async holdTool(id) {
+    if (!this._handR || this._toolHeld === id) return;
+    this._toolHeld = id;
+    if (state.inventory.equipped.weapon === id) return;   // already in hand
+    const def = WEAPONS[id];
+    if (!def) return;
+    this._tools = this._tools || {};
+    if (!this._tools[id]) {
+      const g = await loadGLB(def.file);
+      const m = this._tintGear(prepareCharacter(g.scene.clone()), def.tint);
+      if (def.scale) m.scale.setScalar(def.scale);
+      this._tools[id] = m;
+    }
+    if (this._toolHeld !== id) return;      // let go of while it loaded
+    if (this._blade) this._handR.remove(this._blade);
+    this._handR.add(this._tools[id]);
+  }
+
+  releaseTool() {
+    if (!this._toolHeld) return;
+    const t = this._tools && this._tools[this._toolHeld];
+    this._toolHeld = null;
+    if (t && t.parent) t.parent.remove(t);
+    if (this._blade && !this._blade.parent) this._handR.add(this._blade);
+  }
+
+  // One strike at the thing being worked: face it, swing.
+  toolSwing(x, z) {
+    this.root.rotation.y = Math.atan2(x - this.root.position.x, z - this.root.position.z);
+    this._playOnce('attack');
   }
 
   // ARMOUR, WITHOUT AN ARMOUR MODEL.
@@ -2607,6 +2646,10 @@ export class Player {
     // locks: attacks allow reduced-speed drift; specials root Kael fully
     let locked = false;
     let lockMove = 1;
+    // a tool is only ever in hand while a node holds Kael to it (nodes.js
+    // refreshes the lock every tick); walked off, warped, or the room gone,
+    // the sword comes back
+    if (this._toolHeld && this.lockTime <= 0) this.releaseTool();
     if (this.lockTime > 0) {
       this.lockTime -= dt;
       locked = true;

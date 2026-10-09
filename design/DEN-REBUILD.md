@@ -348,7 +348,6 @@ checks:
   right for a five-year-old's actual play sessions.
 - ~~**`ingot` has no recipe yet.**~~ Closed in `design/CRAFTING.md` §4
   (v3.178) — added as a cost line to all three existing ultimate recipes.
-- **Visual tool-swap and a live restore moment**, the same open item
-  mining/woodcutting already carries forward (`design/MINING.md`'s own
-  "still to design"): seeing something happen in-hand or a bigger flourish
-  than a juice burst, if it ever earns the extra draw calls.
+- **A live restore moment** — a bigger flourish than a juice burst, if it
+  ever earns the extra draw calls. (The other half of this bullet, the tool
+  visibly in hand, shipped in v3.201: design/MINING.md.)

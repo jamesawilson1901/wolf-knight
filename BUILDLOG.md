@@ -6260,3 +6260,17 @@ screenshots that intersect and go through others."
 - **False alarms the new suite taught itself to ignore:** light (shrine
   shafts and doorway fans are see-through), a chest's skinned bind-pose
   bounds (measured where the game put it), Pip, and retired room aliases.
+
+## The pick in his hand (2026-10-10, v3.201.0)
+
+design/MINING.md's last open item: owning a pick let a child mine, but
+Kael stood at the rock with his sword out. Now, while he works a rock or a
+tree:
+- the pick or the axe is in his right hand;
+- he turns to face it and swings once per hit;
+- the moment he stops (walks off, finishes, or leaves the room) his own
+  weapon is back.
+
+The tool is only in hand while a node's lock holds him. The saved loadout
+is never touched. Three new checks in tools/verify-mining.mjs; before this
+change they fail outright, because `Player.holdTool` does not exist.

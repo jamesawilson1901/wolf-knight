@@ -218,13 +218,13 @@ What gathering is FOR is design/CRAFTING.md §5: the broken bridges.
 
 ## Still to design
 
-- **Visual tool-swap**: dad's own words were "it auto equips" — this ships
-  the MECHANICAL half (ownership gates the action) but not yet the visual
-  half (seeing the pickaxe/axe actually in Kael's hand while it happens).
-  `Player.equipGear()` already rebuilds the hand mesh from
-  `state.inventory.equipped.weapon` on demand; a future pass could swap to
-  the tool for the channel's duration and restore the real weapon after,
-  without touching the player's own saved loadout choice.
+- ~~**Visual tool-swap**~~ — **shipped v3.201.** While Kael works a node,
+  the pick or the axe is in his right hand, he turns to face the rock or
+  tree, and he swings at it once per hit (`Player.holdTool()` /
+  `toolSwing()`, driven from `ResourceNode.update`). Walk off, finish it,
+  or leave the room, and his own weapon is back: the tool is only in hand
+  while a node's lock holds him, and the saved loadout is never touched.
+  tools/verify-mining.mjs checks the hand on both sides of the work.
 - **Feeds the Den rebuild** (`design/DEN-REBUILD.md`): ore and wood are the
   two resources that system's own building costs are written against. The
   rollout above gives the Outer Camp (`dr`) its own rock and tree right in
