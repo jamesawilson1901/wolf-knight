@@ -70,7 +70,7 @@ export class Pip {
   startGuide(tx, tz, world) {
     if (this._guide) return;
     this._guide = { tx, tz, world, t: 0, drop: 0, waitT: 0, arrived: false };
-    for (const p of this._paw) { p.userData.life = 0; p.material.opacity = 0; world.add(p); }
+    for (const p of this._paw) { p.userData.life = 0; p.material.opacity = 0; p.visible = false; world.add(p); }
   }
 
   _dropPaw(x, z) {
@@ -78,6 +78,7 @@ export class Pip {
     this._pawIdx = (this._pawIdx + 1) % this._paw.length;
     p.position.set(x, 0.06, z);
     p.userData.life = 9;
+    p.visible = true;
   }
 
   _play(name, fade = 0.18) {
@@ -100,7 +101,7 @@ export class Pip {
         p.userData.life -= dt;
         p.material.opacity = Math.min(0.85, Math.max(0, p.userData.life / 3));
         p.scale.setScalar(1 + Math.sin(t * 5 + p.position.x) * 0.12); // gentle pulse
-        if (p.userData.life <= 0) p.position.y = -99;
+        if (p.userData.life <= 0) { p.position.y = -99; p.visible = false; }   // spent: not drawn
       }
     }
 
@@ -187,6 +188,10 @@ export class Pip {
       s.rotation.y = a * 3;
       const want = this.sparkling ? 0.95 : 0;
       s.material.opacity += (want - s.material.opacity) * Math.min(1, dt * 6);
+      // NOT DRAWN AT ALL WHILE FADED OUT (v3.203.1). At opacity 0 a mesh is
+      // still a draw call: seven of them, in every room, for every second
+      // Pip was not sparkling — found measuring the late Den's budget.
+      s.visible = s.material.opacity > 0.01;
       s.scale.setScalar(this.sparkling ? 1 + 0.4 * Math.sin(a * 4) : 1);
     }
 

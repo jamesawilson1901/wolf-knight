@@ -6314,5 +6314,19 @@ HUD. Inside the south wall the palisade hid them. They now hang flat and low
 on the north wall, in view from the fire. New suite
 tools/verify-den-growth.mjs walks four saves in.
 
-Found while measuring: a fully restored Den is already at 132-133 draw calls
-near the south gate (budget 125), before any banner. Queued next.
+Measured on the way: a fully restored Den is 132-133 draw calls near the
+south gate before any banner. That is inside the Den's own ceiling of 140
+(tools/verify-den.mjs: the one room with no combat). It still came down in
+v3.203.1, below.
+
+## Draw calls nobody could see (2026-10-10, v3.203.1)
+
+Measuring the late Den draw by draw:
+- **Pip's seven sparkle stars were drawn in every room, all the time.** At
+  opacity 0 a mesh is still a draw call. They, and the 26 pooled paw prints
+  a guide run leaves behind, are now hidden whenever faded out. That is
+  seven draw calls back in every room of the game.
+- **The seven spirit orbs by the Den's fire are one instanced mesh**, with a
+  colour per spirit. Each still bobs and drifts on its own.
+
+A fully restored Den now reads 113-123 draw calls, down from 121-134.

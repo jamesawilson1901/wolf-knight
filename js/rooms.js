@@ -1008,8 +1008,33 @@ async function buildDen(scene) {
       y: 0.95, glow: 4.5, bob: 1.0, phase: 1.7, base: null,
       when: () => state.flags.grimmFreed },
   ];
-  for (const h of SPIRIT_HOMES) {
-    if (h.when ? !h.when() : !WS.get(h.key, 'restored')) continue;
+  // THE ORBS ARE ONE MESH (v3.203.1): seven spirit lights were seven
+  // materials, seven draw calls in the room with the least budget to spare.
+  // One instanced orb, its colour per instance — lifted past 1 so the bloom
+  // and tone-mapping see the same hot core the emissive material gave — and
+  // each one's own bob and drift written into its instance matrix.
+  const homesHere = SPIRIT_HOMES.filter((h) => (h.when ? h.when() : WS.get(h.key, 'restored')));
+  const orbs = homesHere.length ? new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.2, 1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true }), homesHere.length) : null;
+  if (orbs) {
+    orbs.frustumCulled = false;   // they move; one sphere for the batch would cull wrong
+    homesHere.forEach((h, i) => orbs.setColorAt(i, new THREE.Color(h.light).multiplyScalar(h.base ? 2.6 : 2.8)));
+    world.add(orbs);
+    world.keepLoose(orbs);
+    const m4 = new THREE.Matrix4(), qq = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    world.onAnimate((t) => {
+      homesHere.forEach((h, i) => {
+        const o = h._orb;
+        qq.setFromAxisAngle(up, o.rotation.y);
+        pos.copy(o.position);
+        sc.setScalar(h.base ? 0.9 : 1);
+        orbs.setMatrixAt(i, m4.compose(pos, qq, sc));
+      });
+      orbs.instanceMatrix.needsUpdate = true;
+    });
+  }
+  for (const h of homesHere) {
     if (h.base) {
       const base = prepareModel(kit[h.base].scene.clone());
       base.position.set(h.x, 0, h.z);
@@ -1017,15 +1042,11 @@ async function buildDen(scene) {
       world.add(base);
       world.addCircle(h.x, h.z, 0.4);
     }
-    const orb = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(h.base ? 0.18 : 0.2, 1),
-      new THREE.MeshStandardMaterial({
-        color: 0x000000, emissive: h.light, emissiveIntensity: h.base ? 2.8 : 3.0, roughness: 1,
-      })
-    );
+    // a stand-in that carries the orb's position and turn; the instanced
+    // mesh above draws it (it is never added to the scene)
+    const orb = new THREE.Object3D();
     orb.position.set(h.x, h.y, h.z);
-    world.add(orb);
-    world.keepLoose(orb);       // it bobs and turns; flattenStatic must leave it
+    h._orb = orb;
     const glow = new THREE.PointLight(h.light, h.glow, h.base ? 7 : 8, 1.9);
     glow.position.set(h.x, h.y + 0.15, h.z);
     world.add(glow);
