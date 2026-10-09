@@ -6148,3 +6148,52 @@ solid pale core inside a soft purple glow. The green vine also vanished into
 Sylva's grass, so it is now a dark thorny root over a stronger red glow,
 lifted clear of the floor. Both pass verify-boss-magic unchanged. A suite
 can prove an orb hits; only a look proves it can be seen coming.
+
+## Something to build for (2026-10-09, v3.199.0)
+
+Dad: "There still isn't a real incentive to learn to build and craft. It's
+there but no real reward or anything?" He was shown five fixes and said
+"Build all. 1-5". This is the first of three releases: the broken bridges
+(1), the boss charms (4), and the signals (5). The Forge upgrades and the
+living town follow in v3.200.
+
+**The diagnosis.** It was the arithmetic, before it was the menus:
+- a rock or tree paid **one** piece per visit;
+- there were eight in the whole game;
+- an Outer Camp building asked for fifteen;
+- and nothing anywhere *needed* a thing you made.
+
+Now:
+- **Rocks and trees pay three pieces each**, and there are 22 more spread
+  over the regions. Stoneroot gets its first.
+- **A broken bridge in one room of every region.**
+  - A chest sits on an island behind a drop that no jump crosses (rails on
+    both rims; colliders stop a body in mid-air).
+  - The bridge hangs as gold ghost planks, under a board of pictures and
+    dots: fill the dots, walk up, and it builds itself plank by plank.
+  - Behind each: coins, crystals, and for four of them a recipe scroll.
+- **Three boss charms**, hidden until their scrolls are found. Each answers
+  one boss-magic move once, by itself:
+  - the Root Charm (snares, vines);
+  - the Ember Charm (any bubble);
+  - the Ward Stone (half a Binding).
+- **Costs are pictures and dots everywhere**, never "🪵 3/8".
+  - The backpack glows with a turning spark when anything can be made, and
+    Pip says so once per room.
+  - Four new stickers.
+- **Five new Pip lines**, rendered with Piper in her usual voice.
+
+Caught on the way:
+- **The islands and new nodes landed on props.** Room dressing had placed
+  things there before the islands existed. The fix is a new
+  `claimRoomRect()` in world.js, so dressing leaves the ground free. Two hand
+  placed props forced two islands to move (to `vc1` and `f3`).
+- **The backpack sparkle ran on game time.** At headless frame rates a
+  clamped "second" took four real ones. It runs on real time now.
+- **The cost board only redrew on a slow tick**, so the Wild Woods board
+  showed no wood when the child carried half. It redraws whenever a count
+  changes now.
+
+New suite: tools/verify-buildspots.mjs. All seven bridges are driven by real
+keyboard walking: cut off, refuse when unpaid, build when paid, spend
+exactly, open the chest, stay built.

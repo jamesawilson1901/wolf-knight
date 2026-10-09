@@ -405,6 +405,39 @@ instance per SkinnedMesh over the same bones, and an identity check silently
 does nothing (it did, on the first run). Den: 137 → 102 draw calls, and every
 room with characters in it gains.
 
+## Gathering, crafting & building (js/nodes.js, js/crafting.js, js/buildspots.js, js/denRebuild.js)
+
+The loop, end to end (design/CRAFTING.md, MINING.md, DEN-REBUILD.md):
+
+- **Gather.** Rocks (pickaxe) and trees (axe) pay `NODE_KINDS.yield` pieces
+  per visit.
+  - Each room's own `rockSpots`/`treeSpots`, plus `EXTRA_NODES`, a central
+    table merged in main.js.
+  - Enemies, pots and chests pay shards, wisps and crystals
+    (`materialForEnemy`).
+- **Build.** One broken bridge per region (`BUILD_SPOTS`). A chest on an
+  island behind a drop no jump crosses.
+  - The board over the gold ghost bridge shows the cost as pictures and dots.
+  - Walking up with the dots full builds it.
+  - The drop is `latePit()`; the island claims its floor with
+    `claimRoomRect()` before the room dresses.
+  - Built is `WS build/<id>`.
+- **Craft.** Backpack, then Craft.
+  - Recipes have tiers by how many *different* things have been made.
+  - Hidden recipes come from scrolls: the bridge chests (`loot.recipe`) and
+    gold chests' rare roll.
+  - The three boss charms (`state.inventory.charms`) are spent automatically
+    by js/bossmagic.js via `useCharm()`.
+- **Spend at home.** The Outer Camp (`dr`): the Tavern, Forge and Mill are
+  restored with wood and ore, and pay coins, ingots and wood on a timer.
+  Ingots feed the ultimates, the Ward Stone and the last two bridges.
+- **Signals.** Costs everywhere are `js/matIcons.js` pictures and dots, never
+  emoji.
+  - `#inv-btn.can-craft` glows while anything can be made (main.js
+    `craftNudge`, real-time).
+  - Pip says so once per room.
+  - Stickers: `itemsCrafted`, `bridgesBuilt`.
+
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;
 one game runs at a time): 🎯 Rook's Sharp Eye (timed pop-up targets, any

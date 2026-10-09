@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.198.1';
+const CACHE_NAME = 'wolfknight-v3.199.0';
 
 const PRECACHE = [
   './',
@@ -14,6 +14,7 @@ const PRECACHE = [
   './js/batch.js',
   './js/boss.js',
   './js/bossmagic.js',
+  './js/buildspots.js',
   './js/carry.js',
   './js/companionDragon.js',
   './js/config.js',
@@ -56,6 +57,7 @@ const PRECACHE = [
   './js/mapgraph.js',
   './js/maplayout.js',
   './js/mapview.js',
+  './js/matIcons.js',
   './js/materials.js',
   './js/menus.js',
   './js/mg-fetch.js',
@@ -150,9 +152,13 @@ const PRECACHE = [
   './assets/audio/vo/bramble_regrow.ogg',
   './assets/audio/vo/bramble_teach.ogg',
   './assets/audio/vo/brazier_hint.ogg',
+  './assets/audio/vo/build_done.ogg',
+  './assets/audio/vo/build_ready.ogg',
+  './assets/audio/vo/build_seen.ogg',
   './assets/audio/vo/burn_prompt.ogg',
   './assets/audio/vo/camp_healed.ogg',
   './assets/audio/vo/camp_rumour.ogg',
+  './assets/audio/vo/charm_found.ogg',
   './assets/audio/vo/checkpoint.ogg',
   './assets/audio/vo/cinder_den.ogg',
   './assets/audio/vo/court_arrive.ogg',
@@ -163,6 +169,7 @@ const PRECACHE = [
   './assets/audio/vo/court_wings.ogg',
   './assets/audio/vo/crack_prompt.ogg',
   './assets/audio/vo/craft_intro.ogg',
+  './assets/audio/vo/craft_ready.ogg',
   './assets/audio/vo/dark_nook.ogg',
   './assets/audio/vo/darkcave_enter.ogg',
   './assets/audio/vo/darkwolf_intro.ogg',

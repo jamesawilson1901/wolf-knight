@@ -236,3 +236,79 @@ natural home for it. `tools/verify-crafting.mjs`'s existing gear-craft
 checks were updated to grant `ingot` alongside their other materials;
 `verify-gear.mjs`'s balance/obtainability checks (unaffected — they don't
 read recipe costs) and the full `--quick` gate stayed green throughout.
+
+## §5 — something to build for: broken bridges, charms, pictures (v3.199, SHIPPED)
+
+Dad, 2026-10-09: "There still isn't a real incentive to learn to build and
+craft. It's there but no real reward or anything?" He picked all five fixes
+from the suggestion list. This section covers parts 1, 4 and 5; the Forge
+upgrades and the living town (2 and 3) are §6.
+
+**The diagnosis.** Nothing in play ever *needed* a thing you made or
+gathered:
+- two of the five recipes duplicated the shop;
+- gathering paid one piece a visit from eight nodes (design/MINING.md v3.199);
+- costs were emoji and fractions, in a game for children who cannot read.
+
+**Broken bridges (`js/buildspots.js`).** One per region, in a room on the
+main path: `la`, `vc1`, `t2a`, `f3`, `s2b`, `d2a`, `xm2`.
+
+- **Shape.** A chest sits on a 2.8u island inside a 1.8u drop. The drop is a
+  real pit, dug after the build by `js/levelkit.js` `latePit()`.
+- **Rails.** Colliders run along both rims, so no walk or double jump gets
+  over. Colliders stop a body in the air (collisions are XZ only), and
+  nobody falls in.
+- **The fallen bridge** hangs as gold ghost tiles (this game's act-here
+  colour). Above it is a board: one material picture per line, and one dot
+  per piece needed, gold-filled for each piece carried.
+- **Building it.** Walk up with the dots full and it builds itself in front
+  of the child, plank by plank. The bridge stands forever after (WS
+  `build/<id>`). Its railings are colliders too, and a safe zone makes the
+  pit under it floor.
+- **Ground.** The island claims its square through `claimRoomRect()` before
+  the room dresses, and a pot the room set down there is dropped.
+- **Cost climbs with the tools a child can own.**
+  - Ember and Stoneroot ask ore: the pickaxe is on Maren's first shelf.
+  - The Wild Woods ask wood: the axe is on her second.
+  - The last two ask Forge ingots.
+- **Rewards.** Coins, crystals (the rare thing the ultimates and the Forge
+  want), and four recipe scrolls: the three charms, and the Wolf Fang moved
+  to a sure find on the Frostpeak island (it can still turn up from a gold
+  chest's rare roll). The chest pipeline gained two loot keys for this:
+  `materials` and `recipe`.
+
+**The boss charms.** Three hidden recipes, each answering one boss-magic move
+once, by itself, because a five-year-old in a snare will not open a menu:
+
+| charm | cost | does |
+|---|---|---|
+| Root Charm | 2 Thorn Shard, 2 wood | the next snare or vine lets go |
+| Ember Charm | 2 Ember Shard, 2 ore | the next blow on any magic bubble pops it |
+| Ward Stone | 2 Moon Shard, 1 crystal, 1 ingot | the next Binding lasts half as long |
+
+They are held like draughts (`state.inventory.charms`, at most 3 of each,
+saved with the inventory) and spent by `useCharm()` in `js/bossmagic.js`.
+They are help, never a skip: one charm answers one move.
+
+**Pictures and dots (`js/matIcons.js`).**
+- **Drawn icons.** Each material is drawn as one plain silhouette in its own
+  colour: a log, a rock, an ingot, a gem, a wisp. The same canvas is an
+  `<img>` on the Craft tab and a texture on the bridge board.
+- **Dots replace numbers.** The Craft tab's "🪵 3/8" chips are now the same
+  picture-and-dots row.
+- **The nudge.** The backpack button glows, with a turning spark, while
+  anything can be made, and Pip says "we could make something!" once each
+  time that becomes true (at most once per room). It is timed in real
+  seconds, because the game clamps slow frames.
+- **Stickers.** Four new ones: I Made It!, Master Maker, Bridge Builder and
+  Every Bridge Mended.
+
+**Verified.**
+- `tools/verify-buildspots.mjs` (new): each of the seven driven by real
+  keyboard walking. The island is cut off and a double jump does not cross;
+  empty-handed builds nothing; with the cost it builds and spends exactly
+  that; the chest pays; the bridge is still there after leaving.
+- `verify-boss-magic` §1b: each charm, and that none fires when none is
+  held.
+- `verify-craftui`: the picture and dots, and the sparkle on and off.
+- `verify-mining`: yield and the new spots.

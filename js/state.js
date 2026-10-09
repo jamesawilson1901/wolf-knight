@@ -52,6 +52,7 @@ export const state = {
     heartPieces: 0,
     materials: {},               // crafting materials (design/CRAFTING.md), id -> count
     crafted: [],                 // ids of every unique thing ever crafted (unlock ladder)
+    charms: {},                  // boss charms held, {root, ember, ward} (design/CRAFTING.md §5)
     recipesKnown: [],            // hidden recipe ids discovered (design/CRAFTING.md §2)
     draughts: {},                // crafted drinks HELD for later, id -> count (v3.194)
     // DRAGON EGGS (design/DRAGON-EGGS.md) — element -> true. Deliberately

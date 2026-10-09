@@ -146,6 +146,17 @@ export const STICKERS = [
     model: { file: './assets/env/flower-a.glb' } },
   { id: 'garden5', icon: '🌸', name: 'Green Thumb', counter: 'harvests', at: 5,
     model: { file: './assets/env/flower-b.glb' } },
+  // THINGS I'VE MADE (v3.199) — dad's "no real reward" for building and
+  // crafting answered partly here: the sticker book notices. `itemsCrafted`
+  // was already bumped by every craft (js/crafting.js) and had no row at all.
+  { id: 'maker1', icon: '🔨', name: 'I Made It!', counter: 'itemsCrafted', at: 1,
+    model: { file: './assets/loot/platformer/key.glb', tint: 0xfff0c0 } },
+  { id: 'maker10', icon: '🔨', name: 'Master Maker', counter: 'itemsCrafted', at: 10,
+    model: { file: './assets/loot/platformer/key.glb', tint: 0xffd76a } },
+  { id: 'builder1', icon: '🌉', name: 'Bridge Builder', counter: 'bridgesBuilt', at: 1,
+    model: { file: './assets/env/bridge-stone.glb', tint: 0x9a6a3e } },
+  { id: 'builder7', icon: '🌉', name: 'Every Bridge Mended', counter: 'bridgesBuilt', at: 7,
+    model: { file: './assets/env/bridge-stone.glb', tint: 0xffd76a } },
 ];
 
 export function bumpCounter(name, n = 1) {

@@ -164,15 +164,21 @@ const discover = await wk.page.evaluate(async () => {
   const c = await import('/js/crafting.js');
   const g = window.__game;
   g.state.inventory.recipesKnown = [];
-  const found = c.discoverRandomHiddenRecipe();
-  const stillHas = (g.state.inventory.recipesKnown || []).includes(found ? found.id : null);
-  const second = c.discoverRandomHiddenRecipe(); // only one hidden recipe exists in v1
-  return { found, stillHas, second };
+  // v3.199: the Wolf Fang is no longer the only hidden recipe — the three boss
+  // charms are hidden too. Every one is found exactly once, then nothing.
+  const hidden = Object.keys(c.RECIPES).filter((id) => c.RECIPES[id].hidden).sort();
+  const seen = [];
+  let got;
+  while ((got = c.discoverRandomHiddenRecipe()) && seen.length < 20) seen.push(got.id);
+  const known = [...g.state.inventory.recipesKnown].sort();
+  return { hidden, seen: [...seen].sort(), known, after: got };
 });
-check('discoverRandomHiddenRecipe finds sword_ultimate (the only hidden recipe) and records it',
-  discover.found && discover.found.id === 'sword_ultimate' && discover.stillHas, discover);
+check('discoverRandomHiddenRecipe finds every hidden recipe (the Wolf Fang and the three charms) and records each',
+  discover.hidden.includes('sword_ultimate') && discover.hidden.length === 4
+  && JSON.stringify(discover.seen) === JSON.stringify(discover.hidden)
+  && JSON.stringify(discover.known) === JSON.stringify(discover.hidden), discover);
 check('once every hidden recipe is known, discovery returns null rather than a dupe',
-  discover.second === null, discover);
+  discover.after === null, discover);
 
 // 9. wired end-to-end: a real Breakable, forced to goldchest + a guaranteed
 // roll, actually calls into js/crafting.js and fires the onRecipeFound toast

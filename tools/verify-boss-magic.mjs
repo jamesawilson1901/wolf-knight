@@ -327,6 +327,58 @@ const roomFree = await wk.page.evaluate(() => ({ lock: window.__game.state.curse
   badge: document.getElementById('form-badge').classList.contains('cursed') }));
 check('a room change clears the Binding (and its badge)', roomFree.lock === null && !roomFree.badge, roomFree);
 
+// ---- 1b. THE CHARMS (v3.199, js/crafting.js) ---------------------------------
+console.log('\n── 1b. the boss charms ─────────────────────────────────');
+const ch = await wk.page.evaluate(async () => {
+  const { BossMagic } = await import('/js/bossmagic.js');
+  const { RECIPES, canCraft, craftItem, isRecipeVisible } = await import('/js/crafting.js');
+  const g = window.__game, w = g.world, P = g.player, S = g.state, inv = S.inventory;
+  const px = P.root.position.x, pz = P.root.position.z;
+  const tick = (m, secs) => { for (let i = 0; i < secs * 30; i++) m.update(1 / 30, P); };
+  const reset = () => { P.iframes = 0; P._snareT = 0; P.airY = 0; P.airV = 0; P.jumpsUsed = 0; P._airGrace = 0;
+    P.root.position.set(px, 0, pz); };
+  const out = { hiddenAtFirst: ['root_charm', 'ember_charm', 'ward_stone'].map((id) => isRecipeVisible(id)) };
+  // found, then made
+  inv.recipesKnown.push('root_charm', 'ember_charm', 'ward_stone');
+  Object.assign(inv.materials, { shard_verdant: 4, wood: 4, shard_fire: 4, ore: 4, shard_moon: 4, crystal: 2, ingot: 2 });
+  out.made = ['root_charm', 'ember_charm', 'ward_stone'].map((id) => canCraft(id) && craftItem(id, { player: P }));
+  out.held = { ...inv.charms };
+  // ROOT: the snare does not take
+  const m = new BossMagic(w);
+  reset();
+  m.floorCircles([{ x: px, z: pz }], { tell: 1.0, kind: 'snare' });
+  tick(m, 1.2);
+  out.root = { snared: P._snareT > 0, left: inv.charms.root };
+  // ...and with none left, it does
+  reset();
+  m.floorCircles([{ x: px, z: pz }], { tell: 1.0, kind: 'snare' });
+  tick(m, 1.2);
+  out.rootGone = P._snareT > 0;
+  P._snareT = 0;
+  // EMBER: a fire-only bubble pops to steel, once
+  m.raiseBubble(() => ({ x: px + 3, y: 1, z: pz }), { breaks: 'fire' });
+  out.ember = { first: m.bubbleTest('steel'), left: inv.charms.ember };
+  m.raiseBubble(() => ({ x: px + 3, y: 1, z: pz }), { breaks: 'fire' });
+  out.ember.second = m.bubbleTest('steel');
+  m.clear(P);
+  // WARD: the Binding lasts half as long
+  reset();
+  m.bind(P, 'fire_wolf');
+  tick(m, 3.2);
+  out.ward = { after32: S.curseLock, left: inv.charms.ward };
+  m.clear(P);
+  P.setForm('knight', { silent: true });
+  out.names = ['root_charm', 'ember_charm', 'ward_stone'].map((id) => RECIPES[id].name);
+  return out;
+});
+check('the charm recipes stay hidden until their scrolls are found', ch.hiddenAtFirst.every((v) => !v), ch.hiddenAtFirst);
+check('once found, each charm can be made', ch.made.every(Boolean) && ch.held.root === 1 && ch.held.ember === 1 && ch.held.ward === 1, ch);
+check('a Root Charm lets go of a snare by itself, and is spent', !ch.root.snared && ch.root.left === 0, ch.root);
+check('...with none left, the snare holds as before', ch.rootGone, ch);
+check('an Ember Charm pops a fire-only bubble to a steel blow, once', ch.ember.first === 'popped'
+  && ch.ember.left === 0 && ch.ember.second === 'blocked', ch.ember);
+check('a Ward Stone halves the Binding (gone by 3.2s of 6)', ch.ward.after32 === null && ch.ward.left === 0, ch.ward);
+
 // ---- 2. THE BOSSES ------------------------------------------------------------
 console.log('\n── 2. every boss, its own magic ───────────────────────');
 // common setup: a boss in its arena, Kael placed relative to it, a ticker

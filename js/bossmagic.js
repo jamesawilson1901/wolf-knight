@@ -33,6 +33,7 @@ import { state } from './state.js';
 import { audio } from './audio.js';
 import { juice } from './juice.js';
 import { FORM_ELEMENT } from './player.js';
+import { useCharm } from './crafting.js';
 
 const RED = 0xff3a2a;
 export const CURSE_SECS = 6;          // the Binding, Cozy and Brave
@@ -266,7 +267,11 @@ export class BossMagic {
           } else if (c.kind === 'snare') {
             juice.burst(c.x, 0.3, c.z, 0x6fcf4a, 16);
             audio.play('puff', { volume: 0.6, rate: 0.7 });
-            if (inside && !player.airborne && player.snare) player.snare(c.o.hold ?? 2.5);
+            if (inside && !player.airborne && player.snare) {
+              // a ROOT CHARM (js/crafting.js) lets go before the roots close
+              if (useCharm('root')) this._charmed(player, 'ROOT CHARM!', 0x6fcf4a);
+              else player.snare(c.o.hold ?? 2.5);
+            }
           }
         }
       } else {
@@ -362,7 +367,9 @@ export class BossMagic {
       if (Math.random() < 0.4) juice.burst(tx, 0.15, tz, 0x6fcf4a, 1);
       if (!v.done && v.t >= v.tell) {
         v.done = true;
-        if (player.airborne) {
+        const charmed = !player.airborne && useCharm('root');
+        if (charmed) this._charmed(player, 'ROOT CHARM!', 0x6fcf4a);
+        if (player.airborne || charmed) {
           this.stats.snaps++;
           juice.burst(P.x, 0.4, P.z, 0x6fcf4a, 18);
           audio.play('parry', { volume: 0.7, rate: 1.5 });
@@ -460,6 +467,13 @@ export class BossMagic {
     const breaks = b.breaks === element || b.breaks === kind;
     const p = b.anchor();
     if (breaks) { this.popBubble(); return 'popped'; }
+    // an EMBER CHARM (js/crafting.js) pops any bubble, once — never its own
+    // orb coming home, which already does
+    if (kind !== 'reflect' && useCharm('ember')) {
+      this._num(p.x, p.y + b.r + 0.8, p.z, 'EMBER CHARM!');
+      this.popBubble();
+      return 'popped';
+    }
     b.wobble = 0.25;
     audio.play('parry', { volume: 0.5, rate: 1.6, vary: 0.1 });
     juice.burst(p.x, p.y, p.z, b.o.color ?? 0x8fe4ff, 5);
@@ -506,7 +520,9 @@ export class BossMagic {
     if (!state.formsUnlocked.includes(form)) return false;
     state.curseLock = form;
     player.setForm(form);
-    const secs = state.settings.easy ? CURSE_SECS_GENTLE : CURSE_SECS;
+    let secs = state.settings.easy ? CURSE_SECS_GENTLE : CURSE_SECS;
+    // a WARD STONE (js/crafting.js) halves it
+    if (useCharm('ward')) { secs /= 2; this._charmed(player, 'WARD STONE!', 0xb08aff); }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 6, 28),
       new THREE.MeshBasicMaterial({ color: 0x8a4ad8, transparent: true, opacity: 0.9, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2;
@@ -554,6 +570,13 @@ export class BossMagic {
       audio.play('pup-chime', { volume: 0.8, rate: 1.2 });
       this._num(P.x, 2.0, P.z, 'FREE!');
     }
+  }
+
+  _charmed(player, text, color) {
+    const P = player.root.position;
+    juice.burst(P.x, 0.8, P.z, color, 18);
+    audio.play('pup-chime', { volume: 0.8, rate: 1.3 });
+    this._num(P.x, 2.2, P.z, text);
   }
 
   _badge(on) {

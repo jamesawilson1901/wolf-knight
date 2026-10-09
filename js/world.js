@@ -8,6 +8,13 @@ import { audio } from './audio.js';
 import { isShared } from './assets.js';
 import { isHealed } from './restoration.js';
 
+// Rectangles of floor a system will need later, keyed by room id (see
+// blocked()). Registered at module load by whoever owns them.
+const ROOM_CLAIMS = {};
+export function claimRoomRect(roomId, rect, tag = 'claimed') {
+  (ROOM_CLAIMS[roomId] || (ROOM_CLAIMS[roomId] = [])).push({ ...rect, tag });
+}
+
 // A hand's width of lip round every pit that scenery may not stand on either:
 // a rock half over the edge of a hole reads as floating, not as fallen.
 const PIT_LIP = 0.3;
@@ -244,6 +251,12 @@ export class World {
     for (const k of (this._keepClear || [])) {
       const dx = x - k.x, dz = z - k.z;
       if (dx * dx + dz * dz < (k.r + r) * (k.r + r)) return tally(k.tag || 'reserved');
+    }
+    // GROUND SPOKEN FOR BEFORE THE ROOM WAS BUILT (v3.199): a broken-bridge
+    // island (js/buildspots.js) digs its drop AFTER the dressing has run, so
+    // it claims its square here, by room id, and nothing scattered lands in it.
+    for (const q of (ROOM_CLAIMS[this.roomId] || [])) {
+      if (x + r > q.minX && x - r < q.maxX && z + r > q.minZ && z - r < q.maxZ) return tally(q.tag);
     }
     // NOTHING IS PLACED IN A HOLE, OR ON ITS LIP. A pit is a rectangle, not a
     // circle, so it is asked here as one rather than reserved as a ring of

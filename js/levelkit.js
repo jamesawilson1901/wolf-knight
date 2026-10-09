@@ -979,6 +979,9 @@ export const PIT_DEPTH = 3.4;   // player.js drops a falling child to airY -3.2
 function drawPits(world, kit0, D) {
   const art = world._pitArt || (world._pitArt = { D: null, parts: [] });
   if (D) art.D = D;
+  // remembered, so a pit added AFTER the build (latePit) redraws the room's
+  // earlier rims with the same brick rather than dropping them
+  if (kit0) art.kit = kit0; else kit0 = art.kit || null;
   const d = art.D || {};
   for (const o of art.parts) {
     if (o.parent) o.parent.remove(o);
@@ -998,6 +1001,15 @@ function drawPits(world, kit0, D) {
   keep(pitWalls(world, d));
   const lip = pitLip(world, kit0, d);
   if (lip) keep(lip);
+}
+
+// A HOLE DUG AFTER THE ROOM IS BUILT (v3.199, js/buildspots.js). The ground
+// and the pit art are never merged by flattenStatic (js/world.js skips them),
+// so the same redraw works once the room is standing. `D` falls back to the
+// colours the room's own pits were drawn in, then to the default stone.
+export function latePit(world, rects, D = null) {
+  for (const r of rects) world.pitZones.push({ ...r });
+  drawPits(world, null, D || (world._pitArt && world._pitArt.D) || {});
 }
 
 // The room's ground plane, re-cut with every pit rectangle taken out of it.

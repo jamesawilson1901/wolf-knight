@@ -65,16 +65,21 @@ const mined = await wk.page.evaluate(async () => {
   w.updateNodes(0.7, 0, g.player);
   const afterThree = { hp: rock.hp, depleted: rock.depleted };
   // stand on the drop and let the shared drop-collection system pick it up.
-  const drop = w.drops.find((d) => !d.taken);
-  if (drop) { g.player.root.position.x = drop.x; g.player.root.position.z = drop.z; w.updateEnemies(0.016, 0, g.player); }
-  return { beforeOre, afterOne, afterTwo, afterThree,
-    afterOre: g.state.inventory.materials.ore || 0, lockTime: g.player.lockTime };
+  // walk over every piece it spilled (v3.199: a node pays NODE_KINDS.yield)
+  const lock = g.player.lockTime;
+  for (const drop of w.drops.filter((d) => !d.taken && d.kind === 'ore')) {
+    g.player.root.position.x = drop.x; g.player.root.position.z = drop.z; w.updateEnemies(0.016, 0, g.player);
+  }
+  const { NODE_KINDS } = await import('/js/nodes.js');
+  return { beforeOre, afterOne, afterTwo, afterThree, yield: NODE_KINDS.rock.yield,
+    afterOre: g.state.inventory.materials.ore || 0, lockTime: lock };
 });
 check('one channel tick lands one hit (hp 3->2), not yet depleted',
   mined.afterOne.hp === 2 && !mined.afterOne.depleted, mined);
 check('two channel ticks land two hits (hp 3->1)', mined.afterTwo.hp === 1, mined);
 check('the third channel tick depletes the rock', mined.afterThree.hp <= 0 && mined.afterThree.depleted, mined);
-check('the depleted rock paid out one ore, collected into materials', mined.afterOre === mined.beforeOre + 1, mined);
+check('the depleted rock paid out its yield of ore (3 since v3.199), collected into materials',
+  mined.yield >= 3 && mined.afterOre === mined.beforeOre + mined.yield, mined);
 check('channeling held the player in place via lockTime (the same field a real swing uses)',
   mined.lockTime > 0, mined);
 
@@ -138,12 +143,14 @@ const chopped = await wk.page.evaluate(async () => {
   g.player.root.position.x = tree.x; g.player.root.position.z = tree.z;
   const beforeWood = g.state.inventory.materials.wood || 0;
   for (let i = 0; i < 3; i++) w.updateNodes(0.7, 0, g.player);
-  const drop = w.drops.find((d) => !d.taken);
-  if (drop) { g.player.root.position.x = drop.x; g.player.root.position.z = drop.z; w.updateEnemies(0.016, 0, g.player); }
-  return { depleted: tree.depleted, beforeWood, afterWood: g.state.inventory.materials.wood || 0 };
+  for (const drop of w.drops.filter((d) => !d.taken && d.kind === 'wood')) {
+    g.player.root.position.x = drop.x; g.player.root.position.z = drop.z; w.updateEnemies(0.016, 0, g.player);
+  }
+  const { NODE_KINDS } = await import('/js/nodes.js');
+  return { depleted: tree.depleted, beforeWood, yield: NODE_KINDS.tree.yield, afterWood: g.state.inventory.materials.wood || 0 };
 });
 check('owning axe_b, the tree depletes the same way the rock did', chopped.depleted, chopped);
-check('the depleted tree paid out one wood', chopped.afterWood === chopped.beforeWood + 1, chopped);
+check('the depleted tree paid out its yield of wood', chopped.yield >= 3 && chopped.afterWood === chopped.beforeWood + chopped.yield, chopped);
 
 
 
@@ -173,6 +180,13 @@ const EXPECTED = [
   { room: 'dr', kind: 'rock', x: 6.5, z: 3, tint: undefined },
   { room: 'dr', kind: 'tree', x: 6.5, z: -3, tint: undefined },
 ];
+
+// MORE TO GATHER (v3.199): every js/nodes.js EXTRA_NODES spot is held to the
+// same seeding, hazard and clearance checks as the rollout's own.
+const extra = await wk.page.evaluate(async () => (await import('/js/nodes.js')).EXTRA_NODES);
+for (const [room, list] of Object.entries(extra)) {
+  for (const n of list) EXPECTED.push({ room, kind: n.kind, x: n.x, z: n.z, tint: n.tint });
+}
 
 // Group by room so `dr` (which carries two nodes) is only visited once.
 const byRoom = [...new Set(EXPECTED.map((e) => e.room))];

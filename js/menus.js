@@ -10,8 +10,9 @@ import { TREASURES, ownsTreasure, treasureCount } from './treasures.js';
 import { persist } from './save.js';
 import { EquipPreview, itemThumb, meshThumb } from './equipscene.js';
 import { buildPotionMesh } from './loot.js';
+import { costHTML } from './matIcons.js';
 import { RECIPES, isRecipeVisible, canCraft, craftItem, tierUnlocked, craftBlockedReason } from './crafting.js';
-import { MATERIALS, materialCount } from './materials.js';
+import { materialCount } from './materials.js';
 import { DRAGON_ELEMENTS, hatchedDragons, equippedDragon, setEquippedDragon } from './dragonEggs.js';
 import { mapModel } from './mapdata.js';
 import { renderMap } from './mapview.js';
@@ -425,12 +426,11 @@ export class Menus {
       const name = visible ? r.name : '???';
       const blurb = visible ? r.blurb
         : (tierOpen ? 'Found somewhere in the world.' : 'Craft more different things to unlock this.');
-      const costHtml = visible ? Object.entries(r.cost).map(([mid, need]) => {
-        const have = materialCount(mid);
-        const def = MATERIALS[mid];
-        const short = have < need ? ' short' : '';
-        return `<span class="cost-chip${short}">${def ? def.icon : '?'} ${have}/${need}</span>`;
-      }).join('') : '';
+      // PICTURES AND DOTS, NOT "🪵 3/8" (v3.199, js/matIcons.js): one dot per
+      // piece needed, filled for each one carried — the same board the
+      // broken bridges hold up in the world.
+      const costHtml = visible ? Object.entries(r.cost)
+        .map(([mid, need]) => costHTML(mid, materialCount(mid), need)).join('') : '';
       body.innerHTML = `<div class="rack-name">${name}</div>
         <div class="rack-cost">${costHtml}</div>
         <div class="rack-blurb">${blurb}</div>`;

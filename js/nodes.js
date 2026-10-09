@@ -10,15 +10,20 @@ import { loadGLB, prepareModel } from './assets.js';
 import { ownsGear } from './items.js';
 import { spawnMaterialDrop } from './materials.js';
 import { audio } from './audio.js';
+import { claimRoomRect } from './world.js';
 
 // Real, already-vendored decoration props — the SAME rock-large/tree-a
 // meshes scattered as scenery in every region — doing double duty as the
 // resource itself rather than a new model (CLAUDE.md's asset rule).
 export const NODE_KINDS = {
+  // `yield` — pieces per node, per visit (v3.199). It was ONE: a whole room
+  // walked to, a rock struck three times, for one ore, against an Outer Camp
+  // asking fifteen. Nothing a child built could ever be reached, which is
+  // most of why building and crafting felt like they paid for nothing.
   rock:  { url: './assets/env/rock-large-b.glb', tool: 'pickaxe', hits: 3, material: 'ore',
-    crystalChance: 0.15, size: 1.6 },
+    crystalChance: 0.15, size: 1.6, yield: 3 },
   tree:  { url: './assets/env/tree-a.glb', tool: 'axe_b', hits: 3, material: 'wood',
-    crystalChance: 0, size: 2.4 },
+    crystalChance: 0, size: 2.4, yield: 3 },
 };
 
 const RANGE = 1.6;      // how close counts as "working it"
@@ -133,7 +138,12 @@ export class ResourceNode {
   _deplete(world) {
     this.depleted = true;
     const cfg = NODE_KINDS[this.kind];
-    spawnMaterialDrop(world, this.x, this.z, cfg.material);
+    // the pieces spill round the foot of it, so a child sees how many
+    const n = cfg.yield || 1;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + 0.6;
+      spawnMaterialDrop(world, this.x + Math.cos(a) * 0.75, this.z + Math.sin(a) * 0.75, cfg.material);
+    }
     if (Math.random() < cfg.crystalChance) spawnMaterialDrop(world, this.x + 0.3, this.z, 'crystal');
     audio.play('puff', { volume: 0.7 });
     world.root.remove(this.root);
@@ -141,6 +151,36 @@ export class ResourceNode {
     const i = world.circleColliders.indexOf(this._collider);
     if (i >= 0) world.circleColliders.splice(i, 1);
   }
+}
+
+// MORE TO GATHER (v3.199). The rollout left one rock or one tree per region —
+// eight in the whole game — so a child who wanted wood had one tree to walk to
+// and back. These add a few more per region, in rooms already on the way,
+// on floor a probe measured clear (tools/verify-buildspots.mjs's sibling check
+// in verify-mining re-measures them). `kind` is 'rock' or 'tree'; `tint` the
+// region's own, matching the node each region already had.
+const R = (x, z, tint) => ({ kind: 'rock', x, z, tint });
+const T = (x, z, tint) => ({ kind: 'tree', x, z, tint });
+// Ember and Stoneroot are rock only: no tree grows in the lava fields (dad,
+// #56) or in the caverns. The Wild Woods are mostly trees. The rest have both.
+const WOODS = 0x6fae4a, FROST = 0x9be3ff, STORM = 0xc9d4ff, VALE = 0x3fb0c4, COURT = 0xe8e4ff;
+export const EXTRA_NODES = {
+  lv2: [R(-13, 6)], ld: [R(-12, -3)], lk2: [R(-10, 1)],
+  vh: [R(-15, -4), R(-14, 6)], vc1: [R(-12.3, 4)],
+  tf2: [T(-13, 6, WOODS), T(-12, -8, WOODS)], t4b: [T(-12, 9, WOODS), R(-11, -5, WOODS)],
+  f4: [T(-13, 9, FROST), R(-13, -3, FROST)], f1c: [T(-6, 3, FROST)],
+  s3b: [R(-11, 7, STORM), T(-10, -3, STORM)], svn: [T(-13, 1, STORM), R(-12, 6, STORM)],
+  d1b: [T(-5, -7, VALE), R(-4, 5, VALE)], d3a: [T(-10, 6, VALE), R(-12, -3, VALE)],
+  xh: [R(-15, -4, COURT), R(-14, 11, COURT)], xa3: [R(-10, 5, COURT)],
+};
+
+// claimed before the rooms dress themselves, so no scattered prop lands on one
+for (const [room, list] of Object.entries(EXTRA_NODES)) {
+  for (const n of list) claimRoomRect(room, { minX: n.x - 1.3, maxX: n.x + 1.3, minZ: n.z - 1.3, maxZ: n.z + 1.3 }, 'node');
+}
+
+export function extraSpots(roomId, kind) {
+  return (EXTRA_NODES[roomId] || []).filter((n) => n.kind === kind);
 }
 
 // Called from the shared per-room pipeline (js/main.js), the same place
