@@ -20,7 +20,19 @@ const FX_TEX = {
   spark: './assets/fx/spark.png', // the pooled hit-burst's own dot, now textured
   flare: './assets/fx/flare.png', // a weakness hit's one-off "SUPER!" sparkle
   flash: './assets/fx/flash.png', // a heavy hit's one-off impact glow
+  smoke: './assets/fx/smoke.png', // an enemy's death puff (v3.202, was icosahedra)
+  streak: './assets/fx/streak.png', // a dash's trail of speed lines (v3.202)
 };
+
+// ONE COLOUR PER ELEMENT, for everything that wants to say which element just
+// happened: a forged blade's glow (js/forge.js), a weakness hit's flare, a
+// dash's streak. It lived in forge.js; the flare was flat gold for every
+// element, so "this is the one" never said WHICH one (design/FX.md).
+export const ELEMENT_COLOR = { fire: 0xff7a3a, moon: 0xb08aff, frost: 0x9be3ff, earth: 0xd8b06a,
+  storm: 0xfff4b0, tide: 0x4fd0e0, verdant: 0x8fdc6a, spark: 0xfff4b0 };
+export function elementColor(el, fallback = 0xffe14a) {
+  return ELEMENT_COLOR[el] || fallback;
+}
 
 class Juice {
   constructor() {
@@ -113,18 +125,45 @@ class Juice {
   // and lifecycle, unlike the pooled burst() above. Rare enough (a weakness
   // hit, a heavy blow) to afford it: unpooled but self-disposing, the same
   // reasoning js/loot.js's drop pickups already use for their own rarer pops.
-  _oneOff(texKey, x, y, z, color, { size, life, grow }) {
+  _oneOff(texKey, x, y, z, color, { size, life, grow, additive = true, opacity = 1, vel = null, rotation = 0, stretch = 1 }) {
     if (!this._scene || !this._tex) return;
     const mat = new THREE.SpriteMaterial({
       map: this._tex[texKey], color, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, opacity: 1,
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, opacity, rotation,
     });
     const sprite = new THREE.Sprite(mat);
     sprite.position.set(x, y, z);
-    sprite.scale.setScalar(size);
+    sprite.scale.set(size, size * stretch, 1);   // `stretch` runs along the texture's own vertical
     sprite.frustumCulled = false;
     this._scene.add(sprite);
-    this._oneOffs.push({ sprite, mat, t: 0, life, size, grow });
+    this._oneOffs.push({ sprite, mat, t: 0, life, size, grow, opacity, vel, stretch });
+  }
+
+  // AN ENEMY'S LAST PUFF, in real smoke (design/FX.md: the pack's smoke.png
+  // was sitting unused while the death puff was eight grey icosahedra). A few
+  // soft clouds that rise, swell and thin out — normal blending, not additive:
+  // smoke darkens what is behind it, it does not glow.
+  smoke(x, y, z, tint = 0x5a4d66) {
+    // lifted toward white: an enemy's own dark tint, as a cloud on a dark
+    // floor, read as a smudge at the play camera's distance (the first shot)
+    const col = new THREE.Color(tint).lerp(new THREE.Color(0xffffff), 0.45);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.4;
+      this._oneOff('smoke', x + Math.cos(a) * 0.2, y + (i % 3) * 0.12, z + Math.sin(a) * 0.2, col, {
+        size: 0.85 + (i % 3) * 0.15, life: 0.75 + (i % 2) * 0.15, grow: 2.2, additive: false, opacity: 0.95,
+        vel: [Math.cos(a) * 0.9, 1.3 + (i % 3) * 0.35, Math.sin(a) * 0.9], rotation: a,
+      });
+    }
+  }
+
+  // SPEED LINES behind a dash (design/FX.md's `streak`). Laid along the
+  // direction of travel as the camera sees it: world X runs across the
+  // screen, world Z runs up it (foreshortened by the 3/4 camera's pitch).
+  streak(x, y, z, dx, dz, color = 0xffffff) {
+    // streak.png is a VERTICAL line, so the sprite is stretched along its
+    // height and turned from upright to the direction of travel
+    const rot = Math.atan2(-dz * 0.65, dx) - Math.PI / 2;
+    this._oneOff('streak', x, y, z, color, { size: 0.7, life: 0.3, grow: 1.1, opacity: 1, rotation: rot, stretch: 2.4 });
   }
 
   // A weakness hit — dad's own "make experimentation LOUD" moment, now a
@@ -163,8 +202,15 @@ class Juice {
         const o = this._oneOffs[i];
         o.t += dt;
         const p = Math.min(1, o.t / o.life);
-        o.sprite.scale.setScalar(o.size * (1 + (o.grow - 1) * p));
-        o.mat.opacity = 1 - p;
+        const sc = o.size * (1 + (o.grow - 1) * p);
+        o.sprite.scale.set(sc, sc * o.stretch, 1);
+        o.mat.opacity = o.opacity * (1 - p);
+        if (o.vel) {
+          o.sprite.position.x += o.vel[0] * dt;
+          o.sprite.position.y += o.vel[1] * dt;
+          o.sprite.position.z += o.vel[2] * dt;
+          o.vel[1] -= dt * 1.2;   // the rise slows as it thins
+        }
         if (p >= 1) {
           this._scene.remove(o.sprite);
           o.mat.dispose();

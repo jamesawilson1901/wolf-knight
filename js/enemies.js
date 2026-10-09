@@ -18,7 +18,7 @@ import { grantXp, XP_VALUES, bumpCounter, enemyScale } from './progress.js';
 import { shellHit } from './shells.js';
 import { CONFIG } from './config.js';
 import { state } from './state.js';
-import { juice } from './juice.js';
+import { juice, elementColor } from './juice.js';
 import { spawnGearDrop, lootEvents } from './loot.js';
 import { addGear, ownsGear, shopStock, WEAPONS, SHIELDS } from './items.js';
 import { WS } from './worldstate.js';
@@ -40,29 +40,10 @@ const SUSPECT_HOLD = 2.0;
 // Death puff: a harmless burst of smoke
 // ---------------------------------------------------------------------------
 
+// Real smoke since v3.202 (js/juice.js smoke(), the Kenney pack's smoke.png);
+// `world` is kept in the signature for the callers that already pass it.
 export function smokePuff(world, x, y, z, tint = 0x5a4d66) {
-  const bits = [];
-  const mat = new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.85, depthWrite: false });
-  for (let i = 0; i < 8; i++) {
-    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13 + (i % 3) * 0.05, 0), mat.clone());
-    const a = (i / 8) * Math.PI * 2 + 0.4;
-    m.position.set(x, y + 0.15 * (i % 3), z);
-    m.userData.v = new THREE.Vector3(Math.cos(a) * (1 + (i % 2)), 1.4 + (i % 3) * 0.5, Math.sin(a) * (1 + ((i + 1) % 2)));
-    world.add(m);
-    bits.push(m);
-  }
-  let life = 0.65;
-  world.onAnimate((t, dt) => {
-    if (life <= 0) return;
-    life -= dt;
-    for (const m of bits) {
-      m.position.addScaledVector(m.userData.v, dt);
-      m.userData.v.y -= dt * 2.2;
-      m.scale.multiplyScalar(1 + dt * 2.4);
-      m.material.opacity = Math.max(0, 0.85 * (life / 0.65));
-    }
-    if (life <= 0) for (const m of bits) world.root.remove(m);
-  });
+  juice.smoke(x, y, z, tint);
 }
 
 // ---------------------------------------------------------------------------
@@ -676,8 +657,11 @@ class Enemy {
     if (weak) {
       // make experimentation LOUD: gold flare + a SUPER! callout so kids
       // instantly see "this element is the one" (Pip teaches it once too)
-      juice.burst(this.x, 0.9, this.z, 0xffe14a, 8);
-      juice.flare(this.x, 0.9, this.z, 0xffe14a);
+      // ...in the ELEMENT'S own colour (v3.202): a fire bite flares orange, a
+      // moon bite violet, so "this is the one" also says which one it was
+      const col = elementColor(element);
+      juice.burst(this.x, 0.9, this.z, col, 8);
+      juice.flare(this.x, 0.9, this.z, col);
       if (this.world.onDmgNum) this.world.onDmgNum(this.x, 1.35, this.z, 'SUPER!');
       bumpCounter('weakHits');
     }

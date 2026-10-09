@@ -111,15 +111,19 @@ formant filters ("oo" opening to "ah" and closing) and breath noise.
 
 Loose notes for whoever extends this next:
 
-- **More of the pack's 190 remaining sprites are sitting unused** — `flame`/
-  `fire` for an elemental weapon's own trail, `smoke` as a possible upgrade
-  to the existing `smokePuff()` enemy-death effect, `trace`/`twirl` for a
-  dash/dodge streak, `muzzle` for a ranged mook's own shot. None of these
-  are built; picked deliberately narrow for this first pass (the existing
-  hit-feedback pipeline, not a redesign of every visual moment in the game).
-- **Element-coloured flares**: `flare()`/`flash()` both take a `color` tint
-  already (the sprite art is white/grey, tinted at the material level, the
-  same trick every other reskin in this game uses) — a weapon's own
-  `element` field (`js/items.js`) could tint the flare to match (a fire
-  sword's weakness-flare burning orange, a moon staff's reading violet)
-  rather than the current flat gold for every element.
+- **SHIPPED v3.202** (2026-10-10), from this list:
+  - **real smoke**: an enemy's death puff (`smokePuff()`) is six `smoke.png`
+    sprites, normal-blended, rising and swelling, instead of eight grey
+    icosahedra. The enemy's tint is lifted toward white, because its own dark
+    colour as a cloud on a dark floor read as a smudge;
+  - **speed lines**: a dash lays `streak.png` sprites along its path, in the
+    form's own element colour (`juice.streak()`, from Player's `_dash` drive).
+    The texture is a vertical line, so the sprite is stretched along its
+    height and turned to the direction of travel;
+  - **element-coloured weakness flare**: the burst and flare wear
+    `elementColor(element)` — moon violet, fire orange — instead of flat gold.
+    The colour table moved from js/forge.js to js/juice.js (`ELEMENT_COLOR`),
+    so a forged blade's glow and a weakness hit can never disagree.
+  tools/verify-fx.mjs checks all three through real game paths.
+- **Still unused from the pack**: `flame`/`fire` for an elemental weapon's own
+  trail, `muzzle` for a ranged mook's shot, `twirl` for a spin.

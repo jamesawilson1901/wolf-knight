@@ -11,6 +11,7 @@
 // The stats live in js/items.js forgedDef() so every reader sees them; this
 // file is only the price list and the act of forging.
 import { state } from './state.js';
+import { elementColor } from './juice.js';
 import { canAfford, spendMaterials } from './materials.js';
 import { bumpCounter } from './progress.js';
 import { isRestored } from './denRebuild.js';
@@ -49,10 +50,9 @@ export function forgeUp(id) {
 
 // The colour a forged piece glows in: its own element's, else the gold every
 // "special" thing in this game already wears.
-const ELEMENT_GLOW = { fire: 0xff7a3a, moon: 0xb08aff, frost: 0x9be3ff, earth: 0xd8b06a,
-  storm: 0xfff4b0, tide: 0x4fd0e0, verdant: 0x8fdc6a, spark: 0xfff4b0 };
+// (the table itself lives in js/juice.js, shared with the weakness flare)
 export function forgeGlow(def) {
-  return (def && ELEMENT_GLOW[def.element]) || 0xffd76a;
+  return elementColor(def && def.element, 0xffd76a);
 }
 
 export function stars(L) {

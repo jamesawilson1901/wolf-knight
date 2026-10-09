@@ -6274,3 +6274,25 @@ tree:
 The tool is only in hand while a node's lock holds him. The saved loadout
 is never touched. Three new checks in tools/verify-mining.mjs; before this
 change they fail outright, because `Player.holdTool` does not exist.
+
+## Real smoke, speed lines, and a flare that says which element (2026-10-10, v3.202.0)
+
+Three open items from design/FX.md, all from the Kenney particle pack already
+in the game:
+- an enemy dies in real smoke (`smoke.png`), not eight grey icosahedra;
+- a dash leaves speed lines in the form's own colour;
+- a weakness hit flares in the element's colour, not flat gold. The colour
+  table now lives in js/juice.js and the Forge's glow reads it too.
+
+Looked at in a real room. The first cut was too faint at play distance,
+so the smoke was lifted toward white and the streaks enlarged. The streak
+texture turned out to be a vertical line, so stretching it sideways made
+dots. Three new checks in tools/verify-fx.mjs.
+
+Also, before this: the last two entries in tools/known-fail.txt are gone.
+The Den's "draw calls creep up ~15s in" was Pip setting off to show the way
+and a Den wolf walking into frame. It was found by diffing the meshes DRAWN
+either side of the step; the earlier dig compared meshes that were VISIBLE.
+verify-minigame and verify-mg-quiz now hide the creatures that were there
+at the baseline and hold the guide off. Their check is exact (it was +-3),
+and a planted mesh reading 73 -> 74 fails it.

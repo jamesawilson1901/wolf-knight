@@ -11,7 +11,7 @@ import { weaponDef, shieldDef, armourDef, forgeLevel, WEAPONS } from './items.js
 import { forgeGlow } from './forge.js';
 import { CONFIG } from './config.js';
 import { WATER } from './water.js';
-import { juice } from './juice.js';
+import { juice, elementColor } from './juice.js';
 
 const BODY_RADIUS = 0.32;
 const TURN_SPEED = CONFIG.TURN_SPEED;
@@ -2543,6 +2543,15 @@ export class Player {
     if (this._dash) {
       const d = this._dash;
       d.t += dt;
+      // SPEED LINES (v3.202, design/FX.md's `streak`): one every few
+      // hundredths of a second along the path, in the form's own colour, so
+      // a dash reads as a dash and not a teleport
+      d.streakT = (d.streakT || 0) - dt;
+      if (d.streakT <= 0 && d.speed > 6) {
+        d.streakT = 0.045;
+        juice.streak(this.root.position.x, 0.55, this.root.position.z, d.dx, d.dz,
+          elementColor(FORM_ELEMENT[state.form], 0xffffff));
+      }
       const s = world.resolveCircle(
         this.root.position.x + d.dx * d.speed * dt,
         this.root.position.z + d.dz * d.speed * dt, BODY_RADIUS);

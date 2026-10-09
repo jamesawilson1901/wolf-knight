@@ -104,6 +104,57 @@ const wiredWeak = await wk.page.evaluate(() => {
 check('a real weakness-element hit in combat fires the flare through the actual game code path',
   wiredWeak.found && wiredWeak.after > wiredWeak.before, wiredWeak);
 
+// 7. (v3.202) the weakness flare wears the ELEMENT's colour, not flat gold.
+const tinted = await wk.page.evaluate(async () => {
+  const g = window.__game;
+  const { elementColor } = await import('/js/juice.js');
+  const foe = (g.world.enemies || []).find((e) => !e.scenery && !e.dead && e.weakness);
+  if (!foe) return { found: false };
+  const el = Array.isArray(foe.weakness) ? foe.weakness[0] : foe.weakness;
+  const before = g.juice._oneOffs.length;
+  foe.takeDamage(0.25, el);
+  const o = g.juice._oneOffs.slice(before).find((q) => q.mat.map === g.juice._tex.flare);
+  return { found: true, el, want: elementColor(el), got: o ? o.mat.color.getHex() : null };
+});
+check('a weakness flare burns in the element\'s own colour (moon violet, fire orange...), not flat gold',
+  tinted.found && tinted.got === tinted.want && tinted.want !== 0xffe14a, tinted);
+
+// 8. (v3.202) an enemy's death puff is real smoke: smoke.png sprites, normal
+// blending, that rise and then leave the scene — no icosahedra left behind.
+const puff = await wk.page.evaluate(() => {
+  const g = window.__game, w = g.world;
+  const foe = (w.enemies || []).find((e) => !e.scenery && !e.dead);
+  if (!foe) return { found: false };
+  const ico = () => { let n = 0; w.root.traverse((o) => { if (o.geometry && o.geometry.type === 'IcosahedronGeometry') n++; }); return n; };
+  const ico0 = ico(), before = g.juice._oneOffs.length;
+  foe.takeDamage(999, 'steel');
+  const mine = g.juice._oneOffs.slice(before).filter((q) => q.mat.map === g.juice._tex.smoke);
+  const y0 = mine.length ? mine[0].sprite.position.y : 0;
+  g.juice.update(0.3);
+  const rose = mine.length && mine[0].sprite.position.y > y0;
+  g.juice.update(2);
+  return { found: true, dead: foe.dead, smoke: mine.length, normal: mine.every((q) => q.mat.blending === 1), rose,
+    gone: mine.every((q) => !g.scene.children.includes(q.sprite)), newIco: ico() - ico0 };
+});
+check('an enemy dies in real smoke: several smoke.png sprites, normal-blended, rising, then gone; no icosahedra',
+  puff.found && puff.dead && puff.smoke >= 4 && puff.normal && puff.rose && puff.gone && puff.newIco === 0, puff);
+
+// 9. (v3.202) a dash lays speed lines in the form's own colour.
+const dash = await wk.page.evaluate(async () => {
+  const g = window.__game, P = g.player, w = g.world;
+  const { elementColor } = await import('/js/juice.js');
+  for (const e of w.enemies) e.update = () => {};
+  P.root.position.set(0, 0, 4);
+  const before = g.juice._oneOffs.length;
+  P._dash = { t: 0, dur: 0.26, dx: 1, dz: 0, speed: 20, hit: new Set() };
+  const fake = { move: { x: 0, z: 0 }, getMove: () => ({ x: 0, z: 0 }), defending: false };
+  for (let i = 0; i < 8; i++) P.update(1 / 30, fake, w);
+  const lines = g.juice._oneOffs.slice(before).filter((q) => q.mat.map === g.juice._tex.streak);
+  return { lines: lines.length, colour: lines.length ? lines[0].mat.color.getHex() : null,
+    form: g.state.form, want: elementColor({ knight: 'steel' }[g.state.form] || null, 0xffffff) };
+});
+check('a dash lays a trail of speed-line sprites behind it', dash.lines >= 3, dash);
+
 console.log('\nERRORS', JSON.stringify(wk.errors.slice(0, 5)));
 console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — the FX pass loads real textures and fires real, disposing sprites');
 await wk.b.close();
