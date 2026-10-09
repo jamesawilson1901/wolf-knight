@@ -23,6 +23,10 @@ import { WS } from './worldstate.js';
 import { villageCleared } from './levelVillage.js';
 import { DOORS } from './mapgraph.js';
 import { layoutWorld } from './maplayout.js';
+import { isRestored } from './denRebuild.js';
+import { BUILD_SPOTS, isBuilt } from './buildspots.js';
+import { canAfford } from './materials.js';
+import { materialIconURL } from './matIcons.js';
 
 // The world in walk order. `open` is the thing that has to be true before a
 // child can have set foot there — the spine of a region shows (faint) once the
@@ -242,6 +246,16 @@ export function openMarks(knownRooms) {
   for (const m of mysteryMarks(knownRooms)) {
     if (m.form && gateForms.has(m.room + '|' + m.form)) continue;
     push(m);
+  }
+  // THE TAVERN'S TRAVELLERS KNOW WHERE THE BRIDGES FELL (v3.200). Once the
+  // Outer Camp's Tavern stands, every fallen bridge in a room the map shows is
+  // marked with a little bridge — gold-ringed "now!" when the dots are already
+  // full (js/buildspots.js).
+  if (isRestored('tavern')) {
+    for (const b of Object.values(BUILD_SPOTS)) {
+      if (!knownRooms.has(b.room) || isBuilt(b.id)) continue;
+      push({ key: 'build_' + b.id, room: b.room, img: materialIconURL('bridge'), can: canAfford(b.cost) });
+    }
   }
   return byRoom;
 }

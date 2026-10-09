@@ -11,6 +11,7 @@ import { ownsGear } from './items.js';
 import { spawnMaterialDrop } from './materials.js';
 import { audio } from './audio.js';
 import { claimRoomRect } from './world.js';
+import { allBuildingsRestored } from './denRebuild.js';
 
 // Real, already-vendored decoration props — the SAME rock-large/tree-a
 // meshes scattered as scenery in every region — doing double duty as the
@@ -138,8 +139,9 @@ export class ResourceNode {
   _deplete(world) {
     this.depleted = true;
     const cfg = NODE_KINDS[this.kind];
-    // the pieces spill round the foot of it, so a child sees how many
-    const n = cfg.yield || 1;
+    // the pieces spill round the foot of it, so a child sees how many — one
+    // more once the Outer Camp's Monument is lit (v3.200, js/denRebuild.js)
+    const n = (cfg.yield || 1) + (allBuildingsRestored() ? 1 : 0);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + 0.6;
       spawnMaterialDrop(world, this.x + Math.cos(a) * 0.75, this.z + Math.sin(a) * 0.75, cfg.material);

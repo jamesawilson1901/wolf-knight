@@ -6197,3 +6197,32 @@ Caught on the way:
 New suite: tools/verify-buildspots.mjs. All seven bridges are driven by real
 keyboard walking: cut off, refuse when unpaid, build when paid, spend
 exactly, open the chest, stay built.
+
+## The camp is worth coming home to (2026-10-09, v3.200.0)
+
+Parts 2 and 3 of dad's five (design/DEN-REBUILD.md v3.200).
+
+- **The Forge** takes the sword, shield and armour Kael already wears up
+  three steps, paid in ingots, ore and crystals. Each step shows on the
+  thing itself: a glow in its element's colour, then sparks, then a trail
+  of light on every swing.
+  - It only happens AT the Forge: walking up to it opens its own tab.
+- **Each Outer Camp building now changes something:**
+  - the Tavern puts the fallen bridges on the map;
+  - the Mill grows the pups and doubles the pen;
+  - the Monument makes every rock and tree give one more piece;
+  - ruined buildings carry the bridges' picture-and-dots board.
+- **Coming home pays.** Three rooms away earns every building a collection.
+  Arriving at the Den or the camp collects everything at once with one
+  "While you were away" toast, so a short session still sees the camp work.
+
+Four new Pip lines (Piper, her usual voice) and three stickers: Hot from the
+Forge, Master Smith, The Camp Lives. New suite: tools/verify-forge.mjs,
+proven red against v3.199 first.
+
+Also on v3.199 before this, from verify-density:
+- the bridge is now one slab that grows across the drop, because four
+  tiles put `la` one draw call over budget;
+- the node claims shrank to 0.9u;
+- Stormreach's two new nodes moved from `s3b` to `s1b`, because `s3b`'s
+  arrival frame had fallen two props under its floor of 32.

@@ -431,6 +431,16 @@ The loop, end to end (design/CRAFTING.md, MINING.md, DEN-REBUILD.md):
 - **Spend at home.** The Outer Camp (`dr`): the Tavern, Forge and Mill are
   restored with wood and ore, and pay coins, ingots and wood on a timer.
   Ingots feed the ultimates, the Ward Stone and the last two bridges.
+- **Forge and town (v3.200).**
+  - `js/forge.js` upgrades worn gear three steps, applied by
+    `items.js forgedDef()`. The Forge tab appears only when opened at the
+    Forge (`menus.openForge()`, from the Outer Camp walk-up).
+  - The Tavern marks unbuilt bridges on the map (`mapdata openMarks`).
+  - The Mill grows the pups and doubles the pen.
+  - The Monument adds a piece to every node.
+  - Coming home after three or more rooms adds a collection
+    (`denRebuild.homecoming`), and arrival collects everything
+    (`collectAll`, main.js `welcomeHome`).
 - **Signals.** Costs everywhere are `js/matIcons.js` pictures and dots, never
   emoji.
   - `#inv-btn.can-craft` glows while anything can be made (main.js

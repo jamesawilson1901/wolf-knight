@@ -308,16 +308,48 @@ export const ARMOURS = {
   },
 };
 
+// THE FORGE IMPROVES WHAT YOU ALREADY LOVE (v3.200, design/DEN-REBUILD.md
+// "The Forge"). Up to three steps per piece, `state.inventory.upgrades[id]`.
+// The step is applied HERE, to a copy, so every reader of a stat — damage,
+// the shield's block, the armour's soak, the Armoury's stat bars — sees the
+// forged number without knowing forging exists. The shipped tables are never
+// touched, so tools/verify-gear.mjs's balance rules hold for every base item,
+// and the one runtime ceiling that matters (soak 1.5: "a hit must always
+// cost something") is kept below.
+export const FORGE_MAX = 3;
+export function forgeLevel(id) { return ((state.inventory.upgrades || {})[id]) || 0; }
+const _forged = new Map();
+export function forgedDef(kind, id) {
+  const table = kind === 'weapon' ? WEAPONS : kind === 'shield' ? SHIELDS : ARMOURS;
+  const base = table[id];
+  const L = Math.min(FORGE_MAX, forgeLevel(id));
+  if (!base || !L) return base;
+  const key = kind + ':' + id + ':' + L;
+  if (_forged.has(key)) return _forged.get(key);
+  const d = { ...base, forged: L };
+  if (kind === 'weapon') d.dmg = Math.round(base.dmg * (1 + 0.12 * L) * 100) / 100;
+  if (kind === 'shield') {
+    d.blunt = Math.max(0, Math.round(((base.blunt ?? 0.5) - 0.1 * L) * 100) / 100);
+    d.parryBonus = Math.round(((base.parryBonus || 0) + 0.03 * L) * 1000) / 1000;
+  }
+  if (kind === 'armour') d.soak = Math.min(1.5, Math.round(((base.soak || 0) + 0.1 * L) * 100) / 100);
+  _forged.set(key, d);
+  return d;
+}
+
 export function armourDef() {
-  return ARMOURS[state.inventory.equipped.armour] || ARMOURS.plain;
+  const id = state.inventory.equipped.armour;
+  return (ARMOURS[id] && forgedDef('armour', id)) || ARMOURS.plain;
 }
 
 export function weaponDef() {
-  return WEAPONS[state.inventory.equipped.weapon] || WEAPONS.sword_knight;
+  const id = state.inventory.equipped.weapon;
+  return (WEAPONS[id] && forgedDef('weapon', id)) || WEAPONS.sword_knight;
 }
 
 export function shieldDef() {
-  return SHIELDS[state.inventory.equipped.shield] || SHIELDS.shield_badge;
+  const id = state.inventory.equipped.shield;
+  return (SHIELDS[id] && forgedDef('shield', id)) || SHIELDS.shield_badge;
 }
 
 export function ownsGear(id) {

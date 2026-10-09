@@ -28,6 +28,7 @@ import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
 import { spawnResourceNodes, extraSpots } from './nodes.js';
 import { addBuildSpotMarkers, spawnBuildSpot } from './buildspots.js';
+import { homecoming, collectAll, allBuildingsRestored } from './denRebuild.js';
 import { RECIPES, canCraft, unlockRecipe } from './crafting.js';
 import { MATERIALS, addMaterial } from './materials.js';
 import { spawnDragonShrines, spawnEggNests, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
@@ -1903,6 +1904,29 @@ function craftNudge() {
   _couldCraft = can;
 }
 
+// WHILE YOU WERE AWAY (v3.200, js/denRebuild.js homecoming/collectAll).
+// Coming home after an adventure — three or more other rooms walked since the
+// last time — adds a collection to every restored building, and arriving at
+// the Den or the Outer Camp pays everything waiting at once, with one toast
+// that says what came in. Walking up to a building still collects too.
+const awayRooms = new Set();
+function welcomeHome() {
+  if (awayRooms.size >= 3) homecoming();
+  awayRooms.clear();
+  const got = collectAll();
+  if (got.any) {
+    const parts = [];
+    if (got.shards) parts.push(`${got.shards} coins`);
+    for (const [id, n] of Object.entries(got.materials)) parts.push(`${n} ${MATERIALS[id] ? MATERIALS[id].name : id}`);
+    if (got.xp) parts.push(`${got.xp} XP`);
+    renderShards();
+    setTimeout(() => bigToast('While you were away: ' + parts.join(' · ')), 900);
+    narration.say('welcome_home');
+    persist();
+  }
+  if (allBuildingsRestored()) narration.say('monument_lit');
+}
+
 function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
@@ -2176,6 +2200,11 @@ async function setupRoomExtras() {
     narration.say('build_done');
     persist();
   };
+  // THE OUTER CAMP CHANGES THINGS (v3.200, js/levelDenRebuild.js)
+  world.onForgeVisit = () => { if (menus) menus.openForge(); };
+  world.onTavernVisit = () => narration.say('tavern_rumour');
+  if (world.roomId === 'den' || world.roomId === 'dr') welcomeHome();
+  else awayRooms.add(world.roomId);
   await spawnResourceNodes(world,
     [...(world.markers.rockSpots || []), ...extraSpots(world.roomId, 'rock')],
     [...(world.markers.treeSpots || []), ...extraSpots(world.roomId, 'tree')]);

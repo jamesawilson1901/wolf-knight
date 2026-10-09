@@ -7,7 +7,8 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLB, prepareCharacter } from './assets.js';
 import { state, formsAvailable } from './state.js';
 import { audio } from './audio.js';
-import { weaponDef, shieldDef, armourDef } from './items.js';
+import { weaponDef, shieldDef, armourDef, forgeLevel } from './items.js';
+import { forgeGlow } from './forge.js';
 import { CONFIG } from './config.js';
 import { WATER } from './water.js';
 import { juice } from './juice.js';
@@ -824,6 +825,26 @@ export class Player {
     // stat it carries. Applied here rather than baked into the GLB so the
     // number stays next to the stat it exists to agree with.
     if (weaponDef().scale) blade.scale.setScalar(weaponDef().scale);
+    // FORGED, AND YOU CAN SEE IT (js/forge.js). Each step at the Forge lights
+    // the blade a little more in its own element's colour; steps two and
+    // three add sparks and a swing trail in update()/tryAttack().
+    this._forgeL = forgeLevel(state.inventory.equipped.weapon);
+    this._forgeCol = forgeGlow(weaponDef());
+    this._blade = blade;
+    if (this._forgeL) {
+      blade.traverse((n) => {
+        if (!n.isMesh || !n.material) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        const cloned = mats.map((m) => {
+          const c = m.clone();
+          if (!c.emissive) c.emissive = new THREE.Color(0);
+          c.emissive.setHex(this._forgeCol);
+          c.emissiveIntensity = 0.3 * this._forgeL;
+          return c;
+        });
+        n.material = Array.isArray(n.material) ? cloned : cloned[0];
+      });
+    }
     this._handR.add(blade);
     this.equipArmour();
     const shield = this._tintGear(prepareCharacter(s.scene.clone()), shieldDef().tint);
@@ -1044,6 +1065,21 @@ export class Player {
   // longer reach and a narrower hit arc (slash the crowd, poke the one).
   // DARK WOLF: tapping attack while the STICK IS PUSHED becomes a LUNGE —
   // a dash-bite that covers ground with dodge frames inside it.
+  // ★★★ — a forged blade leaves a trail of light along each swing: a fan of
+  // sparks across the front arc, in the blade's own colour.
+  _forgeTrail() {
+    if (!(this._forgeL >= 3) || state.form !== 'knight') return;
+    const p = this.root.position, yaw = this.root.rotation.y;
+    for (let i = 0; i < 7; i++) {
+      const a = yaw - 1.0 + (i / 6) * 2.0;
+      juice.burst(p.x + Math.sin(a) * 1.3, 0.9 + Math.sin(i) * 0.15, p.z + Math.cos(a) * 1.3, this._forgeCol, 3);
+    }
+    // ...and three bright flares along the arc, the part that reads on a phone
+    for (const k of [-0.7, 0, 0.7]) {
+      juice.flare(p.x + Math.sin(yaw + k) * 1.2, 0.7, p.z + Math.cos(yaw + k) * 1.2, this._forgeCol);
+    }
+  }
+
   tryAttack(world, input) {
     if (this.defending) return false;
     if (this.lockTime > 0) {
@@ -1112,6 +1148,7 @@ export class Player {
       };
       this._comboUntil = 0; // slash again to re-open the combo
       audio.play('sword-swing2', { volume: 0.85, rate: 1.25 });
+      this._forgeTrail();
     } else {
       // C4 — A NARROW WEAPON STABS. js/items.js gives weapons an `arc` from 36
       // to 82 degrees — a 2.3x difference in how wide the swing truly is — and
@@ -1130,6 +1167,7 @@ export class Player {
         arcCos: cfg.arcCos, stun: cfg.stun, element: cfg.element,
       };
       this._comboUntil = this._time + cfg.lock + COMBO_WINDOW;
+      this._forgeTrail();
       // step-in bite (FORM_DEFS.stepIn): the hunter PRESSES FORWARD as it
       // snaps — chained taps walk the wolf through a retreating target
       if (this.form.def.stepIn) {
@@ -2394,6 +2432,16 @@ export class Player {
     this._applyPendingHit(dt, world);
     this._updateProjectiles(dt, world);
     this._updateAura(dt); // before the lock-time early return — auras never freeze
+    // ★★ — a forged blade sheds sparks (js/forge.js), knight form only, where
+    // the blade is actually in his hand
+    if (this._forgeL >= 2 && state.form === 'knight' && this._blade) {
+      this._sparkAcc = (this._sparkAcc || 0) + dt;
+      if (this._sparkAcc > 0.3) {
+        this._sparkAcc = 0;
+        this._blade.getWorldPosition(this._sparkAt || (this._sparkAt = new THREE.Vector3()));
+        juice.burst(this._sparkAt.x, this._sparkAt.y + 0.2, this._sparkAt.z, this._forgeCol, 2);
+      }
+    }
 
     if (this._airGrace > 0) this._airGrace -= dt;
     if (this._snareT > 0) this._snareT = Math.max(0, this._snareT - dt);
@@ -2711,7 +2759,12 @@ export class Player {
     }
 
     const dark = world.bossDarkness ? 1 : world.darknessAt(this.root.position.x, this.root.position.z);
-    const want = state.form === 'dark_wolf' ? (dark ? 9 : 2.2) : 0;
+    // A FORGED BLADE LIGHTS ITS BEARER (v3.200, js/forge.js): the knight's
+    // own lantern, otherwise dark, glows in the blade's colour one notch per
+    // star — the sword itself is a few pixels at play distance, the halo is not
+    const forged = state.form === 'knight' && this._forgeL > 0;
+    const want = state.form === 'dark_wolf' ? (dark ? 9 : 2.2) : forged ? 1.1 * this._forgeL : 0;
+    this.formLight.color.setHex(forged ? this._forgeCol : 0xa8bcff);
     this.formLight.intensity += (want - this.formLight.intensity) * Math.min(1, dt * 6);
 
     f.mixer.update(dt);

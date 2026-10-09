@@ -56,7 +56,7 @@ import { characterNpc, staticCharacterNpc, SETTLER_POSTS } from './npcs.js';
 import { audio } from './audio.js';
 import { flattenStatic } from './batch.js';
 import { bumpCounter } from './progress.js';
-import { pendingCollections, collect } from './denRebuild.js';
+import { pendingCollections, collect, isRestored } from './denRebuild.js';
 import { juice } from './juice.js';
 
 // regionOf() names the WORLD; worldstate keys name the SAVE, and the two have
@@ -986,7 +986,10 @@ export async function spawnPupPen(world, onRowFilled) {
     const id = awake[i];
     const spot = PEN_SPOTS[i];
     const model = prepareCharacter(SkeletonUtils.clone(wolfGltf.scene));
-    model.scale.setScalar(0.16);
+    // FED BY THE MILL, THE PUPS GROW (v3.200): the same pups, bigger, the
+    // moment the Outer Camp's Mill stands — and the pen pays twice as much
+    // (js/denRebuild.js amountFor)
+    model.scale.setScalar(isRestored('mill') ? 0.22 : 0.16);
     model.position.set(spot.x, 0, spot.z);
     model.traverse((m) => {
       if (!m.isMesh) return;

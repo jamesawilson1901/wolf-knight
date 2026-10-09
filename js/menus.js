@@ -4,7 +4,8 @@
 
 import { state, regionCleared } from './state.js';
 import { audio } from './audio.js';
-import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear } from './items.js';
+import { WEAPONS, SHIELDS, ARMOURS, shopStock, nextShopTier, ownsGear, addGear, forgedDef, forgeLevel } from './items.js';
+import { forgeCost, canForge, forgeUp, stars } from './forge.js';
 import { perkChoices, applyPerk, STICKERS, bumpCounter } from './progress.js';
 import { TREASURES, ownsTreasure, treasureCount } from './treasures.js';
 import { persist } from './save.js';
@@ -91,8 +92,23 @@ export class Menus {
   toggleInventory() {
     const el = $('inv-menu');
     if (el.style.display === 'flex') return this._close('inv-menu');
+    // the Forge tab is only there AT the Forge (openForge below)
+    this._atForge = false;
+    if (this._armTab === 'forge') this._armTab = 'gear';
     this.renderInventory();
     this._open('inv-menu');
+  }
+
+  // AT THE FORGE (v3.200, js/forge.js). Walking up to the restored Forge in the
+  // Outer Camp opens the backpack straight onto its own tab — the upgrades
+  // happen THERE, which is what makes the camp worth going home to.
+  openForge() {
+    if ($('inv-menu').style.display === 'flex') return;
+    this._atForge = true;
+    this._armTab = 'forge';
+    this.renderInventory();
+    this._open('inv-menu');
+    if (this.narration) this.narration.say('forge_ready');
   }
 
   // Equipping must never rebuild the whole screen: a full re-render throws
@@ -159,6 +175,7 @@ export class Menus {
     // child has actually thrown an egg, rather than advertising "there is a
     // third tab" to every save that has never found one.
     const tabDefs = [['gear', '⚔️ Gear'], ['craft', '🔨 Craft']];
+    if (this._atForge) tabDefs.push(['forge', '⚒️ Forge']);
     if (hatchedDragons().length) tabDefs.push(['dragons', '🐉 Dragons']);
     // THE PACK TAB (v3.195) — only once there is a choice to make (more than
     // three wolves besides the Dark Wolf); before that the pack is everyone.
@@ -276,10 +293,68 @@ export class Menus {
   }
 
   _paintRight() {
-    if (this._armTab === 'pack') this._paintPackTab();
+    if (this._armTab === 'forge') this._paintForgeTab();
+    else if (this._armTab === 'pack') this._paintPackTab();
     else if (this._armTab === 'craft') this._paintCraftTab();
     else if (this._armTab === 'dragons') this._paintDragonsTab();
     else this._paintRacks();
+  }
+
+  // ---- THE FORGE TAB (v3.200, js/forge.js) ---------------------------------
+  // The three things Kael is wearing, each with its stars, its next step's
+  // cost as pictures and dots, and a Forge button. Forging re-mounts the real
+  // blade at once, so the glow is there when the menu shuts.
+  _paintForgeTab() {
+    this._racks.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'rack-head';
+    head.textContent = 'The Forge';
+    this._racks.appendChild(head);
+    const STEP = ['It glows, and hits harder.', 'Sparks fly off it.', 'Every swing leaves a trail of light.'];
+    const STEP_GUARD = ['It glows, and guards better.', 'It guards better still.', 'The best it can ever be.'];
+    for (const kind of ['weapon', 'shield', 'armour']) {
+      const id = state.inventory.equipped[kind];
+      const table = kind === 'weapon' ? WEAPONS : kind === 'shield' ? SHIELDS : ARMOURS;
+      const def = table[id];
+      if (!def) continue;
+      const L = forgeLevel(id);
+      const row = document.createElement('div');
+      row.className = 'rack-row forge-row';
+      row.dataset.gear = id;
+      const art = document.createElement('div');
+      art.className = 'rack-art';
+      this._art(art, def, kind);
+      const body = document.createElement('div');
+      body.className = 'rack-body';
+      const cost = forgeCost(id);
+      const next = cost ? (kind === 'weapon' ? STEP : STEP_GUARD)[L] : 'Fully forged!';
+      const costHtml = cost ? Object.entries(cost).map(([m, n]) => costHTML(m, materialCount(m), n)).join('') : '';
+      body.innerHTML = `<div class="rack-name">${def.name} <span class="forge-stars">${stars(L)}</span></div>
+        <div class="rack-cost">${costHtml}</div>
+        <div class="rack-blurb">${next}</div>`;
+      row.appendChild(art);
+      row.appendChild(body);
+      if (cost) {
+        const btn = document.createElement('div');
+        btn.className = 'craft-btn ui';
+        btn.textContent = 'Forge';
+        if (!canForge(id)) btn.setAttribute('disabled', '');
+        btn.addEventListener('pointerdown', async (e) => {
+          e.stopPropagation();
+          if (!canForge(id)) { audio.play('parry', { volume: 0.3, rate: 0.5 }); return; }
+          if (!forgeUp(id)) return;
+          audio.play('slam', { volume: 0.7, rate: 1.3 });
+          audio.play('checkpoint', { volume: 0.7, rate: 1.0 });
+          await this.player.equipGear();
+          if (this.preview) await this.preview.refresh();
+          persist();
+          this._paintForgeTab();
+          this._paintSlots();
+        });
+        row.appendChild(btn);
+      }
+      this._racks.appendChild(row);
+    }
   }
 
   // ---- THE DRAGONS TAB (design/DRAGON-EGGS.md) ----------------------------
@@ -495,8 +570,11 @@ export class Menus {
         this._art(art, def, kind);
         const body = document.createElement('div');
         body.className = 'rack-body';
-        body.innerHTML = `<div class="rack-name">${def.name}</div>
-          <div class="rack-stats">${statBars(def, kind)}</div>
+        // a forged piece shows its stars and its forged numbers (js/forge.js)
+        const L = forgeLevel(id);
+        const fd = forgedDef(kind, id) || def;
+        body.innerHTML = `<div class="rack-name">${def.name}${L ? ` <span class="forge-stars">${stars(L)}</span>` : ''}</div>
+          <div class="rack-stats">${statBars(fd, kind)}</div>
           <div class="rack-blurb">${def.blurb || ''}</div>`;
         const mark = document.createElement('div');
         mark.className = 'rack-mark';

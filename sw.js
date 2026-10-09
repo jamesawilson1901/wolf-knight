@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.199.0';
+const CACHE_NAME = 'wolfknight-v3.200.0';
 
 const PRECACHE = [
   './',
@@ -27,6 +27,7 @@ const PRECACHE = [
   './js/effects.js',
   './js/enemies.js',
   './js/equipscene.js',
+  './js/forge.js',
   './js/gateprops.js',
   './js/gates.js',
   './js/ground.js',
@@ -210,6 +211,7 @@ const PRECACHE = [
   './assets/audio/vo/firewolf_grant.ogg',
   './assets/audio/vo/firewolf_howto.ogg',
   './assets/audio/vo/first_enemy.ogg',
+  './assets/audio/vo/forge_ready.ogg',
   './assets/audio/vo/form_locked.ogg',
   './assets/audio/vo/frost_boss_door.ogg',
   './assets/audio/vo/frost_complete.ogg',
@@ -280,6 +282,7 @@ const PRECACHE = [
   './assets/audio/vo/meri_den.ogg',
   './assets/audio/vo/meri_duel.ogg',
   './assets/audio/vo/meri_intro.ogg',
+  './assets/audio/vo/monument_lit.ogg',
   './assets/audio/vo/moon_full.ogg',
   './assets/audio/vo/moonstone_intro.ogg',
   './assets/audio/vo/moth_intro.ogg',
@@ -354,6 +357,7 @@ const PRECACHE = [
   './assets/audio/vo/sylva_intro.ogg',
   './assets/audio/vo/tam_intro.ogg',
   './assets/audio/vo/tam_offer.ogg',
+  './assets/audio/vo/tavern_rumour.ogg',
   './assets/audio/vo/thornhound_intro.ogg',
   './assets/audio/vo/thornknot_hint.ogg',
   './assets/audio/vo/tide_grant.ogg',
@@ -373,6 +377,7 @@ const PRECACHE = [
   './assets/audio/vo/warden_door.ogg',
   './assets/audio/vo/warden_intro.ogg',
   './assets/audio/vo/warden_stagger.ogg',
+  './assets/audio/vo/welcome_home.ogg',
   './assets/audio/vo/wild_boss_door.ogg',
   './assets/audio/vo/wild_complete.ogg',
   './assets/audio/vo/wild_enter.ogg',

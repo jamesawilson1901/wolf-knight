@@ -84,6 +84,7 @@ const REGION = 'den';
 const restoredKey = (id) => 'bld_' + id + '_restored';
 const sinceKey = (id) => 'bld_' + id + '_since';
 const collectedKey = (id) => 'bld_' + id + '_collected';
+const bonusKey = (id) => 'bld_' + id + '_bonus';
 
 // WS.get() only ever answers true/false (see js/worldstate.js) — reading a
 // raw stored VALUE (a timestamp, a count) means reaching into the same flag
@@ -119,7 +120,49 @@ export function restore(id) {
   if (!b || b.free || isRestored(id)) return false;
   if (!spendMaterials(b.cost)) return false;
   WS.set(REGION, restoredKey(id), true);
+  bumpCounter('buildingsRestored');
   return true;
+}
+
+// THE CAMP LIVES (v3.200, design/DEN-REBUILD.md "Each building changes the
+// town"). The Monument stands once the three working buildings do.
+export function allBuildingsRestored() {
+  return ['tavern', 'forge', 'mill'].every((id) => isRestored(id));
+}
+
+// What a collection pays: the pup pen's doubles once the Mill feeds the pups.
+function amountFor(id) {
+  const b = BUILDINGS[id];
+  return id === 'pupPen' && isRestored('mill') ? b.amount * 2 : b.amount;
+}
+
+// WHILE YOU WERE AWAY (v3.200). Twenty minutes is longer than plenty of a
+// five-year-old's sessions, so a building also pays for every ADVENTURE: come
+// home after exploring and each restored building has one collection waiting
+// on top of whatever the clock has made, still never past its cap. js/main.js
+// decides what counts as an adventure (rooms walked since the last time home).
+export function homecoming() {
+  for (const id of Object.keys(BUILDINGS)) {
+    if (!isRestored(id)) continue;
+    const b = BUILDINGS[id];
+    const have = denFlags()[bonusKey(id)] || 0;
+    WS.set(REGION, bonusKey(id), Math.min(b.cap, have + 1));
+  }
+}
+
+// Every pending collection, all at once — what arriving home pays. Returns a
+// summary {shards, xp, materials:{id:n}} for the "while you were away" toast.
+export function collectAll() {
+  const out = { shards: 0, xp: 0, materials: {}, any: false };
+  for (const id of Object.keys(BUILDINGS)) {
+    const r = collect(id);
+    if (!r || !r.count) continue;
+    out.any = true;
+    if (r.payout.kind === 'shards') out.shards += r.amount;
+    else if (r.payout.kind === 'xp') out.xp += r.amount;
+    else out.materials[r.payout.id] = (out.materials[r.payout.id] || 0) + r.amount;
+  }
+  return out;
 }
 
 // The baseline is set LAZILY, the first time anything asks — restore() only
@@ -152,7 +195,8 @@ export function pendingCollections(id) {
   if (!since) return 0;
   const collected = denFlags()[collectedKey(id)] || 0;
   const total = totalIntervals(id, since);
-  return Math.max(0, Math.min(b.cap, total - collected));
+  const bonus = denFlags()[bonusKey(id)] || 0;
+  return Math.max(0, Math.min(b.cap, Math.max(0, total - collected) + bonus));
 }
 
 // Dispenses whatever is pending and advances the forward ratchet by exactly
@@ -168,14 +212,16 @@ export function collect(id) {
   if (!since) return null;
   const collected = denFlags()[collectedKey(id)] || 0;
   const total = totalIntervals(id, since);
-  const n = Math.max(0, Math.min(b.cap, total - collected));
+  const bonus = denFlags()[bonusKey(id)] || 0;
+  const n = Math.max(0, Math.min(b.cap, Math.max(0, total - collected) + bonus));
   if (n <= 0) return { count: 0, amount: 0, payout: b.payout };
+  if (bonus) WS.set(REGION, bonusKey(id), 0);
   // Ratchet all the way up to `total`, not merely `collected + n` — see the
   // module header for why the difference is load-bearing: anything beyond
   // the cap is forfeited HERE, at collection time, rather than left as
   // free-standing debt a second immediate call could cash in again.
   WS.set(REGION, collectedKey(id), total);
-  const amount = n * b.amount;
+  const amount = n * amountFor(id);
   if (b.payout.kind === 'material') addMaterial(b.payout.id, amount);
   else if (b.payout.kind === 'shards') { state.shards += amount; bumpCounter('shardsEarned', amount); }
   else if (b.payout.kind === 'xp') grantXp(amount);

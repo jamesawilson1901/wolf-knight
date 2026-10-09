@@ -31,6 +31,14 @@ function paint(ctx, id) {
     ctx.beginPath(); ctx.ellipse(48, 33, 9, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = 'rgba(120,80,40,.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(48, 33, 4, 6, 0, 0, Math.PI * 2); ctx.stroke();
+  } else if (id === 'bridge') {
+    // a little plank bridge, side on: two posts and a deck (the map's mark for
+    // a fallen bridge — js/mapdata.js)
+    ctx.fillStyle = '#9a6a3e';
+    ctx.beginPath(); ctx.roundRect(6, 30, 52, 10, 3); ctx.fill(); ctx.stroke();
+    for (const x of [10, 50]) { ctx.beginPath(); ctx.roundRect(x - 3, 18, 7, 30, 2); ctx.fill(); ctx.stroke(); }
+    ctx.strokeStyle = '#e8c890'; ctx.lineWidth = 2;
+    for (const x of [19, 28, 37, 46]) { ctx.beginPath(); ctx.moveTo(x, 31); ctx.lineTo(x, 39); ctx.stroke(); }
   } else if (id === 'ore') {
     poly([[10, 44], [16, 22], [32, 12], [50, 20], [56, 42], [40, 54], [20, 54]]);
     ctx.fillStyle = '#e9e2d4';

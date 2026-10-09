@@ -260,6 +260,70 @@ confirmed by eye: correct scale, no floating or overlapping geometry, the
 Monument's flame reads lit in real game lighting, before calling this
 shippable.
 
+## v3.200 — the camp is worth coming home to (SHIPPED)
+
+Dad: "There still isn't a real incentive to learn to build and craft." Parts
+2 and 3 of the five he picked; the bridges, the charms and the pictures are
+design/CRAFTING.md §5.
+
+**The Forge (`js/forge.js`).**
+- **Where it happens.** Walking up to the restored Forge opens the backpack
+  on a Forge tab. That tab exists only there, so the upgrades happen at the
+  camp, which is the reason to go home.
+- **What can be forged.** The weapon, shield and armour Kael wears, each up
+  three steps.
+- **What each step costs:**
+  - 2 ingot + 3 ore;
+  - then 3 ingot + 3 ore + 1 crystal;
+  - then 4 ingot + 2 crystal.
+
+  Ingots come from the Forge's own payout; crystals from the bridge chests.
+- **What each step does.** A weapon hits +12%. A shield lets 0.1 less through
+  and gains +0.03 parry window. Armour soaks +0.1, capped at 1.5, the "a hit
+  must always cost something" ceiling.
+  - Applied in `js/items.js` `forgedDef()` to a copy, so every reader of a
+    stat sees it and the shipped tables (verify-gear's balance rules) never
+    change.
+- **And you can see it.**
+  - ★ the blade glows in its element's colour;
+  - ★★ it sheds sparks as Kael moves;
+  - ★★★ every swing fans a trail of light.
+  - Stars show in the Gear rack.
+
+**Each building changes the town:**
+- **Tavern:** the travellers know where the bridges fell. Every unbuilt
+  bridge in a room the map shows gets a little bridge mark, gold-ringed
+  "now!" when its dots are full. Pip says so the first time.
+- **Forge:** opens the Forge tab (above).
+- **Mill:** feeds the pups, which grow (scale 0.16 to 0.22), and the pen pays
+  twice the XP.
+- **Monument** (all three standing): every rock and tree spills one more
+  piece.
+- **Boards:** each ruined building has the bridges' picture-and-dots board
+  over it until it stands.
+
+**While you were away.** Twenty minutes is longer than many of a five-year-
+old's sessions.
+- **A collection per adventure.** Coming home after walking three or more
+  other rooms adds one collection to every restored building (still capped).
+- **Paid on arrival.** Arriving at the Den or the Outer Camp collects
+  everything waiting, with one "While you were away: …" toast and a Pip line.
+- **The clock, not undone.** The forward-ratchet clock law above is
+  untouched; the bonus is its own count (`bld_<id>_bonus`), cleared when
+  collected.
+
+**Verified.** `tools/verify-forge.mjs` (new; proven red against v3.199 first)
+checks:
+- the price list and the three-step gate;
+- the forged stats through `weaponDef()`/`shieldDef()`/`armourDef()`, and
+  the shipped tables unchanged;
+- the glow and the trail;
+- no Forge tab anywhere but the Forge, and walking up to it opens it;
+- the Forge button through the real DOM;
+- the boards, the Tavern's map marks (and none before it), the Mill and the
+  Monument's extra piece;
+- coming home after three rooms pays, and popping straight back does not.
+
 ## Still to design
 
 - **A bigger, multi-district Den town.** This slice is deliberately ONE
