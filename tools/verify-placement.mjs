@@ -46,8 +46,12 @@ await wk.page.reload({ waitUntil: 'load' });
 await wk.page.waitForSelector('#title', { state: 'visible', timeout: 30000 });
 await wk.newGame('PLACEMENT');
 await wk.page.evaluate(() => setInterval(() => { const n = window.__game.narration; if (n && n.speaking) n.skip(); }, 80));
+const VERBOSE = process.argv.includes('-v');
 const ONLY = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-const rooms = ONLY.length ? ONLY : await allRooms(wk.page);
+// a retired id (e2, w3...) is only an alias for the room that replaced it,
+// which is in the list under its own name — walk each real room once
+const rooms = ONLY.length ? ONLY : await wk.page.evaluate((ids) =>
+  ids.filter((id) => window.__game.resolveRoom(id) === id), await allRooms(wk.page));
 const ALL = ['knight', 'dark_wolf', 'fire_wolf', 'earth_wolf', 'verdant_wolf', 'frost_wolf', 'storm_wolf', 'tide_wolf', 'ghost_wolf'];
 
 const results = [];
@@ -62,34 +66,53 @@ for (const room of rooms) {
     } catch { /* retry */ }
   }
   if (!ok) { results.push({ room, error: 'never arrived' }); continue; }
-  const r = await wk.page.evaluate(({ PEN, ALLOWED, room }) => {
+  const r = await wk.page.evaluate(({ PEN, ALLOWED, room, VERBOSE }) => {
     const w = window.__game.world, P = window.__game.player;
     // enemies move; pots and crates (Breakables, `scenery`) are placed, and stay
     const movers = new Set([P.root, ...(w.enemies || []).filter((e) => !e.scenery).map((e) => e.root)].filter(Boolean));
     for (const p of (w.pups || [])) if (p.root) movers.add(p.root);
+    for (const c of [window.__game.pip, window.__game.dragon]) if (c && c.root) movers.add(c.root);   // companions follow
+    const moving = (m) => { for (let a = m; a && a !== w.root; a = a.parent) if (movers.has(a)) return true; return false; };
     const keep = w._keepLoose;
     w._keepLoose = [];                       // measure the loose things too
     let props;
     try { props = w.propFootprints(); } finally { w._keepLoose = keep; }
     props = props.filter((p) => {
       const m = p.model;
-      if (!m || movers.has(m) || m.isSprite || m.isLight) return false;
+      if (!m || moving(m) || m.isSprite || m.isLight) return false;
       let skip = false;
       m.traverse((n) => { if (n.userData && (n.userData.pitArt || n.userData.fx)) skip = true; if (n.isSprite) skip = true; });
-      return !skip;
+      // LIGHT IS NOT A THING. A shaft of light over a shrine, a glow on the
+      // floor: every surface see-through, so nothing can be seen to stand in it.
+      let solid = false;
+      m.traverse((n) => { if (!n.isMesh || !n.visible) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        if (mats.some((q) => q && !(q.transparent && (q.opacity < 0.95 || !q.depthWrite || q.blending === 2)))) solid = true; });
+      return !skip && solid;
     });
     // say WHAT each thing is, so a report can be acted on
     const label = (m) => {
-      const node = (w.nodes || []).find((n) => n.root === m);
-      if (node) return 'node:' + node.kind + '@' + node.x + ',' + node.z;
-      if ((w.chests || []).some((c) => c.mesh === m)) return 'chest';
-      const e = (w.enemies || []).find((k) => k.root === m);
-      if (e) return (e.constructor.name || 'enemy') + (e.kind ? ':' + e.kind : '');
+      // a model usually sits a group or two in from the thing that owns it
+      for (let a = m; a && a !== w.root; a = a.parent) {
+        const node = (w.nodes || []).find((n) => n.root === a);
+        if (node) return 'node:' + node.kind + '@' + node.x + ',' + node.z;
+        if ((w.chests || []).some((c) => c.mesh === a)) return 'chest';
+        const e = (w.enemies || []).find((k) => k.root === a);
+        if (e) return (e.constructor.name || 'enemy') + (e.kind ? ':' + e.kind : '');
+      }
       let nm = m.name;
       if (!nm || nm === 'Scene') m.traverse((n) => { if (!nm && n.name && n.name !== 'Scene') nm = n.name; });
       return nm || m.type;
     };
     for (const p of props) p.label = label(p.model);
+    // A chest is a skinned model, and three.js measures a skinned mesh in its
+    // bind pose — the box can sit a body-length off the chest you see. Measure
+    // a chest where the game put it, at the size it is drawn.
+    for (const p of props) {
+      let c = null;
+      for (let a = p.model; a && a !== w.root && !c; a = a.parent) c = (w.chests || []).find((k) => k.mesh === a);
+      if (c) { p.x = c.x; p.z = c.z; p.hx = p.hz = 0.45; p.r = 0.55; }
+    }
     const hits = [];
     for (let i = 0; i < props.length; i++) {
       for (let j = i + 1; j < props.length; j++) {
@@ -100,8 +123,12 @@ for (const room of rooms) {
         if (pen <= PEN) continue;
         const x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
         if (ALLOWED.some((k) => k.room === room && Math.hypot(k.x - x, k.z - z) <= k.r)) continue;
+        const info = (p) => {
+          const chain = []; for (let n = p.model; n && n !== w.root && chain.length < 4; n = n.parent) chain.push(n.name || n.type);
+          return { at: [+p.x.toFixed(2), +p.z.toFixed(2)], size: [+(2 * p.hx).toFixed(2), +(2 * p.hz).toFixed(2), +p.h.toFixed(2)], chain: chain.join('<') };
+        };
         hits.push({ x: +x.toFixed(1), z: +z.toFixed(1), pen: +pen.toFixed(2),
-          a: a.label, b: b.label });
+          a: a.label, b: b.label, ...(VERBOSE ? { A: info(a), B: info(b) } : {}) });
       }
     }
     // IN A PIT: any footprint point that is pit and not pier, bridge or safe
@@ -117,9 +144,10 @@ for (const room of rooms) {
       }
     }
     hits.sort((p, q) => q.pen - p.pen);
-    return { props: props.length, hits: hits.length, worst: hits.slice(0, 6), inPit: inPit.slice(0, 6), pitCount: inPit.length };
-  }, { PEN, ALLOWED, room });
+    return { props: props.length, hits: hits.length, all: VERBOSE ? hits : [], worst: hits.slice(0, 6), inPit: inPit.slice(0, 6), pitCount: inPit.length };
+  }, { PEN, ALLOWED, room, VERBOSE });
   results.push({ room, ...r });
+  if (VERBOSE) for (const h of r.all) console.log('     ', JSON.stringify(h));
   if (r.hits || r.pitCount) console.log(`   ${room.padEnd(6)} ${r.hits} overlap(s), ${r.pitCount} in a pit  ${JSON.stringify(r.worst.slice(0, 3))} ${JSON.stringify(r.inPit.slice(0, 2))}`);
 }
 

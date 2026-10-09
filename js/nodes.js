@@ -168,7 +168,7 @@ const T = (x, z, tint) => ({ kind: 'tree', x, z, tint });
 const WOODS = 0x6fae4a, FROST = 0x9be3ff, STORM = 0xc9d4ff, VALE = 0x3fb0c4, COURT = 0xe8e4ff;
 export const EXTRA_NODES = {
   lv2: [R(-13, 6)], ld: [R(-12, -3)], lk2: [R(-10, 1)],
-  vh: [R(-15, -4), R(-14, 6)], vc1: [R(-12.3, 4)],
+  vh: [R(-15, -4), R(-14, 3.5)], vc1: [R(-12.3, 4)],
   tf2: [T(-13, 6, WOODS), T(-12, -8, WOODS)], t4b: [T(-12, 9, WOODS), R(-11, -5, WOODS)],
   f4: [T(-13, 9, FROST), R(-13, -3, FROST)], f1c: [T(-6, 3, FROST)],
   s1b: [R(-12, 5, STORM), T(-13, -5, STORM)], svn: [T(-13, 1, STORM), R(-12, 6, STORM)],

@@ -133,6 +133,19 @@ than by the number whoever wrote the line happened to pick:
   shoved into the room; and every enemy spawn spot (`...Spots` minus the
   prop-naming ones) and every `markers.breakables` pot is a BODY — clutter
   is pushed off it, nothing is pushed onto it.
+  - Since 2026-10-10 chests (`chestDefs`) and claimed ground
+    (`claimRoomRect`) are bodies too, and a POT'S SPOT GIVES WAY: a pot that
+    would be born inside something fixed (an arch, a column) has its spot
+    moved round it, or the room has one pot fewer.
+  - **The late pass**: `World.wallsYield()`, last thing in main.js
+    `setupRoomExtras`, steps shell blocks back from what was stood against
+    them after the build — boss-gate pillars, and the space a gate's leaves
+    swing into (`world._yieldTo`, from levelkit `bossGate`).
+  - **The as-played gate**: tools/verify-placement.mjs walks into every room
+    through `__wkJump` (every late spawner: chests, pots, nodes, islands,
+    shrines, settlers) and fails on any overlap or anything standing in a
+    pit. verify-interpenetration only ever saw buildRoom's output. Light is
+    not a thing: see-through meshes and `userData.fx` are left out.
 * **A dark zone's veil lies ON the ground.** The darkness itself is the light
   rig (main.js dims it when the child stands in the zone); the quad is only the
   hint, and at head height it read as a grey square hanging in mid-air.

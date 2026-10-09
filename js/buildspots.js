@@ -66,7 +66,7 @@ export const BUILD_SPOTS = {
   t2a: spot({ id: 'woods', room: 't2a', region: 'wildwoods', x: -11.5, z: -8.5, look: 'wood',
     cost: { wood: 8 },
     loot: { shards: 35, materials: { crystal: 2 }, recipe: 'root_charm' } }),
-  f3: spot({ id: 'frost', room: 'f3', region: 'frostpeak', x: 8.9, z: -7.6, look: 'wood',
+  f3: spot({ id: 'frost', room: 'f3', region: 'frostpeak', x: 8.1, z: -7.6, look: 'wood',
     cost: { wood: 8, ore: 4 },
     loot: { shards: 40, materials: { crystal: 3 }, recipe: 'sword_ultimate' } }),
   s2b: spot({ id: 'storm', room: 's2b', region: 'stormreach', x: -11.5, z: 1, look: 'wood',

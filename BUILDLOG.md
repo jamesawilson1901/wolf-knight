@@ -6226,3 +6226,37 @@ Also on v3.199 before this, from verify-density:
 - the node claims shrank to 0.9u;
 - Stormreach's two new nodes moved from `s3b` to `s1b`, because `s3b`'s
   arrival frame had fallen two props under its floor of 32.
+
+## One pit, and nothing stands in anything (2026-10-10, v3.200.1)
+
+Dad, on the review shots: "Those pitfalls look absolutely terrible. It needs
+to look like one pit not four of the same assets pieced together. They also
+have items overlapping in them... there are items in some of those
+screenshots that intersect and go through others."
+
+- **The island is one pit and a pier.** The drop was four strips dug round
+  the island. It is now one 6.4u pit with the island standing in it as a
+  pier (the Spire's `world._pitPiers`), its top in the room's own floor.
+- **Why the rules missed it.** verify-interpenetration measured what
+  buildRoom made. Everything main.js adds afterwards was never in the room
+  it measured: chests, pots, nodes, islands, shrines, settlers. New
+  **tools/verify-placement.mjs** walks into every room the way a child does
+  and measures everything standing there, for overlaps and for anything in a
+  pit. Its first sweep: 33 rooms with overlaps, seven with something in a
+  pit.
+- **What was wrong, and the fix for each:**
+  - pots were born inside fixed props → a pot's spot now gives way
+    (separateProps), and its body radius matches the drawn pot (0.68, not
+    0.45);
+  - chests stood in a boat (q2), a pedestal (m3) and a column (lv3) → chest
+    spots are bodies, and those three chests moved;
+  - clutter stood on an island's claimed ground (la) → claims are bodies;
+  - shell blocks poked through boss-gate pillars and opened leaves (f4,
+    lg4, ld, vh, f5, f1d) → `World.wallsYield()` runs last in
+    setupRoomExtras;
+  - a rock overhung the Frostpeak drop → the f3 island moved 0.8u west;
+  - a crate leaned on f1c's lost wolf, and vh's new rock sat in a wall
+    detail → both moved.
+- **False alarms the new suite taught itself to ignore:** light (shrine
+  shafts and doorway fans are see-through), a chest's skinned bind-pose
+  bounds (measured where the game put it), Pip, and retired room aliases.

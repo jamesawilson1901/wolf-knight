@@ -1457,6 +1457,21 @@ export function bossGate(world, x, z, facing, gltf, tint, opts = {}) {
   let shut = !open0;
   if (shut) world.boxColliders.push(blocker);
 
+  // WHERE THE LEAVES WILL REST, wide open — measured by swinging them there
+  // for a moment. The shell's cliff blocks behind the gate step back out of
+  // that space (World.wallsYield), or an opened leaf is drawn through the
+  // cliff beside it (verify-placement, f4/lg4, 2026-10-10).
+  {
+    for (const l of leaves) l.hinge.rotation.y = -l.side * 1.95;
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const l of leaves) {
+      box.setFromObject(l.hinge);
+      (world._yieldTo || (world._yieldTo = [])).push({ minX: box.min.x, maxX: box.max.x,
+        minZ: box.min.z, maxZ: box.max.z });
+    }
+    for (const l of leaves) l.hinge.rotation.y = 0;
+  }
   let swing = open0 ? 1 : 0;                        // 0 shut, 1 wide
   world.onAnimate((t, dt) => {
     if (!shut && swing < 1) swing = Math.min(1, swing + dt * 0.9);
@@ -1557,6 +1572,7 @@ export function thresholdGlow(world) {
   mesh.position.y = (world.deckY || 0) + 0.03;   // above the ground, below decals
   mesh.renderOrder = 2;
   mesh.name = 'thresholdGlow';
+  mesh.userData.fx = true;                        // light, not a thing that stands
   world.add(mesh);
   world.keepLoose(mesh);
   return mesh;

@@ -2244,6 +2244,17 @@ async function setupRoomExtras() {
   // spawnDenNpcs alongside the other villagers (js/npcs.js) — spawnWayfarer
   // refuses a second one, so it does not matter which of the two runs first.
   await spawnWayfarer(world, wayfarerPost(world.roomId));
+  // ...and LAST of all, the shell's cliff blocks step back from whatever was
+  // stood against them after the room was built (World.wallsYield) — a boss
+  // gate's pillars, a shrine. Things that walk are not placements.
+  {
+    const movers = new Set([player.root, ...(world.enemies || []).filter((e) => !e.scenery).map((e) => e.root),
+      ...(world.pups || []).map((p) => p.root), pip && pip.root, dragon && dragon.root].filter(Boolean));
+    world.wallsYield((m) => {
+      for (let a = m; a && a !== world.root; a = a.parent) if (movers.has(a)) return true;
+      return false;
+    });
+  }
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   gardenWasNear = true;

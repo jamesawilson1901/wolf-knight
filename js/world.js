@@ -80,6 +80,31 @@ function pushOutOfBox(x, z, r, b) {
   return { x, z: b.maxZ + r };
 }
 
+// ONE COPY OF AN INSTANCED BATCH. The matrix that places copy `i` lives in the
+// mesh's own space, so the step is taken in world space and converted back
+// through the mesh's inverse.
+function shiftInstanceCopy(owner, inst, dx, dz) {
+  const T = new THREE.Matrix4().makeTranslation(dx, 0, dz);
+  owner.traverse((n) => {
+    if (!n.isInstancedMesh || inst >= n.count) return;
+    const local = new THREE.Matrix4();
+    n.getMatrixAt(inst, local);
+    const world = new THREE.Matrix4().multiplyMatrices(n.matrixWorld, local);
+    const inv = new THREE.Matrix4().copy(n.matrixWorld).invert();
+    n.setMatrixAt(inst, inv.multiply(T.clone().multiply(world)));
+    n.instanceMatrix.needsUpdate = true;
+    n.computeBoundingSphere();   // or the batch culls at its old extent
+  });
+}
+function hideInstanceCopy(owner, inst) {
+  owner.traverse((n) => {
+    if (!n.isInstancedMesh || inst >= n.count) return;
+    n.setMatrixAt(inst, new THREE.Matrix4().makeScale(0, 0, 0));
+    n.instanceMatrix.needsUpdate = true;
+    n.computeBoundingSphere();
+  });
+}
+
 export class World {
   constructor(scene) {
     this.scene = scene;
@@ -476,6 +501,94 @@ export class World {
     return props;
   }
 
+  // ONE CLIFF BLOCK STEPS BACK OUT OF THE ROOM, clear of what it stood in
+  // (`o`) and of everything else drawn — or, with the wall already behind it,
+  // is hidden the way one instance is hidden. Shared by separateProps (the
+  // room as built) and wallsYield (what came after it).
+  _stepWallBack(w, o, pen, props, PEN, pad = 0) {
+    const clearAt = (x, z) => !props.some((q) => q !== w && !q.gone
+      && Math.hypot(q.x - x, q.z - z) < q.r + w.r - PEN);
+    // every wall box it stands in offers one outward direction (a corner
+    // block stands in two); the smallest step that is clear wins
+    for (const box of this.boxColliders) {
+      if (!(w.x > box.minX - pad && w.x < box.maxX + pad && w.z > box.minZ - pad && w.z < box.maxZ + pad)) continue;
+      const alongX = (box.maxX - box.minX) < (box.maxZ - box.minZ);
+      const c = alongX ? (box.minX + box.maxX) / 2 : (box.minZ + box.maxZ) / 2;
+      const away = Math.abs(c) > 0.5 ? Math.sign(c)
+        : Math.sign(alongX ? (w.x - o.x) : (w.z - o.z)) || 1;
+      for (let st = pen + 0.04; st <= 1.45; st += 0.1) {
+        const nx = w.x + (alongX ? away * st : 0), nz = w.z + (alongX ? 0 : away * st);
+        if (!clearAt(nx, nz)) continue;
+        shiftInstanceCopy(w.owner, w.inst, nx - w.x, nz - w.z);
+        const entry = { from: [+w.x.toFixed(1), +w.z.toFixed(1)],
+          to: [+nx.toFixed(1), +nz.toFixed(1)], pen: +pen.toFixed(2), wall: true };
+        w.x = nx; w.z = nz;
+        return { wall: 'moved', entry };
+      }
+    }
+    hideInstanceCopy(w.owner, w.inst);
+    w.gone = true;
+    return { wall: 'hidden', entry: { x: +w.x.toFixed(1), z: +w.z.toFixed(1), pen: +pen.toFixed(2), wall: true } };
+  }
+
+  // THE WALL GIVES WAY TO WHAT CAME LATE (2026-10-10). separateProps runs
+  // when the room is built; a boss gate's pillars, a shrine, a chest or a
+  // settler's hut are stood in it afterwards (keepLoose, or main.js's
+  // setupRoomExtras), and a cliff block of the shell was left poking through
+  // the gate frame it should frame. Dad: "items that intersect and go through
+  // others making it look poorly placed". Only wall blocks move here, and
+  // only backwards out of the room — nothing a child can reach changes.
+  wallsYield(skip = () => false) {
+    const keep = this._keepLoose;
+    this._keepLoose = [];
+    let props;
+    try { props = this.propFootprints(); } finally { this._keepLoose = keep; }
+    const see = (m) => {
+      if (!m || skip(m) || m.isSprite || m.isLight) return false;
+      if (m.name === 'batched' || m.name === 'ground') return false;
+      let fx = false, solid = false;
+      m.traverse((n) => {
+        if (n.userData && (n.userData.fx || n.userData.pitArt)) fx = true;
+        if (!n.isMesh || !n.visible) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        if (mats.some((q) => q && !(q.transparent && (q.opacity < 0.95 || !q.depthWrite
+          || q.blending === THREE.AdditiveBlending)))) solid = true;
+      });
+      return !fx && solid;
+    };
+    props = props.filter((p) => see(p.model));
+    // space promised to something that moves later — a boss gate's leaves,
+    // wide open (levelkit bossGate) — laid out as bodies in half-metre steps
+    for (const q of this._yieldTo || []) {
+      for (let x = q.minX + 0.25; x <= q.maxX - 0.25 + 1e-6; x += 0.5) {
+        for (let z = q.minZ + 0.25; z <= q.maxZ - 0.25 + 1e-6; z += 0.5) {
+          props.push({ body: true, x, z, r: 0.3, hx: 0.3, hz: 0.3, h: 3, area: 0.25, comp: q });
+        }
+      }
+    }
+    const PEN = 0.12;
+    // A shell block is laid centred ON the wall collider's outer edge (f4's
+    // north wall: blocks at z -13.5, the box -13.5..-12.5), so "inside the
+    // wall" has to mean on it or just past it, not strictly within.
+    const PAD = 0.55;
+    const inWall = (p) => this.boxColliders.some((b) => p.x > b.minX - PAD && p.x < b.maxX + PAD
+      && p.z > b.minZ - PAD && p.z < b.maxZ + PAD);
+    const wallPiece = (q) => q.inst !== undefined && q.inst !== false && q.h > 1.2 && inWall(q);
+    let n = 0;
+    for (const w of props) {
+      if (w.gone || !wallPiece(w)) continue;
+      for (const o of props) {
+        if (o === w || o.gone || o.comp === w.comp || wallPiece(o)) continue;
+        const pen = (w.r + o.r) - Math.hypot(w.x - o.x, w.z - o.z);
+        if (pen <= PEN) continue;
+        this._stepWallBack(w, o, pen, props, PEN, PAD);
+        n++;
+        if (w.gone) break;
+      }
+    }
+    return n;
+  }
+
   separateProps() {
     if (typeof window !== 'undefined' && window.__noSeparate) return null;
     const MOVABLE_HALF = 1.4;   // a barrel, a crate, a scattered fir — not a
@@ -498,13 +611,19 @@ export class World {
     // after the build (main.js spawnBreakables), and a crate whose spot sits
     // inside a scattered rock is the same bug as a minion inside a drum
     // (verify-decor-overlap, xc3, 2026-09-18).
-    const isBodyKey = (k) => (/Spots$/.test(k) && !NOT_BODY.test(k)) || k === 'breakables';
+    // ...and so is a CHEST: spawned later from `chestDefs`, a rock or a
+    // boat on its spot is in its way, not the thing the spot names (q2's
+    // frost-axe chest was found inside a beached boat, 2026-10-10).
+    const isBodyKey = (k) => (/Spots$/.test(k) && !NOT_BODY.test(k)) || k === 'breakables' || k === 'chestDefs';
     for (const [key, v] of Object.entries(this.markers || {})) {
       if (!isBodyKey(key) || !v) continue;
       for (const e of Array.isArray(v) ? v : [v]) {
         if (!e || typeof e.x !== 'number' || typeof e.z !== 'number') continue;
-        props.push({ body: true, x: e.x, z: e.z, r: 0.45, hx: 0.45, hz: 0.45, h: 1,
-          area: 0.8, comp: {} });
+        // a pot is drawn bigger than a minion stands: a barrel measures 1.6
+        // across, a crate 1.8 (propFootprints' r of 0.62 and 0.69)
+        const pr = key === 'breakables' ? 0.68 : key === 'chestDefs' ? 0.6 : 0.45;
+        props.push({ body: true, x: e.x, z: e.z, r: pr, hx: pr, hz: pr, h: 1,
+          area: 0.8, comp: {}, pot: key === 'breakables' ? e : null });
       }
     }
     // GROUND CLAIMED FOR LATER (claimRoomRect: a broken-bridge island, an
@@ -620,30 +739,13 @@ export class World {
     };
 
     const moved = [], dropped = [], kept = [];
-    // ONE COPY OF AN INSTANCED BATCH. The matrix that places copy `i` lives in
-    // the mesh's own space, so the step is taken in world space and converted
-    // back through the mesh's inverse — the same arithmetic as the parented
-    // case below, spelled out because there is no Object3D to hang it on.
-    const shiftInstance = (p, dx, dz) => {
-      const T = new THREE.Matrix4().makeTranslation(dx, 0, dz);
-      p.owner.traverse((n) => {
-        if (!n.isInstancedMesh || p.inst >= n.count) return;
-        const local = new THREE.Matrix4();
-        n.getMatrixAt(p.inst, local);
-        const world = new THREE.Matrix4().multiplyMatrices(n.matrixWorld, local);
-        const inv = new THREE.Matrix4().copy(n.matrixWorld).invert();
-        n.setMatrixAt(p.inst, inv.multiply(T.clone().multiply(world)));
-        n.instanceMatrix.needsUpdate = true;
-        n.computeBoundingSphere();   // or the batch culls at its old extent
-      });
-    };
     // MOVE BY A DELTA, NEVER TO A COORDINATE. What was measured is the prop's
     // BOUNDING BOX centre; what can be set is its origin, and place()'s own
     // comment records that the two are routinely different ("Vase.glb sits
     // 1.09u away from its pivot in Z"). Setting position.x = x would drop a
     // vase a metre from where the arithmetic said it was going.
     const shiftGeometry = (p, dx, dz) => {
-      if (p.inst !== undefined && p.inst !== false) { shiftInstance(p, dx, dz); return; }
+      if (p.inst !== undefined && p.inst !== false) { shiftInstanceCopy(p.owner, p.inst, dx, dz); return; }
       const parent = p.model.parent;
       if (parent && parent !== this.root) {
         // the prop may live inside a group the dressing turned or scaled, so
@@ -722,49 +824,51 @@ export class World {
         const wallPiece = (q) => q.inst !== undefined && q.inst !== false && inWall(q);
         if (wallPiece(a) || wallPiece(b)) {
           const w = wallPiece(a) ? a : b, o = w === a ? b : a;
-          // clear of everything drawn, not just the prop it was inside: a wall
-          // two blocks thick has another row right behind this one
-          const clearAt = (x, z) => !props.some((q) => q !== w && !q.gone
-            && Math.hypot(q.x - x, q.z - z) < q.r + w.r - PEN);
-          let done = false;
-          // every wall box it stands in offers one outward direction (a corner
-          // block stands in two); the smallest step that is clear wins
-          for (const box of this.boxColliders) {
-            if (done) break;
-            if (!(w.x > box.minX && w.x < box.maxX && w.z > box.minZ && w.z < box.maxZ)) continue;
-            const alongX = (box.maxX - box.minX) < (box.maxZ - box.minZ);
-            const c = alongX ? (box.minX + box.maxX) / 2 : (box.minZ + box.maxZ) / 2;
-            const away = Math.abs(c) > 0.5 ? Math.sign(c)
-              : Math.sign(alongX ? (w.x - o.x) : (w.z - o.z)) || 1;
-            for (let st = pen + 0.04; st <= 1.45 && !done; st += 0.1) {
-              const nx = w.x + (alongX ? away * st : 0), nz = w.z + (alongX ? 0 : away * st);
-              if (!clearAt(nx, nz)) continue;
-              const dx = nx - w.x, dz = nz - w.z;
-              shiftGeometry(w, dx, dz);
-              moved.push({ from: [+w.x.toFixed(1), +w.z.toFixed(1)],
-                to: [+nx.toFixed(1), +nz.toFixed(1)], pen: +pen.toFixed(2), wall: true });
-              w.x = nx; w.z = nz;
-              done = true;
-            }
-          }
-          if (!done) {
-            // no clear step back: the wall behind it is already there, so this
-            // block is the one covered — hidden the way one instance is hidden
-            w.owner.traverse((n) => {
-              if (!n.isInstancedMesh || w.inst >= n.count) return;
-              n.setMatrixAt(w.inst, new THREE.Matrix4().makeScale(0, 0, 0));
-              n.instanceMatrix.needsUpdate = true;
-              n.computeBoundingSphere();
-            });
-            w.gone = true;
-            dropped.push({ x: +w.x.toFixed(1), z: +w.z.toFixed(1), pen: +pen.toFixed(2), wall: true });
-            if (w === a) break;
-          }
+          const r = this._stepWallBack(w, o, pen, props, PEN);
+          if (r.wall === 'moved') moved.push(r.entry); else dropped.push(r.entry);
+          if (w.gone && w === a) break;
           continue;
         }
         // move the smaller of the two, and only if it is clutter
         const [big, small] = a.area >= b.area ? [a, b] : [b, a];
         const p = movable(small) ? small : (movable(big) ? big : null);
+        // A POT'S SPOT GIVES WAY. A breakable is only a coordinate at this
+        // point — nothing is drawn there yet — and when its spot lands inside
+        // something that may not move (an arch, a column, a landmark tree) the
+        // pot used to be born inside it (Dad, 2026-10-10: "items that intersect
+        // and go through others"). The spot is moved instead, a little way
+        // round the thing it hit; with nowhere clear, the room has one pot fewer.
+        // (it gives way to a body too — a minion's spot, ground claimed for a
+        // rock or a bridge — but never to another pot, which would only swap them)
+        const pot = !p && (a.pot && !b.pot ? a : (b.pot && !a.pot ? b : null));
+        if (pot) {
+          const other = pot === a ? b : a;
+          let ang = Math.atan2(pot.z - other.z, pot.x - other.x);
+          if (!isFinite(ang)) ang = 0;
+          let ok = false;
+          for (let step = 0; step < 10 && !ok; step++) {
+            const need = other.r + pot.r + 0.08 + step * 0.2;
+            for (let k = 0; k < 12 && !ok; k++) {
+              const t = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.52;
+              const nx = other.x + Math.cos(t) * need, nz = other.z + Math.sin(t) * need;
+              if (Math.hypot(nx - pot.x, nz - pot.z) > 3.0) continue;
+              if (!freeAt(pot, nx, nz)) continue;
+              moved.push({ from: [+pot.x.toFixed(1), +pot.z.toFixed(1)], to: [+nx.toFixed(1), +nz.toFixed(1)],
+                pen: +pen.toFixed(2), pot: true });
+              pot.x = pot.pot.x = nx; pot.z = pot.pot.z = nz;
+              ok = true;
+            }
+          }
+          if (!ok) {
+            const list = this.markers.breakables;
+            const k = Array.isArray(list) ? list.indexOf(pot.pot) : -1;
+            if (k >= 0) list.splice(k, 1);
+            pot.gone = true;
+            dropped.push({ x: +pot.x.toFixed(1), z: +pot.z.toFixed(1), pen: +pen.toFixed(2), pot: true });
+            if (pot === a) break;
+          }
+          continue;
+        }
         if (!p) {
           // WHY neither may move, per prop — so a pair that is left standing
           // says which rule held it (size, marker, wall, hero, gameplay)
@@ -937,7 +1041,8 @@ export class World {
     }
 
     this._separated = { moved: moved.length, dropped: dropped.length,
-      kept: kept.length, keptAt: kept, reverted };
+      kept: kept.length, keptAt: kept, reverted,
+      pots: moved.filter((m) => m.pot).length + dropped.filter((m) => m.pot).length };
     if (kept.length && typeof console !== 'undefined') {
       console.warn(`[interpenetration] ${this.roomId || '?'}: ${kept.length} pair(s) `
         + 'too big to move automatically — ' + kept.slice(0, 6)

@@ -253,8 +253,13 @@ gathered:
 **Broken bridges (`js/buildspots.js`).** One per region, in a room on the
 main path: `la`, `vc1`, `t2a`, `f3`, `s2b`, `d2a`, `xm2`.
 
-- **Shape.** A chest sits on a 2.8u island inside a 1.8u drop. The drop is a
-  real pit, dug after the build by `js/levelkit.js` `latePit()`.
+- **Shape.** A chest sits on a 2.8u island inside a 1.8u drop. The drop is
+  ONE pit, 6.4u square, dug after the build by `js/levelkit.js` `latePit()`,
+  and the island is a pier standing up out of it (the Spire's own
+  construction: `world._pitPiers`) with the room's own floor carried onto
+  its top. The first cut dug four strips round the island; dad: "It needs
+  to look like one pit not four of the same assets pieced together"
+  (2026-10-10).
 - **Rails.** Colliders run along both rims, so no walk or double jump gets
   over. Colliders stop a body in the air (collisions are XZ only), and
   nobody falls in.
@@ -266,7 +271,10 @@ main path: `la`, `vc1`, `t2a`, `f3`, `s2b`, `d2a`, `xm2`.
   `build/<id>`). Its railings are colliders too, and a safe zone makes the
   pit under it floor.
 - **Ground.** The island claims its square through `claimRoomRect()` before
-  the room dresses, and a pot the room set down there is dropped.
+  the room dresses. `separateProps()` treats claimed ground as bodies, so
+  clutter standing there is pushed clear or removed, and a pot's spot gives
+  way. `tools/verify-placement.mjs` walks into all seven rooms and fails if
+  anything stands in the drop.
 - **Cost climbs with the tools a child can own.**
   - Ember and Stoneroot ask ore: the pickaxe is on Maren's first shelf.
   - The Wild Woods ask wood: the axe is on her second.
