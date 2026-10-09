@@ -357,6 +357,10 @@ export function makeBuilders({ kit, isGrey }) {
     const halfW = w / 2, halfD = d / 2;
     world.deckY = 0;
     const kit0 = K();
+    // remembered for anything that digs into this room later (latePit), so a
+    // hole made after the build wears the room's own stone and brick
+    world._district = D;
+    world._kit = kit0;
 
     // THE FLOOR. Until v3.36 this instanced Kenney's floor-tile.glb across the
     // rectangle under one district tint — one tile, one colour, every room,
@@ -1007,9 +1011,10 @@ function drawPits(world, kit0, D) {
 // and the pit art are never merged by flattenStatic (js/world.js skips them),
 // so the same redraw works once the room is standing. `D` falls back to the
 // colours the room's own pits were drawn in, then to the default stone.
-export function latePit(world, rects, D = null) {
+export function latePit(world, rects, D = null, piers = []) {
   for (const r of rects) world.pitZones.push({ ...r });
-  drawPits(world, null, D || (world._pitArt && world._pitArt.D) || {});
+  for (const p of piers) (world._pitPiers || (world._pitPiers = [])).push({ top: 0, ...p });
+  drawPits(world, world._kit || null, D || world._district || (world._pitArt && world._pitArt.D) || {});
 }
 
 // The room's ground plane, re-cut with every pit rectangle taken out of it.

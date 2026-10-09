@@ -111,13 +111,37 @@ export async function spawnBuildSpot(world) {
   if (!s) return;
   if (!tileGltf) tileGltf = await loadGLB('./assets/env/bridge-stone.glb');
   const { x: cx, z: cz } = s;
-  // the drop, as four strips round the island
-  latePit(world, [
-    { minX: cx - OUT, maxX: cx + OUT, minZ: cz - OUT, maxZ: cz - ISL },
-    { minX: cx - OUT, maxX: cx + OUT, minZ: cz + ISL, maxZ: cz + OUT },
-    { minX: cx - OUT, maxX: cx - ISL, minZ: cz - ISL, maxZ: cz + ISL },
-    { minX: cx + ISL, maxX: cx + OUT, minZ: cz - ISL, maxZ: cz + ISL },
-  ]);
+  // ONE DROP, AND THE ISLAND A PILLAR STANDING IN IT. Dad, on the first cut:
+  // "It needs to look like one pit not four of the same assets pieced
+  // together." It was four rectangles butted round the island, each drawn
+  // with its own walls, so the seams showed as walls inside the hole. Now it
+  // is the Moonlit Spire's own construction (js/levelSpire.js pad): one pit,
+  // and a pier — a block of floor still standing in it, with real stone sides
+  // falling away into the dark, drawn into the same single wall mesh.
+  latePit(world, [{ minX: cx - OUT, maxX: cx + OUT, minZ: cz - OUT, maxZ: cz + OUT }], null,
+    [{ minX: cx - ISL, maxX: cx + ISL, minZ: cz - ISL, maxZ: cz + ISL, top: 0 }]);
+  world.safeZones.push({ minX: cx - ISL, maxX: cx + ISL, minZ: cz - ISL, maxZ: cz + ISL });
+  // the pier's top is the room's own floor, carried over: the ground plane's
+  // own material and its own UV mapping, so the texture runs on unbroken
+  const g = world.root.children.find((c) => c.name === 'ground');
+  if (g && g.userData.plane) {
+    const W = g.userData.plane.w, H = g.userData.plane.h;
+    const x0 = cx - ISL - g.position.x, x1 = cx + ISL - g.position.x;
+    const ya = -(cz + ISL - g.position.z), yb = -(cz - ISL - g.position.z);
+    const geo = new THREE.BufferGeometry();
+    const P = [[x0, ya], [x1, ya], [x1, yb], [x0, yb]];
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(P.flatMap(([x, y]) => [x, y, 0]), 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(P.flatMap(([x, y]) => [x / W + 0.5, y / H + 0.5]), 2));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    const top = new THREE.Mesh(geo, g.material);
+    top.rotation.copy(g.rotation);
+    top.position.copy(g.position);
+    top.receiveShadow = true;
+    top.userData.pitArt = true;
+    world.add(top);
+    if (world.keepLoose) world.keepLoose(top);
+  }
   // the rails: outer rim all round, inner rim all round, each with the
   // bridge's mouth left open on the south (camera) side
   const box = (a, b, c, d) => { const r = { minX: a, maxX: b, minZ: c, maxZ: d }; world.boxColliders.push(r); return r; };
@@ -192,6 +216,7 @@ export async function spawnBuildSpot(world) {
     box(cx + h, cx + h + t, cz + i, cz + o + t);
     for (const tl of tiles) setSolid(tl, true);
     board.visible = false;
+    latePit(world, []);     // redraw the rim: no brick across the bridge's mouth now
     state.built = true;
     if (!quiet && world.onBuildDone) world.onBuildDone(s);
   };

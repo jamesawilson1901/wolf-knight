@@ -507,6 +507,18 @@ export class World {
           area: 0.8, comp: {} });
       }
     }
+    // GROUND CLAIMED FOR LATER (claimRoomRect: a broken-bridge island, an
+    // extra rock or tree — v3.199). Those are dug and planted after this pass,
+    // so their floor is laid out here as bodies too: clutter standing on it is
+    // pushed clear, or removed with nowhere to go, the same as off a minion's
+    // spot. (Dad, 2026-10-10: a pit had been dug under a stack of crates.)
+    for (const q of (ROOM_CLAIMS[this.roomId] || [])) {
+      for (let x = q.minX + 0.5; x <= q.maxX - 0.5 + 1e-6; x += 1.0) {
+        for (let z = q.minZ + 0.5; z <= q.maxZ - 0.5 + 1e-6; z += 1.0) {
+          props.push({ body: true, x, z, r: 0.7, hx: 0.7, hz: 0.7, h: 1, area: 1, comp: {} });
+        }
+      }
+    }
     // THE ROOM AS IT WAS, BEFORE ANY OF THIS RUNS. Every individual move below
     // only ever asks "is the spot I am about to stand on clear" — never "does
     // standing on it seal off somewhere else". Caught live in xa1: sixteen
