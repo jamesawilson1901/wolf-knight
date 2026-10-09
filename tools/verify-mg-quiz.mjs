@@ -55,6 +55,7 @@ const frames = (n) => page.evaluate(async (k) => {
 const REST = { x: -6, z: 0 };
 const restCalls = () => page.evaluate(async (p) => {
   const g = window.__game;
+  g.CONFIG.DIFFICULTY.GUIDE_IDLE_S = 1e9;   // see THINGS THAT WALK below
   const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
   g.player.root.position.set(p.x, 0, p.z);
   let last = null, still = 0;
@@ -65,10 +66,35 @@ const restCalls = () => page.evaluate(async (p) => {
     still = moved < 0.0005 ? still + 1 : 0;
     last = { x: c.x, y: c.y, z: c.z };
   }
+  // THINGS THAT WALK ARE HIDDEN WHILE IT COUNTS (2026-10-10, the known-fail's
+  // root cause at last). The "unidentified extra render pass ~15s in" was
+  // never a pass: it was CREATURES walking into the frame — Pip setting off to
+  // show the way after GUIDE_IDLE_S of no progress (seven paw prints and the
+  // fox: +4 calls), and a Den wolf strolling in at ~28s (+4 more). Measured by
+  // diffing the meshes drawn the frame before the step against the frame
+  // after. So the guide is held off for the run, and everything that was
+  // already alive in the room at the BASELINE (Pip, and any top-level thing
+  // with a skeleton) is hidden for the count, both times. Anything a game left
+  // behind was not in that set, so it is still counted — which is the leak
+  // this check exists to catch.
+  if (!window.__restMovers) {
+    const m = new Set([g.pip && g.pip.root].filter(Boolean));
+    for (const top of [...g.scene.children, ...g.world.root.children]) {
+      let skinned = false;
+      top.traverse((n) => { if (n.isSkinnedMesh) skinned = true; });
+      if (skinned && top !== g.player.root && top !== g.world.root) m.add(top);   // never the room itself
+    }
+    window.__restMovers = m;
+  }
+  const hid = [];
+  for (const o of window.__restMovers) if (o.visible) { o.visible = false; hid.push(o); }
+  await wait(2);
   const s = [];
   for (let i = 0; i < 5; i++) { s.push(g.renderer.info.render.calls); await wait(12); }
+  for (const o of hid) o.visible = true;
   s.sort((a, b) => a - b);
-  return { children: g.world.root.children.length, calls: s[2], samples: s };
+  if (s[2] < 20) throw new Error('restCalls hid the room, not its creatures: ' + s[2] + ' calls');
+  return { children: g.world.root.children.length, calls: s[2], samples: s, hidden: hid.length };
 }, REST);
 const baseline = await restCalls();
 
@@ -219,7 +245,10 @@ const domLeft = await page.evaluate(() => ({
 check('ten rounds leave ZERO residue in the DOM overlay', domLeft.cue === 0 && domLeft.row === 0 && domLeft.cards === 0, domLeft);
 
 const final = await restCalls();
-check('draw calls return to where they started', Math.abs(final.calls - baseline.calls) <= 3,
+// EXACT, since 2026-10-10. The +-3 slack absorbed creatures walking through
+// the frame; with them hidden the reading is identical frame to frame, and a
+// single leaked mesh (proved by planting one: 73 -> 74) must fail.
+check('draw calls return to where they started', final.calls === baseline.calls,
   { before: baseline.samples, after: final.samples });
 
 console.log('\n' + (errors.length

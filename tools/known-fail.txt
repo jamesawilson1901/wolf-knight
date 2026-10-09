@@ -211,8 +211,15 @@
 # `renderer.shadowMap` / each light's `.castShadow`/`.shadow.needsUpdate`
 # rather than the scene graph, since that is the one avenue this session
 # didn't get to before running out of runway on a P3 item.
-verify-minigame.mjs | "draw calls return to where they started" fails by ~5, landing on a stable (not noisy) new value — proven NOT a teardown leak, NOT the settle-frame-count heuristic (fixed, gap persisted), NOT blocking narration (ruled out live) — an unidentified extra render (shadow?) pass starts ~14-15s into a Den visit with the scene graph itself provably unchanged | 2026-09-10, redug 2026-09-18
-verify-mg-quiz.mjs | same root cause as verify-minigame.mjs above, on its own copy of the identical check | 2026-09-10, redug 2026-09-18
+# RESOLVED 2026-10-10 — both entries removed. It was never a render pass.
+# The diff above compared meshes that were VISIBLE, which is not the same as
+# meshes DRAWN: hooking onBeforeRender on every mesh and diffing the frame
+# before the step against the frame after named what joined the frame — Pip
+# setting off to show the way after GUIDE_IDLE_S (20s) of no progress (the fox
+# and its paw prints), and later a Den wolf walking into view. Creatures
+# moving into the camera's frustum, not a leak. Both suites now hold the guide
+# off and hide what was already alive at the baseline while they count, and
+# the check is EXACT (a planted mesh reads 73 -> 74 and fails).
 # 2026-09-18, found by v3.186's own regression sweep, not caused by it: the
 # Den's own west tent (rooms.js buildDen, `[tentGltf, -8.6, 0.4, 1.5, 2.2]`)
 # stands 0.51u inside the landing point of `dr`'s own door back to the Den
