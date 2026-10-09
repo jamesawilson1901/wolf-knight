@@ -26,6 +26,7 @@ import { bigToast } from './menus.js';
 import { WS, unlockTier } from './worldstate.js';
 import { FETCH } from './mg-fetch.js';
 import { QUIZ } from './mg-quiz.js';
+import { makePupTag } from './mg-tag.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -591,6 +592,35 @@ function makeQuizHost(world) {
   return g;
 }
 
+// 🐾 PUP TAG — the third game on the harness (js/mg-tag.js), Tier 2: it opens
+// at the fourth rescue. Same doorway-only host as Fetch and Which Wolf?: a
+// ring, and nothing else. The ring stands in the east meadow, probed clear
+// with tools/probe-freespot.mjs WK_LATE=1 (the Den with everything home); the
+// pups run on the meadow north of it, on ground measured clear at init.
+function makeTagHost(world, wolfGltf) {
+  const ring = actRing(world, 4.8, 6.6);
+  const g = { id: 'tag', chip: '' };
+  const TAG = makePupTag(wolfGltf);
+  let armed = true;   // makeFetchHost's latch, for makeFetchHost's reason
+  g.update = (dt, t, player, busy) => {
+    const h = world.harness;
+    const on = nearRing(player, ring);
+    if (h && h.active) { g.chip = ''; return; }
+    if (!on) armed = true;
+    ring.material.opacity = armed ? 0.55 + Math.sin(t * 3) * 0.2 : 0.16;
+    if (busy || !armed) { g.chip = ''; return; }
+    if (on) {
+      g.chip = '🐾 pup tag!';
+      if (h && h.open(TAG, world, player)) { armed = false; ring.material.opacity = 0.12; }
+    } else {
+      g.chip = '';
+    }
+  };
+  g.busy = () => !!(world.harness && world.harness.active);
+  g.ring = ring;
+  return g;
+}
+
 export async function setupDenGames(world) {
   const games = [];
   if (WS.get('ember', 'restored')) games.push(makeTargetGame(world)); // Rook must be home
@@ -603,6 +633,8 @@ export async function setupDenGames(world) {
   // start of a save (state.formsUnlocked defaults to knight + dark_wolf), so
   // this is really an always-on guard, not a gate a child waits behind.
   if (state.formsUnlocked.length >= 2) games.push(makeQuizHost(world));
+  // §4 Tier 2 — four rescues
+  if (unlockTier(state) >= 2) games.push(makeTagHost(world, await loadGLB('./assets/chars/wolf.gltf')));
   world.denGames = games;
   const chipEl = document.getElementById('mg-chip');
   world.updateMinigames = (dt, t, player) => {

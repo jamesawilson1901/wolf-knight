@@ -150,7 +150,7 @@ export function makeHarness() {
   const onTap = (e) => {
     if (phase === 'demo') { beginPlay(); return; }
     if (phase !== 'play' || !live || !live.tap) return;
-    const gained = live.tap() || 0;
+    const gained = live.tap(e) || 0;   // the event too: Pup Tag needs WHERE (v3.204)
     if (gained) { score += gained; setHud(); }
     e.preventDefault();
   };
@@ -215,9 +215,10 @@ export function makeHarness() {
     open(d, world, player) {
       if (phase !== 'off') return false;
       def = d;
+      if (this.settleCamera) this.settleCamera();   // js/main.js: the framing is the harness's
       const band = currentBand();
       ctx = {
-        world, player, band, bands: BANDS[band],
+        world, player, band, bands: BANDS[band], camera: this.camera || null,
         rand: rng((d.id.charCodeAt(0) * 7919) ^ Math.round(player.root.position.x * 31) ^ Date.now()),
         // the play area is built AROUND THE CHILD (see the note at the top)
         area: {
@@ -291,5 +292,6 @@ export function makeHarness() {
     // once it has been there a month.
     residue(world) { return world.root.children.length - sceneChildrenAtStart; },
     _onTap: onTap,
+    get _live() { return live; },   // the running game, for tools/verify-mg-*.mjs
   };
 }

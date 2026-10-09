@@ -371,3 +371,41 @@ a round is live" does not run.** The first version of the Fetch host dropped its
 re-arm latch inside its own update, which the freeze skips — so the ring
 reopened the game on the frame the child tapped exit, with no way out. Hosts must
 do their bookkeeping at the moment they open a game, not during it.
+
+### Pup Tag — **DONE** (v3.204.0, 2026-10-10)
+
+The third game on the harness, and the first in Tier 2: it opens at the
+fourth rescue. The host ring is in the east meadow at (4.8, 6.6), probed
+clear in the late Den with `tools/probe-freespot.mjs WK_LATE=1`.
+
+| Piece | Where |
+|---|---|
+| The game | `js/mg-tag.js` |
+| The host | `makeTagHost`, `js/minigames.js` |
+| The suite | `tools/verify-mg-tag.mjs` |
+
+**One change from §4 to fit the harness.** The spec has Kael running the pups
+down. A round holds the world still, though, and every game is played by
+tapping. So a pup is caught by tapping it while it scampers about. Catch the
+whole litter for +3 and a new litter tumbles in. The skill is still
+"movement, prediction": a child learns to tap where the pup is going.
+
+**What a look at the screen changed:**
+- **Pups ran off-screen.** The first cut ran them in a fixed box round the
+  ring, and a third of it was past the right edge of a phone screen. The
+  field is now the measured ground the camera can see, left of the action
+  buttons and below the HUD.
+- **Pups were specks.** At pen scale (0.18) a target was a few pixels.
+  Pups are now 0.3, each on a pulsing gold ring (one instanced mesh).
+- **Pups ran through barrels.** The field also avoids every prop's DRAWN
+  footprint, not only its collider.
+
+**The harness, three additions:**
+- `tap(e)`: the pointer event is passed to the game.
+- `ctx.camera`: the game can see what the child sees.
+- `settleCamera()` on open: §3.2's "the harness owns camera framing". The
+  world, and with it the camera, freezes when a round opens, so a camera
+  still easing in behind the child would have stayed off-centre all round.
+
+Each pup is the pen's own `wolf.gltf` with only its Main part drawn: one
+draw call per pup. No new asset.

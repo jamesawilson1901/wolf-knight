@@ -6330,3 +6330,30 @@ Measuring the late Den draw by draw:
   colour per spirit. Each still bobs and drifts on its own.
 
 A fully restored Den now reads 113-123 draw calls, down from 121-134.
+
+## Pup Tag (2026-10-10, v3.204.0)
+
+The third Den game on the shared harness, and the first in Tier 2 (four
+rescues). Pups scamper about the meadow; tap one to catch it. Catching the
+whole litter pays a bonus and a new litter tumbles in. Details and the one
+change from the spec are in design/DEN-MINIGAMES.md, "Pup Tag — DONE".
+
+Three things the screenshots changed:
+- the pups' field ran off the right edge of the screen (the new suite caught
+  a pup at x 848 of 740);
+- pups at pen scale were specks, so they are bigger, each on a gold ring;
+- a pup could run through a barrel, so the field avoids drawn footprints.
+
+The harness now passes the tap event and the camera to a game, and settles
+the camera on Kael when a round opens.
+
+New suite tools/verify-mg-tag.mjs:
+- locked at three rescues, open at four;
+- the demo;
+- empty-grass taps score nothing, a real mouse press on a running pup
+  catches it, and a whole litter pays a bonus and refills;
+- pups stay on screen and out of the furniture;
+- results;
+- zero residue and exact draw calls.
+
+verify-minigame and verify-mg-quiz still pass.

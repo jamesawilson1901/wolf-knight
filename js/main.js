@@ -2678,6 +2678,20 @@ let menuPaused = false;
 // contract is that only one round can be live at a time, and a single owner is
 // the simplest way to make that true rather than merely intended.
 const harness = makeHarness();
+harness.camera = camera;   // a game that is played by tapping a THING needs to see it as the child does
+// THE HARNESS OWNS THE FRAMING (design/DEN-MINIGAMES.md §3.2). A round holds
+// the world still, the camera with it, so a camera still easing in behind a
+// child who has just stepped into the ring would stay half a room away for
+// the whole round — and Pup Tag lays its field out from what the camera can
+// see. So a round opens on the camera's settled place over Kael.
+harness.settleCamera = () => {
+  camLead.set(0, 0, 0);
+  camGoal.copy(player.root.position).addScaledVector(CAM_OFFSET, 1 - 0.14 * effects.zoom);
+  camera.position.copy(camGoal);
+  camLook.copy(player.root.position);
+  camera.lookAt(camLook.x, 0.6, camLook.z);
+  camera.updateMatrixWorld();
+};
 function wireHarness() {
   const tap = document.getElementById('mg-tap');
   tap.addEventListener('pointerdown', (e) => harness._onTap(e));
