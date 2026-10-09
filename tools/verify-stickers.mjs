@@ -43,8 +43,9 @@ const ROWS = starts.map((m, i) => {
 // `garden1` and `garden5` after this count was written at 21 (v3.132). The
 // count stays exact on purpose — its job is to notice a row going MISSING —
 // so it moves when a feature legitimately adds one (updated 2026-09-26).
-check(`STICKERS has 24 rows (17 original + 4 non-combat v3.132 + dungeon/garden v3.148)`,
-  ROWS.length === 24, ROWS.map((r) => r.id));
+// v3.199 adds four (maker1, maker10, builder1, builder7: "things I've made").
+check(`STICKERS has 28 rows (17 original + 4 non-combat v3.132 + dungeon/garden v3.148 + 4 maker/builder v3.199)`,
+  ROWS.length === 28, ROWS.map((r) => r.id));
 
 const withModel = ROWS.filter((r) => r.hasModel);
 const withoutModel = ROWS.filter((r) => !r.hasModel);
