@@ -137,7 +137,9 @@ export async function spawnBuildSpot(world) {
   // the bridge's tiles: ghost gold until built, then the real thing
   const look = LOOKS[s.look] || LOOKS.wood;
   const span0 = cz + ISL - 0.15, span1 = cz + OUT + 0.15;
-  const nx = Math.max(1, Math.round(BW / TILE)), nz = Math.max(1, Math.round((span1 - span0) / TILE));
+  // ONE slab, stretched — four tiles cost la its draw-call budget (126 of 125,
+  // verify-density), and a deck reads as a deck either way
+  const nx = 1, nz = 1;
   const sx = BW / nx, sz = (span1 - span0) / nz;
   const solidMat = (m) => { const c = m.clone(); if (c.color) c.color.setHex(look); return c; };
   const ghostMat = new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.3,
@@ -210,13 +212,24 @@ export async function spawnBuildSpot(world) {
       const b = state.building;
       b.t += dt;
       player.lockTime = Math.max(player.lockTime, 0.2);
-      while (b.next < tiles.length && b.t >= b.next * 0.14) {
-        const tl = tiles[b.next++];
+      // the deck GROWS across the drop from the child's side, sparks and a
+      // knock at its leading edge as it goes — built in front of them
+      const GROW = 1.1;
+      const p = Math.min(1, b.t / GROW);
+      for (const tl of tiles) {
+        if (!tl.full) tl.full = { sz: tl.m.scale.z, z: tl.m.position.z };
         setSolid(tl, true);
-        juice.burst(tl.m.position.x, 0.3, tl.m.position.z, look, 6);
+        tl.m.scale.z = Math.max(0.02, tl.full.sz * p);
+        tl.m.position.z = span1 - (span1 - tl.full.z) * p;
+      }
+      b.acc = (b.acc || 0) + dt;
+      if (p < 1 && b.acc > 0.14) {
+        b.acc = 0;
+        juice.burst(cx, 0.3, span1 - (span1 - span0) * p, look, 6);
         audio.play('hit', { volume: 0.5, rate: 0.8 + Math.random() * 0.3 });
       }
-      if (b.next >= tiles.length && b.t >= tiles.length * 0.14 + 0.3) {
+      if (b.t >= GROW + 0.3) {
+        b.next = tiles.length;
         state.building = null;
         WS.set('build', s.id, true);
         bumpCounter('bridgesBuilt');

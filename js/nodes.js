@@ -176,7 +176,9 @@ export const EXTRA_NODES = {
 
 // claimed before the rooms dress themselves, so no scattered prop lands on one
 for (const [room, list] of Object.entries(EXTRA_NODES)) {
-  for (const n of list) claimRoomRect(room, { minX: n.x - 1.3, maxX: n.x + 1.3, minZ: n.z - 1.3, maxZ: n.z + 1.3 }, 'node');
+  // the node's own footprint and a step round it — no wider, or the room
+  // loses dressing it needs (s3b fell under its arrival-frame floor at 1.3)
+  for (const n of list) claimRoomRect(room, { minX: n.x - 0.9, maxX: n.x + 0.9, minZ: n.z - 0.9, maxZ: n.z + 0.9 }, 'node');
 }
 
 export function extraSpots(roomId, kind) {
