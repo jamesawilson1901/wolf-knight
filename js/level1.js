@@ -2418,7 +2418,10 @@ export async function buildLv3(scene) {
   // heart piece, shards, and one of the nine unused KayKit weapon bits
   // (items.js:171-175, `halberd` — the sanctioned trick, ungranted until now)
   // tinted as a dungeon-only find.
-  visibleReward(world, 0, -6.2, 'lv3_banked', { shards: 30, heartPiece: 1, gear: 'halberd', seed: 'ember' }, 'gold');
+  // At (0,-6.2) it stood half inside the vault's back column, and in front of
+  // the column it sat on the forge bowl's rim (verify-placement and a look,
+  // 2026-10-10). Beside the column it stands on clear stone.
+  visibleReward(world, 2, -6.4, 'lv3_banked', { shards: 30, heartPiece: 1, gear: 'halberd', seed: 'ember' }, 'gold');
 
   world.markers.breakables = [
     { x: -8, z: -1.5, kind: 'crate' }, { x: 8, z: 1.5, kind: 'barrel' },

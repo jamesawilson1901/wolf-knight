@@ -49,6 +49,8 @@ import { flattenStatic } from './batch.js';
 import { BUILDINGS, isRestored, canRestore, restore, pendingCollections, collect } from './denRebuild.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
+import { materialCount } from './materials.js';
+import { drawCostBoard } from './matIcons.js';
 
 const M = MODULES;
 
@@ -274,10 +276,41 @@ export async function buildDr(scene) {
   // rather than duplicated three times. Unaffordable = silence, the SAME
   // "no tool = does nothing" precedent js/nodes.js already set; a small
   // juice burst (js/juice.js, no new VFX) is the only feedback either way.
-  for (const s of SPOTS) s.armed = false;
+  // WHAT A RUIN NEEDS, IN PICTURES (v3.200). The broken bridges taught it
+  // (js/buildspots.js): a board over each unrestored building, one picture
+  // per material and a dot per piece, filled for what is carried. It goes the
+  // moment the building stands.
+  for (const s of SPOTS) {
+    s.armed = false;
+    s.board = null;
+    if (isRestored(s.id)) continue;
+    const canvas = document.createElement('canvas');
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    sp.position.set(s.sx, 2.6, s.sz);
+    sp.frustumCulled = false;
+    world.add(sp);
+    world.keepLoose(sp);
+    s.board = { sp, canvas, tex, key: '' };
+  }
+  const drawBoard = (s) => {
+    const cost = BUILDINGS[s.id].cost;
+    const key = Object.keys(cost).map((k) => Math.min(cost[k], materialCount(k))).join(',');
+    if (key === s.board.key) return;
+    s.board.key = key;
+    drawCostBoard(s.board.canvas, cost, materialCount);
+    s.board.tex.needsUpdate = true;
+    const aspect = s.board.canvas.width / s.board.canvas.height;
+    s.board.sp.scale.set(1.4 * aspect, 1.4, 1);
+  };
   world.updateDenBuildings = (dt, t, player) => {
     if (!player) return;
     for (const s of SPOTS) {
+      if (s.board) {
+        if (isRestored(s.id)) { s.board.sp.visible = false; s.board = null; }
+        else drawBoard(s);
+      }
       const dx = player.root.position.x - s.sx, dz = player.root.position.z - s.sz;
       const rr = s.armed ? 2.8 : 2.0;
       const near = (dx * dx + dz * dz) < rr * rr;
@@ -288,12 +321,19 @@ export async function buildDr(scene) {
             juice.burst(s.sx, 0.6, s.sz, 0xffe9b0, 18);
             audio.play('checkpoint', { volume: 0.7, rate: 1.1 });
           }
-        } else if (pendingCollections(s.id) > 0) {
-          const r = collect(s.id);
-          if (r && r.count > 0) {
-            juice.burst(s.sx, 0.6, s.sz, 0xffe9b0, 14);
-            audio.play('pup-chime', { volume: 0.6, rate: 1.0 });
+        } else {
+          if (pendingCollections(s.id) > 0) {
+            const r = collect(s.id);
+            if (r && r.count > 0) {
+              juice.burst(s.sx, 0.6, s.sz, 0xffe9b0, 14);
+              audio.play('pup-chime', { volume: 0.6, rate: 1.0 });
+            }
           }
+          // EACH BUILDING CHANGES SOMETHING (v3.200): the Forge's anvil opens
+          // the Forge tab; the Tavern's travellers put the fallen bridges on
+          // the map (js/mapdata.js) and Pip says so.
+          if (s.id === 'forge' && world.onForgeVisit) world.onForgeVisit();
+          if (s.id === 'tavern' && world.onTavernVisit) world.onTavernVisit();
         }
       }
       s.armed = near;

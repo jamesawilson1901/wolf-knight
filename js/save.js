@@ -284,6 +284,8 @@ export function applySave(profileId, profileName, data) {
     if (!state.inventory.crafted) state.inventory.crafted = [];
     if (!state.inventory.recipesKnown) state.inventory.recipesKnown = [];
     if (!state.inventory.draughts) state.inventory.draughts = {};
+    if (!state.inventory.charms) state.inventory.charms = {};   // v3.199
+    if (!state.inventory.upgrades) state.inventory.upgrades = {}; // v3.200
     // SAME REASON AGAIN (design/DRAGON-EGGS.md): a save from before the
     // dragon-egg side quest existed has none of these three fields.
     if (!state.inventory.dragonEggs) state.inventory.dragonEggs = {};

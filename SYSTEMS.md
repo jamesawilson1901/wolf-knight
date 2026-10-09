@@ -133,6 +133,19 @@ than by the number whoever wrote the line happened to pick:
   shoved into the room; and every enemy spawn spot (`...Spots` minus the
   prop-naming ones) and every `markers.breakables` pot is a BODY — clutter
   is pushed off it, nothing is pushed onto it.
+  - Since 2026-10-10 chests (`chestDefs`) and claimed ground
+    (`claimRoomRect`) are bodies too, and a POT'S SPOT GIVES WAY: a pot that
+    would be born inside something fixed (an arch, a column) has its spot
+    moved round it, or the room has one pot fewer.
+  - **The late pass**: `World.wallsYield()`, last thing in main.js
+    `setupRoomExtras`, steps shell blocks back from what was stood against
+    them after the build — boss-gate pillars, and the space a gate's leaves
+    swing into (`world._yieldTo`, from levelkit `bossGate`).
+  - **The as-played gate**: tools/verify-placement.mjs walks into every room
+    through `__wkJump` (every late spawner: chests, pots, nodes, islands,
+    shrines, settlers) and fails on any overlap or anything standing in a
+    pit. verify-interpenetration only ever saw buildRoom's output. Light is
+    not a thing: see-through meshes and `userData.fx` are left out.
 * **A dark zone's veil lies ON the ground.** The darkness itself is the light
   rig (main.js dims it when the child stands in the zone); the quad is only the
   hint, and at head height it read as a grey square hanging in mid-air.
@@ -404,6 +417,49 @@ rather than skeleton objects: SkeletonUtils.clone() builds a separate Skeleton
 instance per SkinnedMesh over the same bones, and an identity check silently
 does nothing (it did, on the first run). Den: 137 → 102 draw calls, and every
 room with characters in it gains.
+
+## Gathering, crafting & building (js/nodes.js, js/crafting.js, js/buildspots.js, js/denRebuild.js)
+
+The loop, end to end (design/CRAFTING.md, MINING.md, DEN-REBUILD.md):
+
+- **Gather.** Rocks (pickaxe) and trees (axe) pay `NODE_KINDS.yield` pieces
+  per visit.
+  - Each room's own `rockSpots`/`treeSpots`, plus `EXTRA_NODES`, a central
+    table merged in main.js.
+  - Enemies, pots and chests pay shards, wisps and crystals
+    (`materialForEnemy`).
+- **Build.** One broken bridge per region (`BUILD_SPOTS`). A chest on an
+  island behind a drop no jump crosses.
+  - The board over the gold ghost bridge shows the cost as pictures and dots.
+  - Walking up with the dots full builds it.
+  - The drop is `latePit()`; the island claims its floor with
+    `claimRoomRect()` before the room dresses.
+  - Built is `WS build/<id>`.
+- **Craft.** Backpack, then Craft.
+  - Recipes have tiers by how many *different* things have been made.
+  - Hidden recipes come from scrolls: the bridge chests (`loot.recipe`) and
+    gold chests' rare roll.
+  - The three boss charms (`state.inventory.charms`) are spent automatically
+    by js/bossmagic.js via `useCharm()`.
+- **Spend at home.** The Outer Camp (`dr`): the Tavern, Forge and Mill are
+  restored with wood and ore, and pay coins, ingots and wood on a timer.
+  Ingots feed the ultimates, the Ward Stone and the last two bridges.
+- **Forge and town (v3.200).**
+  - `js/forge.js` upgrades worn gear three steps, applied by
+    `items.js forgedDef()`. The Forge tab appears only when opened at the
+    Forge (`menus.openForge()`, from the Outer Camp walk-up).
+  - The Tavern marks unbuilt bridges on the map (`mapdata openMarks`).
+  - The Mill grows the pups and doubles the pen.
+  - The Monument adds a piece to every node.
+  - Coming home after three or more rooms adds a collection
+    (`denRebuild.homecoming`), and arrival collects everything
+    (`collectAll`, main.js `welcomeHome`).
+- **Signals.** Costs everywhere are `js/matIcons.js` pictures and dots, never
+  emoji.
+  - `#inv-btn.can-craft` glows while anything can be made (main.js
+    `craftNudge`, real-time).
+  - Pip says so once per room.
+  - Stickers: `itemsCrafted`, `bridgesBuilt`.
 
 ## Den minigames (js/minigames.js, CONFIG.DEN_GAMES)
 Each villager hosts a game behind a gold act-here ring (step in to play;

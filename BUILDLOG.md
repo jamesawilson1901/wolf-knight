@@ -6148,3 +6148,129 @@ solid pale core inside a soft purple glow. The green vine also vanished into
 Sylva's grass, so it is now a dark thorny root over a stronger red glow,
 lifted clear of the floor. Both pass verify-boss-magic unchanged. A suite
 can prove an orb hits; only a look proves it can be seen coming.
+
+## Something to build for (2026-10-09, v3.199.0)
+
+Dad: "There still isn't a real incentive to learn to build and craft. It's
+there but no real reward or anything?" He was shown five fixes and said
+"Build all. 1-5". This is the first of three releases: the broken bridges
+(1), the boss charms (4), and the signals (5). The Forge upgrades and the
+living town follow in v3.200.
+
+**The diagnosis.** It was the arithmetic, before it was the menus:
+- a rock or tree paid **one** piece per visit;
+- there were eight in the whole game;
+- an Outer Camp building asked for fifteen;
+- and nothing anywhere *needed* a thing you made.
+
+Now:
+- **Rocks and trees pay three pieces each**, and there are 22 more spread
+  over the regions. Stoneroot gets its first.
+- **A broken bridge in one room of every region.**
+  - A chest sits on an island behind a drop that no jump crosses (rails on
+    both rims; colliders stop a body in mid-air).
+  - The bridge hangs as gold ghost planks, under a board of pictures and
+    dots: fill the dots, walk up, and it builds itself plank by plank.
+  - Behind each: coins, crystals, and for four of them a recipe scroll.
+- **Three boss charms**, hidden until their scrolls are found. Each answers
+  one boss-magic move once, by itself:
+  - the Root Charm (snares, vines);
+  - the Ember Charm (any bubble);
+  - the Ward Stone (half a Binding).
+- **Costs are pictures and dots everywhere**, never "🪵 3/8".
+  - The backpack glows with a turning spark when anything can be made, and
+    Pip says so once per room.
+  - Four new stickers.
+- **Five new Pip lines**, rendered with Piper in her usual voice.
+
+Caught on the way:
+- **The islands and new nodes landed on props.** Room dressing had placed
+  things there before the islands existed. The fix is a new
+  `claimRoomRect()` in world.js, so dressing leaves the ground free. Two hand
+  placed props forced two islands to move (to `vc1` and `f3`).
+- **The backpack sparkle ran on game time.** At headless frame rates a
+  clamped "second" took four real ones. It runs on real time now.
+- **The cost board only redrew on a slow tick**, so the Wild Woods board
+  showed no wood when the child carried half. It redraws whenever a count
+  changes now.
+
+New suite: tools/verify-buildspots.mjs. All seven bridges are driven by real
+keyboard walking: cut off, refuse when unpaid, build when paid, spend
+exactly, open the chest, stay built.
+
+## The camp is worth coming home to (2026-10-09, v3.200.0)
+
+Parts 2 and 3 of dad's five (design/DEN-REBUILD.md v3.200).
+
+- **The Forge** takes the sword, shield and armour Kael already wears up
+  three steps, paid in ingots, ore and crystals. Each step shows on the
+  thing itself: a glow in its element's colour, then sparks, then a trail
+  of light on every swing.
+  - It only happens AT the Forge: walking up to it opens its own tab.
+- **Each Outer Camp building now changes something:**
+  - the Tavern puts the fallen bridges on the map;
+  - the Mill grows the pups and doubles the pen;
+  - the Monument makes every rock and tree give one more piece;
+  - ruined buildings carry the bridges' picture-and-dots board.
+- **Coming home pays.** Three rooms away earns every building a collection.
+  Arriving at the Den or the camp collects everything at once with one
+  "While you were away" toast, so a short session still sees the camp work.
+
+Four new Pip lines (Piper, her usual voice) and three stickers: Hot from the
+Forge, Master Smith, The Camp Lives. New suite: tools/verify-forge.mjs,
+proven red against v3.199 first.
+
+Also on v3.199 before this, from verify-density:
+- the bridge is now one slab that grows across the drop, because four
+  tiles put `la` one draw call over budget;
+- the node claims shrank to 0.9u;
+- Stormreach's two new nodes moved from `s3b` to `s1b`, because `s3b`'s
+  arrival frame had fallen two props under its floor of 32.
+
+## One pit, and nothing stands in anything (2026-10-10, v3.200.1)
+
+Dad, on the review shots: "Those pitfalls look absolutely terrible. It needs
+to look like one pit not four of the same assets pieced together. They also
+have items overlapping in them... there are items in some of those
+screenshots that intersect and go through others."
+
+- **The island is one pit and a pier.** The drop was four strips dug round
+  the island. It is now one 6.4u pit with the island standing in it as a
+  pier (the Spire's `world._pitPiers`), its top in the room's own floor.
+- **Why the rules missed it.** verify-interpenetration measured what
+  buildRoom made. Everything main.js adds afterwards was never in the room
+  it measured: chests, pots, nodes, islands, shrines, settlers. New
+  **tools/verify-placement.mjs** walks into every room the way a child does
+  and measures everything standing there, for overlaps and for anything in a
+  pit. Its first sweep: 33 rooms with overlaps, seven with something in a
+  pit.
+- **What was wrong, and the fix for each:**
+  - pots were born inside fixed props → a pot's spot now gives way
+    (separateProps), and its body radius matches the drawn pot (0.68, not
+    0.45);
+  - chests stood in a boat (q2), a pedestal (m3) and a column (lv3) → chest
+    spots are bodies, and those three chests moved;
+  - clutter stood on an island's claimed ground (la) → claims are bodies;
+  - shell blocks poked through boss-gate pillars and opened leaves (f4,
+    lg4, ld, vh, f5, f1d) → `World.wallsYield()` runs last in
+    setupRoomExtras;
+  - a rock overhung the Frostpeak drop → the f3 island moved 0.8u west;
+  - a crate leaned on f1c's lost wolf, and vh's new rock sat in a wall
+    detail → both moved.
+- **False alarms the new suite taught itself to ignore:** light (shrine
+  shafts and doorway fans are see-through), a chest's skinned bind-pose
+  bounds (measured where the game put it), Pip, and retired room aliases.
+
+## The pick in his hand (2026-10-10, v3.201.0)
+
+design/MINING.md's last open item: owning a pick let a child mine, but
+Kael stood at the rock with his sword out. Now, while he works a rock or a
+tree:
+- the pick or the axe is in his right hand;
+- he turns to face it and swings once per hit;
+- the moment he stops (walks off, finishes, or leaves the room) his own
+  weapon is back.
+
+The tool is only in hand while a node's lock holds him. The saved loadout
+is never touched. Three new checks in tools/verify-mining.mjs; before this
+change they fail outright, because `Player.holdTool` does not exist.

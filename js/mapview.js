@@ -156,7 +156,7 @@ export function renderMap(root, model, { onTravel, closeBtn }) {
     // gold (= act here) and Fire's is red (= danger). "Now!" is the gold ring,
     // a bounce and a sparkle.
     t.marks.forEach((m, i) => {
-      const can = ownsForm(m.form);
+      const can = m.can !== undefined ? m.can : ownsForm(m.form);
       const r = can ? 15 : 13;
       const mx = h - 2 - i * (2 * r + 2);
       const my = -h + 1;
@@ -167,7 +167,11 @@ export function renderMap(root, model, { onTravel, closeBtn }) {
       const col = (FORM_META[m.form] && FORM_META[m.form].color) || '#b9a88a';
       el('circle', { r: r + 3, class: 'map-mark-halo' }, inner);
       if (m.form) coin(defs, inner, m.form, r, can ? pale(col, 0.45) : pale(col, 0.25));
-      else {
+      else if (m.img) {
+        // a drawn picture (js/matIcons.js) — the fallen bridges, v3.200
+        el('circle', { r, class: 'mv-coin', fill: '#3a3050' }, inner);
+        el('image', { href: m.img, x: -r * 0.8, y: -r * 0.8, width: r * 1.6, height: r * 1.6 }, inner);
+      } else {
         el('circle', { r, class: 'mv-coin', fill: '#3a3050' }, inner);
         const e2 = el('text', { x: 0, y: r * 0.38, 'text-anchor': 'middle', 'font-size': r * 1.05 }, inner);
         e2.textContent = m.icon || '❓';

@@ -74,6 +74,46 @@ export const RECIPES = {
   },
 };
 
+// THE BOSS CHARMS (v3.199, design/CRAFTING.md §5). Each answers one of the
+// boss-magic moves (js/bossmagic.js) once, by itself — a five-year-old in a
+// snare is not going to open a menu. Hidden: their scrolls wait on the islands
+// behind the broken bridges (js/buildspots.js), which is the point — gather,
+// build, cross, learn to make the thing that helps in the next big fight.
+// Help, never a skip: one charm answers one snare, one bubble, one Binding.
+const charm = (key) => () => {
+  const c = state.inventory.charms || (state.inventory.charms = {});
+  c[key] = Math.min(3, (c[key] || 0) + 1);
+};
+const charmFull = (key) => () => ((state.inventory.charms || {})[key] || 0) >= 3;
+Object.assign(RECIPES, {
+  root_charm: {
+    name: 'Root Charm', icon: '🌿', tier: 1, hidden: true,
+    cost: { shard_verdant: 2, wood: 2 },
+    craft: charm('root'), full: charmFull('root'),
+    blurb: 'Roots and vines cannot hold you. Lets go once, all by itself.',
+  },
+  ember_charm: {
+    name: 'Ember Charm', icon: '🔥', tier: 1, hidden: true,
+    cost: { shard_fire: 2, ore: 2 },
+    craft: charm('ember'), full: charmFull('ember'),
+    blurb: 'Your next hit on a magic bubble pops it, whatever it is made of.',
+  },
+  ward_stone: {
+    name: 'Ward Stone', icon: '🌙', tier: 1, hidden: true,
+    cost: { shard_moon: 2, crystal: 1, ingot: 1 },
+    craft: charm('ward'), full: charmFull('ward'),
+    blurb: 'A curse that binds you lets go twice as fast.',
+  },
+});
+
+// Spend one charm if one is held. True when it was there to spend.
+export function useCharm(key) {
+  const c = state.inventory.charms || {};
+  if (!(c[key] > 0)) return false;
+  c[key]--;
+  return true;
+}
+
 export function tierUnlocked(tier) {
   const count = (state.inventory.crafted || []).length;
   return count >= (TIER_AT[tier - 1] ?? 0);

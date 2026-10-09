@@ -32,6 +32,18 @@ export const LINES = {
   // greyed "???" row already shows there is more to find without a word,
   // the same demo-then-mash idiom the minigame harness uses.
   craft_intro: { voice: 'pip', text: 'This is crafting! Bits you find make potions and gear. Tap Craft when you have enough.' },
+  // v3.199 — something to build for (js/buildspots.js) and the "you can make
+  // something" nudge (js/main.js craftNudge)
+  build_seen: { voice: 'pip', text: 'Oh no, the bridge has fallen in! See the dots? Fill them all with the things we gather, then walk up and we can build it.' },
+  build_ready: { voice: 'pip', text: 'We have everything for the bridge! Walk right up to it, Kael!' },
+  build_done: { voice: 'pip', text: 'We built it! A real bridge! Let’s see what’s on the other side.' },
+  craft_ready: { voice: 'pip', text: 'Ooh, Kael, we could make something! Look in the backpack.', repeat: true },
+  charm_found: { voice: 'pip', text: 'A charm recipe! Make one in the backpack, and it will help you all by itself in a big fight.' },
+  // v3.200 — the Outer Camp changes things (js/forge.js, js/denRebuild.js)
+  forge_ready: { voice: 'pip', text: 'The Forge is hot! Bring ingots and ore, and we can make your sword shine. Each star makes it stronger!' },
+  tavern_rumour: { voice: 'pip', text: 'The travellers at the Tavern know where the bridges fell! I put them all on our map.' },
+  welcome_home: { voice: 'pip', text: 'Welcome home, Kael! The camp kept working while we were away.', repeat: true },
+  monument_lit: { voice: 'pip', text: 'The beacon is lit! Now every rock and tree gives us a little extra.' },
   dark_nook: { voice: 'pip', text: 'It’s too dark to see in there. Hold the wolf button — the round one down there — and pick the Dark Wolf. He can see in the shadows.' },
   // THE NIGHT ROAD (js/levelNight.js). Two lines, because a road at night is
   // the one place in the game where a child can be genuinely unsure there is a

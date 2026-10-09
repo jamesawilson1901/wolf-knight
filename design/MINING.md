@@ -192,15 +192,39 @@ hazard zone contains it and its nearest collider clears by more than a
 body-width", the same real dump this session used to place them in the
 first place, re-run as an assertion rather than a one-off probe.
 
+## v3.199 — enough to gather (SHIPPED)
+
+Dad, 2026-10-09: "There still isn't a real incentive to learn to build and
+craft." Most of the answer was the arithmetic. A node paid **one** piece per
+visit, and there were eight nodes in the game. An Outer Camp building wanted
+fifteen. Both halves of the "still to design" bullet below came true:
+
+- **Yield.** A node now pays `NODE_KINDS.yield` pieces, three for a rock or a
+  tree, spilled round its foot so a child sees how many.
+- **Density.** `EXTRA_NODES` in `js/nodes.js` adds 22 more, two or three per
+  region. Stoneroot gets its first (in `vh`, as the bullet below suggested).
+  - **Ember and Stoneroot** stay rock-only: no trees in the lava fields
+    (#56) or in the caverns.
+  - **The Wild Woods** are mostly trees.
+- **Placement.** The spots were picked by a probe of every room for clear
+  floor. They are claimed through `js/world.js` `claimRoomRect()`, so room
+  dressing never lands a prop on one.
+- **Checks.** `tools/verify-mining.mjs` holds each spot to the same seeding,
+  hazard and clearance checks the rollout's own nodes get. Its two "paid out
+  one" checks now expect the yield, because that assumption is the thing
+  that changed.
+
+What gathering is FOR is design/CRAFTING.md §5: the broken bridges.
+
 ## Still to design
 
-- **Visual tool-swap**: dad's own words were "it auto equips" — this ships
-  the MECHANICAL half (ownership gates the action) but not yet the visual
-  half (seeing the pickaxe/axe actually in Kael's hand while it happens).
-  `Player.equipGear()` already rebuilds the hand mesh from
-  `state.inventory.equipped.weapon` on demand; a future pass could swap to
-  the tool for the channel's duration and restore the real weapon after,
-  without touching the player's own saved loadout choice.
+- ~~**Visual tool-swap**~~ — **shipped v3.201.** While Kael works a node,
+  the pick or the axe is in his right hand, he turns to face the rock or
+  tree, and he swings at it once per hit (`Player.holdTool()` /
+  `toolSwing()`, driven from `ResourceNode.update`). Walk off, finish it,
+  or leave the room, and his own weapon is back: the tool is only in hand
+  while a node's lock holds him, and the saved loadout is never touched.
+  tools/verify-mining.mjs checks the hand on both sides of the work.
 - **Feeds the Den rebuild** (`design/DEN-REBUILD.md`): ore and wood are the
   two resources that system's own building costs are written against. The
   rollout above gives the Outer Camp (`dr`) its own rock and tree right in

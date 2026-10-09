@@ -601,7 +601,9 @@ export async function buildM3(scene) {
   world.markers.sparkSpot = { x: 0, z: -2, grants: 'elemental_wolf' };
   world.markers.restSpot = { x: 0, z: 7 };
   // and the last chest in the game, standing open to the sky beside her
-  visibleReward(world, -7.5, -6, 'm_crown', { shards: 40, heartPiece: 1 }, 'gold');
+  // (-6.5,-5.2), not (-7.5,-6): there it stood half inside the seventh rim-light's
+  // pedestal behind it (verify-placement, 2026-10-10)
+  visibleReward(world, -6.5, -5.2, 'm_crown', { shards: 40, heartPiece: 1 }, 'gold');
 
   // SEVEN LIGHTS AROUND THE RIM, one per element, each on its own PEDESTAL,
   // with a STANDING COLUMN between each pair — the crown gets a crown's

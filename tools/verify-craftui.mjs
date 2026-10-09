@@ -117,6 +117,36 @@ const backToGear = await page.evaluate(() => ({
 check('switching back to Gear restores the rack view; the knight/slots panel was never rebuilt away',
   backToGear.onTab.includes('Gear') && backToGear.stillHasKnightStage && backToGear.stillHasSlots, backToGear);
 
+// PICTURES AND DOTS (v3.199): a recipe's cost is a material picture and one
+// dot per piece, filled for each piece carried — no emoji, no "3/8".
+for (const t of tabs) { if ((await t.textContent()).includes('Craft')) { await t.dispatchEvent('pointerdown'); break; } }
+await page.evaluate(() => { const g = window.__game; g.state.inventory.materials = { wisp: 1 }; g.state.potions = 1;
+  g.state.inventory.crafted = []; });
+for (const t of tabs) { if ((await t.textContent()).includes('Gear')) { await t.dispatchEvent('pointerdown'); break; } }
+for (const t of tabs) { if ((await t.textContent()).includes('Craft')) { await t.dispatchEvent('pointerdown'); break; } }
+await page.waitForTimeout(50);
+const pics = await page.evaluate(() => {
+  const row = [...document.querySelectorAll('.rack-row')].find((r) => r.textContent.includes('Healing Draught'));
+  const pic = row && row.querySelector('.cost-pic');
+  return { pic: !!pic, img: !!(pic && pic.querySelector('img[src^="data:image"]')),
+    dots: pic ? pic.querySelectorAll('.dot').length : 0, on: pic ? pic.querySelectorAll('.dot.on').length : 0,
+    emoji: row ? /\p{Extended_Pictographic}/u.test(row.querySelector('.rack-cost').textContent) : null };
+});
+check('a cost is a drawn picture with one dot per piece, filled for what is carried (1 of 2 wisps)',
+  pics.pic && pics.img && pics.dots === 2 && pics.on === 1 && pics.emoji === false, pics);
+
+// THE BACKPACK SPARKLES (v3.199) while something can be made — and not before
+await page.locator('#inv-menu .menu-btn', { hasText: 'Done' }).first().dispatchEvent('pointerdown');
+await page.waitForFunction(() => getComputedStyle(document.getElementById('inv-menu')).display === 'none', null, { timeout: 5000 }).catch(() => {});
+await page.waitForTimeout(1300);
+const dull = await page.evaluate(() => document.getElementById('inv-btn').classList.contains('can-craft'));
+await page.evaluate(() => { window.__game.state.inventory.materials = { wisp: 2 }; });
+await page.waitForFunction(() => document.getElementById('inv-btn').classList.contains('can-craft'), null, { timeout: 4000 }).catch(() => {});
+const bright = await page.evaluate(() => ({ cls: document.getElementById('inv-btn').classList.contains('can-craft'),
+  said: !!window.__game.state.spoken.craft_ready || (window.__game.narration.queue || []).some((q) => q && q.id === 'craft_ready') }));
+check('the backpack is plain while nothing can be made', dull === false, { dull });
+check('...and sparkles the moment a recipe can be', bright.cls, bright);
+
 console.log('\nERRORS', JSON.stringify(wk.errors.slice(0, 5)));
 console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — the crafting tab lives in the backpack and actually crafts');
 await wk.b.close();

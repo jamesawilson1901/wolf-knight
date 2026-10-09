@@ -371,7 +371,8 @@ export async function buildQ2(scene) {
     ['stool', 4.5, 9.5, 1.0, 1.0], ['stool', -6.5, 2.0, 1.0, -0.8],
     ['fish', 1.0, 5.0, 1.0, 0.3], ['rod', -9.5, 9.5, 1.0, -0.5],
     ['cartwheel', -11.0, 5.0, 1.0, 0.6], ['coil', 5.5, 1.5, 1.0, 0.2],
-    ['basin', 3.5, -1.0, 1.0, -0.7], ['boat', -12.5, -8.5, 1.0, 0.8],
+    ['basin', 3.5, -1.0, 1.0, -0.7],
+    // (no boat in the west stall: it stood on the frost-axe chest, 2026-10-10)
   ]);
   ruinedHome(world, -12.5, 3, -0.3, D, { w: 6, d: 5, keep: 0.5 });
   ruinedHome(world, -12, -1.5, 0.5, D, { w: 5.5, d: 4.5, keep: 0.4 });
@@ -381,7 +382,7 @@ export async function buildQ2(scene) {
   lowWall(world, -4, 11.5, 0.3, D, 3.2);
   fallenColumn(world, 6, 6, -0.9, D, 3.2);
   fallenColumn(world, -7.5, -10.5, 0.5, D, 3.0);
-  rubbleField(world, -13, -10, 2.4, D, 10);
+  rubbleField(world, -14, -11.5, 1.4, D, 8);   // clear of the west stall's chest
   rubbleField(world, 7.5, 11.0, 2.2, D, 9);
   scatter(world, halfW, halfD, D, 92, 10, { spin: 1, kinds: ['rockSA', 'rockSB', 'rockLA'] });
   return finish(world, spec, D);

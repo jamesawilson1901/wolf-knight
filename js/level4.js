@@ -737,7 +737,7 @@ export async function buildF1c(scene) {
     world.add(col);
   }
 
-  world.markers.breakables = [{ x: -7.5, z: 4.5, kind: 'crate' }];
+  world.markers.breakables = [{ x: -8.6, z: 3.4, kind: 'crate' }];   // clear of the lost wolf
   drift(world, [
     ['rockS', 5.0, 4.6, 1.1, 0.4, 0.4], ['rockM', -8.5, -3.0, 1.2, 1.7, 0.6],
     ['pile', 1.5, 6.0, 1.5, 1.2, 0],

@@ -26,8 +26,11 @@ import { Narration } from './narration.js';
 import { applySave, persist, setSaveErrorHandler } from './save.js';
 import { showTitle } from './title.js';
 import { preloadLoot, spawnBreakables, spawnChests, spawnShards, updateShards, updateChests, lootEvents, preloadPotionDrop, spawnPotionDrop, spawnGearDrop, spawnMeshPop, buildPotionMesh } from './loot.js';
-import { spawnResourceNodes } from './nodes.js';
-import { MATERIALS } from './materials.js';
+import { spawnResourceNodes, extraSpots } from './nodes.js';
+import { addBuildSpotMarkers, spawnBuildSpot } from './buildspots.js';
+import { homecoming, collectAll, allBuildingsRestored } from './denRebuild.js';
+import { RECIPES, canCraft, unlockRecipe } from './crafting.js';
+import { MATERIALS, addMaterial } from './materials.js';
 import { spawnDragonShrines, spawnEggNests, addEgg, DRAGON_ELEMENTS, equippedDragon } from './dragonEggs.js';
 import { CompanionDragon, EMERGE_RISE_TIME } from './companionDragon.js';
 import { updateCarry } from './carry.js';
@@ -1879,6 +1882,51 @@ function renderLevel() {
 }
 
 // Chest contents flow through here (shards are scattered by the chest itself).
+// "OOH, WE COULD MAKE SOMETHING!" (v3.199). Nothing outside the backpack ever
+// said a recipe had become affordable, so a child who had gathered enough had
+// no way to know. Once a second: the backpack button sparkles while anything
+// visible can be made, and Pip says so once each time that newly becomes true
+// (at most once per room visit, so a child standing still is not nagged).
+// Real seconds, not game seconds: the game clamps a slow frame to 0.05s, and
+// a button is part of the screen, not the world.
+let _nudgeAt = 0, _couldCraft = false, _nudgeRoom = null;
+function craftNudge() {
+  const now = performance.now();
+  if (now - _nudgeAt < 1000) return;
+  _nudgeAt = now;
+  const can = Object.keys(RECIPES).some((id) => canCraft(id));
+  const btn = document.getElementById('inv-btn');
+  if (btn) btn.classList.toggle('can-craft', can);
+  if (can && !_couldCraft && _nudgeRoom !== state.room && !transitioning) {
+    _nudgeRoom = state.room;
+    narration.say('craft_ready');
+  }
+  _couldCraft = can;
+}
+
+// WHILE YOU WERE AWAY (v3.200, js/denRebuild.js homecoming/collectAll).
+// Coming home after an adventure — three or more other rooms walked since the
+// last time — adds a collection to every restored building, and arriving at
+// the Den or the Outer Camp pays everything waiting at once, with one toast
+// that says what came in. Walking up to a building still collects too.
+const awayRooms = new Set();
+function welcomeHome() {
+  if (awayRooms.size >= 3) homecoming();
+  awayRooms.clear();
+  const got = collectAll();
+  if (got.any) {
+    const parts = [];
+    if (got.shards) parts.push(`${got.shards} coins`);
+    for (const [id, n] of Object.entries(got.materials)) parts.push(`${n} ${MATERIALS[id] ? MATERIALS[id].name : id}`);
+    if (got.xp) parts.push(`${got.xp} XP`);
+    renderShards();
+    setTimeout(() => bigToast('While you were away: ' + parts.join(' · ')), 900);
+    narration.say('welcome_home');
+    persist();
+  }
+  if (allBuildingsRestored()) narration.say('monument_lit');
+}
+
 function giveLoot(chest) {
   const L = chest.loot || {};
   const lines = [];
@@ -1984,6 +2032,25 @@ function giveLoot(chest) {
       lines.push(SEED_NAMES[L.seed] || `a ${L.seed} seed`);
       const flora = FLORA[L.seed];
       if (flora && flora[0]) spawnGearDrop(world, chest.x, chest.z, { file: flora[0], size: 0.8 }, seat++);
+    }
+  }
+  // MATERIALS AND RECIPE SCROLLS (v3.199) — what the islands behind the
+  // broken bridges hold (js/buildspots.js). Materials pop as their own glowing
+  // sparks; a scroll names the recipe, and a charm's scroll gets Pip's line.
+  if (L.materials) {
+    for (const [id, n] of Object.entries(L.materials)) {
+      addMaterial(id, n);
+      if (MATERIALS[id]) lines.push(`${n} ${MATERIALS[id].name}`);
+    }
+  }
+  if (L.recipe && RECIPES[L.recipe]) {
+    const known = (state.inventory.recipesKnown || []).includes(L.recipe);
+    unlockRecipe(L.recipe);
+    if (!known) {
+      lines.push(`recipe: ${RECIPES[L.recipe].name}`);
+      spawnGearDrop(world, chest.x, chest.z,
+        { file: './assets/loot/platformer/key.glb', tint: 0xfff0c0, size: 1.0 }, seat++);
+      if (/charm|ward/.test(L.recipe)) narration.say('charm_found');
     }
   }
   if (L.key) {
@@ -2124,9 +2191,23 @@ async function setupRoomExtras() {
   };
   await preloadLoot();
   await preloadPotionDrop();
+  addBuildSpotMarkers(world);   // the island chest joins the room's own (js/buildspots.js)
   await spawnBreakables(world, world.markers.breakables || []);
   await spawnChests(world, world.markers.chestDefs || []);
-  await spawnResourceNodes(world, world.markers.rockSpots || [], world.markers.treeSpots || []);
+  await spawnBuildSpot(world);   // the fallen bridge — before bloom, so flowers see its drop
+  world.onBuildDone = () => {
+    bigToast('We built a bridge!');
+    narration.say('build_done');
+    persist();
+  };
+  // THE OUTER CAMP CHANGES THINGS (v3.200, js/levelDenRebuild.js)
+  world.onForgeVisit = () => { if (menus) menus.openForge(); };
+  world.onTavernVisit = () => narration.say('tavern_rumour');
+  if (world.roomId === 'den' || world.roomId === 'dr') welcomeHome();
+  else awayRooms.add(world.roomId);
+  await spawnResourceNodes(world,
+    [...(world.markers.rockSpots || []), ...extraSpots(world.roomId, 'rock')],
+    [...(world.markers.treeSpots || []), ...extraSpots(world.roomId, 'tree')]);
   await spawnDragonShrines(world, world.markers.dragonShrineSpots || []); // design/DRAGON-EGGS.md
   await spawnEggNests(world, world.markers.eggNestSpots || []);           // ...and the eggs' own altars (v3)
   await spawnPups(world, onPupCollected);
@@ -2163,6 +2244,17 @@ async function setupRoomExtras() {
   // spawnDenNpcs alongside the other villagers (js/npcs.js) — spawnWayfarer
   // refuses a second one, so it does not matter which of the two runs first.
   await spawnWayfarer(world, wayfarerPost(world.roomId));
+  // ...and LAST of all, the shell's cliff blocks step back from whatever was
+  // stood against them after the room was built (World.wallsYield) — a boss
+  // gate's pillars, a shrine. Things that walk are not placements.
+  {
+    const movers = new Set([player.root, ...(world.enemies || []).filter((e) => !e.scenery).map((e) => e.root),
+      ...(world.pups || []).map((p) => p.root), pip && pip.root, dragon && dragon.root].filter(Boolean));
+    world.wallsYield((m) => {
+      for (let a = m; a && a !== world.root; a = a.parent) if (movers.has(a)) return true;
+      return false;
+    });
+  }
   shopWasNear = true; // don't pop the shop just from spawning next to it
   travelWasNear = true;
   gardenWasNear = true;
@@ -2964,6 +3056,8 @@ async function start() {
       if (world.updateLostWolf) world.updateLostWolf(dt, t, player);
       if (world.updateNpcs) world.updateNpcs(dt, t, player); // den villagers + Biscuit
       if (world.updateNodes) world.updateNodes(dt, t, player); // mining/woodcutting
+      if (world.updateBuildSpot) world.updateBuildSpot(dt, t, player); // js/buildspots.js
+      craftNudge();
       if (world.updateDragonShrines) { // design/DRAGON-EGGS.md
         world.updateDragonShrines(dt, t, player);
         const ev = world.dragonShrineEvent;

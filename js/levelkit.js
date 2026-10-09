@@ -357,6 +357,10 @@ export function makeBuilders({ kit, isGrey }) {
     const halfW = w / 2, halfD = d / 2;
     world.deckY = 0;
     const kit0 = K();
+    // remembered for anything that digs into this room later (latePit), so a
+    // hole made after the build wears the room's own stone and brick
+    world._district = D;
+    world._kit = kit0;
 
     // THE FLOOR. Until v3.36 this instanced Kenney's floor-tile.glb across the
     // rectangle under one district tint — one tile, one colour, every room,
@@ -979,6 +983,9 @@ export const PIT_DEPTH = 3.4;   // player.js drops a falling child to airY -3.2
 function drawPits(world, kit0, D) {
   const art = world._pitArt || (world._pitArt = { D: null, parts: [] });
   if (D) art.D = D;
+  // remembered, so a pit added AFTER the build (latePit) redraws the room's
+  // earlier rims with the same brick rather than dropping them
+  if (kit0) art.kit = kit0; else kit0 = art.kit || null;
   const d = art.D || {};
   for (const o of art.parts) {
     if (o.parent) o.parent.remove(o);
@@ -998,6 +1005,16 @@ function drawPits(world, kit0, D) {
   keep(pitWalls(world, d));
   const lip = pitLip(world, kit0, d);
   if (lip) keep(lip);
+}
+
+// A HOLE DUG AFTER THE ROOM IS BUILT (v3.199, js/buildspots.js). The ground
+// and the pit art are never merged by flattenStatic (js/world.js skips them),
+// so the same redraw works once the room is standing. `D` falls back to the
+// colours the room's own pits were drawn in, then to the default stone.
+export function latePit(world, rects, D = null, piers = []) {
+  for (const r of rects) world.pitZones.push({ ...r });
+  for (const p of piers) (world._pitPiers || (world._pitPiers = [])).push({ top: 0, ...p });
+  drawPits(world, world._kit || null, D || world._district || (world._pitArt && world._pitArt.D) || {});
 }
 
 // The room's ground plane, re-cut with every pit rectangle taken out of it.
@@ -1440,6 +1457,21 @@ export function bossGate(world, x, z, facing, gltf, tint, opts = {}) {
   let shut = !open0;
   if (shut) world.boxColliders.push(blocker);
 
+  // WHERE THE LEAVES WILL REST, wide open — measured by swinging them there
+  // for a moment. The shell's cliff blocks behind the gate step back out of
+  // that space (World.wallsYield), or an opened leaf is drawn through the
+  // cliff beside it (verify-placement, f4/lg4, 2026-10-10).
+  {
+    for (const l of leaves) l.hinge.rotation.y = -l.side * 1.95;
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const l of leaves) {
+      box.setFromObject(l.hinge);
+      (world._yieldTo || (world._yieldTo = [])).push({ minX: box.min.x, maxX: box.max.x,
+        minZ: box.min.z, maxZ: box.max.z });
+    }
+    for (const l of leaves) l.hinge.rotation.y = 0;
+  }
   let swing = open0 ? 1 : 0;                        // 0 shut, 1 wide
   world.onAnimate((t, dt) => {
     if (!shut && swing < 1) swing = Math.min(1, swing + dt * 0.9);
@@ -1540,6 +1572,7 @@ export function thresholdGlow(world) {
   mesh.position.y = (world.deckY || 0) + 0.03;   // above the ground, below decals
   mesh.renderOrder = 2;
   mesh.name = 'thresholdGlow';
+  mesh.userData.fx = true;                        // light, not a thing that stands
   world.add(mesh);
   world.keepLoose(mesh);
   return mesh;
