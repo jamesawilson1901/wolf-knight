@@ -196,6 +196,30 @@ These carry most of the felt progression and cost near-zero draw calls:
 
 ---
 
+### 5.4 SHIPPED v3.203 (2026-10-10) — the cheap cues, not the mesh swap
+
+The Den already grows with progress in its own way: spirits come home to
+the fire, settlers and the Outer Camp arrive, Tam takes his post, and the
+Village road opens. The four-states mesh swap in §5.2 was written before
+any of that existed. It would now replace a room a child already knows, and
+at 98-125 draw calls the Den has no budget left for a second set of
+geometry. So the swap is set aside, and two §5.3 cues ship:
+
+- **The hearth burns bigger at each tier.** At `unlockTier` 0/1/2/3 the den
+  fire's flame and light scale by 1 / 1.2 / 1.4 / 1.65. This uses the same
+  meshes and adds no draw call.
+- **A banner per region set right.** They hang flat on the north palisade,
+  the wall a child faces walking up to the fire, one per restored region in
+  its element colour, plus the Court's pair framing the Village road once
+  Grimm is free. They are the dungeon kit's `Banner_wall.glb`, instanced
+  with a per-instance cloth colour: three draw calls for the whole row.
+  Inside the south wall was tried first; the palisade itself hides them
+  from the camera there.
+
+Not built: ambient audio layers (no assets), fog pull-back (the Den's fog
+starts beyond the camera, so it would not show), lantern counts.
+tools/verify-den-growth.mjs walks four saves into the Den.
+
 ## 6. Rewards
 
 All cosmetic. Suggested pools:

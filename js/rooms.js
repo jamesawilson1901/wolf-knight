@@ -17,7 +17,8 @@ import { spawnEnemies } from './enemies.js';
 import { applyShells } from './shells.js';
 import { Shadowgrip, Boreal, SKINS as BOSS_SKINS } from './boss.js';
 import { audio } from './audio.js';
-import { WS } from './worldstate.js';
+import { WS, unlockTier } from './worldstate.js';
+import { elementColor } from './juice.js';
 import { boulderGate, waterGate, brazier, brambleGate, iceGate,
   pushableBoulder, plateSwitch } from './gates.js';
 import { loadGateProps } from './gateprops.js';
@@ -238,12 +239,14 @@ function checkpoint(world, id, x, z) {
   light.position.set(x, 1.0, z);
   world.add(light);
 
-  const cp = { id, x, z, r: 1.3, flame, light, reached: false };
+  // `grow` (the Den's hearth, v3.203): a bigger fire for a fuller home
+  const cp = { id, x, z, r: 1.3, flame, light, reached: false, grow: 1 };
   world.checkpoints.push(cp);
   world.onAnimate((t) => {
-    const s = cp.reached ? 1.25 : 0.8;
+    const s = (cp.reached ? 1.25 : 0.8) * cp.grow;
     flame.scale.setScalar(s + 0.14 * Math.sin(t * 9 + x));
-    light.intensity = (cp.reached ? 7.5 : 4) + Math.sin(t * 11 + z) * 0.8;
+    light.intensity = ((cp.reached ? 7.5 : 4) + Math.sin(t * 11 + z) * 0.8) * (0.75 + 0.25 * cp.grow);
+    light.distance = 7 * (0.8 + 0.2 * cp.grow);
   });
   return cp;
 }
@@ -873,7 +876,13 @@ async function buildDen(scene) {
   }
 
   // warm heart campfire + tents + trees + flowers
-  checkpoint(world, 'cp_den', 0, -1.0);
+  // THE DEN GROWS WITH WHO HAS COME HOME (design/DEN-MINIGAMES.md §5.3,
+  // v3.203). The hearth burns bigger at each rescue tier — a bare hollow's
+  // small fire at none, a roaring one at nine — the cheapest growth cue there
+  // is: no new draw call, the same flame and light, scaled.
+  const hearth = checkpoint(world, 'cp_den', 0, -1.0);
+  hearth.grow = [1, 1.2, 1.4, 1.65][unlockTier(state)];
+  world.denTier = unlockTier(state);
   for (const [gltf, x, z, s, ry] of [
     // WEST — where people sleep. Two tents facing the fire, mouths onto the
     // worn patch the ground painter puts there.
@@ -1032,6 +1041,51 @@ async function buildDen(scene) {
       glow.intensity = h.glow * 0.88 + Math.sin(t * (h.bob + 0.6) + h.phase) * 0.6;
     });
     world.markers[h.marker] = { x: h.x, z: h.z };
+  }
+
+  // A BANNER FOR EVERY REGION SET RIGHT (§5.3: "banner colours pick up the
+  // elements of regions already cleared"). Flat on the NORTH palisade, the
+  // wall a child faces walking up to the fire, one per restored region in
+  // that region's element colour; the Court's pair frames the Village road it
+  // opens. (Inside the south wall was tried: the palisade itself hides them
+  // from this camera.) The dungeon kit's own wall banner, instanced — the row
+  // is one draw call per part of the model, three in all, however many have
+  // come home.
+  {
+    const ROW = [
+      { key: 'ember', x: -9.6, el: 'fire' }, { key: 'stone', x: -7.2, el: 'earth' },
+      { key: 'wild', x: -4.8, el: 'verdant' }, { key: 'frost', x: 4.8, el: 'frost' },
+      { key: 'storm', x: 7.2, el: 'storm' }, { key: 'vale', x: 9.6, el: 'tide' },
+      { key: 'court', x: -2.4, el: 'moon' }, { key: 'court', x: 2.4, el: 'moon' },
+    ];
+    const up = ROW.filter((b) => (b.key === 'court' ? state.flags.grimmFreed : WS.get(b.key, 'restored')));
+    if (up.length) {
+      const bannerGltf = await loadGLB('./assets/env/dungeon/Banner_wall.glb');
+      // flat on the palisade's inner face, rod along its top (blocks 1.7-2.0 tall)
+      const S = 0.5, Y = 1.78, Z = -halfD + 0.08;
+      const parts = [];
+      bannerGltf.scene.updateMatrixWorld(true);
+      bannerGltf.scene.traverse((n) => { if (n.isMesh) parts.push(n); });
+      const place = new THREE.Matrix4(), q = new THREE.Quaternion(), tmp = new THREE.Matrix4();
+      const group = new THREE.Group();
+      for (const part of parts) {
+        const cloth = part.material.color && part.material.color.getHex() === 0x702721;
+        const mat = part.material.clone();
+        if (cloth) mat.color.setHex(0xffffff);   // the instance colour IS the cloth
+        const im = new THREE.InstancedMesh(part.geometry, mat, up.length);
+        up.forEach((b, i) => {
+          q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);   // modelled hanging toward -z; the room is +z
+          place.compose(new THREE.Vector3(b.x, Y, Z), q, new THREE.Vector3(S, S, S));
+          im.setMatrixAt(i, tmp.multiplyMatrices(place, part.matrixWorld));
+          if (cloth) im.setColorAt(i, new THREE.Color(elementColor(b.el)).multiplyScalar(0.8));
+        });
+        im.castShadow = false;
+        group.add(im);
+      }
+      world.add(group);
+      world._denBanners = group;
+      world.markers.denBanners = up.map((b) => ({ key: b.key, x: b.x }));
+    }
   }
 
   // Luna's moonstone — the fast-travel waystone. Glows once there is

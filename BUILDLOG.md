@@ -6296,3 +6296,23 @@ either side of the step; the earlier dig compared meshes that were VISIBLE.
 verify-minigame and verify-mg-quiz now hide the creatures that were there
 at the baseline and hold the guide off. Their check is exact (it was +-3),
 and a planted mesh reading 73 -> 74 fails it.
+
+## The Den grows with who has come home (2026-10-10, v3.203.0)
+
+design/DEN-MINIGAMES.md §5.3:
+- the Den's hearth burns bigger at each rescue tier;
+- a banner per restored region hangs on the north palisade in that region's
+  element colour, plus the Court's pair by the Village road once Grimm is
+  free.
+
+The §5.2 four-states mesh swap is set aside, with the reason in the doc: the
+Den already grows its own way, and there is no draw-call room left for a
+second set of geometry.
+
+The banners were tried on the north wall first, where they sat under the
+HUD. Inside the south wall the palisade hid them. They now hang flat and low
+on the north wall, in view from the fire. New suite
+tools/verify-den-growth.mjs walks four saves in.
+
+Found while measuring: a fully restored Den is already at 132-133 draw calls
+near the south gate (budget 125), before any banner. Queued next.
