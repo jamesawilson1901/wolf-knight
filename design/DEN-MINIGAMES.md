@@ -349,6 +349,12 @@ anywhere but the family.
 
 ### Left alone on purpose
 
+- **The three existing den games, re-examined 2026-10-12 and still left
+  alone, for a reason sharper than the one below.** Two of them are played by
+  MOVING and FIGHTING in the live Den: Rook's Sharp Eye is real attacks on
+  targets, and Pip's Paw Path is following Pip. The harness freezes the world
+  and Kael for a round by design (§2: nothing can hurt a child mid-round).
+  Moving them onto it would change what they are, not tidy them up.
 - **The three existing den games** (target, shuffle, paw) are exactly what §3
   warns against — three private clocks, three scoring rules, no results screen,
   no bests, no teardown. They are untouched and still play. Migrating them onto
