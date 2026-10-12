@@ -4,6 +4,7 @@
 // AND note agree for every element, the fire sings each note, a right
 // sequence grows by one, and a wrong press replays it — never a lockout.
 import { launchBrowser } from './launch.mjs';
+import { restCalls as restCallsAt } from './mg-rest.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -56,36 +57,7 @@ check('one rescue (Tier 1): the Den has a Howl Echo ring', (await go('den')) && 
 
 // the draw-call baseline, the verify-minigame discipline (creatures hidden)
 const REST = { x: -6, z: 0 };
-const restCalls = () => page.evaluate(async (p) => {
-  const g = window.__game;
-  const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
-  g.player.root.position.set(p.x, 0, p.z);
-  let last = null, still = 0;
-  for (let i = 0; i < 600 && still < 6; i++) {
-    await wait(1);
-    const c = g.camera.position;
-    const moved = last ? Math.abs(c.x - last.x) + Math.abs(c.y - last.y) + Math.abs(c.z - last.z) : Infinity;
-    still = moved < 0.0005 ? still + 1 : 0;
-    last = { x: c.x, y: c.y, z: c.z };
-  }
-  if (!window.__restMovers) {
-    const m = new Set([g.pip && g.pip.root].filter(Boolean));
-    for (const top of [...g.scene.children, ...g.world.root.children]) {
-      let skinned = false;
-      top.traverse((n) => { if (n.isSkinnedMesh) skinned = true; });
-      if (skinned && top !== g.player.root && top !== g.world.root) m.add(top);
-    }
-    window.__restMovers = m;
-  }
-  const hid = [];
-  for (const o of window.__restMovers) if (o.visible) { o.visible = false; hid.push(o); }
-  await wait(2);
-  const s = [];
-  for (let i = 0; i < 5; i++) { s.push(g.renderer.info.render.calls); await wait(12); }
-  for (const o of hid) o.visible = true;
-  s.sort((a, c) => a - c);
-  return { children: g.world.root.children.length, calls: s[2] };
-}, REST);
+const restCalls = () => restCallsAt(page, REST);
 const baseline = await restCalls();
 
 // 2. walk in, skip the demo

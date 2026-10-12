@@ -5,6 +5,7 @@
 // differ in the game — several positioned cards instead of one big tap
 // layer, and a picture-matching round instead of a catch.
 import { launchBrowser } from './launch.mjs';
+import { restCalls as restCallsAt } from './mg-rest.mjs';
 
 const errors = [];
 const check = (n, ok, d) => {
@@ -53,49 +54,7 @@ const frames = (n) => page.evaluate(async (k) => {
 // own long comment for why a fixed frame budget doesn't hold up headless),
 // median of five samples
 const REST = { x: -6, z: 0 };
-const restCalls = () => page.evaluate(async (p) => {
-  const g = window.__game;
-  g.CONFIG.DIFFICULTY.GUIDE_IDLE_S = 1e9;   // see THINGS THAT WALK below
-  const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
-  g.player.root.position.set(p.x, 0, p.z);
-  let last = null, still = 0;
-  for (let i = 0; i < 600 && still < 6; i++) {
-    await wait(1);
-    const c = g.camera.position;
-    const moved = last ? Math.abs(c.x - last.x) + Math.abs(c.y - last.y) + Math.abs(c.z - last.z) : Infinity;
-    still = moved < 0.0005 ? still + 1 : 0;
-    last = { x: c.x, y: c.y, z: c.z };
-  }
-  // THINGS THAT WALK ARE HIDDEN WHILE IT COUNTS (2026-10-10, the known-fail's
-  // root cause at last). The "unidentified extra render pass ~15s in" was
-  // never a pass: it was CREATURES walking into the frame — Pip setting off to
-  // show the way after GUIDE_IDLE_S of no progress (seven paw prints and the
-  // fox: +4 calls), and a Den wolf strolling in at ~28s (+4 more). Measured by
-  // diffing the meshes drawn the frame before the step against the frame
-  // after. So the guide is held off for the run, and everything that was
-  // already alive in the room at the BASELINE (Pip, and any top-level thing
-  // with a skeleton) is hidden for the count, both times. Anything a game left
-  // behind was not in that set, so it is still counted — which is the leak
-  // this check exists to catch.
-  if (!window.__restMovers) {
-    const m = new Set([g.pip && g.pip.root].filter(Boolean));
-    for (const top of [...g.scene.children, ...g.world.root.children]) {
-      let skinned = false;
-      top.traverse((n) => { if (n.isSkinnedMesh) skinned = true; });
-      if (skinned && top !== g.player.root && top !== g.world.root) m.add(top);   // never the room itself
-    }
-    window.__restMovers = m;
-  }
-  const hid = [];
-  for (const o of window.__restMovers) if (o.visible) { o.visible = false; hid.push(o); }
-  await wait(2);
-  const s = [];
-  for (let i = 0; i < 5; i++) { s.push(g.renderer.info.render.calls); await wait(12); }
-  for (const o of hid) o.visible = true;
-  s.sort((a, b) => a - b);
-  if (s[2] < 20) throw new Error('restCalls hid the room, not its creatures: ' + s[2] + ' calls');
-  return { children: g.world.root.children.length, calls: s[2], samples: s, hidden: hid.length };
-}, REST);
+const restCalls = () => restCallsAt(page, REST);
 const baseline = await restCalls();
 
 // walk to the ring the way a child does (tools/probe-freespot.mjs's own spot)

@@ -460,3 +460,27 @@ The hearth gets its own colour back after the round.
 **No fail state.** A right sequence scores its length and grows by one. A
 wrong pad shakes and the same sequence plays again. Bands change the
 number of pads (3/4/5) and the speed, never the pass condition.
+
+### Herb Match — **DONE** (v3.207.0, 2026-10-12)
+
+The first Tier 3 game (nine rescues). The ring is by the kitchen garden at
+(-6, 0.5), probed clear in the late Den. The game is `js/mg-herb.js` and
+its suite is `tools/verify-mg-herb.mjs`.
+
+It is a pairs game. A match stays up (+1), a miss turns back after a look,
+and a cleared board pays +3 and deals a fresh one. Bands set the board
+size: Cub 6, Wolf 8, Alpha 12.
+
+**The §7 blocker ("herb icon set ×8: not sourced") is answered the way the
+material pictures were.** Eight herbs are drawn on a canvas: clover,
+sprout, mushroom, berry, flower, leaf, acorn and pine cone. Each has its
+own silhouette as well as its own colour, and the suite checks that no two
+herbs share a silhouette.
+
+Looking at it changed the card backs from leaf-green, which vanished into
+the Den's grass, to wood.
+
+**The suites' at-rest draw count is now one helper, `tools/mg-rest.mjs`,**
+shared by all six game suites. Measured on Herb Match, it also hides Kael
+(his gear was not drawn in one frame) and the shared spark cloud (still
+alive from an earlier burst).

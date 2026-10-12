@@ -1192,6 +1192,25 @@
     .mgh-pad.lit { border-color: #ffd76a; background: rgba(255,215,106,.45); transform: scale(1.12); }
     .mgh-pad { transition: transform .08s ease, background .08s ease; }
     body.titling #mgh-row { display: none !important; }
+    /* HERB MATCH (js/mg-herb.js) — a grid of cards above the tap layer.
+       Face down a card shows a leafy back; turned, its herb. */
+    #mgm-grid {
+      position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 43;
+      display: grid; gap: 8px; pointer-events: none;
+    }
+    .mgm-card {
+      pointer-events: auto; width: 66px; height: 66px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; touch-action: none;
+      /* wood, not leaf-green: a green back vanished into the Den's grass */
+      background: #7a5230 repeating-linear-gradient(45deg, rgba(255,235,200,.12) 0 6px, transparent 6px 12px);
+      border: 3px solid rgba(255,235,200,.5); box-shadow: 0 3px 8px rgba(0,0,0,.35);
+      transition: transform .12s ease, background .12s ease;
+    }
+    .mgm-card canvas { width: 52px; height: 52px; visibility: hidden; }
+    .mgm-card.up { background: #f4ecd8; transform: scale(1.04); }
+    .mgm-card.up canvas, .mgm-card.done canvas { visibility: visible; }
+    .mgm-card.done { background: #f4ecd8; border-color: #ffd76a; opacity: .85; }
+    body.titling #mgm-grid { display: none !important; }
 
     #mg-chip {
       position: fixed; left: 50%; top: 10px; transform: translateX(-50%);
@@ -1470,7 +1489,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.206.0</div>
+  <div id="badge">Wolf Knight &middot; v3.207.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

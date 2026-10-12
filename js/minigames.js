@@ -29,6 +29,7 @@ import { QUIZ } from './mg-quiz.js';
 import { makePupTag } from './mg-tag.js';
 import { makeHideAndSeek } from './mg-hide.js';
 import { HOWL } from './mg-howl.js';
+import { HERB } from './mg-herb.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -674,6 +675,9 @@ export async function setupDenGames(world) {
   // 🐺 HOWL ECHO, Tier 1 (js/mg-howl.js): the ring south of the fire, which
   // is the singer — probed clear in the late Den, 2.8u from Fetch's ring
   if (unlockTier(state) >= 1) games.push(ringHost(world, 'howl', 1.6, 1.8, '🐺 howl echo!', HOWL));
+  // 🌿 HERB MATCH, Tier 3 — nine rescues (js/mg-herb.js): the ring by the
+  // kitchen garden, probed clear in the late Den
+  if (unlockTier(state) >= 3) games.push(ringHost(world, 'herb', -6, 0.5, '🌿 herb match!', HERB));
   // §4 Tier 2 — four rescues
   if (unlockTier(state) >= 2) games.push(makeTagHost(world, await loadGLB('./assets/chars/wolf.gltf')));
   world.denGames = games;

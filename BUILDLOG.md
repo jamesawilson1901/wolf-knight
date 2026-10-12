@@ -6400,3 +6400,24 @@ New suite tools/verify-mg-howl.mjs:
 - results;
 - the hearth's colour is restored;
 - zero residue and exact draw calls.
+
+## Herb Match (2026-10-12, v3.207.0)
+
+The first Tier 3 Den game (nine rescues): pairs, with eight herbs drawn on
+a canvas, each its own shape and colour. This answers the §7 "herb icons
+not sourced" blocker without adding an asset. Card backs went from green
+to wood after a look.
+
+New suite tools/verify-mg-herb.mjs:
+- locked at eight rescues, open at nine;
+- every herb is dealt twice and no two share a silhouette;
+- a miss turns back, a pair stays up and scores 1;
+- a cleared board pays +3 and is dealt again;
+- results;
+- zero residue and exact draw calls.
+
+The six game suites' "draw calls return to where they started" reading is
+now one shared helper (tools/mg-rest.mjs). Its first run on Herb Match read
+80 -> 79, which is impossible for a leak. A draw-by-draw diff showed Kael's
+gear missing from one frame and a spark cloud alive in the other, so both
+are hidden during the count. All six suites pass on it.
