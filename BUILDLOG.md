@@ -6421,3 +6421,25 @@ now one shared helper (tools/mg-rest.mjs). Its first run on Herb Match read
 80 -> 79, which is impossible for a leak. A draw-by-draw diff showed Kael's
 gear missing from one frame and a spark cloud alive in the other, so both
 are hidden during the count. All six suites pass on it.
+
+## The Tide passage (2026-10-12, v3.208.0)
+
+The last of WIDER-WORLD §5.1's loops. A wading child goes from the Scorched
+Cubby's north wall (lb2) down through two new Ember rooms and comes up on
+the Market's far bank (q2):
+- **lw1, THE DROWNED STORES**;
+- **lw2, THE FLOODED WAY.**
+
+Both ends only open once the child can wade. Inside, the road is shallow
+water and each room's deep pool holds a chest: `lw2`'s is gold, Ember's
+oldest promise (`r2b_water`) kept.
+
+Found on the way: the Market had never drawn its deep channels (no
+`buildWaterField` call), so a child without the Tide Wolf met an invisible
+wall across snow. Drawn, q2's channel stood the far bank's stall in the
+river, so it was narrowed and the far bank is ground.
+
+New suite tools/verify-tide.mjs walks the whole passage on the keyboard,
+opens both deep chests by wading, and crosses the channel to the stalls.
+verify-loops gains both ends; verify-density lists the rooms; the map graph
+is regenerated.

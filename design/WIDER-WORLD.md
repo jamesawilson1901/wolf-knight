@@ -652,11 +652,41 @@ destination district's tint spilled on the floor (`thresholdGlow` in
 | Den → `vh` | `WS.stage('vault') >= 1` | `vh` already walks into the Den one-way (`level2.js:567`) and the Den has no door back; stage ≥1 means the child has stood in the Vault and relit its lantern, so it is a return loop and never a skip of the Night Road; no new flag | `den` (east gap in the instanced cliff at `rooms.js:819` and its box colliders at 827-832) | `addDoor` beside 833; a `'den'` `HUBS` entry in `route.js` |
 | `ddp` ↔ `dlg` | `meriDefeated` | the Vale's arena is one room from its lagoon hub and does not open onto it; gating on the boss flag keeps Tam's law that no door offers a way out of a fight | `ddp` (west door beside the `dg4` door, `level6.js:1207`), `dlg` (an east door in the pattern of its four at 587/714/903/1045) | `verify-onward` ARENAS unchanged (`ddp`'s way on is still `h1`, `route.js:50`) |
 | `tf3` ↔ `f1b` | `borealDefeated` | the Frozen Spring dungeon comes out in the Frozen Cairn pocket (`level4.js:77`, loopsTo `f1`), so Woods → Cold Climb → Frostpeak is a walked loop and the cairn chest `c_f1b_ice` (579) is reached from below; the Frost Wolf implies the flag, and the flag keeps the door shut mid-fight | `f1b` (a south door that only exists when the flag is set, the `windBridge` idiom `level5.js:1140`) | `t` rooms carry their own kit list naming the Kenney snow pieces from `assets/env/snow` (there is no `assets/env/holiday`); a 260 ms cross-region seam already exists (`main.js:1852`) |
-| `lb2` → `q2` | `canWade()` | Ember's oldest promise (`r2b_water`, tide, shown in region 1) becomes a two-room flooded passage to the Market's deep channel (`levelMarket.js:289-296`), the `s1a` `'none'` idiom around a `sideDoor when: canWade`; eight places become one loop from the Den | `lb2`, `lw1`, `lw2` new (`l`), `q2` | queued: Tide is region 6, so by dad's law it is late |
+| `lb2` → `q2` | `canWade()` | Ember's oldest promise (`r2b_water`, tide, shown in region 1) becomes a two-room flooded passage to the Market's deep channel (`levelMarket.js:289-296`), the `s1a` `'none'` idiom around a `sideDoor when: canWade`; eight places become one loop from the Den | `lb2`, `lw1`, `lw2` new (`l`), `q2` | **SHIPPED v3.208** — see §5.6 |
 
 The Den also gets a real place in the data: a `'den'` `HUBS` entry that
 points the guide at the lowest-stage hearth whose next fact is reachable, or
 at the next unhealed entrance — so Pip's arrow itself says "go back and look".
+
+### 5.6 The Tide passage — SHIPPED (v3.208, 2026-10-12)
+
+`lb2` (north wall) → `lw1` THE DROWNED STORES → `lw2` THE FLOODED WAY →
+`q2`'s far bank (east wall, z −8). Both ends exist only when `canWade()`.
+Before that, `lb2` names the branch in `pluggedTo`, so verify-level1's
+"the host offers the branch" still holds.
+
+- **Inside, the way through is SHALLOW and the finds are DEEP.** Deep water
+  is a wall to a child who cannot wade, which is right for a treasure and
+  wrong for a road, and every suite that builds Ember builds it without
+  the Tide Wolf. Each room has a deep pool with a chest in it: `lw1`'s
+  sunk chest, and `lw2`'s gold, Ember's oldest promise kept.
+- **A new district, `drowned`.** It is the Ashfall's ground, pulled toward
+  wet stone and river-green.
+- **Found and fixed on the way: the Market's channels had never been
+  drawn.** `levelMarket.js` never called `buildWaterField`, so q1's and
+  q2's deep channels were invisible walls across snowy ground. Drawn for
+  the first time, q2's ran nearly to the east wall and stood the far
+  bank's stall in the river, so it was narrowed to x 6..12 and the far
+  bank is ground now.
+- **Suites.** New `tools/verify-tide.mjs` walks it on the keyboard:
+  - shut without the wolf;
+  - lb2 → lw1 → lw2 → q2 with it;
+  - both deep chests opened by wading;
+  - the channel crossed to the stalls.
+
+  `verify-loops` gains the two wade-guarded ends, and `verify-density`
+  lists both rooms. The map graph is regenerated, and the map gets the
+  passage's card (`DUNGEON_MOUTHS.lb2`).
 
 ### 5.2 The guide points back
 

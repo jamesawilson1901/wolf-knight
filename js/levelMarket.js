@@ -40,7 +40,7 @@ import { makeBuilders, tintedModel, gap, thresholdGlow,
 import { makeDressers } from './dressing.js';
 import { flattenStatic } from './batch.js';
 import { iceGate } from './gates.js';
-import { waterZone } from './water.js';
+import { waterZone, canWade, buildWaterField } from './water.js';
 import { registerDistrictTints } from './districts.js';
 import { installFishHost } from './mg-fish.js';
 
@@ -155,6 +155,12 @@ function base(scene, id) {
 }
 
 function finish(world, spec, D) {
+  // THE CHANNEL'S OWN SURFACE (v3.208). Both Market rooms laid a deep
+  // waterZone and never drew it: js/water.js makes deep water a wall to a
+  // child who cannot wade, so the far quay was an invisible wall across
+  // snowy ground — found looking at the Tide passage's landing on its far
+  // bank. The same call level6's own finish makes.
+  world._waterMeshes = buildWaterField(world);
   if (GREY()) {
   world.sweepKeepClear();
     thresholdGlow(world);
@@ -295,7 +301,9 @@ export async function buildQ1(scene) {
 // --- Q2 — THE MARKET ROWS --------------------------------------------------
 export async function buildQ2(scene) {
   const { world, spec, D } = base(scene, 'q2');
-  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+  // THE TIDE PASSAGE (v3.208): the far bank's own door, back down to Ember's
+  // Drowned Stores — only for a child who can wade the channel to reach it
+  const { halfW, halfD } = shell(world, spec, canWade() ? [gap('s'), gap('n'), gap('e', undefined, -8)] : [gap('s'), gap('n')], D, {
     patches: [{ x: 0, z: 0, r: 6.5, kind: 'gravel' }, { x: -11, z: 6, r: 3.4, kind: 'rubble' },
               { x: 11, z: -6, r: 3.4, kind: 'rubble' }],
     pathWidth: 2.8,
@@ -304,6 +312,7 @@ export async function buildQ2(scene) {
   world.spawn = { x: 0, z: 11, angle: Math.PI };
   sideDoor(world, 's', halfW, halfD, 'q1', { x: 0, z: -11, angle: 0 });
   sideDoor(world, 'n', halfW, halfD, 's1a', { x: 0, z: 9, angle: Math.PI });
+  if (canWade()) sideDoor(world, 'e', halfW, halfD, 'lw2', { x: -7.5, z: 0, angle: Math.PI / 2 }, { centre: -8 });
 
   world.slickFloor = true;
 
@@ -311,7 +320,10 @@ export async function buildQ2(scene) {
   // best stall standing on the other bank, lit, plainly visible, and utterly
   // unreachable for two more regions. This is the lock-before-key law doing the
   // thing it is for: a child asks what that is, and the answer is "later".
-  waterZone(world, { x: 10.5, z: 0, w: 9.0, d: 24, deep: true });
+  // x 6..12, not 6..15 (v3.208): drawn for the first time, the old channel
+  // ran nearly to the wall and stood the far bank's whole stall — cart, boat
+  // and fish — in the river. Now the far bank is ground, with the stall on it.
+  waterZone(world, { x: 9.0, z: 0, w: 6.0, d: 24, deep: true });
   world.markers.underwaterPromise = { x: 6.0, z: 0 };
   goods(world, D, [
     ['boat', 13.5, 4.5, 1.0, 0.3], ['cart', 14, -3, 1.0, -0.5],

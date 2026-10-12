@@ -104,6 +104,7 @@ const ROOMS = [
   { id: 'lk1', kind: 'pocket' }, { id: 'lk2', kind: 'island' }, { id: 'lk3', kind: 'pocket' },
   { id: 'lk4', kind: 'pocket' },
   { id: 'lv1', kind: 'pocket' }, { id: 'lv2', kind: 'island' }, { id: 'lv3', kind: 'pocket' },
+  { id: 'lw1', kind: 'pocket' }, { id: 'lw2', kind: 'pocket' },   // the Tide passage (v3.208)
   // The Night Road — the road between Ember Hollow and Stoneroot
   { id: 'n1',  kind: 'island' }, { id: 'n2',  kind: 'island' },
   // The Greenway — the road between Stoneroot and the Wild Woods

@@ -40,6 +40,7 @@ import { spawnShards } from './loot.js';
 import { carryItem, socket } from './carry.js';
 import { juice } from './juice.js';
 import { audio } from './audio.js';
+import { waterZone, buildWaterField, canWade } from './water.js';
 import { isHealed, COAT } from './restoration.js';
 import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 import { bumpCounter } from './progress.js';
@@ -111,6 +112,13 @@ export const DISTRICTS = {
   // somewhere warmer" before a word is said.
   dragonfire: { tint: 0x8a4a3a, floorTint: 0x6a4038, wallTint: 0x2c1814, propTint: 0x7a5044, ground: 'heart',
               name: "THE EMBER DRAGON'S DEN", hero: 'THE FIRE PORTAL' },
+  // THE DROWNED STORES (design/WIDER-WORLD.md §5.1, v3.208) — the Causeway's
+  // cellars, where the water came in after the fire. The Ashfall's own
+  // ground (the same hollow), pulled from ash-grey toward wet stone and
+  // river-green, so a child walking in from the Scorched Cubby reads "the
+  // fire never got down here — the water did" before a word is said.
+  drowned: { tint: 0x5a7a7a, floorTint: 0x5e6a64, wallTint: 0x22302e, propTint: 0x6a6656, ground: 'ashfall',
+              name: 'THE DROWNED STORES', hero: 'THE FLOODED WAY' },
 };
 
 // ---------------------------------------------------------------------------
@@ -182,6 +190,14 @@ export const L1 = {
          label: 'THE FIRE PORTAL', beat: 'optional · the shrine · light two lamps' },
   ln2: { kind: 'pocket', w: 20, d: 16, district: 'dragonfire', loopsTo: 'ln1',
          label: "THE EMBER DRAGON'S NEST", beat: 'optional · the Ember Dragon egg' },
+  // THE TIDE PASSAGE (design/WIDER-WORLD.md §5.1, the last loop): Ember's
+  // oldest promise (`r2b_water`, shown in region 1) paid off in region 6 — a
+  // flooded way out of the Scorched Cubby's north wall that comes up on the
+  // Market's far bank. Both ends only open to a child who can wade.
+  lw1: { kind: 'pocket', w: 20, d: 16, district: 'drowned', loopsTo: 'lb2',
+         label: 'THE DROWNED STORES', beat: 'optional · Tide · a sunk chest in the deep', dungeon: true },
+  lw2: { kind: 'pocket', w: 20, d: 16, district: 'drowned', loopsTo: 'lw1',
+         label: 'THE FLOODED WAY', beat: 'optional · Tide · gold, then out to the Market' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -1153,13 +1169,18 @@ export async function buildLb1(scene) {
 
 export async function buildLb2(scene) {
   const { world, spec, D } = base(scene, 'lb2');
-  const { halfW, halfD } = shell(world, spec, [gap('e')], D, {
+  const { halfW, halfD } = shell(world, spec, canWade() ? [gap('e'), gap('n')] : [gap('e')], D, {
     patches: [{ x: -4, z: 0, r: 5.5, kind: 'scorch' }, { x: 4, z: -5, r: 3.2, kind: 'ash' },
               { x: -7, z: 5.5, r: 3.0, kind: 'rubble' }],
     paths: [[[10, 0], [4, -0.5], [1.5, 0]]],
   });
   world.spawn = { x: 7, z: 0, angle: -Math.PI / 2 };
   sideDoor(world, 'e', halfW, halfD, 'lb', { x: -13.5, z: 0, angle: Math.PI / 2 });   // LOOPS BACK
+  // THE TIDE PASSAGE (v3.208): a north door down to the Drowned Stores, only
+  // for a child who can wade; until then the branch is named, not offered
+  // (onwardPlug's contract, verify-level1).
+  if (canWade()) sideDoor(world, 'n', halfW, halfD, 'lw1', { x: 0, z: 6, angle: Math.PI });
+  else (world.pluggedTo || (world.pluggedTo = [])).push('lw1');
   // THE FIRE GATE — foreshadowed long before the Fire Wolf exists.
   // Charred, orange, reward plainly visible behind it: reads "later", not "never".
   wallRun(world, -10, -4, 1, -4, D);
@@ -2556,6 +2577,88 @@ export async function buildLn2(scene) {
   return finish(world, spec, D);
 }
 
+// ---------------------------------------------------------------------------
+// THE TIDE PASSAGE (design/WIDER-WORLD.md §5.1, v3.208) — lb2 -> lw1 -> lw2
+// -> q2. Ember's cellars, flooded. The way THROUGH is shallow water anyone
+// can walk (the doors at either end are what ask for the Tide Wolf); the
+// DEEP pools hold the finds, so the verb that opened the passage is the verb
+// that pays inside it too. A deep pool is a wall to a child who cannot wade
+// (js/water.js), which is exactly right for a treasure and exactly wrong for
+// a road — so no road runs through one.
+// ---------------------------------------------------------------------------
+export async function buildLw1(scene) {
+  const { world, spec, D } = base(scene, 'lw1');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('n')], D, {
+    patches: [{ x: -5, z: 4, r: 3.2, kind: 'mud' }, { x: 6, z: -4, r: 3.0, kind: 'gravel' },
+              { x: -6.5, z: -5, r: 2.4, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0.6, 2], [-0.4, -3], [0, -8]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'lb2', { x: 0, z: -6, angle: 0 });
+  sideDoor(world, 'n', halfW, halfD, 'lw2', { x: 0, z: 6, angle: Math.PI });
+  // THE FLOOD. Shallow across the whole middle of the room — the road; the
+  // stores' old cistern in the east corner is DEEP, and the sunk chest sits
+  // in it.
+  waterZone(world, { x: 0, z: 0, w: 17, d: 6.5 });
+  waterZone(world, { x: 6.8, z: 4.6, w: 5.0, d: 4.2, deep: true, id: 'lw1_cistern' });
+  world.reserve(6.8, 4.6, 3.0, 'lw1Cistern');
+  visibleReward(world, 7.6, 5.0, 'l1_lw1_sunk', { shards: 24, potion: 1 });
+  world.markers.breakables = [
+    { x: -7.5, z: 6, kind: 'cask' }, { x: -8, z: -6, kind: 'crate' }, { x: 7.5, z: -6, kind: 'barrel' },
+  ];
+  // the stores themselves, ruined and soaked: the shelves fell, the casks
+  // rolled, and nothing has been touched since the water came
+  ruinedHome(world, -6.6, -4.4, 0.3, D, { w: 5, d: 4, keep: 0.4 });
+  fallenColumn(world, -6.5, 5.4, 0.4, D, 2.8);
+  cartWreck(world, 6.6, -5.0, -0.6, D);
+  rubbleField(world, -2.8, -5.8, 1.8, D, 8);
+  rubbleField(world, 3.2, 6.4, 1.6, D, 7);
+  aftermath(world, -7.5, 1.8, 1.6, D, 6);
+  scatter(world, halfW, halfD, D, 91, 6);
+  world.markers.mothSpots = [{ x: -4.5, z: 2.5 }];
+  return finishWet(world, spec, D);
+}
+
+export async function buildLw2(scene) {
+  const { world, spec, D } = base(scene, 'lw2');
+  const { halfW, halfD } = shell(world, spec, [gap('s'), gap('w')], D, {
+    patches: [{ x: 4, z: 4, r: 3.2, kind: 'mud' }, { x: -5, z: 5, r: 2.6, kind: 'gravel' },
+              { x: 6, z: -4.5, r: 2.4, kind: 'rubble' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [-1, 2], [-6, 0], [-10, 0]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'lw1', { x: 0, z: -6, angle: 0 });
+  // out onto the Market's far bank — js/levelMarket.js q2's own canWade door
+  sideDoor(world, 'w', halfW, halfD, 'q2', { x: 13.4, z: -8, angle: -Math.PI / 2 });
+  // the way across is shallow; the old sluice pool in the north-east is deep,
+  // and the passage's gold — Ember's oldest promise, kept — is in the middle
+  // of it on the sluice's own stone step
+  waterZone(world, { x: -3, z: 1.5, w: 13, d: 7 });
+  waterZone(world, { x: 5.4, z: -3.4, w: 6.4, d: 5.6, deep: true, id: 'lw2_sluice' });
+  world.reserve(5.4, -3.4, 3.4, 'lw2Sluice');
+  visibleReward(world, 5.4, -3.6, 'l1_tide_promise', { shards: 30, heartPiece: 1 }, 'gold');
+  world.markers.breakables = [
+    { x: -8, z: 6, kind: 'crate' }, { x: 8, z: 5.5, kind: 'cask' }, { x: -7.5, z: -6, kind: 'vase' },
+  ];
+  fallenColumn(world, 7.4, 1.4, -0.4, D, 2.8);
+  ruinedHome(world, -6.4, 5.2, -0.3, D, { w: 5, d: 4, keep: 0.4 });
+  cartWreck(world, -6.8, -5.2, 0.5, D);
+  rubbleField(world, 1.2, -6.2, 1.8, D, 8);
+  rubbleField(world, 3.4, 6.2, 1.6, D, 7);
+  aftermath(world, -2.4, -5.6, 1.6, D, 6);
+  scatter(world, halfW, halfD, D, 92, 6);
+  world.markers.mothSpots = [{ x: 2.5, z: 3.0 }];
+  return finishWet(world, spec, D);
+}
+
+// the water's own surface, then the usual finish
+function finishWet(world, spec, D) {
+  world._waterMeshes = buildWaterField(world);
+  return finish(world, spec, D);
+}
+
 export const LEVEL1_ROOMS = {
   la: buildLa, la1: buildLa1, lg1: buildLg1,
   lb: buildLb, lb1: buildLb1, lb2: buildLb2, lg2: buildLg2,
@@ -2564,6 +2667,7 @@ export const LEVEL1_ROOMS = {
   lk1: buildLk1, lk2: buildLk2, lk3: buildLk3, lk4: buildLk4,   // EMBER DEEP
   lv1: buildLv1, lv2: buildLv2, lv3: buildLv3,   // THE ASH VAULT
   ln1: buildLn1, ln2: buildLn2,                  // THE EMBER DRAGON'S DEN
+  lw1: buildLw1, lw2: buildLw2,                  // THE TIDE PASSAGE (v3.208)
   le: buildLe,
   zoo: buildZoo,
 };

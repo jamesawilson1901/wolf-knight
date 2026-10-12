@@ -29,6 +29,8 @@ const SECTIONS = [
     ['lb', 'B · EMBER CAUSEWAY — the road in; the Kiln first appears'],
     ['lb1', 'Moth Hollow — optional, pup'],
     ['lb2', 'Scorched Cubby — optional, the FIRE promise gate'],
+    ['lw1', 'THE DROWNED STORES — Tide, down from lb2: a sunk chest in the deep'],
+    ['lw2', 'THE FLOODED WAY — Tide: gold in the sluice, out to the Market'],
     ['lg2', 'THE NARROWS — rest'],
     ['lc', 'C · CINDER BRIDGES — lava slabs, Elder Hound'],
     ['lc1', 'The Drowned Forge — optional, heart piece'],

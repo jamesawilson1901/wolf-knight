@@ -11,9 +11,8 @@
 //
 // SHIPS WITH THE FIRST DOOR (v3.129: `den↔vh`, `ddp↔dlg`), and grows as each
 // later slice's own loop lands — the LINKS table below is the whole surface
-// a new entry needs. `tf3↔f1b` joined in v3.134. `lb2→q2` (§5.1's other row)
-// is not in it: that room does not exist yet, and a link cannot be tested
-// before it ships.
+// a new entry needs. `tf3↔f1b` joined in v3.134; `lb2→q2` (§5.1's last row)
+// in v3.208, as its two ends: lb2↔lw1 and q2↔lw2, each guarded by canWade.
 import { launch } from './wk-drive.mjs';
 import { allRooms, LEGACY } from './all-rooms.mjs';
 
@@ -73,6 +72,23 @@ const LINKS = [
   // district room whose door INTO the lagoon is the one wade actually
   // guards, or "shut when false" tests the wrong door and always passes.
   { name: 'd1a ↔ dlg (canWade)', a: 'd1a', b: 'dlg',
+    set: (v) => {
+      const f = window.__game.state.formsUnlocked;
+      const i = f.indexOf('tide_wolf');
+      if (v && i < 0) f.push('tide_wolf');
+      if (!v && i >= 0) f.splice(i, 1);
+    } },
+  // THE TIDE PASSAGE's two ends (v3.208): the wade-guarded door is on lb2's
+  // side and on q2's side; the passage's own rooms are only ever entered
+  // through one of them, so their doors back are unconditional
+  { name: 'lb2 ↔ lw1 (v3.208, canWade)', a: 'lb2', b: 'lw1',
+    set: (v) => {
+      const f = window.__game.state.formsUnlocked;
+      const i = f.indexOf('tide_wolf');
+      if (v && i < 0) f.push('tide_wolf');
+      if (!v && i >= 0) f.splice(i, 1);
+    } },
+  { name: 'q2 ↔ lw2 (v3.208, canWade)', a: 'q2', b: 'lw2',
     set: (v) => {
       const f = window.__game.state.formsUnlocked;
       const i = f.indexOf('tide_wolf');

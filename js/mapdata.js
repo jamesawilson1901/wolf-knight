@@ -68,6 +68,9 @@ export const DUNGEON_MOUTHS = {
   s1a: { first: 's1c', open: () => state.formsUnlocked.includes('tide_wolf') },
   d1a: { first: 'd1c', open: () => !!WS.get('vale', 'ice_d1a_crypt') },
   x1: { first: 'xc1', open: () => !!WS.get('court', 'ice_x1_vault') },
+  // the Tide passage (v3.208): not a dungeon, but a branch the map should
+  // find again once its door has opened — the same card the s1a cave uses
+  lb2: { first: 'lw1', open: () => state.formsUnlocked.includes('tide_wolf') },
 };
 
 // The Den and its outer camp have no level table, so they are named here.

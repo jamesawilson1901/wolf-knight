@@ -24,6 +24,9 @@ const ONWARD = {
   la1: 'la', lb1: 'lb', lb2: 'lb', lc1: 'lc', ld1: 'ld',
   // The Ash Vault (§2.4): Ember's first dungeon, off `la`'s own cracked wall.
   lv1: 'la', lv2: 'lv3', lv3: 'lv2',
+  // The Tide passage (§5.1, v3.208): down from lb2, out onto the Market's far
+  // bank — onward is the way through, not back
+  lw1: 'lw2', lw2: 'q2',
 
   // --- Stoneroot: a hub and three spokes. `vh` is a function, below -------
   vga: 'va1', va1: 'va2', va2: 'va3', va3: 'vh',
