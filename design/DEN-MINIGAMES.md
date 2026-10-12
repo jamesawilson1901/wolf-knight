@@ -409,3 +409,30 @@ whole litter for +3 and a new litter tumbles in. The skill is still
 
 Each pup is the pen's own `wolf.gltf` with only its Main part drawn: one
 draw call per pup. No new asset.
+
+### Pip's Hide and Seek — **DONE** (v3.205.0, 2026-10-12)
+
+The second Tier 1 game on the harness (one rescue). Pip hosts it himself
+from a ring by the market at (4.2, -2.4). The game is `js/mg-hide.js` and
+its suite is `tools/verify-mg-hide.mjs`.
+
+**Hidden means hidden, and it is measured.** When a round opens, the game
+looks at every piece of furniture on screen. For each one it casts a ray
+from the (settled) camera to the spot behind it.
+- A spot counts as a hiding place only if the prop stops that ray.
+- The peek must be a spot the ray DOES reach: either beside the prop, or a
+  jump up over the top of it (an arc, never a hover).
+
+Scoring: a tap on Pip mid-peek is 1. A tap on the prop he is crouched
+behind, remembered, is 2. A found Pip hops and dashes to a different place.
+The real Pip steps out of the scene for the round, so there are never two
+of him.
+
+**What looking changed:**
+- **Not the palisade.** The first cut also hid him in the strip just inside
+  the palisade, popping up over the wall. Props that are part of the room's
+  edge are now excluded.
+- **The ring moved.** With the walls set aside the Den has about 22 pieces
+  of furniture. The west meadow ring (tried first) could hide him in one
+  place. The ring was moved by counting hiding places from candidate spots:
+  by the market there are five, early save or late.

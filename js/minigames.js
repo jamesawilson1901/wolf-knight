@@ -27,6 +27,7 @@ import { WS, unlockTier } from './worldstate.js';
 import { FETCH } from './mg-fetch.js';
 import { QUIZ } from './mg-quiz.js';
 import { makePupTag } from './mg-tag.js';
+import { makeHideAndSeek } from './mg-hide.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -597,6 +598,32 @@ function makeQuizHost(world) {
 // ring, and nothing else. The ring stands in the east meadow, probed clear
 // with tools/probe-freespot.mjs WK_LATE=1 (the Den with everything home); the
 // pups run on the meadow north of it, on ground measured clear at init.
+// One doorway-only host for every game on the harness that needs nothing
+// but a ring: Fetch's latch (re-arm only once stepped off, dropped AT THE
+// MOMENT OF OPENING — see makeFetchHost) written once.
+function ringHost(world, id, x, z, chip, def) {
+  const ring = actRing(world, x, z);
+  const g = { id, chip: '' };
+  let armed = true;
+  g.update = (dt, t, player, busy) => {
+    const h = world.harness;
+    const on = nearRing(player, ring);
+    if (h && h.active) { g.chip = ''; return; }
+    if (!on) armed = true;
+    ring.material.opacity = armed ? 0.55 + Math.sin(t * 3) * 0.2 : 0.16;
+    if (busy || !armed) { g.chip = ''; return; }
+    if (on) {
+      g.chip = chip;
+      if (h && h.open(def, world, player)) { armed = false; ring.material.opacity = 0.12; }
+    } else {
+      g.chip = '';
+    }
+  };
+  g.busy = () => !!(world.harness && world.harness.active);
+  g.ring = ring;
+  return g;
+}
+
 function makeTagHost(world, wolfGltf) {
   const ring = actRing(world, 4.8, 6.6);
   const g = { id: 'tag', chip: '' };
@@ -633,6 +660,16 @@ export async function setupDenGames(world) {
   // start of a save (state.formsUnlocked defaults to knight + dark_wolf), so
   // this is really an always-on guard, not a gate a child waits behind.
   if (state.formsUnlocked.length >= 2) games.push(makeQuizHost(world));
+  // 🦊 PIP'S HIDE AND SEEK, Tier 1 (js/mg-hide.js) — Pip hosts it himself.
+  // The ring is by the market, probed clear in the late Den (probe-freespot
+  // WK_LATE=1) and chosen by COUNTING HIDING PLACES from it: the Den has
+  // only ~22 pieces of furniture once the palisade is set aside, and from
+  // here five of them hide a fox from the camera, early save or late (the
+  // west meadow, tried first, had one).
+  if (unlockTier(state) >= 1) {
+    games.push(ringHost(world, 'hide', 4.2, -2.4, '🦊 hide and seek!',
+      makeHideAndSeek(await loadGLB('./assets/chars/fox.gltf'))));
+  }
   // §4 Tier 2 — four rescues
   if (unlockTier(state) >= 2) games.push(makeTagHost(world, await loadGLB('./assets/chars/wolf.gltf')));
   world.denGames = games;

@@ -6357,3 +6357,25 @@ New suite tools/verify-mg-tag.mjs:
 - zero residue and exact draw calls.
 
 verify-minigame and verify-mg-quiz still pass.
+
+## Pip's Hide and Seek (2026-10-12, v3.205.0)
+
+Tier 1 Den game (one rescue). Pip hides behind Den furniture and peeks out;
+tap him. Tapping the prop he is behind (remembering where he went) scores
+double.
+
+Every hiding place is chosen by casting a ray from the camera:
+- the spot behind a prop counts only if that prop stops the ray;
+- the peek counts only if the ray reaches it.
+
+The new suite re-measures both with its own rays.
+
+What looking changed:
+- no hiding inside the palisade;
+- the up-over-the-top peek is a jump arc, not a hover;
+- the ring was placed by counting hiding places from candidate spots. The
+  Den has about 22 pieces of furniture: the west meadow had 1, the market
+  side has 5.
+
+The harness's doorway host is now written once (`ringHost`). verify-minigame,
+verify-mg-quiz and verify-mg-tag pass.
