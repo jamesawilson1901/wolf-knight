@@ -1180,6 +1180,18 @@
       75% { transform: translateX(7px); }
     }
     body.titling #mgq-cue, body.titling #mgq-row { display: none !important; }
+    /* HOWL ECHO (js/mg-howl.js) — the quiz's own card, as a pad: a shape in
+       its element's colour. Lit while its note plays; the same shake when
+       the wrong one is pressed. */
+    #mgh-row {
+      position: fixed; left: 0; right: 0; bottom: 104px; z-index: 43;
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; padding: 0 12px; pointer-events: none;
+    }
+    .mgh-pad canvas { width: 64px; height: 64px; }
+    .mgh-pad.lit { border-color: #ffd76a; background: rgba(255,215,106,.45); transform: scale(1.12); }
+    .mgh-pad { transition: transform .08s ease, background .08s ease; }
+    body.titling #mgh-row { display: none !important; }
 
     #mg-chip {
       position: fixed; left: 50%; top: 10px; transform: translateX(-50%);
@@ -1458,7 +1470,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.205.0</div>
+  <div id="badge">Wolf Knight &middot; v3.206.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

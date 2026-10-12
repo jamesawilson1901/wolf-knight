@@ -6379,3 +6379,24 @@ What looking changed:
 
 The harness's doorway host is now written once (`ringHost`). verify-minigame,
 verify-mg-quiz and verify-mg-tag pass.
+
+## Howl Echo (2026-10-12, v3.206.0)
+
+Tier 1 Den game (one rescue): Simon-says with the Den's fire as the singer.
+Each element has its own colour, its own shape and its own note. The howls
+are synthesised (`audio.howl()` gained `len`), which clears the §7 "no
+howl files" blocker without adding an asset.
+
+The first look showed the fire's colour flash was too small to see from
+the play camera, so each note also puts a flare over the hearth.
+
+New suite tools/verify-mg-howl.mjs:
+- locked at no rescue, open at one;
+- distinct colour, shape and note per pad;
+- pads clear the 44px floor;
+- the fire takes each note's colour;
+- a right echo scores its length and grows by one;
+- a wrong press replays the same sequence;
+- results;
+- the hearth's colour is restored;
+- zero residue and exact draw calls.

@@ -436,3 +436,27 @@ of him.
   of furniture. The west meadow ring (tried first) could hide him in one
   place. The ring was moved by counting hiding places from candidate spots:
   by the market there are five, early save or late.
+
+### Howl Echo — **DONE** (v3.206.0, 2026-10-12)
+
+The third Tier 1 game (one rescue). The ring is south of the fire at
+(1.6, 1.8), probed clear in the late Den. The game is `js/mg-howl.js` and
+its suite is `tools/verify-mg-howl.mjs`.
+
+**The §7 blocker ("CC0 wolf howl ×7: Missing") is answered without a
+file.** `audio.howl()` already synthesises a howl: two saws through moving
+formant filters and a breath of noise. It now takes `len`, and each element
+howls at its own note. One voice, six pitches, nothing to license.
+
+**Colour, shape and note agree.** Each pad is the element's colour AND its
+own silhouette (flame, diamond, leaf, bolt, drop, square), drawn on a
+canvas the way the material icons are. A child who cannot tell two colours
+apart can still tell two shapes apart, and sound-off still works (§4).
+
+**The fire sings.** The hearth's light and flame take each note's colour,
+with a flare over it; the flame alone was a few pixels from the camera.
+The hearth gets its own colour back after the round.
+
+**No fail state.** A right sequence scores its length and grows by one. A
+wrong pad shakes and the same sequence plays again. Bands change the
+number of pads (3/4/5) and the speed, never the pass condition.

@@ -444,15 +444,17 @@ class AudioSystem {
   // filters that make exactly that shape, plus a thread of breath noise. Same
   // pitch contour, same envelope, same length, same call sites; it just
   // sounds like a throat instead of an oscillator.
-  howl({ volume = 0.8, rate = 1 } = {}) {
+  // `len` (v3.206, Howl Echo): a shorter howl, the same shape squeezed — a
+  // sequence of six cannot wait two seconds a note.
+  howl({ volume = 0.8, rate = 1, len = 1 } = {}) {
     if (!this.ctx || state.settings.sfxVol <= 0) return;
     const ctx = this.ctx;
     const t0 = ctx.currentTime;
-    const dur = 2.2 / rate;
-    const tUp = t0 + 0.5 / rate, tHold = t0 + dur * 0.6;
+    const dur = 2.2 * len / rate;
+    const tUp = t0 + 0.5 * len / rate, tHold = t0 + dur * 0.6;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(volume * 0.5, t0 + 0.25 / rate);
+    g.gain.linearRampToValueAtTime(volume * 0.5, t0 + 0.25 * len / rate);
     g.gain.setValueAtTime(volume * 0.5, t0 + dur * 0.62);
     g.gain.linearRampToValueAtTime(0, t0 + dur);
     g.connect(this.sfxGain);

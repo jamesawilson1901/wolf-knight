@@ -28,6 +28,7 @@ import { FETCH } from './mg-fetch.js';
 import { QUIZ } from './mg-quiz.js';
 import { makePupTag } from './mg-tag.js';
 import { makeHideAndSeek } from './mg-hide.js';
+import { HOWL } from './mg-howl.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -670,6 +671,9 @@ export async function setupDenGames(world) {
     games.push(ringHost(world, 'hide', 4.2, -2.4, '🦊 hide and seek!',
       makeHideAndSeek(await loadGLB('./assets/chars/fox.gltf'))));
   }
+  // 🐺 HOWL ECHO, Tier 1 (js/mg-howl.js): the ring south of the fire, which
+  // is the singer — probed clear in the late Den, 2.8u from Fetch's ring
+  if (unlockTier(state) >= 1) games.push(ringHost(world, 'howl', 1.6, 1.8, '🐺 howl echo!', HOWL));
   // §4 Tier 2 — four rescues
   if (unlockTier(state) >= 2) games.push(makeTagHost(world, await loadGLB('./assets/chars/wolf.gltf')));
   world.denGames = games;
