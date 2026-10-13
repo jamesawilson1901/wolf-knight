@@ -1211,6 +1211,16 @@
     .mgm-card.up canvas, .mgm-card.done canvas { visibility: visible; }
     .mgm-card.done { background: #f4ecd8; border-color: #ffd76a; opacity: .85; }
     body.titling #mgm-grid { display: none !important; }
+    /* PUP TUG (js/mg-tug.js) — the rope's strain, one bar: green, amber,
+       red. It shakes when the rope slips. Not a control: pointer-events off. */
+    #mgt-meter {
+      position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 43;
+      width: 220px; height: 22px; border-radius: 12px; pointer-events: none;
+      background: rgba(20,16,28,.72); border: 3px solid rgba(255,255,255,.5); overflow: hidden;
+    }
+    #mgt-fill { height: 100%; width: 0; background: #7ccf6a; transition: width .06s linear; }
+    #mgt-meter.slip { animation: mgq-shake .3s ease; border-color: #ff6a5a; }
+    body.titling #mgt-meter { display: none !important; }
 
     #mg-chip {
       position: fixed; left: 50%; top: 10px; transform: translateX(-50%);
@@ -1489,7 +1499,7 @@
   <div id="boss-bar"><div id="boss-name"></div><div id="boss-fill-wrap"><div id="boss-fill"></div></div></div>
   <div id="form-badge">⚔️</div>
   <div id="fade"></div>
-  <div id="badge">Wolf Knight &middot; v3.208.0</div>
+  <div id="badge">Wolf Knight &middot; v3.209.0</div>
 
   <script>
     // EVERY FAILURE LANDS SOMEWHERE A TEST CAN SEE IT.

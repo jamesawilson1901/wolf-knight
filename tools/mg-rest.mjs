@@ -10,6 +10,8 @@
 // of frame on their own (the known-fail entry this replaced was exactly
 // that); anything a game left behind was not in that set and is still
 // counted. Median of five.
+// (No game's ring may sit within a ring's reach of REST — standing there
+// would open it. Herb Match's did until v3.209.)
 export const restCalls = (page, REST) => page.evaluate(async (p) => {
   const g = window.__game;
   const wait = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };

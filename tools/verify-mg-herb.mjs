@@ -45,7 +45,7 @@ const go = async (room) => {
 const frames = (n) => page.evaluate(async (k) => {
   for (let i = 0; i < k; i++) await new Promise((r) => requestAnimationFrame(r));
 }, n);
-const RING = { x: -6, z: 0.5 };
+const RING = { x: -8.4, z: -1.2 };
 const hasRing = () => page.evaluate(() => (window.__game.world.denGames || []).some((g) => g.id === 'herb'));
 
 // 1. LOCKED below Tier 3 (nine rescues)

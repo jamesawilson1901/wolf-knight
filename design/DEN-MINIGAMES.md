@@ -490,3 +490,39 @@ the Den's grass, to wood.
 shared by all six game suites. Measured on Herb Match, it also hides Kael
 (his gear was not drawn in one frame) and the shared spark cloud (still
 alive from an earlier burst).
+
+### Pup Tug — **DONE** (v3.209.0, 2026-10-13): §4's River Tug, on dry land
+
+Tier 3 (nine rescues). The ring is at (-1.4, 5.6), probed clear in the late
+Den. The game is `js/mg-tug.js` and its suite is `tools/verify-mg-tug.mjs`.
+
+**River Tug's blockers, and the way round them.** The Den has no river and
+the game has no splash sound, but the village props do have a rope
+(`Rope_1_A.glb`) and the Den has pups who love one. So the tug is with a
+pup. The pup is the pen's own wolf.gltf (Main part only, one draw call);
+the rope is a tube between them, a piece of rope as Fetch's stick is a
+piece of wood.
+
+**Play.** Hold anywhere to haul, which brings the pup in and raises the
+strain bar (green, amber, red). Let go to rest; the pup creeps back a
+little. If the strain tops out, the rope slips and the pup gets some
+ground back. That is the whole fail state (§2). Pull him over the line
+for +3, plus 1 if the rope never slipped, and the next pup is a touch
+stronger.
+
+**The harness's press, and our own release.** A press reaches the game
+through the harness's `tap(e)`. The release is the game's own `pointerup`
+listener on `window`, removed in teardown.
+
+**What looking changed.** With the pup out in front (north), the camera
+saw it end-on: a thin tan stick on mud. It now pulls from Kael's side,
+across the screen, and the first pup has a light coat.
+
+**Herb Match's ring moved** to (-8.4, -1.2). At (-6, 0.5) it sat on the
+spot every game suite takes its quiet draw-call reading from
+(`tools/mg-rest.mjs`), so in a nine-rescue Den the reading itself opened
+Herb Match.
+
+Anvil Rhythm stays blocked: no anvil model is reachable from this
+environment (kenney.nl, quaternius.com and opengameart are refused by its
+network policy, and the npm asset indexes hold none).

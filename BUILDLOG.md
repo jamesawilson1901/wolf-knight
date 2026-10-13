@@ -6443,3 +6443,29 @@ New suite tools/verify-tide.mjs walks the whole passage on the keyboard,
 opens both deep chests by wading, and crosses the channel to the stalls.
 verify-loops gains both ends; verify-density lists the rooms; the map graph
 is regenerated.
+
+## Pup Tug (2026-10-13, v3.209.0)
+
+DEN-MINIGAMES §4's River Tug, moved to dry land: a tug-of-war with a pup
+(Tier 3). The Den has no river and there is no splash sound, but it has
+pups and the village props have a rope.
+- Hold anywhere to haul, let go to rest.
+- If the strain bar tops out, the rope slips and the pup gets some ground
+  back. That is the only fail.
+- Pull him over the line for +3, or +4 if the rope never slipped.
+
+The first screenshot had the pup end-on to the camera, a thin stick on
+mud, so the tug now runs across the screen with a light-coated pup.
+
+New suite tools/verify-mg-tug.mjs uses real held and released mouse
+presses:
+- haul, rest, slip;
+- a rhythm win and the next pup;
+- results;
+- zero residue and exact draw calls.
+
+Herb Match's ring moved off the spot the game suites take their quiet
+draw-call reading from. Standing there was opening Herb Match in a
+nine-rescue Den.
+
+Anvil Rhythm stays blocked: no anvil model can be reached from here.

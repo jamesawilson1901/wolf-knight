@@ -30,6 +30,7 @@ import { makePupTag } from './mg-tag.js';
 import { makeHideAndSeek } from './mg-hide.js';
 import { HOWL } from './mg-howl.js';
 import { HERB } from './mg-herb.js';
+import { makePupTug } from './mg-tug.js';
 
 const G = () => CONFIG.DEN_GAMES;
 const gentle = () => !!state.settings.easy;
@@ -676,8 +677,16 @@ export async function setupDenGames(world) {
   // is the singer — probed clear in the late Den, 2.8u from Fetch's ring
   if (unlockTier(state) >= 1) games.push(ringHost(world, 'howl', 1.6, 1.8, '🐺 howl echo!', HOWL));
   // 🌿 HERB MATCH, Tier 3 — nine rescues (js/mg-herb.js): the ring by the
-  // kitchen garden, probed clear in the late Den
-  if (unlockTier(state) >= 3) games.push(ringHost(world, 'herb', -6, 0.5, '🌿 herb match!', HERB));
+  // kitchen garden, probed clear in the late Den. (-8.4,-1.2), not (-6,0.5):
+  // there it sat on the spot every game suite takes its quiet draw-call
+  // reading from (tools/mg-rest.mjs, (-6,0)), so in a nine-rescue Den the
+  // reading itself opened Herb Match.
+  if (unlockTier(state) >= 3) games.push(ringHost(world, 'herb', -8.4, -1.2, '🌿 herb match!', HERB));
+  // 🪢 PUP TUG, Tier 3 (js/mg-tug.js) — §4's River Tug, on dry land: the ring
+  // by the south meadow, probed clear in the late Den, 3.2u from Fetch's
+  if (unlockTier(state) >= 3) {
+    games.push(ringHost(world, 'tug', -1.4, 5.6, '🪢 pup tug!', makePupTug(await loadGLB('./assets/chars/wolf.gltf'))));
+  }
   // §4 Tier 2 — four rescues
   if (unlockTier(state) >= 2) games.push(makeTagHost(world, await loadGLB('./assets/chars/wolf.gltf')));
   world.denGames = games;
