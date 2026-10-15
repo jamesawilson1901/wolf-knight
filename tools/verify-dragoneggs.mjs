@@ -421,6 +421,7 @@ const DENS = [
   { arena: 'le', flag: 'bossDefeated', hall: 'ln1', nest: 'ln2', el: 'fire' },
   { arena: 'scr', flag: 'ariaDefeated', hall: 'sn1', nest: 'sn2', el: 'storm' },
   { arena: 'ddp', flag: 'meriDefeated', hall: 'dn1', nest: 'dn2', el: 'tide' },
+  { arena: 'tgl', flag: 'sylvaDefeated', hall: 'tn1', nest: 'tn2', el: 'verdant' },   // the fourth (v3.210)
 ];
 // a clean slate for the finding half: nothing found, nothing hatched
 await wk.page.evaluate(() => {

@@ -324,16 +324,17 @@ exactly as it holds the way on). Narration tam_intro/tam_offer, room-agnostic
 off markers.wayfarerSpot. Proven by tools/verify-wayfarer.mjs.
 
 ## Dragon eggs, dens & portals (js/dragonEggs.js, design/DRAGON-EGGS.md)
-A quiet side quest, no map card or counter. After each of three guardians
-falls (le, scr, ddp) the arena's east wall opens (always-cut gap, a `when`-
+A quiet side quest, no map card or counter. After each of four guardians
+falls (le, scr, ddp, tgl) the arena's east wall opens (always-cut gap, a `when`-
 gated door, a rock plug from `eggDoorPlug` that clears with the arena's other
 doors) onto a two-room DEN; a dragon skeleton (`spawnDragonSkeletonHint`,
 sets `markers.dragonBones` for Pip's `dragon_bones` line) lies beside that
-door. Den room 1 (ln1/sn1/dn1) holds the PORTAL (`DragonShrine`: portal.glb +
+door. Den room 1 (ln1/sn1/dn1/tn1) holds the PORTAL (`DragonShrine`: portal.glb +
 moat, solid stone, hint/confirm events, #btn-dragon confirm, cover-and-emerge
 hatch) and a barred gate opened by the region's own wolf verb (lamps for the
 Fire Wolf's slam, a vane for the Storm Wolf's dash, fires for the Tide Wolf's
-splash; WS `<region>.egg_gate`). Room 2 (ln2/sn2/dn2) holds the egg on an
+splash, a thorn tangle for the Verdant Wolf's lash; WS `<region>.egg_gate`).
+Room 2 (ln2/sn2/dn2/tn2) holds the egg on an
 altar (`EggNest`, dragon-egg.glb; walking up takes it). The portal never
 shares a room with Tam — v3's fix for "the portal talks like Tam", when the
 fire portal stood one step from Tam's post and hid him. State:
@@ -342,7 +343,9 @@ tools/verify-dragoneggs.mjs (ticked) and tools/verify-dragondens.mjs (real keys)
 The hatched companion (js/companionDragon.js) follows and bites, and each
 dragon has ONE move of its own on its own clock (`SPECIAL`): Ember breathes a
 cone (1.25/foe, 6s), Tide mends half a heart while Kael is hurt (12s), Storm's
-bite chains to two more foes (0.75/link, 3s). Pots (`scenery`) are never
+bite chains to two more foes (0.75/link, 3s), Moss's bite roots its foe
+(1.2s hold, 7s; never a flyer). The Moss Dragon (v3.210) is the same
+Dragon.glb in Verdant Wolf green — no new asset, one registry entry. Pots (`scenery`) are never
 targets. Proven by tools/verify-dragon-specials.mjs.
 
 ## The healing (js/restoration.js)

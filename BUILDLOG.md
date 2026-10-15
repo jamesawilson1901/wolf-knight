@@ -6469,3 +6469,28 @@ draw-call reading from. Standing there was opening Herb Match in a
 nine-rescue Den.
 
 Anvil Rhythm stays blocked: no anvil model can be reached from here.
+
+## The Moss Dragon (2026-10-15, v3.210.0)
+
+A fourth dragon. Dad: "Just retexture one of the dragons and use that
+instead of a brand new asset." No new asset: the same Dragon.glb, egg and
+portal, in the Verdant Wolf's own green (`DRAGON_ELEMENTS.verdant`).
+
+Frostpeak was the obvious region and was turned down. The game already
+has an icy-blue Dragon.glb enemy (the frost-dragonling), and a blue friend
+next to a blue foe is the one colour a child must not have to tell apart.
+No green dragon fights Kael anywhere, so the den hangs off Sylva's glade
+(`tgl`), and its lock is the wolf she gives:
+- tgl's east wall opens when she is freed (rock plug, `eggDoorPlug`), with
+  the bones beside the door;
+- `tn1` THE MOSS PORTAL: the shrine, and a thorn tangle across the north
+  door that the Verdant Wolf's lash cuts (`wild3.egg_gate`);
+- `tn2`: the egg on its altar.
+
+Her move is ROOT. Every 7s a bite holds the foe still for 1.2s; the lash
+itself holds 2.6s. Never a flyer, and never anyone else's move.
+
+Four new Pip lines, rendered with Piper. verify-dragondens walks the fourth
+den with real keys; verify-dragoneggs and verify-dragon-specials cover it;
+verify-density and the contact sheet list the two rooms; the map graph is
+regenerated. design/DRAGON-EGGS.md v5 has the detail.

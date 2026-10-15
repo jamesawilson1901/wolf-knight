@@ -106,6 +106,18 @@ const DENS = [
     approach: async (i) => { await go(i % 2 ? -1.0 : -5.0, -4.0, { arrive: 0.45 }); },
     gateDoor: [-3, -8.9],
   },
+  {
+    // THE FOURTH (v3.210): the Moss Dragon's Hollow off Sylva's glade. The
+    // region's restored key is 'wild'; its rooms write WS under 'wild3'.
+    el: 'verdant', wolf: 'verdant_wolf', arena: 'tgl', flag: 'sylvaDefeated', region: 'wild', gateRegion: 'wild3',
+    hall: 'tn1', nest: 'tn2', via: [[0, 4], [8.5, -2.5]], door: [13.4, -1.0],
+    // the Verdant Wolf's lash, cracked north at the thorns across the door
+    approach: async () => {
+      await go(-3, -1.5, { arrive: 0.5 });
+      await go(-3, -4.4, { arrive: 0.4 });     // the last step is northward: that is the facing
+    },
+    gateDoor: [-3, -8.9],
+  },
 ];
 
 for (const d of DENS) {
@@ -160,11 +172,11 @@ for (const d of DENS) {
     await wk.page.waitForFunction(() => window.__game.player.specialCooldown <= 0, null, { timeout: 90000 }).catch(() => {});
     await wk.tap('k');
     solvedIt = await wk.page.waitForFunction((region) => !!window.__game.WS.get(region, 'egg_gate'),
-      d.region, { timeout: 3000 }).then(() => true).catch(() => false);
+      d.gateRegion || d.region, { timeout: 3000 }).then(() => true).catch(() => false);
   }
   const gate = await wk.page.evaluate((region) => ({
     flag: !!window.__game.WS.get(region, 'egg_gate'),
-  }), d.region);
+  }), d.gateRegion || d.region);
   gate.tries = tries;
   const doorOpen = await wk.page.evaluate(() => {
     // the door itself is only added the moment the bars lift
@@ -224,6 +236,6 @@ for (const d of DENS) {
 console.log('\nERRORS', JSON.stringify(wk.errors.slice(0, 5)));
 check('no uncaught page errors', wk.errors.length === 0, wk.errors.slice(0, 3));
 console.log(errs.length ? `\n✗ FAIL — ${errs.length}`
-  : '\n✓ PASS — all three dens walked with real keys: bones, portal (never Tam), gate, egg, hatch; Tam still travels');
+  : '\n✓ PASS — all four dens walked with real keys: bones, portal (never Tam), gate, egg, hatch; Tam still travels');
 await wk.b.close();
 process.exit(errs.length ? 1 : 0);

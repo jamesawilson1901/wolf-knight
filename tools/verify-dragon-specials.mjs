@@ -173,6 +173,51 @@ const res = await wk.page.evaluate(async () => {
     out.storm.noChainInCooldown = foes[1].hp === hpB && foes[2].hp === hpC;
     drain(d, 1);
     out.storm.fxLeft = d._fx.length;
+    // a storm dragon's bite never roots
+    for (const e of foes) e.stunned = 0;
+    put(foes[0], d.x + 0.8, d.z); d._specialT = 0; d._biteT = 0;
+    for (let i = 0; i < 6; i++) d.update(0.05, 60 + i * 0.05, P, w);
+    out.storm.neverRoots = !(foes[0].stunned > 0);
+    g.scene.remove(d.root);
+  }
+
+  // ---- MOSS: the root (the fourth dragon, v3.210) ---------------------------
+  {
+    const d = await make('verdant');
+    d.place(px, pz); d._specialT = 0; d._biteT = 0;
+    for (const e of foes) { e.stunned = 0; put(e, px + 40, pz + 40); }
+    put(foes[0], px + 0.9, pz);           // the one it bites
+    put(foes[1], px + 0.9 + 2.0, pz);     // in chain reach, if it were storm
+    const hp0 = foes.map((e) => e.hp);
+    let twirls = 0;
+    for (let i = 0; i < 6; i++) { d.update(0.05, i * 0.05, P, w); twirls = Math.max(twirls, fxIn(d)); }
+    const hp1 = foes.map((e) => e.hp);
+    out.moss = {
+      bitten: hp1[0] < hp0[0], held: +foes[0].stunned.toFixed(2), hold: SPECIAL.verdant.hold,
+      neverChains: hp1[1] === hp0[1], lastSpecial: d.lastSpecial, twirls,
+    };
+    // the clock: no second root inside SPECIAL.verdant.every
+    foes[0].stunned = 0;
+    for (let i = 0; i < (SPECIAL.verdant.every - 1) * 20; i++) {
+      d.update(0.05, 5 + i * 0.05, P, w);
+      if (foes[0].stunned > 0) { out.moss.rootInCooldown = true; break; }
+    }
+    // ...and then it roots again
+    for (let i = 0; i < 3 * 20 && !(foes[0].stunned > 0); i++) d.update(0.05, 20 + i * 0.05, P, w);
+    out.moss.rootsAgain = foes[0].stunned > 0;
+    // never a flyer: nothing in the air for a root to hold
+    foes[0].stunned = 0; foes[0].flying = true; d._specialT = 0; d._biteT = 0;
+    for (let i = 0; i < 6; i++) d.update(0.05, 40 + i * 0.05, P, w);
+    out.moss.flyerFree = !(foes[0].stunned > 0);
+    foes[0].flying = false;
+    // a moss dragon never mends, never breathes
+    for (const e of foes) put(e, px + 40, pz + 40);
+    P.hearts = P.maxHearts - 2; const h0 = P.hearts;
+    d._specialT = 0; drain(d, 1);
+    out.moss.neverMends = P.hearts === h0 && !d._breath;
+    P.hearts = P.maxHearts;
+    drain(d, 2);
+    out.moss.fxLeft = d._fx.length;
     g.scene.remove(d.root);
   }
   return out;
@@ -211,8 +256,21 @@ check('never to a foe out of reach', S.farUntouched, S);
 check('two links, and a bolt laid between foes', S.links === 2 && S.bolts >= 1, S);
 check('no chain inside its own cooldown', S.noChainInCooldown, S);
 check('the bolts are gone once spent', S.fxLeft === 0, S);
+check('a storm dragon\'s bite never roots', S.neverRoots, S);
+
+console.log('\n── MOSS: the root ───────────────────────────────────');
+const M = res.moss;
+check('the bite lands', M.bitten, M);
+check('...and roots the foe where it stands', Math.abs(M.held - M.hold) < 0.11, M);
+check('the root is seen — swirls at the foe\'s feet', M.twirls >= 1, M);
+check('it never chains on', M.neverChains, M);
+check('no second root inside its own clock', !M.rootInCooldown, M);
+check('...and then it roots again', M.rootsAgain, M);
+check('never a flyer', M.flyerFree, M);
+check('a moss dragon never mends or breathes', M.neverMends, M);
+check('the swirls are gone once spent', M.fxLeft === 0, M);
 
 check('no page errors', wk.errors.length === 0, wk.errors.slice(0, 3));
-console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — three dragons, three moves');
+console.log(errs.length ? `\n✗ FAIL — ${errs.length}` : '\n✓ PASS — four dragons, four moves');
 await wk.b.close();
 process.exit(errs.length ? 1 : 0);

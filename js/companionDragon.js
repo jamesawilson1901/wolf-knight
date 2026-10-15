@@ -13,7 +13,8 @@
 // frost-dragonling/shadow-dragonling), using this game's own established
 // elemental palette (js/player.js WOLF_TINTS) rather than inventing new
 // colours — a fire dragon is exactly Fire Wolf orange, a tide dragon is
-// exactly Tide Wolf teal, a storm dragon is exactly Storm Wolf periwinkle.
+// exactly Tide Wolf teal, a storm dragon is exactly Storm Wolf periwinkle,
+// a moss dragon (the fourth, v3.210) is exactly Verdant Wolf green.
 import * as THREE from 'three';
 import { loadGLB, SHARED } from './assets.js';
 import { buildDragonBody } from './enemies.js';
@@ -87,6 +88,8 @@ export const EMERGE_RISE_TIME = 0.9; // seconds the "jumps out of the portal" sc
 //     the same half heart an enemy's ember drop gives, so the number is one
 //     the game already tuned, just delivered by a friend.
 //   * STORM chains: a bite that jumps on to the next foe and the next.
+//   * MOSS holds (v3.210, the fourth dragon): a bite that roots the foe
+//     where it stands for a moment — the Verdant Wolf's own snare, shorter.
 //
 // Every number is a SUPPORT number, kept under the player's own: one breath
 // is less than one sword swing per foe, the mend is slower than a potion by a
@@ -97,6 +100,9 @@ export const SPECIAL = {
   fire:  { every: 6.0, reach: 3.4, halfArc: 0.62, dmg: 1.25, dur: 0.55 },
   tide:  { every: 12.0, heal: 0.5 },
   storm: { every: 3.0, jumps: 2, reach: 3.6, dmg: 0.75 },
+  // the Verdant Wolf's lash holds a square-on foe 2.6s on a 7s clock
+  // (js/player.js VINE_SNARE / VINE_COOLDOWN): the same clock, under half the hold
+  verdant: { every: 7.0, hold: 1.2 },
 };
 
 const FX_URLS = { fire: './assets/fx/fire.png', twirl: './assets/fx/twirl.png', bolt: './assets/fx/bolt.png' };
@@ -284,6 +290,7 @@ export class CompanionDragon {
           const bitten = this._target;
           this._target.takeDamage(BITE_DMG, this.element, 'melee');
           if (this.element === 'storm' && this._specialT <= 0) this._chain(bitten, world);
+          if (this.element === 'verdant' && this._specialT <= 0) this._root(bitten);
         }
       }
     } else {
@@ -400,6 +407,25 @@ export class CompanionDragon {
     }
     this.lastSpecial = { kind: 'chain', at: performance.now(), links: links.length };
     if (links.length) audio.play('parry', { volume: 0.5, rate: 2.2 });
+  }
+
+  // MOSS — the bite takes root: the bitten foe is held where it stands for
+  // SPECIAL.verdant.hold seconds. Never a flyer (the Verdant Wolf's own snare
+  // skips them too: there is nothing for a root to hold on to in the air),
+  // never a foe already dead from the bite itself. No extra damage — the bite
+  // already landed; the hold is the help.
+  _root(foe) {
+    const V = SPECIAL.verdant;
+    if (!foe || foe.dead || foe.flying || !foe.takeStun) return;
+    this._specialT = V.every;
+    foe.takeStun(V.hold);
+    this.lastSpecial = { kind: 'root', at: performance.now(), hold: V.hold };
+    for (let i = 0; i < 3; i++) {
+      this._sprite('twirl', foe.x, 0.15 + i * 0.2, foe.z, i % 2 ? 0x8fdc6a : 0x5fae3a,
+        { size: 1.3 - i * 0.25, grow: 0.7, life: V.hold, spin: -(2 + i) });
+    }
+    juice.burst(foe.x, 0.4, foe.z, 0x8fdc6a, 12);
+    audio.play('gate-creak', { volume: 0.4, rate: 1.4 });
   }
 
   // --- the moves' own visuals: billboards and a flat arc, all short-lived ---

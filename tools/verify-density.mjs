@@ -169,6 +169,7 @@ const ROOMS = [
   // caught by its own "every live room is in this list" check
   { id: 'ln1', kind: 'pocket' }, { id: 'ln2', kind: 'pocket' },
   { id: 'sn1', kind: 'pocket' }, { id: 'sn2', kind: 'pocket' },
+  { id: 'tn1', kind: 'pocket' }, { id: 'tn2', kind: 'pocket' },   // the fourth (v3.210)
   { id: 'dn1', kind: 'pocket' }, { id: 'dn2', kind: 'pocket' },
   { id: 'dr', kind: 'pocket' },
   // Stormreach Cliffs. The STAIR is a new module and gets measured as a choke:

@@ -1,7 +1,8 @@
 // DRAGON EGGS & GRAND ELEMENTAL SHRINES (design/DRAGON-EGGS.md) — dad's
 // hidden side quest, this session: three dragon eggs (fire/tide/storm) found
 // hidden in the world, each thrown into its own matching elemental shrine to
-// hatch a companion dragon. Deliberately a quiet, unflagged secret: no quest
+// hatch a companion dragon — and, since v3.210, a fourth (verdant, the Moss
+// Dragon: the same model in a new colour, behind Sylva's glade). Deliberately a quiet, unflagged secret: no quest
 // marker, no map pin, no "x/3 eggs" HUD counter anywhere in this file or its
 // callers.
 //
@@ -76,6 +77,19 @@ export const DRAGON_ELEMENTS = {
     name: 'Storm Dragon', eggName: 'a Storm Dragon Egg', tint: 0xc9d4ff,
     hintLine: 'dragon_hint_storm', confirmLine: 'dragon_confirm_storm', hatchLine: 'dragon_hatch_storm',
     foundLine: 'dragon_found_storm',
+  },
+  // THE FOURTH (2026-10-15, dad: "just retexture one of the dragons and use
+  // that instead of a brand new asset"). The same Dragon.glb, the same egg
+  // model, the same portal — only the colour is new, and even that is not
+  // new: it is the Verdant Wolf's own green (WOLF_TINTS.verdant_wolf). Not
+  // frost, although Frostpeak was the obvious region: the game already has an
+  // icy-blue Dragon.glb ENEMY (the frost-dragonling in the Rimebound Hollow),
+  // and a pale-blue friend beside a pale-blue foe is the one colour a child
+  // must never have to tell apart. No green dragon fights Kael anywhere.
+  verdant: {
+    name: 'Moss Dragon', eggName: 'a Moss Dragon Egg', tint: 0x6fae4a,
+    hintLine: 'dragon_hint_verdant', confirmLine: 'dragon_confirm_verdant', hatchLine: 'dragon_hatch_verdant',
+    foundLine: 'dragon_found_verdant',
   },
 };
 

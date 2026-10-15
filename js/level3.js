@@ -36,6 +36,7 @@ import { thornWall } from './gateprops.js';
 import { COAT } from './restoration.js';
 import { spawnLostWolf } from './pip.js';
 import { bumpCounter } from './progress.js';
+import { preloadDragonSkeleton, spawnDragonSkeletonHint, eggDoorPlug } from './dragonEggs.js';
 
 let forceGrey = false;
 let woodKit = null;
@@ -93,6 +94,12 @@ export const DISTRICTS = {
   frozenspring: { tint: 0x6fa8c9, floorTint: 0x4a7a94, wallTint: 0x1c2e38, propTint: 0x5a92ae,
                   ground: 'frozenspring',
                   name: 'THE FROZEN SPRING', hero: 'THE ICE-SEALED SPRING' },
+  // THE MOSS DRAGON'S HOLLOW (v3.210, design/DRAGON-EGGS.md v5) — the fourth
+  // egg's own dungeon, behind Sylva's glade. The glade's own floor, pulled
+  // deeper and greener toward the Verdant Wolf himself: the woods as they
+  // were before the blight, kept safe in one hollow.
+  dragonmoss: { tint: 0x7cc46a, floorTint: 0x557f45, wallTint: 0x1f3019, propTint: 0x5f9e45,
+                ground: 'glade', name: "THE MOSS DRAGON'S HOLLOW", hero: 'THE MOSS PORTAL' },
 };
 
 // The one new module. A ring leg is deliberately NOT a Level 1 chokepoint:
@@ -174,6 +181,18 @@ export const L3 = {
          label: 'THE RIMEBOUND HOLLOW', beat: 'optional · rime-minion x2 + frost-dragonling' },
   tf3: { ...M.pocket, kind: 'pocket', district: 'frozenspring', loopsTo: 'tf2',
          label: 'THE SPRING HEART', beat: 'optional · gold · closes the Woods–Climb–Frostpeak loop' },
+
+  // THE MOSS DRAGON'S HOLLOW (v3.210) — the fourth egg dungeon, off tgl's
+  // east wall once Sylva is free, the dragon's bones beside its door. tn1
+  // holds the Moss Portal and a thorn tangle the Verdant Wolf's lash cuts;
+  // tn2 holds the egg on its altar. Quiet, like the other three: no map card.
+  // The ids start with `t` on purpose: js/rooms.js picks a room's model kit
+  // by its id's FIRST LETTER, and the first cut (vn1/vn2) loaded the Vault's
+  // cave kit and built greybox on a fresh session.
+  tn1: { ...M.pocket, kind: 'pocket', district: 'dragonmoss', loopsTo: 'tgl',
+         label: 'THE MOSS PORTAL', beat: 'optional · the shrine · lash the thorns' },
+  tn2: { ...M.pocket, kind: 'pocket', district: 'dragonmoss', loopsTo: 'tn1',
+         label: "THE MOSS DRAGON'S NEST", beat: 'optional · the Moss Dragon egg' },
 };
 
 // Each room's district colour, so a DOORWAY can show what is beyond it
@@ -1614,7 +1633,10 @@ export async function buildTgl(scene) {
   // North is ALWAYS cut, choked with blighted deadfall while Sylva is bound —
   // see openTheWayOn() in main.js. A way on that only exists after a rebuild
   // leaves the child who just won standing in a room with no way out.
-  const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), gap('n')];
+  // ...and EAST, the door to the Moss Dragon's Hollow (v3.210), cut always
+  // and plugged with the woods' rock until she is free — eggDoorPlug, the
+  // same contract as the other three egg dungeons' doors.
+  const gaps = [gap('s', BOSS_DOOR_HALF), gap('w'), gap('n'), gap('e', TN_DOOR_HALF, TGL_EGG_DOOR_Z)];
   const { halfW, halfD } = shell(world, spec, gaps, D, {
     patches: [{ x: -9, z: 8, r: 3.9, kind: 'moss' },
               { x: 9, z: -8, r: 3.6, kind: 'corruption', alpha: 0.66 },
@@ -1632,6 +1654,20 @@ export async function buildTgl(scene) {
   // now (js/levelClimb.js, two rooms), and c1's own spawn is (0, 11), which is
   // where this lands.
   const roadOn = () => sideDoor(world, 'n', halfW, halfD, 'c1', { x: 0, z: 11, angle: Math.PI });
+  // THE MOSS DRAGON'S HOLLOW. Registered BEFORE the north plug, as scr's and
+  // ddp's are, so the arena's smoke still lands on the way on.
+  eggDoorPlug(world, { x: halfW - 0.7, z: TGL_EGG_DOOR_Z, w: 1.5, d: TN_DOOR_HALF * 2 + 0.2,
+    piece: GREY() ? null : () => tinted(woodKit.rockLB, 'eggPlug', D.propTint), tint: D.propTint,
+    isOpen: () => beaten, doorTo: 'tn1',
+    addTheDoor: () => sideDoor(world, 'e', halfW, halfD, 'tn1', { x: TN1_DOOR_X, z: 6, angle: Math.PI },
+      { centre: TGL_EGG_DOOR_Z, half: TN_DOOR_HALF }) });
+  // THE DRAGON'S BONES beside it, north of the door, in the blighted corner
+  // — clear of the door's own reserve and 14u from Tam's post at (6, 8.6).
+  world.reserve(TGL_BONES.x, TGL_BONES.z, 2.0, 'dragonSkeleton');
+  if (!GREY()) {
+    await preloadDragonSkeleton();
+    spawnDragonSkeletonHint(world, TGL_BONES.x, TGL_BONES.z, TGL_BONES.ry, TGL_BONES.d);
+  }
   if (beaten) roadOn();
   else onwardPlug(world, 0, -halfD + 0.7, 3.4, 1.5, 'rockLB', D.propTint, roadOn);
 
@@ -1646,6 +1682,116 @@ export async function buildTgl(scene) {
   blight(world, 10, -10, 3.0, D);
   thicket(world, 0, 11, 3.4, D, { sick: 0.9 });
   world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  return finish(world, spec, D);
+}
+
+// ===========================================================================
+// THE MOSS DRAGON'S HOLLOW (v3.210, design/DRAGON-EGGS.md v5) — the fourth
+// egg's own dungeon. Two rooms off tgl's east wall, opened by Sylva's fall.
+//
+// tn1 THE MOSS PORTAL: the shrine the egg hatches in, and a thorn tangle
+// grown across the north door. The Verdant Wolf's lash cuts it — her own
+// reward, the verb this whole region was sick for want of — the same
+// `bramble()` every other cut in the Woods uses, never regrowing.
+// tn2 THE NEST: the egg on its altar.
+//
+// Built on the Eyrie's own plan (js/level5.js sn1/sn2): entered from the
+// south so the arrival frame holds the whole room, the door off-centre at
+// x -3 so the portal stands clear of the walk in, the altar in the middle of
+// the far room. The portal lives here, a room away from Tam's post in tgl.
+// ===========================================================================
+const TN_DOOR_HALF = 1.5;
+const TGL_EGG_DOOR_Z = -1.0;   // the east wall's bare middle: grove at z 10, blight at z -10
+const TGL_BONES = { x: 10.6, z: -5.2, ry: 0.6, d: 3.0 };
+const TN1_DOOR_X = -3;
+const TN1_SHRINE = { x: 4.5, z: -0.5 };
+const TN2_ALTAR = { x: 0, z: 0.2 };
+
+export async function buildTn1(scene) {
+  const { world, spec, D } = base(scene, 'tn1');
+  const gateOpen = () => !!WS.get(REGION, 'egg_gate');
+  const { halfW, halfD } = shell(world, spec,
+    [gap('s', TN_DOOR_HALF, TN1_DOOR_X), gap('n', TN_DOOR_HALF, TN1_DOOR_X)], D, {
+      patches: [{ x: TN1_SHRINE.x, z: TN1_SHRINE.z, r: 3.6, kind: 'moss' },
+                { x: -7, z: 3, r: 2.6, kind: 'grass' }, { x: 7, z: -5.5, r: 2.2, kind: 'mud' }],
+      pathWidth: 2.4,
+      paths: [[[TN1_DOOR_X, 8], [TN1_DOOR_X, -8]], [[TN1_DOOR_X, 2], [TN1_SHRINE.x - 2.8, TN1_SHRINE.z]]],
+    });
+  world.spawn = { x: TN1_DOOR_X, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'tgl', { x: 10.3, z: TGL_EGG_DOOR_Z, angle: -Math.PI / 2 },
+    { centre: TN1_DOOR_X, half: TN_DOOR_HALF });
+  // The way on is only a door once the thorns are cut (onwardPlug's
+  // contract: never a door with something standing in it); `pluggedTo`
+  // names it.
+  const openNest = () => sideDoor(world, 'n', halfW, halfD, 'tn2', { x: 0, z: 6, angle: Math.PI },
+    { centre: TN1_DOOR_X, half: TN_DOOR_HALF });
+  if (gateOpen()) openNest();
+  else (world.pluggedTo || (world.pluggedTo = [])).push('tn2');
+
+  // THE MOSS PORTAL — js/dragonEggs.js's DragonShrine, built by main.js.
+  world.reserve(TN1_SHRINE.x, TN1_SHRINE.z, 3.4, 'dragonShrine');
+  world.markers.dragonShrineSpots = [{ ...TN1_SHRINE, element: 'verdant' }];
+
+  // THE GATE: one tangle the width of the doorway, just inside it. Cutting
+  // it records the region's egg_gate (what a return trip reads) as well as
+  // the bramble's own cut flag, and adds the door where the child stands.
+  bramble(world, 'tn1_gate', TN1_DOOR_X, -halfD + 0.8, TN_DOOR_HALF * 2 + 0.4, 1.2, false, () => {
+    if (gateOpen()) return;
+    WS.set(REGION, 'egg_gate');
+    openNest();
+  });
+  world.markers.eggGateThorns = { x: TN1_DOOR_X, z: -halfD + 0.8 };
+
+  grove(world, -7.6, -4.8, 2.0, D, { sick: 0 });
+  grove(world, 7.8, 5.0, 1.8, D, { sick: 0 });
+  mossyRuin(world, 7.4, -5.4, 0.4, D, { w: 3.0, d: 2.2, keep: 0.4, door: false });
+  thicket(world, -7.4, 3.6, 1.6, D, { sick: 0 });
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 1871, 4, { spin: 1, kinds: ['rockSA', 'bush'] });
+  return finish(world, spec, D);
+}
+
+export async function buildTn2(scene) {
+  const { world, spec, D } = base(scene, 'tn2');
+  const { halfW, halfD } = shell(world, spec, [gap('s', TN_DOOR_HALF)], D, {
+    patches: [{ x: TN2_ALTAR.x, z: TN2_ALTAR.z, r: 3.4, kind: 'moss' },
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'grass' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'mud' }],
+    pathWidth: 2.4,
+    paths: [[[0, 8], [0, TN2_ALTAR.z + 1.6]]],
+  });
+  world.spawn = { x: 0, z: 6, angle: Math.PI };
+  sideDoor(world, 's', halfW, halfD, 'tn1', { x: TN1_DOOR_X, z: -5.4, angle: 0 },
+    { half: TN_DOOR_HALF });
+
+  // THE ALTAR — the kit's own pedestal, the egg on its measured top
+  // (js/dragonEggs.js EggNest).
+  world.reserve(TN2_ALTAR.x, TN2_ALTAR.z, 2.4, 'eggNest');
+  let top = 1.2;
+  if (!GREY()) {
+    // PALE STONE, not the district's green: a green egg on a green
+    // pedestal on a green floor was the one thing in the first frame that
+    // did not stand out, and it is the one thing the room is for.
+    const ped = tinted(woodKit.pedestal, 'tnPedestal', 0xb4ae9c);
+    ped.position.set(TN2_ALTAR.x, 0, TN2_ALTAR.z); ped.scale.setScalar(0.55);
+    world.add(ped);
+    ped.updateMatrixWorld(true);
+    top = new THREE.Box3().setFromObject(ped).max.y;
+    for (const [dx, dz, s] of [[-1.2, -1.1, 3.4], [1.3, -0.9, 3.0], [0.4, -1.5, 2.6], [-1.0, 0.9, 2.8]]) {
+      const coin = tinted(woodKit.coins, 'tnCoins', 0xd8b84a);
+      coin.position.set(TN2_ALTAR.x + dx, 0, TN2_ALTAR.z + dz);
+      coin.scale.setScalar(s); coin.rotation.y = dx * 2.1;
+      world.add(coin);
+    }
+  }
+  world.addCircle(TN2_ALTAR.x, TN2_ALTAR.z, 0.7, 'altar');
+  world.markers.eggNestSpots = [{ ...TN2_ALTAR, y: top, element: 'verdant' }];
+
+  grove(world, -7.4, -4.6, 2.0, D, { sick: 0 });
+  grove(world, 7.4, -4.6, 2.0, D, { sick: 0 });
+  thicket(world, -6.8, 3.4, 1.6, D, { sick: 0 });
+  mossyRuin(world, 6.8, 3.6, -0.3, D, { w: 2.8, d: 2.2, keep: 0.4, door: false });
+  world.markers.breakables = potSpotsOrFewer(world, halfW, halfD, spec);
+  scatter(world, halfW, halfD, D, 1872, 4, { spin: 1, kinds: ['rockSA', 'bush'] });
   return finish(world, spec, D);
 }
 
@@ -1880,4 +2026,5 @@ export const LEVEL3_ROOMS = {
   tgl: buildTgl,
   tsA: buildTsA, tsB: buildTsB,
   tf1: buildTf1, tf2: buildTf2, tf3: buildTf3,   // THE FROZEN SPRING
+  tn1: buildTn1, tn2: buildTn2,                  // THE MOSS DRAGON'S HOLLOW
 };

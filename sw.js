@@ -1,6 +1,6 @@
 // Wolf Knight service worker — cache-first so the game plays fully offline.
 // Bump CACHE_NAME on every deploy that changes any cached file.
-const CACHE_NAME = 'wolfknight-v3.209.0';
+const CACHE_NAME = 'wolfknight-v3.210.0';
 
 const PRECACHE = [
   './',
@@ -188,15 +188,19 @@ const PRECACHE = [
   './assets/audio/vo/dragon_confirm_fire.ogg',
   './assets/audio/vo/dragon_confirm_storm.ogg',
   './assets/audio/vo/dragon_confirm_tide.ogg',
+  './assets/audio/vo/dragon_confirm_verdant.ogg',
   './assets/audio/vo/dragon_found_fire.ogg',
   './assets/audio/vo/dragon_found_storm.ogg',
   './assets/audio/vo/dragon_found_tide.ogg',
+  './assets/audio/vo/dragon_found_verdant.ogg',
   './assets/audio/vo/dragon_hatch_fire.ogg',
   './assets/audio/vo/dragon_hatch_storm.ogg',
   './assets/audio/vo/dragon_hatch_tide.ogg',
+  './assets/audio/vo/dragon_hatch_verdant.ogg',
   './assets/audio/vo/dragon_hint_fire.ogg',
   './assets/audio/vo/dragon_hint_storm.ogg',
   './assets/audio/vo/dragon_hint_tide.ogg',
+  './assets/audio/vo/dragon_hint_verdant.ogg',
   './assets/audio/vo/drake_flame.ogg',
   './assets/audio/vo/drake_intro.ogg',
   './assets/audio/vo/earthwolf_grant.ogg',

@@ -100,6 +100,7 @@ const ONWARD = {
   // way back out to the arena it hangs off.
   ln1: 'le', ln2: 'ln1',
   sn1: 'scr', sn2: 'sn1',
+  tn1: 'tgl', tn2: 'tn1',   // the Moss Dragon's Hollow (v3.210)
   dn1: 'ddp', dn2: 'dn1',
 };
 

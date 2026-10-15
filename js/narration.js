@@ -417,6 +417,12 @@ export const LINES = {
   dragon_found_fire: { voice: 'pip', text: 'A DRAGON EGG! It’s so warm, Kael! Carry it back to the fire portal — that’s where it hatches!' },
   dragon_found_tide: { voice: 'pip', text: 'A DRAGON EGG! It’s cool as the sea, Kael! Carry it back to the tide portal — that’s where it hatches!' },
   dragon_found_storm: { voice: 'pip', text: 'A DRAGON EGG! It’s crackling, Kael! Carry it back to the storm portal — that’s where it hatches!' },
+  // v3.210: the fourth dragon, the Moss Dragon, behind Sylva's glade. Its
+  // gate is a thorn tangle the Verdant Wolf's lash cuts.
+  dragon_hint_verdant: { voice: 'pip', text: 'A moss portal, Kael! It’s waiting for a dragon egg. Whip away the thorns by the gate — the egg must be past them!', repeat: true },
+  dragon_confirm_verdant: { voice: 'pip', text: 'That egg smells like LEAVES, Kael! This is its shrine — tap the glowing button to hatch it!' },
+  dragon_hatch_verdant: { voice: 'pip', text: 'A Moss Dragon! Pick her from your backpack, Kael — she’ll hold the baddies still for you.' },
+  dragon_found_verdant: { voice: 'pip', text: 'A DRAGON EGG! It’s all mossy, Kael! Carry it back to the moss portal — that’s where it hatches!' },
   dragon_bones: { voice: 'pip', text: 'Dragon bones, Kael! A real dragon lived here once… I wonder what’s through that door?', repeat: true },
 };
 

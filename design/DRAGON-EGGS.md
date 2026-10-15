@@ -834,13 +834,69 @@ chain jumps A→B→C in order, never to the far foe, not again inside its
 clock, with a bolt really laid between foes; and each dragon's move is
 absent from the other two.
 
+## v5 — the fourth dragon: the Moss Dragon (2026-10-15, SHIPPED v3.210)
+
+Dad: "Just retexture one of the dragons and use that instead of a brand new
+asset." So there is no new model anywhere in this: the Moss Dragon is the
+same `Dragon.glb` body every companion uses, tinted through the same
+`bodyTint()` from the Verdant Wolf's own `WOLF_TINTS` green; the egg is the
+same `dragon-egg.glb` in that green; the portal is the same `portal.glb`
+with a green disk. One registry entry (`DRAGON_ELEMENTS.verdant`) is the
+whole of the "new dragon".
+
+**Why green, and why the Wild Woods.** Frostpeak was the obvious fourth
+region, and was turned down on one measured fact: the game already has an
+icy-blue `Dragon.glb` ENEMY (the `frost-dragonling`, in the Rimebound
+Hollow), and a pale-blue friend beside a pale-blue foe on the same body is
+exactly the colour a child must never have to tell apart. No green dragon
+fights Kael anywhere. The Verdant Wolf is Sylva's reward, so the den hangs
+off her glade, and its lock is the wolf the child has just earned — the
+same rule the other three keep.
+
+| | Moss (verdant) |
+|---|---|
+| arena door (east wall, opens when Sylva is freed) | `tgl`, z -1.0 |
+| the bones, beside that door | `tgl (10.6, -5.2)`, 14u from Tam's post (6, 8.6) |
+| portal room (the shrine) | `tn1` THE MOSS PORTAL |
+| the gate, and the verb | a thorn tangle across the north door — the Verdant Wolf's lash |
+| nest room (the egg on its altar) | `tn2` |
+| solved flag (WS) | `wild3.egg_gate` (and the bramble's own `cut_tn1_gate`) |
+
+- **The rooms** are built on the Eyrie's plan (sn1/sn2) — door off-centre at
+  x -3, portal at (4.5, -0.5), altar centred — dressed with the Woods' own
+  clusters at `sick: 0`: the one hollow the blight never reached. The
+  district (`dragonmoss`) is the glade's floor pulled deeper and greener.
+- **The gate** is the Woods' own `bramble()` (never regrowing), so the lash
+  that cuts it is the lash that cuts every other tangle in the region; its
+  `onCut` sets `egg_gate` and adds the north door where the child stands.
+- **The move — ROOT.** Each dragon does the one thing its element is for
+  (v4). The Verdant Wolf's lash HOLDS a foe; so does the Moss Dragon's bite:
+  every 7s (the lash's own clock) a bite roots the bitten foe for 1.2s
+  (the lash holds 2.6s — under half). No extra damage: the hold is the help.
+  Never a flyer (the lash skips them too), and the move is hers alone — a
+  storm bite never roots, a moss bite never chains, and she never mends or
+  breathes. Green `twirl.png` swirls at the foe's feet, owned and disposed
+  by the dragon like every other move's sprites.
+- **Narration:** `dragon_hint_verdant` (repeat), `dragon_confirm_verdant`,
+  `dragon_hatch_verdant`, `dragon_found_verdant`, rendered with the Piper
+  pipeline into `assets/audio/vo/` like the rest.
+- **Save compatibility:** additive only — one new element key in the three
+  existing inventory maps, one new WS flag. Nothing existing changed.
+- **Verified:** `verify-dragondens` walks the fourth den with real keys
+  (bones, portal hint, the lash on the thorns, the egg, the real
+  `#btn-dragon` hatch, Tam still travels); `verify-dragoneggs` carries `tgl`
+  in its den table (plugged before Sylva, open after, empty altar on a
+  rebuild); `verify-dragon-specials` adds the root (held for exactly the
+  hold, not again inside the clock, then again, never a flyer, never chains,
+  never mends) and the storm-never-roots direction.
+
 ## Still to design
 
-- **A fourth or later dragon.** The system supports any number of elements
-  trivially (`DRAGON_ELEMENTS` is a plain registry), but only three shrines
-  exist in the world right now, matching dad's own "three dragon eggs"
-  ask exactly. A future region (or an existing one not yet used this way)
-  could carry a fourth.
+- **A fifth or later dragon.** Same registry, same recipe as v5: a region
+  with a boss arena, a colour no enemy `Dragon.glb` already wears, and that
+  region's own wolf verb as the gate. Earth (Stoneroot) is the one left that
+  passes the colour test cleanly; moon would sit next to the
+  shadow-dragonling.
 - ~~**Dragon-specific specials.**~~ Closed in v4 above — breath, mend,
   chain. Still open: whether the kids can SEE which one they have mid-fight
   well enough to choose between them, which only a real play session answers.
