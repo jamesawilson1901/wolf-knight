@@ -386,7 +386,10 @@ export const WAYFARER_POSTS = {
   // `spawnSettlers` sets, once, the first time stage 4 is reached, and growth
   // never regresses (design/WIDER-WORLD.md §1.7's additive law), so it is the
   // same question asked through a fact both files already know: `WS`.
-  la: { x: -9.3, z: 7.6, ry: -1.2, flag: null, when: () => WS.get('ember', 'seen_4') },
+  // z 8.1, not 7.6 (2026-10-15): v3.200.1 reshaped la's pit and its north rim
+  // collider now ends at z 7.44, so at 7.6 his body (0.44) stood on the lip —
+  // verify-wayfarer's clear-ground check, red on three nightlies.
+  la: { x: -9.3, z: 8.1, ry: -1.2, flag: null, when: () => WS.get('ember', 'seen_4') },
   // v3.135: measured clear of both new shop carts' own 1.7u proximity ring
   // (SETTLER_POSTS.vh/.t1a's `shop`, above) — the same la-post lesson.
   vh: { x: 16, z: 3, ry: -1.6, flag: null, when: () => WS.get('stone', 'seen_4') },

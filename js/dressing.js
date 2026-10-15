@@ -734,6 +734,9 @@ function place(world, g, gltf, key, x, y, z, s, ry = 0, rz = 0, colour = 0x80808
   function mossyRuin(world, x, z, ry, D, opts = {}) {
     if (GREY()) return null;
     const g = ruinedHome(world, x, z, ry, D, opts);
+    // ruinedHome declines to build in water (a healed room's mud becomes
+    // water) — and then there is nothing for the moss to grow on
+    if (!g) return null;
     const r = srnd(Math.round(x * 23 + z * 47 + 5));
     const P = D.propTint || D.floorTint;
     const W = (opts.w !== undefined ? opts.w : 6) / 2;

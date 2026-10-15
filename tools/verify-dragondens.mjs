@@ -120,7 +120,9 @@ const DENS = [
   },
 ];
 
-for (const d of DENS) {
+// `node tools/verify-dragondens.mjs verdant` walks just that den
+const ONLY = process.argv.slice(2);
+for (const d of DENS.filter((x) => !ONLY.length || ONLY.includes(x.el))) {
   console.log(`\n── the ${d.el} den: ${d.arena} → ${d.hall} → ${d.nest} ─────────────`);
   await wk.page.evaluate(({ flag, region }) => {
     const g = window.__game;

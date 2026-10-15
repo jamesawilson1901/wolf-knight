@@ -6494,3 +6494,26 @@ Four new Pip lines, rendered with Piper. verify-dragondens walks the fourth
 den with real keys; verify-dragoneggs and verify-dragon-specials cover it;
 verify-density and the contact sheet list the two rooms; the map graph is
 regenerated. design/DRAGON-EGGS.md v5 has the detail.
+
+## The red nightly, and a crash at the Moss Dragon's door (2026-10-15, v3.210.1)
+
+The nightly on main had been red for three nights (runs 376, 377, 379).
+- **verify-wayfarer, every night: my bug.** v3.200.1 reshaped la's pit, and
+  its north rim collider now ends at z 7.44. Tam's stage-4 post at
+  (-9.3, 7.6) put his body (0.44) on the lip. Moved to (-9.3, 8.1), measured
+  clear of every collider; the suite passes.
+- **verify-level4, once (run 379):** the Frost Wolf's breath missed the
+  scour ice. It passes locally and in runs 376 and 377. Its walk ends with
+  whatever facing the route left, so it is timing-sensitive, but not proven
+  flaky enough to list; watched on the next nightly.
+
+**A crash found by walking, not jumping.** Entering tn1 from tgl's door
+wedged the world: "room load failed". Healing turns a room's mud patches
+into water (`healPatches`), and the heal is keyed on the room's region, so
+it only bit once the rooms had `t` ids and the Woods were restored. tn1's
+mossy ruin stood on a mud patch, `ruinedHome` declined to build in water,
+and `mossyRuin` called `place()` on the null it returned. Both fixed:
+- the den rooms have no mud patches;
+- `mossyRuin` returns null when there is no ruin to grow on.
+A direct jump never found it, because a jump into tn1 built it before the
+wood kit had loaded (greybox, so no ruin at all).

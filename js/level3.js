@@ -1700,6 +1700,10 @@ export async function buildTgl(scene) {
 // x -3 so the portal stands clear of the walk in, the altar in the middle of
 // the far room. The portal lives here, a room away from Tam's post in tgl.
 // ===========================================================================
+// NO MUD PATCHES in these two rooms: once the Woods are healed,
+// js/restoration.js healPatches turns mud into WATER, and a ruin or a grove
+// standing in a new puddle declines to build (the first cut crashed tn1's
+// mossyRuin on exactly that, walking in from tgl).
 const TN_DOOR_HALF = 1.5;
 const TGL_EGG_DOOR_Z = -1.0;   // the east wall's bare middle: grove at z 10, blight at z -10
 const TGL_BONES = { x: 10.6, z: -5.2, ry: 0.6, d: 3.0 };
@@ -1713,7 +1717,7 @@ export async function buildTn1(scene) {
   const { halfW, halfD } = shell(world, spec,
     [gap('s', TN_DOOR_HALF, TN1_DOOR_X), gap('n', TN_DOOR_HALF, TN1_DOOR_X)], D, {
       patches: [{ x: TN1_SHRINE.x, z: TN1_SHRINE.z, r: 3.6, kind: 'moss' },
-                { x: -7, z: 3, r: 2.6, kind: 'grass' }, { x: 7, z: -5.5, r: 2.2, kind: 'mud' }],
+                { x: -7, z: 3, r: 2.6, kind: 'grass' }, { x: 7, z: -5.5, r: 2.2, kind: 'moss' }],
       pathWidth: 2.4,
       paths: [[[TN1_DOOR_X, 8], [TN1_DOOR_X, -8]], [[TN1_DOOR_X, 2], [TN1_SHRINE.x - 2.8, TN1_SHRINE.z]]],
     });
@@ -1755,7 +1759,7 @@ export async function buildTn2(scene) {
   const { world, spec, D } = base(scene, 'tn2');
   const { halfW, halfD } = shell(world, spec, [gap('s', TN_DOOR_HALF)], D, {
     patches: [{ x: TN2_ALTAR.x, z: TN2_ALTAR.z, r: 3.4, kind: 'moss' },
-              { x: -6.5, z: -4.5, r: 2.4, kind: 'grass' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'mud' }],
+              { x: -6.5, z: -4.5, r: 2.4, kind: 'grass' }, { x: 6.5, z: -4.5, r: 2.4, kind: 'moss' }],
     pathWidth: 2.4,
     paths: [[[0, 8], [0, TN2_ALTAR.z + 1.6]]],
   });
